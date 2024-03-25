@@ -1,0 +1,36 @@
+common:
+  mars_request: &mars_request
+    expver: "0001"
+    class: ea
+    grid: 20./20.
+
+dates:
+  start: 2020-12-30 00:00:00
+  end: 2021-01-03 12:00:00
+  frequency: 12h
+  missing: ['2020-12-30 12:00:00', '2021-01-03 00:00:00']
+
+options:
+  group_by: monthly
+
+data_sources:
+  - mars:
+      <<: *mars_request
+      param: [2t]
+      levtype: sfc
+      stream: oper
+      type: an
+
+input:
+  constants:
+    template: ${data_sources.0.mars}
+    param:
+      - cos_latitude
+      #- sin_latitude
+
+output:
+  order_by: [valid_datetime, param_level, number]
+  remapping:
+    param_level: "{param}_{levelist}"
+  statistics: param_level
+  statistics_end: 2021-01-02

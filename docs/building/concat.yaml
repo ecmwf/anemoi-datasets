@@ -1,0 +1,17 @@
+input:
+  concat:
+    - dates:
+        start: 2020-12-30 00:00:00
+        end: 2021-01-01 12:00:00
+        frequency: 12h
+
+      source1:
+        - args
+
+    - dates:
+        start: 2021-01-02 00:00:00
+        end: 2021-01-03 12:00:00
+        frequency: 12h
+
+      source2:
+        - args

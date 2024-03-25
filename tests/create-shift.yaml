@@ -1,0 +1,51 @@
+description: "develop version of the dataset for a few days and a few variables, once data on mars is cached it should take a few seconds to generate the dataset"
+dataset_status: testing
+purpose: aifs
+name: test-small
+config_format_version: 2
+
+common:
+  mars_request: &mars_request
+    expver: "0001"
+    class: ea
+    grid: 20./20.
+
+dates:
+  start: 2020-12-30 00:00:00
+  end: 2021-01-03 12:00:00
+  frequency: 12h
+  group_by: monthly
+
+input:
+  join:
+    - mars:
+        <<: *mars_request
+        param: [2t]
+        levtype: sfc
+        stream: oper
+        type: an
+
+    - constants:
+        template: ${input.join.0.mars}
+        param:
+          - insolation
+
+    - date_shift:
+        delta: -25
+        constants:
+          template: ${input.join.0.mars}
+          param:
+            - insolation
+
+output:
+  chunking: { dates: 1, ensembles: 1 }
+  dtype: float32
+  flatten_grid: True
+  order_by:
+    - valid_datetime
+    - param_level
+    - number
+  statistics: param_level
+  statistics_end: 2021
+  remapping: &remapping
+    param_level: "{param}_{levelist}"

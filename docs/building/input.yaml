@@ -1,0 +1,6 @@
+input:
+  join:
+    - source1:
+        key: date
+    - source2
+    - ...

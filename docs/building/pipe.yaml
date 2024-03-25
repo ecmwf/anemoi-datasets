@@ -1,0 +1,6 @@
+input:
+  pipe:
+    - source
+    - filter1
+    - filter2
+    - ...
