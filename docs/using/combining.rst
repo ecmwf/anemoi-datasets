@@ -91,14 +91,14 @@ Please note that you can join more than two ``zarr`` files.
 
 The values for ``mode`` are:
 
-concatenate
-===========
+mode=concatenate
+================
 
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
 
-cutout
-======
+mode=cutout
+===========
 
 The `cutout` mode only supports two datasets. The first dataset is the
 considered to be a limited area model (LAM), while the second one is
