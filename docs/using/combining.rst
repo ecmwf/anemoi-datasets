@@ -30,6 +30,7 @@ chronological order with no gaps between them.
    )
 
 .. image:: concat.png
+   :align: center
    :alt: Concatenation
 
 Please note that you can pass more than two ``zarr`` files to the
@@ -55,6 +56,7 @@ variables.
    )
 
 .. image:: join.png
+   :align: center
    :alt: Join
 
 If a variable is present in more that one file, that last occurrence of
@@ -62,6 +64,7 @@ that variable will be used, and will be at the position of the first
 occurrence of that name.
 
 .. image:: overlay.png
+   :align: center
    :alt: Overlay
 
 Please note that you can join more than two ``zarr`` files.
@@ -85,3 +88,23 @@ Please note that you can join more than two ``zarr`` files.
    from anemoi.datasets import open_dataset
 
    ds = open_dataset(grids=[dataset1, dataset2, ...], method=...)
+
+.. image:: cutout-1.png
+   :width: 75%
+   :align: center
+   :alt: Cutout
+
+.. image:: cutout-2.png
+   :width: 75%
+   :align: center
+   :alt: Cutout
+
+.. image:: cutout-3.png
+   :width: 75%
+   :align: center
+   :alt: Cutout
+
+.. image:: cutout-4.png
+   :width: 75%
+   :align: center
+   :alt: Cutout
