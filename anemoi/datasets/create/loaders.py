@@ -14,7 +14,7 @@ from functools import cached_property
 import numpy as np
 import zarr
 
-from anemoi.datasets.data import open_dataset
+from anemoi.datasets import open_dataset
 from anemoi.datasets.utils.dates.groups import Groups
 
 from .check import DatasetName

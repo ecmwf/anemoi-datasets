@@ -13,7 +13,7 @@ from unittest.mock import patch
 import numpy as np
 import zarr
 
-from anemoi.datasets.data import open_dataset
+from anemoi.datasets import open_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import Grids

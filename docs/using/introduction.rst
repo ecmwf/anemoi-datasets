@@ -21,7 +21,7 @@ To open a dataset, you can use the `open_dataset` function.
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset("path/to/dataset.zarr")
 
@@ -43,7 +43,7 @@ to subset or combine datasets.
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset("path/to/dataset.zarr", start=2000, end=2020)
 
@@ -53,7 +53,7 @@ the `open_dataset` function:
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset("path/to/dataset1.zarr", "path/to/dataset2.zarr")
 

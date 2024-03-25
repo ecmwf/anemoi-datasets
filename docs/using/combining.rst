@@ -22,6 +22,8 @@ chronological order with no gaps between them.
 
 .. code:: python
 
+   from anemoi.datasets import open_dataset
+
    ds = open_dataset(
        "aifs-ea-an-oper-0001-mars-o96-1940-1978-1h-v2",
        "aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v2",
@@ -70,7 +72,9 @@ Please note that you can join more than two ``zarr`` files.
 
 .. code:: python
 
-   open_dataset(ensembles=[dataset1, dataset2, ...])
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset(ensembles=[dataset1, dataset2, ...])
 
 *******
  grids
@@ -78,4 +82,6 @@ Please note that you can join more than two ``zarr`` files.
 
 .. code:: python
 
-   open_dataset(grids=[dataset1, dataset2, ...], method=...)
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset(grids=[dataset1, dataset2, ...], method=...)

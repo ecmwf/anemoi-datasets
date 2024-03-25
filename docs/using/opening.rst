@@ -6,7 +6,7 @@
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset("path/to/dataset.zarr", option1=value1, option2=value2, ...)
 
@@ -14,7 +14,7 @@ or
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset(combine=["path/to/dataset1.zarr",
                               "path/to/dataset2.zarr", ...])
@@ -23,7 +23,7 @@ or
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset(combine=["path/to/dataset1.zarr",
                               "path/to/dataset2.zarr", ...],
@@ -38,7 +38,7 @@ The term `combine` is one of `join`, `concat`, `ensembles`, etc. See
 
 .. code:: python
 
-   from anemoi_datasets import open_dataset
+   from anemoi.datasets import open_dataset
 
    ds = open_dataset(combine=[{"dataset": "path/to/dataset1.zarr",
                                "option1"=value1, "option2"=value2, ...},

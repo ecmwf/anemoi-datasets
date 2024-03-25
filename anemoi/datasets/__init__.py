@@ -5,4 +5,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from .data import MissingDateError
+from .data import open_dataset
+
 __version__ = "0.1.0"
+
+__all__ = ["open_dataset", "MissingDateError"]

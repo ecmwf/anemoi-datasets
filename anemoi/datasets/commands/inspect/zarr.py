@@ -16,7 +16,7 @@ import numpy as np
 import semantic_version
 import tqdm
 
-from anemoi.datasets.data import open_dataset
+from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
 from anemoi.datasets.utils.humanize import bytes
 from anemoi.datasets.utils.humanize import number

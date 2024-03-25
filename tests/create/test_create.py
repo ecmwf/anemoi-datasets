@@ -19,8 +19,8 @@ import pytest
 import requests
 from climetlab import load_source
 
+from anemoi.datasets import open_dataset
 from anemoi.datasets.create import Creator
-from anemoi.datasets.data import open_dataset
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create/"

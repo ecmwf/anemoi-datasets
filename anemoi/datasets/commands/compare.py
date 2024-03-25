@@ -8,7 +8,7 @@
 # nor does it submit to any jurisdiction.
 #
 
-from anemoi.datasets.data import open_dataset
+from anemoi.datasets import open_dataset
 
 from . import Command
 
