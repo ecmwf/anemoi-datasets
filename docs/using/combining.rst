@@ -106,20 +106,30 @@ considered to be a global model or boundary conditions. It is therefore
 expected that the bounding box of the first dataset is contained within
 the bounding box of the second dataset.
 
+The image below shows the global dataset:
+
 .. image:: cutout-1.png
    :width: 75%
    :align: center
    :alt: Cutout
+
+The image below shows the LAM dataset:
 
 .. image:: cutout-2.png
    :width: 75%
    :align: center
    :alt: Cutout
 
+A 'cutout' is performed by removing the grid points from the global
+dataset that contained in the LAM dataset. The result is shown below:
+
 .. image:: cutout-3.png
    :width: 75%
    :align: center
    :alt: Cutout
+
+The final dataset is the concatenation of the LAM dataset and the
+cutout:
 
 .. image:: cutout-4.png
    :width: 75%
