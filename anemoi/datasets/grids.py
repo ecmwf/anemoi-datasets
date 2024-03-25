@@ -121,7 +121,7 @@ def cutout_mask(
     global_lats,
     global_lons,
     cropping_distance=2.0,
-    min_distance_km=0.0,
+    min_distance_km=None,
     plot=None,
 ):
     """
@@ -130,8 +130,6 @@ def cutout_mask(
     from scipy.spatial import KDTree
 
     # TODO: transform min_distance from lat/lon to xyz
-
-    min_distance = min_distance_km / 6371.0
 
     assert global_lats.ndim == 1
     assert global_lons.ndim == 1
@@ -172,6 +170,30 @@ def cutout_mask(
     kdtree = KDTree(lam_points)
     distances, indices = kdtree.query(global_points, k=3)
 
+    if min_distance_km is not None:
+        min_distance = min_distance_km / 6371.0
+    else:
+        # Estimnation of the minimum distance between two grib points
+
+        glats = sorted(set(global_lats_masked))
+        glons = sorted(set(global_lons_masked))
+        min_dlats = np.min(np.diff(glats))
+        min_dlons = np.min(np.diff(glons))
+
+        # Use the center of the LAM grid as the reference point
+        centre = np.mean(lats), np.mean(lons)
+        centre_xyz = np.array(latlon_to_xyz(*centre))
+
+        pt1 = np.array(latlon_to_xyz(centre[0] + min_dlats, centre[1]))
+        pt2 = np.array(latlon_to_xyz(centre[0], centre[1] + min_dlons))
+        min_distance = (
+            min(
+                np.linalg.norm(pt1 - centre_xyz),
+                np.linalg.norm(pt2 - centre_xyz),
+            )
+            / 2.0
+        )
+
     zero = np.array([0.0, 0.0, 0.0])
     ok = []
     for i, (global_point, distance, index) in enumerate(zip(global_points, distances, indices)):
@@ -181,10 +203,10 @@ def cutout_mask(
         # from the point to the center of the Earth is not None
         # (the direction of the ray is not important)
 
-        intersect = t.intersect(zero, global_point) or t.intersect(global_point, zero)
+        intersect = t.intersect(zero, global_point)
         close = np.min(distance) <= min_distance
 
-        ok.append(intersect and not close)
+        ok.append(intersect or close)
 
     j = 0
     ok = np.array(ok)
