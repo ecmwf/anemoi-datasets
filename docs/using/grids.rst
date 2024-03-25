@@ -23,6 +23,16 @@ So for 2D fields, the thinning will apply to both the latitude and
 longitude dimensions. For 1D fields, such as reduced Gaussian grids, the
 thinning will apply to the only dimension.
 
+The following example shows the effect of thinning a dataset with a 1 degree
+resolution:
+
+.. image:: thinning-before.png
+
+Thinning the dataset with ``thinning=4`` will result in the following dataset:
+
+.. image:: thinning-after.png
+
+
 ******
  area
 ******

@@ -29,6 +29,7 @@ class Subset(Forwards):
     def __init__(self, dataset, indices, reason):
         while isinstance(dataset, Subset):
             indices = [dataset.indices[i] for i in indices]
+            reason = {**reason, **dataset.reason}
             dataset = dataset.dataset
 
         self.dataset = dataset

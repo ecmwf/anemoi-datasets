@@ -101,6 +101,10 @@ class Grids(GivenAxis):
         # We don't check the grid, because we want to be able to combine
         pass
 
+    def check_same_resolution(self, d1, d2):
+        # We don't check the resolution, because we want to be able to combine
+        pass
+
 
 class ConcatGrids(Grids):
     # TODO: select the statistics of the most global grid?
@@ -125,7 +129,7 @@ class ConcatGrids(Grids):
 
 class CutoutGrids(Grids):
     def __init__(self, datasets, axis):
-        from anemoi.grids import cutout_mask
+        from anemoi.datasets.grids import cutout_mask
 
         super().__init__(datasets, axis)
         assert len(datasets) == 2, "CutoutGrids requires two datasets"
@@ -140,7 +144,7 @@ class CutoutGrids(Grids):
             self.lam.longitudes,
             self.globe.latitudes,
             self.globe.longitudes,
-            plot="cutout",
+            # plot="cutout",
         )
         assert len(self.mask) == self.globe.shape[3], (
             len(self.mask),
