@@ -87,7 +87,24 @@ Please note that you can join more than two ``zarr`` files.
 
    from anemoi.datasets import open_dataset
 
-   ds = open_dataset(grids=[dataset1, dataset2, ...], method=...)
+   ds = open_dataset(grids=[dataset1, dataset2, ...], mode=...)
+
+The values for ``mode`` are:
+
+concatenate
+===========
+
+All the grid points are concatenated, in the order they are given. The
+`latitudes` and `longitudes` are also concatenated.
+
+cutout
+======
+
+The `cutout` mode only supports two datasets. The first dataset is the
+considered to be a limited area model (LAM), while the second one is
+considered to be a global model or boundary conditions. It is therefore
+expected that the bounding box of the first dataset is contained within
+the bounding box of the second dataset.
 
 .. image:: cutout-1.png
    :width: 75%
