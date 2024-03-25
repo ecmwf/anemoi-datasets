@@ -4,9 +4,7 @@
 
 .. warning::
 
-   This documentation is work in progress. It is not yet ready.
-   Currently, the documentation is based on the one from the ecml-tools_
-   project, which will be merged into Anemoi.
+   This documentation is work in progress.
 
 *Anemoi* is a framework for developing machine learning weather
 forecasting models. It comprises of components or packages for preparing
