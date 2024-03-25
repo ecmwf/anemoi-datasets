@@ -27,10 +27,14 @@ The following example shows the effect of thinning a dataset with a 1 degree
 resolution:
 
 .. image:: thinning-before.png
+   :width: 75%
+   :align: center
 
 Thinning the dataset with ``thinning=4`` will result in the following dataset:
 
 .. image:: thinning-after.png
+   :width: 75%
+   :align: center
 
 
 ******
