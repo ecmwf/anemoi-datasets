@@ -4,22 +4,19 @@
  Filters
 #########
 
+.. warning::
+
+   This is still a work in progress. Some of the filters may be renamed
+   later.
+
 Filters are used to modify the data or metadata in a dataset.
 
-********
- select
-********
+.. toctree::
+   :maxdepth: 1
 
-.. include:: filters/select.rst
-
-********
- rename
-********
-
-.. include:: filters/rename.rst
-
-**************
- rotate_winds
-**************
-
-.. include:: filters/rotate_winds.rst
+   filters/select
+   filters/rename
+   filters/rotate_winds
+   filters/unrotate_winds
+   filters/noop
+   filters/empty
