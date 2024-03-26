@@ -1,4 +1,6 @@
-TARGETS=building1.txt
+YAML := $(wildcard building*.yaml)
+
+TARGETS := $(YAML:.yaml=.txt)
 
 all: $(TARGETS)
 
@@ -11,5 +13,8 @@ all: $(TARGETS)
 	rm -f dataset.zarr
 
 
+clean::
+	rm -fr *.zarr *.txt
 
 .SUFFIXES: .zarr .yaml .txt
+.PRECIOUS: %.zarr
