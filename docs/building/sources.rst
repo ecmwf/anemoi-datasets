@@ -28,14 +28,17 @@
 
 .. include:: sources/opendap.rst
 
-***********
- constants
-***********
-
-.. include:: sources/constants.rst
 
 ***************
  accumulations
 ***************
 
 .. include:: sources/accumulations.rst
+
+.. _forcing_variables:
+
+***********
+ constants
+***********
+
+.. include:: sources/constants.rst

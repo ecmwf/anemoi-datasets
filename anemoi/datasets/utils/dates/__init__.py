@@ -9,6 +9,8 @@
 import datetime
 import warnings
 
+def no_time_zone(date):
+    return date.replace(tzinfo=None)
 
 def frequency_to_hours(frequency):
     if isinstance(frequency, int):
@@ -22,7 +24,7 @@ def frequency_to_hours(frequency):
 
 def normalize_date(x):
     if isinstance(x, str):
-        return datetime.datetime.fromisoformat(x)
+        return no_time_zone(datetime.datetime.fromisoformat(x))
     return x
 
 
@@ -81,7 +83,7 @@ class Dates:
 
 class ValuesDates(Dates):
     def __init__(self, values, **kwargs):
-        self.values = sorted(values)
+        self.values = sorted([no_time_zone(_) for _ in values])
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -108,6 +110,9 @@ class StartEndDates(Dates):
 
         if isinstance(end, datetime.date) and not isinstance(end, datetime.datetime):
             end = datetime.datetime(end.year, end.month, end.day)
+
+        start = no_time_zone(start)
+        end = no_time_zone(end)
 
         if end <= start:
             raise ValueError(f"End date {end} must be after start date {start}")
