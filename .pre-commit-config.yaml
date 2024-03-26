@@ -59,6 +59,7 @@ repos:
         - sphinx
         - sphinx_rtd_theme
         - nbsphinx
+        - pandoc
       args:
         - --cache-dir
         - docs/_build/doctrees
