@@ -3,6 +3,7 @@ input:
   - source1:
     args1: value1
     args2: value2
+
   - constants:
     template: ${input.join.0.source1}
     params:
