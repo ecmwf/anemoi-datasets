@@ -15,7 +15,7 @@ jobs:
     name: Code QA
     runs-on: ubuntu-latest
     steps:
-    - run: sudo apt-get install -y pandoc
+    - run: sudo apt-get install -y pandoc # Needed by sphinx for notebooks
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
