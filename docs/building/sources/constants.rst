@@ -82,14 +82,14 @@ julian_day
 
 cos_julian_day
    Each grid point has the value of
-   :math:`cos(julian_day/365.25*2*\pi)`. Unlike the **julian_day**
+   :math:`cos(julian\_day/365.25*2*\pi)`. Unlike the **julian_day**
    field, this field is periodic in time.
 
    Range of values: :math:`[-1, 1]`
 
 sin_julian_day
    Each grid point has the value of
-   :math:`sin(julian_day/365.25*2*\pi)`. Unlike the **julian_day**
+   :math:`sin(julian\_day/365.25*2*\pi)`. Unlike the **julian_day**
    field, this field is periodic in time.
 
    Range of values: :math:`[-1, 1]`
@@ -105,13 +105,13 @@ local_time
    Range of values: :math:`[0, 24)`
 
 cos_local_time
-   Each grid point has the value of :math:`cos(local_time/24*2*\pi)`.
+   Each grid point has the value of :math:`cos(local\_time/24*2*\pi)`.
    Unlike the **julian_day** field, this field is periodic in time.
 
    Range of values: :math:`[-1, 1]`
 
 sin_local_time
-   Each grid point has the value of :math:`sin(local_time/24*2*\pi)`.
+   Each grid point has the value of :math:`sin(local\_time/24*2*\pi)`.
    Unlike the **julian_day** field, this field is periodic in time.
 
    Range of values: :math:`[-1, 1]`
