@@ -403,8 +403,8 @@ class ContentLoader(Loader):
         LOG.info(f"Loading {shape=} in {self.data_array.shape=}")
 
         def check_dates_in_data(lst, lst2):
-            lst2 = list(lst2)
-            lst = [datetime.datetime.fromisoformat(_) for _ in lst]
+            lst2 = [np.datetime64(_) for _ in lst2]
+            lst = [np.datetime64(_) for _ in lst]
             assert lst == lst2, ("Dates in data are not the requested ones:", lst, lst2)
 
         check_dates_in_data(dates_in_data, dates)

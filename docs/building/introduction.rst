@@ -78,5 +78,23 @@ operations can be combined to build complex datasets.
  Getting started
 *****************
 
-.. literalinclude:: building.yaml
+The simplest recipe file must contain a ``dates`` section and an ``input`` section. The latter
+must contain a `source` In that case, the source is ``mars``
+
+.. literalinclude:: building1.yaml
    :language: yaml
+
+To create the dataser, run the following command:
+
+.. code-block:: console
+
+   $ anemoi-datasets create recipe.yaml dataset.zarr
+
+Once the build is complete, you can inspect the dataset using the following command:
+
+.. code-block:: console
+
+   $ anemoi-datasets inspect dataset.zarr
+
+.. literalinclude:: building1.txt
+   :language: console

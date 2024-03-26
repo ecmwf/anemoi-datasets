@@ -128,6 +128,8 @@ def normalize_and_check_dates(dates, start, end, frequency, dtype="datetime64[s]
         )
 
     for i, (d1, d2) in enumerate(zip(dates, dates_)):
+        d1 = np.datetime64(d1)
+        d2 = np.datetime64(d2)
         assert d1 == d2, (i, d1, d2)
 
     return dates_

@@ -80,14 +80,16 @@ def resolve_includes(config):
 
 
 class Config(DictObj):
-    def __init__(self, config):
+    def __init__(self, config=None, **kwargs):
         if isinstance(config, str):
             self.config_path = os.path.realpath(config)
             config = load_json_or_yaml(config)
         else:
-            config = deepcopy(config)
+            config = deepcopy(config if config is not None else {})
         config = resolve_includes(config)
+        config.update(kwargs)
         super().__init__(config)
+
 
 
 class OutputSpecs:
@@ -140,39 +142,32 @@ class OutputSpecs:
 
 class LoadersConfig(Config):
     def __init__(self, config, *args, **kwargs):
-        if "build" not in config:
-            config["build"] = {}
+
 
         super().__init__(config, *args, **kwargs)
 
         # TODO: should use a json schema to validate the config
 
-        if "dataset_status" not in self:
-            self.dataset_status = "experimental"
+        self.setdefault("dataset_status", "experimental")
+        self.setdefault("description", "No description provided.")
+        self.setdefault("licence", "unknown")
+        self.setdefault("copyright", "licence")
 
-        if "description" not in self:
-            self.description = "No description provided."
-
-        if "dates" in self.output:
-            raise ValueError("Obsolete: Dates should not be provided in output config.")
-        if not isinstance(self.dates, dict):
-            raise ValueError(f"Dates must be a dict. Got {self.dates}")
-
-        # deprecated/obsolete
-        if "order" in self.output:
-            raise ValueError(f"Do not use 'order'. Use order_by instead. {list(self.keys())}")
-        if "loops" in self:
-            raise ValueError(f"Do not use 'loops'. Use dates instead. {list(self.keys())}")
-        if "loop" in self:
-            raise ValueError(f"Do not use 'loop'. Use dates instead. {list(self.keys())}")
 
         if "licence" not in self:
             self.licence = "unknown"
         if "copyright" not in self:
             self.copyright = "unknown"
 
-        if "group_by" not in self.build:
-            self.build.group_by = "monthly"
+        self.setdefault("build", Config())
+        self.build.setdefault("group_by", "monthly")
+
+        self.setdefault("output", Config())
+        self.output.setdefault("order_by",['valid_datetime', 'param_level', 'number'])
+        self.output.setdefault("remapping", Config(param_level="{param}_{levelist}"))
+        self.output.setdefault("statistics", 'param_level')
+        self.output.setdefault("chunking", Config(dates=1, ensembles=1))
+        self.output.setdefault("dtype", 'float32')
 
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)
@@ -185,23 +180,13 @@ class LoadersConfig(Config):
         assert _get_first_key_if_dict(order_by[0]) == "valid_datetime", order_by
         assert _get_first_key_if_dict(order_by[2]) == "number", order_by
 
-        if "order_by" in self.output:
-            self.output.order_by = normalize_order_by(self.output.order_by)
+        self.output.order_by = normalize_order_by(self.output.order_by)
 
-        if "chunking" not in self.output:
-            self.output.chunking = dict(dates=1, ensembles=1)
-        if "dtype" not in self.output:
-            self.output.dtype = "float32"
-
-        if "group_by" in self.build:
-            self.dates["group_by"] = self.build.group_by
+        self.dates["group_by"] = self.build.group_by
 
         ###########
 
         self.reading_chunks = self.get("reading_chunks")
-        assert "flatten_values" not in self.output
-        assert "flatten_grid" in self.output, self.output
-        assert "statistics" in self.output
 
     def get_serialisable_dict(self):
         return _prepare_serialisation(self)
