@@ -28,7 +28,6 @@
 
 .. include:: sources/opendap.rst
 
-
 ***************
  accumulations
 ***************

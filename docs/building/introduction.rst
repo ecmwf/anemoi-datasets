@@ -124,16 +124,17 @@ This will build the following dataset:
    `param_level`. This is the default behaviour. See
    :ref:`remapping_option` for more information.
 
-Adding some forcing variables
-==
+Adding some forcing variables ==
 
-When training a data-driven models, some forcing variables may be required
-such as the solar radiation, the time of day, the day in the year, etc.
+When training a data-driven models, some forcing variables may be
+required such as the solar radiation, the time of day, the day in the
+year, etc.
 
-These are provided by the ``constants`` source. In that example, we add a few of them.
-The `template` option is used to point to another source, in that case the first
-instance of ``mars``. This source is used to get information about the grid points,
-as some of the forcing variables are grid dependent.
+These are provided by the ``constants`` source. In that example, we add
+a few of them. The `template` option is used to point to another source,
+in that case the first instance of ``mars``. This source is used to get
+information about the grid points, as some of the forcing variables are
+grid dependent.
 
 .. literalinclude:: building3.yaml
    :language: yaml
@@ -143,4 +144,5 @@ This will build the following dataset:
 .. literalinclude:: building3.txt
    :language: console
 
-See :ref:`forcing_variables` for more information about forcing variables.
+See :ref:`forcing_variables` for more information about forcing
+variables.
