@@ -7,8 +7,9 @@ repos:
       name: jupyter-nb-clear-output
       files: tools/.*\.ipynb$
       stages: [commit]
-      language: system
+      language: python
       entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
+      additional_dependencies: [jupyter]
 
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -59,6 +60,7 @@ repos:
         - sphinx
         - sphinx_rtd_theme
         - nbsphinx
+        - pandoc
       args:
         - --cache-dir
         - docs/_build/doctrees
