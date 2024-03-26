@@ -6,7 +6,9 @@ all: $(TARGETS)
 	anemoi-datasets create $< $@ --overwrite
 
 %.txt: %.zarr
-	anemoi-datasets inspect $< > $@ 
+	ln -sf $< dataset.zarr
+	anemoi-datasets inspect dataset.zarr > $@
+	rm -f dataset.zarr
 
 
 
