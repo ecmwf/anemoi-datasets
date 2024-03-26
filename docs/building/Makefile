@@ -14,7 +14,7 @@ all: $(TARGETS)
 
 
 clean::
-	rm -fr *.zarr *.txt
+	rm -fr *.zarr
 
 .SUFFIXES: .zarr .yaml .txt
 .PRECIOUS: %.zarr

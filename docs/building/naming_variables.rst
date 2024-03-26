@@ -10,9 +10,10 @@
 
 The rename filter is used to rename variables in a dataset.
 
+.. _remapping_option:
+
 *************************
- remapping output option
+ remapping  option
 *************************
 
-The remapping output option is used to specify the output dataset for
-the remapping operation.
+TODO.

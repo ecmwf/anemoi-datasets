@@ -1,0 +1,16 @@
+dates:
+  start: 2024-01-01T00:00:00Z
+  end: 2024-01-01T18:00:00Z
+  frequency: 6h
+
+input:
+  join:
+  - mars:
+      param: [2t, msl, 10u, 10v, lsm]
+      levtype: sfc
+      grid: [1, 1]
+  - mars:
+      param: [q, t, z]
+      levtype: pl
+      level: [50, 100]
+      grid: [1, 1]

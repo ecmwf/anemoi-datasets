@@ -78,23 +78,44 @@ operations can be combined to build complex datasets.
  Getting started
 *****************
 
-The simplest recipe file must contain a ``dates`` section and an ``input`` section. The latter
-must contain a `source` In that case, the source is ``mars``
+First example
+=============
+
+The simplest recipe file must contain a ``dates`` section and an
+``input`` section. The latter must contain a `source` In that case, the
+source is ``mars``
 
 .. literalinclude:: building1.yaml
    :language: yaml
 
-To create the dataser, run the following command:
+To create the dataset, run the following command:
 
-.. code-block:: console
+.. code:: console
 
    $ anemoi-datasets create recipe.yaml dataset.zarr
 
-Once the build is complete, you can inspect the dataset using the following command:
+Once the build is complete, you can inspect the dataset using the
+following command:
 
-.. code-block:: console
+.. code:: console
 
    $ anemoi-datasets inspect dataset.zarr
 
 .. literalinclude:: building1.txt
    :language: console
+
+Adding a second source
+======================
+
+To add a second source, you need to use the ``join`` operation. In that
+example, we add pressure level variables to the previous example:
+
+.. literalinclude:: building2.yaml
+   :language: yaml
+
+This will build the following dataset:
+
+.. literalinclude:: building2.txt
+   :language: console
+
+.. note:: Please note that the pressure levels parameters are named `param_level`. This is the default behaviour. See :ref:`remapping_option` for more information.
