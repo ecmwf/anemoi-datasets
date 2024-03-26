@@ -13,29 +13,14 @@ specification`_, with the exception of the ``date``, ``time``` and
 The missing keys will be filled with the default values, as defined in
 the MARS language specification.
 
-.. code:: yaml
-
-   mars:
-       levtype: sfc
-       param: [2t, msl]
-       grid: [0.25, 0.25]
+.. literalinclude:: mars1.yaml
+   :language: yaml
 
 Data from several levels types must be requested in separate requests,
 with the ``join`` command.
 
-.. code:: yaml
-
-   join:
-
-    - mars:
-        levtype: sfc
-        param: [2t, msl]
-        grid: [0.25, 0.25]
-
-    - mars:
-        levtype: pl
-        param: [u, v]
-        grid: [0.25, 0.25]
+.. literalinclude:: mars2.yaml
+   :language: yaml
 
 See :ref:`naming-variables` for information on how to name the variables
 when mixing single level and multi-levels variables in the same dataset.

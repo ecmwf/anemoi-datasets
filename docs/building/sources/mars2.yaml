@@ -1,0 +1,10 @@
+input:
+  join:
+  - mars:
+      levtype: sfc
+      param: [2t, msl]
+      grid: [0.25, 0.25]
+  - mars:
+      levtype: pl
+      param: [u, v]
+      grid: [0.25, 0.25]
