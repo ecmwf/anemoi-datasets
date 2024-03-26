@@ -3,8 +3,8 @@ repos:
 # Empty notebookds
 - repo: local
   hooks:
-    - id: jupyter-nb-clear-output
-      name: jupyter-nb-clear-output
+    - id: clear-notebooks-output
+      name: clear-notebooks-output
       files: tools/.*\.ipynb$
       stages: [commit]
       language: python
