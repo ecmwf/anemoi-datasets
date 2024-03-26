@@ -11,8 +11,22 @@
 Although this source is called `constants`, its purpose is to provide
 fields with values that only depend on the grid cell and/or the time.
 
+Because the source needs to generate fields on the same grids as the
+other, it requires a template field. This is provided in the recipe with
+the `template` keyword:
+
+.. literalinclude:: constants.yaml
+   :language: yaml
+
+The value ``${input.join.0.source1}`` is the "path" to the first source,
+starting from the root of the recipe. The path is composed of the of the
+nodes in the recipe, separated by dots. If a node contains a list, the
+index of the next node is added after the node name, starting from 0.
+
 The is a mean to provide the model with with space and time information
 during training and inference.
+
+The following fields are available:
 
 latitude
    Each grid point has the value of its latitude in degrees.

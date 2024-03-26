@@ -1,0 +1,12 @@
+input:
+  join:
+    - source1:
+      args1: value1
+      args2: value2
+
+    - constants:
+      template: ${input.join.0.source1}
+      params:
+        - insolation
+        - cos_julian_day
+        - sin_julian_day
