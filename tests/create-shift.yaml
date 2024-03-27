@@ -25,14 +25,14 @@ input:
         stream: oper
         type: an
 
-    - constants:
+    - forcings:
         template: ${input.join.0.mars}
         param:
           - insolation
 
     - date_shift:
         delta: -25
-        constants:
+        forcings:
           template: ${input.join.0.mars}
           param:
             - insolation

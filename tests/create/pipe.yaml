@@ -33,7 +33,7 @@ input:
         <<: *mars_request
         param: [cp, tp]
 
-    - constants:
+    - forcings:
         template: ${input.join.0.mars}
         param:
           - cos_latitude

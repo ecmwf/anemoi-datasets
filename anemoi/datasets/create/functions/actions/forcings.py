@@ -9,12 +9,9 @@
 from climetlab import load_source
 
 
-def constants(context, dates, template, param):
-    from warnings import warn
-
-    warn("The source `constants` is deprecated, use `forcings` instead.", DeprecationWarning, stacklevel=2)
-    context.trace("✅", f"load_source(constants, {template}, {param}")
+def forcings(context, dates, template, param):
+    context.trace("✅", f"load_source(forcings, {template}, {param}")
     return load_source("constants", source_or_dataset=template, date=dates, param=param)
 
 
-execute = constants
+execute = forcings

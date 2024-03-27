@@ -22,7 +22,7 @@ data_sources:
       type: an
 
 input:
-  constants:
+  forcings:
     template: ${data_sources.0.mars}
     param:
       - cos_latitude

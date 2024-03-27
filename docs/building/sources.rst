@@ -13,4 +13,5 @@ The following `sources` are currently available:
    sources/grib
    sources/netcdf
    sources/opendap
-   sources/constants
+   sources/forcings
+   sources/accumulations

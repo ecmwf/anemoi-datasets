@@ -72,7 +72,7 @@ input:
         ensembles: ${data_sources.ensembles}
         # the new center of the data
         center: ${data_sources.center}
-    - constants:
+    - forcings:
         template: ${input.join.0.ensemble_perturbations}
         param:
           - cos_latitude

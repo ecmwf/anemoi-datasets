@@ -32,7 +32,7 @@ input:
         param: [cp, tp]
         # accumulation_period: 6h
 
-    - constants:
+    - forcings:
         template: ${input.join.0.mars}
         param:
           - cos_latitude

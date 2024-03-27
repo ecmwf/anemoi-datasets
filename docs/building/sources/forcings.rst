@@ -1,21 +1,18 @@
 .. _forcing_variables:
 
 ###########
- constants
+ forcings
 ###########
 
-.. warning::
 
-   This source may be renamed ``forcings``.
-
-Although this source is called `constants`, its purpose is to provide
+Th purpose of `forcings``` is to provide
 fields with values that only depend on the grid cell and/or the time.
 
 Because the source needs to generate fields on the same grids as the
 other, it requires a template field. This is provided in the recipe with
 the `template` keyword:
 
-.. literalinclude:: constants.yaml
+.. literalinclude:: forcings.yaml
    :language: yaml
 
 The value ``${input.join.0.source1}`` is the "path" to the first source,

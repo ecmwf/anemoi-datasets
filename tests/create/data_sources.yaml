@@ -20,7 +20,7 @@ data_sources:
         type: an
 
 input:
-  constants:
+  forcings:
     template: ${data_sources.my_predefined_source}
     param:
       - cos_latitude
