@@ -12,9 +12,7 @@
 
 This option let you subset the dataset by time. You can pass a date or a
 
-.. code:: python
-
-   open_dataset(dataset, start=1980)
+.. literalinclude:: code/start_.py
 
 .. _end:
 
@@ -24,9 +22,8 @@ This option let you subset the dataset by time. You can pass a date or a
 
 As for the start option, you can pass a date or a string:
 
-.. code:: python
-
-   open_dataset(dataset, end="2020-12-31")
+.. literalinclude:: code/end_.py
+   :language: python
 
 The following are equivalent way of describing ``start`` or ``end``:
 
@@ -42,6 +39,5 @@ The following are equivalent way of describing ``start`` or ``end``:
 
 You can change the frequency of the dataset by passing a string with the
 
-.. code:: python
-
-   ds = open_dataset(dataset, frequency="6h")
+.. literalinclude:: code/frequency_.py
+   :language: python

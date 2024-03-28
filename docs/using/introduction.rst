@@ -13,43 +13,24 @@ organised in such a way that I/O operations are minimised (see
 
 To open a dataset, you can use the `open_dataset` function.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("path/to/dataset.zarr")
+.. literalinclude:: code/open_path.py
 
 You can then access the data in the dataset using the `ds` object as if
 it was a NumPy array.
 
-.. code:: python
-
-   print(ds.shape)
-
-   print(len(ds))
-
-   print(ds[0])
-
-   print(ds[10:20])
+.. literalinclude:: code/some_attributes_.py
 
 One of the main feature of the *anemoi-datasets* package is the ability
 to subset or combine datasets.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("path/to/dataset.zarr", start=2000, end=2020)
+.. literalinclude:: code/subset_example.py
 
 In that case, a dataset is created that only contains the data between
 the years 2000 and 2020. Combining is done by passing multiple paths to
 the `open_dataset` function:
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("path/to/dataset1.zarr", "path/to/dataset2.zarr")
+.. literalinclude:: code/combine_example.py
+   :language: python
 
 In the latter case, the datasets are combined along the time dimension
 or the variable dimension depending on the datasets structure.
