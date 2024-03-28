@@ -19,7 +19,6 @@ In that example, `dataset` can be:
 
 -  a URL to a dataset in the cloud:
 
-
 .. literalinclude:: open_cloud.py
    :language: python
 

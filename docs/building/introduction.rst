@@ -4,15 +4,19 @@
  Introduction
 ##############
 
+The `anemoi-datasets` package allows you to create datasets for training
+data-driven weather models. The datasets are built using a `recipe`
+file, which is a YAML file that describes sources of meteorological
+fields as well as the operations to perform on them, before they are
+written to a zarr file. The input of the process is a range of dates and
+some options to control the layout of the output. Statistics will be
+computed as the dataset is build, and stored in the metadata, with other
+information such as the the locations of the grid points, the list of
+variables, etc.
+
 .. figure:: ../schemas/recipe.svg
    :alt: Building datasets
    :align: center
-
-..
-   :alt: Building datasets
-
-..
-   :scale: 50%
 
 **********
  Concepts
@@ -125,7 +129,8 @@ This will build the following dataset:
    `param_level`. This is the default behaviour. See
    :ref:`remapping_option` for more information.
 
-Adding some forcing variables ==
+Adding some forcing variables
+=============================
 
 When training a data-driven models, some forcing variables may be
 required such as the solar radiation, the time of day, the day in the
