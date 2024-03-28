@@ -4,8 +4,9 @@
  Introduction
 ##############
 
-..
-   .. figure:: build.png
+.. figure:: ../schemas/recipe.svg
+   :alt: Building datasets
+   :align: center
 
 ..
    :alt: Building datasets
