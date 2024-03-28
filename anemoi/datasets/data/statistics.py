@@ -18,6 +18,8 @@ LOG = logging.getLogger(__name__)
 class Statistics(Forwards):
     def __init__(self, dataset, statistic):
         super().__init__(dataset)
+        # TODO: relax that check to allow for a subset of variables
+        self.check_same_variables(dataset, statistic)
         self._statistic = statistic
 
     @cached_property
