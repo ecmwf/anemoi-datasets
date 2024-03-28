@@ -48,6 +48,7 @@ datasets <building-introduction>`.
 -  :doc:`using/statistics`
 -  :doc:`using/other`
 -  :doc:`using/options`
+-  :doc:`using/configuration`
 
 .. toctree::
    :maxdepth: 1
@@ -63,6 +64,7 @@ datasets <building-introduction>`.
    using/statistics
    using/other
    using/options
+   using/configuration
 
 **Building training datasets**
 

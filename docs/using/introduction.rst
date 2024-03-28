@@ -4,7 +4,6 @@
  Introduction
 ##############
 
-
 An *Anemoi* dataset is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models. It is
 organised in such a way that I/O operations are minimised (see
