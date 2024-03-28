@@ -7,74 +7,48 @@
 The simplest way to open a dataset is to use the `open_dataset`
 function:
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(dataset, option1=value1, option2=value2, ...)
+.. literalinclude:: open_first_.py
+   :language: python
 
 In that example, `dataset` can be:
 
 -  a local path to a dataset on disk:
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("/path/to/dataset.zarr")
+.. literalinclude:: open_path.py
+   :language: python
 
 -  a URL to a dataset in the cloud:
 
-.. code:: python
 
-   from anemoi.datasets import open_dataset
-
-   ds1 = open_dataset("https://path/to/dataset.zarr")
-
-   ds2 = open_dataset("s3://path/to/dataset.zarr")
+.. literalinclude:: open_cloud.py
+   :language: python
 
 -  a dataset name, which is a string that identifies a dataset in the
    `anemoi` :ref:`configuration file <configuration>`.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("dataset_name")
+.. literalinclude:: open_name.py
+   :language: python
 
 -  an already opened dataset. In that case, the function use the options
    to return a modified the dataset, for example with a different time
    range or frequency.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds1 = open_dataset("/path/to/dataset.zarr")
-
-   ds2 = open_dataset(ds1, frequency="24h", begin="2000", end="2010")
+.. literalinclude:: open_other.py
+   :language: python
 
 -  a dictionary with a ``dataset`` key that can be any of the above, and
    the remaining keys being the options. The purpose of this option is
    to allow the user to open a dataset based on a configuration file.
    See :ref:`an example <open_with_config>` below
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset({"dataset": dataset,
-                      "option1": value1,
-                      "option2": value2, ...})
+.. literalinclude:: open_dict_.py
+   :language: python
 
 -  a list of any of the above that will be combined either by
    concatenation or joining, based on their compatibility.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset([dataset1, dataset2, ...])
+.. literalinclude:: open_list_.py
+   :language: python
 
 -  a combining keyword, such as `join`, `concat`, `ensembles`, etc.
    followed by a list of the above. See :ref:`combining-datasets` for
@@ -100,12 +74,8 @@ As mentioned above you, using the dictionary to open a dataset can be
 useful for software that provide users with the ability to define their
 requirements in a configuration file:
 
-.. code:: python
-
-   with open("config.yaml") as file:
-       config = yaml.safe_load(file)
-
-   ds = open_dataset(config)
+.. literalinclude:: open_yaml_.py
+   :language: python
 
 The dictionary can be a complex as needed, for example:
 
