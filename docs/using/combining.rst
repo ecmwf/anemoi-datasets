@@ -47,6 +47,8 @@ function.
    **NOTE:** When concatenating file, the statistics are not recomputed;
    it is the statistics of first file that are returned to the user.
 
+.. _join:
+
 ******
  join
 ******
@@ -77,6 +79,9 @@ occurrence of that name.
 
 Please note that you can join more than two ``zarr`` files.
 
+..
+   ensembles:
+
 ***********
  ensembles
 ***********
@@ -90,6 +95,8 @@ check that all datasets are compatible.
    from anemoi.datasets import open_dataset
 
    ds = open_dataset(ensembles=[dataset1, dataset2, ...])
+
+.. _grids:
 
 *******
  grids
