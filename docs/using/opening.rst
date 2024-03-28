@@ -57,7 +57,7 @@ In that example, `dataset` can be:
 -  a dictionary with a ``dataset`` key that can be any of the above, and
    the remaining keys being the options. The purpose of this option is
    to allow the user to open a dataset based on a configuration file.
-   See `an example <open_with_config>`_ below
+   See :ref:`an example <open_with_config>` below
 
 .. code:: python
 
