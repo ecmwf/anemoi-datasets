@@ -79,8 +79,7 @@ occurrence of that name.
 
 Please note that you can join more than two ``zarr`` files.
 
-..
-   ensembles:
+.. _ensembles:
 
 ***********
  ensembles
