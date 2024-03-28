@@ -4,10 +4,6 @@
  Opening datasets
 ##################
 
-*******************
- Defining datasets
-*******************
-
 The simplest way to open a dataset is to use the `open_dataset`
 function:
 
@@ -86,7 +82,6 @@ In that example, `dataset` can be:
 
 .. literalinclude:: open_combine1_.py
    :language: python
-
 
 .. note::
 
