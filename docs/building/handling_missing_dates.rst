@@ -6,7 +6,7 @@ Missing dates can be handled by specifying a list of dates in the
 configuration file. The dates should be in the same format as the dates
 in the time series. The missing dates will be filled ``np.nan`` values.
 
-.. literalinclude:: missing_dates.yaml
+.. literalinclude:: yaml/missing_dates.yaml
    :language: yaml
 
 *Anemoi* will ignore the missing dates when computing the

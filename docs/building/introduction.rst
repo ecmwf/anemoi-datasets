@@ -90,7 +90,7 @@ The simplest `recipe`` file must contain a ``dates`` section and an
 ``input`` section. The latter must contain a `source` In that case, the
 source is ``mars``
 
-.. literalinclude:: building1.yaml
+.. literalinclude:: yaml/building1.yaml
    :language: yaml
 
 To create the dataset, run the following command:
@@ -106,7 +106,7 @@ following command:
 
    $ anemoi-datasets inspect dataset.zarr
 
-.. literalinclude:: building1.txt
+.. literalinclude:: yaml/building1.txt
    :language: console
 
 Adding a second source
@@ -115,12 +115,12 @@ Adding a second source
 To add a second source, you need to use the ``join`` operation. In that
 example, we add pressure level variables to the previous example:
 
-.. literalinclude:: building2.yaml
+.. literalinclude:: yaml/building2.yaml
    :language: yaml
 
 This will build the following dataset:
 
-.. literalinclude:: building2.txt
+.. literalinclude:: yaml/building2.txt
    :language: console
 
 .. note::
@@ -142,12 +142,12 @@ in that case the first instance of ``mars``. This source is used to get
 information about the grid points, as some of the forcing variables are
 grid dependent.
 
-.. literalinclude:: building3.yaml
+.. literalinclude:: yaml/building3.yaml
    :language: yaml
 
 This will build the following dataset:
 
-.. literalinclude:: building3.txt
+.. literalinclude:: yaml/building3.txt
    :language: console
 
 See :ref:`forcing_variables` for more information about forcing
