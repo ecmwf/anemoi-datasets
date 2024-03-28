@@ -1,5 +1,6 @@
 ########
  netcdf
 ########
+
 .. literalinclude:: netcdf.yaml
-    :language: yaml
+   :language: yaml

@@ -130,8 +130,8 @@ When training a data-driven models, some forcing variables may be
 required such as the solar radiation, the time of day, the day in the
 year, etc.
 
-These are provided by the ``forcings`` source. In that example, we add
-a few of them. The `template` option is used to point to another source,
+These are provided by the ``forcings`` source. In that example, we add a
+few of them. The `template` option is used to point to another source,
 in that case the first instance of ``mars``. This source is used to get
 information about the grid points, as some of the forcing variables are
 grid dependent.

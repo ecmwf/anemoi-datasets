@@ -3,4 +3,4 @@
 ###############
 
 .. literalinclude:: accumulations.yaml
-    :language: yaml
+   :language: yaml

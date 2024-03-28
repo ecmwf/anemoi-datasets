@@ -4,18 +4,18 @@ dates:
   frequency: 6h
 input:
   join:
-    - mars:
-        param: [2t, msl, 10u, 10v, lsm]
-        levtype: sfc
-        grid: [1, 1]
-    - mars:
-        param: [q, t, z]
-        levtype: pl
-        level: [50, 100]
-        grid: [1, 1]
-    - forcings:
-        template: ${input.join.0.mars}
-        param:
-          - cos_latitude
-          - sin_latitude
-          - insolation
+  - mars:
+      param: [2t, msl, 10u, 10v, lsm]
+      levtype: sfc
+      grid: [1, 1]
+  - mars:
+      param: [q, t, z]
+      levtype: pl
+      level: [50, 100]
+      grid: [1, 1]
+  - forcings:
+      template: ${input.join.0.mars}
+      param:
+      - cos_latitude
+      - sin_latitude
+      - insolation

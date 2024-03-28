@@ -3,4 +3,4 @@
 ######
 
 .. literalinclude:: grib.yaml
-    :language: yaml
+   :language: yaml

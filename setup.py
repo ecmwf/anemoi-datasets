@@ -60,6 +60,7 @@ create_requires = [
 
 
 all_requires = data_requires + provenance_requires + create_requires + remote_requires
+dev_requires = ["sphinx", "sphinx_rtd_theme", "nbsphinx", "pandoc"] + all_requires
 
 setuptools.setup(
     name="anemoi-datasets",
@@ -73,12 +74,13 @@ setuptools.setup(
     url="https://github.com/ecmwf/anemoi-datasets",
     packages=setuptools.find_namespace_packages(include=["anemoi.*"]),
     include_package_data=True,
-    install_requires=[],
+    install_requires=data_requires,
     extras_require={
-        "data": data_requires,
+        "data": [],
         "remote": data_requires + remote_requires,
         "provenance": provenance_requires,
         "create": create_requires,
+        "dev": dev_requires,
         "all": all_requires,
     },
     zip_safe=True,

@@ -44,12 +44,12 @@ dataset:
 You can crop a dataset to a specific area by specifying the area in the
 ``open_dataset`` function. The area is specified as a list of four
 numbers in the order ``(north, west, south, east)``. For example, to
-crop a dataset to the area between 60N and 20N and 50W and 0E, you can use:
+crop a dataset to the area between 60N and 20N and 50W and 0E, you can
+use:
 
 .. code:: python
 
    ds = open_dataset(dataset, area=(60, -50, 20, 0))
-
 
 With will result in the following dataset:
 

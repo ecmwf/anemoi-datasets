@@ -30,4 +30,4 @@ parameter.
        statistics_end: 2020
 
 ..
-   .. todo:: List the statistics that are computed
+   TODO: List the statistics that are computed

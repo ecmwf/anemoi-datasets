@@ -3,4 +3,4 @@
 #########
 
 .. literalinclude:: opendap.yaml
-    :language: yaml
+   :language: yaml
