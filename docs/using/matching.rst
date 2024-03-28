@@ -10,7 +10,12 @@ the attributes of the input datasets must match, such as the list of
 variables for `concat` or the `dates` and `frequency` for `join`.
 
 You can let the package automatically adjust the attributes of the input
-datasets using the `adjust` keyword:
+datasets using the `adjust` keyword, to adjust one of the attributes:
+
+.. literalinclude:: matching1_.py
+   :language: python
+
+or more than one attribute:
 
 .. literalinclude:: matching1_.py
    :language: python
