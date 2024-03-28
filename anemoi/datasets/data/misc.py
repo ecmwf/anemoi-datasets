@@ -207,23 +207,34 @@ def _open(a, zarr_root):
 
 
 def _auto_adjust(datasets, kwargs):
-    """Adjust the datasets for concatenation or joining based on parameters set to
-    'matching'."""
 
-    if kwargs.get("adjust") == "matching":
-        kwargs.pop("adjust")
-        for p in ("select", "frequency", "start", "end"):
-            kwargs[p] = "matching"
+    if "adjust" not in kwargs:
+        return datasets, kwargs
 
-    if kwargs.get("dates") == "matching":
-        kwargs.pop("dates")
-        for p in ("frequency", "start", "end"):
-            kwargs[p] = "matching"
+    adjust_list = kwargs.pop("adjust")
+    if not isinstance(adjust_list, (tuple, list)):
+        adjust_list = [adjust_list]
 
-    adjust = [{} for _ in datasets]
+    ALIASES = {
+        "all": ["select", "frequency", "start", "end"],
+        "dates": ["start", "end", "frequency"],
+        "variables": ["select"],
+    }
 
-    if kwargs.get("select") == "matching":
-        kwargs.pop("select")
+    adjust_set = set()
+
+    for a in adjust_list:
+        adjust_set.update(ALIASES.get(a, [a]))
+
+    extra = set(adjust_set) - set(ALIASES["all"])
+    if extra:
+        raise ValueError(f"Invalid adjust keys: {extra}")
+
+    subset_kwargs = [{} for _ in datasets]
+
+    if "select" in adjust_set:
+        assert "select" not in kwargs, "Cannot use 'select' in adjust and kwargs"
+
         variables = None
 
         for d in datasets:
@@ -237,30 +248,30 @@ def _auto_adjust(datasets, kwargs):
 
         for i, d in enumerate(datasets):
             if set(d.variables) != variables:
-                adjust[i]["select"] = sorted(variables)
+                subset_kwargs[i]["select"] = sorted(variables)
 
-    if kwargs.get("start") == "matching":
-        kwargs.pop("start")
+    if "start" in adjust_set:
+        assert "start" not in kwargs, "Cannot use 'start' in adjust and kwargs"
         start = max(d.dates[0] for d in datasets).astype(object)
         for i, d in enumerate(datasets):
             if start != d.dates[0]:
-                adjust[i]["start"] = start
+                subset_kwargs[i]["start"] = start
 
-    if kwargs.get("end") == "matching":
-        kwargs.pop("end")
+    if "end" in adjust_set:
+        assert "end" not in kwargs, "Cannot use 'end' in adjust and kwargs"
         end = min(d.dates[-1] for d in datasets).astype(object)
         for i, d in enumerate(datasets):
             if end != d.dates[-1]:
-                adjust[i]["end"] = end
+                subset_kwargs[i]["end"] = end
 
-    if kwargs.get("frequency") == "matching":
-        kwargs.pop("frequency")
+    if "frequency" in adjust_set:
+        assert "frequency" not in kwargs, "Cannot use 'frequency' in adjust and kwargs"
         frequency = max(d.frequency for d in datasets)
         for i, d in enumerate(datasets):
             if d.frequency != frequency:
-                adjust[i]["frequency"] = frequency
+                subset_kwargs[i]["frequency"] = frequency
 
-    datasets = [d._subset(**adjust[i]) for i, d in enumerate(datasets)]
+    datasets = [d._subset(**subset_kwargs[i]) for i, d in enumerate(datasets)]
 
     return datasets, kwargs
 
