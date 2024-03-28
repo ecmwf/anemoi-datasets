@@ -215,6 +215,11 @@ def _auto_adjust(datasets, kwargs):
         for p in ("select", "frequency", "start", "end"):
             kwargs[p] = "matching"
 
+    if kwargs.get("dates") == "matching":
+        kwargs.pop("dates")
+        for p in ("frequency", "start", "end"):
+            kwargs[p] = "matching"
+
     adjust = [{} for _ in datasets]
 
     if kwargs.get("select") == "matching":
