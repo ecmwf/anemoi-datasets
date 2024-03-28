@@ -4,6 +4,8 @@
  Selecting variables
 #####################
 
+.. _select:
+
 ********
  select
 ********
@@ -26,6 +28,8 @@
        select={"2t", "tp"},
    )
 
+.. _drop:
+
 ******
  drop
 ******
@@ -38,6 +42,9 @@ You can also drop some variables:
        "aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v2",
        drop=["10u", "10v"],
    )
+
+..
+   reorder:
 
 *********
  reorder
@@ -62,6 +69,8 @@ and reorder them:
        "aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v2",
        reorder={"2t": 0, "msl": 1, "sp": 2, "10u": 3, "10v": 4},
    )
+
+.. _rename:
 
 ********
  rename

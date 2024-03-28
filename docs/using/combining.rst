@@ -7,7 +7,15 @@
 When combining datasets, the statistics of the first dataset are used by
 default. You can change this by setting the :ref:`selecting-statistics`
 option to a different dataset, even if it is not part of the
-combination. See
+combination.
+
+When combining datasets, the package will check that the datasets are
+compatible, i.e. that they have the same resolution, the same variables,
+etc. The compatibility checks depend on the type of combination. You can
+adjust some of the attributes of the datasets to make them compatible,
+e.g. by changing their date range or frequency using :ref:`start`,
+:ref:`end`, :ref:`frequency`, etc. You can also ask the package to
+:ref:`automatically adjust <using-matching>` these attributes.
 
 .. _concat:
 

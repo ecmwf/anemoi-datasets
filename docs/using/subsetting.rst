@@ -4,6 +4,8 @@
  Subsetting datasets
 #####################
 
+.. _start:
+
 *******
  start
 *******
@@ -13,6 +15,8 @@ This option let you subset the dataset by time. You can pass a date or a
 .. code:: python
 
    open_dataset(dataset, start=1980)
+
+.. _end:
 
 *****
  end
@@ -30,6 +34,8 @@ The following are equivalent way of describing ``start`` or ``end``:
 -  ``202306``, ``"202306"`` and ``"2023-06"``
 -  ``20200301``, ``"20200301"`` and ``"2020-03-01"``
 
+.. _frequency:
+
 ***********
  frequency
 ***********
@@ -38,5 +44,4 @@ You can change the frequency of the dataset by passing a string with the
 
 .. code:: python
 
-   ds = open_dataset("aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v2",
-      frequency="6h")
+   ds = open_dataset(dataset, frequency="6h")
