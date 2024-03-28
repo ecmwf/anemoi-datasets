@@ -84,13 +84,9 @@ In that example, `dataset` can be:
    followed by a list of the above. See :ref:`combining-datasets` for
    more information.
 
-.. code:: python
+.. literalinclude:: open_combine1_.py
+   :language: python
 
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(ensemble=[dataset1, dataset2],
-                     option1=value1,
-                     option2=value2, ...)
 
 .. note::
 
@@ -100,17 +96,8 @@ In that example, `dataset` can be:
    apply to the first dataset, and `option3`, `option4`, to the second
    dataset, etc.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(combine=[{"dataset": dataset1,
-                               "option1"=value1,
-                               "option2"=value2, ...},
-                              {"dataset": dataset2,
-                               "option3"=value3,
-                               "option4"=value4, ...},
-                              ...])
+.. literalinclude:: open_combine2_.py
+   :language: python
 
 .. _open_with_config:
 
