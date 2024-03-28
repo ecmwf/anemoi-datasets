@@ -32,12 +32,9 @@ chronological order with no gaps between them.
 
    from anemoi.datasets import open_dataset
 
-   ds = open_dataset(
-       "aifs-ea-an-oper-0001-mars-o96-1940-1978-1h-v2",
-       "aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v2",
-   )
+   ds = open_dataset("dataset-1979-2000", "dataset-2001-2022")
 
-.. image:: concat.png
+.. image:: images/concat.png
    :align: center
    :alt: Concatenation
 
@@ -60,12 +57,9 @@ variables.
 
    from anemoi.datasets import open_dataset
 
-   ds = open_dataset(
-       "aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v2",
-       "some-extra-parameters-from-another-source-o96-1979-2022-1h-v2",
-   )
+   ds = open_dataset("dataset1-1979-2022", "dataset2-1979-2022")
 
-.. image:: join.png
+.. image:: images/join.png
    :align: center
    :alt: Join
 
@@ -73,7 +67,7 @@ If a variable is present in more that one file, that last occurrence of
 that variable will be used, and will be at the position of the first
 occurrence of that name.
 
-.. image:: overlay.png
+.. image:: images/overlay.png
    :align: center
    :alt: Overlay
 
@@ -126,14 +120,14 @@ the bounding box of the second dataset.
 
 The image below shows the global dataset:
 
-.. image:: cutout-1.png
+.. image:: images/cutout-1.png
    :width: 75%
    :align: center
    :alt: Cutout
 
 The image below shows the LAM dataset:
 
-.. image:: cutout-2.png
+.. image:: images/cutout-2.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -141,7 +135,7 @@ The image below shows the LAM dataset:
 A 'cutout' is performed by removing the grid points from the global
 dataset that contained in the LAM dataset. The result is shown below:
 
-.. image:: cutout-3.png
+.. image:: images/cutout-3.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -149,7 +143,7 @@ dataset that contained in the LAM dataset. The result is shown below:
 The final dataset is the concatenation of the LAM dataset and the
 cutout:
 
-.. image:: cutout-4.png
+.. image:: images/cutout-4.png
    :width: 75%
    :align: center
    :alt: Cutout

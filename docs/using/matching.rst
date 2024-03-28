@@ -12,26 +12,26 @@ variables for `concat` or the `dates` and `frequency` for `join`.
 You can let the package automatically adjust the attributes of the input
 datasets using the `adjust` keyword, to adjust one of the attributes:
 
-.. literalinclude:: matching0_.py
+.. literalinclude:: code/matching0_.py
    :language: python
 
 or more than one attribute:
 
-.. literalinclude:: matching1_.py
+.. literalinclude:: code/matching1_.py
    :language: python
 
 You can also use `dates` as a shortcut for the above. This is equivalent
 to:
 
-.. literalinclude:: matching2_.py
+.. literalinclude:: code/matching2_.py
    :language: python
 
 To use the common set of variables, use:
 
-.. literalinclude:: matching3_.py
+.. literalinclude:: code/matching3_.py
    :language: python
 
 To match all the attributes:
 
-.. literalinclude:: matching4_.py
+.. literalinclude:: code/matching4_.py
    :language: python

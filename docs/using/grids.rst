@@ -26,14 +26,14 @@ thinning will apply to the only dimension.
 The following example shows the effect of thinning a dataset with a 1
 degree resolution:
 
-.. image:: thinning-before.png
+.. image:: images/thinning-before.png
    :width: 75%
    :align: center
 
 Thinning the dataset with ``thinning=4`` will result in the following
 dataset:
 
-.. image:: thinning-after.png
+.. image:: images/thinning-after.png
    :width: 75%
    :align: center
 
@@ -53,7 +53,7 @@ use:
 
 With will result in the following dataset:
 
-.. image:: area-1.png
+.. image:: images/area-1.png
    :width: 75%
    :align: center
 
