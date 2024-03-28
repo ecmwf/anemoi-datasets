@@ -28,11 +28,9 @@ package will check that all datasets are compatible (same resolution,
 same variables, etc.). Currently, the datasets must be given in
 chronological order with no gaps between them.
 
-.. code:: python
+.. literalinclude:: code/concat1.py
+   :language: python
 
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("dataset-1979-2000", "dataset-2001-2022")
 
 .. image:: images/concat.png
    :align: center
@@ -53,11 +51,8 @@ function.
 You can join two datasets that have the same dates, combining their
 variables.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("dataset1-1979-2022", "dataset2-1979-2022")
+.. literalinclude:: code/join1.py
+   :language: python
 
 .. image:: images/join.png
    :align: center
@@ -83,11 +78,7 @@ You can combine two or more datasets that have the same dates,
 variables, grids, etc. along the ensemble dimension. The package will
 check that all datasets are compatible.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(ensembles=[dataset1, dataset2, ...])
+.. literalinclude:: code/ensembles1_.py
 
 .. _grids:
 
@@ -95,11 +86,7 @@ check that all datasets are compatible.
  grids
 *******
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(grids=[dataset1, dataset2, ...], mode=...)
+.. literalinclude:: code/grids1_.py
 
 The values for ``mode`` are:
 

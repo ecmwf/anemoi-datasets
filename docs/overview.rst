@@ -20,10 +20,7 @@ This structure provides an efficient way to build the training dataset,
 as input and output of the model are simply consecutive slices of the
 array.
 
-.. code:: python
-
-   x, y = ds[n], ds[n + 1]
-   y_hat = model.predict(x)
-   loss = model.loss(y, y_hat)
+.. literalinclude:: overview_.py
+   :language: python
 
 .. _zarr: https://zarr.readthedocs.io/
