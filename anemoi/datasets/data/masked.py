@@ -86,7 +86,9 @@ class Thinning(Masked):
 
 class Cropping(Masked):
     def __init__(self, forward, area):
-        self.area = area
+        from ..data import open_dataset
+
+        area = area if isinstance(area, (list, tuple)) else open_dataset(area)
 
         if isinstance(area, Dataset):
             north = np.amax(area.latitudes)
@@ -95,6 +97,7 @@ class Cropping(Masked):
             west = np.amin(area.longitudes)
             area = (north, west, south, east)
 
+        self.area = area
         mask = cropping_mask(forward.latitudes, forward.longitudes, *area)
 
         super().__init__(forward, mask)

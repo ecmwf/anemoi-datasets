@@ -65,10 +65,12 @@ class Dataset:
             return Rename(self, rename)._subset(**kwargs)
 
         if "statistics" in kwargs:
+            from ..data import open_dataset
             from .statistics import Statistics
 
             statistics = kwargs.pop("statistics")
-            return Statistics(self, statistics)._subset(**kwargs)
+
+            return Statistics(self, open_dataset(statistics))._subset(**kwargs)
 
         if "thinning" in kwargs:
             from .masked import Thinning
