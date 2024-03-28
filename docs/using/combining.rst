@@ -73,6 +73,9 @@ Please note that you can join more than two ``zarr`` files.
  ensembles
 ***********
 
+You can combine two or more datasets that have the same dates, variables, grids, etc.
+along the ensemble dimension. The package will check that all datasets are compatible.
+
 .. code:: python
 
    from anemoi.datasets import open_dataset

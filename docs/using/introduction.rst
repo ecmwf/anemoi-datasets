@@ -4,11 +4,6 @@
  Introduction
 ##############
 
-.. warning::
-
-   The code below still mentions the old name of the package,
-   `ecml_tools`. This will be updated once the package is renamed to
-   `anemoi-datasets`.
 
 An *Anemoi* dataset is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models. It is
