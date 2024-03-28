@@ -4,10 +4,5 @@
  Statistics
 ############
 
-************
- statistics
-************
-
-.. code:: python
-
-   open_dataset(dataset, statistics=other_dataset)
+.. literalinclude:: code/statistics_.py
+   :language: python

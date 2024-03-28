@@ -16,31 +16,20 @@
 The `zip` operation is used to combine multiple datasets into a single
 dataset.
 
-.. code:: python
-
-   ds = open_dataset(zip=[dataset1, dataset2, ...])
+.. literalinclude:: code/zip1_.py
+   :language: python
 
 This operation is similar to the Python's :py:func:`zip` function, but
 it returns tuples of the selected indices instead of the values:
 
-.. code:: python
-
-   print(ds[0])
-   # (dataset1[0], dataset2[0], ...)
-
-   print(ds[0, 1])
-   # (dataset1[0, 1], dataset2[0, 1], ...)
-
-   print(ds[0:2])
-   # (dataset1[0:2], dataset2[0:2], ...)
+.. literalinclude:: code/zip2_.py
+   :language: python
 
 *******
  chain
 *******
 
-.. code:: python
-
-   ds = open_dataset(chain=[dataset1, dataset2, ...])
+.. literalinclude:: code/chain_.py
 
 The `chain` operation is used to combine multiple datasets into a single
 dataset. The datasets are combined by concatenating the data arrays
@@ -56,9 +45,7 @@ function.
  shuffle
 *********
 
-.. code:: python
-
-   ds = open_dataset(dataset, shuffle=True)
+.. literalinclude:: code/shuffle_.py
 
 The `shuffle` operation is used to shuffle the data in the dataset along
 the first dimension (dates).

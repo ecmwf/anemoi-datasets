@@ -31,7 +31,6 @@ chronological order with no gaps between them.
 .. literalinclude:: code/concat1.py
    :language: python
 
-
 .. image:: images/concat.png
    :align: center
    :alt: Concatenation
