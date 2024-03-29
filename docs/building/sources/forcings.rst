@@ -133,12 +133,16 @@ insolation
 
 cos_solar_zenith_angle
    This is an alias for the **insolation** field.
+   See `earthkit.meteo`_ for more information.
 
    Range of values: :math:`[?, ?]`
 
 toa_incident_solar_radiation
-   Top of atmosphere incident solar radiation in W/m^2.
+   Top of atmosphere incident solar radiation.
+   See `earthkit.meteo`_ for more information.
 
    Range of values: :math:`[?, ?]`
 
 .. _ecef: https://en.wikipedia.org/wiki/Earth-centered,_Earth-fixed_coordinate_system
+
+.. _earthkit.meteo: https://github.com/ecmwf/earthkit-meteo/blob/74654e0b188e5a201d8268e93376246c925e3172/earthkit/meteo/solar/__init__.py#L49C4-L49C27
