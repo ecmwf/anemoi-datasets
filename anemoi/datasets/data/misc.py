@@ -42,7 +42,7 @@ def load_config():
         CONFIG = {}
 
     CONFIG.setdefault("datasets", {})
-    CONFIG["datasets"].setdefault("lookup", [])
+    CONFIG["datasets"].setdefault("path", [])
     CONFIG["datasets"].setdefault("named", {})
 
     return CONFIG

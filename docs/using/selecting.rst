@@ -4,8 +4,8 @@
  Selecting variables
 #####################
 
-Selecting is the action of filtering the dataset by its second dimension (variables).
-
+Selecting is the action of filtering the dataset by its second dimension
+(variables).
 
 .. _select:
 

@@ -1,5 +1,5 @@
 [datasets]
-lookup = [
+path = [
     "/home/mlx/ai-ml/datasets/stable",
     "/home/mlx/ai-ml/datasets/experimental",
     "/home/mlx/ai-ml/datasets/testing",

@@ -337,7 +337,7 @@ def zarr_lookup(name):
         return config["named"][name]
 
     tried = []
-    for location in config["lookup"]:
+    for location in config["path"]:
         if not location.endswith("/"):
             location += "/"
         full = location + name + ".zarr"

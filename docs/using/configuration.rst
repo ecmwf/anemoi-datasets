@@ -4,12 +4,20 @@
  Configuration
 ###############
 
-When the ``open_dataset`` function is called with a string that does
-not ends with ``.zarr`` or ``.zip``, it is considered a dataset name and not
+When the ``open_dataset`` function is called with a string that does not
+ends with ``.zarr`` or ``.zip``, it is considered a dataset name and not
 a path or a URL.
 
-In that case, the *Anemoi* configuration is read from ``~/.anemoi.toml``. Below is an
-example of such a configuration:
+In that case, the *Anemoi* configuration is read from
+``~/.anemoi.toml``. Below is an example of such a configuration:
 
 .. literalinclude:: configuration.toml
    :language: toml
+
+Then, the name passed to ``open_dataset`` is used to look up for a
+possible path or URL:
+
+-  If the name is listed in the ``[datasets.named]``, the corresponding
+   path is used
+-  Otherwise suffix ``.zarr`` is added to the name and the file is
+   searched at every location listed in the ``path`` list.
