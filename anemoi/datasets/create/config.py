@@ -91,7 +91,6 @@ class Config(DictObj):
         super().__init__(config)
 
 
-
 class OutputSpecs:
     def __init__(self, config, parent):
         self.config = config
@@ -143,7 +142,6 @@ class OutputSpecs:
 class LoadersConfig(Config):
     def __init__(self, config, *args, **kwargs):
 
-
         super().__init__(config, *args, **kwargs)
 
         # TODO: should use a json schema to validate the config
@@ -152,7 +150,6 @@ class LoadersConfig(Config):
         self.setdefault("description", "No description provided.")
         self.setdefault("licence", "unknown")
         self.setdefault("copyright", "licence")
-
 
         if "licence" not in self:
             self.licence = "unknown"
@@ -163,11 +160,11 @@ class LoadersConfig(Config):
         self.build.setdefault("group_by", "monthly")
 
         self.setdefault("output", Config())
-        self.output.setdefault("order_by",['valid_datetime', 'param_level', 'number'])
+        self.output.setdefault("order_by", ["valid_datetime", "param_level", "number"])
         self.output.setdefault("remapping", Config(param_level="{param}_{levelist}"))
-        self.output.setdefault("statistics", 'param_level')
+        self.output.setdefault("statistics", "param_level")
         self.output.setdefault("chunking", Config(dates=1, ensembles=1))
-        self.output.setdefault("dtype", 'float32')
+        self.output.setdefault("dtype", "float32")
 
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)

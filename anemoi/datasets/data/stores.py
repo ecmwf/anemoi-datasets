@@ -329,6 +329,10 @@ class ZarrWithMissingDates(Zarr):
 
 
 def zarr_lookup(name):
+
+    if name.endswith(".zarr") or name.endswith(".zip"):
+        return name
+
     config = load_config()["datasets"]
 
     print(json.dumps(config, indent=2))
