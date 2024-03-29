@@ -4,26 +4,12 @@
  Configuration
 ###############
 
-..
-   The configuration file is a YAML
+When the ``open_dataset`` function is called with a string that does
+not ends with ``.zarr`` or ``.zip``, it is considered a dataset name and not
+a path or a URL.
 
-..
-   file that contains a list of datasets. Each dataset is a dictionary with
-
-..
-   a `name` key and a `path` key. The `name` key is a string that
-
-..
-   identifies the dataset, and the `path` key is a string that contains the
-
-..
-   path to the dataset. The `open_dataset` function looks for the dataset
-
-..
-   name in the configuration file and opens the dataset with the
-
-..
-   corresponding path.
+In that case, the *Anemoi* configuration is read from ``~/.anemoi.toml``. Below is an
+example of such a configuration:
 
 .. literalinclude:: configuration.toml
    :language: toml
