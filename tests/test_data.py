@@ -34,7 +34,7 @@ def mockup_open_zarr(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.convenience.open", zarr_from_str):
-            with patch("anemoi.datasets.data.misc._name_to_path", lambda name, zarr_root: name):
+            with patch("anemoi.datasets.data.stores.zarr_lookup", lambda name: name):
                 return func(*args, **kwargs)
 
     return wrapper

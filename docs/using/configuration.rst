@@ -25,13 +25,5 @@
 ..
    corresponding path.
 
-.. code:: toml
-
-   [datasets]
-   dataset1 = "/path/to/dataset1.zarr"
-   dataset2 = "/path/to/dataset2.zarr"
-   "*" = "/path/to/{name}.zarr"
-
-   [dataset.path]
-   - name = "dataset1"
-     path = "/path/to/dataset1.zarr"
+.. literalinclude:: configuration.toml
+   :language: toml

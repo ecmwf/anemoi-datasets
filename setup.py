@@ -30,6 +30,7 @@ assert version
 
 
 data_requires = [
+    "tomli",  # Only needed before 3.11
     "zarr",
     "pyyaml",
     "numpy",

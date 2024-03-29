@@ -20,7 +20,7 @@ class Ensemble(GivenAxis):
         return Node(self, [d.tree() for d in self.datasets])
 
 
-def ensemble_factory(args, kwargs, zarr_root):
+def ensemble_factory(args, kwargs):
     if "grids" in kwargs:
         raise NotImplementedError("Cannot use both 'ensemble' and 'grids'")
 
@@ -29,7 +29,7 @@ def ensemble_factory(args, kwargs, zarr_root):
     assert len(args) == 0
     assert isinstance(ensemble, (list, tuple))
 
-    datasets = [_open(e, zarr_root) for e in ensemble]
+    datasets = [_open(e) for e in ensemble]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     return Ensemble(datasets, axis=axis)._subset(**kwargs)

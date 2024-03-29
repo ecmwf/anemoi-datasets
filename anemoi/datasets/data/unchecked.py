@@ -146,25 +146,25 @@ class Chain(ConcatMixin, Unchecked):
         raise NotImplementedError()
 
 
-def zip_factory(args, kwargs, zarr_root):
+def zip_factory(args, kwargs):
 
     zip = kwargs.pop("zip")
     assert len(args) == 0
     assert isinstance(zip, (list, tuple))
 
-    datasets = [_open(e, zarr_root) for e in zip]
+    datasets = [_open(e) for e in zip]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     return Zip(datasets)._subset(**kwargs)
 
 
-def chain_factory(args, kwargs, zarr_root):
+def chain_factory(args, kwargs):
 
     chain = kwargs.pop("chain")
     assert len(args) == 0
     assert isinstance(chain, (list, tuple))
 
-    datasets = [_open(e, zarr_root) for e in chain]
+    datasets = [_open(e) for e in chain]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     return Chain(datasets)._subset(**kwargs)

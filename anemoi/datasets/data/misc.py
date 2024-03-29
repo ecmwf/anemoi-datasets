@@ -13,25 +13,39 @@ import re
 from pathlib import PurePath
 
 import numpy as np
-import yaml
 import zarr
 
 from .dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
+CONFIG = None
 
-def _name_to_path(name, zarr_root):
-    _, ext = os.path.splitext(name)
+try:
+    import tomllib  # Only available since 3.11
+except ImportError:
+    import tomli as tomllib
 
-    if ext in (".zarr", ".zip"):
-        return name
 
-    if zarr_root is None:
-        with open(os.path.expanduser("~/.anemoi.datasets")) as f:
-            zarr_root = yaml.safe_load(f)["zarr_root"]
+def load_config():
+    global CONFIG
+    if CONFIG is not None:
+        return CONFIG
 
-    return os.path.join(zarr_root, name + ".zarr")
+    conf = os.path.expanduser("~/.anemoi.toml")
+
+    if os.path.exists(conf):
+
+        with open(conf, "rb") as f:
+            CONFIG = tomllib.load(f)
+    else:
+        CONFIG = {}
+
+    CONFIG.setdefault("datasets", {})
+    CONFIG["datasets"].setdefault("lookup", [])
+    CONFIG["datasets"].setdefault("named", {})
+
+    return CONFIG
 
 
 def _frequency_to_hours(frequency):
@@ -182,8 +196,9 @@ def _concat_or_join(datasets, kwargs):
     return Concat(datasets), kwargs
 
 
-def _open(a, zarr_root):
+def _open(a):
     from .stores import Zarr
+    from .stores import zarr_lookup
 
     if isinstance(a, Dataset):
         return a
@@ -192,16 +207,16 @@ def _open(a, zarr_root):
         return Zarr(a).mutate()
 
     if isinstance(a, str):
-        return Zarr(_name_to_path(a, zarr_root)).mutate()
+        return Zarr(zarr_lookup(a)).mutate()
 
     if isinstance(a, PurePath):
-        return Zarr(str(a)).mutate()
+        return _open(str(a))
 
     if isinstance(a, dict):
-        return _open_dataset(zarr_root=zarr_root, **a)
+        return _open_dataset(**a)
 
     if isinstance(a, (list, tuple)):
-        return _open_dataset(*a, zarr_root=zarr_root)
+        return _open_dataset(*a)
 
     raise NotImplementedError()
 
@@ -276,44 +291,46 @@ def _auto_adjust(datasets, kwargs):
     return datasets, kwargs
 
 
-def _open_dataset(*args, zarr_root, **kwargs):
+def _open_dataset(*args, **kwargs):
     sets = []
     for a in args:
-        sets.append(_open(a, zarr_root))
+        sets.append(_open(a))
 
     if "zip" in kwargs:
         from .unchecked import zip_factory
 
         assert not sets, sets
-        return zip_factory(args, kwargs, zarr_root)
+        return zip_factory(args, kwargs)
+
     if "chain" in kwargs:
         from .unchecked import chain_factory
 
         assert not sets, sets
-        return chain_factory(args, kwargs, zarr_root)
+        return chain_factory(args, kwargs)
+
     if "join" in kwargs:
         from .join import join_factory
 
         assert not sets, sets
-        return join_factory(args, kwargs, zarr_root)
+        return join_factory(args, kwargs)
 
     if "concat" in kwargs:
         from .concat import concat_factory
 
         assert not sets, sets
-        return concat_factory(args, kwargs, zarr_root)
+        return concat_factory(args, kwargs)
 
     if "ensemble" in kwargs:
         from .ensemble import ensemble_factory
 
         assert not sets, sets
-        return ensemble_factory(args, kwargs, zarr_root)
+        return ensemble_factory(args, kwargs)
 
     if "grids" in kwargs:
         from .grids import grids_factory
 
         assert not sets, sets
-        return grids_factory(args, kwargs, zarr_root)
+        return grids_factory(args, kwargs)
 
     for name in ("datasets", "dataset"):
         if name in kwargs:
@@ -321,7 +338,7 @@ def _open_dataset(*args, zarr_root, **kwargs):
             if not isinstance(datasets, (list, tuple)):
                 datasets = [datasets]
             for a in datasets:
-                sets.append(_open(a, zarr_root))
+                sets.append(_open(a))
 
     assert len(sets) > 0, (args, kwargs)
 

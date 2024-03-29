@@ -207,7 +207,7 @@ class CutoutGrids(Grids):
         return Node(self, [d.tree() for d in self.datasets], mode="cutout")
 
 
-def grids_factory(args, kwargs, zarr_root):
+def grids_factory(args, kwargs):
     if "ensemble" in kwargs:
         raise NotImplementedError("Cannot use both 'ensemble' and 'grids'")
 
@@ -224,7 +224,7 @@ def grids_factory(args, kwargs, zarr_root):
     if mode not in KLASSES:
         raise ValueError(f"Unknown grids mode: {mode}, values are {list(KLASSES.keys())}")
 
-    datasets = [_open(e, zarr_root) for e in grids]
+    datasets = [_open(e) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     return KLASSES[mode](datasets, axis=axis)._subset(**kwargs)

@@ -19,6 +19,7 @@ from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
 from .indexing import expand_list_indexing
+from .misc import load_config
 
 LOG = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class DebugStore(ReadOnlyStore):
         return key in self.store
 
 
-def open_zarr(path):
+def open_zarr(path, silent=False):
     try:
         store = path
 
@@ -116,7 +117,8 @@ def open_zarr(path):
 
         return zarr.convenience.open(store, "r")
     except Exception:
-        LOG.exception("Failed to open %r", path)
+        if not silent:
+            LOG.exception("Failed to open %r", path)
         raise
 
 
@@ -134,6 +136,12 @@ class Zarr(Dataset):
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
         self.missing = set()
+
+    @classmethod
+    def from_name(cls, name):
+        if name.endswith(".zip") or name.endswith(".zarr"):
+            return Zarr(name)
+        return Zarr(zarr_lookup(name))
 
     def __len__(self):
         return self.data.shape[0]
@@ -318,3 +326,25 @@ class ZarrWithMissingDates(Zarr):
 
     def tree(self):
         return Node(self, [], path=self.path, missing=sorted(self.missing))
+
+
+def zarr_lookup(name):
+    config = load_config()["datasets"]
+    if name in config["named"]:
+        return zarr_lookup(config["named"][name])
+
+    tried = []
+    for location in config["lookup"]:
+        if not location.endswith("/"):
+            location += "/"
+        full = location + name + ".zarr"
+        tried.append(full)
+        try:
+            open_zarr(full, silent=True)
+            # Cache for next time
+            config["named"][name] = full
+            return full
+        except zarr.errors.PathNotFoundError:
+            pass
+
+    raise ValueError(f"Cannot find a dataset that matched '{name}'. Tried: {tried}")

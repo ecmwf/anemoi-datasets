@@ -1,0 +1,5 @@
+[datasets]
+lookup = ["a", "b", "c"]
+
+[datasets.named]
+name1 = "foo"

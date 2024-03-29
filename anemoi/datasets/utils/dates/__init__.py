@@ -9,8 +9,10 @@
 import datetime
 import warnings
 
+
 def no_time_zone(date):
     return date.replace(tzinfo=None)
+
 
 def frequency_to_hours(frequency):
     if isinstance(frequency, int):

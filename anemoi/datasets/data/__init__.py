@@ -18,7 +18,7 @@ class MissingDateError(Exception):
     pass
 
 
-def open_dataset(*args, zarr_root=None, **kwargs):
-    ds = _open_dataset(*args, zarr_root=zarr_root, **kwargs)
+def open_dataset(*args, **kwargs):
+    ds = _open_dataset(*args, **kwargs)
     ds.arguments = {"args": args, "kwargs": kwargs}
     return ds

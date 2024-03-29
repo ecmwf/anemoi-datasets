@@ -140,7 +140,7 @@ class Join(Combined):
         return Node(self, [d.tree() for d in self.datasets])
 
 
-def join_factory(args, kwargs, zarr_root):
+def join_factory(args, kwargs):
 
     datasets = kwargs.pop("join")
     assert isinstance(datasets, (list, tuple))
@@ -148,7 +148,7 @@ def join_factory(args, kwargs, zarr_root):
 
     assert isinstance(datasets, (list, tuple))
 
-    datasets = [_open(e, zarr_root) for e in datasets]
+    datasets = [_open(e) for e in datasets]
 
     if len(datasets) == 1:
         return datasets[0]._subset(**kwargs)
