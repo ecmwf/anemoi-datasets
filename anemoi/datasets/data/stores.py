@@ -5,6 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
 import warnings
 from functools import cached_property
@@ -100,7 +101,7 @@ class DebugStore(ReadOnlyStore):
         return key in self.store
 
 
-def open_zarr(path, silent=False):
+def open_zarr(path, dont_fail=False):
     try:
         store = path
 
@@ -116,10 +117,9 @@ def open_zarr(path, silent=False):
             store = DebugStore(store)
 
         return zarr.convenience.open(store, "r")
-    except Exception:
-        if not silent:
-            LOG.exception("Failed to open %r", path)
-        raise
+    except zarr.errors.PathNotFoundError:
+        if not dont_fail:
+            raise zarr.errors.PathNotFoundError(path)
 
 
 class Zarr(Dataset):
@@ -330,8 +330,11 @@ class ZarrWithMissingDates(Zarr):
 
 def zarr_lookup(name):
     config = load_config()["datasets"]
+
+    print(json.dumps(config, indent=2))
+
     if name in config["named"]:
-        return zarr_lookup(config["named"][name])
+        return config["named"][name]
 
     tried = []
     for location in config["lookup"]:
@@ -340,10 +343,11 @@ def zarr_lookup(name):
         full = location + name + ".zarr"
         tried.append(full)
         try:
-            open_zarr(full, silent=True)
-            # Cache for next time
-            config["named"][name] = full
-            return full
+            z = open_zarr(full, dont_fail=True)
+            if z is not None:
+                # Cache for next time
+                config["named"][name] = full
+                return full
         except zarr.errors.PathNotFoundError:
             pass
 

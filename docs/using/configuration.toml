@@ -1,5 +1,10 @@
 [datasets]
-lookup = ["a", "b", "c"]
+lookup = [
+    "/home/mlx/ai-ml/datasets/stable",
+    "/home/mlx/ai-ml/datasets/experimental",
+    "/home/mlx/ai-ml/datasets/testing",
+    "s3://ml-datasets",
+]
 
 [datasets.named]
-name1 = "foo"
+test = "/home/mlx/test-dataset.zarr"
