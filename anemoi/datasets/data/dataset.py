@@ -7,6 +7,7 @@
 
 import logging
 import os
+import warnings
 from functools import cached_property
 
 from .debug import debug_indexing
@@ -214,3 +215,15 @@ class Dataset:
     @property
     def grids(self):
         return (self.shape[-1],)
+
+    def _check(ds):
+        common = Dataset.__dict__.keys() & ds.__class__.__dict__.keys()
+        overriden = [m for m in common if Dataset.__dict__[m] is not ds.__class__.__dict__[m]]
+
+        for n in overriden:
+            if n.startswith("_") and not n.startswith("__"):
+                warnings.warn(f"Private method {n} is overriden in {ds.__class__.__name__}")
+
+        # for n in ('metadata_specific', 'tree', 'source'):
+        #     if n not in overriden:
+        #         warnings.warn(f"Method {n} is not overriden in {ds.__class__.__name__}")

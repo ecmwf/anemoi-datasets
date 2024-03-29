@@ -18,20 +18,20 @@ LOG = logging.getLogger(__name__)
 class Statistics(Forwards):
     def __init__(self, dataset, statistic):
         super().__init__(dataset)
+        self._statistic = open_dataset(statistic)
         # TODO: relax that check to allow for a subset of variables
-        if dataset.variables != statistic.variables:
+        if dataset.variables != self._statistic.variables:
             raise ValueError(
-                f"Incompatible variables: {dataset.variables} and {statistic.variables} ({dataset} {statistic})"
+                f"Incompatible variables: {dataset.variables} and {self._statistic.variables} ({dataset} {self._statistic})"
             )
-        self._statistic = statistic
 
     @cached_property
     def statistics(self):
-        return open_dataset(self._statistic).statistics
+        return self._statistic.statistics
 
     def metadata_specific(self, **kwargs):
         return super().metadata_specific(
-            statistics=open_dataset(self._statistic).metadata_specific(),
+            statistics=self._statistic.metadata_specific(),
             **kwargs,
         )
 

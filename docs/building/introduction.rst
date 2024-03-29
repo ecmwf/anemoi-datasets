@@ -86,7 +86,7 @@ operations can be combined to build complex datasets.
 First recipe
 ============
 
-The simplest `recipe`` file must contain a ``dates`` section and an
+The simplest `recipe` file must contain a ``dates`` section and an
 ``input`` section. The latter must contain a `source` In that case, the
 source is ``mars``
 
