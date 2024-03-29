@@ -49,37 +49,37 @@ jobs:
     - name: Tests
       run: pytest
 
-  notify-failure:
-    if: failure()
-    runs-on: ubuntu-latest
-    needs: [quality, checks]
-    name: Notify failure
-    steps:
-      - uses: jdcargile/ms-teams-notification@v1.4
-        with:
-          github-token: ${{ github.token }}
-          ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI_F }}
-          # notification-summary: ${{ steps.qa.outputs.status }}
-          notification-summary: ❌ Build failed on anemoi.datasets!
-          notification-color: dc3545
-          timezone: Europe/Paris
-          verbose-logging: true
+  # notify-failure:
+  #   if: failure()
+  #   runs-on: ubuntu-latest
+  #   needs: [quality, checks]
+  #   name: Notify failure
+  #   steps:
+  #     - uses: jdcargile/ms-teams-notification@v1.4
+  #       with:
+  #         github-token: ${{ github.token }}
+  #         ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI_F }}
+  #         # notification-summary: ${{ steps.qa.outputs.status }}
+  #         notification-summary: ❌ Build failed on anemoi.datasets!
+  #         notification-color: dc3545
+  #         timezone: Europe/Paris
+  #         verbose-logging: true
 
-  notify-success:
-    if: success()
-    runs-on: ubuntu-latest
-    needs: [quality, checks]
-    name: Notify success
-    steps:
-      - uses: jdcargile/ms-teams-notification@v1.4
-        with:
-          github-token: ${{ github.token }}
-          ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI_F }}
-          # notification-summary: ${{ steps.qa.outputs.status }}
-          notification-summary: ✅ New commit on anemoi.datasets
-          notification-color: 17a2b8
-          timezone: Europe/Paris
-          verbose-logging: true
+  # notify-success:
+  #   if: success()
+  #   runs-on: ubuntu-latest
+  #   needs: [quality, checks]
+  #   name: Notify success
+  #   steps:
+  #     - uses: jdcargile/ms-teams-notification@v1.4
+  #       with:
+  #         github-token: ${{ github.token }}
+  #         ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI_F }}
+  #         # notification-summary: ${{ steps.qa.outputs.status }}
+  #         notification-summary: ✅ New commit on anemoi.datasets
+  #         notification-color: 17a2b8
+  #         timezone: Europe/Paris
+  #         verbose-logging: true
 
   deploy:
 
