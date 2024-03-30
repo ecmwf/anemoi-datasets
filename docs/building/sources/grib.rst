@@ -33,5 +33,6 @@ the `date` and formatted according to the Python strftime_ method.
    You can combine all the above options when selecting GRIB messages
    from file.
 
-.. _wildcards: https://en.wikipedia.org/wiki/Glob_(programming)
 .. _strftime: https://python.readthedocs.io/en/latest/library/datetime.html#strftime-and-strptime-behavior
+
+.. _wildcards: https://en.wikipedia.org/wiki/Glob_(programming)
