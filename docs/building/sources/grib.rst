@@ -15,7 +15,7 @@ as any post-processing options, such as `grid` or `area`):
    :language: yaml
 
 You can also read a collection of GRIB files, using Unix' shell
-wildcards_ (see also :py:func:`fnmatch`):
+wildcards_ (see also :py:mod:`fnmatch`):
 
 .. literalinclude:: yaml/grib3.yaml
    :language: yaml
@@ -26,7 +26,7 @@ You can also use the requested `date` to build the filenames.
    :language: yaml
 
 The patterns in between the curly brackets are replaced by the values of
-the `date` and formatted according to the Python :py:func:`strftime`
+the `date` and formatted according to the Python :py:func:`strftime <datetime.datetime.strftime>`
 function.
 
 .. note::
