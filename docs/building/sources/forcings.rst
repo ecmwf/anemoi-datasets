@@ -4,12 +4,12 @@
  forcings
 ##########
 
-Th purpose of `forcings``` is to provide fields with values that only
+The purpose of `forcings` is to provide fields with values that only
 depend on the grid cell and/or the time.
 
 Because the source needs to generate fields on the same grids as the
 other, it requires a template field. This is provided in the recipe with
-the `template` keyword:
+the ``template`` keyword:
 
 .. literalinclude:: forcings.yaml
    :language: yaml
