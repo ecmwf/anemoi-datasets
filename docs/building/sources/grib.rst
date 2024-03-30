@@ -21,6 +21,11 @@ wildcards_:
    :language: yaml
 
 You can also use the requested `date` to build the filenames.
+It the GRIB files containing the requested data are named according to
+the following pattern:
+
+   ``/path/to/YYYY/MM)/YYYYMMDDHH.grib```
+
 
 .. literalinclude:: yaml/grib4.yaml
    :language: yaml
