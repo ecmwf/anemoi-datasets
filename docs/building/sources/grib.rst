@@ -15,7 +15,7 @@ as any post-processing options, such as `grid` or `area`):
    :language: yaml
 
 You can also read a collection of GRIB files, using Unix' shell
-wildcards_ (see also :py:mod:`fnmatch`):
+wildcards_:
 
 .. literalinclude:: yaml/grib3.yaml
    :language: yaml
