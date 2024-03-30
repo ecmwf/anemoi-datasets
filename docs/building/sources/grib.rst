@@ -26,8 +26,8 @@ You can also use the requested `date` to build the filenames.
    :language: yaml
 
 The patterns in between the curly brackets are replaced by the values of
-the `date` and formatted according to the Python :py:func:`strftime <datetime.datetime.strftime>`
-function.
+the `date` and formatted according to the Python :py:mod:`datetime`'s
+:py:meth:`strftime <datetime.datetime.strftime>` function.
 
 .. note::
 
