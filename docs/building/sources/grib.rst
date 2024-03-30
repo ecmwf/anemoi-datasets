@@ -13,7 +13,7 @@ keywords `date`, `time` and `step`, as well as any post-processing options, such
 .. literalinclude:: yaml/grib2.yaml
    :language: yaml
 
-You can also read a collection of GRIB files, using Unix' shell wildcards_:
+You can also read a collection of GRIB files, using Unix' shell wildcards_ (see also :py:func:`glob.glob`):
 
 .. literalinclude:: yaml/grib3.yaml
    :language: yaml
@@ -24,7 +24,7 @@ You can also use the requested `date` to build the filenames.
    :language: yaml
 
 The patterns in between the curly brackets are replaced by the  values of the `date`
-and formatted according to the Python `strftime`_ function.
+and formatted according to the Python :py:func:`strftime` function.
 
 .. note::
    You can combine all the above options when selecting GRIB messages from file.
