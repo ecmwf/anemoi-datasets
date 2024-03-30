@@ -27,7 +27,7 @@ You can also use the requested `date` to build the filenames.
 
 The patterns in between the curly brackets are replaced by the values of
 the `date` and formatted according to the Python :py:mod:`datetime`'s
-:py:meth:`strftime <datetime.datetime.strftime>` function.
+:py:meth:`strftime <datetime.datetime.strftime>` method.
 
 .. note::
 
