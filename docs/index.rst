@@ -84,6 +84,15 @@ datasets <building-introduction>`.
    building/handling_missing_values
    building/statistics
 
+**Command line tool** - :doc:`cli/introduction`
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Building datasets
+
+   cli/introduction
+
 *********
  License
 *********
