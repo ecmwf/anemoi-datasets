@@ -24,7 +24,10 @@ ensemble, and fourth dimension are the grid points values.
  Chunking
 **********
 
-.. figure:: schemas/matrix.svg
+By default, the array is chunked along the time dimensions so the whole
+state of the atmosphere at a given time is loaded in one go:
+
+.. figure:: schemas/matrix.png
    :alt: Data chunking
    :align: center
 
