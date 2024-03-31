@@ -12,7 +12,7 @@ Training datasets are large array-like objects encode in Zarr_ format.
 
 The array has the following dimensions:
 
-.. figure:: overview.png
+.. figure:: schemas/overview.png
    :alt: Data layout
    :align: center
 
