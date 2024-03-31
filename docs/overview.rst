@@ -4,8 +4,11 @@
  Overview
 ##########
 
+************
+ Dimensions
+************
+
 Training datasets are large array-like objects encode in Zarr_ format.
-They
 
 The array has the following dimensions:
 
@@ -17,6 +20,10 @@ The first dimension is the time dimension, the second dimension are the
 variables (e.g. temperature, pressure, etc), the third dimension is the
 ensemble, and fourth dimension are the grid points values.
 
+**********
+ Chunking
+**********
+
 .. figure:: schemas/matrix.svg
    :alt: Data chunking
    :align: center
@@ -27,8 +34,5 @@ array.
 
 .. literalinclude:: overview_.py
    :language: python
-
-
-
 
 .. _zarr: https://zarr.readthedocs.io/

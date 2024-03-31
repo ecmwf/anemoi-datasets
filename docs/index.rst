@@ -25,8 +25,6 @@ datasets <building-introduction>`.
 
 -  :doc:`overview`
 -  :doc:`installing`
--  :doc:`firststeps`
--  :doc:`examples`
 
 .. toctree::
    :maxdepth: 1
@@ -34,8 +32,6 @@ datasets <building-introduction>`.
 
    overview
    installing
-   firststeps
-   examples
 
 **Using training datasets**
 
