@@ -22,10 +22,9 @@ wildcards_:
 
 You can also use the requested `date` to build the filenames. For
 example It the GRIB files containing the requested data are named
-according to the following pattern:
-``/path/to/YYYY/MM/YYYYMMDDHH.grib`` with `YYYY` being the year, `MM`
-the month, `DD` the day and `HH` the hour, you can use the following
-configuration:
+according to the following pattern: ``/path/to/YYYY/MM/YYYYMMDDHH.grib``
+with `YYYY` being the year, `MM` the month, `DD` the day and `HH` the
+hour, you can use the following configuration:
 
 .. literalinclude:: yaml/grib4.yaml
    :language: yaml

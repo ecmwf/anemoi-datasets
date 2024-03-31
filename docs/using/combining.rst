@@ -4,10 +4,17 @@
  Combining datasets
 ####################
 
-When combining datasets, the statistics of the first dataset are used by
-default. You can change this by setting the :ref:`selecting-statistics`
-option to a different dataset, even if it is not part of the
-combination.
+You can create "virtual" datasets by combining two or more datasets. The
+combination will we behave exactly as if you had a single dataset with
+all the methods behaving as expected. The package will make sure that
+the data is loaded lazily from the original datasets.
+
+.. warning::
+
+   When combining datasets, the statistics of the first dataset are used
+   by default. You can change this by setting the
+   :ref:`selecting-statistics` option to a different dataset, even if it
+   is not part of the combination.
 
 When combining datasets, the package will check that the datasets are
 compatible, i.e. that they have the same resolution, the same variables,
@@ -17,11 +24,24 @@ e.g. by changing their date range or frequency using :ref:`start`,
 :ref:`end`, :ref:`frequency`, etc. You can also ask the package to
 :ref:`automatically adjust <using-matching>` these attributes.
 
+*********************
+ Automatic combining
+*********************
+
+If you just provides a list of datasets, the package will automatically
+attempt to combine them:
+
+-  If the datasets have the same variable, ensemble dimension and grids,
+   and dates that, once concatenated, create a continuous range of dates
+   a constant frequency, the package will combine using concat_.
+
+-  If the datasets have the same dates, ensemble dimension and grids,
+   the package will combine using join_.
+
 .. _concat:
 
-********
- concat
-********
+concat
+======
 
 You can concatenate two or more datasets along the dates dimension. The
 package will check that all datasets are compatible (same resolution,
@@ -43,9 +63,8 @@ function.
 
 .. _join:
 
-******
- join
-******
+join
+====
 
 You can join two datasets that have the same dates, combining their
 variables.
@@ -69,9 +88,8 @@ Please note that you can join more than two ``zarr`` files.
 
 .. _ensembles:
 
-***********
- ensembles
-***********
+ensembles
+=========
 
 You can combine two or more datasets that have the same dates,
 variables, grids, etc. along the ensemble dimension. The package will
@@ -81,22 +99,21 @@ check that all datasets are compatible.
 
 .. _grids:
 
-*******
- grids
-*******
+grids
+=====
 
 .. literalinclude:: code/grids1_.py
 
 The values for ``mode`` are:
 
 mode=concatenate
-================
+----------------
 
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
 
 mode=cutout
-===========
+-----------
 
 The `cutout` mode only supports two datasets. The first dataset is the
 considered to be a limited area model (LAM), while the second one is
