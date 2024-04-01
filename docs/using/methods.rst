@@ -35,29 +35,31 @@ tree():
 shape:
    A tuple of the dataset's dimensions.
 
-dtype:
-   The dataset's data type.
-
 field_shape:
-   The dataset's field shape.
+   The original shape of a single field, either 1D or 2D. When building
+   datasets, the fields are flattened to 1D.
+
+dtype:
+   The dataset's `NumPy data type`_.
 
 dates:
-   The dataset's dates.
+   The dataset's dates, as a NumPy vector of datetime64_ objects.
+
+frequency:
+   The dataset's frequency (i.e the delta between two consecutive dates)
+   in hours.
 
 latitudes:
-   The dataset's latitudes.
+   The dataset's latitudes as a NumPy vector.
 
 longitudes:
-   The dataset's longitudes.
+   The dataset's longitudes as a NumPy vector.
 
 statistics:
    The dataset's statistics.
 
 resolution:
    The dataset's resolution.
-
-frequency:
-   The dataset's frequency.
 
 name_to_index:
    A dictionary mapping variable names to their indices.
@@ -70,3 +72,9 @@ missing:
 
 grids:
    The dataset's grids.
+
+.. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
+
+.. _numpy data type: https://docs.scipy.org/doc/numpy/user/basics.types.html
+
+"""
