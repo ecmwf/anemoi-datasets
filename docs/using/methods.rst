@@ -78,7 +78,21 @@ longitudes:
    The dataset's longitudes as a NumPy vector.
 
 statistics:
-   The dataset's statistics.
+   The dataset's statistics. This is a dictionary with the following
+   entries:
+
+      .. code:: python
+
+         {
+             "mean": ...,
+             "stdev": ...,
+             "minimum": ...,
+             "maximum": ...,
+         }
+
+   Each entry is a NumPy vector with the same length as the number of
+   variables. Use the ``name_to_index`` attribute to map variable names
+   to indices.
 
 resolution:
    The dataset's resolution.
