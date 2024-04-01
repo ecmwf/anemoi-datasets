@@ -25,16 +25,16 @@ __getitem__(key)
    supports the same `indexing and slicing <indexing>`_ as NumPy. The
    following examples are valid:
 
-      .. code:: python
+         .. code:: python
 
-         ds[0]
-         ds[-1]
-         ds[0:10]
-         ds[0:10:2]
-         ds[0, 1, :]
+            ds[0]
+            ds[-1]
+            ds[0:10]
+            ds[0:10:2]
+            ds[0, 1, :]
 
-      Please note that Zarr will load the entire dataset into memory if
-      you use a syntax like ``ds[:]``.
+      The data returns is a NumPy array. Please note that Zarr will load
+      the entire dataset into memory if you use a syntax like ``ds[:]``.
 
 metadata()
    Return the dataset's metadata.
