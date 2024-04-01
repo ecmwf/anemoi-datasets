@@ -21,7 +21,20 @@ __len__()
    The number of rows (dates) in the dataset.
 
 __getitem__(key)
-   Access the dataset's data values.
+   Access the dataset's data values. With a few exceptions, the package
+   supports the same `indexing and slicing <indexing>`_ as NumPy. The
+   following examples are valid:
+
+      .. code:: python
+
+         ds[0]
+         ds[-1]
+         ds[0:10]
+         ds[0:10:2]
+         ds[0, 1, :]
+
+      Please note that Zarr will load the entire dataset into memory if
+      you use a syntax like ``ds[:]``.
 
 metadata()
    Return the dataset's metadata.
@@ -49,7 +62,7 @@ field_shape:
    datasets, the fields are flattened to 1D.
 
 dtype:
-   The dataset's `NumPy data type`_.
+   The dataset's `NumPy data type <dtype>`_.
 
 dates:
    The dataset's dates, as a NumPy vector of datetime64_ objects.
@@ -90,4 +103,6 @@ grids:
 
 .. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
 
-.. _numpy data type: https://docs.scipy.org/doc/numpy/user/basics.types.html
+.. _dtype: https://docs.scipy.org/doc/numpy/user/basics.types.html
+
+.. _indexing: https://numpy.org/doc/stable/user/basics.indexing.html
