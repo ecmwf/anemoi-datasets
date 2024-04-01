@@ -26,7 +26,9 @@ provenance()
    Return the dataset's provenance information.
 
 source(index):
-   Return the source of the dataset's data.
+   For debugging. Given the index of variable, this will return from
+   which Zarr store it will be loaded. This is useful to debug combining
+   datasets with :ref:`join`.
 
 tree():
    Return the dataset's tree.
