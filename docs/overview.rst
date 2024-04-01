@@ -24,6 +24,9 @@ ensemble, and fourth dimension are the grid points values.
  Chunking
 **********
 
+"Chunks" are the basic unit of data storage in Zarr_. This means that it
+is the granularity at which data is read from disk.
+
 By default, the array is chunked along the time dimensions so the whole
 state of the atmosphere at a given time is loaded in one go:
 
