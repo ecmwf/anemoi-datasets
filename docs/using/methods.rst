@@ -76,5 +76,3 @@ grids:
 .. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
 
 .. _numpy data type: https://docs.scipy.org/doc/numpy/user/basics.types.html
-
-"""
