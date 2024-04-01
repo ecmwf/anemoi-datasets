@@ -10,7 +10,8 @@ returned by ``open_dataset``.
    All methods and attributes will take into account any subsetting,
    selecting or combining used to construct the final dataset with the
    exception of ``statistics`` which will return the values of the first
-   dataset encountered. See :ref:`statistics` for more details.
+   dataset encountered. See :ref:`selecting-statistics` for more
+   details.
 
 *********
  Methods
@@ -77,15 +78,15 @@ name_to_index:
       print(dataset.name_to_index["2t"])
 
 variables:
-   A list of the dataset's variable names, in the order they appear in the
-      dataset.
+   A list of the dataset's variable names, in the order they appear in
+   the dataset.
 
 missing:
    The set of indices of the missing dates.
 
 grids:
-   A tuple of number of grid point for each datasets that are combined
-   with the :ref:`grid` method.
+   A tuple of number of grid points for each datasets that are combined
+   with the :ref:`grids` method.
 
 .. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
 
