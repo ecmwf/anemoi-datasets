@@ -109,6 +109,8 @@ class Accumulation:
     @classmethod
     def mars_date_time_steps(cls, dates, step1, step2, frequency, base_times, adjust_step):
 
+        # assert step1 > 0, (step1, step2, frequency)
+
         for valid_date in dates:
             base_date = valid_date - datetime.timedelta(hours=step2)
             add_step = 0
@@ -191,9 +193,10 @@ class AccumulationFromLastStep(Accumulation):
     @classmethod
     def _mars_date_time_step(cls, base_date, step1, step2, add_step, frequency):
         assert frequency > 0, frequency
+        # assert step1 > 0, (step1, step2, frequency, add_step, base_date)
 
         steps = []
-        for step in range(step1, step2, frequency):
+        for step in range(step1 + frequency, step2 + frequency, frequency):
             steps.append(step + add_step)
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
@@ -286,6 +289,7 @@ def compute_accumulations(
     ds = cml.load_source("empty")
     for r in compressed.iterate():
         request.update(r)
+        print("🌧️", request)
         ds = ds + cml.load_source("mars", **request)
 
     accumulations = defaultdict(list)
@@ -381,6 +385,8 @@ def accumulations(context, dates, **request):
     }
 
     kwargs = KWARGS.get((class_, stream), {})
+
+    context.trace('🌧️', f"accumulations {request} {user_accumulation_period} {kwargs}")
 
     return compute_accumulations(
         dates,
