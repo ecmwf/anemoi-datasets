@@ -2,12 +2,15 @@
  Methods and attributes
 ########################
 
+The following methods and attributes are available for the objects
+returned by ``open_dataset``.
+
 .. warning::
 
-   Page in progress.
-
-The following methods and attributes are available for the objects
-returned by ``open_dataset``:
+   All methods and attributes will take into account any subsetting,
+   selecting or combining used to construct the final dataset with the
+   exception of ``statistics`` which will return the values of the first
+   dataset encountered. See :ref:`statistics` for more details.
 
 *********
  Methods
@@ -31,7 +34,7 @@ source(index):
    datasets with :ref:`join`.
 
 tree():
-   Return the dataset's tree.
+   For debugging. Return the dataset's internal tree structure.
 
 ************
  Attributes
@@ -69,14 +72,20 @@ resolution:
 name_to_index:
    A dictionary mapping variable names to their indices.
 
+   .. code:: python
+
+      print(dataset.name_to_index["2t"])
+
 variables:
-   A list of the dataset's variable names.
+   A list of the dataset's variable names, in the order they appear in the
+      dataset.
 
 missing:
-   The index of the missing dates.
+   The set of indices of the missing dates.
 
 grids:
-   The dataset's grids.
+   A tuple of number of grid point for each datasets that are combined
+   with the :ref:`grid` method.
 
 .. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
 
