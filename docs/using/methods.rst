@@ -91,8 +91,15 @@ statistics:
          }
 
    Each entry is a NumPy vector with the same length as the number of
-   variables. Use the ``name_to_index`` attribute to map variable names
-   to indices.
+   variables, each element corresponding to a variable. You can
+   therefore use it like:
+
+      .. code:: python
+
+         values = ds[0]
+         normalized = (values - dataset.statistics["mean"]) / dataset.statistics["stdev"])
+
+   Use the ``name_to_index`` attribute to map variable names to indices.
 
 resolution:
    The dataset's resolution.
