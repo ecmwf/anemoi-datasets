@@ -37,6 +37,7 @@ datasets <building-introduction>`.
 
 -  :doc:`using/introduction`
 -  :doc:`using/opening`
+-  :doc:`using/methods`
 -  :doc:`using/subsetting`
 -  :doc:`using/combining`
 -  :doc:`using/selecting`
@@ -53,6 +54,7 @@ datasets <building-introduction>`.
 
    using/introduction
    using/opening
+   using/methods
    using/subsetting
    using/combining
    using/selecting
