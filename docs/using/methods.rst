@@ -19,6 +19,9 @@ __len__()
 __getitem__(key)
    Access the dataset's data values.
 
+metadata()
+   Return the dataset's metadata.
+
 provenance()
    Return the dataset's provenance information.
 
