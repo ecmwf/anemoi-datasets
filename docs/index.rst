@@ -89,6 +89,10 @@ datasets <building-introduction>`.
 **Command line tool**
 
 -  :doc:`cli/introduction`
+-  :doc:`cli/create`
+-  :doc:`cli/inspect`
+-  :doc:`cli/compare`
+-  :doc:`cli/copy`
 
 .. toctree::
    :maxdepth: 1
@@ -96,6 +100,10 @@ datasets <building-introduction>`.
    :caption: Command line tool
 
    cli/introduction
+   cli/create
+   cli/inspect
+   cli/compare
+   cli/copy
 
 *********
  License
