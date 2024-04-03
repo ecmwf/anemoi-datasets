@@ -24,9 +24,9 @@ e.g. by changing their date range or frequency using :ref:`start`,
 :ref:`end`, :ref:`frequency`, etc. You can also ask the package to
 :ref:`automatically adjust <using-matching>` these attributes.
 
-*********************
- Automatic combining
-*********************
+***********
+ automatic
+***********
 
 If you just provides a list of datasets, the package will automatically
 attempt to combine them:
@@ -40,8 +40,9 @@ attempt to combine them:
 
 .. _concat:
 
-concat
-======
+********
+ concat
+********
 
 You can concatenate two or more datasets along the dates dimension. The
 package will check that all datasets are compatible (same resolution,
@@ -63,8 +64,9 @@ function.
 
 .. _join:
 
-join
-====
+******
+ join
+******
 
 You can join two datasets that have the same dates, combining their
 variables.
@@ -88,8 +90,9 @@ Please note that you can join more than two ``zarr`` files.
 
 .. _ensembles:
 
-ensembles
-=========
+***********
+ ensembles
+***********
 
 You can combine two or more datasets that have the same dates,
 variables, grids, etc. along the ensemble dimension. The package will
@@ -99,16 +102,18 @@ check that all datasets are compatible.
 
 .. _grids:
 
-grids
-=====
+*******
+ grids
+*******
 
 .. literalinclude:: code/grids1_.py
 
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
 
-cutout
-======
+********
+ cutout
+********
 
 .. literalinclude:: code/cutout_.py
 
