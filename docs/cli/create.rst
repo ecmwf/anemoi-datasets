@@ -4,4 +4,4 @@
 
 .. code:: bash
 
-   anemoi-dataset create recipe.yaml dataset.zarr
+   anemoi-datasets create recipe.yaml dataset.zarr
