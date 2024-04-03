@@ -204,7 +204,7 @@ class CutoutGrids(Grids):
         return (shape[-1], self.shape[-1] - shape[-1])
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets], mode="cutout")
+        return Node(self, [d.tree() for d in self.datasets])
 
 
 def grids_factory(args, kwargs):
@@ -212,19 +212,28 @@ def grids_factory(args, kwargs):
         raise NotImplementedError("Cannot use both 'ensemble' and 'grids'")
 
     grids = kwargs.pop("grids")
-    mode = kwargs.pop("mode", "concatenate")
     axis = kwargs.pop("axis", 3)
+
     assert len(args) == 0
     assert isinstance(grids, (list, tuple))
-
-    KLASSES = {
-        "concatenate": ConcatGrids,
-        "cutout": CutoutGrids,
-    }
-    if mode not in KLASSES:
-        raise ValueError(f"Unknown grids mode: {mode}, values are {list(KLASSES.keys())}")
 
     datasets = [_open(e) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return KLASSES[mode](datasets, axis=axis)._subset(**kwargs)
+    return ConcatGrids(datasets, axis=axis)._subset(**kwargs)
+
+
+def cutout_factory(args, kwargs):
+    if "ensemble" in kwargs:
+        raise NotImplementedError("Cannot use both 'ensemble' and 'cutout'")
+
+    cutout = kwargs.pop("cutout")
+    axis = kwargs.pop("axis", 3)
+
+    assert len(args) == 0
+    assert isinstance(cutout, (list, tuple))
+
+    datasets = [_open(e) for e in cutout]
+    datasets, kwargs = _auto_adjust(datasets, kwargs)
+
+    return CutoutGrids(datasets, axis=axis)._subset(**kwargs)

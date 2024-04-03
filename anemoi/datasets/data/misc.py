@@ -332,6 +332,12 @@ def _open_dataset(*args, **kwargs):
         assert not sets, sets
         return grids_factory(args, kwargs)
 
+    if "cutout" in kwargs:
+        from .grids import cutout_factory
+
+        assert not sets, sets
+        return cutout_factory(args, kwargs)
+
     for name in ("datasets", "dataset"):
         if name in kwargs:
             datasets = kwargs.pop(name)

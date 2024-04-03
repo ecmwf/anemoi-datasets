@@ -104,22 +104,19 @@ grids
 
 .. literalinclude:: code/grids1_.py
 
-The values for ``mode`` are:
-
-mode=concatenate
-----------------
-
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
 
-mode=cutout
------------
+cutout
+======
 
-The `cutout` mode only supports two datasets. The first dataset is the
-considered to be a limited area model (LAM), while the second one is
-considered to be a global model or boundary conditions. It is therefore
-expected that the bounding box of the first dataset is contained within
-the bounding box of the second dataset.
+.. literalinclude:: code/cutout_.py
+
+The `cutout` combination only supports two datasets. The first dataset
+is the considered to be a limited area model (LAM), while the second one
+is considered to be a global model or boundary conditions. It is
+therefore expected that the bounding box of the first dataset is
+contained within the bounding box of the second dataset.
 
 The image below shows the global dataset:
 

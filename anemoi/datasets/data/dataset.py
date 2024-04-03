@@ -10,9 +10,6 @@ import os
 import warnings
 from functools import cached_property
 
-from .debug import debug_indexing
-from .indexing import expand_list_indexing
-
 LOG = logging.getLogger(__name__)
 
 
@@ -206,11 +203,6 @@ class Dataset:
 
     def __repr__(self):
         return self.__class__.__name__ + "()"
-
-    @debug_indexing
-    @expand_list_indexing
-    def _get_tuple(self, n):
-        raise NotImplementedError(f"Tuple not supported: {n} (class {self.__class__.__name__})")
 
     @property
     def grids(self):

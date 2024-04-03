@@ -1,5 +1,4 @@
 ds = open_dataset(
-    grids=[dataset1, dataset2],
-    mode="cutout",
+    cutout=[dataset1, dataset2],
     adjust="all",
 )
