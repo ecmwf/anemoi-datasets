@@ -7,6 +7,8 @@
 Operations are blocks of YAML code that translates a list of dates into
 fields.
 
+.. _building-join:
+
 ******
  join
 ******
@@ -16,6 +18,8 @@ is expected to provide different variables at the same dates.
 
 .. literalinclude:: yaml/input.yaml
    :language: yaml
+
+.. _building-concat:
 
 ********
  concat
@@ -28,6 +32,8 @@ each providing a different period.
 
 .. literalinclude:: yaml/concat.yaml
    :language: yaml
+
+.. _building-pipe:
 
 ******
  pipe

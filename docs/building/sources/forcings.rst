@@ -19,6 +19,13 @@ starting from the root of the recipe. The path is composed of the of the
 nodes in the recipe, separated by dots. If a node contains a list, the
 index of the next node is added after the node name, starting from 0.
 
+.. warning::
+
+   If you use the :ref:`concat <building-concat>` contruct to have
+   different inputs for different time ranges, the template field point
+   to a source in the same block of the concat where the `forcing` is
+   mentioned.
+
 The is a mean to provide the model with with space and time information
 during training and inference.
 
