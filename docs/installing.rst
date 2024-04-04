@@ -29,6 +29,14 @@ To install the package, you can use the following command:
    git clone ...
    cd anemoi-datasets
    pip install .[dev]
+   pip install -r docs/requirements.txt
+
+
+You may also have to install pandoc on MacOS:
+
+.. code:: bash
+
+   brew install pandoc
 
 ..
    TODO: Make sure to update `setup.py`
