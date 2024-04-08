@@ -35,9 +35,24 @@ used:
    the date 2020-01-01 00:00, the source will use the forecast[1]_ of
    2019-12-31 18:00 and the step 6h.
 
-If the value is a pair of integers, the source will attempt to
-accumulate the variables over each period specified by the pair of
-integers.
+-  For ERA5, the data is accumulated since the last time step, and steps
+   are hourly, and only available at 06Z and 18Z. So, a 6h accumulation
+   for the date for the date 2020-01-01 13:00 the source will use the
+   forecast of 2020-01-01 06:00 and the step 1-2h, 2-3h, 3-4h, 4-5h,
+   5-6h and 6-7h.
+
+If the of ``accumulation_period`` value is a pair of integers `[step1,
+step2]`, the algorithm is different. The source will compute the
+accumulation between the `step1` and `step2` previous forecast that
+valiate at the given date at `step2`. For example, if the accumulation
+period is `[6, 12]`, and the valid date is 2020-10-10 18:00, the source
+will use the forecast of 2020-10-10 06:00 and the steps 6h and 12h.
+
+Please note that ``accumulation_period=6`` and ``accumulation_period=[0,
+6]`` are not equivalent. In the first case, the source can use return an
+accumulation bwteen step 1h and step 7h if it is the most appropriate
+data available, while in the second case, the source will always return
+the accumulation between step 0h and step 6h, if available.
 
 .. literalinclude:: accumulations1.yaml
    :language: yaml
