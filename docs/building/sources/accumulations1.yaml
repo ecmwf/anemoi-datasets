@@ -1,0 +1,6 @@
+input:
+  accumulations:
+    accumulations_period: 6
+    class: ea
+    param: [tp, cp, sf]
+    levtype: sfc

@@ -1,0 +1,6 @@
+input:
+  accumulations:
+    accumulations_period: [6, 12]
+    class: od
+    param: [tp, cp, sf]
+    levtype: sfc
