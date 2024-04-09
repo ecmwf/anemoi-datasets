@@ -18,8 +18,8 @@ from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import Grids
 from anemoi.datasets.data.join import Join
-from anemoi.datasets.data.misc import _as_first_date
-from anemoi.datasets.data.misc import _as_last_date
+from anemoi.datasets.data.misc import as_first_date
+from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.data.misc import _frequency_to_hours
 from anemoi.datasets.data.select import Rename
 from anemoi.datasets.data.select import Select
@@ -834,24 +834,24 @@ def test_constructor_5():
 @mockup_open_zarr
 def test_dates():
     dates = None
-    assert _as_first_date(2021, dates) == np.datetime64("2021-01-01T00:00:00")
-    assert _as_last_date(2021, dates) == np.datetime64("2021-12-31T23:59:59")
-    assert _as_first_date("2021", dates) == np.datetime64("2021-01-01T00:00:00")
-    assert _as_last_date("2021", dates) == np.datetime64("2021-12-31T23:59:59")
+    assert as_first_date(2021, dates) == np.datetime64("2021-01-01T00:00:00")
+    assert as_last_date(2021, dates) == np.datetime64("2021-12-31T23:59:59")
+    assert as_first_date("2021", dates) == np.datetime64("2021-01-01T00:00:00")
+    assert as_last_date("2021", dates) == np.datetime64("2021-12-31T23:59:59")
 
-    assert _as_first_date(202106, dates) == np.datetime64("2021-06-01T00:00:00")
-    assert _as_last_date(202108, dates) == np.datetime64("2021-08-31T23:59:59")
-    assert _as_first_date("202106", dates) == np.datetime64("2021-06-01T00:00:00")
-    assert _as_last_date("202108", dates) == np.datetime64("2021-08-31T23:59:59")
-    assert _as_first_date("2021-06", dates) == np.datetime64("2021-06-01T00:00:00")
-    assert _as_last_date("2021-08", dates) == np.datetime64("2021-08-31T23:59:59")
+    assert as_first_date(202106, dates) == np.datetime64("2021-06-01T00:00:00")
+    assert as_last_date(202108, dates) == np.datetime64("2021-08-31T23:59:59")
+    assert as_first_date("202106", dates) == np.datetime64("2021-06-01T00:00:00")
+    assert as_last_date("202108", dates) == np.datetime64("2021-08-31T23:59:59")
+    assert as_first_date("2021-06", dates) == np.datetime64("2021-06-01T00:00:00")
+    assert as_last_date("2021-08", dates) == np.datetime64("2021-08-31T23:59:59")
 
-    assert _as_first_date(20210101, dates) == np.datetime64("2021-01-01T00:00:00")
-    assert _as_last_date(20210101, dates) == np.datetime64("2021-01-01T23:59:59")
-    assert _as_first_date("20210101", dates) == np.datetime64("2021-01-01T00:00:00")
-    assert _as_last_date("20210101", dates) == np.datetime64("2021-01-01T23:59:59")
-    assert _as_first_date("2021-01-01", dates) == np.datetime64("2021-01-01T00:00:00")
-    assert _as_last_date("2021-01-01", dates) == np.datetime64("2021-01-01T23:59:59")
+    assert as_first_date(20210101, dates) == np.datetime64("2021-01-01T00:00:00")
+    assert as_last_date(20210101, dates) == np.datetime64("2021-01-01T23:59:59")
+    assert as_first_date("20210101", dates) == np.datetime64("2021-01-01T00:00:00")
+    assert as_last_date("20210101", dates) == np.datetime64("2021-01-01T23:59:59")
+    assert as_first_date("2021-01-01", dates) == np.datetime64("2021-01-01T00:00:00")
+    assert as_last_date("2021-01-01", dates) == np.datetime64("2021-01-01T23:59:59")
 
 
 @mockup_open_zarr

@@ -70,7 +70,7 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
 def compute_statistics(array, check_variables_names=None, allow_nan=False):
     nvars = array.shape[1]
 
-    print("Stats", nvars, array.shape, check_variables_names)
+    LOG.info("Stats", nvars, array.shape, check_variables_names)
     if check_variables_names:
         assert nvars == len(check_variables_names), (nvars, check_variables_names)
     stats_shape = (array.shape[0], nvars)
@@ -179,13 +179,14 @@ class StatAggregator:
     def __init__(self, owner, dates, variables_names, allow_nan):
         dates = sorted(dates)
         dates = to_datetimes(dates)
+        assert dates, "No dates selected"
         self.owner = owner
         self.dates = dates
         self.variables_names = variables_names
         self.allow_nan = allow_nan
 
         self.shape = (len(self.dates), len(self.variables_names))
-        print("Aggregating statistics on ", self.shape, self.variables_names)
+        LOG.info(f"Aggregating statistics on shape={self.shape}. Variables : {self.variables_names}")
 
         self.minimum = np.full(self.shape, np.nan, dtype=np.float64)
         self.maximum = np.full(self.shape, np.nan, dtype=np.float64)
@@ -255,7 +256,7 @@ class StatAggregator:
             assert d in found, f"Statistics for date {d} not precomputed."
         assert len(self.dates) == len(found), "Not all dates found in precomputed statistics"
         assert len(self.dates) == offset, "Not all dates found in precomputed statistics."
-        print(f"Statistics for {len(found)} dates found.")
+        LOG.info(f"Statistics for {len(found)} dates found.")
 
     def aggregate(self):
         minimum = np.nanmin(self.minimum, axis=0)

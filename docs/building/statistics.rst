@@ -14,14 +14,12 @@ algorithm:
 
    -  If the dataset covers more than 20 years, the last 3 years are
       excluded.
-   -  If the dataset covers more than 10 years, the last 2 years are
-      excluded.
-   -  If the dataset covers more than 5 years, the last year is
+   -  If the dataset covers more than 10 years, the last year is
       excluded.
    -  Otherwise, 80% of the dataset is used.
 
-You can override this behaviour by setting the `statistics_dates`
-parameter.
+You can override this behaviour by setting the `statistics_start` and `statistics_end`
+parameters.
 
 .. code:: yaml
 
