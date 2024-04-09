@@ -8,7 +8,7 @@
  Dimensions
 ************
 
-Training datasets are large array-like objects encode in Zarr_ format.
+Training datasets are large array-like objects encoded in Zarr_ format.
 
 The array has the following dimensions:
 
@@ -27,7 +27,7 @@ ensemble, and fourth dimension are the grid points values.
 "Chunks" are the basic unit of data storage in Zarr_. This means that it
 is the granularity at which data is read from disk.
 
-By default, the array is chunked along the time dimensions so the whole
+By default, the array is chunked along the time dimension so the whole
 state of the atmosphere at a given time is loaded in one go:
 
 .. figure:: schemas/matrix.png
