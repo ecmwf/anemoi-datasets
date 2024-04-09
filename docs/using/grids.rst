@@ -10,7 +10,7 @@
 
 You can thin a dataset by specifying the ``thinning`` parameter in the
 ``open_dataset`` function. The ``thinning`` parameter depends on the
-``method`` select. The default (and only) method is "every-nth", which
+``method`` selected. The default (and only) method is "every-nth", which
 will mask out all but every Nth point, with N specified by the
 ``thinning`` parameter.
 
@@ -49,13 +49,13 @@ use:
 .. literalinclude:: code/area1_.py
    :language: python
 
-With will result in the following dataset:
+Which will result in the following dataset:
 
 .. image:: images/area-1.png
    :width: 75%
    :align: center
 
-Alternatively, you can specific another dataset as the area. In this
+Alternatively, you can specify another dataset as the area. In this
 case, the bounding box of the dataset will be used.
 
 .. literalinclude:: code/area2_.py

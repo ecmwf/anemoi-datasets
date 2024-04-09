@@ -33,7 +33,7 @@ __getitem__(key)
             ds[0:10:2]
             ds[0, 1, :]
 
-      The data returns is a NumPy array. Please note that Zarr will load
+      The data returned is a NumPy array. Please note that Zarr will load
       the entire dataset into memory if you use a syntax like ``ds[:]``.
 
 metadata()
@@ -43,7 +43,7 @@ provenance()
    Return the dataset's provenance information.
 
 source(index)
-   For debugging. Given the index of variable, this will return from
+   For debugging. Given the index of a variable, this will return from
    which Zarr store it will be loaded. This is useful to debug combining
    datasets with :ref:`join`.
 
@@ -97,7 +97,7 @@ statistics:
       .. code:: python
 
          values = ds[0]
-         normalized = (values - dataset.statistics["mean"]) / dataset.statistics["stdev"])
+         normalized = (values - dataset.statistics["mean"]) / dataset.statistics["stdev"]
 
    Use the ``name_to_index`` attribute to map variable names to indices.
 
@@ -119,7 +119,7 @@ missing:
    The set of indices of the missing dates.
 
 grids:
-   A tuple of number of grid points for each datasets that are combined
+   A tuple of number of grid points for each dataset that is combined
    with the :ref:`grids` method.
 
 .. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
