@@ -1,4 +1,4 @@
 ds = open_dataset(
     join=[dataset1, dataset2],
-    adjust=["begin", "end", "frequency"],
+    adjust=["start", "end", "frequency"],
 )
