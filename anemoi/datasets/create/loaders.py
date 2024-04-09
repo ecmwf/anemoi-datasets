@@ -104,7 +104,7 @@ class Loader:
         assert os.path.exists(path), f"Path {path} does not exist."
         z = zarr.open(path, mode="r")
         config = z.attrs["_create_yaml_config"]
-        LOG.info("Config loaded from zarr config: ", config)
+        LOG.info(f"Config loaded from zarr config: {config}")
         return cls.from_config(config=config, path=path, print=print, **kwargs)
 
     @classmethod
@@ -166,7 +166,7 @@ class Loader:
         z.create_group("_build")
 
     def update_metadata(self, **kwargs):
-        LOG.info("Updating metadata", kwargs)
+        LOG.info(f"Updating metadata {kwargs}")
         z = zarr.open(self.path, mode="w+")
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
@@ -228,10 +228,7 @@ class InitialiseLoader(Loader):
         assert isinstance(frequency, int), frequency
 
         self.print(f"Found {len(dates)} datetimes.")
-        LOG.info(
-            f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ",
-            end="",
-        )
+        LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
         LOG.info(f"Missing dates: {len(dates.missing)}")
         lengths = [len(g) for g in self.groups]
         self.print(f"Found {len(dates)} datetimes {'+'.join([str(_) for _ in lengths])}.")
