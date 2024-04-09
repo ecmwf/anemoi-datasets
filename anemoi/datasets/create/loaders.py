@@ -11,11 +11,12 @@ import time
 import uuid
 from functools import cached_property
 
-from anemoi.datasets.data.misc import as_first_date, as_last_date
 import numpy as np
 import zarr
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.data.misc import as_first_date
+from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.utils.dates.groups import Groups
 
 from .check import DatasetName
@@ -41,10 +42,21 @@ VERSION = "0.20"
 
 
 def default_statistics_dates(dates):
+    """
+    Calculate default statistics dates based on the given list of dates.
+
+    Args:
+        dates (list): List of datetime objects representing dates.
+
+    Returns:
+        tuple: A tuple containing the default start and end dates.
+    """
     first = dates[0]
     last = dates[-1]
-    first = first.tolist()
-    last = last.tolist()
+    if isinstance(first, np.datetime64):
+        first = first.tolist()
+    if isinstance(last, np.datetime64):
+        last = last.tolist()
     assert isinstance(first, datetime.datetime), first
     assert isinstance(last, datetime.datetime), last
 
@@ -53,7 +65,7 @@ def default_statistics_dates(dates):
     if n_years < 10:
         # leave out 20% of the data
         k = int(len(dates) * 0.8)
-        end = dates[k]
+        end = dates[k - 1]
         LOG.info(f"Number of years {n_years} < 10, leaving out 20%. {end=}")
         return dates[0], end
 
@@ -64,7 +76,6 @@ def default_statistics_dates(dates):
     end_year = last.year - delta
     end = max(d for d in dates if d.year == end_year)
     return dates[0], end
-
 
 
 class Loader:
@@ -120,8 +131,10 @@ class Loader:
         dates = ds.dates
 
         default_start, default_end = default_statistics_dates(dates)
-        if start is None: start = default_start
-        if end is None: end = default_end
+        if start is None:
+            start = default_start
+        if end is None:
+            end = default_end
 
         start = as_first_date(start, dates)
         end = as_last_date(end, dates)
@@ -500,6 +513,7 @@ class StatisticsLoader(Loader):
     def _get_statistics_dates(self):
         dates = self.dates
         dtype = type(dates[0])
+
         def assert_dtype(d):
             assert type(d) is dtype, (type(d), dtype)
 

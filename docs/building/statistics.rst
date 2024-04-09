@@ -12,14 +12,13 @@ By defaults, the statistics are not computed on the whole dataset, but
 on a subset of dates. The subset is defined using the following
 algorithm:
 
-   -  If the dataset covers more than 20 years, the last 3 years are
+   -  If the dataset covers 20 years or more, the last 3 years are
       excluded.
-   -  If the dataset covers more than 10 years, the last year is
-      excluded.
+   -  If the dataset covers 10 years or more, the last year is excluded.
    -  Otherwise, 80% of the dataset is used.
 
-You can override this behaviour by setting the `statistics_start` and `statistics_end`
-parameters.
+You can override this behaviour by setting the `statistics_start` and
+`statistics_end` parameters.
 
 .. code:: yaml
 
