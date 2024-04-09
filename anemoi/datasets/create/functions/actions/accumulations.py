@@ -386,7 +386,7 @@ def accumulations(context, dates, **request):
 
     kwargs = KWARGS.get((class_, stream), {})
 
-    context.trace('🌧️', f"accumulations {request} {user_accumulation_period} {kwargs}")
+    context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
 
     return compute_accumulations(
         dates,

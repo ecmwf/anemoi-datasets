@@ -18,9 +18,9 @@ from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import Grids
 from anemoi.datasets.data.join import Join
+from anemoi.datasets.data.misc import _frequency_to_hours
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
-from anemoi.datasets.data.misc import _frequency_to_hours
 from anemoi.datasets.data.select import Rename
 from anemoi.datasets.data.select import Select
 from anemoi.datasets.data.statistics import Statistics
