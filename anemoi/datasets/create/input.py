@@ -659,7 +659,7 @@ class FunctionStepAction(StepAction):
     def __init__(self, context, action_path, previous_step, *args, **kwargs):
         super().__init__(context, action_path, previous_step, *args, **kwargs)
         self.name = args[0]
-        self.function = import_function(self.name, "steps")
+        self.function = import_function(self.name, "filters")
 
 
 class ConcatResult(Result):
@@ -848,7 +848,7 @@ def step_factory(config, context, action_path, previous_step):
         args, kwargs = [config[key]], {}
 
     if cls is None:
-        if not is_function(key, "steps"):
+        if not is_function(key, "filters"):
             raise ValueError(f"Unknown step {key}")
         cls = FunctionStepAction
         args = [key] + args
@@ -859,7 +859,7 @@ def step_factory(config, context, action_path, previous_step):
 
 class FunctionContext:
     """A FunctionContext is passed to all functions, it will be used to pass information
-    to the functions from the other actions and steps and results."""
+    to the functions from the other actions and filters and results."""
 
     def __init__(self, owner):
         self.owner = owner
