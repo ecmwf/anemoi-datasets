@@ -14,6 +14,7 @@ Subsetting is the action of filtering the dataset by its first dimension
 *******
 
 This option let you subset the dataset by time. You can pass a date or a
+string:
 
 .. literalinclude:: code/start_.py
 
@@ -33,6 +34,15 @@ The following are equivalent way of describing ``start`` or ``end``:
 -  ``2020`` and ``"2020"``
 -  ``202306``, ``"202306"`` and ``"2023-06"``
 -  ``20200301``, ``"20200301"`` and ``"2020-03-01"``
+
+Note that the ``start="2020"`` is equivalent to ``start="2020-01-01"``
+while ``end="2020"`` is equivalent to ``end="2020-12-31"``.
+
+Note also how the ``frequency`` of the dataset will change how the
+``end`` option is interpreted: - ``end="2020"`` with a ``frequency`` of
+one hour is equivalent to ``end="2020-12-31 23:00"`` - ``end="2020"``
+with a ``frequency`` of 6 hours is equivalent to ``end="2020-12-31
+18:00"``
 
 .. _frequency:
 

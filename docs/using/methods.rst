@@ -42,12 +42,12 @@ metadata()
 provenance()
    Return the dataset's provenance information.
 
-source(index):
+source(index)
    For debugging. Given the index of variable, this will return from
    which Zarr store it will be loaded. This is useful to debug combining
    datasets with :ref:`join`.
 
-tree():
+tree()
    For debugging. Return the dataset's internal tree structure.
 
 ************
