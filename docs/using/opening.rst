@@ -28,8 +28,8 @@ In that example, `dataset` can be:
 .. literalinclude:: code/open_name.py
    :language: python
 
--  an already opened dataset. In that case, the function use the options
-   to return a modified the dataset, for example with a different time
+-  an already opened dataset. In that case, the function uses the options
+   to return a modified dataset, for example with a different time
    range or frequency.
 
 .. literalinclude:: code/open_other.py
@@ -38,7 +38,7 @@ In that example, `dataset` can be:
 -  a dictionary with a ``dataset`` key that can be any of the above, and
    the remaining keys being the options. The purpose of this option is
    to allow the user to open a dataset based on a configuration file.
-   See :ref:`an example <open_with_config>` below
+   See :ref:`an example <open_with_config>` below:
 
 .. literalinclude:: code/open_dict_.py
    :language: python
@@ -69,14 +69,14 @@ In that example, `dataset` can be:
 
 .. _open_with_config:
 
-As mentioned above you, using the dictionary to open a dataset can be
-useful for software that provide users with the ability to define their
+As mentioned above, using the dictionary to open a dataset can be
+useful for software that provides users with the ability to define their
 requirements in a configuration file:
 
 .. literalinclude:: code/open_yaml_.py
    :language: python
 
-The dictionary can be a complex as needed, for example:
+The dictionary can be as complex as needed, for example:
 
 .. literalinclude:: code/open_complex.py
    :language: python
