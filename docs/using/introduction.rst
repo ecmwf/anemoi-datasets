@@ -20,7 +20,7 @@ it was a NumPy array.
 
 .. literalinclude:: code/some_attributes_.py
 
-One of the main feature of the *anemoi-datasets* package is the ability
+One of the main features of the *anemoi-datasets* package is the ability
 to subset or combine datasets.
 
 .. literalinclude:: code/subset_example.py
@@ -33,4 +33,4 @@ the `open_dataset` function:
    :language: python
 
 In the latter case, the datasets are combined along the time dimension
-or the variable dimension depending on the datasets structure.
+or the variable dimension depending on the dataset's structure.
