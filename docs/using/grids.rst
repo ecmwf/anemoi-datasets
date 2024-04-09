@@ -17,10 +17,10 @@ will mask out all but every Nth point, with N specified by the
 .. literalinclude:: code/thinning_.py
    :language: python
 
-Please note that the thinning will apply to all dimension of the fields.
-So for 2D fields, the thinning will apply to both the latitude and
-longitude dimensions. For 1D fields, such as reduced Gaussian grids, the
-thinning will apply to the only dimension.
+Please note that the thinning will apply to all dimensions of the
+fields. So for 2D fields, the thinning will apply to both the latitude
+and longitude dimensions. For 1D fields, such as reduced Gaussian grids,
+the thinning will apply to the only dimension.
 
 The following example shows the effect of thinning a dataset with a 1
 degree resolution:

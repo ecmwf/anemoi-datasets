@@ -28,12 +28,13 @@ e.g. by changing their date range or frequency using :ref:`start`,
  automatic
 ***********
 
-If you just provides a list of datasets, the package will automatically
+If you just provide a list of datasets, the package will automatically
 attempt to combine them:
 
--  If the datasets have the same variable, ensemble dimension and grids,
-   and dates that, once concatenated, create a continuous range of dates
-   a constant frequency, the package will combine using concat_.
+-  If the datasets have the same variables and the same ensemble
+   dimension and the same grids, and if the dates once concatenated,
+   create a continuous range of dates with a constant frequency, the
+   package will combine using concat_.
 
 -  If the datasets have the same dates, ensemble dimension and grids,
    the package will combine using join_.
@@ -56,11 +57,12 @@ chronological order with no gaps between them.
    :align: center
    :alt: Concatenation
 
-Please note that you can pass more than two ``zarr`` files to the
-function.
+Please note that you can pass more than two datasets to the function.
 
-   **NOTE:** When concatenating file, the statistics are not recomputed;
-   it is the statistics of first file that are returned to the user.
+   **NOTE:** When concatenating datasets, the statistics are not
+   recomputed; it is the statistics of first dataset that are returned
+   to the user. You can change this using the
+   :ref:`selecting-statistics` option.
 
 .. _join:
 
@@ -86,7 +88,7 @@ occurrence of that name.
    :align: center
    :alt: Overlay
 
-Please note that you can join more than two ``zarr`` files.
+Please note that you can join more than two datasets.
 
 .. _ensembles:
 
