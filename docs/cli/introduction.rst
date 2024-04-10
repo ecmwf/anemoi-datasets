@@ -10,7 +10,7 @@ The tools can provide help with the ``--help`` options:
 
 .. code:: bash
 
-   anamois-datasets --help
+   % anamoi-datasets --help
 
 The commands are:
 
