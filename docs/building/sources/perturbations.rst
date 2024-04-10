@@ -5,28 +5,27 @@
 ###############
 
 Perturbations refers to the small variations centered around a nominal
-value of a parameter. When dealing with ensemble forecasting, the
+value of a parameter. When dealing with `ensemble forecasting`_, the
 perturbations are related to the difference between `ensemble members`
-and their given center
-(https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting).
+and their given `center`.
 
-The `perturbations` function computes a set of ensemble members centered
-on a difference center from previous ensemble members using the
+The `perturbations` function computes a set of new ensemble members
+centered on a different center from previous ensemble members using the
 following formula:
 
 .. math::
 
-   \text{mean} = \text{ensembles}.mean()
-
-   \text{new_ensembles} = \text{ensembles} - \text{mean} + \text{center}
+   members_{new} = center + ( members - \overline{members} )
 
 It uses the following arguments:
 
 ensembles
-   A pointer to the ensemble members.
+   A :ref:`reference <yaml-reference>` to the ensemble members.
 
 center
-   A pointer to the new center requested.
+   A :ref:`reference <yaml-reference>` to the new center requested.
 
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml
+
+.. _ensemble forecasting: https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting
