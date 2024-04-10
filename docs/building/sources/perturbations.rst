@@ -7,7 +7,8 @@
 Perturbations refers to the small variations centered around a nominal
 value of a parameter. When dealing with ensemble forecasting, the
 perturbations are related to the difference between `ensemble members`
-and their given center (perturbations_doc_).
+and their given center
+(https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting).
 
 The `perturbations` function computes a set of ensemble members centered
 on a difference center from previous ensemble members using the
@@ -16,6 +17,7 @@ following formula:
 .. math::
 
    \text{mean} = \text{ensembles}.mean()
+
    \text{new_ensembles} = \text{ensembles} - \text{mean} + \text{center}
 
 It uses the following arguments:
@@ -28,5 +30,3 @@ center
 
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml
-
-.. _perturbations_doc: https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting
