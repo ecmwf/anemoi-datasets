@@ -41,7 +41,7 @@ input:
     <<: *dates_anchor
     join:
     - function:
-        name: ensemble_perturbations
+        name: perturbations
         ensembles:
           <<: *common_sfc
           stream: enda
@@ -59,7 +59,7 @@ input:
           type: em
 
     - function:
-        name: ensemble_perturbations
+        name: perturbations
         ensembles:
           <<: *common_pl
           stream: enda

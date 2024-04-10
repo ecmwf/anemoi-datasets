@@ -55,7 +55,7 @@ def load_if_needed(context, dates, dict_or_dataset):
     return dict_or_dataset
 
 
-def ensemble_perturbations(context, dates, ensembles, center, remapping={}, patches={}):
+def perturbations(context, dates, ensembles, center, remapping={}, patches={}):
     ensembles = load_if_needed(context, dates, ensembles)
     center = load_if_needed(context, dates, center)
 
@@ -147,4 +147,4 @@ def ensemble_perturbations(context, dates, ensembles, center, remapping={}, patc
     return ds
 
 
-execute = ensemble_perturbations
+execute = perturbations
