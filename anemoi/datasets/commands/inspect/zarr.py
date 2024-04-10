@@ -157,6 +157,10 @@ class Version:
         return self.metadata.get("field_shape")
 
     @property
+    def proj_string(self):
+        return self.metadata.get("proj_string")
+
+    @property
     def shape(self):
         if self.data and hasattr(self.data, "shape"):
             return self.data.shape
