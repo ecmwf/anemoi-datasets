@@ -32,7 +32,7 @@ used:
 
 -  For ECMWF operational forecasts, the data is accumulated from the
    beginning of the forecast. So if the accumulation period is 6h, for
-   the date 2020-01-01 00:00, the source will use the forecast[1]_ of
+   the date 2020-01-01 00:00, the source will use the forecast [1]_ of
    2019-12-31 18:00 and the step 6h.
 
 -  For ERA5, the data is accumulated since the last time step, and steps

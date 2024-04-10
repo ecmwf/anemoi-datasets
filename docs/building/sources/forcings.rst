@@ -14,10 +14,13 @@ the ``template`` keyword:
 .. literalinclude:: forcings.yaml
    :language: yaml
 
+.. _yaml-reference:
+
 The value ``${input.join.0.source1}`` is the "path" to the first source,
 starting from the root of the recipe. The path is composed of the of the
 nodes in the recipe, separated by dots. If a node contains a list, the
 index of the next node is added after the node name, starting from 0.
+This is called a `reference`.
 
 .. warning::
 
