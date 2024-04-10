@@ -5,7 +5,7 @@
 ####################
 
 You can create "virtual" datasets by combining two or more datasets. The
-combination will we behave exactly as if you had a single dataset with
+combination will behave exactly as if you had a single dataset with
 all the methods behaving as expected. The package will make sure that
 the data is loaded lazily from the original datasets.
 
@@ -28,12 +28,13 @@ e.g. by changing their date range or frequency using :ref:`start`,
  automatic
 ***********
 
-If you just provides a list of datasets, the package will automatically
+If you just provide a list of datasets, the package will automatically
 attempt to combine them:
 
--  If the datasets have the same variable, ensemble dimension and grids,
-   and dates that, once concatenated, create a continuous range of dates
-   a constant frequency, the package will combine using concat_.
+-  If the datasets have the same variables and the same ensemble
+   dimension and the same grids, and if the dates once concatenated,
+   create a continuous range of dates with a constant frequency, the
+   package will combine using concat_.
 
 -  If the datasets have the same dates, ensemble dimension and grids,
    the package will combine using join_.
@@ -56,11 +57,12 @@ chronological order with no gaps between them.
    :align: center
    :alt: Concatenation
 
-Please note that you can pass more than two ``zarr`` files to the
-function.
+Please note that you can pass more than two datasets to the function.
 
-   **NOTE:** When concatenating file, the statistics are not recomputed;
-   it is the statistics of first file that are returned to the user.
+   **NOTE:** When concatenating datasets, the statistics are not
+   recomputed; it is the statistics of first dataset that are returned
+   to the user. You can change this using the
+   :ref:`selecting-statistics` option.
 
 .. _join:
 
@@ -78,7 +80,7 @@ variables.
    :align: center
    :alt: Join
 
-If a variable is present in more that one file, that last occurrence of
+If a variable is present in more than one file, the last occurrence of
 that variable will be used, and will be at the position of the first
 occurrence of that name.
 
@@ -86,7 +88,7 @@ occurrence of that name.
    :align: center
    :alt: Overlay
 
-Please note that you can join more than two ``zarr`` files.
+Please note that you can join more than two datasets.
 
 .. _ensembles:
 
@@ -118,7 +120,7 @@ All the grid points are concatenated, in the order they are given. The
 .. literalinclude:: code/cutout_.py
 
 The `cutout` combination only supports two datasets. The first dataset
-is the considered to be a limited area model (LAM), while the second one
+is considered to be a limited area model (LAM), while the second one
 is considered to be a global model or boundary conditions. It is
 therefore expected that the bounding box of the first dataset is
 contained within the bounding box of the second dataset.
@@ -138,7 +140,7 @@ The image below shows the LAM dataset:
    :alt: Cutout
 
 A 'cutout' is performed by removing the grid points from the global
-dataset that contained in the LAM dataset. The result is shown below:
+dataset that are contained in the LAM dataset. The result is shown below:
 
 .. image:: images/cutout-3.png
    :width: 75%

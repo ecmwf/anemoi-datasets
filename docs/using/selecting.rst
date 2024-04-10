@@ -64,5 +64,5 @@ You can also rename variables:
 .. literalinclude:: code/rename_.py
    :language: python
 
-This will be useful when your join datasets and do not want variables
+This will be useful when you join datasets and do not want variables
 from one dataset to override the ones from the other.

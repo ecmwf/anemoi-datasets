@@ -15,6 +15,8 @@ import numpy as np
 import zarr
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.data.misc import as_first_date
+from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.utils.dates.groups import Groups
 
 from .check import DatasetName
@@ -40,29 +42,40 @@ VERSION = "0.20"
 
 
 def default_statistics_dates(dates):
+    """
+    Calculate default statistics dates based on the given list of dates.
+
+    Args:
+        dates (list): List of datetime objects representing dates.
+
+    Returns:
+        tuple: A tuple containing the default start and end dates.
+    """
     first = dates[0]
     last = dates[-1]
-    first = first.tolist()
-    last = last.tolist()
+    if isinstance(first, np.datetime64):
+        first = first.tolist()
+    if isinstance(last, np.datetime64):
+        last = last.tolist()
     assert isinstance(first, datetime.datetime), first
     assert isinstance(last, datetime.datetime), last
 
-    n_years = (last - first).days // 365
+    n_years = round((last - first).total_seconds() / (365.25 * 24 * 60 * 60))
 
-    if n_years >= 20:
-        end = datetime.datetime(last.year - 3, last.month, last.day, last.hour, last.minute, last.second)
-        print(f"Number of years {n_years} >= 20, leaving out 3 years. {end=}")
-
-    elif n_years >= 10:  # leave out 1 year
-        end = datetime.datetime(last.year - 1, last.month, last.day, last.hour, last.minute, last.second)
-        print(f"Number of years {n_years} >= 10, leaving out 1 years. {end=}")
-    else:
+    if n_years < 10:
         # leave out 20% of the data
         k = int(len(dates) * 0.8)
-        end = dates[k]
-        print(f"Number of years {n_years} < 10, leaving out 20%. {end=}")
+        end = dates[k - 1]
+        LOG.info(f"Number of years {n_years} < 10, leaving out 20%. {end=}")
+        return dates[0], end
 
-    return dates[0], np.datetime64(end)
+    delta = 1
+    if n_years >= 20:
+        delta = 3
+    LOG.info(f"Number of years {n_years}, leaving out {delta} years.")
+    end_year = last.year - delta
+    end = max(d for d in dates if d.year == end_year)
+    return dates[0], end
 
 
 class Loader:
@@ -91,7 +104,7 @@ class Loader:
         assert os.path.exists(path), f"Path {path} does not exist."
         z = zarr.open(path, mode="r")
         config = z.attrs["_create_yaml_config"]
-        print("Config loaded from zarr config: ", config)
+        LOG.info(f"Config loaded from zarr config: {config}")
         return cls.from_config(config=config, path=path, print=print, **kwargs)
 
     @classmethod
@@ -109,20 +122,22 @@ class Loader:
             flatten_grid=self.output.flatten_grid,
             remapping=build_remapping(self.output.remapping),
         )
-        print("✅ INPUT_BUILDER")
-        print(builder)
+        LOG.info("✅ INPUT_BUILDER")
+        LOG.info(builder)
         return builder
 
     def build_statistics_dates(self, start, end):
         ds = open_dataset(self.path)
         dates = ds.dates
 
-        if end is None and start is None:
-            start, end = default_statistics_dates(dates)
-        else:
-            subset = ds.dates_interval_to_indices(start, end)
-            start = dates[subset[0]]
-            end = dates[subset[-1]]
+        default_start, default_end = default_statistics_dates(dates)
+        if start is None:
+            start = default_start
+        if end is None:
+            end = default_end
+
+        start = as_first_date(start, dates)
+        end = as_last_date(end, dates)
 
         start = start.astype(datetime.datetime)
         end = end.astype(datetime.datetime)
@@ -151,7 +166,7 @@ class Loader:
         z.create_group("_build")
 
     def update_metadata(self, **kwargs):
-        print("Updating metadata", kwargs)
+        LOG.info(f"Updating metadata {kwargs}")
         z = zarr.open(self.path, mode="w+")
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
@@ -171,9 +186,9 @@ class Loader:
     def print_info(self):
         z = zarr.open(self.path, mode="r")
         try:
-            print(z["data"].info)
+            LOG.info(z["data"].info)
         except Exception as e:
-            print(e)
+            LOG.info(e)
 
 
 class InitialiseLoader(Loader):
@@ -183,44 +198,41 @@ class InitialiseLoader(Loader):
 
         self.statistics_registry.delete()
 
-        print(self.main_config.dates)
+        LOG.info(self.main_config.dates)
         self.groups = Groups(**self.main_config.dates)
-        print("✅ GROUPS")
+        LOG.info("✅ GROUPS")
 
         self.output = build_output(self.main_config.output, parent=self)
         self.input = self.build_input()
 
-        print(self.input)
+        LOG.info(self.input)
         all_dates = self.groups.dates
         self.minimal_input = self.input.select([all_dates[0]])
 
-        print("✅ GROUPS")
-        print(self.groups)
-        print("✅ MINIMAL INPUT")
-        print(self.minimal_input)
+        LOG.info("✅ GROUPS")
+        LOG.info(self.groups)
+        LOG.info("✅ MINIMAL INPUT")
+        LOG.info(self.minimal_input)
 
     def initialise(self, check_name=True):
         """Create empty dataset."""
 
         self.print("Config loaded ok:")
-        print(self.main_config)
-        print("-------------------------")
+        LOG.info(self.main_config)
+        LOG.info("-------------------------")
 
         dates = self.groups.dates
-        print("-------------------------")
+        LOG.info("-------------------------")
 
         frequency = dates.frequency
         assert isinstance(frequency, int), frequency
 
         self.print(f"Found {len(dates)} datetimes.")
-        print(
-            f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ",
-            end="",
-        )
-        print(f"Missing dates: {len(dates.missing)}")
+        LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
+        LOG.info(f"Missing dates: {len(dates.missing)}")
         lengths = [len(g) for g in self.groups]
         self.print(f"Found {len(dates)} datetimes {'+'.join([str(_) for _ in lengths])}.")
-        print("-------------------------")
+        LOG.info("-------------------------")
 
         variables = self.minimal_input.variables
         self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
@@ -231,22 +243,22 @@ class InitialiseLoader(Loader):
         self.print(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
 
         grid_points = self.minimal_input.grid_points
-        print(f"gridpoints size: {[len(i) for i in grid_points]}")
-        print("-------------------------")
+        LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
+        LOG.info("-------------------------")
 
         resolution = self.minimal_input.resolution
-        print(f"{resolution=}")
+        LOG.info(f"{resolution=}")
 
-        print("-------------------------")
+        LOG.info("-------------------------")
         coords = self.minimal_input.coords
         coords["dates"] = dates
         total_shape = self.minimal_input.shape
         total_shape[0] = len(dates)
         self.print(f"total_shape = {total_shape}")
-        print("-------------------------")
+        LOG.info("-------------------------")
 
         chunks = self.output.get_chunking(coords)
-        print(f"{chunks=}")
+        LOG.info(f"{chunks=}")
         dtype = self.output.dtype
 
         self.print(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
@@ -333,7 +345,7 @@ class InitialiseLoader(Loader):
             statistics_start_date=statistics_start,
             statistics_end_date=statistics_end,
         )
-        print(f"Will compute statistics from {statistics_start} to {statistics_end}")
+        LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
 
         self.registry.add_to_history("init finished")
 
@@ -500,6 +512,9 @@ class StatisticsLoader(Loader):
         dates = self.dates
         dtype = type(dates[0])
 
+        def assert_dtype(d):
+            assert type(d) is dtype, (type(d), dtype)
+
         # remove missing dates
         if self.missing_dates:
             assert type(self.missing_dates[0]) is dtype, (
@@ -512,15 +527,21 @@ class StatisticsLoader(Loader):
         z = zarr.open(self.path, mode="r")
         start, end = z.attrs.get("statistics_start_date"), z.attrs.get("statistics_end_date")
         start, end = np.datetime64(start), np.datetime64(end)
-        assert type(start) is dtype, (type(start), dtype)
+        assert_dtype(start)
         dates = [d for d in dates if d >= start and d <= end]
 
         # filter dates according the the user specified start and end dates
-        if self.user_statistics_start or self.user_statistics_end:
-            start, end = self.build_statistics_dates(self.user_statistics_start, self.user_statistics_end)
-            start, end = np.datetime64(start), np.datetime64(end)
-            assert type(start) is dtype, (type(start), dtype)
-            dates = [d for d in dates if d >= start and d <= end]
+        if self.user_statistics_start:
+            limit = as_first_date(self.user_statistics_start, dates)
+            limit = np.datetime64(limit)
+            assert_dtype(limit)
+            dates = [d for d in dates if d >= limit]
+
+        if self.user_statistics_end:
+            limit = as_last_date(self.user_statistics_start, dates)
+            limit = np.datetime64(limit)
+            assert_dtype(limit)
+            dates = [d for d in dates if d <= limit]
 
         return dates
 
@@ -531,7 +552,7 @@ class StatisticsLoader(Loader):
 
     def write_stats_to_file(self, stats):
         stats.save(self.statistics_output, provenance=dict(config=self.main_config))
-        print(f"✅ Statistics written in {self.statistics_output}")
+        LOG.info(f"✅ Statistics written in {self.statistics_output}")
 
     def write_stats_to_dataset(self, stats):
         if self.user_statistics_start or self.user_statistics_end:
@@ -549,10 +570,10 @@ class StatisticsLoader(Loader):
             self._add_dataset(name=k, array=stats[k])
 
         self.registry.add_to_history("compute_statistics_end")
-        print(f"Wrote statistics in {self.path}")
+        LOG.info(f"Wrote statistics in {self.path}")
 
     def write_stats_to_stdout(self, stats):
-        print(stats)
+        LOG.info(stats)
 
 
 class SizeLoader(Loader):
@@ -566,8 +587,8 @@ class SizeLoader(Loader):
         size = dic["total_size"]
         n = dic["total_number_of_files"]
 
-        print(f"Total size: {bytes(size)}")
-        print(f"Total number of files: {n}")
+        LOG.info(f"Total size: {bytes(size)}")
+        LOG.info(f"Total number of files: {n}")
 
         self.update_metadata(total_size=size, total_number_of_files=n)
 

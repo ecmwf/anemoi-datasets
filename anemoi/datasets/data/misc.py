@@ -71,6 +71,9 @@ def _frequency_to_hours(frequency):
 
 
 def _as_date(d, dates, last):
+    if isinstance(d, np.datetime64):
+        d = d.astype(datetime.datetime)
+
     if isinstance(d, datetime.datetime):
         if not d.minute == 0 and d.hour == 0 and d.second == 0:
             return np.datetime64(d)
@@ -148,11 +151,11 @@ def _as_date(d, dates, last):
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
 
-def _as_first_date(d, dates):
+def as_first_date(d, dates):
     return _as_date(d, dates, last=False)
 
 
-def _as_last_date(d, dates):
+def as_last_date(d, dates):
     return _as_date(d, dates, last=True)
 
 

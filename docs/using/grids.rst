@@ -10,17 +10,17 @@
 
 You can thin a dataset by specifying the ``thinning`` parameter in the
 ``open_dataset`` function. The ``thinning`` parameter depends on the
-``method`` select. The default (and only) method is "every-nth", which
+``method`` selected. The default (and only) method is "every-nth", which
 will mask out all but every Nth point, with N specified by the
 ``thinning`` parameter.
 
 .. literalinclude:: code/thinning_.py
    :language: python
 
-Please note that the thinning will apply to all dimension of the fields.
-So for 2D fields, the thinning will apply to both the latitude and
-longitude dimensions. For 1D fields, such as reduced Gaussian grids, the
-thinning will apply to the only dimension.
+Please note that the thinning will apply to all dimensions of the
+fields. So for 2D fields, the thinning will apply to both the latitude
+and longitude dimensions. For 1D fields, such as reduced Gaussian grids,
+the thinning will apply to the only dimension.
 
 The following example shows the effect of thinning a dataset with a 1
 degree resolution:
@@ -49,13 +49,13 @@ use:
 .. literalinclude:: code/area1_.py
    :language: python
 
-With will result in the following dataset:
+Which will result in the following dataset:
 
 .. image:: images/area-1.png
    :width: 75%
    :align: center
 
-Alternatively, you can specific another dataset as the area. In this
+Alternatively, you can specify another dataset as the area. In this
 case, the bounding box of the dataset will be used.
 
 .. literalinclude:: code/area2_.py

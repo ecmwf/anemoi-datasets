@@ -81,9 +81,9 @@ datasets <building-introduction>`.
    building/operations
    building/sources
    building/filters
-   building/naming_variables
-   building/handling_missing_dates
-   building/handling_missing_values
+   building/naming-variables
+   building/handling-missing-dates
+   building/handling-missing-values
    building/statistics
 
 **Command line tool**

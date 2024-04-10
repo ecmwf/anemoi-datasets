@@ -111,13 +111,13 @@ class Dataset:
         return np.random.permutation(len(self))
 
     def _dates_to_indices(self, start, end):
-        from .misc import _as_first_date
-        from .misc import _as_last_date
+        from .misc import as_first_date
+        from .misc import as_last_date
 
         # TODO: optimize
 
-        start = self.dates[0] if start is None else _as_first_date(start, self.dates)
-        end = self.dates[-1] if end is None else _as_last_date(end, self.dates)
+        start = self.dates[0] if start is None else as_first_date(start, self.dates)
+        end = self.dates[-1] if end is None else as_last_date(end, self.dates)
 
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
