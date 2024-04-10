@@ -16,9 +16,7 @@ following formula:
 
 .. math::
 
-   \text{mean} = \text{ensembles}.mean()
-
-   \text{new_ensembles} = \text{ensembles} - \text{mean} + \text{center}
+   members_{new} = center + ( members - \overline{members} )
 
 It uses the following arguments:
 

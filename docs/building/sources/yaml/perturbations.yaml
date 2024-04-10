@@ -1,5 +1,5 @@
 data_sources:
-  ensembles:
+  members:
     class: ea
     expver: "0001"
     grid: 20.0/20.0
@@ -19,5 +19,5 @@ data_sources:
     stream: oper
 
 perturbations:
-  ensembles: ${data_sources.ensembles}
   center: ${data_sources.center}
+  members: ${data_sources.members}

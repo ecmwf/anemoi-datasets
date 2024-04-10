@@ -55,8 +55,8 @@ def load_if_needed(context, dates, dict_or_dataset):
     return dict_or_dataset
 
 
-def perturbations(context, dates, ensembles, center, remapping={}, patches={}):
-    ensembles = load_if_needed(context, dates, ensembles)
+def perturbations(context, dates, members, center, remapping={}, patches={}):
+    members = load_if_needed(context, dates, members)
     center = load_if_needed(context, dates, center)
 
     keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
@@ -67,22 +67,22 @@ def perturbations(context, dates, ensembles, center, remapping={}, patches={}):
                 continue
             assert f1.metadata(k) == f2.metadata(k), (k, f1.metadata(k), f2.metadata(k))
 
-    print(f"Retrieving ensemble data with {ensembles}")
+    print(f"Retrieving ensemble data with {members}")
     print(f"Retrieving center data with {center}")
 
-    ensembles = ensembles.order_by(*keys)
+    members = members.order_by(*keys)
     center = center.order_by(*keys)
 
-    number_list = ensembles.unique_values("number")["number"]
+    number_list = members.unique_values("number")["number"]
     n_numbers = len(number_list)
 
-    if len(center) * n_numbers != len(ensembles):
-        print(len(center), n_numbers, len(ensembles))
-        for f in ensembles:
-            print("Ensembles: ", f)
+    if len(center) * n_numbers != len(members):
+        print(len(center), n_numbers, len(members))
+        for f in members:
+            print("Member: ", f)
         for f in center:
             print("Center: ", f)
-        raise ValueError(f"Inconsistent number of fields: {len(center)} * {n_numbers} != {len(ensembles)}")
+        raise ValueError(f"Inconsistent number of fields: {len(center)} * {n_numbers} != {len(members)}")
 
     # prepare output tmp file so we can read it back
     tmp = temp_file()
@@ -96,18 +96,18 @@ def perturbations(context, dates, ensembles, center, remapping={}, patches={}):
         center_np = center_field.to_numpy()
 
         # load the ensemble fields and compute the mean
-        ensembles_np = np.zeros((n_numbers, *center_np.shape))
+        members_np = np.zeros((n_numbers, *center_np.shape))
 
         for j in range(n_numbers):
-            ensemble_field = ensembles[i * n_numbers + j]
+            ensemble_field = members[i * n_numbers + j]
             check_compatible(center_field, ensemble_field)
-            ensembles_np[j] = ensemble_field.to_numpy()
+            members_np[j] = ensemble_field.to_numpy()
 
-        mean_np = ensembles_np.mean(axis=0)
+        mean_np = members_np.mean(axis=0)
 
         for j in range(n_numbers):
-            template = ensembles[i * n_numbers + j]
-            e = ensembles_np[j]
+            template = members[i * n_numbers + j]
+            e = members_np[j]
             m = mean_np
             c = center_np
 
@@ -142,7 +142,7 @@ def perturbations(context, dates, ensembles, center, remapping={}, patches={}):
     # only when the dataset is not used anymore
     ds._tmp = tmp
 
-    assert len(ds) == len(ensembles), (len(ds), len(ensembles))
+    assert len(ds) == len(members), (len(ds), len(members))
 
     return ds
 
