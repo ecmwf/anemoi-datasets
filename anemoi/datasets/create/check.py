@@ -154,6 +154,7 @@ class StatisticsValueError(ValueError):
 def check_data_values(arr, *, name: str, log=[], allow_nan=False):
     if allow_nan is False:
         allow_nan = lambda x: False  # noqa: E731
+
     if allow_nan(name):
         arr = arr[~np.isnan(arr)]
 

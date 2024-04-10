@@ -8,7 +8,6 @@
 #
 import datetime
 import warnings
-from collections import defaultdict
 from copy import deepcopy
 
 import climetlab as cml
@@ -20,6 +19,14 @@ from climetlab.utils.availability import Availability
 from anemoi.datasets.create.utils import to_datetime_list
 
 DEBUG = True
+
+
+def member(field):
+    # Bug in eccodes has number=0 randomly
+    number = field.metadata("number")
+    if number is None:
+        number = 0
+    return number
 
 
 class Accumulation:
@@ -45,10 +52,11 @@ class Accumulation:
     def check(self, field):
         if self._check is None:
             self._check = field.as_mars()
+
             assert self.param == field.metadata("param"), (self.param, field.metadata("param"))
             assert self.date == field.metadata("date"), (self.date, field.metadata("date"))
             assert self.time == field.metadata("time"), (self.time, field.metadata("time"))
-            assert self.number == field.metadata("number"), (self.number, field.metadata("number"))
+            assert self.number == member(field), (self.number, member(field))
 
             return
 
@@ -127,6 +135,9 @@ class Accumulation:
 
             yield cls._mars_date_time_step(base_date, step1, step2, add_step, frequency)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.key})"
+
 
 class AccumulationFromStart(Accumulation):
     buggy_steps = True
@@ -161,10 +172,15 @@ class AccumulationFromStart(Accumulation):
     @classmethod
     def _mars_date_time_step(cls, base_date, step1, step2, add_step, frequency):
         assert not frequency, frequency
+
+        steps = (step1 + add_step, step2 + add_step)
+        if steps[0] == 0:
+            steps = (steps[1],)
+
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
             base_date.hour * 100 + base_date.minute,
-            (step1 + add_step, step2 + add_step),
+            steps,
         )
 
 
@@ -249,7 +265,7 @@ def compute_accumulations(
         param = [param]
 
     for p in param:
-        assert p in ["cp", "lsp", "tp", "sf"], p
+        assert p in ["cp", "lsp", "tp", "sf", "lsf", "csf"], p
 
     number = request.get("number", [0])
     assert isinstance(number, (list, tuple))
@@ -292,10 +308,11 @@ def compute_accumulations(
         print("🌧️", request)
         ds = ds + cml.load_source("mars", **request)
 
-    accumulations = defaultdict(list)
+    accumulations = {}
     for a in [AccumulationClass(out, frequency=frequency, **r) for r in requests]:
         for s in a.steps:
-            accumulations[(a.param, a.date, a.time, s, a.number)].append(a)
+            key = (a.param, a.date, a.time, s, a.number)
+            accumulations.setdefault(key, []).append(a)
 
     for field in ds:
         key = (
@@ -303,9 +320,10 @@ def compute_accumulations(
             field.metadata("date"),
             field.metadata("time"),
             field.metadata("step"),
-            field.metadata("number"),
+            member(field),
         )
         values = field.values  # optimisation
+        assert accumulations[key], key
         for a in accumulations[key]:
             a.add(field, values)
 

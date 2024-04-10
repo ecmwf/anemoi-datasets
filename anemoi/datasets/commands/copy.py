@@ -33,8 +33,9 @@ aws_secret_access_key=xxxx
 
 Then:
 
-anemoi-datasets copy --source aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr/
-    --target s3://ml-datasets/stable/aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr
+anemoi-datasets copy aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr/
+    s3://ml-datasets/stable/aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr
+
 zinfo https://object-store.os-api.cci1.ecmwf.int/
     ml-datasets/stable/aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr
 """

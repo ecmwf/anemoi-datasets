@@ -284,6 +284,7 @@ class InitialiseLoader(Loader):
         metadata["variables_with_nans"] = variables_with_nans
         metadata["resolution"] = resolution
         metadata["field_shape"] = self.minimal_input.field_shape
+        metadata["proj_string"] = self.minimal_input.proj_string
 
         metadata["licence"] = self.main_config["licence"]
         metadata["copyright"] = self.main_config["copyright"]
