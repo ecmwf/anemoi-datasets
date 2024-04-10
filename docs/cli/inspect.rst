@@ -4,4 +4,4 @@
 
 .. code:: bash
 
-   anemoi-datasets inspect dataset.zarr
+   % anemoi-datasets inspect dataset.zarr
