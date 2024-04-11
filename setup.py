@@ -35,6 +35,7 @@ data_requires = [
     "pyyaml",
     "numpy",
     "tqdm",
+    "semantic-version",
 ]
 
 remote_requires = [
@@ -55,7 +56,6 @@ create_requires = [
     "climetlab",  # "earthkit-data"
     "earthkit-meteo",
     "pyproj",
-    "semantic-version",
     "ecmwflibs>=0.6.3",
 ]
 
