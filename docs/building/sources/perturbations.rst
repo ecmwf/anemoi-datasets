@@ -28,17 +28,17 @@ using the alternative fomula :
 The current implementation consider the following variables as
 `accumulated` variables:
 
-+-----+-----------------------------+-------------------------------------------------------+
-|     | Variable                    | Description                                           |
-+=====+=============================+=======================================================+
-| q   | Specific humidity           | [Link](https://codes.ecmwf.int/grib/param-db/?id=133) |
-+-----+-----------------------------+-------------------------------------------------------+
-| cp  | Convective precipitation    | [Link](https://codes.ecmwf.int/grib/param-db/?id=143) |
-+-----+-----------------------------+-------------------------------------------------------+
-| lsp | Large-scale precipitation   | [Link](https://codes.ecmwf.int/grib/param-db/?id=142) |
-+-----+-----------------------------+-------------------------------------------------------+
-| tp  | Total precipitation         | [Link](https://codes.ecmwf.int/grib/param-db/?id=228) |
-+-----+-----------------------------+-------------------------------------------------------+
++----------+------------------------------+
+| Variable | Description                  |
++==========+==============================+
+| q        | `Specific humidity`_         |
++----------+------------------------------+
+| cp       | `Convective precipitation`_  |
++----------+------------------------------+
+| lsp      | `Large-scale precipitation`_ |
++----------+------------------------------+
+| tp       | `Total precipitation`_       |
++----------+------------------------------+
 
 It uses the following arguments:
 
@@ -51,4 +51,12 @@ center
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml
 
+.. _convective precipitation: https://codes.ecmwf.int/grib/param-db/?id=143
+
 .. _ensemble forecasting: https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting
+
+.. _large-scale precipitation: https://codes.ecmwf.int/grib/param-db/?id=142
+
+.. _specific humidity: https://codes.ecmwf.int/grib/param-db/?id=133
+
+.. _total precipitation: https://codes.ecmwf.int/grib/param-db/?id=228
