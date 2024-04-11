@@ -18,6 +18,7 @@ data_sources:
     type: an
     stream: oper
 
-perturbations:
-  center: ${data_sources.center}
-  members: ${data_sources.members}
+input:
+  perturbations:
+    center: ${data_sources.center}
+    members: ${data_sources.members}

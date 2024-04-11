@@ -17,6 +17,29 @@ following formula:
 
    members_{new} = center + ( members - \overline{members} )
 
+Additionally, for the `accumulated` variables, positive clipping is
+performed to ensure that the final value of the variable is positive,
+using the alternative fomula :
+
+.. math::
+
+   members_{new} = max(0, center + ( members - \overline{members} ))
+
+The current implementation consider the following variables as
+`accumulated` variables:
+
++-----+-----------------------------+-------------------------------------------------------+
+|     | Variable                    | Description                                           |
++=====+=============================+=======================================================+
+| q   | Specific humidity           | [Link](https://codes.ecmwf.int/grib/param-db/?id=133) |
++-----+-----------------------------+-------------------------------------------------------+
+| cp  | Convective precipitation    | [Link](https://codes.ecmwf.int/grib/param-db/?id=143) |
++-----+-----------------------------+-------------------------------------------------------+
+| lsp | Large-scale precipitation   | [Link](https://codes.ecmwf.int/grib/param-db/?id=142) |
++-----+-----------------------------+-------------------------------------------------------+
+| tp  | Total precipitation         | [Link](https://codes.ecmwf.int/grib/param-db/?id=228) |
++-----+-----------------------------+-------------------------------------------------------+
+
 It uses the following arguments:
 
 ensembles
