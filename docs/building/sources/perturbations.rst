@@ -28,17 +28,17 @@ using the alternative fomula :
 The current implementation consider the following variables as
 `accumulated` variables:
 
-+-----+-----------------------------+-------------------------------------------------------+
-|     | Variable                    | Description                                           |
-+=====+=============================+=======================================================+
-| q   | Specific humidity           | [Link](https://codes.ecmwf.int/grib/param-db/?id=133) |
-+-----+-----------------------------+-------------------------------------------------------+
-| cp  | Convective precipitation    | [Link](https://codes.ecmwf.int/grib/param-db/?id=143) |
-+-----+-----------------------------+-------------------------------------------------------+
-| lsp | Large-scale precipitation   | [Link](https://codes.ecmwf.int/grib/param-db/?id=142) |
-+-----+-----------------------------+-------------------------------------------------------+
-| tp  | Total precipitation         | [Link](https://codes.ecmwf.int/grib/param-db/?id=228) |
-+-----+-----------------------------+-------------------------------------------------------+
++-----+-----------------------------+
+|     | Variable                    |
++=====+=============================+
+| q   | Specific humidity           |
++-----+-----------------------------+
+| cp  | Convective precipitation    |
++-----+-----------------------------+
+| lsp | Large-scale precipitation   |
++-----+-----------------------------+
+| tp  | Total precipitation         |
++-----+-----------------------------+
 
 It uses the following arguments:
 
