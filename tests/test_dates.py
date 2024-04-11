@@ -35,15 +35,15 @@ def default_end(*args, **kwargs):
     return default_statistics_dates(date_list(*args, **kwargs))[1]
 
 
-@pytest.mark.parametize("y", [2000, 2001, 2002, 2003, 2004, 2005, 1900, 2100])
-def test_default_statistics_dates(y=2000):
+@pytest.mark.parametrize("y", [2000, 2001, 2002, 2003, 2004, 2005, 1900, 2100])
+def test_default_statistics_dates(y):
     # >= 20 years
     assert default_end((y, 1, 1), (y + 19, 12, 23), 1) == datetime.datetime(y + 16, 12, 31, 23)
     assert default_end((y, 1, 1), (y + 20, 12, 23), 1) == datetime.datetime(y + 17, 12, 31, 23)
     assert default_end((y, 1, 1), (y + 19, 12, 23), 1) == datetime.datetime(y + 16, 12, 31, 23)
 
     # 19.51 years
-    assert default_end((y, 1, 1), (y + 19, 7, 3), 1) == datetime.datetime(y + 16, 12, 31, 23)
+    assert default_end((y, 1, 1), (y + 19, 7, 4), 1) == datetime.datetime(y + 16, 12, 31, 23)
     # 19.49 years
     assert default_end((y, 1, 1), (y + 19, 7, 2), 1) == datetime.datetime(y + 18, 12, 31, 23)
 
