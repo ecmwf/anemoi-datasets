@@ -17,16 +17,16 @@ following formula:
 
    members_{new} = center + ( members - \overline{members} )
 
-Additionally, for the `accumulated` variables, positive clipping is
-performed to ensure that the final value of the variable is positive,
-using the alternative fomula :
+Additionally, some variables must be non-negative to have a physical
+meaning (e.g. accumulated variables or `specific humidity`). To ensure
+this, positive clipping is performed using the alternative fomula :
 
 .. math::
 
    members_{new} = max(0, center + ( members - \overline{members} ))
 
-The current implementation consider the following variables as
-`accumulated` variables:
+The current implementation enforces that following variables are
+positive when using the `perturbations` function :
 
 +----------+------------------------------+
 | Variable | Description                  |
