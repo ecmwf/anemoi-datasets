@@ -20,7 +20,7 @@ def _lookup(top, paths, default):
     return default
 
 
-def simple_mapping(record, mapping, defaults={}):
+def record_to_display(record, mapping, defaults={}):
     display = dict(**record.get("display", {}))
     for k, v in mapping.items():
         display[k] = _lookup(record, v, defaults.get(k, "-"))
@@ -97,6 +97,7 @@ def create_catalogue_record(path):
         "uuid": z.attrs.get("uuid"),
         "metadata": z.attrs.asdict(),
         "display": {},
+        "statistics": ds.statistics,
     }
 
     display = record["display"]
@@ -121,43 +122,41 @@ def create_catalogue_record(path):
         "licence": "metadata.licence",
     }
 
-    display.update(simple_mapping(record, mapping))
+    display.update(record_to_display(record, mapping))
 
     display.update(build_forcing_and_variables(record))
 
-    # statistics
-    display["statistics"] = ds.statistics
     display["dtype"] = ds.dtype
     display["chunks"] = ds.chunks
 
     record = prepare_serialising_catalogue_record(record)
 
     # check
-    _ = prepare_deserialisation_catalogue_record(record)
+    _ = finish_deserialisation_catalogue_record(record)
     assert _["display"]["dtype"] == record["display"]["dtype"]
-    for k in record["display"]["statistics"]:
-        assert (_["display"]["statistics"][k] == record["display"]["statistics"][k]).all()
+    for k in record["statistics"]:
+        assert (_["statistics"][k] == record["statistics"][k]).all()
 
     return record
 
 
 def prepare_serialising_catalogue_record(record):
-    record = deepcopy(record)
+    new = deepcopy(record)
 
-    record["display"]["statistics"] = {k: v.tolist() for k, v in record["display"]["statistics"].items()}
-    record["display"]["dtype"] = str(record["display"]["dtype"])
+    new["statistics"] = {k: v.tolist() for k, v in record["statistics"].items()}
+    new["display"]["dtype"] = str(record["display"]["dtype"])
 
-    return record
+    return new
 
 
-def prepare_deserialisation_catalogue_record(record):
+def finish_deserialisation_catalogue_record(record):
     import numpy as np
 
-    record = deepcopy(record)
+    new = deepcopy(record)
 
-    record["display"]["statistics"] = {k: np.array(v) for k, v in record["display"]["statistics"].items()}
-    record["display"]["dtype"] = np.dtype(record["display"]["dtype"])
-    return record
+    new["statistics"] = {k: np.array(v) for k, v in record["statistics"].items()}
+    new["display"]["dtype"] = np.dtype(record["display"]["dtype"])
+    return new
 
 
 if __name__ == "__main__":
