@@ -27,6 +27,23 @@ except ImportError:
     import tomli as tomllib
 
 
+def add_named_dataset(name, path, **kwargs):
+    load_config()
+    if name in CONFIG["datasets"]["named"]:
+        raise ValueError(f"Dataset {name} already exists")
+
+    CONFIG["datasets"]["named"][name] = path
+
+
+def add_dataset_path(path):
+    load_config()
+
+    if path not in CONFIG["datasets"]["path"]:
+        CONFIG["datasets"]["path"].append(path)
+
+    # save_config()
+
+
 def load_config():
     global CONFIG
     if CONFIG is not None:

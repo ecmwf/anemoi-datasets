@@ -5,7 +5,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import json
 import logging
 import warnings
 from functools import cached_property
@@ -334,8 +333,6 @@ def zarr_lookup(name):
         return name
 
     config = load_config()["datasets"]
-
-    print(json.dumps(config, indent=2))
 
     if name in config["named"]:
         return config["named"][name]
