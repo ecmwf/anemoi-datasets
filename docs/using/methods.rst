@@ -33,8 +33,9 @@ __getitem__(key)
             ds[0:10:2]
             ds[0, 1, :]
 
-      The data returned is a NumPy array. Please note that Zarr will load
-      the entire dataset into memory if you use a syntax like ``ds[:]``.
+      The data returned is a NumPy array. Please note that Zarr will
+      load the entire dataset into memory if you use a syntax like
+      ``ds[:]``.
 
 metadata()
    Return the dataset's metadata.

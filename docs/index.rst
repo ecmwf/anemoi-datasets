@@ -45,6 +45,7 @@ datasets <building-introduction>`.
 -  :doc:`using/statistics`
 -  :doc:`using/other`
 -  :doc:`using/matching`
+-  :doc:`using/miscellaneous`
 -  :doc:`using/configuration`
 
 .. toctree::
@@ -62,6 +63,7 @@ datasets <building-introduction>`.
    using/statistics
    using/other
    using/matching
+   using/miscellaneous
    using/configuration
 
 **Building training datasets**

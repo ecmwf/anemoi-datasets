@@ -5,9 +5,9 @@
 ####################
 
 You can create "virtual" datasets by combining two or more datasets. The
-combination will behave exactly as if you had a single dataset with
-all the methods behaving as expected. The package will make sure that
-the data is loaded lazily from the original datasets.
+combination will behave exactly as if you had a single dataset with all
+the methods behaving as expected. The package will make sure that the
+data is loaded lazily from the original datasets.
 
 .. warning::
 
@@ -120,10 +120,10 @@ All the grid points are concatenated, in the order they are given. The
 .. literalinclude:: code/cutout_.py
 
 The `cutout` combination only supports two datasets. The first dataset
-is considered to be a limited area model (LAM), while the second one
-is considered to be a global model or boundary conditions. It is
-therefore expected that the bounding box of the first dataset is
-contained within the bounding box of the second dataset.
+is considered to be a limited area model (LAM), while the second one is
+considered to be a global model or boundary conditions. It is therefore
+expected that the bounding box of the first dataset is contained within
+the bounding box of the second dataset.
 
 The image below shows the global dataset:
 
@@ -140,7 +140,8 @@ The image below shows the LAM dataset:
    :alt: Cutout
 
 A 'cutout' is performed by removing the grid points from the global
-dataset that are contained in the LAM dataset. The result is shown below:
+dataset that are contained in the LAM dataset. The result is shown
+below:
 
 .. image:: images/cutout-3.png
    :width: 75%

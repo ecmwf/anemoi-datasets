@@ -9,10 +9,16 @@ import logging
 
 from .misc import _open_dataset
 from .misc import add_dataset_path
+from .misc import add_named_dataset
 
 LOG = logging.getLogger(__name__)
 
-__all__ = ["open_dataset", "MissingDateError", "add_dataset_path"]
+__all__ = [
+    "open_dataset",
+    "MissingDateError",
+    "add_dataset_path",
+    "add_named_dataset",
+]
 
 
 class MissingDateError(Exception):

@@ -7,8 +7,14 @@
 
 from .data import MissingDateError
 from .data import add_dataset_path
+from .data import add_named_dataset
 from .data import open_dataset
 
 __version__ = "0.1.0"
 
-__all__ = ["open_dataset", "MissingDateError", "add_dataset_path"]
+__all__ = [
+    "open_dataset",
+    "MissingDateError",
+    "add_dataset_path",
+    "add_named_dataset",
+]

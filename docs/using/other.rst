@@ -19,8 +19,8 @@ dataset.
 .. literalinclude:: code/zip1_.py
    :language: python
 
-This operation is similar to Python's :py:func:`zip` function, but
-it returns tuples of the selected indices instead of the values:
+This operation is similar to Python's :py:func:`zip` function, but it
+returns tuples of the selected indices instead of the values:
 
 .. literalinclude:: code/zip2_.py
    :language: python

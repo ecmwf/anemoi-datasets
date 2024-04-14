@@ -14,8 +14,8 @@ In that case, the *Anemoi* configuration is read from
 .. literalinclude:: configuration.toml
    :language: toml
 
-Then, the name passed to ``open_dataset`` is used to look for a
-possible path or URL:
+Then, the name passed to ``open_dataset`` is used to look for a possible
+path or URL:
 
 -  If the name is listed in the ``[datasets.named]``, the corresponding
    path is used
