@@ -22,6 +22,5 @@ path or URL:
 -  Otherwise suffix ``.zarr`` is added to the name and the file is
    searched at every location listed in the ``path`` list.
 
-You can also modify the list of named datasets and the path temporarily
-by setting using the :ref:`add_named_dataset` and
-:ref:`add_dataset_path` respectively.
+See :ref:`miscellaneous` to modify the list of named datasets and the
+path temporarily.

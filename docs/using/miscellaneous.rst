@@ -5,8 +5,8 @@
 #########################
 
 The two functions below can be used modify temporarily the
-:ref:`configuration` so that the packages can find named datasets at
-given locations.
+:ref:`configuration <configuration>` so that the packages can find named
+datasets at given locations.
 
 .. _add_dataset_path:
 
