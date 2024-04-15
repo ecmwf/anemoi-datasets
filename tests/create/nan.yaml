@@ -15,4 +15,4 @@ input:
 
 statistics:
   end: 2020
-  has_nans: [sst]
+  allow_nans: [sst]
