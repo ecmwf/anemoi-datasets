@@ -30,7 +30,7 @@ assert version
 
 
 data_requires = [
-    "anemoi-utils",
+    "anemoi-utils[provenance]",
     "zarr",
     "pyyaml",
     "numpy",
