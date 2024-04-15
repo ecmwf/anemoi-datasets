@@ -178,7 +178,6 @@ def as_last_date(d, dates):
 
 def _concat_or_join(datasets, kwargs):
 
-    print(f"{kwargs=}")
     if "adjust" in kwargs:
         raise ValueError("Cannot use 'adjust' without specifying 'concat' or 'join'")
     datasets, kwargs = _auto_adjust(datasets, kwargs)
@@ -238,7 +237,7 @@ def _open(a):
     if isinstance(a, (list, tuple)):
         return _open_dataset(*a)
 
-    raise NotImplementedError()
+    raise NotImplementedError("Unsupported argument: " + type(a))
 
 
 def _auto_adjust(datasets, kwargs):

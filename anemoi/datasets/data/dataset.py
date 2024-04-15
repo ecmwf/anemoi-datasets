@@ -219,3 +219,6 @@ class Dataset:
         # for n in ('metadata_specific', 'tree', 'source'):
         #     if n not in overriden:
         #         warnings.warn(f"Method {n} is not overriden in {ds.__class__.__name__}")
+
+    def _repr_html_(self):
+        return self.tree().html()

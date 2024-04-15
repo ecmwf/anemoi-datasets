@@ -92,6 +92,61 @@ class Node:
         digraph.append("}")
         return "\n".join(digraph)
 
+    def _html(self, indent, rows):
+
+        kwargs = {}
+
+        for k, v in self.kwargs.items():
+            if k == "path" and isinstance(v, str):
+                v = v[::-1]
+            if isinstance(v, (list, tuple)):
+                v = ", ".join(str(i) for i in v)
+            else:
+                v = str(v)
+            v = textwrap.shorten(v, width=80, placeholder="...")
+            if k == "path":
+                v = v[::-1]
+            kwargs[k] = v
+        label = self.dataset.__class__.__name__.lower()
+        label = f'<span class="dataset">{label}</span>'
+        if len(kwargs) == 1:
+            k, v = list(kwargs.items())[0]
+            rows.append([indent] + [label, v])
+        else:
+            rows.append([indent] + [label])
+
+            for k, v in kwargs.items():
+                rows.append([indent] + [k, v])
+
+        for kid in self.kids:
+            kid._html(indent + "&nbsp;&nbsp;&nbsp;", rows)
+
+    def html(self):
+        result = [
+            """
+<style>
+table.dataset td {
+    vertical-align: top;
+    text-align: left !important;
+}
+span.dataset {
+    font-weight: bold !important;
+}
+</style>
+                  """
+        ]
+        result.append('<table class="dataset">')
+        rows = []
+
+        self._html("", rows)
+
+        for r in rows:
+            s = " ".join(str(x) for x in r)
+            result.append(f"<tr><td>{s}</td></tr>")
+
+        result.append("</table>")
+        return "\n".join(result)
+
 
 class Source:
     """Class used to follow the provenance of a data point."""
