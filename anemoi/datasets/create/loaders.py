@@ -155,7 +155,7 @@ class Loader:
         self.missing_dates = [np.datetime64(d) for d in self.missing_dates]
 
     def allow_nan(self, name):
-        return name in self.main_config.get("has_nans", [])
+        return name in self.main_config.statistics.get("has_nans", [])
 
     @cached_property
     def registry(self):
@@ -237,7 +237,7 @@ class InitialiseLoader(Loader):
         variables = self.minimal_input.variables
         self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
 
-        variables_with_nans = self.main_config.get("has_nans", [])
+        variables_with_nans = self.main_config.statistics.get("has_nans", [])
 
         ensembles = self.minimal_input.ensembles
         self.print(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")

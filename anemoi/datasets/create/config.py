@@ -166,6 +166,8 @@ class LoadersConfig(Config):
         if "statistics_end" in self.output:
             raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
 
+        self.setdefault("statistics", Config())
+
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)
 

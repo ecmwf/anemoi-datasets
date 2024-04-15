@@ -13,8 +13,6 @@ input:
     stream: oper
     type: an
 
-#allow_nans: True
-has_nans: [sst]
-
 statistics:
   end: 2020
+  has_nans: [sst]
