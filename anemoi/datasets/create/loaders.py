@@ -287,7 +287,7 @@ class InitialiseLoader(Loader):
         metadata["proj_string"] = self.minimal_input.proj_string
 
         metadata["licence"] = self.main_config["licence"]
-        metadata["copyright"] = self.main_config["copyright"]
+        metadata["attribution"] = self.main_config["attribution"]
 
         metadata["frequency"] = frequency
         metadata["start_date"] = dates[0].isoformat()

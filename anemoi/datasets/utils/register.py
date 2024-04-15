@@ -118,7 +118,7 @@ def create_catalogue_record(path):
         "frequency": "metadata.frequency",
         "statistics_start_date": "metadata.statistics_start_date",
         "statistics_end_date": "metadata.statistics_end_date",
-        "owner": "metadata.copyright",
+        "attribution": "metadata.attribution",
         "licence": "metadata.licence",
     }
 

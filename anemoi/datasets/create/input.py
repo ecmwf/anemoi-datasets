@@ -191,7 +191,7 @@ class Coords:
         self._resolution = first_field.resolution
         self._grid_values = grid_values
         self._field_shape = first_field.shape
-        self._proj_string = first_field.proj_string
+        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
     @cached_property
     def variables(self):

@@ -18,8 +18,7 @@ import socket
 from collections import defaultdict
 
 import numpy as np
-
-from anemoi.datasets.provenance import gather_provenance_info
+from anemoi.utils.provenance import gather_provenance_info
 
 from .check import StatisticsValueError
 from .check import check_data_values
