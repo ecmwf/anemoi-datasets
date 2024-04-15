@@ -338,8 +338,8 @@ class InitialiseLoader(Loader):
         self.registry.add_to_history("statistics_registry_initialised", version=self.statistics_registry.version)
 
         statistics_start, statistics_end = self.build_statistics_dates(
-            self.main_config.output.get("statistics_start"),
-            self.main_config.output.get("statistics_end"),
+            self.main_config.statistics.get("start"),
+            self.main_config.statistics.get("end"),
         )
         self.update_metadata(
             statistics_start_date=statistics_start,

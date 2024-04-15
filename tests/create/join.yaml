@@ -37,9 +37,7 @@ input:
         param:
           - cos_latitude
 
-output:
-  order_by: [valid_datetime, param_level, number]
-  remapping:
-    param_level: "{param}_{levelist}"
-  statistics: param_level
-  statistics_end: 2021
+naming_scheme: "{param}_{levelist}{level_units}_{accumultion_period}"
+
+statistics:
+  end: 2021

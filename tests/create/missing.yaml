@@ -28,9 +28,5 @@ input:
       - cos_latitude
       #- sin_latitude
 
-output:
-  order_by: [valid_datetime, param_level, number]
-  remapping:
-    param_level: "{param}_{levelist}"
-  statistics: param_level
-  statistics_end: 2021-01-02
+statistics:
+  end: 2021-01-02

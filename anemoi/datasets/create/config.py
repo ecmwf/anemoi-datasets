@@ -161,6 +161,11 @@ class LoadersConfig(Config):
         self.output.setdefault("chunking", Config(dates=1, ensembles=1))
         self.output.setdefault("dtype", "float32")
 
+        if "statistics_start" in self.output:
+            raise ValueError("statistics_start is not supported anymore. Use 'statistics:start:' instead")
+        if "statistics_end" in self.output:
+            raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
+
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)
 

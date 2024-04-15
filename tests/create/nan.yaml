@@ -16,9 +16,5 @@ input:
 #allow_nans: True
 has_nans: [sst]
 
-output:
-  order_by: [valid_datetime, param_level, number]
-  remapping:
-    param_level: "{param}_{levelist}"
-  statistics: param_level
-  statistics_end: 2020
+statistics:
+  end: 2020

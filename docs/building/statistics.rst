@@ -17,14 +17,14 @@ algorithm:
    -  If the dataset covers 10 years or more, the last year is excluded.
    -  Otherwise, 80% of the dataset is used.
 
-You can override this behaviour by setting the `statistics_start` and
-`statistics_end` parameters.
+You can override this behaviour by setting the `start` and `end`
+parameters in the `statistics` config.
 
 .. code:: yaml
 
-   output:
-       statistics_start: 2000
-       statistics_end: 2020
+   statistics:
+       start: 2000
+       end: 2020
 
 ..
    TODO: List the statistics that are computed
