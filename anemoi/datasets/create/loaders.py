@@ -17,7 +17,7 @@ import zarr
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
-from anemoi.datasets.utils.dates.groups import Groups
+from anemoi.datasets.dates.groups import Groups
 
 from .check import DatasetName
 from .check import check_data_values

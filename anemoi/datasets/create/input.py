@@ -19,7 +19,7 @@ import numpy as np
 from climetlab.core.order import build_remapping
 from climetlab.indexing.fieldset import FieldSet
 
-from anemoi.datasets.utils.dates import Dates
+from anemoi.datasets.dates import Dates
 
 from .template import Context
 from .template import notify_result
