@@ -79,6 +79,7 @@ def compute_statistics(array, check_variables_names=None, allow_nan=False):
     squares = np.zeros(stats_shape, dtype=np.float64)
     minimum = np.zeros(stats_shape, dtype=np.float64)
     maximum = np.zeros(stats_shape, dtype=np.float64)
+    has_nans = np.zeros(stats_shape, dtype=np.bool_)
 
     for i, chunk in enumerate(array):
         values = chunk.reshape((nvars, -1))
@@ -95,6 +96,7 @@ def compute_statistics(array, check_variables_names=None, allow_nan=False):
         sums[i] = np.nansum(values, axis=1)
         squares[i] = np.nansum(values * values, axis=1)
         count[i] = np.sum(~np.isnan(values), axis=1)
+        has_nans[i] = np.isnan(values).any()
 
     return {
         "minimum": minimum,
@@ -102,6 +104,7 @@ def compute_statistics(array, check_variables_names=None, allow_nan=False):
         "sums": sums,
         "squares": squares,
         "count": count,
+        "has_nans": has_nans,
     }
 
 
@@ -173,7 +176,7 @@ def normalise_dates(dates):
 
 
 class StatAggregator:
-    NAMES = ["minimum", "maximum", "sums", "squares", "count"]
+    NAMES = ["minimum", "maximum", "sums", "squares", "count", "has_nans"]
 
     def __init__(self, owner, dates, variables_names, allow_nan):
         dates = sorted(dates)
@@ -192,6 +195,7 @@ class StatAggregator:
         self.sums = np.full(self.shape, np.nan, dtype=np.float64)
         self.squares = np.full(self.shape, np.nan, dtype=np.float64)
         self.count = np.full(self.shape, -1, dtype=np.int64)
+        self.has_nans = np.full(self.shape, False, dtype=np.bool_)
 
         self._read()
 
@@ -263,6 +267,7 @@ class StatAggregator:
         sums = np.nansum(self.sums, axis=0)
         squares = np.nansum(self.squares, axis=0)
         count = np.nansum(self.count, axis=0)
+        has_nans = np.any(self.has_nans, axis=0)
         mean = sums / count
 
         assert sums.shape == count.shape == squares.shape == mean.shape == minimum.shape == maximum.shape
@@ -293,11 +298,12 @@ class StatAggregator:
             squares=squares,
             stdev=stdev,
             variables_names=self.variables_names,
+            has_nans=has_nans,
         )
 
 
 class Statistics(dict):
-    STATS_NAMES = ["minimum", "maximum", "mean", "stdev"]  # order matter for __str__.
+    STATS_NAMES = ["minimum", "maximum", "mean", "stdev", "has_nans"]  # order matter for __str__.
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -316,6 +322,9 @@ class Statistics(dict):
             if k == "count":
                 assert (v >= 0).all(), (k, v)
                 assert v.dtype == np.int64, (k, v)
+                continue
+            if k == "has_nans":
+                assert v.dtype == np.bool_, (k, v)
                 continue
             if k == "stdev":
                 assert (v >= 0).all(), (k, v)

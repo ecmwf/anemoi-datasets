@@ -566,7 +566,7 @@ class StatisticsLoader(Loader):
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writting statistics into dataset.")
 
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count"]:
+        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             self._add_dataset(name=k, array=stats[k])
 
         self.registry.add_to_history("compute_statistics_end")
