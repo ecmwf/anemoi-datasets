@@ -149,12 +149,7 @@ class LoadersConfig(Config):
         self.setdefault("dataset_status", "experimental")
         self.setdefault("description", "No description provided.")
         self.setdefault("licence", "unknown")
-        self.setdefault("copyright", "licence")
-
-        if "licence" not in self:
-            self.licence = "unknown"
-        if "copyright" not in self:
-            self.copyright = "unknown"
+        self.setdefault("attribution", "unknown")
 
         self.setdefault("build", Config())
         self.build.setdefault("group_by", "monthly")
