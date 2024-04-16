@@ -1,4 +1,4 @@
-.. _anemoi-datasets:
+.. _index-page:
 
 ####################################
  Welcome to Anemoi's documentation!
