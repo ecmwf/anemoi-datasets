@@ -10,9 +10,6 @@ dates:
   frequency: 12h
   missing: ['2020-12-30 12:00:00', '2021-01-03 00:00:00']
 
-options:
-  group_by: monthly
-
 data_sources:
   - mars:
       <<: *mars_request

@@ -200,7 +200,6 @@ class InitialiseLoader(Loader):
 
         LOG.info(self.main_config.dates)
         self.groups = Groups(**self.main_config.dates)
-        LOG.info("✅ GROUPS")
 
         self.output = build_output(self.main_config.output, parent=self)
         self.input = self.build_input()
@@ -209,9 +208,8 @@ class InitialiseLoader(Loader):
         all_dates = self.groups.dates
         self.minimal_input = self.input.select([all_dates[0]])
 
-        LOG.info("✅ GROUPS")
         LOG.info(self.groups)
-        LOG.info("✅ MINIMAL INPUT")
+        LOG.info("MINIMAL INPUT :")
         LOG.info(self.minimal_input)
 
     def initialise(self, check_name=True):
@@ -219,11 +217,8 @@ class InitialiseLoader(Loader):
 
         self.print("Config loaded ok:")
         LOG.info(self.main_config)
-        LOG.info("-------------------------")
 
         dates = self.groups.dates
-        LOG.info("-------------------------")
-
         frequency = dates.frequency
         assert isinstance(frequency, int), frequency
 
@@ -232,7 +227,6 @@ class InitialiseLoader(Loader):
         LOG.info(f"Missing dates: {len(dates.missing)}")
         lengths = [len(g) for g in self.groups]
         self.print(f"Found {len(dates)} datetimes {'+'.join([str(_) for _ in lengths])}.")
-        LOG.info("-------------------------")
 
         variables = self.minimal_input.variables
         self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
@@ -244,18 +238,15 @@ class InitialiseLoader(Loader):
 
         grid_points = self.minimal_input.grid_points
         LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
-        LOG.info("-------------------------")
 
         resolution = self.minimal_input.resolution
         LOG.info(f"{resolution=}")
 
-        LOG.info("-------------------------")
         coords = self.minimal_input.coords
         coords["dates"] = dates
         total_shape = self.minimal_input.shape
         total_shape[0] = len(dates)
         self.print(f"total_shape = {total_shape}")
-        LOG.info("-------------------------")
 
         chunks = self.output.get_chunking(coords)
         LOG.info(f"{chunks=}")

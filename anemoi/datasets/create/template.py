@@ -8,6 +8,7 @@
 #
 
 import logging
+import os
 import re
 import textwrap
 from functools import wraps
@@ -22,6 +23,8 @@ def step(action_path):
 
 
 def trace(emoji, *args):
+    if os.environ.get("ANEMOI_DATASET_TRACE_CREATE") is None:
+        return
     print(emoji, " " * TRACE_INDENT, *args)
 
 

@@ -34,7 +34,6 @@ common:
 
 dates:
   <<: *dates_anchor
-  group_by: monthly
 
 input:
   dates:
