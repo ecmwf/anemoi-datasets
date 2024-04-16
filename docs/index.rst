@@ -1,3 +1,5 @@
+.. _anemoi-datasets:
+
 ####################################
  Welcome to Anemoi's documentation!
 ####################################
