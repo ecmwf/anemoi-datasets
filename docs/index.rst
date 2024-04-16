@@ -109,6 +109,16 @@ datasets <building-introduction>`.
    cli/compare
    cli/copy
 
+*****************
+ Anemoi packages
+*****************
+
+-  :ref:`anemoi-utils <anemoi-utils:index-page>`
+-  :ref:`anemoi-datasets <anemoi-datasets:index-page>`
+-  :ref:`anemoi-models <anemoi-models:index-page>`
+-  :ref:`anemoi-training <anemoi-training:index-page>`
+-  :ref:`anemoi-inference <anemoi-inference:index-page>`
+
 *********
  License
 *********
