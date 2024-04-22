@@ -264,9 +264,6 @@ def compute_accumulations(
     if not isinstance(param, (list, tuple)):
         param = [param]
 
-    for p in param:
-        assert p in ["cp", "lsp", "tp", "sf", "lsf", "csf"], p
-
     number = request.get("number", [0])
     assert isinstance(number, (list, tuple))
 

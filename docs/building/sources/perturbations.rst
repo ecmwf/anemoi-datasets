@@ -42,7 +42,7 @@ positive when using the `perturbations` function :
 
 It uses the following arguments:
 
-ensembles
+members
    A :ref:`reference <yaml-reference>` to the ensemble members.
 
 center
