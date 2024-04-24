@@ -1,5 +1,5 @@
 data_sources:
-  members:
+  members_source:
     class: ea
     expver: "0001"
     grid: 20.0/20.0
@@ -9,7 +9,7 @@ data_sources:
     stream: enda
     number: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-  center:
+  center_source:
     class: ea
     expver: "0001"
     grid: 20.0/20.0
@@ -20,5 +20,5 @@ data_sources:
 
 input:
   perturbations:
-    center: ${data_sources.center}
-    members: ${data_sources.members}
+    center: ${data_sources.center_source}
+    members: ${data_sources.members_source}

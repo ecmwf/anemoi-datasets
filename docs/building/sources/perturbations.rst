@@ -51,6 +51,11 @@ center
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml
 
+In this example, the `perturbations` function is applied using two
+:ref:`references <yaml-reference>` : The strings `members_source` and
+`center_source` are arbitrary keys that are used to reference the
+elements in `data_sources`.
+
 .. _convective precipitation: https://codes.ecmwf.int/grib/param-db/?id=143
 
 .. _ensemble forecasting: https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting
