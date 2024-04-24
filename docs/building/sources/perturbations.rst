@@ -48,13 +48,10 @@ members
 center
    A :ref:`reference <yaml-reference>` to the new center requested.
 
+Examples
+
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml
-
-In this example, the `perturbations` function is applied using two
-:ref:`references <yaml-reference>` : The strings `members_source` and
-`center_source` are arbitrary keys that are used to reference the
-elements in `data_sources`.
 
 .. _convective precipitation: https://codes.ecmwf.int/grib/param-db/?id=143
 
