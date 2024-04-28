@@ -42,11 +42,13 @@ positive when using the `perturbations` function :
 
 It uses the following arguments:
 
-ensembles
+members
    A :ref:`reference <yaml-reference>` to the ensemble members.
 
 center
    A :ref:`reference <yaml-reference>` to the new center requested.
+
+Examples
 
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml

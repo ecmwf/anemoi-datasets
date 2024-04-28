@@ -51,14 +51,18 @@ def default_statistics_dates(dates):
     Returns:
         tuple: A tuple containing the default start and end dates.
     """
+
+    def to_datetime(d):
+        if isinstance(d, np.datetime64):
+            return d.tolist()
+        assert isinstance(d, datetime.datetime), d
+        return d
+
     first = dates[0]
     last = dates[-1]
-    if isinstance(first, np.datetime64):
-        first = first.tolist()
-    if isinstance(last, np.datetime64):
-        last = last.tolist()
-    assert isinstance(first, datetime.datetime), first
-    assert isinstance(last, datetime.datetime), last
+
+    first = to_datetime(first)
+    last = to_datetime(last)
 
     n_years = round((last - first).total_seconds() / (365.25 * 24 * 60 * 60))
 
@@ -74,7 +78,8 @@ def default_statistics_dates(dates):
         delta = 3
     LOG.info(f"Number of years {n_years}, leaving out {delta} years.")
     end_year = last.year - delta
-    end = max(d for d in dates if d.year == end_year)
+
+    end = max(d for d in dates if to_datetime(d).year == end_year)
     return dates[0], end
 
 
