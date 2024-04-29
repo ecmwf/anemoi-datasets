@@ -149,12 +149,7 @@ class LoadersConfig(Config):
         self.setdefault("dataset_status", "experimental")
         self.setdefault("description", "No description provided.")
         self.setdefault("licence", "unknown")
-        self.setdefault("copyright", "licence")
-
-        if "licence" not in self:
-            self.licence = "unknown"
-        if "copyright" not in self:
-            self.copyright = "unknown"
+        self.setdefault("attribution", "unknown")
 
         self.setdefault("build", Config())
         self.build.setdefault("group_by", "monthly")
@@ -165,6 +160,13 @@ class LoadersConfig(Config):
         self.output.setdefault("statistics", "param_level")
         self.output.setdefault("chunking", Config(dates=1, ensembles=1))
         self.output.setdefault("dtype", "float32")
+
+        if "statistics_start" in self.output:
+            raise ValueError("statistics_start is not supported anymore. Use 'statistics:start:' instead")
+        if "statistics_end" in self.output:
+            raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
+
+        self.setdefault("statistics", Config())
 
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)

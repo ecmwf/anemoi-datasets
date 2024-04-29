@@ -30,11 +30,12 @@ assert version
 
 
 data_requires = [
-    "tomli",  # Only needed before 3.11
+    "anemoi-utils[provenance]",
     "zarr",
     "pyyaml",
     "numpy",
     "tqdm",
+    "semantic-version",
 ]
 
 remote_requires = [
@@ -43,10 +44,6 @@ remote_requires = [
     "s3fs",  # prepml copy only
 ]
 
-provenance_requires = [
-    "GitPython",
-    "nvsmi",
-]
 
 create_requires = [
     "zarr",
@@ -55,12 +52,11 @@ create_requires = [
     "climetlab",  # "earthkit-data"
     "earthkit-meteo",
     "pyproj",
-    "semantic-version",
     "ecmwflibs>=0.6.3",
 ]
 
 
-all_requires = data_requires + provenance_requires + create_requires + remote_requires
+all_requires = data_requires + create_requires + remote_requires
 dev_requires = ["sphinx", "sphinx_rtd_theme", "nbsphinx", "pandoc"] + all_requires
 
 setuptools.setup(
@@ -79,7 +75,6 @@ setuptools.setup(
     extras_require={
         "data": [],
         "remote": data_requires + remote_requires,
-        "provenance": provenance_requires,
         "create": create_requires,
         "dev": dev_requires,
         "all": all_requires,

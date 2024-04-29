@@ -10,9 +10,6 @@ dates:
   frequency: 12h
   missing: ['2020-12-30 12:00:00', '2021-01-03 00:00:00']
 
-options:
-  group_by: monthly
-
 data_sources:
   - mars:
       <<: *mars_request
@@ -28,9 +25,5 @@ input:
       - cos_latitude
       #- sin_latitude
 
-output:
-  order_by: [valid_datetime, param_level, number]
-  remapping:
-    param_level: "{param}_{levelist}"
-  statistics: param_level
-  statistics_end: 2021-01-02
+statistics:
+  end: 2021-01-02

@@ -4,8 +4,8 @@
  Subsetting datasets
 #####################
 
-Subsetting is the action of filtering the dataset by it's first dimension
-(dates).
+Subsetting is the action of filtering the dataset by it's first
+dimension (dates).
 
 .. _start:
 
@@ -13,8 +13,8 @@ Subsetting is the action of filtering the dataset by it's first dimension
  start
 *******
 
-This option lets you subset the dataset by time. You can pass a date or a
-string:
+This option lets you subset the dataset by time. You can pass a date or
+a string:
 
 .. literalinclude:: code/start_.py
 

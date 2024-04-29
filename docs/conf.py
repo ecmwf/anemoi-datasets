@@ -71,6 +71,26 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "'**.ipynb_checkpoints'"
 
 intersphinx_mapping = {
     "python": ("https://python.readthedocs.io/en/latest", None),
+    "anemoi-utils": (
+        "https://anemoi-utils.readthedocs.io/en/latest/",
+        ("../../anemoi-utils/docs/_build/html/objects.inv", None),
+    ),
+    "anemoi-datasets": (
+        "https://anemoi-datasets.readthedocs.io/en/latest/",
+        ("../../anemoi-datasets/docs/_build/html/objects.inv", None),
+    ),
+    "anemoi-models": (
+        "https://anemoi-models.readthedocs.io/en/latest/",
+        ("../../anemoi-models/docs/_build/html/objects.inv", None),
+    ),
+    "anemoi-training": (
+        "https://anemoi-training.readthedocs.io/en/latest/",
+        ("../../anemoi-training/docs/_build/html/objects.inv", None),
+    ),
+    "anemoi-inference": (
+        "https://anemoi-inference.readthedocs.io/en/latest/",
+        ("../../anemoi-inference/docs/_build/html/objects.inv", None),
+    ),
 }
 
 

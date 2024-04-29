@@ -8,7 +8,6 @@ dates:
   start: 2020-12-30 00:00:00
   end: 2021-01-03 12:00:00
   frequency: 12h
-  group_by: monthly
 
 data_sources:
   my_predefined_source:
@@ -25,9 +24,5 @@ input:
     param:
       - cos_latitude
 
-output:
-  order_by: [valid_datetime, param_level, number]
-  remapping:
-    param_level: "{param}_{levelist}"
-  statistics: param_level
-  statistics_end: 2021
+statistics:
+  end: 2021

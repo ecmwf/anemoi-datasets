@@ -15,15 +15,15 @@ from functools import cached_property
 import numpy as np
 import semantic_version
 import tqdm
+from anemoi.utils.humanize import bytes
+from anemoi.utils.humanize import number
+from anemoi.utils.humanize import when
+from anemoi.utils.text import dotted_line
+from anemoi.utils.text import progress
+from anemoi.utils.text import table
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
-from anemoi.datasets.utils.humanize import bytes
-from anemoi.datasets.utils.humanize import number
-from anemoi.datasets.utils.humanize import when
-from anemoi.datasets.utils.text import dotted_line
-from anemoi.datasets.utils.text import progress
-from anemoi.datasets.utils.text import table
 
 LOG = logging.getLogger(__name__)
 

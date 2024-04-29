@@ -19,7 +19,7 @@ import numpy as np
 from climetlab.core.order import build_remapping
 from climetlab.indexing.fieldset import FieldSet
 
-from anemoi.datasets.utils.dates import Dates
+from anemoi.datasets.dates import Dates
 
 from .template import Context
 from .template import notify_result
@@ -191,7 +191,7 @@ class Coords:
         self._resolution = first_field.resolution
         self._grid_values = grid_values
         self._field_shape = first_field.shape
-        self._proj_string = first_field.proj_string
+        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
     @cached_property
     def variables(self):

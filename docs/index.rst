@@ -1,3 +1,5 @@
+.. _index-page:
+
 ####################################
  Welcome to Anemoi's documentation!
 ####################################
@@ -45,6 +47,7 @@ datasets <building-introduction>`.
 -  :doc:`using/statistics`
 -  :doc:`using/other`
 -  :doc:`using/matching`
+-  :doc:`using/miscellaneous`
 -  :doc:`using/configuration`
 
 .. toctree::
@@ -62,6 +65,7 @@ datasets <building-introduction>`.
    using/statistics
    using/other
    using/matching
+   using/miscellaneous
    using/configuration
 
 **Building training datasets**
@@ -104,6 +108,16 @@ datasets <building-introduction>`.
    cli/inspect
    cli/compare
    cli/copy
+
+*****************
+ Anemoi packages
+*****************
+
+-  :ref:`anemoi-utils <anemoi-utils:index-page>`
+-  :ref:`anemoi-datasets <anemoi-datasets:index-page>`
+-  :ref:`anemoi-models <anemoi-models:index-page>`
+-  :ref:`anemoi-training <anemoi-training:index-page>`
+-  :ref:`anemoi-inference <anemoi-inference:index-page>`
 
 *********
  License

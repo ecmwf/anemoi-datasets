@@ -17,38 +17,48 @@ following formula:
 
    members_{new} = center + ( members - \overline{members} )
 
-Additionally, for the `accumulated` variables, positive clipping is
-performed to ensure that the final value of the variable is positive,
-using the alternative fomula :
+Additionally, some variables must be non-negative to have a physical
+meaning (e.g. accumulated variables or `specific humidity`). To ensure
+this, positive clipping is performed using the alternative fomula :
 
 .. math::
 
    members_{new} = max(0, center + ( members - \overline{members} ))
 
-The current implementation consider the following variables as
-`accumulated` variables:
+The current implementation enforces that following variables are
+positive when using the `perturbations` function :
 
-+-----+-----------------------------+-------------------------------------------------------+
-|     | Variable                    | Description                                           |
-+=====+=============================+=======================================================+
-| q   | Specific humidity           | [Link](https://codes.ecmwf.int/grib/param-db/?id=133) |
-+-----+-----------------------------+-------------------------------------------------------+
-| cp  | Convective precipitation    | [Link](https://codes.ecmwf.int/grib/param-db/?id=143) |
-+-----+-----------------------------+-------------------------------------------------------+
-| lsp | Large-scale precipitation   | [Link](https://codes.ecmwf.int/grib/param-db/?id=142) |
-+-----+-----------------------------+-------------------------------------------------------+
-| tp  | Total precipitation         | [Link](https://codes.ecmwf.int/grib/param-db/?id=228) |
-+-----+-----------------------------+-------------------------------------------------------+
++----------+------------------------------+
+| Variable | Description                  |
++==========+==============================+
+| q        | `Specific humidity`_         |
++----------+------------------------------+
+| cp       | `Convective precipitation`_  |
++----------+------------------------------+
+| lsp      | `Large-scale precipitation`_ |
++----------+------------------------------+
+| tp       | `Total precipitation`_       |
++----------+------------------------------+
 
 It uses the following arguments:
 
-ensembles
+members
    A :ref:`reference <yaml-reference>` to the ensemble members.
 
 center
    A :ref:`reference <yaml-reference>` to the new center requested.
 
+Examples
+
 .. literalinclude:: yaml/perturbations.yaml
    :language: yaml
 
+.. _convective precipitation: https://codes.ecmwf.int/grib/param-db/?id=143
+
 .. _ensemble forecasting: https://www.ecmwf.int/en/elibrary/75394-ensemble-forecasting
+
+.. _large-scale precipitation: https://codes.ecmwf.int/grib/param-db/?id=142
+
+.. _specific humidity: https://codes.ecmwf.int/grib/param-db/?id=133
+
+.. _total precipitation: https://codes.ecmwf.int/grib/param-db/?id=228

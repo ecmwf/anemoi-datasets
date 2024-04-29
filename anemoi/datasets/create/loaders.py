@@ -17,7 +17,7 @@ import zarr
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
-from anemoi.datasets.utils.dates.groups import Groups
+from anemoi.datasets.dates.groups import Groups
 
 from .check import DatasetName
 from .check import check_data_values
@@ -51,14 +51,18 @@ def default_statistics_dates(dates):
     Returns:
         tuple: A tuple containing the default start and end dates.
     """
+
+    def to_datetime(d):
+        if isinstance(d, np.datetime64):
+            return d.tolist()
+        assert isinstance(d, datetime.datetime), d
+        return d
+
     first = dates[0]
     last = dates[-1]
-    if isinstance(first, np.datetime64):
-        first = first.tolist()
-    if isinstance(last, np.datetime64):
-        last = last.tolist()
-    assert isinstance(first, datetime.datetime), first
-    assert isinstance(last, datetime.datetime), last
+
+    first = to_datetime(first)
+    last = to_datetime(last)
 
     n_years = round((last - first).total_seconds() / (365.25 * 24 * 60 * 60))
 
@@ -74,7 +78,8 @@ def default_statistics_dates(dates):
         delta = 3
     LOG.info(f"Number of years {n_years}, leaving out {delta} years.")
     end_year = last.year - delta
-    end = max(d for d in dates if d.year == end_year)
+
+    end = max(d for d in dates if to_datetime(d).year == end_year)
     return dates[0], end
 
 
@@ -155,7 +160,7 @@ class Loader:
         self.missing_dates = [np.datetime64(d) for d in self.missing_dates]
 
     def allow_nan(self, name):
-        return name in self.main_config.get("has_nans", [])
+        return name in self.main_config.statistics.get("allow_nans", [])
 
     @cached_property
     def registry(self):
@@ -200,7 +205,6 @@ class InitialiseLoader(Loader):
 
         LOG.info(self.main_config.dates)
         self.groups = Groups(**self.main_config.dates)
-        LOG.info("✅ GROUPS")
 
         self.output = build_output(self.main_config.output, parent=self)
         self.input = self.build_input()
@@ -209,9 +213,8 @@ class InitialiseLoader(Loader):
         all_dates = self.groups.dates
         self.minimal_input = self.input.select([all_dates[0]])
 
-        LOG.info("✅ GROUPS")
         LOG.info(self.groups)
-        LOG.info("✅ MINIMAL INPUT")
+        LOG.info("MINIMAL INPUT :")
         LOG.info(self.minimal_input)
 
     def initialise(self, check_name=True):
@@ -219,11 +222,8 @@ class InitialiseLoader(Loader):
 
         self.print("Config loaded ok:")
         LOG.info(self.main_config)
-        LOG.info("-------------------------")
 
         dates = self.groups.dates
-        LOG.info("-------------------------")
-
         frequency = dates.frequency
         assert isinstance(frequency, int), frequency
 
@@ -232,30 +232,26 @@ class InitialiseLoader(Loader):
         LOG.info(f"Missing dates: {len(dates.missing)}")
         lengths = [len(g) for g in self.groups]
         self.print(f"Found {len(dates)} datetimes {'+'.join([str(_) for _ in lengths])}.")
-        LOG.info("-------------------------")
 
         variables = self.minimal_input.variables
         self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
 
-        variables_with_nans = self.main_config.get("has_nans", [])
+        variables_with_nans = self.main_config.statistics.get("allow_nans", [])
 
         ensembles = self.minimal_input.ensembles
         self.print(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
 
         grid_points = self.minimal_input.grid_points
         LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
-        LOG.info("-------------------------")
 
         resolution = self.minimal_input.resolution
         LOG.info(f"{resolution=}")
 
-        LOG.info("-------------------------")
         coords = self.minimal_input.coords
         coords["dates"] = dates
         total_shape = self.minimal_input.shape
         total_shape[0] = len(dates)
         self.print(f"total_shape = {total_shape}")
-        LOG.info("-------------------------")
 
         chunks = self.output.get_chunking(coords)
         LOG.info(f"{chunks=}")
@@ -287,7 +283,7 @@ class InitialiseLoader(Loader):
         metadata["proj_string"] = self.minimal_input.proj_string
 
         metadata["licence"] = self.main_config["licence"]
-        metadata["copyright"] = self.main_config["copyright"]
+        metadata["attribution"] = self.main_config["attribution"]
 
         metadata["frequency"] = frequency
         metadata["start_date"] = dates[0].isoformat()
@@ -338,8 +334,8 @@ class InitialiseLoader(Loader):
         self.registry.add_to_history("statistics_registry_initialised", version=self.statistics_registry.version)
 
         statistics_start, statistics_end = self.build_statistics_dates(
-            self.main_config.output.get("statistics_start"),
-            self.main_config.output.get("statistics_end"),
+            self.main_config.statistics.get("start"),
+            self.main_config.statistics.get("end"),
         )
         self.update_metadata(
             statistics_start_date=statistics_start,
@@ -566,7 +562,7 @@ class StatisticsLoader(Loader):
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writting statistics into dataset.")
 
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count"]:
+        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             self._add_dataset(name=k, array=stats[k])
 
         self.registry.add_to_history("compute_statistics_end")

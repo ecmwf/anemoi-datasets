@@ -6,8 +6,15 @@
 # nor does it submit to any jurisdiction.
 
 from .data import MissingDateError
+from .data import add_dataset_path
+from .data import add_named_dataset
 from .data import open_dataset
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
-__all__ = ["open_dataset", "MissingDateError"]
+__all__ = [
+    "open_dataset",
+    "MissingDateError",
+    "add_dataset_path",
+    "add_named_dataset",
+]

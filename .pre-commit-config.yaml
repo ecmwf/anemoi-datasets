@@ -51,23 +51,23 @@ repos:
     - --exit-non-zero-on-fix
     - --preview
 
-- repo: https://github.com/thclark/pre-commit-sphinx
-  rev: 0.0.1
-  hooks:
-    - id: build-docs
-      additional_dependencies:
-        - sphinx
-        - sphinx_rtd_theme
-        - nbsphinx
-        - pandoc
-      args:
-        - --cache-dir
-        - docs/_build/doctrees
-        - --html-dir
-        - docs/_build/html
-        - --source-dir
-        - docs
-      language_version: python3
+# - repo: https://github.com/thclark/pre-commit-sphinx
+#   rev: 0.0.1
+#   hooks:
+#     - id: build-docs
+#       additional_dependencies:
+#         - sphinx
+#         - sphinx_rtd_theme
+#         - nbsphinx
+#         - pandoc
+#       args:
+#         - --cache-dir
+#         - docs/_build/doctrees
+#         - --html-dir
+#         - docs/_build/html
+#         - --source-dir
+#         - docs
+#       language_version: python3
 
 - repo: https://github.com/sphinx-contrib/sphinx-lint
   rev: v0.9.1
@@ -79,3 +79,9 @@ repos:
   rev: v0.0.14
   hooks:
     - id: rstfmt
+
+- repo: https://github.com/b8raoult/pre-commit-docconvert
+  rev: "0.1.0"
+  hooks:
+  - id: docconvert
+    args: ["-o", "numpy"]

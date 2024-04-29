@@ -8,8 +8,8 @@
 
 import itertools
 
-from anemoi.datasets.utils.dates import Dates
-from anemoi.datasets.utils.dates import no_time_zone
+from anemoi.datasets.dates import Dates
+from anemoi.datasets.dates import no_time_zone
 
 
 class Groups:
