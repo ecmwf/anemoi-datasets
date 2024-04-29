@@ -100,7 +100,12 @@ class Subset(Forwards):
 
     @cached_property
     def missing(self):
-        return {self.indices[i] for i in self.dataset.missing if i in self.indices}
+        missing = self.dataset.missing
+        result = set()
+        for j, i in enumerate(self.indices):
+            if i in missing:
+                result.add(j)
+        return result
 
     def tree(self):
         return Node(self, [self.dataset.tree()], **self.reason)
