@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 class Statistics(Forwards):
     def __init__(self, dataset, statistic):
         super().__init__(dataset)
-        self._statistic = open_dataset(statistic)
+        self._statistic = open_dataset(statistic, select=dataset.variables)
         # TODO: relax that check to allow for a subset of variables
         if dataset.variables != self._statistic.variables:
             raise ValueError(
