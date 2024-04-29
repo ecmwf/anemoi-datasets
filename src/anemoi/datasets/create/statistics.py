@@ -69,7 +69,7 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
 def compute_statistics(array, check_variables_names=None, allow_nan=False):
     nvars = array.shape[1]
 
-    LOG.info(f"Stats {nvars}, {array.shape}, {check_variables_names}")
+    LOG.info("Stats %s", (nvars, array.shape, check_variables_names))
     if check_variables_names:
         assert nvars == len(check_variables_names), (nvars, check_variables_names)
     stats_shape = (array.shape[0], nvars)
