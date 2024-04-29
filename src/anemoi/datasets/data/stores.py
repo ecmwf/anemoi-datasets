@@ -40,7 +40,8 @@ class ReadOnlyStore(zarr.storage.BaseStore):
 
 class HTTPStore(ReadOnlyStore):
     """We write our own HTTPStore because the one used by zarr (fsspec) does not play
-    well with fork() and multiprocessing."""
+    well with fork() and multiprocessing.
+    """
 
     def __init__(self, url):
         self.url = url
@@ -59,7 +60,8 @@ class HTTPStore(ReadOnlyStore):
 
 class S3Store(ReadOnlyStore):
     """We write our own S3Store because the one used by zarr (fsspec) does not play well
-    with fork() and multiprocessing."""
+    with fork() and multiprocessing.
+    """
 
     def __init__(self, url):
         import boto3

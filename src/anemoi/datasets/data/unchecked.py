@@ -131,9 +131,7 @@ class Zip(Unchecked):
 
 
 class Chain(ConcatMixin, Unchecked):
-    """
-    Same as Concat, but with no checks
-    """
+    """Same as Concat, but with no checks"""
 
     def __len__(self):
         return sum(len(d) for d in self.datasets)

@@ -31,8 +31,7 @@ def cache_context(dirname):
 
 
 def bytes(n):
-    """
-    >>> bytes(4096)
+    """>>> bytes(4096)
     '4 KiB'
     >>> bytes(4000)
     '3.9 KiB'

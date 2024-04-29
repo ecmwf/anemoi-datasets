@@ -124,9 +124,7 @@ def cutout_mask(
     min_distance_km=None,
     plot=None,
 ):
-    """
-    Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]
-    """
+    """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
     from scipy.spatial import KDTree
 
     # TODO: transform min_distance from lat/lon to xyz
@@ -235,9 +233,7 @@ def thinning_mask(
     global_lons,
     cropping_distance=2.0,
 ):
-    """
-    Return the list of points in [lats, lons] closest to [global_lats, global_lons]
-    """
+    """Return the list of points in [lats, lons] closest to [global_lats, global_lons]"""
     from scipy.spatial import KDTree
 
     assert global_lats.ndim == 1

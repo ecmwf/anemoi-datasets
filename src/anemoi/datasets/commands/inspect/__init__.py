@@ -9,9 +9,9 @@
 import os
 
 from .. import Command
+from .zarr import InspectZarr
 
 # from .checkpoint import InspectCheckpoint
-from .zarr import InspectZarr
 
 
 class Inspect(Command, InspectZarr):

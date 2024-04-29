@@ -42,8 +42,7 @@ VERSION = "0.20"
 
 
 def default_statistics_dates(dates):
-    """
-    Calculate default statistics dates based on the given list of dates.
+    """Calculate default statistics dates based on the given list of dates.
 
     Args:
         dates (list): List of datetime objects representing dates.

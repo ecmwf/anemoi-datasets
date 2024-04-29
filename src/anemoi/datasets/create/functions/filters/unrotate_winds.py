@@ -78,9 +78,7 @@ class NewDataField:
 
 
 def execute(context, input, u, v):
-    """
-    Unrotate the wind components of a GRIB file.
-    """
+    """Unrotate the wind components of a GRIB file."""
     result = FieldArray()
 
     wind_params = (u, v)

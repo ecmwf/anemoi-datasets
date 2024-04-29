@@ -13,9 +13,7 @@ from climetlab.indexing.fieldset import FieldArray
 
 
 def rotate_winds(lats, lons, x_wind, y_wind, source_projection, target_projection):
-    """
-    Code provided by MetNO
-    """
+    """Code provided by MetNO"""
     import numpy as np
     import pyproj
 

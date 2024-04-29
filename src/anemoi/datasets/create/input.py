@@ -869,7 +869,8 @@ def step_factory(config, context, action_path, previous_step):
 
 class FunctionContext:
     """A FunctionContext is passed to all functions, it will be used to pass information
-    to the functions from the other actions and filters and results."""
+    to the functions from the other actions and filters and results.
+    """
 
     def __init__(self, owner):
         self.owner = owner

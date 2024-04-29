@@ -11,9 +11,7 @@ import numpy as np
 
 
 def _tuple_with_slices(t, shape):
-    """
-    Replace all integers in a tuple with slices, so we preserve the dimensionality.
-    """
+    """Replace all integers in a tuple with slices, so we preserve the dimensionality."""
 
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
@@ -52,9 +50,7 @@ def _index_to_tuple(index, shape):
 
 
 def index_to_slices(index, shape):
-    """
-    Convert an index to a tuple of slices, with the same dimensionality as the shape.
-    """
+    """Convert an index to a tuple of slices, with the same dimensionality as the shape."""
     return _tuple_with_slices(_index_to_tuple(index, shape), shape)
 
 
@@ -68,9 +64,7 @@ def apply_index_to_slices_changes(result, changes):
 
 
 def update_tuple(t, index, value):
-    """
-    Replace the elements of a tuple at the given index with a new value.
-    """
+    """Replace the elements of a tuple at the given index with a new value."""
     t = list(t)
     prev = t[index]
     t[index] = value
@@ -78,9 +72,7 @@ def update_tuple(t, index, value):
 
 
 def length_to_slices(index, lengths):
-    """
-    Convert an index to a list of slices, given the lengths of the dimensions.
-    """
+    """Convert an index to a list of slices, given the lengths of the dimensions."""
     total = sum(lengths)
     start, stop, step = index.indices(total)
 
@@ -127,8 +119,7 @@ def _as_tuples(index):
 
 
 def expand_list_indexing(method):
-    """
-    Allows to use slices, lists, and tuples to select data from the dataset.
+    """Allows to use slices, lists, and tuples to select data from the dataset.
     Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves.
     """
 
