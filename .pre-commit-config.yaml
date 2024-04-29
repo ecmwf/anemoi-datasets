@@ -80,8 +80,8 @@ repos:
   hooks:
     - id: rstfmt
 
-- repo: https://github.com/b8raoult/pre-commit-docconvert
-  rev: "0.1.0"
-  hooks:
-  - id: docconvert
-    args: ["-o", "numpy"]
+# - repo: https://github.com/b8raoult/pre-commit-docconvert
+#   rev: "0.1.0"
+#   hooks:
+#   - id: docconvert
+#     args: ["-o", "numpy"]
