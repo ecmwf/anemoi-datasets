@@ -10,7 +10,7 @@ from .data import add_dataset_path
 from .data import add_named_dataset
 from .data import open_dataset
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = [
     "open_dataset",
