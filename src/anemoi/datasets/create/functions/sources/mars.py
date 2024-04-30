@@ -82,6 +82,20 @@ def factorise_requests(dates, *requests):
         yield r
 
 
+def use_grib_paramid(r):
+    from anemoi.utils.grib import shortname_to_paramid
+
+    params = r["param"]
+    if isinstance(params, str):
+        params = params.split("/")
+    assert isinstance(params, (list, tuple)), params
+
+    params = [shortname_to_paramid(p) for p in params]
+    r["param"] = "/".join(str(p) for p in params)
+
+    return r
+
+
 def mars(context, dates, *requests, **kwargs):
     if not requests:
         requests = [kwargs]
@@ -90,6 +104,10 @@ def mars(context, dates, *requests, **kwargs):
     ds = load_source("empty")
     for r in requests:
         r = {k: v for k, v in r.items() if v != ("-",)}
+
+        if context.use_grib_paramid and "param" in r:
+            r = use_grib_paramid(r)
+
         if DEBUG:
             context.trace("✅", f"load_source(mars, {r}")
 

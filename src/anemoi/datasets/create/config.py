@@ -153,6 +153,7 @@ class LoadersConfig(Config):
 
         self.setdefault("build", Config())
         self.build.setdefault("group_by", "monthly")
+        self.build.setdefault("use_grib_paramid", False)
 
         self.setdefault("output", Config())
         self.output.setdefault("order_by", ["valid_datetime", "param_level", "number"])

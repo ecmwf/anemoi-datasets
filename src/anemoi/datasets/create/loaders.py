@@ -125,6 +125,7 @@ class Loader:
             order_by=self.output.order_by,
             flatten_grid=self.output.flatten_grid,
             remapping=build_remapping(self.output.remapping),
+            use_grib_paramid=self.main_config.build.use_grib_paramid,
         )
         LOG.info("✅ INPUT_BUILDER")
         LOG.info(builder)

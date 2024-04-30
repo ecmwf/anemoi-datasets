@@ -874,17 +874,19 @@ class FunctionContext:
 
     def __init__(self, owner):
         self.owner = owner
+        self.use_grib_paramid = owner.context.use_grib_paramid
 
     def trace(self, emoji, *args):
         trace(emoji, *args)
 
 
 class ActionContext(Context):
-    def __init__(self, /, order_by, flatten_grid, remapping):
+    def __init__(self, /, order_by, flatten_grid, remapping, use_grib_paramid):
         super().__init__()
         self.order_by = order_by
         self.flatten_grid = flatten_grid
         self.remapping = build_remapping(remapping)
+        self.use_grib_paramid = use_grib_paramid
 
 
 class InputBuilder:
