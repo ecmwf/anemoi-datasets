@@ -237,7 +237,7 @@ def _open(a):
     if isinstance(a, (list, tuple)):
         return _open_dataset(*a)
 
-    raise NotImplementedError("Unsupported argument: " + type(a))
+    raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
 
 def _auto_adjust(datasets, kwargs):

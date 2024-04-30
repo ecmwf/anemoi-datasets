@@ -328,6 +328,10 @@ class ZarrWithMissingDates(Zarr):
     def tree(self):
         return Node(self, [], path=self.path, missing=sorted(self.missing))
 
+    @property
+    def label(self):
+        return "zarr*"
+
 
 def zarr_lookup(name):
 

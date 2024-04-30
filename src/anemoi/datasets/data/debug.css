@@ -1,0 +1,12 @@
+table.dataset td {
+    vertical-align: top;
+    text-align: left !important;
+}
+
+table.dataset span.dataset {
+    font-weight: bold !important;
+}
+
+table.dataset span.values {
+    font-style: italic !important;
+}

@@ -127,7 +127,7 @@ class ConcatGrids(Grids):
         return Node(self, [d.tree() for d in self.datasets], mode="concat")
 
 
-class CutoutGrids(Grids):
+class Cutout(Grids):
     def __init__(self, datasets, axis):
         from anemoi.datasets.grids import cutout_mask
 
@@ -236,4 +236,4 @@ def cutout_factory(args, kwargs):
     datasets = [_open(e) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return CutoutGrids(datasets, axis=axis)._subset(**kwargs)
+    return Cutout(datasets, axis=axis)._subset(**kwargs)

@@ -21,6 +21,12 @@ DEPTH = 0
 # a.flags.writeable = False
 
 
+def css(name):
+    path = os.path.join(os.path.dirname(__file__), f"{name}.css")
+    with open(path) as f:
+        return f"<style>{f.read()}</style>"
+
+
 class Node:
     def __init__(self, dataset, kids, **kwargs):
         self.dataset = dataset
@@ -46,7 +52,7 @@ class Node:
         return "\n".join(result)
 
     def graph(self, digraph, nodes):
-        label = self.dataset.__class__.__name__.lower()
+        label = self.dataset.label  # dataset.__class__.__name__.lower()
         if self.kwargs:
             param = []
             for k, v in self.kwargs.items():
@@ -107,7 +113,7 @@ class Node:
             if k == "path":
                 v = v[::-1]
             kwargs[k] = v
-        label = self.dataset.__class__.__name__.lower()
+        label = self.dataset.label
         label = f'<span class="dataset">{label}</span>'
         if len(kwargs) == 1:
             k, v = list(kwargs.items())[0]
@@ -116,25 +122,14 @@ class Node:
             rows.append([indent] + [label])
 
             for k, v in kwargs.items():
-                rows.append([indent] + [k, v])
+                rows.append([indent] + [f"<span class='param'>{k}</span>", f"<span class='param'>{v}</span>"])
 
         for kid in self.kids:
             kid._html(indent + "&nbsp;&nbsp;&nbsp;", rows)
 
     def html(self):
-        result = [
-            """
-<style>
-table.dataset td {
-    vertical-align: top;
-    text-align: left !important;
-}
-span.dataset {
-    font-weight: bold !important;
-}
-</style>
-                  """
-        ]
+        result = [css("debug")]
+
         result.append('<table class="dataset">')
         rows = []
 
@@ -146,6 +141,26 @@ span.dataset {
 
         result.append("</table>")
         return "\n".join(result)
+
+    def _as_tree(self, tree):
+
+        for kid in self.kids:
+            n = tree.node(kid)
+            kid._as_tree(n)
+
+    def as_tree(self):
+        from anemoi.utils.text import Tree
+
+        tree = Tree(self)
+        self._as_tree(tree)
+        return tree
+
+    @property
+    def summary(self):
+        return self.dataset.label
+
+    def as_dict(self):
+        return {}
 
 
 class Source:

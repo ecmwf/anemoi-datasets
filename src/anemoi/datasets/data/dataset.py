@@ -222,3 +222,7 @@ class Dataset:
 
     def _repr_html_(self):
         return self.tree().html()
+
+    @property
+    def label(self):
+        return self.__class__.__name__.lower()
