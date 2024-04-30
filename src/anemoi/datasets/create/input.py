@@ -561,7 +561,7 @@ class FunctionAction(Action):
     @property
     def function(self):
         # name, delta = parse_function_name(self.name)
-        return import_function(self.name, "actions")
+        return import_function(self.name, "sources")
 
     def __repr__(self):
         content = ""
@@ -825,7 +825,7 @@ def action_factory(config, context, action_path):
     }.get(key)
 
     if cls is None:
-        if not is_function(key, "actions"):
+        if not is_function(key, "sources"):
             raise ValueError(f"Unknown action '{key}' in {config}")
         cls = FunctionAction
         args = [key] + args
