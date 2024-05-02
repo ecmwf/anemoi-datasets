@@ -52,7 +52,7 @@ dependencies = [
 remote = ["boto3", "requests", "s3fs"]
 
 create = [
-    "climetlab",        # "earthkit-data"
+    "climetlab>=0.22.1",        # "earthkit-data"
     "earthkit-meteo",
     "pyproj",
     "ecmwflibs>=0.6.3",
@@ -64,7 +64,7 @@ all = [
     "boto3",
     "requests",
     "s3fs",
-    "climetlab",        # "earthkit-data"
+    "climetlab>=0.22.1",        # "earthkit-data"
     "earthkit-meteo",
     "pyproj",
     "ecmwflibs>=0.6.3",
@@ -74,7 +74,7 @@ dev = [
     "boto3",
     "requests",
     "s3fs",
-    "climetlab",        # "earthkit-data"
+    "climetlab>=0.22.1",        # "earthkit-data"
     "earthkit-meteo",
     "pyproj",
     "ecmwflibs>=0.6.3",
