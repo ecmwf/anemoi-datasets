@@ -8,50 +8,10 @@
 #
 
 import logging
-import warnings
 
 import numpy as np
 
 LOG = logging.getLogger(__name__)
-
-
-class CubesFilter:
-    def __init__(self, *, parts, total):
-        if parts is None:
-            self.parts = None
-            return
-
-        if len(parts) == 1:
-            part = parts[0]
-            if part.lower() in ["all", "*"]:
-                self.parts = None
-                return
-
-            if "/" in part:
-                i_chunk, n_chunks = part.split("/")
-                i_chunk, n_chunks = int(i_chunk), int(n_chunks)
-
-                assert i_chunk > 0, f"Chunk number {i_chunk} must be positive."
-                if n_chunks > total:
-                    warnings.warn(
-                        f"Number of chunks {n_chunks} is larger than the total number of chunks: {total}+1. "
-                        "Some chunks will be empty."
-                    )
-
-                chunk_size = total / n_chunks
-                parts = [x for x in range(total) if x >= (i_chunk - 1) * chunk_size and x < i_chunk * chunk_size]
-
-        parts = [int(_) for _ in parts]
-        LOG.info(f"Running parts: {parts}")
-        if not parts:
-            warnings.warn(f"Nothing to do for chunk {i_chunk}/{n_chunks}.")
-
-        self.parts = parts
-
-    def __call__(self, i):
-        if self.parts is None:
-            return True
-        return i in self.parts
 
 
 class ViewCacheArray:

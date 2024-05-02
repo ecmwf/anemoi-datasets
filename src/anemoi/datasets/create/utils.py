@@ -71,21 +71,6 @@ def load_json_or_yaml(path):
         raise ValueError(f"Cannot read file {path}. Need json or yaml with appropriate extension.")
 
 
-def compute_directory_sizes(path):
-    if not os.path.isdir(path):
-        return None
-
-    size, n = 0, 0
-    bar = progress_bar(iterable=os.walk(path), desc=f"Computing size of {path}")
-    for dirpath, _, filenames in bar:
-        for filename in filenames:
-            file_path = os.path.join(dirpath, filename)
-            size += os.path.getsize(file_path)
-            n += 1
-
-    return dict(total_size=size, total_number_of_files=n)
-
-
 def make_list_int(value):
     if isinstance(value, str):
         if "/" not in value:

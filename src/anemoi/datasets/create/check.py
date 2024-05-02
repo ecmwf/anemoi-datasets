@@ -8,27 +8,12 @@
 #
 
 import logging
-import os
 import re
 import warnings
 
 import numpy as np
-import tqdm
 
 LOG = logging.getLogger(__name__)
-
-
-def compute_directory_size(path):
-    if not os.path.isdir(path):
-        return None
-    size = 0
-    n = 0
-    for dirpath, _, filenames in tqdm.tqdm(os.walk(path), desc="Computing size", leave=False):
-        for filename in filenames:
-            file_path = os.path.join(dirpath, filename)
-            size += os.path.getsize(file_path)
-            n += 1
-    return size, n
 
 
 class DatasetName:

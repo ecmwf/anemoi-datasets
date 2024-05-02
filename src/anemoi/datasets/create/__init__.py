@@ -32,13 +32,13 @@ class Creator:
         # check path
         _, ext = os.path.splitext(self.path)
         assert ext != "zarr", f"Unsupported extension={ext}"
-        from .loaders import InitialiseLoader
+        from .loaders import InitialiserLoader
 
         if self._path_readable() and not self.overwrite:
             raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
 
         with self._cache_context():
-            obj = InitialiseLoader.from_config(
+            obj = InitialiserLoader.from_config(
                 path=self.path,
                 config=self.config,
                 statistics_tmp=self.statistics_tmp,
@@ -59,12 +59,11 @@ class Creator:
             loader.load()
 
     def statistics(self, force=False, output=None, start=None, end=None):
-        from .loaders import StatisticsLoader
+        from .loaders import StatisticsAdder
 
-        loader = StatisticsLoader.from_dataset(
+        loader = StatisticsAdder.from_dataset(
             path=self.path,
             print=self.print,
-            force=force,
             statistics_tmp=self.statistics_tmp,
             statistics_output=output,
             recompute=False,
@@ -74,25 +73,71 @@ class Creator:
         loader.run()
 
     def size(self):
-        from .loaders import SizeLoader
+        from .loaders import DatasetHandler
+        from .size import compute_directory_sizes
 
-        loader = SizeLoader.from_dataset(path=self.path, print=self.print)
-        loader.add_total_size()
+        metadata = compute_directory_sizes(self.path)
+        handle = DatasetHandler.from_dataset(path=self.path, print=self.print)
+        handle.update_metadata(**metadata)
 
     def cleanup(self):
-        from .loaders import CleanupLoader
+        from .loaders import DatasetHandlerWithStatistics
 
-        loader = CleanupLoader.from_dataset(
-            path=self.path,
-            print=self.print,
-            statistics_tmp=self.statistics_tmp,
+        cleaner = DatasetHandlerWithStatistics.from_dataset(
+            path=self.path, print=self.print, statistics_tmp=self.statistics_tmp
         )
-        loader.run()
+        cleaner.tmp_statistics.delete()
+        cleaner.registry.clean()
 
     def patch(self, **kwargs):
         from .patch import apply_patch
 
         apply_patch(self.path, **kwargs)
+
+    def init_additions(self, delta=[1, 3, 6, 12]):
+        from .loaders import StatisticsAddition
+        from .loaders import TendenciesStatisticsAddition
+        from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
+
+        a = StatisticsAddition.from_dataset(path=self.path, print=self.print)
+        a.initialise()
+
+        for d in delta:
+            try:
+                a = TendenciesStatisticsAddition.from_dataset(path=self.path, print=self.print, delta=d)
+                a.initialise()
+            except TendenciesStatisticsDeltaNotMultipleOfFrequency:
+                self.print(f"Skipping delta={d} as it is not a multiple of the frequency.")
+
+    def run_additions(self, parts=None, delta=[1, 3, 6, 12]):
+        from .loaders import StatisticsAddition
+        from .loaders import TendenciesStatisticsAddition
+        from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
+
+        a = StatisticsAddition.from_dataset(path=self.path, print=self.print)
+        a.run(parts)
+
+        for d in delta:
+            try:
+                a = TendenciesStatisticsAddition.from_dataset(path=self.path, print=self.print, delta=d)
+                a.run(parts)
+            except TendenciesStatisticsDeltaNotMultipleOfFrequency:
+                self.print(f"Skipping delta={d} as it is not a multiple of the frequency.")
+
+    def finalise_additions(self, delta=[1, 3, 6, 12]):
+        from .loaders import StatisticsAddition
+        from .loaders import TendenciesStatisticsAddition
+        from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
+
+        a = StatisticsAddition.from_dataset(path=self.path, print=self.print)
+        a.finalise()
+
+        for d in delta:
+            try:
+                a = TendenciesStatisticsAddition.from_dataset(path=self.path, print=self.print, delta=d)
+                a.finalise()
+            except TendenciesStatisticsDeltaNotMultipleOfFrequency:
+                self.print(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
     def finalise(self, **kwargs):
         self.statistics(**kwargs)
@@ -102,7 +147,13 @@ class Creator:
         self.init()
         self.load()
         self.finalise()
+        self.additions()
         self.cleanup()
+
+    def additions(self):
+        self.init_additions()
+        self.run_additions()
+        self.finalise_additions()
 
     def _cache_context(self):
         from .utils import cache_context
