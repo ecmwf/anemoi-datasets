@@ -102,7 +102,7 @@ class DebugStore(ReadOnlyStore):
         return key in self.store
 
 
-def open_zarr(path, dont_fail=False):
+def open_zarr(path, dont_fail=False, cache=None):
     try:
         store = path
 
@@ -116,6 +116,9 @@ def open_zarr(path, dont_fail=False):
             if isinstance(store, str):
                 store = zarr.storage.DirectoryStore(store)
             store = DebugStore(store)
+
+        if cache is not None:
+            store = zarr.LRUStoreCache(store, max_size=cache)
 
         return zarr.convenience.open(store, "r")
     except zarr.errors.PathNotFoundError:
