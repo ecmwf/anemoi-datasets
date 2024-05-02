@@ -40,7 +40,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "anemoi-utils[provenance]",
+    "anemoi-utils[provenance]>=0.1.7",
     "zarr",
     "pyyaml",
     "numpy",
