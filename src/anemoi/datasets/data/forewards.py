@@ -67,6 +67,11 @@ class Forwards(Dataset):
     def statistics(self):
         return self.forward.statistics
 
+    def statistics_tendencies(self, delta=None):
+        if delta is None:
+            delta = self.frequency
+        return self.forward.statistics_tendencies(delta)
+
     @property
     def shape(self):
         return self.forward.shape

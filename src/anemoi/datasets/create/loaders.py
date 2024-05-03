@@ -550,7 +550,7 @@ class GenericAdditions(GenericDatasetHandler):
         super().__init__(**kwargs)
         self.name = name
 
-        storage_path = os.path.join(self.path + ".tmp_data", name)
+        storage_path = f"{self.path}.tmp_storage_{name}"
         self.tmp_storage = build_storage(directory=storage_path, create=True)
 
     def initialise(self):
@@ -725,6 +725,8 @@ class TendenciesStatisticsDeltaNotMultipleOfFrequency(ValueError):
 
 
 class TendenciesStatisticsAddition(GenericAdditions):
+    DATASET_NAME_PATTERN = "statistics_tendencies_{delta}"
+
     def __init__(self, path, delta=None, **kwargs):
         full_ds = open_dataset(path)
         self.variables = full_ds.variables
@@ -739,7 +741,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
             )
         idelta = delta // frequency
 
-        super().__init__(path=path, name=f"tendencies_statistics_{delta}h", **kwargs)
+        super().__init__(path=path, name=self.DATASET_NAME_PATTERN.format(delta=f"{delta}h"), **kwargs)
 
         z = zarr.open(self.path, mode="r")
         start = z.attrs["statistics_start_date"]

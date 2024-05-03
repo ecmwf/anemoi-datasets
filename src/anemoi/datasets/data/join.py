@@ -121,6 +121,14 @@ class Join(Combined):
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
 
+    def statistics_tendencies(self, delta=None):
+        if delta is None:
+            delta = self.frequency
+        return {
+            k: np.concatenate([d.statistics_tendencies(delta)[k] for d in self.datasets], axis=0)
+            for k in self.datasets[0].statistics_tendencies(delta)
+        }
+
     def source(self, index):
         i = index
         for dataset in self.datasets:

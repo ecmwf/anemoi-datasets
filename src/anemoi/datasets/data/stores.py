@@ -218,6 +218,21 @@ class Zarr(Dataset):
             minimum=self.z.minimum[:],
         )
 
+    def statistics_tendencies(self, delta=None):
+        if delta is None:
+            delta = self.frequency
+        if isinstance(delta, int):
+            delta = f"{delta}h"
+        from anemoi.datasets.create.loaders import TendenciesStatisticsAddition
+
+        prefix = TendenciesStatisticsAddition.DATASET_NAME_PATTERN.format(delta=delta) + "_"
+        return dict(
+            mean=self.z[f"{prefix}mean"][:],
+            stdev=self.z[f"{prefix}stdev"][:],
+            maximum=self.z[f"{prefix}maximum"][:],
+            minimum=self.z[f"{prefix}minimum"][:],
+        )
+
     @property
     def resolution(self):
         return self.z.attrs["resolution"]

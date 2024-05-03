@@ -74,6 +74,11 @@ class Select(Forwards):
     def statistics(self):
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
+    def statistics_tendencies(self, delta=None):
+        if delta is None:
+            delta = self.frequency
+        return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
+
     def metadata_specific(self, **kwargs):
         return super().metadata_specific(indices=self.indices, **kwargs)
 

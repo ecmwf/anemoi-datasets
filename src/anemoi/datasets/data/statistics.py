@@ -29,6 +29,11 @@ class Statistics(Forwards):
     def statistics(self):
         return self._statistic.statistics
 
+    def statistics_tendencies(self, delta=None):
+        if delta is None:
+            delta = self.frequency
+        return self._statistic.statistics_tendencies(delta)
+
     def metadata_specific(self, **kwargs):
         return super().metadata_specific(
             statistics=self._statistic.metadata_specific(),

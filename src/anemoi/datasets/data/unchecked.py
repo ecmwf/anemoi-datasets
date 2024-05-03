@@ -101,6 +101,10 @@ class Unchecked(Combined):
     def statistics(self):
         raise NotImplementedError()
 
+    @check("check_same_variables")
+    def statistics_tendencies(self, delta=None):
+        raise NotImplementedError()
+
     @property
     def shape(self):
         raise NotImplementedError()
