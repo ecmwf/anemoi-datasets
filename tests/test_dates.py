@@ -10,7 +10,7 @@ import datetime
 import numpy as np
 import pytest
 
-from anemoi.datasets.create.loaders import default_statistics_dates
+from anemoi.datasets.create.statistics import default_statistics_dates
 
 _ = datetime.datetime
 

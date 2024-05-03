@@ -43,7 +43,8 @@ def mockup_open_zarr(func):
 @cache
 def _(date, var, k=0, e=0, values=VALUES):
     """Create a simple array of values based on the date and variable name, ensemble,
-    grid and a few other parameters."""
+    grid and a few other parameters.
+    """
     d = date.year * 10000 + date.month * 100 + date.day
     v = ord(var) - ord("a") + 1
     assert 0 <= k <= 9
