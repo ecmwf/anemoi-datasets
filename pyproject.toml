@@ -14,7 +14,7 @@ requires = ["setuptools>=60", "setuptools-scm>=8.0"]
 
 [project]
 description = "A package to hold various functions to support training of ML models on ECMWF data."
-name = "anemoi-dataset"
+name = "anemoi-datasets"
 
 dynamic = ["version"]
 license = { file = "LICENSE" }
