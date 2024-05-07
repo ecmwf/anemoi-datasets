@@ -113,6 +113,13 @@ def perturbations(
             assert ensemble_field_as_mars not in seen, ensemble_field_as_mars
             seen.add(ensemble_field_as_mars)
 
+        # cmin=np.amin(center_np)
+        # emin=np.amin(members_np)
+
+        # if cmin < 0 and emin >= 0:
+        #     LOG.warning(f"Negative values in {param} cmin={cmin} emin={emin}")
+        #     LOG.warning(f"Center: {center_field_as_mars}")
+
         mean_np = members_np.mean(axis=0)
 
         for j in range(n_numbers):
