@@ -10,6 +10,8 @@
 import logging
 import os
 
+from anemoi.utils.humanize import bytes
+
 from anemoi.datasets.create.utils import progress_bar
 
 LOG = logging.getLogger(__name__)
