@@ -13,5 +13,5 @@ accommodate NaNs and accurately compute statistics based on them, you
 can include the `allow_nans` key in the configuration. Here's an example
 of how to implement it:
 
-.. literalinclude:: ../../tests/create/nan.yaml
+.. literalinclude:: yaml/nan.yaml
    :language: yaml
