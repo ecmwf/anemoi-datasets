@@ -771,7 +771,15 @@ class TendenciesStatisticsAddition(GenericAdditions):
         return f"{self.path}.tmp_storage_statistics_{self.delta}h"
 
     def final_storage_name(self, k):
-        return f"statistics_tendencies_{self.delta}h_{k}"
+        return self.final_storage_name_from_delta(k, delta=self.delta)
+
+    @classmethod
+    def final_storage_name_from_delta(_, k, delta):
+        if isinstance(delta, int):
+            delta = str(delta)
+        if not delta.endswith("h"):
+            delta = delta + "h"
+        return f"statistics_tendencies_{delta}_{k}"
 
     def run(self, parts):
         chunk_filter = ChunkFilter(parts=parts, total=self.total)
