@@ -546,12 +546,17 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
 
 
 class GenericAdditions(GenericDatasetHandler):
-    def __init__(self, name="", **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.name = name
+        self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=True)
 
-        storage_path = f"{self.path}.tmp_storage_{name}"
-        self.tmp_storage = build_storage(directory=storage_path, create=True)
+    @property
+    def tmp_storage_path(self):
+        raise NotImplementedError
+
+    @property
+    def final_storage_path(self):
+        raise NotImplementedError
 
     def initialise(self):
         self.tmp_storage.delete()
@@ -589,7 +594,7 @@ class GenericAdditions(GenericDatasetHandler):
             count=np.full(shape, -1, dtype=np.int64),
             has_nans=np.full(shape, False, dtype=np.bool_),
         )
-        LOG.info(f"Aggregating {self.name} statistics on shape={shape}. Variables : {self.variables}")
+        LOG.info(f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}")
 
         found = set()
         ifound = set()
@@ -659,9 +664,10 @@ class GenericAdditions(GenericDatasetHandler):
 
     def _write(self, summary):
         for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-            self._add_dataset(name=k, array=summary[k])
-        self.registry.add_to_history("compute_statistics_end")
-        LOG.info(f"Wrote {self.name} additions in {self.path}")
+            name = self.final_storage_name(k)
+            self._add_dataset(name=name, array=summary[k])
+        self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
+        LOG.info(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
 
     def check_statistics(self):
         pass
@@ -669,7 +675,7 @@ class GenericAdditions(GenericDatasetHandler):
 
 class StatisticsAddition(GenericAdditions):
     def __init__(self, **kwargs):
-        super().__init__("statistics_", **kwargs)
+        super().__init__(**kwargs)
 
         z = zarr.open(self.path, mode="r")
         start = z.attrs["statistics_start_date"]
@@ -681,6 +687,13 @@ class StatisticsAddition(GenericAdditions):
 
         assert len(self.variables) == self.ds.shape[1], self.ds.shape
         self.total = len(self.dates)
+
+    @property
+    def tmp_storage_path(self):
+        return f"{self.path}.tmp_storage_statistics"
+
+    def final_storage_name(self, k):
+        return k
 
     def run(self, parts):
         chunk_filter = ChunkFilter(parts=parts, total=self.total)
@@ -725,8 +738,6 @@ class TendenciesStatisticsDeltaNotMultipleOfFrequency(ValueError):
 
 
 class TendenciesStatisticsAddition(GenericAdditions):
-    DATASET_NAME_PATTERN = "statistics_tendencies_{delta}"
-
     def __init__(self, path, delta=None, **kwargs):
         full_ds = open_dataset(path)
         self.variables = full_ds.variables
@@ -739,9 +750,10 @@ class TendenciesStatisticsAddition(GenericAdditions):
             raise TendenciesStatisticsDeltaNotMultipleOfFrequency(
                 f"Delta {delta} is not a multiple of frequency {frequency}"
             )
+        self.delta = delta
         idelta = delta // frequency
 
-        super().__init__(path=path, name=self.DATASET_NAME_PATTERN.format(delta=f"{delta}h"), **kwargs)
+        super().__init__(path=path, **kwargs)
 
         z = zarr.open(self.path, mode="r")
         start = z.attrs["statistics_start_date"]
@@ -753,6 +765,13 @@ class TendenciesStatisticsAddition(GenericAdditions):
 
         ds = open_dataset(self.path, start=start, end=end)
         self.ds = DeltaDataset(ds, idelta)
+
+    @property
+    def tmp_storage_path(self):
+        return f"{self.path}.tmp_storage_statistics_{self.delta}h"
+
+    def final_storage_name(self, k):
+        return f"statistics_tendencies_{self.delta}h_{k}"
 
     def run(self, parts):
         chunk_filter = ChunkFilter(parts=parts, total=self.total)
@@ -768,9 +787,3 @@ class TendenciesStatisticsAddition(GenericAdditions):
                 self.tmp_storage.add([date, i, "missing"], key=date)
         self.tmp_storage.flush()
         LOG.info(f"Dataset {self.path} additions run.")
-
-    def _write(self, summary):
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-            self._add_dataset(name=f"{self.name}_{k}", array=summary[k])
-        self.registry.add_to_history(f"compute_{self.name}_end")
-        LOG.info(f"Wrote {self.name} additions in {self.path}")
