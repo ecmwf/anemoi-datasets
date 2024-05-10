@@ -94,7 +94,7 @@ class Creator:
 
         apply_patch(self.path, **kwargs)
 
-    def init_additions(self, delta=[1, 3, 6, 12]):
+    def init_additions(self, delta=[1, 3, 6, 12, 24]):
         from .loaders import StatisticsAddition
         from .loaders import TendenciesStatisticsAddition
         from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
@@ -109,7 +109,7 @@ class Creator:
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 self.print(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
-    def run_additions(self, parts=None, delta=[1, 3, 6, 12]):
+    def run_additions(self, parts=None, delta=[1, 3, 6, 12, 24]):
         from .loaders import StatisticsAddition
         from .loaders import TendenciesStatisticsAddition
         from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
@@ -124,7 +124,7 @@ class Creator:
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 self.print(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
-    def finalise_additions(self, delta=[1, 3, 6, 12]):
+    def finalise_additions(self, delta=[1, 3, 6, 12, 24]):
         from .loaders import StatisticsAddition
         from .loaders import TendenciesStatisticsAddition
         from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency

@@ -225,12 +225,12 @@ class Zarr(Dataset):
             delta = f"{delta}h"
         from anemoi.datasets.create.loaders import TendenciesStatisticsAddition
 
-        prefix = TendenciesStatisticsAddition.DATASET_NAME_PATTERN.format(delta=delta) + "_"
+        func = TendenciesStatisticsAddition.final_storage_name_from_delta
         return dict(
-            mean=self.z[f"{prefix}mean"][:],
-            stdev=self.z[f"{prefix}stdev"][:],
-            maximum=self.z[f"{prefix}maximum"][:],
-            minimum=self.z[f"{prefix}minimum"][:],
+            mean=self.z[func("mean", delta)][:],
+            stdev=self.z[func("stdev", delta)][:],
+            maximum=self.z[func("maximum", delta)][:],
+            minimum=self.z[func("minimum", delta)][:],
         )
 
     @property

@@ -1,0 +1,2 @@
+statistics:
+  allow_nans: [sst, ci]
