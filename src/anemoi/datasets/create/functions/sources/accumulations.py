@@ -10,11 +10,11 @@ import datetime
 import warnings
 from copy import deepcopy
 
-import climetlab as cml
+import earthkit.data as ekd
 import numpy as np
-from climetlab.core.temporary import temp_file
-from climetlab.readers.grib.output import new_grib_output
-from climetlab.utils.availability import Availability
+from earthkit.data.core.temporary import temp_file
+from earthkit.data.readers.grib.output import new_grib_output
+from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -51,16 +51,25 @@ class Accumulation:
 
     def check(self, field):
         if self._check is None:
-            self._check = field.as_mars()
+            self._check = field.metadata(namespace="mars")
 
-            assert self.param == field.metadata("param"), (self.param, field.metadata("param"))
-            assert self.date == field.metadata("date"), (self.date, field.metadata("date"))
-            assert self.time == field.metadata("time"), (self.time, field.metadata("time"))
+            assert self.param == field.metadata("param"), (
+                self.param,
+                field.metadata("param"),
+            )
+            assert self.date == field.metadata("date"), (
+                self.date,
+                field.metadata("date"),
+            )
+            assert self.time == field.metadata("time"), (
+                self.time,
+                field.metadata("time"),
+            )
             assert self.number == member(field), (self.number, member(field))
 
             return
 
-        mars = field.as_mars()
+        mars = field.metadata(namespace="mars")
         keys1 = sorted(self._check.keys())
         keys2 = sorted(mars.keys())
 
@@ -189,7 +198,11 @@ class AccumulationFromLastStep(Accumulation):
 
     def compute(self, values, startStep, endStep):
 
-        assert endStep - startStep == self.frequency, (startStep, endStep, self.frequency)
+        assert endStep - startStep == self.frequency, (
+            startStep,
+            endStep,
+            self.frequency,
+        )
 
         if self.startStep is None:
             self.startStep = startStep
@@ -299,11 +312,11 @@ def compute_accumulations(
                 )
 
     compressed = Availability(requests)
-    ds = cml.load_source("empty")
+    ds = ekd.from_source("empty")
     for r in compressed.iterate():
         request.update(r)
         print("🌧️", request)
-        ds = ds + cml.load_source("mars", **request)
+        ds = ds + ekd.from_source("mars", **request)
 
     accumulations = {}
     for a in [AccumulationClass(out, frequency=frequency, **r) for r in requests]:
@@ -330,7 +343,7 @@ def compute_accumulations(
 
     out.close()
 
-    ds = cml.load_source("file", path)
+    ds = ekd.from_source("file", path)
 
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),

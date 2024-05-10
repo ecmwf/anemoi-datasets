@@ -6,12 +6,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
-from climetlab import load_source
+from earthkit.data import from_source
 
 
 def forcings(context, dates, template, param):
-    context.trace("✅", f"load_source(forcings, {template}, {param}")
-    return load_source("constants", source_or_dataset=template, date=dates, param=param)
+    context.trace("✅", f"from_source(forcings, {template}, {param}")
+    return from_source("constants", source_or_dataset=template, date=dates, param=param)
 
 
 execute = forcings

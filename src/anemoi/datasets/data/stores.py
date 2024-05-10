@@ -153,6 +153,7 @@ class Zarr(Dataset):
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n):
+        # print("__getitem__", n)
         return self.data[n]
 
     def _unwind(self, index, rest, shape, axis, axes):

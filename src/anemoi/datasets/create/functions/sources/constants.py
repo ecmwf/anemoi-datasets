@@ -6,15 +6,19 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
-from climetlab import load_source
+from earthkit.data import from_source
 
 
 def constants(context, dates, template, param):
     from warnings import warn
 
-    warn("The source `constants` is deprecated, use `forcings` instead.", DeprecationWarning, stacklevel=2)
-    context.trace("✅", f"load_source(constants, {template}, {param}")
-    return load_source("constants", source_or_dataset=template, date=dates, param=param)
+    warn(
+        "The source `constants` is deprecated, use `forcings` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    context.trace("✅", f"from_source(constants, {template}, {param}")
+    return from_source("constants", source_or_dataset=template, date=dates, param=param)
 
 
 execute = constants

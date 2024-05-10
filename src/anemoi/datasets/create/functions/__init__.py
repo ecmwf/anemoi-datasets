@@ -8,7 +8,7 @@
 #
 
 
-def assert_is_fieldset(obj):
-    from climetlab.readers.grib.index import FieldSet
+def assert_is_fieldlist(obj):
+    from earthkit.data.indexing.fieldlist import FieldList
 
-    assert isinstance(obj, FieldSet), type(obj)
+    assert isinstance(obj, FieldList), type(obj)

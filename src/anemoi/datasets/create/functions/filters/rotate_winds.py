@@ -9,7 +9,7 @@
 
 from collections import defaultdict
 
-from climetlab.indexing.fieldset import FieldArray
+from earthkit.data.indexing.fieldlist import FieldArray
 
 
 def rotate_winds(lats, lons, x_wind, y_wind, source_projection, target_projection):
@@ -94,7 +94,7 @@ def execute(
     wind_pairs = defaultdict(dict)
 
     for f in input:
-        key = f.as_mars()
+        key = f.metadata(namespace="mars")
         param = key.pop("param")
 
         if param not in wind_params:

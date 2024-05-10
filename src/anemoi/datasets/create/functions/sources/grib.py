@@ -8,8 +8,8 @@
 #
 
 
-from climetlab import load_source
-from climetlab.utils.patterns import Pattern
+from earthkit.data import from_source
+from earthkit.data.utils.patterns import Pattern
 
 
 def check(ds, paths, **kwargs):
@@ -25,7 +25,7 @@ def check(ds, paths, **kwargs):
 def execute(context, dates, path, *args, **kwargs):
     given_paths = path if isinstance(path, list) else [path]
 
-    ds = load_source("empty")
+    ds = from_source("empty")
     dates = [d.isoformat() for d in dates]
 
     for path in given_paths:
@@ -37,7 +37,7 @@ def execute(context, dates, path, *args, **kwargs):
 
         for path in paths:
             context.trace("📁", "PATH", path)
-            s = load_source("file", path)
+            s = from_source("file", path)
             s = s.sel(valid_datetime=dates, **kwargs)
             ds = ds + s
 

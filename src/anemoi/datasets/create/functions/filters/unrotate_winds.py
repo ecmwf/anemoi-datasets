@@ -10,7 +10,7 @@
 from collections import defaultdict
 
 import numpy as np
-from climetlab.indexing.fieldset import FieldArray
+from earthkit.data.indexing.fieldlist import FieldArray
 
 
 def normalise(x):
@@ -85,7 +85,7 @@ def execute(context, input, u, v):
     wind_pairs = defaultdict(dict)
 
     for f in input:
-        key = f.as_mars()
+        key = f.metadata(namespace="mars")
         param = key.pop("param")
 
         if param not in wind_params:
@@ -128,9 +128,9 @@ def execute(context, input, u, v):
 
 
 if __name__ == "__main__":
-    from climetlab import load_source
+    from earthkit.data import from_source
 
-    source = load_source(
+    source = from_source(
         "mars",
         date=-1,
         param="10u/10v",

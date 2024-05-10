@@ -3,7 +3,7 @@ import os
 import sys
 from collections import defaultdict
 
-import climetlab as cml
+import earthkit.data as ekd
 import tqdm
 import yaml
 
@@ -50,9 +50,9 @@ class Scan(Command):
         for path in tqdm.tqdm(paths, leave=False):
             if not match(path):
                 continue
-            for field in tqdm.tqdm(cml.load_source("file", path), leave=False):
+            for field in tqdm.tqdm(ekd.from_source("file", path), leave=False):
                 dates.add(field.valid_datetime())
-                mars = field.as_mars()
+                mars = field.metadata(namespace="mars")
                 keys = tuple(mars.get(k) for k in KEYS)
                 gribs[keys].add(path)
                 for k, v in mars.items():

@@ -16,8 +16,8 @@ from functools import cached_property
 from functools import wraps
 
 import numpy as np
-from climetlab.core.order import build_remapping
-from climetlab.indexing.fieldset import FieldSet
+from earthkit.data.core.fieldlist import FieldList
+from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.dates import Dates
 
@@ -83,18 +83,18 @@ def is_function(name, kind):
         return False
 
 
-def assert_fieldset(method):
+def assert_fieldlist(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         result = method(self, *args, **kwargs)
-        assert isinstance(result, FieldSet), type(result)
+        assert isinstance(result, FieldList), type(result)
         return result
 
     return wrapper
 
 
-def assert_is_fieldset(obj):
-    assert isinstance(obj, FieldSet), type(obj)
+def assert_is_fieldlist(obj):
+    assert isinstance(obj, FieldList), type(obj)
 
 
 def _data_request(data):
@@ -114,7 +114,7 @@ def _data_request(data):
         if field.valid_datetime() != date:
             continue
 
-        as_mars = field.as_mars()
+        as_mars = field.metadata(namespace="mars")
         step = as_mars.get("step")
         levtype = as_mars.get("levtype", "sfc")
         param = as_mars["param"]
@@ -412,12 +412,12 @@ class EmptyResult(Result):
         super().__init__(context, action_path + ["empty"], dates)
 
     @cached_property
-    @assert_fieldset
+    @assert_fieldlist
     @trace_datasource
     def datasource(self):
-        from climetlab import load_source
+        from earthkit.data import from_source
 
-        return load_source("empty")
+        return from_source("empty")
 
     @property
     def variables(self):
@@ -436,7 +436,7 @@ class FunctionResult(Result):
         return f"{self.action.name}({shorten(self.dates)})"
 
     @cached_property
-    @assert_fieldset
+    @assert_fieldlist
     @notify_result
     @trace_datasource
     def datasource(self):
@@ -465,7 +465,7 @@ class JoinResult(Result):
         self.results = [r for r in results if not r.empty]
 
     @cached_property
-    @assert_fieldset
+    @assert_fieldlist
     @notify_result
     @trace_datasource
     def datasource(self):
@@ -517,11 +517,11 @@ class UnShiftResult(Result):
         return f"{self.action.delta}({shorten(self.dates)})"
 
     @cached_property
-    @assert_fieldset
+    @assert_fieldlist
     @notify_result
     @trace_datasource
     def datasource(self):
-        from climetlab.indexing.fieldset import FieldArray
+        from earthkit.data.indexing.fieldlist import FieldArray
 
         class DateShiftedField:
             def __init__(self, field, delta):
@@ -628,7 +628,7 @@ class StepAction(Action):
 
 class StepFunctionResult(StepResult):
     @cached_property
-    @assert_fieldset
+    @assert_fieldlist
     @notify_result
     @trace_datasource
     def datasource(self):
@@ -651,7 +651,7 @@ class StepFunctionResult(StepResult):
 class FilterStepResult(StepResult):
     @property
     @notify_result
-    @assert_fieldset
+    @assert_fieldlist
     @trace_datasource
     def datasource(self):
         ds = self.upstream_result.datasource
@@ -678,7 +678,7 @@ class ConcatResult(Result):
         self.results = [r for r in results if not r.empty]
 
     @cached_property
-    @assert_fieldset
+    @assert_fieldlist
     @notify_result
     @trace_datasource
     def datasource(self):

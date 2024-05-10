@@ -132,7 +132,7 @@ class DatasetHandlerWithStatistics(GenericDatasetHandler):
 
 class Loader(DatasetHandlerWithStatistics):
     def build_input(self):
-        from climetlab.core.order import build_remapping
+        from earthkit.data.core.order import build_remapping
 
         builder = build_input(
             self.main_config.input,
@@ -535,7 +535,16 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writting statistics into dataset.")
 
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+        for k in [
+            "mean",
+            "stdev",
+            "minimum",
+            "maximum",
+            "sums",
+            "squares",
+            "count",
+            "has_nans",
+        ]:
             self._add_dataset(name=k, array=stats[k])
 
         self.registry.add_to_history("compute_statistics_end")
@@ -612,15 +621,26 @@ class GenericAdditions(GenericDatasetHandler):
             for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
                 agg[k][i, ...] = stats[k]
 
-        assert len(found) + len(missing) == len(self.dates), (len(found), len(missing), len(self.dates))
-        assert found.union(missing) == set(self.dates), (found, missing, set(self.dates))
+        assert len(found) + len(missing) == len(self.dates), (
+            len(found),
+            len(missing),
+            len(self.dates),
+        )
+        assert found.union(missing) == set(self.dates), (
+            found,
+            missing,
+            set(self.dates),
+        )
 
         mask = sorted(list(ifound))
         for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             agg[k] = agg[k][mask, ...]
 
         for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-            assert agg[k].shape == agg["count"].shape, (agg[k].shape, agg["count"].shape)
+            assert agg[k].shape == agg["count"].shape, (
+                agg[k].shape,
+                agg["count"].shape,
+            )
 
         minimum = np.nanmin(agg["minimum"], axis=0)
         maximum = np.nanmax(agg["maximum"], axis=0)
@@ -663,7 +683,16 @@ class GenericAdditions(GenericDatasetHandler):
         self.tmp_storage.delete()
 
     def _write(self, summary):
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+        for k in [
+            "mean",
+            "stdev",
+            "minimum",
+            "maximum",
+            "sums",
+            "squares",
+            "count",
+            "has_nans",
+        ]:
             name = self.final_storage_name(k)
             self._add_dataset(name=name, array=summary[k])
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")

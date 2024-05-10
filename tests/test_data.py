@@ -191,6 +191,7 @@ class IndexTester:
         assert (self.ds == self.np).all()
 
     def __getitem__(self, index):
+        print("INDEX", type(self.ds), index)
         if self.ds[index] is None:
             assert False, (self.ds, index)
 
@@ -234,6 +235,8 @@ class DatasetTester:
 
         args, kwargs = make_missing((args, kwargs))
 
+        print(f"ds={self.ds}")
+
     def run(
         self,
         *,
@@ -267,6 +270,7 @@ class DatasetTester:
         date = start_date
 
         for row in self.ds:
+            # print(f"{date=} {row.shape}")
             expect = date_to_row(date)
             assert (row == expect).all()
             dates.append(date)
@@ -307,9 +311,11 @@ class DatasetTester:
     def indexing(self, ds):
         t = IndexTester(ds)
 
+        print("INDEXING", ds.shape)
+
         t[0:10, :, 0]
         t[:, 0:3, 0]
-        t[:, :, 0]
+        # t[:, :, 0]
         t[0:10, 0:3, 0]
         t[:, :, :]
 

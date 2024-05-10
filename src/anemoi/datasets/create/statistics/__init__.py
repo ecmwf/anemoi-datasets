@@ -71,7 +71,7 @@ def to_datetime(date):
     if isinstance(date, str):
         return np.datetime64(date)
     if isinstance(date, datetime.datetime):
-        return np.datetime64(date)
+        return np.datetime64(date, "s")
     return date
 
 
@@ -250,6 +250,7 @@ class StatAggregator:
 
         found = set()
         offset = 0
+
         for _, _dates, stats in self.owner._gather_data():
             assert isinstance(stats, dict), stats
             assert stats["minimum"].shape[0] == len(_dates), (

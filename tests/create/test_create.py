@@ -17,7 +17,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 import requests
-from climetlab import load_source
+from earthkit.data import from_source
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create import Creator
@@ -29,15 +29,17 @@ TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/
 HERE = os.path.dirname(__file__)
 # find_yamls
 NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
+
+# NAMES = ["nan"]
 SKIP = ["perturbations"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
 
-def mockup_load_source(func):
+def mockup_from_source(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with patch("climetlab.load_source", _load_source):
+        with patch("earthkit.data.from_source", _from_source):
             return func(*args, **kwargs)
 
     return wrapper
@@ -78,13 +80,13 @@ class LoadSource:
 
         if os.path.exists(path):
             print(f"Mockup: Loading path {path} for {args}, {kwargs}")
-            ds = load_source("file", path)
+            ds = from_source("file", path)
             return ds
 
         elif path.startswith("http:") or path.startswith("https:"):
             print(f"Mockup: Loading url {path} for {args}, {kwargs}")
             try:
-                return load_source("url", path)
+                return from_source("url", path)
             except requests.exceptions.HTTPError:
                 print(f"Mockup: ❌ Cannot load from url for {path} for {args}, {kwargs}")
 
@@ -99,20 +101,20 @@ class LoadSource:
         name = self.source_name(*args, **kwargs)
 
         if name != "mars":
-            return load_source(*args, **kwargs)
+            return from_source(*args, **kwargs)
 
         ds = self.read(self.read_dir, args, kwargs)
         if ds is not None:
             return ds
 
-        ds = load_source(*args, **kwargs)
+        ds = from_source(*args, **kwargs)
 
         self.write(self.write_dir, ds, args, kwargs)
 
         return ds
 
 
-_load_source = LoadSource(
+_from_source = LoadSource(
     read_dir=os.environ.get("LOAD_SOURCE_MOCKUP_READ_DIRECTORY", TEST_DATA_ROOT),
     write_dir=os.environ.get("LOAD_SOURCE_MOCKUP_WRITE_DIRECTORY"),
 )
@@ -210,7 +212,7 @@ class Comparer:
 
 
 @pytest.mark.parametrize("name", NAMES)
-@mockup_load_source
+@mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")

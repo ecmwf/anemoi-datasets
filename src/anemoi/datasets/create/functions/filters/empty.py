@@ -7,10 +7,10 @@
 # nor does it submit to any jurisdiction.
 #
 
-import climetlab as cml
+import earthkit.data as ekd
 
 
 def execute(context, input, **kwargs):
-    # Usefull to create a pipeline that returns an empty result
-    # So we can reference an earlier step in a function like 'contants'
-    return cml.load_source("empty")
+    # Useful to create a pipeline that returns an empty result
+    # So we can reference an earlier step in a function like 'constants'
+    return ekd.from_source("empty")

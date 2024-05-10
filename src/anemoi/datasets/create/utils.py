@@ -13,8 +13,8 @@ from contextlib import contextmanager
 
 import numpy as np
 import yaml
-from climetlab import settings
-from climetlab.utils.humanize import seconds  # noqa: F401
+from earthkit.data import settings
+from earthkit.data.utils.humanize import seconds  # noqa: F401
 from tqdm.auto import tqdm
 
 
@@ -27,7 +27,8 @@ def cache_context(dirname):
         return no_cache_context()
 
     os.makedirs(dirname, exist_ok=True)
-    return settings.temporary("cache-directory", dirname)
+    # return settings.temporary("cache-directory", dirname)
+    return settings.temporary({"cache-policy": "user", "user-cache-directory": dirname})
 
 
 def bytes(n):
@@ -51,13 +52,13 @@ def bytes(n):
 
 
 def to_datetime_list(*args, **kwargs):
-    from climetlab.utils.dates import to_datetime_list as to_datetime_list_
+    from earthkit.data.utils.dates import to_datetime_list as to_datetime_list_
 
     return to_datetime_list_(*args, **kwargs)
 
 
 def to_datetime(*args, **kwargs):
-    from climetlab.utils.dates import to_datetime as to_datetime_
+    from earthkit.data.utils.dates import to_datetime as to_datetime_
 
     return to_datetime_(*args, **kwargs)
 

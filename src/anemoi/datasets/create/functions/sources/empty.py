@@ -7,8 +7,8 @@
 # nor does it submit to any jurisdiction.
 #
 
-import climetlab as cml
+import earthkit.data as ekd
 
 
 def execute(context, dates, **kwargs):
-    return cml.load_source("empty")
+    return ekd.from_source("empty")

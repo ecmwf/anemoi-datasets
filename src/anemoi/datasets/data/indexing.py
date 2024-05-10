@@ -125,6 +125,8 @@ def expand_list_indexing(method):
 
     @wraps(method)
     def wrapper(self, index):
+        # print("expand_list_indexing", index)
+
         if not isinstance(index, tuple):
             return method(self, index)
 

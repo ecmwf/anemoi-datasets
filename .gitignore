@@ -187,3 +187,4 @@ _build/
 ~*
 *.sync
 *.dot
+_dev/

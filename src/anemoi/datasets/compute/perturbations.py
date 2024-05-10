@@ -10,10 +10,10 @@
 import logging
 
 import numpy as np
-from climetlab.core.temporary import temp_file
-from climetlab.readers.grib.output import new_grib_output
+from earthkit.data.core.temporary import temp_file
+from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.functions import assert_is_fieldset
+from anemoi.datasets.create.functions import assert_is_fieldlist
 
 LOG = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def perturbations(
 
     for i, center_field in enumerate(center):
         param = center_field.metadata("param")
-        center_field_as_mars = center_field.as_mars()
+        center_field_as_mars = center_field.metadata(namespace="mars")
 
         # load the center field
         center_np = center_field.to_numpy()
@@ -105,8 +105,13 @@ def perturbations(
 
         for j in range(n_numbers):
             ensemble_field = members[i * n_numbers + j]
-            ensemble_field_as_mars = ensemble_field.as_mars()
-            check_compatible(center_field, ensemble_field, center_field_as_mars, ensemble_field_as_mars)
+            ensemble_field_as_mars = ensemble_field.metadata(namespace="mars")
+            check_compatible(
+                center_field,
+                ensemble_field,
+                center_field_as_mars,
+                ensemble_field_as_mars,
+            )
             members_np[j] = ensemble_field.to_numpy()
 
             ensemble_field_as_mars = tuple(sorted(ensemble_field_as_mars.items()))
@@ -148,10 +153,10 @@ def perturbations(
     if output is not None:
         return path
 
-    from climetlab import load_source
+    from earthkit.data import from_source
 
-    ds = load_source("file", path)
-    assert_is_fieldset(ds)
+    ds = from_source("file", path)
+    assert_is_fieldlist(ds)
     # save a reference to the tmp file so it is deleted
     # only when the dataset is not used anymore
     ds._tmp = tmp

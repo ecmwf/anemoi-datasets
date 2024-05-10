@@ -12,7 +12,7 @@ import os
 from copy import deepcopy
 
 import yaml
-from climetlab.core.order import normalize_order_by
+from earthkit.data.core.order import normalize_order_by
 
 from .utils import load_json_or_yaml
 

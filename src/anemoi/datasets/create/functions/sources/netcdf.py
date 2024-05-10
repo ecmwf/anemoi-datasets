@@ -7,8 +7,8 @@
 # nor does it submit to any jurisdiction.
 #
 
-from climetlab import load_source
-from climetlab.utils.patterns import Pattern
+from earthkit.data import from_source
+from earthkit.data.utils.patterns import Pattern
 
 
 def check(what, ds, paths, **kwargs):
@@ -25,7 +25,7 @@ def load_netcdfs(emoji, what, context, dates, path, *args, **kwargs):
     given_paths = path if isinstance(path, list) else [path]
 
     dates = [d.isoformat() for d in dates]
-    ds = load_source("empty")
+    ds = from_source("empty")
 
     for path in given_paths:
         paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
@@ -34,7 +34,7 @@ def load_netcdfs(emoji, what, context, dates, path, *args, **kwargs):
 
         for path in paths:
             context.trace(emoji, what.upper(), path)
-            s = load_source("opendap", path)
+            s = from_source("opendap", path)
             s = s.sel(
                 valid_datetime=dates,
                 param=kwargs["param"],

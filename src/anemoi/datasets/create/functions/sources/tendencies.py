@@ -9,10 +9,10 @@
 import datetime
 from collections import defaultdict
 
-from climetlab.core.temporary import temp_file
-from climetlab.readers.grib.output import new_grib_output
+from earthkit.data.core.temporary import temp_file
+from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.functions import assert_is_fieldset
+from anemoi.datasets.create.functions import assert_is_fieldlist
 from anemoi.datasets.create.utils import to_datetime_list
 
 
@@ -36,7 +36,7 @@ def normalise_time_delta(t):
 def group_by_field(ds):
     d = defaultdict(list)
     for field in ds.order_by("valid_datetime"):
-        m = field.as_mars()
+        m = field.metadata(namespace="mars")
         for k in ("date", "time", "step"):
             m.pop(k, None)
         keys = tuple(m.items())
@@ -103,10 +103,10 @@ def tendencies(dates, time_increment, **kwargs):
 
     out.close()
 
-    from climetlab import load_source
+    from earthkit.data import from_source
 
-    ds = load_source("file", path)
-    assert_is_fieldset(ds)
+    ds = from_source("file", path)
+    assert_is_fieldlist(ds)
     # save a reference to the tmp file so it is deleted
     # only when the dataset is not used anymore
     ds._tmp = tmp

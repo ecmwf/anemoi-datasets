@@ -6,7 +6,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
-from climetlab import load_source
+from earthkit.data import from_source
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -15,12 +15,12 @@ DEBUG = True
 
 def source(context, dates, **kwargs):
     name = kwargs.pop("name")
-    context.trace("✅", f"load_source({name}, {dates}, {kwargs}")
+    context.trace("✅", f"from_source({name}, {dates}, {kwargs}")
     if kwargs["date"] == "$from_dates":
         kwargs["date"] = list({d.strftime("%Y%m%d") for d in dates})
     if kwargs["time"] == "$from_dates":
         kwargs["time"] = list({d.strftime("%H%M") for d in dates})
-    return load_source(name, **kwargs)
+    return from_source(name, **kwargs)
 
 
 execute = source

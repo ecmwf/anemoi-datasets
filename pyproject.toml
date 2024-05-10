@@ -52,10 +52,11 @@ dependencies = [
 remote = ["boto3", "requests", "s3fs"]
 
 create = [
-    "climetlab>=0.22.1",        # "earthkit-data"
+    # "climetlab>=0.22.1",        # "earthkit-data"
+    "earthkit-data",
     "earthkit-meteo",
     "pyproj",
-    "ecmwflibs>=0.6.3",
+    # "ecmwflibs>=0.6.3",
 ]
 
 docs = ["sphinx", "sphinx_rtd_theme", "nbsphinx", "pandoc"]
@@ -64,20 +65,22 @@ all = [
     "boto3",
     "requests",
     "s3fs",
-    "climetlab>=0.22.1",        # "earthkit-data"
+    # "climetlab>=0.22.1",        # "earthkit-data"
+    "earthkit-data",
     "earthkit-meteo",
     "pyproj",
-    "ecmwflibs>=0.6.3",
+    # "ecmwflibs>=0.6.3",
 ]
 
 dev = [
     "boto3",
     "requests",
     "s3fs",
-    "climetlab>=0.22.1",        # "earthkit-data"
+    # "climetlab>=0.22.1",        # "earthkit-data"
+    "earthkit-data",
     "earthkit-meteo",
     "pyproj",
-    "ecmwflibs>=0.6.3",
+    # "ecmwflibs>=0.6.3",
     "sphinx",
     "sphinx_rtd_theme",
     "nbsphinx",

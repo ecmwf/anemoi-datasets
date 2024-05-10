@@ -9,7 +9,7 @@
 
 import re
 
-from climetlab.indexing.fieldset import FieldArray
+from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class RenamedFieldMapping:

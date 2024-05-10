@@ -9,8 +9,8 @@
 import datetime
 from copy import deepcopy
 
-from climetlab import load_source
-from climetlab.utils.availability import Availability
+from earthkit.data import from_source
+from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -101,7 +101,7 @@ def mars(context, dates, *requests, **kwargs):
         requests = [kwargs]
 
     requests = factorise_requests(dates, *requests)
-    ds = load_source("empty")
+    ds = from_source("empty")
     for r in requests:
         r = {k: v for k, v in r.items() if v != ("-",)}
 
@@ -109,9 +109,9 @@ def mars(context, dates, *requests, **kwargs):
             r = use_grib_paramid(r)
 
         if DEBUG:
-            context.trace("✅", f"load_source(mars, {r}")
+            context.trace("✅", f"from_source(mars, {r}")
 
-        ds = ds + load_source("mars", **r)
+        ds = ds + from_source("mars", **r)
     return ds
 
 
