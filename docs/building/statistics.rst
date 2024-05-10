@@ -17,7 +17,7 @@ algorithm:
    -  If the dataset covers 10 years or more, the last year is excluded.
    -  Otherwise, 80% of the dataset is used.
 
-You can override this behaviour by setting the `start` and `end`
+You can override this behaviour by setting the `start` or `end`
 parameters in the `statistics` config.
 
 .. code:: yaml
