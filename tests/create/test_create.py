@@ -219,7 +219,11 @@ def test_run(name):
 
     # cache=None is using the default cache
     c = Creator(output, config=config, cache=None, overwrite=True)
-    c.create()
+    c.init()
+    c.load()
+    c.finalise()
+    c.additions(delta=[1, 3, 6, 12])
+    c.cleanup()
 
     comparer = Comparer(name, output_path=output)
     comparer.compare()
