@@ -150,10 +150,10 @@ class Creator:
         self.additions()
         self.cleanup()
 
-    def additions(self):
-        self.init_additions()
-        self.run_additions()
-        self.finalise_additions()
+    def additions(self, delta=[1, 3, 6, 12, 24]):
+        self.init_additions(delta=delta)
+        self.run_additions(delta=delta)
+        self.finalise_additions(delta=delta)
 
     def _cache_context(self):
         from .utils import cache_context
