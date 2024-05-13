@@ -615,6 +615,10 @@ class GenericAdditions(GenericDatasetHandler):
         assert len(found) + len(missing) == len(self.dates), (len(found), len(missing), len(self.dates))
         assert found.union(missing) == set(self.dates), (found, missing, set(self.dates))
 
+        if not len(ifound):
+            LOG.warn(f"❗No enough data found in {self.path} to compute {self.__class__.__name__}.")
+            return
+
         mask = sorted(list(ifound))
         for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             agg[k] = agg[k][mask, ...]
@@ -782,9 +786,6 @@ class TendenciesStatisticsAddition(GenericAdditions):
         return f"statistics_tendencies_{delta}_{k}"
 
     def run(self, parts):
-        if self.total == 0:
-            LOG.warn(f"❗No enough data found in {self.path} to compute {self.__class__.__name__}")
-            return
         chunk_filter = ChunkFilter(parts=parts, total=self.total)
         for i in range(0, self.total):
             if not chunk_filter(i):
@@ -798,9 +799,3 @@ class TendenciesStatisticsAddition(GenericAdditions):
                 self.tmp_storage.add([date, i, "missing"], key=date)
         self.tmp_storage.flush()
         LOG.info(f"Dataset {self.path} additions run.")
-
-    def finalise(self):
-        if self.total == 0:
-            LOG.warn(f"❗No enough data found in {self.path} to compute {self.__class__.__name__}.")
-            return
-        return super().finalise()
