@@ -28,9 +28,13 @@ TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/
 
 HERE = os.path.dirname(__file__)
 # find_yamls
-NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
+NAMES = sorted(
+    [
+        os.path.basename(path).split(".")[0]
+        for path in glob.glob(os.path.join(HERE, "*.yaml"))
+    ]
+)
 
-# NAMES = ["nan"]
 SKIP = ["perturbations"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
@@ -88,7 +92,9 @@ class LoadSource:
             try:
                 return from_source("url", path)
             except requests.exceptions.HTTPError:
-                print(f"Mockup: ❌ Cannot load from url for {path} for {args}, {kwargs}")
+                print(
+                    f"Mockup: ❌ Cannot load from url for {path} for {args}, {kwargs}"
+                )
 
         return None
 
@@ -188,8 +194,12 @@ def compare_statistics(ds1, ds2):
         idx2 = ds2.name_to_index[v2]
         assert (ds1.statistics["mean"][idx1] == ds2.statistics["mean"][idx2]).all()
         assert (ds1.statistics["stdev"][idx1] == ds2.statistics["stdev"][idx2]).all()
-        assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
-        assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
+        assert (
+            ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]
+        ).all()
+        assert (
+            ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]
+        ).all()
 
 
 class Comparer:

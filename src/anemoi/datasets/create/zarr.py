@@ -90,8 +90,6 @@ class ZarrBuiltRegistry:
         self.synchronizer_path = synchronizer_path
         self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
 
-        print(f"Opening {self.zarr_path} with synchronizer {self.synchronizer}")
-
     def clean(self):
         try:
             shutil.rmtree(self.synchronizer_path)
@@ -138,7 +136,6 @@ class ZarrBuiltRegistry:
 
     def get_flag(self, i):
         z = self._open_read()
-        print(f"Reading flag {self.name_flags=} {i}")
         return z["_build"][self.name_flags][i]
 
     def set_flag(self, i, value=True):
