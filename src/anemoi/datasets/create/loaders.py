@@ -615,8 +615,9 @@ class GenericAdditions(GenericDatasetHandler):
         assert len(found) + len(missing) == len(self.dates), (len(found), len(missing), len(self.dates))
         assert found.union(missing) == set(self.dates), (found, missing, set(self.dates))
 
-        if not len(ifound):
+        if len(ifound) < 2:
             LOG.warn(f"❗No enough data found in {self.path} to compute {self.__class__.__name__}.")
+            self.tmp_storage.delete()
             return
 
         mask = sorted(list(ifound))

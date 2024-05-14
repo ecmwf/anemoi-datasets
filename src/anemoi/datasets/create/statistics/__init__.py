@@ -84,25 +84,15 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
         return
     print(x)
     print(variables_names)
-    print(count)
     for i, (name, y) in enumerate(zip(variables_names, x)):
         if y >= 0:
             continue
         print("---")
-        print(
-            name,
-            y,
-            maximum[i],
-            minimum[i],
-            mean[i],
-            count[i],
-            sums[i],
-            squares[i],
-        )
-
-        print(name, np.min(sums[i]), np.max(sums[i]), np.argmin(sums[i]))
-        print(name, np.min(squares[i]), np.max(squares[i]), np.argmin(squares[i]))
-        print(name, np.min(count[i]), np.max(count[i]), np.argmin(count[i]))
+        print(f"❗ Negative variance for {name=}, variance={y}")
+        print(f" max={maximum[i]} min={minimum[i]} mean={mean[i]} count={count[i]} sum={sums[i]} square={squares[i]}")
+        print(f" -> sums: min={np.min(sums[i])}, max={np.max(sums[i])}, argmin={np.argmin(sums[i])}")
+        print(f" -> squares: min={np.min(squares[i])}, max={np.max(squares[i])}, argmin={np.argmin(squares[i])}")
+        print(f" -> count: min={np.min(count[i])}, max={np.max(count[i])}, argmin={np.argmin(count[i])}")
 
     raise ValueError("Negative variance")
 
