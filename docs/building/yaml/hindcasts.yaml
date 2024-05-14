@@ -1,0 +1,8 @@
+input:
+  hindcasts:
+    levtype: sfc
+    param: [2t, msl]
+    grid: [0.25, 0.25]
+    stream: enfh
+    type: cf
+    reference_year: 2022
