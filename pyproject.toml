@@ -53,7 +53,8 @@ remote = ["boto3", "requests", "s3fs"]
 
 create = [
     # "climetlab>=0.22.1",        # "earthkit-data"
-    "earthkit-data",
+    "earthkit-data @ git+ssh://git@github.com/ecmwf/earthkit-data.git@feature/anemoi[mars]",
+    "earthkit-geo @ git+ssh://git@github.com/ecmwf/earthkit-geo.git@feature/rotate-wind[all]",
     "earthkit-meteo",
     "pyproj",
     # "ecmwflibs>=0.6.3",
@@ -66,7 +67,8 @@ all = [
     "requests",
     "s3fs",
     # "climetlab>=0.22.1",        # "earthkit-data"
-    "earthkit-data",
+    "earthkit-data @ git+ssh://git@github.com/ecmwf/earthkit-data.git@feature/anemoi[mars]",
+    "earthkit-geo @ git+ssh://git@github.com/ecmwf/earthkit-geo.git@feature/rotate-wind[all]",
     "earthkit-meteo",
     "pyproj",
     # "ecmwflibs>=0.6.3",
@@ -77,7 +79,8 @@ dev = [
     "requests",
     "s3fs",
     # "climetlab>=0.22.1",        # "earthkit-data"
-    "earthkit-data",
+    "earthkit-data[mars] @  git+ssh://git@github.com/ecmwf/earthkit-data.git@feature/anemoi",
+    "earthkit-geo[all] @ git+ssh://git@github.com/ecmwf/earthkit-geo.git@feature/rotate-wind",
     "earthkit-meteo",
     "pyproj",
     # "ecmwflibs>=0.6.3",

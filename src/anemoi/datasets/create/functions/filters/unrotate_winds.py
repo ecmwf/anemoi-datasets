@@ -9,60 +9,9 @@
 
 from collections import defaultdict
 
-import numpy as np
+# import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
-
-
-def normalise(x):
-    return max(min(x, 1.0), -1.0)
-
-
-def normalise_longitude(lon, minimum):
-    while lon < minimum:
-        lon += 360
-
-    while lon >= minimum + 360:
-        lon -= 360
-
-    return lon
-
-
-def rotate_winds(
-    lats,
-    lons,
-    raw_lats,
-    raw_lons,
-    x_wind,
-    y_wind,
-    south_pole_latitude,
-    south_pole_longitude,
-    south_pole_rotation_angle=0,
-):
-    # Code from MIR
-    assert south_pole_rotation_angle == 0
-    C = np.deg2rad(90 - south_pole_latitude)
-    cos_C = np.cos(C)
-    sin_C = np.sin(C)
-
-    new_x = np.zeros_like(x_wind)
-    new_y = np.zeros_like(y_wind)
-
-    for i, (vx, vy, lat, lon, raw_lat, raw_lon) in enumerate(zip(x_wind, y_wind, lats, lons, raw_lats, raw_lons)):
-        lonRotated = south_pole_longitude - lon
-        lon_rotated = normalise_longitude(lonRotated, -180)
-        lon_unrotated = raw_lon
-
-        a = np.deg2rad(lon_rotated)
-        b = np.deg2rad(lon_unrotated)
-        q = 1 if (sin_C * lon_rotated < 0.0) else -1.0  # correct quadrant
-
-        cos_c = normalise(np.cos(a) * np.cos(b) + np.sin(a) * np.sin(b) * cos_C)
-        sin_c = q * np.sqrt(1.0 - cos_c * cos_c)
-
-        new_x[i] = cos_c * vx + sin_c * vy
-        new_y[i] = -sin_c * vx + cos_c * vy
-
-    return new_x, new_y
+from earthkit.geo.wind import unrotate_wind
 
 
 class NewDataField:
@@ -111,7 +60,7 @@ def execute(context, input, u, v):
 
         assert x.rotation == y.rotation
 
-        u_new, v_new = rotate_winds(
+        u_new, v_new = unrotate_wind(
             lats,
             lons,
             raw_lats,
