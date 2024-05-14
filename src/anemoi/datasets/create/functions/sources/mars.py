@@ -47,7 +47,13 @@ def _expand_mars_request(request, date, date_key="date"):
     step = to_list(request.get("step", [0]))
     for s in step:
         r = deepcopy(request)
-        base = date - datetime.timedelta(hours=int(s))
+
+        if isinstance(s, str) and "-" in s:
+            assert s.count("-") == 1, s
+        # this takes care of the cases where the step is a period such as 0-24 or 12-24
+        hours = int(str(s).split("-")[-1])
+
+        base = date - datetime.timedelta(hours=hours)
         r.update(
             {
                 date_key: base.strftime("%Y%m%d"),

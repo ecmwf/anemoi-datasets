@@ -616,7 +616,7 @@ class GenericAdditions(GenericDatasetHandler):
         assert found.union(missing) == set(self.dates), (found, missing, set(self.dates))
 
         if len(ifound) < 2:
-            LOG.warn(f"❗No enough data found in {self.path} to compute {self.__class__.__name__}.")
+            LOG.warn(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
             self.tmp_storage.delete()
             return
 

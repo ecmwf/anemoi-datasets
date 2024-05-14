@@ -154,10 +154,16 @@ class LoadersConfig(Config):
         self.setdefault("build", Config())
         self.build.setdefault("group_by", "monthly")
         self.build.setdefault("use_grib_paramid", False)
+        self.build.setdefault("variable_naming", "default")
+        variable_naming = dict(
+            param="{param}",
+            param_levelist="{param}_{levelist}",
+            default="{param}_{levellist}",
+        ).get(self.build.variable_naming, self.build.variable_naming)
 
         self.setdefault("output", Config())
         self.output.setdefault("order_by", ["valid_datetime", "param_level", "number"])
-        self.output.setdefault("remapping", Config(param_level="{param}_{levelist}"))
+        self.output.setdefault("remapping", Config(param_level=variable_naming))
         self.output.setdefault("statistics", "param_level")
         self.output.setdefault("chunking", Config(dates=1, ensembles=1))
         self.output.setdefault("dtype", "float32")
