@@ -158,7 +158,7 @@ class LoadersConfig(Config):
         variable_naming = dict(
             param="{param}",
             param_levelist="{param}_{levelist}",
-            default="{param}_{levellist}",
+            default="{param}_{levelist}",
         ).get(self.build.variable_naming, self.build.variable_naming)
 
         self.setdefault("output", Config())
