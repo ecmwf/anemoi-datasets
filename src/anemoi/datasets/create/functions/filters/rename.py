@@ -18,8 +18,8 @@ class RenamedFieldMapping:
         self.what = what
         self.renaming = renaming
 
-    def metadata(self, key):
-        value = self.field.metadata(key)
+    def metadata(self, key, **kwargs):
+        value = self.field.metadata(key, **kwargs)
         if key == self.what:
             return self.renaming.get(value, value)
         return value
@@ -34,10 +34,10 @@ class RenamedFieldFormat:
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
 
-    def metadata(self, key):
-        value = self.field.metadata(key)
+    def metadata(self, key, **kwargs):
+        value = self.field.metadata(key, **kwargs)
         if "{" + key + "}" in self.format:
-            bits = {b: self.field.metadata(b) for b in self.bits}
+            bits = {b: self.field.metadata(b, **kwargs) for b in self.bits}
             return self.format.format(**bits)
         return value
 
