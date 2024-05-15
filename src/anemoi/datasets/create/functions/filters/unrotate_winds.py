@@ -65,8 +65,8 @@ def execute(context, input, u, v):
             lons,
             raw_lats,
             raw_longs,
-            x.to_numpy(reshape=False),
-            y.to_numpy(reshape=False),
+            x.to_numpy(flatten=True),
+            y.to_numpy(flatten=True),
             *x.rotation,
         )
 
