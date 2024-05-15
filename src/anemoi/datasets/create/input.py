@@ -353,11 +353,6 @@ class Result(HasCoordsMixin):
         """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
 
-    @property
-    def variables_with_nans(self):
-        print("❌❌HERE")
-        return
-
     def get_cube(self):
         trace("🧊", f"getting cube from {self.__class__.__name__}")
         ds = self.datasource

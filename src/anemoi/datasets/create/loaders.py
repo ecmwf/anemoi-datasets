@@ -632,6 +632,11 @@ class GenericAdditions(GenericDatasetHandler):
             set(self.dates),
         )
 
+        if len(ifound) < 2:
+            LOG.warn(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
+            self.tmp_storage.delete()
+            return
+
         mask = sorted(list(ifound))
         for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             agg[k] = agg[k][mask, ...]
