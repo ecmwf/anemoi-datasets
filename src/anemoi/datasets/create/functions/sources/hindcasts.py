@@ -401,7 +401,6 @@ class HindcastCompute:
 
 def use_reference_year(reference_year, request):
     request = deepcopy(request)
-    assert reference_year == 2022
     hdate = request.pop("date")
     date = datetime.datetime(reference_year, hdate.month, hdate.day)
     request.update(date=date.strftime("%Y-%m-%d"), hdate=hdate.strftime("%Y-%m-%d"))

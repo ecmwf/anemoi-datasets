@@ -8,7 +8,7 @@
 #
 from copy import deepcopy
 
-from anemoi.datasets.compute.recentre import recentre as compute_perturbations
+from anemoi.datasets.compute.recentre import recentre as _recentre
 
 from .mars import mars
 
@@ -53,7 +53,7 @@ def load_if_needed(context, dates, dict_or_dataset):
 def recentre(context, dates, members, centre, alpha=1.0, remapping={}, patches={}):
     members = load_if_needed(context, dates, members)
     centre = load_if_needed(context, dates, centre)
-    return compute_perturbations(members, centre, alpha=alpha)
+    return _recentre(members=members, centre=centre, alpha=alpha)
 
 
 execute = recentre
