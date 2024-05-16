@@ -395,6 +395,7 @@ def accumulations(context, dates, **request):
 
     KWARGS = {
         ("od", "oper"): dict(patch=scda),
+        ("od", "elda"): dict(base_times=(6, 18)),
         ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
         ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
     }
