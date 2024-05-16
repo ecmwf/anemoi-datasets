@@ -58,6 +58,7 @@ def perturbations(
     members,
     center,
     clip_variables=CLIP_VARIABLES,
+    alpha=1.0,
     output=None,
 ):
 
@@ -130,7 +131,7 @@ def perturbations(
 
             assert e.shape == c.shape == m.shape, (e.shape, c.shape, m.shape)
 
-            x = c - m + e
+            x = c + (e - m) * alpha
 
             if param in clip_variables:
                 # LOG.warning(f"Clipping {param} to be positive")
