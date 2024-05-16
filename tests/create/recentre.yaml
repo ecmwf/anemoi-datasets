@@ -36,7 +36,7 @@ common:
     type: an
     number: [1, 2, 4]
     # number: [1, 2, 3, 4, 5, 6, 7, 8, 9]
-  center: &center
+  centre: &centre
     stream: oper
     type: an
 
@@ -53,27 +53,27 @@ data_sources:
       - accumulations:
           <<: *ensembles
           <<: *acc
-  center:
+  centre:
     join:
       - mars:
-          <<: *center
+          <<: *centre
           <<: *sfc
       - mars:
-          <<: *center
+          <<: *centre
           <<: *pl
       - accumulations:
-          <<: *center
+          <<: *centre
           <<: *acc
 
 input:
   join:
-    - perturbations:
+    - recentre:
         # the ensemble data which has one additional dimension
         members: ${data_sources.ensembles}
-        # the new center of the data
-        center: ${data_sources.center}
+        # the new centre of the data
+        centre: ${data_sources.centre}
     - forcings:
-        template: ${input.join.0.perturbations}
+        template: ${input.join.0.recentre}
         param:
           - cos_latitude
           - cos_longitude

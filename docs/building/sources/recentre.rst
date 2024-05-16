@@ -1,17 +1,17 @@
-.. _perturbations:
+.. _recentre:
 
-###############
- perturbations
-###############
+##########
+ recentre
+##########
 
 Perturbations refers to the small variations centered around a nominal
 value of a parameter. When dealing with `ensemble forecasting`_, the
 perturbations are related to the difference between `ensemble members`
 and their given `centre`.
 
-The `perturbations` function computes a set of new ensemble members
-centered on a different centre from previous ensemble members using the
-following formula:
+The `recentre` function computes a set of new ensemble members centered
+on a different centre from previous ensemble members using the following
+formula:
 
 .. math::
 
@@ -50,7 +50,7 @@ centre
 
 Examples
 
-.. literalinclude:: yaml/perturbations.yaml
+.. literalinclude:: yaml/recentre.yaml
    :language: yaml
 
 .. _convective precipitation: https://codes.ecmwf.int/grib/param-db/?id=143

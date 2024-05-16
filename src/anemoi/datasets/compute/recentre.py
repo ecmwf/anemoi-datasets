@@ -53,7 +53,7 @@ def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
         )
 
 
-def perturbations(
+def recentre(
     *,
     members,
     centre,
