@@ -178,7 +178,7 @@ def cutout_mask(
         min_dlats = np.min(np.diff(glats))
         min_dlons = np.min(np.diff(glons))
 
-        # Use the center of the LAM grid as the reference point
+        # Use the centre of the LAM grid as the reference point
         centre = np.mean(lats), np.mean(lons)
         centre_xyz = np.array(latlon_to_xyz(*centre))
 
@@ -198,7 +198,7 @@ def cutout_mask(
         t = Triangle3D(lam_points[index[0]], lam_points[index[1]], lam_points[index[2]])
         # distance = np.min(distance)
         # The point is inside the triangle if the intersection with the ray
-        # from the point to the center of the Earth is not None
+        # from the point to the centre of the Earth is not None
         # (the direction of the ray is not important)
 
         intersect = t.intersect(zero, global_point)

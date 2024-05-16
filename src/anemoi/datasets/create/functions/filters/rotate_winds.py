@@ -70,11 +70,7 @@ def execute(
             lons,
             x.to_numpy(flatten=True),
             y.to_numpy(flatten=True),
-            (
-                source_projection
-                if source_projection is not None
-                else CRS.from_cf(x.grid_mapping)
-            ),
+            (source_projection if source_projection is not None else CRS.from_cf(x.grid_mapping)),
             target_projection,
         )
 

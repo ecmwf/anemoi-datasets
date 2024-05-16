@@ -32,7 +32,7 @@ CLIP_VARIABLES = (
 SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset")
 
 
-def check_compatible(f1, f2, center_field_as_mars, ensemble_field_as_mars):
+def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
     assert f1.mars_grid == f2.mars_grid, (f1.mars_grid, f2.mars_grid)
     assert f1.mars_area == f2.mars_area, (f1.mars_area, f2.mars_area)
     assert f1.shape == f2.shape, (f1.shape, f2.shape)
@@ -43,21 +43,22 @@ def check_compatible(f1, f2, center_field_as_mars, ensemble_field_as_mars):
         f2.metadata("valid_datetime"),
     )
 
-    for k in set(center_field_as_mars.keys()) | set(ensemble_field_as_mars.keys()):
+    for k in set(centre_field_as_mars.keys()) | set(ensemble_field_as_mars.keys()):
         if k in SKIP:
             continue
-        assert center_field_as_mars[k] == ensemble_field_as_mars[k], (
+        assert centre_field_as_mars[k] == ensemble_field_as_mars[k], (
             k,
-            center_field_as_mars[k],
+            centre_field_as_mars[k],
             ensemble_field_as_mars[k],
         )
 
 
-def perturbations(
+def recentre(
     *,
     members,
-    center,
+    centre,
     clip_variables=CLIP_VARIABLES,
+    alpha=1.0,
     output=None,
 ):
 
@@ -70,16 +71,16 @@ def perturbations(
 
     LOG.info("Ordering fields")
     members = members.order_by(*keys)
-    center = center.order_by(*keys)
+    centre = centre.order_by(*keys)
     LOG.info("Done")
 
-    if len(center) * n_numbers != len(members):
-        LOG.error("%s %s %s", len(center), n_numbers, len(members))
+    if len(centre) * n_numbers != len(members):
+        LOG.error("%s %s %s", len(centre), n_numbers, len(members))
         for f in members:
             LOG.error("Member: %r", f)
-        for f in center:
-            LOG.error("Center: %r", f)
-        raise ValueError(f"Inconsistent number of fields: {len(center)} * {n_numbers} != {len(members)}")
+        for f in centre:
+            LOG.error("centre: %r", f)
+        raise ValueError(f"Inconsistent number of fields: {len(centre)} * {n_numbers} != {len(members)}")
 
     if output is None:
         # prepare output tmp file so we can read it back
@@ -93,37 +94,32 @@ def perturbations(
 
     seen = set()
 
-    for i, center_field in enumerate(center):
-        param = center_field.metadata("param")
-        center_field_as_mars = center_field.metadata(namespace="mars")
+    for i, centre_field in enumerate(centre):
+        param = centre_field.metadata("param")
+        centre_field_as_mars = centre_field.metadata(namespace="mars")
 
-        # load the center field
-        center_np = center_field.to_numpy()
+        # load the centre field
+        centre_np = centre_field.to_numpy()
 
         # load the ensemble fields and compute the mean
-        members_np = np.zeros((n_numbers, *center_np.shape))
+        members_np = np.zeros((n_numbers, *centre_np.shape))
 
         for j in range(n_numbers):
             ensemble_field = members[i * n_numbers + j]
             ensemble_field_as_mars = ensemble_field.metadata(namespace="mars")
-            check_compatible(
-                center_field,
-                ensemble_field,
-                center_field_as_mars,
-                ensemble_field_as_mars,
-            )
+            check_compatible(centre_field, ensemble_field, centre_field_as_mars, ensemble_field_as_mars)
             members_np[j] = ensemble_field.to_numpy()
 
             ensemble_field_as_mars = tuple(sorted(ensemble_field_as_mars.items()))
             assert ensemble_field_as_mars not in seen, ensemble_field_as_mars
             seen.add(ensemble_field_as_mars)
 
-        # cmin=np.amin(center_np)
+        # cmin=np.amin(centre_np)
         # emin=np.amin(members_np)
 
         # if cmin < 0 and emin >= 0:
         #     LOG.warning(f"Negative values in {param} cmin={cmin} emin={emin}")
-        #     LOG.warning(f"Center: {center_field_as_mars}")
+        #     LOG.warning(f"centre: {centre_field_as_mars}")
 
         mean_np = members_np.mean(axis=0)
 
@@ -131,11 +127,11 @@ def perturbations(
             template = members[i * n_numbers + j]
             e = members_np[j]
             m = mean_np
-            c = center_np
+            c = centre_np
 
             assert e.shape == c.shape == m.shape, (e.shape, c.shape, m.shape)
 
-            x = c - m + e
+            x = c + (e - m) * alpha
 
             if param in clip_variables:
                 # LOG.warning(f"Clipping {param} to be positive")
