@@ -50,10 +50,10 @@ def load_if_needed(context, dates, dict_or_dataset):
     return dict_or_dataset
 
 
-def perturbations(context, dates, members, center, remapping={}, patches={}):
+def perturbations(context, dates, members, centre, remapping={}, patches={}):
     members = load_if_needed(context, dates, members)
-    center = load_if_needed(context, dates, center)
-    return compute_perturbations(members, center)
+    centre = load_if_needed(context, dates, centre)
+    return compute_perturbations(members, centre)
 
 
 execute = perturbations
