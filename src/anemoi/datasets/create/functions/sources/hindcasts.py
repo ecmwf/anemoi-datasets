@@ -7,7 +7,6 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
-import logging
 import warnings
 from copy import deepcopy
 
@@ -17,9 +16,9 @@ from climetlab.core.temporary import temp_file
 from climetlab.readers.grib.output import new_grib_output
 from climetlab.utils.availability import Availability
 
-from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.datasets.create.functions.sources.mars import mars
 
-LOG = logging.getLogger(__name__)
+DEBUG = True
 
 
 def member(field):
@@ -74,10 +73,7 @@ class Accumulation:
     def write(self, template):
 
         assert self.startStep != self.endStep, (self.startStep, self.endStep)
-        if np.all(self.values < 0):
-            LOG.warning(
-                f"Negative values when computing accumutation for {self.param} ({self.date} {self.time}): min={np.amin(self.values)} max={np.amax(self.values)}"
-            )
+        assert np.all(self.values >= 0), (np.amin(self.values), np.amax(self.values))
 
         self.out.write(
             self.values,
@@ -382,59 +378,60 @@ def normalise_number(r):
     return r
 
 
-def scda(request):
-    if request["time"] in (6, 18, 600, 1800):
-        request["stream"] = "scda"
-    else:
-        request["stream"] = "oper"
+class HindcastCompute:
+    def __init__(self, base_times, available_steps, request):
+        self.base_times = base_times
+        self.available_steps = available_steps
+        self.request = request
+
+    def compute_hindcast(self, date):
+        for step in self.available_steps:
+            start_date = date - datetime.timedelta(hours=step)
+            hours = start_date.hour
+            if hours in self.base_times:
+                r = deepcopy(self.request)
+                r["date"] = start_date
+                r["time"] = f"{start_date.hour:02d}00"
+                r["step"] = step
+                return r
+        raise ValueError(
+            f"Cannot find data for {self.request} for {date} (base_times={self.base_times}, available_steps={self.available_steps})"
+        )
+
+
+def use_reference_year(reference_year, request):
+    request = deepcopy(request)
+    hdate = request.pop("date")
+    date = datetime.datetime(reference_year, hdate.month, hdate.day)
+    request.update(date=date.strftime("%Y-%m-%d"), hdate=hdate.strftime("%Y-%m-%d"))
     return request
 
 
-def accumulations(context, dates, **request):
-    to_list(request["param"])
-    class_ = request.get("class", "od")
-    stream = request.get("stream", "oper")
+def hindcasts(context, dates, **request):
+    request["param"] = to_list(request["param"])
+    request["step"] = to_list(request["step"])
+    request["step"] = [int(_) for _ in request["step"]]
 
-    user_accumulation_period = request.get("accumulation_period", 6)
+    if request.get("stream") == "enfh" and "base_times" not in request:
+        request["base_times"] = [0]
 
-    KWARGS = {
-        ("od", "oper"): dict(patch=scda),
-        ("od", "elda"): dict(base_times=(6, 18)),
-        ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
-        ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
-    }
+    available_steps = request.pop("step")
+    available_steps = to_list(available_steps)
 
-    kwargs = KWARGS.get((class_, stream), {})
+    base_times = request.pop("base_times")
 
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
+    reference_year = request.pop("reference_year")
 
-    return compute_accumulations(
-        dates,
-        request,
-        user_accumulation_period=user_accumulation_period,
-        **kwargs,
-    )
+    context.trace("H️", f"hindcast {request} {base_times} {available_steps} {reference_year}")
+
+    c = HindcastCompute(base_times, available_steps, request)
+    requests = []
+    for d in dates:
+        req = c.compute_hindcast(d)
+        req = use_reference_year(reference_year, req)
+
+        requests.append(req)
+    return mars(context, dates, *requests, date_key="hdate")
 
 
-execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
-        """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    for f in accumulations(None, dates, **config):
-        print(f, f.to_numpy().mean())
+execute = hindcasts

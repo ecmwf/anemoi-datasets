@@ -42,15 +42,21 @@ def normalise_time_delta(t):
     return t
 
 
-def _expand_mars_request(request, date):
+def _expand_mars_request(request, date, date_key="date"):
     requests = []
     step = to_list(request.get("step", [0]))
     for s in step:
         r = deepcopy(request)
-        base = date - datetime.timedelta(hours=int(s))
+
+        if isinstance(s, str) and "-" in s:
+            assert s.count("-") == 1, s
+        # this takes care of the cases where the step is a period such as 0-24 or 12-24
+        hours = int(str(s).split("-")[-1])
+
+        base = date - datetime.timedelta(hours=hours)
         r.update(
             {
-                "date": base.strftime("%Y%m%d"),
+                date_key: base.strftime("%Y%m%d"),
                 "time": base.strftime("%H%M"),
                 "step": s,
             }
@@ -66,13 +72,13 @@ def _expand_mars_request(request, date):
     return requests
 
 
-def factorise_requests(dates, *requests):
+def factorise_requests(dates, *requests, date_key="date"):
     updates = []
     for req in requests:
         # req = normalise_request(req)
 
         for d in dates:
-            updates += _expand_mars_request(req, date=d)
+            updates += _expand_mars_request(req, date=d, date_key=date_key)
 
     compressed = Availability(updates)
     for r in compressed.iterate():
@@ -96,11 +102,11 @@ def use_grib_paramid(r):
     return r
 
 
-def mars(context, dates, *requests, **kwargs):
+def mars(context, dates, *requests, date_key="date", **kwargs):
     if not requests:
         requests = [kwargs]
 
-    requests = factorise_requests(dates, *requests)
+    requests = factorise_requests(dates, *requests, date_key=date_key)
     ds = load_source("empty")
     for r in requests:
         r = {k: v for k, v in r.items() if v != ("-",)}
