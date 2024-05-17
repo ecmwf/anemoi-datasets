@@ -7,6 +7,7 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
+import logging
 import warnings
 from copy import deepcopy
 
@@ -18,7 +19,7 @@ from climetlab.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
-DEBUG = True
+LOG = logging.getLogger(__name__)
 
 
 def member(field):
@@ -73,7 +74,10 @@ class Accumulation:
     def write(self, template):
 
         assert self.startStep != self.endStep, (self.startStep, self.endStep)
-        assert np.all(self.values >= 0), (np.amin(self.values), np.amax(self.values))
+        if np.all(self.values < 0):
+            LOG.warning(
+                f"Negative values when computing accumutation for {self.param} ({self.date} {self.time}): min={np.amin(self.values)} max={np.amax(self.values)}"
+            )
 
         self.out.write(
             self.values,
@@ -432,6 +436,5 @@ if __name__ == "__main__":
     dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
     dates = to_datetime_list(dates)
 
-    DEBUG = True
     for f in accumulations(None, dates, **config):
         print(f, f.to_numpy().mean())
