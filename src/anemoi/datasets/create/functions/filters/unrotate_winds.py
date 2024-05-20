@@ -56,7 +56,7 @@ def execute(context, input, u, v):
         y = pairs[v]
 
         lats, lons = x.grid_points()
-        raw_lats, raw_longs = x.grid_points_raw()
+        raw_lats, raw_longs = x.grid_points_unrotated()
 
         assert x.rotation == y.rotation
 
