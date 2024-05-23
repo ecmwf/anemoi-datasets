@@ -10,11 +10,11 @@ import datetime
 import warnings
 from copy import deepcopy
 
-import climetlab as cml
+import earthkit.data as ekd
 import numpy as np
-from climetlab.core.temporary import temp_file
-from climetlab.readers.grib.output import new_grib_output
-from climetlab.utils.availability import Availability
+from earthkit.data.core.temporary import temp_file
+from earthkit.data.readers.grib.output import new_grib_output
+from earthkit.utils.availability import Availability
 
 from anemoi.datasets.create.functions.sources.mars import mars
 
@@ -53,9 +53,18 @@ class Accumulation:
         if self._check is None:
             self._check = field.as_mars()
 
-            assert self.param == field.metadata("param"), (self.param, field.metadata("param"))
-            assert self.date == field.metadata("date"), (self.date, field.metadata("date"))
-            assert self.time == field.metadata("time"), (self.time, field.metadata("time"))
+            assert self.param == field.metadata("param"), (
+                self.param,
+                field.metadata("param"),
+            )
+            assert self.date == field.metadata("date"), (
+                self.date,
+                field.metadata("date"),
+            )
+            assert self.time == field.metadata("time"), (
+                self.time,
+                field.metadata("time"),
+            )
             assert self.number == member(field), (self.number, member(field))
 
             return
@@ -94,7 +103,9 @@ class Accumulation:
             return
 
         if not np.all(values >= 0):
-            warnings.warn(f"Negative values for {field}: {np.amin(values)} {np.amax(values)}")
+            warnings.warn(
+                f"Negative values for {field}: {np.amin(values)} {np.amax(values)}"
+            )
 
         assert not self.done, (self.key, step)
         assert step not in self.seen, (self.key, step)
@@ -115,7 +126,9 @@ class Accumulation:
             self.write(template=field)
 
     @classmethod
-    def mars_date_time_steps(cls, dates, step1, step2, frequency, base_times, adjust_step):
+    def mars_date_time_steps(
+        cls, dates, step1, step2, frequency, base_times, adjust_step
+    ):
 
         # assert step1 > 0, (step1, step2, frequency)
 
@@ -166,7 +179,9 @@ class AccumulationFromStart(Accumulation):
                 self.startStep = endStep
 
             if not np.all(self.values >= 0):
-                warnings.warn(f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}")
+                warnings.warn(
+                    f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}"
+                )
                 self.values = np.maximum(self.values, 0)
 
     @classmethod
@@ -189,7 +204,11 @@ class AccumulationFromLastStep(Accumulation):
 
     def compute(self, values, startStep, endStep):
 
-        assert endStep - startStep == self.frequency, (startStep, endStep, self.frequency)
+        assert endStep - startStep == self.frequency, (
+            startStep,
+            endStep,
+            self.frequency,
+        )
 
         if self.startStep is None:
             self.startStep = startStep
@@ -247,7 +266,11 @@ def compute_accumulations(
 
     base_times = [t // 100 if t > 100 else t for t in base_times]
 
-    AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
+    AccumulationClass = (
+        AccumulationFromStart
+        if data_accumulation_period in (0, None)
+        else AccumulationFromLastStep
+    )
 
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates,
@@ -299,11 +322,11 @@ def compute_accumulations(
                 )
 
     compressed = Availability(requests)
-    ds = cml.load_source("empty")
+    ds = ekd.from_source("empty")
     for r in compressed.iterate():
         request.update(r)
         print("🌧️", request)
-        ds = ds + cml.load_source("mars", **request)
+        ds = ds + ekd.from_source("mars", **request)
 
     accumulations = {}
     for a in [AccumulationClass(out, frequency=frequency, **r) for r in requests]:
@@ -330,7 +353,7 @@ def compute_accumulations(
 
     out.close()
 
-    ds = cml.load_source("file", path)
+    ds = ekd.from_source("file", path)
 
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
@@ -422,7 +445,9 @@ def hindcasts(context, dates, **request):
 
     reference_year = request.pop("reference_year")
 
-    context.trace("H️", f"hindcast {request} {base_times} {available_steps} {reference_year}")
+    context.trace(
+        "H️", f"hindcast {request} {base_times} {available_steps} {reference_year}"
+    )
 
     c = HindcastCompute(base_times, available_steps, request)
     requests = []
