@@ -72,6 +72,11 @@ class Copier:
             LOG.warning(
                 f"Block size ({self.block_size}) is not a multiple of target chunk size ({self.data_chunks[0]}). Slow copy expected."
             )
+            if self.transfers > 1:
+                # race condition, different threads might copy the same data to the same chunk
+                raise NotImplementedError(
+                    "Block size is not a multiple of target chunk size. Parallel copy not supported."
+                )
             for i in tqdm.tqdm(
                 range(n, m),
                 desc=f"Copying {n} to {m}",
