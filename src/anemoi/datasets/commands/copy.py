@@ -41,24 +41,18 @@ zinfo https://object-store.os-api.cci1.ecmwf.int/
 """
 
 
-class CopyMixin:
-    internal = True
-    timestamp = True
+class Copier:
+    def __init__(self, source, target, transfers, block_size, overwrite, progress, nested, rechunk, **kwargs):
+        self.source = source
+        self.target = target
+        self.transfers = transfers
+        self.block_size = block_size
+        self.overwrite = overwrite
+        self.progress = progress
+        self.nested = nested
+        self.rechunk = rechunk
 
-    def add_arguments(self, command_parser):
-        command_parser.add_argument("--transfers", type=int, default=8)
-        command_parser.add_argument("--block-size", type=int, default=100)
-        command_parser.add_argument("--overwrite", action="store_true")
-        command_parser.add_argument("--progress", action="store_true")
-        command_parser.add_argument("--nested", action="store_true", help="Use ZARR's nested directpry backend.")
-        command_parser.add_argument(
-            "--rechunk",
-            nargs="+",
-            help="Rechunk given array.",
-            metavar="array=i,j,k,l",
-        )
-        command_parser.add_argument("source")
-        command_parser.add_argument("target")
+        self.rechunking = rechunk.split(",") if rechunk else []
 
     def _store(self, path, nested=False):
         if nested:
@@ -67,30 +61,51 @@ class CopyMixin:
             return zarr.storage.NestedDirectoryStore(path)
         return path
 
-    def copy_chunk(self, n, m, source, target, block_size, _copy, progress):
+    def copy_chunk(self, n, m, source, target, _copy, progress):
         if _copy[n:m].all():
             LOG.info(f"Skipping {n} to {m}")
             return None
 
-        for i in tqdm.tqdm(
-            range(n, m),
-            desc=f"Copying {n} to {m}",
-            leave=False,
-            disable=not isatty and not progress,
-        ):
-            target[i] = source[i]
+        if self.block_size % self.data_chunks[0] == 0:
+            target[slice(n, m)] = source[slice(n, m)]
+        else:
+            LOG.warning(
+                f"Block size ({self.block_size}) is not a multiple of target chunk size ({self.data_chunks[0]}). Slow copy expected."
+            )
+            for i in tqdm.tqdm(
+                range(n, m),
+                desc=f"Copying {n} to {m}",
+                leave=False,
+                disable=not isatty and not progress,
+            ):
+                target[i] = source[i]
+
         return slice(n, m)
 
-    def copy_data(self, source, target, transfers, block_size, _copy, progress, rechunking):
+    def parse_rechunking(self, rechunking, source_data):
+        shape = source_data.shape
+        chunks = list(source_data.chunks)
+        for i, c in enumerate(rechunking):
+            if not c:
+                continue
+            elif c == "full":
+                chunks[i] = shape[i]
+            c = int(c)
+            c = min(c, shape[i])
+            chunks[i] = c
+        chunks = tuple(chunks)
+
+        if chunks != source_data.chunks:
+            LOG.info(f"Rechunking data from {source_data.chunks} to {chunks}")
+            # if self.transfers > 1:
+            #    raise NotImplementedError("Rechunking with multiple transfers is not implemented")
+        return chunks
+
+    def copy_data(self, source, target, _copy, progress):
         LOG.info("Copying data")
         source_data = source["data"]
 
-        chunks = list(source_data.chunks)
-        if "data" in rechunking:
-            assert len(chunks) == len(rechunking["data"]), (chunks, rechunking["data"])
-            for i, c in enumerate(rechunking["data"]):
-                if c != -1:
-                    chunks[i] = c
+        self.data_chunks = self.parse_rechunking(self.rechunking, source_data)
 
         target_data = (
             target["data"]
@@ -98,12 +113,12 @@ class CopyMixin:
             else target.create_dataset(
                 "data",
                 shape=source_data.shape,
-                chunks=chunks,
+                chunks=self.data_chunks,
                 dtype=source_data.dtype,
             )
         )
 
-        executor = ThreadPoolExecutor(max_workers=transfers)
+        executor = ThreadPoolExecutor(max_workers=self.transfers)
         tasks = []
         n = 0
         while n < target_data.shape[0]:
@@ -111,15 +126,14 @@ class CopyMixin:
                 executor.submit(
                     self.copy_chunk,
                     n,
-                    min(n + block_size, target_data.shape[0]),
+                    min(n + self.block_size, target_data.shape[0]),
                     source_data,
                     target_data,
-                    block_size,
                     _copy,
                     progress,
                 )
             )
-            n += block_size
+            n += self.block_size
 
         for future in tqdm.tqdm(as_completed(tasks), total=len(tasks), smoothing=0):
             copied = future.result()
@@ -131,7 +145,7 @@ class CopyMixin:
 
         LOG.info("Copied data")
 
-    def copy_array(self, name, source, target, transfers, block_size, _copy, progress, rechunking):
+    def copy_array(self, name, source, target, _copy, progress):
         for k, v in source.attrs.items():
             target.attrs[k] = v
 
@@ -139,14 +153,14 @@ class CopyMixin:
             return
 
         if name == "data":
-            self.copy_data(source, target, transfers, block_size, _copy, progress, rechunking)
+            self.copy_data(source, target, _copy, progress)
             return
 
         LOG.info(f"Copying {name}")
         target[name] = source[name]
         LOG.info(f"Copied {name}")
 
-    def copy_group(self, source, target, transfers, block_size, _copy, progress, rechunking):
+    def copy_group(self, source, target, _copy, progress):
         import zarr
 
         for k, v in source.attrs.items():
@@ -158,25 +172,19 @@ class CopyMixin:
                 self.copy_group(
                     source[name],
                     group,
-                    transfers,
-                    block_size,
                     _copy,
                     progress,
-                    rechunking,
                 )
             else:
                 self.copy_array(
                     name,
                     source,
                     target,
-                    transfers,
-                    block_size,
                     _copy,
                     progress,
-                    rechunking,
                 )
 
-    def copy(self, source, target, transfers, block_size, progress, rechunking):
+    def copy(self, source, target, progress):
         import zarr
 
         if "_copy" not in target:
@@ -187,57 +195,64 @@ class CopyMixin:
         _copy = target["_copy"]
         _copy_np = _copy[:]
 
-        self.copy_group(source, target, transfers, block_size, _copy_np, progress, rechunking)
+        self.copy_group(source, target, _copy_np, progress)
         del target["_copy"]
 
-    def run(self, args):
+    def run(self):
         import zarr
 
         # base, ext = os.path.splitext(os.path.basename(args.source))
         # assert ext == ".zarr", ext
         # assert "." not in base, base
-        LOG.info(f"Copying {args.source} to {args.target}")
+        LOG.info(f"Copying {self.source} to {self.target}")
 
-        rechunking = {}
-        if args.rechunk:
-            for r in args.rechunk:
-                k, v = r.split("=")
-                if k != "data":
-                    raise ValueError(f"Only rechunking data is supported: {k}")
-                values = v.split(",")
-                values = [-1 if x == "" else x for x in values]
-                values = tuple(int(x) for x in values)
-                rechunking[k] = values
-            for k, v in rechunking.items():
-                LOG.info(f"Rechunking {k} to {v}")
+        if self.overwrite:
+            target = zarr.open(self._store(self.target, self.nested), mode="w")
 
-        try:
-            target = zarr.open(self._store(args.target, args.nested), mode="r")
-            if "_copy" in target:
-                done = sum(1 if x else 0 for x in target["_copy"])
-                todo = len(target["_copy"])
-                LOG.info(
-                    "Resuming copy, done %s out or %s, %s%%",
-                    done,
-                    todo,
-                    int(done / todo * 100 + 0.5),
-                )
-            elif "sums" in target and "data" in target:  # sums is copied last
-                LOG.error("Target already exists")
-                return
-        except ValueError as e:
-            LOG.info(f"Target does not exist: {e}")
-            pass
-
-        source = zarr.open(self._store(args.source), mode="r")
-        if args.overwrite:
-            target = zarr.open(self._store(args.target, args.nested), mode="w")
         else:
             try:
-                target = zarr.open(self._store(args.target, args.nested), mode="w+")
+                target = zarr.open(self._store(self.target, self.nested), mode="r")
+                if "_copy" in target:
+                    done = sum(1 if x else 0 for x in target["_copy"])
+                    todo = len(target["_copy"])
+                    LOG.info(
+                        "Resuming copy, done %s out or %s, %s%%",
+                        done,
+                        todo,
+                        int(done / todo * 100 + 0.5),
+                    )
+                elif "sums" in target and "data" in target:  # sums is copied last
+                    LOG.error("Target already exists and is finished.")
+                    return
+            except ValueError as e:
+                LOG.info(f"Target does not exist: {e}. Creating new target.")
+                pass
+
+            try:
+                target = zarr.open(self._store(self.target, self.nested), mode="w+")
             except ValueError:
-                target = zarr.open(self._store(args.target, args.nested), mode="w")
-        self.copy(source, target, args.transfers, args.block_size, args.progress, rechunking)
+                target = zarr.open(self._store(self.target, self.nested), mode="w")
+
+        source = zarr.open(self._store(self.source), mode="r")
+        self.copy(source, target, self.progress)
+
+
+class CopyMixin:
+    internal = True
+    timestamp = True
+
+    def add_arguments(self, command_parser):
+        command_parser.add_argument("--transfers", type=int, default=8)
+        command_parser.add_argument("--block-size", type=int, default=100)
+        command_parser.add_argument("--overwrite", action="store_true")
+        command_parser.add_argument("--progress", action="store_true")
+        command_parser.add_argument("--nested", action="store_true", help="Use ZARR's nested directpry backend.")
+        command_parser.add_argument("--rechunk", help="Rechunk the data array.")
+        command_parser.add_argument("source")
+        command_parser.add_argument("target")
+
+    def run(self, args):
+        Copier(**vars(args)).run()
 
 
 class Copy(CopyMixin, Command):
