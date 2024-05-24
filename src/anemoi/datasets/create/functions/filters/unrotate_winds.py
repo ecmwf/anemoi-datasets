@@ -63,11 +63,12 @@ def execute(context, input, u, v):
         u_new, v_new = unrotate_wind(
             lats,
             lons,
-            raw_lats,
-            raw_longs,
             x.to_numpy(flatten=True),
             y.to_numpy(flatten=True),
-            *x.rotation,
+            *x.rotation[:2],
+            south_pole_rotation_angle=x.rotation[2],
+            lat_unrotated=raw_lats,
+            lon_unrotated=raw_longs,
         )
 
         result.append(NewDataField(x, u_new))
