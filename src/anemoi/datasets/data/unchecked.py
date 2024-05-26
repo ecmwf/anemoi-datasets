@@ -29,12 +29,7 @@ class check:
 
         @wraps(method)
         def wrapper(obj):
-            """
-            This is a decorator that checks the compatibility of the datasets
-            before calling the method. If the datasets are compatible, it
-            will return the result of the method, otherwise it will raise an
-            exception.
-            """
+            """This is a decorator that checks the compatibility of the datasets before calling the method. If the datasets are compatible, it will return the result of the method, otherwise it will raise an exception."""
 
             for d in obj.datasets[1:]:
                 getattr(obj, check)(obj.datasets[0], d)

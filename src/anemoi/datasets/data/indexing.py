@@ -119,9 +119,7 @@ def _as_tuples(index):
 
 
 def expand_list_indexing(method):
-    """Allows to use slices, lists, and tuples to select data from the dataset.
-    Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves.
-    """
+    """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
 
     @wraps(method)
     def wrapper(self, index):

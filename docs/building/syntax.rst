@@ -1,6 +1,5 @@
-########
- syntax
-########
+syntax
+======
 
 .. literalinclude:: syntax.yaml
-   :language: yaml
+    :language: yaml

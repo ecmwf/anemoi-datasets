@@ -1,9 +1,8 @@
-#########
- inspect
-#########
+inspect
+=======
 
 .. argparse::
-   :module: anemoi.datasets.__main__
-   :func: create_parser
-   :prog: anemoi-datasets
-   :path: inspect
+    :module: anemoi.datasets.__main__
+    :func: create_parser
+    :prog: anemoi-datasets
+    :path: inspect
