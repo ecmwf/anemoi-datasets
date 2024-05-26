@@ -4,6 +4,8 @@
 
 Use this command to create a dataset from a recipe file:
 
-.. code:: bash
-
-   % anemoi-datasets create recipe.yaml dataset.zarr
+.. argparse::
+   :module: anemoi.datasets.__main__
+   :func: create_parser
+   :prog: anemoi-datasets
+   :path: create

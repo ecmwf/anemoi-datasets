@@ -4,6 +4,8 @@ from . import Command
 
 
 class Create(Command):
+    """Create a dataset"""
+
     internal = True
     timestamp = True
 

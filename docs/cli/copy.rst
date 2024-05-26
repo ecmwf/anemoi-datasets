@@ -2,6 +2,8 @@
  copy
 ######
 
-.. code:: bash
-
-   % anemoi-datasets copy dataset1.zarr dataset2.zarr
+.. argparse::
+   :module: anemoi.datasets.__main__
+   :func: create_parser
+   :prog: anemoi-datasets
+   :path: copy

@@ -17,12 +17,14 @@ The commands are:
 .. toctree::
    :maxdepth: 1
 
+   compare
+   copy
    create
    inspect
-   copy
-   compare
+   scan
 
 .. argparse::
    :module: anemoi.datasets.__main__
    :func: create_parser
    :prog: anemoi-datasets
+   :nosubcommands:

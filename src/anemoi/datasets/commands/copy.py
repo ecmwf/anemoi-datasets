@@ -261,7 +261,7 @@ class CopyMixin:
 
 
 class Copy(CopyMixin, Command):
-    pass
+    """Copy a dataset"""
 
 
 command = Copy
