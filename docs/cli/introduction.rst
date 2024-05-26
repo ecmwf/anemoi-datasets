@@ -21,3 +21,8 @@ The commands are:
    inspect
    copy
    compare
+
+.. argparse::
+   :module: anemoi.datasets.__main__
+   :func: create_parser
+   :prog: anemoi-datasets

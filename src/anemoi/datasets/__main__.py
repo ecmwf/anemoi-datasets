@@ -20,7 +20,7 @@ from .commands import COMMANDS
 LOG = logging.getLogger(__name__)
 
 
-def main():
+def create_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument(
@@ -41,6 +41,11 @@ def main():
         command_parser = subparsers.add_parser(name, help=command.__doc__)
         command.add_arguments(command_parser)
 
+    return parser
+
+
+def main():
+    parser = create_parser()
     args = parser.parse_args()
 
     if args.version:
