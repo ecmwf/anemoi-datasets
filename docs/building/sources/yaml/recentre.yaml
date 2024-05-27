@@ -21,6 +21,6 @@ data_sources:
       stream: oper
 
 input:
-  perturbations:
-    center: ${data_sources.center_source}
+  recentre:
+    centre: ${data_sources.center_source}
     members: ${data_sources.members_source}

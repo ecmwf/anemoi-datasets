@@ -1,7 +1,8 @@
-#########
- inspect
-#########
+inspect
+=======
 
-.. code:: bash
-
-   % anemoi-datasets inspect dataset.zarr
+.. argparse::
+    :module: anemoi.datasets.__main__
+    :func: create_parser
+    :prog: anemoi-datasets
+    :path: inspect

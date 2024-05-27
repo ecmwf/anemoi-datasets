@@ -1,28 +1,26 @@
-######
- mars
-######
+mars
+====
 
-The ``mars`` source will retrieve the data from the ECMWF MARS archive.
-For that, you need to have an ECMWF account and build your dataset on
-one of the Centre's computers, or use the ``ecmwfapi`` Python package.
+The ``mars`` source will retrieve the data from the ECMWF MARS archive. For that, you
+need to have an ECMWF account and build your dataset on one of the Centre's computers,
+or use the ``ecmwfapi`` Python package.
 
-The `yaml` block can contain any keys that following the `MARS language
-specification`_, with the exception of the ``date``, ``time``` and
-``step``.
+The `yaml` block can contain any keys that following the `MARS language specification`_,
+with the exception of the ``date``, ``time``` and ``step``.
 
-The missing keys will be filled with the default values, as defined in
-the MARS language specification.
+The missing keys will be filled with the default values, as defined in the MARS language
+specification.
 
 .. literalinclude:: mars1.yaml
-   :language: yaml
+    :language: yaml
 
-Data from several levels types must be requested in separate requests,
-with the ``join`` command.
+Data from several levels types must be requested in separate requests, with the ``join``
+command.
 
 .. literalinclude:: mars2.yaml
-   :language: yaml
+    :language: yaml
 
-See :ref:`naming-variables` for information on how to name the variables
-when mixing single level and multi-levels variables in the same dataset.
+See :ref:`naming-variables` for information on how to name the variables when mixing
+single level and multi-levels variables in the same dataset.
 
 .. _mars language specification: https://confluence.ecmwf.int/display/UDOC/MARS+user+documentation
