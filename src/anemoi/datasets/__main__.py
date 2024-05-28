@@ -8,12 +8,6 @@
 # nor does it submit to any jurisdiction.
 #
 
-
-import argparse
-import logging
-import sys
-import traceback
-
 from anemoi.utils.cli import cli_main
 from anemoi.utils.cli import make_parser
 
