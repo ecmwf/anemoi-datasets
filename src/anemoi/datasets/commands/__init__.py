@@ -8,21 +8,13 @@
 # nor does it submit to any jurisdiction.
 #
 
-import argparse
-import importlib
-import logging
 import os
-import sys
-
-LOG = logging.getLogger(__name__)
-
 
 from anemoi.utils.cli import Command
 from anemoi.utils.cli import Failed
 from anemoi.utils.cli import register_commands
 
 __all__ = ["Command"]
-
 
 COMMANDS = register_commands(
     os.path.dirname(__file__),
