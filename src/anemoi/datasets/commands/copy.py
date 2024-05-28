@@ -289,7 +289,7 @@ class CopyMixin:
             "--block-size",
             type=int,
             default=100,
-            help="For optimisation purposes, data is transfer by blocks. Default is 100.",
+            help="For optimisation purposes, data is transfered by blocks. Default is 100.",
         )
         command_parser.add_argument("source", help="Source location")
         command_parser.add_argument("target", help="Target location")
