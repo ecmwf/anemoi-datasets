@@ -46,7 +46,6 @@ dependencies = [
     "numpy",
     "tqdm",
     "semantic-version",
-    "torch",
 ]
 
 [project.optional-dependencies]
