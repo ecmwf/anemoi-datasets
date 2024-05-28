@@ -1,6 +1,25 @@
 copy
 ====
 
+
+Copying a dataset from one location to another can be error-prone and time-consuming. This command-line script allows for incremental copying.
+
+It can be used to copy files from a local directory to a remote server, from a remote server to a local directory, or between two remote servers as long as there is a zarr backend to read and write the data.
+
+When the copying process fails, it can be resumed.
+
+The script uses multiple threads to make the process faster. However, it is important to consider that making parallel requests to the same server may not be ideal, for instance if the server internally uses a limited number of threads to handle requests.
+
+The option to rechunk the data is available, which can be useful when the data is stored on a platform that does not support having may small files or many file on the same directory. Keep in mind that rechunking has a huge impact on the performance when reading the data.
+The chunk pattern for dataset has been defined for good reasons, and changing it is very likey to have a negative impact on the performance.
+
+
+.. note::
+
+    When resuming the copying process (using `--resume`), calling the script with the same arguments for --block-size and --rechunk is recommended.
+    Using different values for these arguments to resume copying the same dataset may lead to unexpected behavior.
+
+
 .. argparse::
     :module: anemoi.datasets.__main__
     :func: create_parser
