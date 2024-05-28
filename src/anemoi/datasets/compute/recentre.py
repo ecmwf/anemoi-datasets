@@ -107,7 +107,12 @@ def recentre(
         for j in range(n_numbers):
             ensemble_field = members[i * n_numbers + j]
             ensemble_field_as_mars = ensemble_field.metadata(namespace="mars")
-            check_compatible(centre_field, ensemble_field, centre_field_as_mars, ensemble_field_as_mars)
+            check_compatible(
+                centre_field,
+                ensemble_field,
+                centre_field_as_mars,
+                ensemble_field_as_mars,
+            )
             members_np[j] = ensemble_field.to_numpy()
 
             ensemble_field_as_mars = tuple(sorted(ensemble_field_as_mars.items()))

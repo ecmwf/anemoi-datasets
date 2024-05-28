@@ -109,9 +109,9 @@ def _data_request(data):
             continue
 
         if date is None:
-            date = field.valid_datetime()
+            date = field.datetime()["valid_time"]
 
-        if field.valid_datetime() != date:
+        if field.datetime()["valid_time"] != date:
             continue
 
         as_mars = field.metadata(namespace="mars")

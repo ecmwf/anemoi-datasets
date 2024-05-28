@@ -51,7 +51,7 @@ class Scan(Command):
             if not match(path):
                 continue
             for field in tqdm.tqdm(ekd.from_source("file", path), leave=False):
-                dates.add(field.valid_datetime())
+                dates.add(field.datetime()["valid_time"])
                 mars = field.metadata(namespace="mars")
                 keys = tuple(mars.get(k) for k in KEYS)
                 gribs[keys].add(path)
