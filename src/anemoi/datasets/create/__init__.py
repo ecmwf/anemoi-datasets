@@ -19,6 +19,7 @@ class Creator:
         print=print,
         statistics_tmp=None,
         overwrite=False,
+        test=None,
         **kwargs,
     ):
         self.path = path  # Output path
@@ -27,6 +28,7 @@ class Creator:
         self.print = print
         self.statistics_tmp = statistics_tmp
         self.overwrite = overwrite
+        self.test = test
 
     def init(self, check_name=False):
         # check path
@@ -43,6 +45,7 @@ class Creator:
                 config=self.config,
                 statistics_tmp=self.statistics_tmp,
                 print=self.print,
+                test=self.test,
             )
             obj.initialise(check_name=check_name)
 

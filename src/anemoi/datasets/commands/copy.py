@@ -299,7 +299,7 @@ class CopyMixin:
 
 
 class Copy(CopyMixin, Command):
-    """Copy a dataset"""
+    """Copy a dataset from one location to another."""
 
 
 command = Copy
