@@ -1,6 +1,10 @@
 inspect
 =======
 
+
+.. literalinclude:: ../building/yaml/building1.txt
+   :language: console
+
 .. argparse::
     :module: anemoi.datasets.__main__
     :func: create_parser
