@@ -52,11 +52,11 @@ dependencies = [
 remote = ["boto3", "requests", "s3fs"]
 
 create = [
-    "earthkit-data[mars] @ git+ssh://git@github.com/ecmwf/earthkit-data.git@feature/anemoi",
+    "earthkit-data[mars]>=0.8.1",
     "earthkit-geo>=0.2.0",
     "earthkit-meteo",
     "pyproj",
-    # "ecmwflibs>=0.6.3",
+    "ecmwflibs>=0.6.3",
 ]
 
 docs = ["sphinx", "sphinx_rtd_theme", "nbsphinx", "pandoc"]
@@ -65,22 +65,22 @@ all = [
     "boto3",
     "requests",
     "s3fs",
-    "earthkit-data[mars] @ git+ssh://git@github.com/ecmwf/earthkit-data.git@feature/anemoi",
+    "earthkit-data[mars]>=0.8.1",
     "earthkit-geo>=0.2.0",
     "earthkit-meteo",
     "pyproj",
-    # "ecmwflibs>=0.6.3",
+    "ecmwflibs>=0.6.3",
 ]
 
 dev = [
     "boto3",
     "requests",
     "s3fs",
-    "earthkit-data[mars] @  git+ssh://git@github.com/ecmwf/earthkit-data.git@feature/anemoi",
+    "earthkit-data[mars]>=0.8.1",
     "earthkit-geo>=0.2.0",
     "earthkit-meteo",
     "pyproj",
-    # "ecmwflibs>=0.6.3",
+    "ecmwflibs>=0.6.3",
     "sphinx",
     "sphinx_rtd_theme",
     "nbsphinx",
