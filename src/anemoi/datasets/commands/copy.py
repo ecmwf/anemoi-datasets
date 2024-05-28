@@ -277,7 +277,7 @@ class CopyMixin:
         group.add_argument(
             "--resume", action="store_true", help="Resume copying an existing dataset. Cannot be used with --overwrite."
         )
-        command_parser.add_argument("--transfers", type=int, default=8, help="Number of parallel transfers")
+        command_parser.add_argument("--transfers", type=int, default=8, help="Number of parallel transfers.")
         command_parser.add_argument(
             "--progress", action="store_true", help="Force show progress bar, even if not in an interactive shell."
         )
@@ -291,8 +291,8 @@ class CopyMixin:
             default=100,
             help="For optimisation purposes, data is transfered by blocks. Default is 100.",
         )
-        command_parser.add_argument("source", help="Source location")
-        command_parser.add_argument("target", help="Target location")
+        command_parser.add_argument("source", help="Source location.")
+        command_parser.add_argument("target", help="Target location.")
 
     def run(self, args):
         Copier(**vars(args)).run()
