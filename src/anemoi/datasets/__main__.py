@@ -21,7 +21,7 @@ def create_parser():
 
 
 def main():
-    cli_main(__version__, create_parser(), COMMANDS)
+    cli_main(__version__, __doc__, COMMANDS)
 
 
 if __name__ == "__main__":
