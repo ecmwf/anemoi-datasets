@@ -40,12 +40,13 @@ classifiers = [
 ]
 
 dependencies = [
-    "anemoi-utils[provenance]>=0.1.7",
+    "anemoi-utils[provenance]>=0.2.1",
     "zarr<=2.17.0",
     "pyyaml",
     "numpy",
     "tqdm",
     "semantic-version",
+    "torch",
 ]
 
 [project.optional-dependencies]
