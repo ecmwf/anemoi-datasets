@@ -16,11 +16,11 @@
 
 import datetime
 import os
+import sys
 
 read_the_docs_build = os.environ.get("READTHEDOCS", None) == "True"
 
-# top = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
-# sys.path.insert(0, top)
+sys.path.insert(0, os.path.join(os.path.abspath(".."), "src"))
 
 
 source_suffix = ".rst"
@@ -45,7 +45,12 @@ else:
 copyright = "%s, ECMWF" % (years,)
 
 
-release = "0.1.0"
+try:
+    from anemoi.datasets._version import __version__
+
+    release = __version__
+except ImportError:
+    release = "0.0.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -59,6 +64,8 @@ extensions = [
     "nbsphinx",
     "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
     "sphinxarg.ext",
 ]
 

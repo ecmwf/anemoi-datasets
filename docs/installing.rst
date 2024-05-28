@@ -1,38 +1,42 @@
-Installing
-==========
+############
+ Installing
+############
 
-Using datasets
---------------
+****************
+ Using datasets
+****************
 
 To install the package, you can use the following command:
 
-.. code-block:: bash
+.. code:: bash
 
-    pip install anemoi-datasets
+   pip install anemoi-datasets
 
-Creating datasets
------------------
+*******************
+ Creating datasets
+*******************
 
-.. code-block:: bash
+.. code:: bash
 
-    pip install anemoi-datasets[create]
+   pip install anemoi-datasets[create]
 
-Contributing
-------------
+**************
+ Contributing
+**************
 
-.. code-block:: bash
+.. code:: bash
 
-    git clone ...
-    cd anemoi-datasets
-    pip install .[dev]
-    pip install -r docs/requirements.txt
+   git clone ...
+   cd anemoi-datasets
+   pip install .[dev]
+   pip install -r docs/requirements.txt
 
 You may also have to install pandoc on MacOS:
 
-.. code-block:: bash
+.. code:: bash
 
-    brew install pandoc
+   brew install pandoc
 
 ..
-    TODO: Make sure to update `setup.py`
-    to reflect these options
+   TODO: Make sure to update `setup.py`
+   to reflect these options
