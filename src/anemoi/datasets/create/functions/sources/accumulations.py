@@ -24,7 +24,7 @@ LOG = logging.getLogger(__name__)
 
 def member(field):
     # Bug in eccodes has number=0 randomly
-    number = field.metadata("number")
+    number = field.metadata("number", default=0)
     if number is None:
         number = 0
     return number
@@ -107,7 +107,9 @@ class Accumulation:
             return
 
         if not np.all(values >= 0):
-            warnings.warn(f"Negative values for {field}: {np.amin(values)} {np.amax(values)}")
+            warnings.warn(
+                f"Negative values for {field}: {np.amin(values)} {np.amax(values)}"
+            )
 
         assert not self.done, (self.key, step)
         assert step not in self.seen, (self.key, step)
@@ -128,7 +130,9 @@ class Accumulation:
             self.write(template=field)
 
     @classmethod
-    def mars_date_time_steps(cls, dates, step1, step2, frequency, base_times, adjust_step):
+    def mars_date_time_steps(
+        cls, dates, step1, step2, frequency, base_times, adjust_step
+    ):
 
         # assert step1 > 0, (step1, step2, frequency)
 
@@ -179,7 +183,9 @@ class AccumulationFromStart(Accumulation):
                 self.startStep = endStep
 
             if not np.all(self.values >= 0):
-                warnings.warn(f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}")
+                warnings.warn(
+                    f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}"
+                )
                 self.values = np.maximum(self.values, 0)
 
     @classmethod
@@ -264,7 +270,11 @@ def compute_accumulations(
 
     base_times = [t // 100 if t > 100 else t for t in base_times]
 
-    AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
+    AccumulationClass = (
+        AccumulationFromStart
+        if data_accumulation_period in (0, None)
+        else AccumulationFromLastStep
+    )
 
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates,
@@ -446,7 +456,9 @@ if __name__ == "__main__":
 #      accumulation_period: 6h
     """
     )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
+    dates = yaml.safe_load(
+        "[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]"
+    )
     dates = to_datetime_list(dates)
 
     for f in accumulations(None, dates, **config):
