@@ -10,93 +10,106 @@
 # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 
 [build-system]
-requires = ["setuptools>=60", "setuptools-scm>=8.0"]
+requires = [
+  "setuptools>=60",
+  "setuptools-scm>=8",
+]
 
 [project]
-description = "A package to hold various functions to support training of ML models on ECMWF data."
 name = "anemoi-datasets"
 
-dynamic = ["version"]
+description = "A package to hold various functions to support training of ML models on ECMWF data."
+keywords = [
+  "ai",
+  "datasets",
+  "tools",
+]
+
 license = { file = "LICENSE" }
+authors = [
+  { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
+]
+
 requires-python = ">=3.9"
 
-authors = [
-    { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
-]
-
-keywords = ["tools", "datasets", "ai"]
-
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "Operating System :: OS Independent",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
+dynamic = [
+  "version",
+]
 dependencies = [
-    "anemoi-utils[provenance]>=0.2.1",
-    "zarr<=2.17.0",
-    "pyyaml",
-    "numpy",
-    "tqdm",
-    "semantic-version",
+  "anemoi-utils[provenance]>=0.2.1",
+  "numpy",
+  "pyyaml",
+  "semantic-version",
+  "tqdm",
+  "zarr<=2.17",
 ]
 
-[project.optional-dependencies]
-remote = ["boto3", "requests", "s3fs"]
-
-create = [
-    "climetlab>=0.22.1", # "earthkit-data"
-    "earthkit-meteo",
-    "pyproj",
-    "ecmwflibs>=0.6.3",
+optional-dependencies.all = [
+  "boto3",
+  "climetlab>=0.22.1", # "earthkit-data"
+  "earthkit-meteo",
+  "ecmwflibs>=0.6.3",
+  "pyproj",
+  "requests",
+  "s3fs",
 ]
-
-docs = ["sphinx", "sphinx_rtd_theme", "nbsphinx", "pandoc", "sphinx_argparse"]
-
-all = [
-    "boto3",
-    "requests",
-    "s3fs",
-    "climetlab>=0.22.1", # "earthkit-data"
-    "earthkit-meteo",
-    "pyproj",
-    "ecmwflibs>=0.6.3",
+optional-dependencies.create = [
+  "climetlab>=0.22.1", # "earthkit-data"
+  "earthkit-meteo",
+  "ecmwflibs>=0.6.3",
+  "pyproj",
 ]
-
-dev = [
-    "boto3",
-    "requests",
-    "s3fs",
-    "climetlab>=0.22.1", # "earthkit-data"
-    "earthkit-meteo",
-    "pyproj",
-    "ecmwflibs>=0.6.3",
-    "sphinx",
-    "sphinx_rtd_theme",
-    "nbsphinx",
-    "sphinx_argparse",
-    "pandoc",
+optional-dependencies.dev = [
+  "boto3",
+  "climetlab>=0.22.1", # "earthkit-data"
+  "earthkit-meteo",
+  "ecmwflibs>=0.6.3",
+  "nbsphinx",
+  "pandoc",
+  "pyproj",
+  "requests",
+  "s3fs",
+  "sphinx",
+  "sphinx-argparse",
+  "sphinx-rtd-theme",
 ]
-
-[project.urls]
-Homepage = "https://github.com/ecmwf/anemoi-datasets/"
-Documentation = "https://anemoi-datasets.readthedocs.io/"
-Repository = "https://github.com/ecmwf/anemoi-datasets/"
-Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
+optional-dependencies.docs = [
+  "nbsphinx",
+  "pandoc",
+  "sphinx",
+  "sphinx-argparse",
+  "sphinx-rtd-theme",
+]
+optional-dependencies.remote = [
+  "boto3",
+  "requests",
+  "s3fs",
+]
+urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
+urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
+urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
 # Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
+urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
+scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
-[project.scripts]
-anemoi-datasets = "anemoi.datasets.__main__:main"
+[tool.setuptools.package-data]
+"anemoi.datasets.data" = [
+  "*.css",
+]
 
 [tool.setuptools_scm]
 version_file = "src/anemoi/datasets/_version.py"
-
-[tool.setuptools.package-data]
-"anemoi.datasets.data" = ["*.css"]
