@@ -20,7 +20,7 @@ repos:
   - id: debug-statements # Check for debugger imports and py37+ breakpoint()
   - id: end-of-file-fixer # Ensure files end in a newline
   - id: trailing-whitespace # Trailing whitespace checker
-#  - id: no-commit-to-branch # Prevent committing to main / master
+  - id: no-commit-to-branch # Prevent committing to main / master
   - id: check-added-large-files # Check for large files added to git
   - id: check-merge-conflict # Check for files that contain merge conflict
 
@@ -51,7 +51,6 @@ repos:
     - --exit-non-zero-on-fix
     - --preview
 
-
 - repo: https://github.com/sphinx-contrib/sphinx-lint
   rev: v0.9.1
   hooks:
@@ -69,3 +68,8 @@ repos:
   hooks:
   - id: docconvert
     args: ["numpy"]
+
+- repo: https://github.com/tox-dev/pyproject-fmt
+  rev: "2.0.4"
+  hooks:
+    - id: pyproject-fmt
