@@ -16,7 +16,7 @@ The chunk pattern for the source dataset has been defined for good reasons, and 
 
 .. warning::
 
-    When resuming the copying process (using ``--resume``), calling the script with the same arguments for --block-size and --rechunk is recommended.
+    When resuming the copying process (using ``--resume``), calling the script with the same arguments for ``--block-size`` and ``--rechunk`` is recommended.
     Using different values for these arguments to resume copying the same dataset may lead to unexpected behavior.
 
 

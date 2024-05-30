@@ -108,7 +108,6 @@ optional-dependencies.remote = [
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
 urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
-
 # Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
 urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
