@@ -88,13 +88,12 @@ def _frequency_to_hours(frequency):
 
 
 def _as_date(d, dates, last):
-    if isinstance(d, np.datetime64):
-        d = d.astype(datetime.datetime)
 
-    if isinstance(d, datetime.datetime):
-        if not d.minute == 0 and d.hour == 0 and d.second == 0:
-            return np.datetime64(d)
-        d = datetime.date(d.year, d.month, d.day)
+    # WARNING,  datetime.datetime is a subclass of datetime.date
+    # so we need to check for datetime.datetime first
+
+    if isinstance(d, (np.datetime64, datetime.datetime)):
+        return d
 
     if isinstance(d, datetime.date):
         d = d.year * 10_000 + d.month * 100 + d.day
