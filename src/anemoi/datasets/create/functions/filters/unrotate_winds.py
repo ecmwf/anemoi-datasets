@@ -11,7 +11,7 @@ from collections import defaultdict
 
 # import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
-from earthkit.geo.rotate import unrotate_wind
+from earthkit.geo.rotate import unrotate_vector
 
 
 class NewDataField:
@@ -60,7 +60,7 @@ def execute(context, input, u, v):
 
         assert x.rotation == y.rotation
 
-        u_new, v_new = unrotate_wind(
+        u_new, v_new = unrotate_vector(
             lats,
             lons,
             x.to_numpy(flatten=True),

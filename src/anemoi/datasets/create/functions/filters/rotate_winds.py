@@ -10,7 +10,7 @@
 from collections import defaultdict
 
 from earthkit.data.indexing.fieldlist import FieldArray
-from earthkit.geo.rotate import rotate_wind
+from earthkit.geo.rotate import rotate_vector
 
 
 class NewDataField:
@@ -65,7 +65,7 @@ def execute(
         assert x.grid_mapping == y.grid_mapping
 
         lats, lons = x.grid_points()
-        x_new, y_new = rotate_wind(
+        x_new, y_new = rotate_vector(
             lats,
             lons,
             x.to_numpy(flatten=True),
