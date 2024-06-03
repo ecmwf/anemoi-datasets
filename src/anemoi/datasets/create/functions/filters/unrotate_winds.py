@@ -11,7 +11,7 @@ from collections import defaultdict
 
 # import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
-from earthkit.geo.wind import unrotate_wind
+from earthkit.geo.rotate import unrotate_wind
 
 
 class NewDataField:
