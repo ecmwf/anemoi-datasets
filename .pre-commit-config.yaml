@@ -13,19 +13,19 @@ repos:
 
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.4.0
+  rev: v4.6.0
   hooks:
   - id: check-yaml # Check YAML files for syntax errors only
     args: [--unsafe, --allow-multiple-documents]
   - id: debug-statements # Check for debugger imports and py37+ breakpoint()
   - id: end-of-file-fixer # Ensure files end in a newline
   - id: trailing-whitespace # Trailing whitespace checker
-#  - id: no-commit-to-branch # Prevent committing to main / master
+  - id: no-commit-to-branch # Prevent committing to main / master
   - id: check-added-large-files # Check for large files added to git
   - id: check-merge-conflict # Check for files that contain merge conflict
 
 - repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 24.1.1
+  rev: 24.4.2
   hooks:
     - id: black
       args: [--line-length=120]
@@ -41,7 +41,7 @@ repos:
 
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.3.0
+  rev: v0.4.6
   hooks:
   - id: ruff
     exclude: '(dev/.*|.*_)\.py$'
@@ -50,7 +50,6 @@ repos:
     - --fix
     - --exit-non-zero-on-fix
     - --preview
-
 
 - repo: https://github.com/sphinx-contrib/sphinx-lint
   rev: v0.9.1
@@ -62,9 +61,21 @@ repos:
   rev: v0.0.14
   hooks:
     - id: rstfmt
+      exclude: 'cli/.*' # Because we use argparse
 
 - repo: https://github.com/b8raoult/pre-commit-docconvert
   rev: "0.1.4"
   hooks:
   - id: docconvert
     args: ["numpy"]
+
+- repo: https://github.com/b8raoult/optional-dependencies-all
+  rev: "0.0.2"
+  hooks:
+  - id: optional-dependencies-all
+    args: ["--inplace", "--all-key", "all", "--exclude-keys", "dev,docs"]
+
+- repo: https://github.com/tox-dev/pyproject-fmt
+  rev: "2.1.3"
+  hooks:
+    - id: pyproject-fmt

@@ -26,14 +26,14 @@ LOG = logging.getLogger(__name__)
 
 
 def default_statistics_dates(dates):
-    """
-    Calculate default statistics dates based on the given list of dates.
+    """Calculate default statistics dates based on the given list of dates.
 
     Args:
         dates (list): List of datetime objects representing dates.
 
     Returns:
         tuple: A tuple containing the default start and end dates.
+
     """
 
     def to_datetime(d):

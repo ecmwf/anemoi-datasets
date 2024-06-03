@@ -24,9 +24,9 @@ dataset is unknown, the package assumes that the fields to use are
 accumulated since the beginning of the forecast, over a 6h period.
 
 The user can specify the desired accumulation period with the
-``accumulation_period`` parameter. If its value is a single interger,
-the source will attempt to accumulate the variables over that period.
-This does not always mean that the data used is accumulated from the
+``accumulation_period`` parameter. If its value is a single integer, the
+source will attempt to accumulate the variables over that period. This
+does not always mean that the data used is accumulated from the
 beginning of the forecast, but the most recent data available will be
 used:
 
@@ -44,13 +44,13 @@ used:
 If the of ``accumulation_period`` value is a pair of integers `[step1,
 step2]`, the algorithm is different. The source will compute the
 accumulation between the `step1` and `step2` previous forecast that
-valiate at the given date at `step2`. For example, if the accumulation
+validate at the given date at `step2`. For example, if the accumulation
 period is `[6, 12]`, and the valid date is 2020-10-10 18:00, the source
 will use the forecast of 2020-10-10 06:00 and the steps 6h and 12h.
 
 Please note that ``accumulation_period=6`` and ``accumulation_period=[0,
 6]`` are not equivalent. In the first case, the source can use return an
-accumulation bwteen step 1h and step 7h if it is the most appropriate
+accumulation between step 1h and step 7h if it is the most appropriate
 data available, while in the second case, the source will always return
 the accumulation between step 0h and step 6h, if available.
 

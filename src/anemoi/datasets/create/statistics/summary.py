@@ -17,10 +17,7 @@ from ..check import check_stats
 
 
 class Summary(dict):
-    """This class is used to store the summary statistics of a dataset.
-    It can be saved and loaded from a json file.
-    And does some basic checks on the data.
-    """
+    """This class is used to store the summary statistics of a dataset. It can be saved and loaded from a json file. And does some basic checks on the data."""
 
     STATS_NAMES = [
         "minimum",

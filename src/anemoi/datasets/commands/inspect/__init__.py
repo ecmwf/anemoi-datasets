@@ -11,16 +11,12 @@ import os
 from .. import Command
 from .zarr import InspectZarr
 
-# from .checkpoint import InspectCheckpoint
-
 
 class Inspect(Command, InspectZarr):
-    # class Inspect(Command, InspectCheckpoint, InspectZarr):
-    """Inspect a checkpoint or zarr file."""
+    """Inspect a zarr dataset."""
 
     def add_arguments(self, command_parser):
         # g = command_parser.add_mutually_exclusive_group()
-        # g.add_argument("--inspect", action="store_true", help="Inspect weights")
         command_parser.add_argument("path", metavar="PATH", nargs="+")
         command_parser.add_argument("--detailed", action="store_true")
         # command_parser.add_argument("--probe", action="store_true")

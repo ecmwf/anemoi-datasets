@@ -1,23 +1,28 @@
-##############
- Introduction
-##############
+Introduction
+============
 
-When you install the `anemoi-datasets` package, this will also install
-command line tool called ``anamois-datasets`` this can be used to manage
-the zarr datasets.
+When you install the `anemoi-datasets` package, this will also install command line tool
+called ``anemoi-datasets`` which can be used to manage the zarr datasets.
 
-The tools can provide help with the ``--help`` options:
+The tool can provide help with the ``--help`` options:
 
-.. code:: bash
+.. code-block:: bash
 
-   % anamoi-datasets --help
+    % anemoi-datasets --help
 
 The commands are:
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-   create
-   inspect
-   copy
-   compare
+    compare
+    copy
+    create
+    inspect
+    scan
+
+.. argparse::
+    :module: anemoi.datasets.__main__
+    :func: create_parser
+    :prog: anemoi-datasets
+    :nosubcommands:

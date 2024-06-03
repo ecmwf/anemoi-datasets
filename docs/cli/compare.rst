@@ -1,9 +1,18 @@
-#########
- compare
-#########
+compare
+=======
 
-Use this command to compatre two datasets:
+Use this command to compare two datasets.
 
-.. code:: bash
+The command will run a quick comparison of the two datasets and output a summary of the differences.
 
-   % anemoi-datasets compare dataset1.zarr dataset2.zarr
+.. warning::
+
+    This command will not compare the data in the datasets, only some of the metadata.
+    Subsequent versions of this command may include more detailed comparisons.
+
+
+.. argparse::
+    :module: anemoi.datasets.__main__
+    :func: create_parser
+    :prog: anemoi-datasets
+    :path: compare

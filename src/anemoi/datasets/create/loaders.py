@@ -25,6 +25,7 @@ from anemoi.datasets.dates.groups import Groups
 from .check import DatasetName
 from .check import check_data_values
 from .chunks import ChunkFilter
+from .config import DictObj
 from .config import build_output
 from .config import loader_config
 from .input import build_input
@@ -55,6 +56,8 @@ class GenericDatasetHandler:
         self.path = path
         self.kwargs = kwargs
         self.print = print
+        if "test" in kwargs:
+            self.test = kwargs["test"]
 
     @classmethod
     def from_config(cls, *, config, path, print=print, **kwargs):
@@ -157,7 +160,35 @@ class InitialiserLoader(Loader):
 
         self.tmp_statistics.delete()
 
+        if self.test:
+
+            def test_dates(cfg, n=4):
+                LOG.warn("Running in test mode. Changing the list of dates to use only 4.")
+                groups = Groups(**cfg)
+                dates = groups.dates
+                return dict(start=dates[0], end=dates[n - 1], frequency=dates.frequency, group_by=n)
+
+            self.main_config.dates = test_dates(self.main_config.dates)
+
+            def set_to_test_mode(obj):
+                if isinstance(obj, (list, tuple)):
+                    for v in obj:
+                        set_to_test_mode(v)
+                    return
+                if isinstance(obj, (dict, DictObj)):
+                    if "grid" in obj:
+                        obj["grid"] = "20./20."
+                        LOG.warn(f"Running in test mode. Setting grid to {obj['grid']}")
+                    if "number" in obj:
+                        obj["number"] = obj["number"][0:3]
+                        LOG.warn(f"Running in test mode. Setting number to {obj['number']}")
+                    for k, v in obj.items():
+                        set_to_test_mode(v)
+
+            set_to_test_mode(self.main_config)
+
         LOG.info(self.main_config.dates)
+
         self.groups = Groups(**self.main_config.dates)
 
         self.output = build_output(self.main_config.output, parent=self)

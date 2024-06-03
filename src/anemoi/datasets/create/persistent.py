@@ -28,9 +28,7 @@ class PersistentDict:
     # Used in parrallel, during data loading,
     # to write data in pickle files.
     def __init__(self, directory, create=True):
-        """dirname: str
-        The directory where the data will be stored.
-        """
+        """dirname: str The directory where the data will be stored."""
         self.dirname = directory
         self.name, self.ext = os.path.splitext(os.path.basename(self.dirname))
         if create:
