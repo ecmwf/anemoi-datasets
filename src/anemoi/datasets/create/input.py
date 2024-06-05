@@ -7,7 +7,6 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
-import importlib
 import logging
 import time
 from collections import defaultdict
@@ -21,6 +20,7 @@ from climetlab.indexing.fieldset import FieldSet
 
 from anemoi.datasets.dates import Dates
 
+from .functions import import_function
 from .template import Context
 from .template import notify_result
 from .template import resolve
@@ -63,14 +63,6 @@ def time_delta_to_string(delta):
         return ""
     if seconds < 0:
         return f"minus_{hours}h"
-
-
-def import_function(name, kind):
-    module = importlib.import_module(
-        f"..functions.{kind}.{name}",
-        package=__name__,
-    )
-    return module.execute
 
 
 def is_function(name, kind):
