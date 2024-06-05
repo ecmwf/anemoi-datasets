@@ -74,8 +74,7 @@ optional-dependencies.all = [
   "zarr<=2.17",
 ]
 optional-dependencies.create = [
-  "climetlab>=0.23.2",
-  , # "earthkit-data"
+  "climetlab>=0.23.2", # "earthkit-data"
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
   "pyproj",
