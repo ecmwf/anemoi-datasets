@@ -8,7 +8,30 @@
 #
 
 
+import importlib
+
+import entrypoints
+
+
 def assert_is_fieldset(obj):
     from climetlab.readers.grib.index import FieldSet
 
     assert isinstance(obj, FieldSet), type(obj)
+
+
+def import_function(name, kind):
+
+    name = name.replace("-", "_")
+
+    plugins = {}
+    for e in entrypoints.get_group_all(f"anemoi.datasets.{kind}s"):
+        plugins[e.name.replace("_", "-")] = e
+
+    if name in plugins:
+        return plugins[name].load()
+
+    module = importlib.import_module(
+        f".{kind}.{name}",
+        package=__name__,
+    )
+    return module.execute

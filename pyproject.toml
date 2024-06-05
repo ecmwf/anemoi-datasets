@@ -64,6 +64,7 @@ optional-dependencies.all = [
   "climetlab>=0.22.1",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
+  "entrypoints",
   "numpy",
   "pyproj",
   "pyyaml",
@@ -77,6 +78,7 @@ optional-dependencies.create = [
   "climetlab>=0.22.1", # "earthkit-data"
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
+  "entrypoints",
   "pyproj",
 ]
 optional-dependencies.dev = [
