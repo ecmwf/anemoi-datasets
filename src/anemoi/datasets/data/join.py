@@ -13,7 +13,7 @@ import numpy as np
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
-from .forewards import Combined
+from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices

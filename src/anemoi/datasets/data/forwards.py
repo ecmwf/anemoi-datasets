@@ -91,11 +91,17 @@ class Forwards(Dataset):
     def metadata_specific(self, **kwargs):
         return super().metadata_specific(
             forward=self.forward.metadata_specific(),
+            **self.subclass_metadata_specific(),
             **kwargs,
         )
 
     def source(self, index):
         return self.forward.source(index)
+
+    def subclass_metadata_specific(self):
+        raise NotImplementedError(
+            f"subclass_metadata_specific() must be implemented in derived class {self.__class__.__name__}"
+        )
 
 
 class Combined(Forwards):

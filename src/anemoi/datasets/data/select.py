@@ -11,7 +11,7 @@ from functools import cached_property
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
-from .forewards import Forwards
+from .forwards import Forwards
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices
@@ -88,6 +88,10 @@ class Select(Forwards):
     def tree(self):
         return Node(self, [self.dataset.tree()], **self.title)
 
+    def subclass_metadata_specific(self):
+        # return dict(indices=self.indices)
+        return {}
+
 
 class Rename(Forwards):
     def __init__(self, dataset, rename):
@@ -105,8 +109,8 @@ class Rename(Forwards):
     def name_to_index(self):
         return {k: i for i, k in enumerate(self.variables)}
 
-    def metadata_specific(self, **kwargs):
-        return super().metadata_specific(rename=self.rename, **kwargs)
-
     def tree(self):
         return Node(self, [self.forward.tree()], rename=self.rename)
+
+    def subclass_metadata_specific(self):
+        return dict(rename=self.rename)

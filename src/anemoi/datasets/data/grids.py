@@ -12,8 +12,8 @@ import numpy as np
 
 from .debug import Node
 from .debug import debug_indexing
-from .forewards import Combined
-from .forewards import GivenAxis
+from .forwards import Combined
+from .forwards import GivenAxis
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices
@@ -91,7 +91,7 @@ class Concat(Combined):
         return Node(self, [d.tree() for d in self.datasets])
 
 
-class Grids(GivenAxis):
+class GridsBase(GivenAxis):
     def __init__(self, datasets, axis):
         super().__init__(datasets, axis)
         # Shape: (dates, variables, ensemble, 1d-values)
@@ -106,7 +106,7 @@ class Grids(GivenAxis):
         pass
 
 
-class ConcatGrids(Grids):
+class Grids(GridsBase):
     # TODO: select the statistics of the most global grid?
     @property
     def latitudes(self):
@@ -127,7 +127,7 @@ class ConcatGrids(Grids):
         return Node(self, [d.tree() for d in self.datasets], mode="concat")
 
 
-class Cutout(Grids):
+class Cutout(GridsBase):
     def __init__(self, datasets, axis):
         from anemoi.datasets.grids import cutout_mask
 
@@ -220,7 +220,7 @@ def grids_factory(args, kwargs):
     datasets = [_open(e) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return ConcatGrids(datasets, axis=axis)._subset(**kwargs)
+    return Grids(datasets, axis=axis)._subset(**kwargs)
 
 
 def cutout_factory(args, kwargs):

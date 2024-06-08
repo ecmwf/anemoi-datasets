@@ -11,7 +11,7 @@ from functools import wraps
 
 from .concat import ConcatMixin
 from .debug import Node
-from .forewards import Combined
+from .forwards import Combined
 from .misc import _auto_adjust
 from .misc import _open
 

@@ -347,7 +347,7 @@ class ZarrWithMissingDates(Zarr):
         return "zarr*"
 
 
-def zarr_lookup(name):
+def zarr_lookup(name, fail=True):
 
     if name.endswith(".zarr") or name.endswith(".zip"):
         return name
@@ -372,4 +372,7 @@ def zarr_lookup(name):
         except zarr.errors.PathNotFoundError:
             pass
 
-    raise ValueError(f"Cannot find a dataset that matched '{name}'. Tried: {tried}")
+    if fail:
+        raise ValueError(f"Cannot find a dataset that matched '{name}'. Tried: {tried}")
+
+    return None

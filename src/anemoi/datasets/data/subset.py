@@ -13,7 +13,7 @@ import numpy as np
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
-from .forewards import Forwards
+from .forwards import Forwards
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices
@@ -109,3 +109,9 @@ class Subset(Forwards):
 
     def tree(self):
         return Node(self, [self.dataset.tree()], **self.reason)
+
+    def subclass_metadata_specific(self):
+        return {
+            # "indices": self.indices,
+            "reason": self.reason,
+        }
