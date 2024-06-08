@@ -24,7 +24,7 @@ def import_function(name, kind):
     name = name.replace("-", "_")
 
     plugins = {}
-    for e in entrypoints.get_group_all(f"anemoi.datasets.{kind}s"):
+    for e in entrypoints.get_group_all(f"anemoi.datasets.{kind}"):
         plugins[e.name.replace("_", "-")] = e
 
     if name in plugins:
