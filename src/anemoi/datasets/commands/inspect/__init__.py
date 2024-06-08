@@ -17,7 +17,7 @@ class Inspect(Command, InspectZarr):
 
     def add_arguments(self, command_parser):
         # g = command_parser.add_mutually_exclusive_group()
-        command_parser.add_argument("path", metavar="PATH", nargs="+")
+        command_parser.add_argument("path", metavar="DATASET")
         command_parser.add_argument("--detailed", action="store_true")
         # command_parser.add_argument("--probe", action="store_true")
         command_parser.add_argument("--progress", action="store_true")
@@ -25,13 +25,7 @@ class Inspect(Command, InspectZarr):
         command_parser.add_argument("--size", action="store_true", help="Print size")
 
     def run(self, args):
-        dic = vars(args)
-        for path in dic.pop("path"):
-            if os.path.isdir(path) or path.endswith(".zarr.zip") or path.endswith(".zarr"):
-                self.inspect_zarr(path=path, **dic)
-            else:
-                raise ValueError(f"Unknown file type: {path}")
-                # self.inspect_checkpoint(path=path, **dic)
+        self.inspect_zarr(**vars(args))
 
 
 command = Inspect

@@ -24,6 +24,7 @@ from anemoi.utils.text import table
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
+from anemoi.datasets.data.stores import zarr_lookup
 
 LOG = logging.getLogger(__name__)
 
@@ -616,14 +617,7 @@ class InspectZarr:
             raise
 
     def _info(self, path):
-        if path.endswith("/"):
-            path = path[:-1]
-
-        try:
-            z = open_zarr(path)
-        except Exception as e:
-            LOG.error("Error opening zarr file '%s': %s", path, e)
-            raise
+        z = open_zarr(zarr_lookup(path))
 
         metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")
