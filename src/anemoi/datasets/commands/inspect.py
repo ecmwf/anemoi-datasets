@@ -26,6 +26,8 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
 from anemoi.datasets.data.stores import zarr_lookup
 
+from . import Command
+
 LOG = logging.getLogger(__name__)
 
 
@@ -79,45 +81,11 @@ class Version:
         self.metadata = metadata
         self.version = version
         self.dataset = None
-        # try:
         self.dataset = open_dataset(self.path)
-        # except Exception as e:
-        #     LOG.error("Error opening dataset '%s': %s", self.path, e)
 
     def describe(self):
         print(f"📦 Path          : {self.path}")
         print(f"🔢 Format version: {self.version}")
-
-    def probe(self):
-        if "cos_local_time" not in self.name_to_index:
-            print("⚠️ probe: no cos_local_time")
-            return
-
-        try:
-            lon = self.longitudes
-        except AttributeError:
-            print("⚠️ probe: no longitudes")
-            return
-        # print(json.dumps(self.metadata, indent=4))
-        cos_local_time = self.name_to_index["cos_local_time"]
-        data = self.data
-        start, end, frequency = self.first_date, self.last_date, self.frequency
-        date = start
-        same = 0
-        for i in range(10):
-            field = data[i, cos_local_time]
-            buggy = cos_local_time_bug(lon, date).reshape(field.hape)
-            diff = np.abs(field - buggy)
-            if np.max(diff) < 1e-5:
-                same += 1
-            date += datetime.timedelta(hours=frequency)
-            if date > end:
-                break
-        if same > 1:
-            print("❌ probe: cos_local_time is buggy")
-            return
-
-        print("✅ probe: cos_local_time is fixed")
 
     @property
     def name_to_index(self):
@@ -587,29 +555,35 @@ VERSIONS = {
 }
 
 
-class InspectZarr:
-    """Inspect a checkpoint or zarr file."""
+class InspectZarr(Command):
+    """Inspect a zarr dataset."""
 
-    def inspect_zarr(self, path, **kwargs):
+    def add_arguments(self, command_parser):
+        command_parser.add_argument("path", metavar="DATASET")
+        command_parser.add_argument("--detailed", action="store_true")
+
+        command_parser.add_argument("--progress", action="store_true")
+        command_parser.add_argument("--statistics", action="store_true")
+        command_parser.add_argument("--size", action="store_true", help="Print size")
+
+    def run(self, args):
+        self.inspect_zarr(**vars(args))
+
+    def inspect_zarr(self, path, progress=False, statistics=False, detailed=False, size=False, **kwargs):
         version = self._info(path)
-
-        # try:
-        #     with open("/tmp/probe.json", "w") as f:
-        #         json.dump(version.metadata, f, indent=4, sort_keys=True)
-        # except Exception:
-        #     pass
 
         dotted_line()
         version.describe()
 
         try:
-            if kwargs.get("probe"):
-                return version.probe()
-            if kwargs.get("progress"):
+            if progress:
                 return version.progress()
-            if kwargs.get("statistics"):
+
+            if statistics:
                 return version.brute_force_statistics()
-            version.info(kwargs.get("detailed"), kwargs.get("size"))
+
+            version.info(detailed, size)
+
         except Exception as e:
             LOG.error("Error inspecting zarr file '%s': %s", path, e)
 
@@ -634,3 +608,6 @@ class InspectZarr:
                 candidate = klass
 
         return candidate(path, z, metadata, version)
+
+
+command = InspectZarr
