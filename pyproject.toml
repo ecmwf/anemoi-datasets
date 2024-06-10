@@ -67,6 +67,7 @@ optional-dependencies.all = [
   "entrypoints",
   "numpy",
   "pyproj",
+  "pytest",
   "pyyaml",
   "requests",
   "s3fs",
@@ -82,9 +83,6 @@ optional-dependencies.create = [
   "pyproj",
 ]
 
-optional-dependencies.test = [
-  "pytest",
-]
 optional-dependencies.dev = [
   "boto3",
 
@@ -110,6 +108,9 @@ optional-dependencies.remote = [
   "boto3",
   "requests",
   "s3fs",
+]
+optional-dependencies.test = [
+  "pytest",
 ]
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
