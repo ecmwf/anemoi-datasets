@@ -41,7 +41,7 @@ jobs:
 
     - name: Install
       run: |
-        pip install -e .[all,test]
+        pip install -e .[all,tests]
         pip freeze
 
     - name: Tests
