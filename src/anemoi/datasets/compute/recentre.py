@@ -29,7 +29,7 @@ CLIP_VARIABLES = (
     "swl1",
 )
 
-SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset")
+SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset", "time", "date", "step")
 
 
 def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
