@@ -14,6 +14,8 @@ from . import Command
 
 
 class Compare(Command):
+    """Compare two datasets. This command compares the variables in two datasets and prints the mean of the common variables. It does not compare the data itself (yet)."""
+
     def add_arguments(self, command_parser):
         command_parser.add_argument("dataset1")
         command_parser.add_argument("dataset2")

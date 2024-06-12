@@ -177,11 +177,14 @@ class InitialiserLoader(Loader):
                     return
                 if isinstance(obj, (dict, DictObj)):
                     if "grid" in obj:
+                        previous = obj["grid"]
                         obj["grid"] = "20./20."
-                        LOG.warn(f"Running in test mode. Setting grid to {obj['grid']}")
+                        LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
                     if "number" in obj:
-                        obj["number"] = obj["number"][0:3]
-                        LOG.warn(f"Running in test mode. Setting number to {obj['number']}")
+                        if isinstance(obj["number"], (list, tuple)):
+                            previous = obj["number"]
+                            obj["number"] = previous[0:3]
+                            LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
                     for k, v in obj.items():
                         set_to_test_mode(v)
 
