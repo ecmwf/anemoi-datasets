@@ -77,9 +77,17 @@ optional-dependencies.create = [
 ]
 
 optional-dependencies.dev = [
+  "boto3",
+  "climetlab>=0.23.2",
+  "earthkit-meteo",
+  "ecmwflibs>=0.6.3",
+  "entrypoints",
   "nbsphinx",
   "pandoc",
+  "pyproj",
   "pytest",
+  "requests",
+  "s3fs",
   "sphinx",
   "sphinx-argparse",
   "sphinx-rtd-theme",
