@@ -6,6 +6,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 import warnings
 from functools import cached_property
 
@@ -291,6 +292,10 @@ class Zarr(Dataset):
 
     def tree(self):
         return Node(self, [], path=self.path)
+
+    def get_dataset_names(self, names):
+        name, _ = os.path.splitext(os.path.basename(self.path))
+        names.add(name)
 
 
 class ZarrWithMissingDates(Zarr):
