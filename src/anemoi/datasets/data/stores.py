@@ -235,7 +235,11 @@ class Zarr(Dataset):
 
     @property
     def field_shape(self):
-        return tuple(self.z.attrs["field_shape"])
+        try:
+            return tuple(self.z.attrs["field_shape"])
+        except KeyError:
+            LOG.warning("No 'field_shape' in %r, assuming 1D fields", self)
+            return (self.shape[-1],)
 
     @property
     def frequency(self):
