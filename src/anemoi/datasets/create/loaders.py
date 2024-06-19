@@ -46,8 +46,44 @@ LOG = logging.getLogger(__name__)
 VERSION = "0.20"
 
 
+def set_to_test_mode(cfg):
+    NUMBER_OF_DATES = 4
+
+    dates = cfg.dates
+    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    groups = Groups(**cfg.dates)
+    dates = groups.dates
+    cfg.dates = dict(
+        start=dates[0],
+        end=dates[NUMBER_OF_DATES - 1],
+        frequency=dates.frequency,
+        group_by=NUMBER_OF_DATES,
+    )
+
+    def set_element_to_test(obj):
+        if isinstance(obj, (list, tuple)):
+            for v in obj:
+                set_element_to_test(v)
+            return
+        if isinstance(obj, (dict, DictObj)):
+            if "grid" in obj:
+                previous = obj["grid"]
+                obj["grid"] = "20./20."
+                LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
+            if "number" in obj:
+                if isinstance(obj["number"], (list, tuple)):
+                    previous = obj["number"]
+                    obj["number"] = previous[0:3]
+                    LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
+            for k, v in obj.items():
+                set_element_to_test(v)
+
+    set_element_to_test(cfg)
+
+
 class GenericDatasetHandler:
     def __init__(self, *, path, print=print, **kwargs):
+
         # Catch all floating point errors, including overflow, sqrt(<0), etc
         np.seterr(all="raise", under="warn")
 
@@ -61,12 +97,15 @@ class GenericDatasetHandler:
 
     @classmethod
     def from_config(cls, *, config, path, print=print, **kwargs):
-        # config is the path to the config file or a dict with the config
+        """Config is the path to the config file or a dict with the config"""
+
         assert isinstance(config, dict) or isinstance(config, str), config
         return cls(config=config, path=path, print=print, **kwargs)
 
     @classmethod
     def from_dataset_config(cls, *, path, print=print, **kwargs):
+        """Read the config saved inside the zarr dataset and instantiate the class for this config."""
+
         assert os.path.exists(path), f"Path {path} does not exist."
         z = zarr.open(path, mode="r")
         config = z.attrs["_create_yaml_config"]
@@ -75,6 +114,8 @@ class GenericDatasetHandler:
 
     @classmethod
     def from_dataset(cls, *, path, **kwargs):
+        """Instanciate the class from the path to the zarr dataset, without config."""
+
         assert os.path.exists(path), f"Path {path} does not exist."
         return cls(path=path, **kwargs)
 
@@ -156,68 +197,50 @@ class Loader(DatasetHandlerWithStatistics):
 class InitialiserLoader(Loader):
     def __init__(self, config, **kwargs):
         super().__init__(**kwargs)
+
         self.main_config = loader_config(config)
-
-        self.tmp_statistics.delete()
-
         if self.test:
-
-            def test_dates(cfg, n=4):
-                LOG.warn("Running in test mode. Changing the list of dates to use only 4.")
-                groups = Groups(**cfg)
-                dates = groups.dates
-                return dict(start=dates[0], end=dates[n - 1], frequency=dates.frequency, group_by=n)
-
-            self.main_config.dates = test_dates(self.main_config.dates)
-
-            def set_to_test_mode(obj):
-                if isinstance(obj, (list, tuple)):
-                    for v in obj:
-                        set_to_test_mode(v)
-                    return
-                if isinstance(obj, (dict, DictObj)):
-                    if "grid" in obj:
-                        previous = obj["grid"]
-                        obj["grid"] = "20./20."
-                        LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
-                    if "number" in obj:
-                        if isinstance(obj["number"], (list, tuple)):
-                            previous = obj["number"]
-                            obj["number"] = previous[0:3]
-                            LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
-                    for k, v in obj.items():
-                        set_to_test_mode(v)
-
             set_to_test_mode(self.main_config)
 
         LOG.info(self.main_config.dates)
 
+        self.tmp_statistics.delete()
+
         self.groups = Groups(**self.main_config.dates)
+        LOG.info(self.groups)
 
         self.output = build_output(self.main_config.output, parent=self)
         self.input = self.build_input()
-
         LOG.info(self.input)
-        all_dates = self.groups.dates
-        self.minimal_input = self.input.select([all_dates[0]])
 
-        LOG.info(self.groups)
-        LOG.info("MINIMAL INPUT :")
+        first_date = self.groups.dates[0]
+        self.minimal_input = self.input.select([first_date])
+        LOG.info("Minimal input (using only the first date) :")
         LOG.info(self.minimal_input)
 
     def build_statistics_dates(self, start, end):
+        """Compute the start and end dates for the statistics, based on :
+        - The start and end dates in the config
+        - The default statistics dates convention
+
+        Then adapt according to the actual dates in the dataset.
+        """
+
         ds = open_dataset(self.path)
         dates = ds.dates
 
+        # if not specified, use the default statistics dates
         default_start, default_end = default_statistics_dates(dates)
         if start is None:
             start = default_start
         if end is None:
             end = default_end
 
+        # in any case, adapt to the actual dates in the dataset
         start = as_first_date(start, dates)
         end = as_last_date(end, dates)
 
+        # and convert to datetime to isoformat
         start = start.astype(datetime.datetime)
         end = end.astype(datetime.datetime)
         return (start.isoformat(), end.isoformat())
@@ -227,7 +250,10 @@ class InitialiserLoader(Loader):
         z.create_group("_build")
 
     def initialise(self, check_name=True):
-        """Create empty dataset."""
+        """Create an empty dataset of the right final shape
+
+        Read a small part of the data to get the shape of the data and the resolution and more metadata.
+        """
 
         self.print("Config loaded ok:")
         LOG.info(self.main_config)
@@ -276,11 +302,10 @@ class InitialiserLoader(Loader):
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
 
         metadata["description"] = self.main_config.description
-        metadata["version"] = VERSION
+        metadata["licence"] = self.main_config["licence"]
+        metadata["attribution"] = self.main_config["attribution"]
 
-        metadata["data_request"] = self.minimal_input.data_request
         metadata["remapping"] = self.output.remapping
-
         metadata["order_by"] = self.output.order_by_as_list
         metadata["flatten_grid"] = self.output.flatten_grid
 
@@ -288,26 +313,21 @@ class InitialiserLoader(Loader):
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
         metadata["resolution"] = resolution
+
+        metadata["data_request"] = self.minimal_input.data_request
         metadata["field_shape"] = self.minimal_input.field_shape
         metadata["proj_string"] = self.minimal_input.proj_string
 
-        metadata["licence"] = self.main_config["licence"]
-        metadata["attribution"] = self.main_config["attribution"]
-
-        metadata["frequency"] = frequency
         metadata["start_date"] = dates[0].isoformat()
         metadata["end_date"] = dates[-1].isoformat()
+        metadata["frequency"] = frequency
         metadata["missing_dates"] = [_.isoformat() for _ in dates.missing]
+
+        metadata["version"] = VERSION
 
         if check_name:
             basename, ext = os.path.splitext(os.path.basename(self.path))  # noqa: F841
-            ds_name = DatasetName(
-                basename,
-                resolution,
-                dates[0],
-                dates[-1],
-                frequency,
-            )
+            ds_name = DatasetName(basename, resolution, dates[0], dates[-1], frequency)
             ds_name.raise_if_not_valid(print=self.print)
 
         if len(dates) != total_shape[0]:
@@ -316,17 +336,12 @@ class InitialiserLoader(Loader):
                 f"does not match data shape {total_shape[0]}. {total_shape=}"
             )
 
-        dates = normalize_and_check_dates(
-            dates,
-            metadata["start_date"],
-            metadata["end_date"],
-            metadata["frequency"],
-        )
+        dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
 
         metadata.update(self.main_config.get("force_metadata", {}))
 
         ###############################################################
-        # write data
+        # write metadata
         ###############################################################
 
         self.initialise_dataset_backend()
@@ -346,10 +361,7 @@ class InitialiserLoader(Loader):
             self.main_config.statistics.get("start"),
             self.main_config.statistics.get("end"),
         )
-        self.update_metadata(
-            statistics_start_date=statistics_start,
-            statistics_end_date=statistics_end,
-        )
+        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
         LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
 
         self.registry.add_to_history("init finished")
@@ -586,37 +598,22 @@ class GenericAdditions(GenericDatasetHandler):
 
     @property
     def tmp_storage_path(self):
-        raise NotImplementedError
+        """This should be implemented in the subclass."""
+        raise NotImplementedError()
 
     @property
     def final_storage_path(self):
-        raise NotImplementedError
+        """This should be implemented in the subclass."""
+        raise NotImplementedError()
 
     def initialise(self):
         self.tmp_storage.delete()
         self.tmp_storage.create()
         LOG.info(f"Dataset {self.path} additions initialized.")
 
-    @cached_property
-    def _variables_with_nans(self):
-        z = zarr.open(self.path, mode="r")
-        if "variables_with_nans" in z.attrs:
-            return z.attrs["variables_with_nans"]
-        return None
-
-    def allow_nan(self, name):
-        if self._variables_with_nans is not None:
-            return name in self._variables_with_nans
-        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, Assuming nans allowed for {name}.")
-        return True
-
-    @classmethod
-    def _check_type_equal(cls, a, b):
-        a = list(a)
-        b = list(b)
-        a = a[0] if a else None
-        b = b[0] if b else None
-        assert type(a) is type(b), (type(a), type(b))
+    def run(self, parts):
+        """This should be implemented in the subclass."""
+        raise NotImplementedError()
 
     def finalise(self):
         shape = (len(self.dates), len(self.variables))
@@ -710,6 +707,19 @@ class GenericAdditions(GenericDatasetHandler):
 
     def check_statistics(self):
         pass
+
+    @cached_property
+    def _variables_with_nans(self):
+        z = zarr.open(self.path, mode="r")
+        if "variables_with_nans" in z.attrs:
+            return z.attrs["variables_with_nans"]
+        return None
+
+    def allow_nan(self, name):
+        if self._variables_with_nans is not None:
+            return name in self._variables_with_nans
+        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, Assuming nans allowed for {name}.")
+        return True
 
 
 class StatisticsAddition(GenericAdditions):
