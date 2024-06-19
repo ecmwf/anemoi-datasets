@@ -58,7 +58,6 @@ class S3Uploader:
         upload(
             self.source,
             self.target,
-            self.transfers,
             overwrite=self.overwrite,
             ignore_existing=self.resume,
             threads=self.transfers,
