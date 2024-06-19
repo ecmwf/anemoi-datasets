@@ -44,8 +44,8 @@ class S3Downloader:
             self.target,
             overwrite=self.overwrite,
             ignore_existing=self.resume,
+            show_progress=1,  # if self.progress else 0,
             threads=self.transfers,
-            show_progress=self.progress,
         )
 
 
@@ -64,8 +64,8 @@ class S3Uploader:
             self.target,
             overwrite=self.overwrite,
             ignore_existing=self.resume,
+            show_progress=1,  # if self.progress else 0,
             threads=self.transfers,
-            show_progress=self.progress,
         )
 
 
