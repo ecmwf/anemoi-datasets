@@ -12,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import tqdm
+from anemoi.utils.s3 import download
+from anemoi.utils.s3 import upload
 
 from . import Command
 
@@ -22,26 +24,49 @@ try:
 except AttributeError:
     isatty = False
 
-"""
 
-~/.aws/credentials
+class S3Downloader:
+    def __init__(self, source, target, transfers, overwrite, resume, progress, **kwargs):
+        self.source = source
+        self.target = target
+        self.transfers = transfers
+        self.overwrite = overwrite
+        self.resume = resume
+        self.progress = progress
 
-[default]
-endpoint_url = https://object-store.os-api.cci1.ecmwf.int
-aws_access_key_id=xxx
-aws_secret_access_key=xxxx
-
-Then:
-
-anemoi-datasets copy aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr/
-    s3://ml-datasets/stable/aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr
-
-zinfo https://object-store.os-api.cci1.ecmwf.int/
-    ml-datasets/stable/aifs-ea-an-oper-0001-mars-o96-1979-2022-1h-v3.zarr
-"""
+    def run(self):
+        download(
+            self.source + "/" if not self.source.endswith("/") else self.source,
+            self.target,
+            overwrite=self.overwrite,
+            ignore_existing=self.resume,
+            threads=self.transfers,
+            show_progress=self.progress,
+        )
 
 
-class Copier:
+class S3Uploader:
+    def __init__(self, source, target, transfers, overwrite, resume, progress, **kwargs):
+        self.source = source
+        self.target = target
+        self.transfers = transfers
+        self.overwrite = overwrite
+        self.resume = resume
+        self.progress = progress
+
+    def run(self):
+        upload(
+            self.source,
+            self.target,
+            self.transfers,
+            overwrite=self.overwrite,
+            ignore_existing=self.resume,
+            threads=self.transfers,
+            show_progress=self.progress,
+        )
+
+
+class DefaultCopier:
     def __init__(self, source, target, transfers, block_size, overwrite, resume, progress, nested, rechunk, **kwargs):
         self.source = source
         self.target = target
@@ -295,7 +320,29 @@ class CopyMixin:
         command_parser.add_argument("target", help="Target location.")
 
     def run(self, args):
-        Copier(**vars(args)).run()
+        if args.source == args.target:
+            raise ValueError("Source and target are the same.")
+
+        kwargs = vars(args)
+
+        if args.overwrite and args.resume:
+            raise ValueError("Cannot use --overwrite and --resume together.")
+
+        source_in_s3 = args.source.startswith("s3://")
+        target_in_s3 = args.target.startswith("s3://")
+
+        copier = None
+
+        if args.rechunk or (source_in_s3 and target_in_s3):
+            copier = DefaultCopier(**kwargs)
+        else:
+            if source_in_s3:
+                copier = S3Downloader(**kwargs)
+
+            if target_in_s3:
+                copier = S3Uploader(**kwargs)
+
+        copier.run()
 
 
 class Copy(CopyMixin, Command):
