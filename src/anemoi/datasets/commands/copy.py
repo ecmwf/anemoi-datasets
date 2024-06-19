@@ -7,6 +7,7 @@
 
 import logging
 import os
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
@@ -35,6 +36,9 @@ class S3Downloader:
         self.progress = progress
 
     def run(self):
+        if self.overwrite and os.path.exists(self.target):
+            LOG.info(f"Deleting {self.target}")
+            shutil.rmtree(self.target)
         download(
             self.source + "/" if not self.source.endswith("/") else self.source,
             self.target,
