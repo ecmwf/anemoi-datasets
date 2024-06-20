@@ -16,4 +16,5 @@ __all__ = [
     "MissingDateError",
     "add_dataset_path",
     "add_named_dataset",
+    "__version__",
 ]
