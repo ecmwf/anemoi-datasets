@@ -13,10 +13,10 @@ from .data import list_dataset_names
 from .data import open_dataset
 
 __all__ = [
-    "open_dataset",
-    "MissingDateError",
+    "__version__",
     "add_dataset_path",
     "add_named_dataset",
     "list_dataset_names",
-    "__version__",
+    "MissingDateError",
+    "open_dataset",
 ]
