@@ -6,6 +6,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 import warnings
 from functools import cached_property
 
@@ -235,7 +236,11 @@ class Zarr(Dataset):
 
     @property
     def field_shape(self):
-        return tuple(self.z.attrs["field_shape"])
+        try:
+            return tuple(self.z.attrs["field_shape"])
+        except KeyError:
+            LOG.warning("No 'field_shape' in %r, assuming 1D fields", self)
+            return (self.shape[-1],)
 
     @property
     def frequency(self):
@@ -287,6 +292,10 @@ class Zarr(Dataset):
 
     def tree(self):
         return Node(self, [], path=self.path)
+
+    def get_dataset_names(self, names):
+        name, _ = os.path.splitext(os.path.basename(self.path))
+        names.add(name)
 
 
 class ZarrWithMissingDates(Zarr):

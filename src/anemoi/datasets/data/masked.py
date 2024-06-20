@@ -70,8 +70,12 @@ class Thinning(Masked):
         self.thinning = thinning
         self.method = method
 
-        latitudes = forward.latitudes.reshape(forward.field_shape)
-        longitudes = forward.longitudes.reshape(forward.field_shape)
+        shape = forward.field_shape
+        if len(shape) != 2:
+            raise ValueError("Thinning only works latitude/longitude fields")
+
+        latitudes = forward.latitudes.reshape(shape)
+        longitudes = forward.longitudes.reshape(shape)
         latitudes = latitudes[::thinning, ::thinning].flatten()
         longitudes = longitudes[::thinning, ::thinning].flatten()
 

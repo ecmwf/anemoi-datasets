@@ -9,12 +9,14 @@ from ._version import __version__
 from .data import MissingDateError
 from .data import add_dataset_path
 from .data import add_named_dataset
+from .data import list_dataset_names
 from .data import open_dataset
 
 __all__ = [
-    "open_dataset",
-    "MissingDateError",
+    "__version__",
     "add_dataset_path",
     "add_named_dataset",
-    "__version__",
+    "list_dataset_names",
+    "MissingDateError",
+    "open_dataset",
 ]

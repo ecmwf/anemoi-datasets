@@ -39,3 +39,7 @@ class Statistics(Forwards):
 
     def tree(self):
         return Node(self, [self.forward.tree()])
+
+    def get_dataset_names(self, names):
+        super().get_dataset_names(names)
+        self._statistic.get_dataset_names(names)

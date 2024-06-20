@@ -226,3 +226,6 @@ class Dataset:
     @property
     def label(self):
         return self.__class__.__name__.lower()
+
+    def get_dataset_names(self, names):
+        raise NotImplementedError(self)

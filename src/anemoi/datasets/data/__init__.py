@@ -30,3 +30,10 @@ def open_dataset(*args, **kwargs):
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
     return ds
+
+
+def list_dataset_names(*args, **kwargs):
+    ds = _open_dataset(*args, **kwargs)
+    names = set()
+    ds.get_dataset_names(names)
+    return sorted(names)

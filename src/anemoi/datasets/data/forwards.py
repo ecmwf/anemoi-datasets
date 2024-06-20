@@ -103,6 +103,9 @@ class Forwards(Dataset):
             f"subclass_metadata_specific() must be implemented in derived class {self.__class__.__name__}"
         )
 
+    def get_dataset_names(self, names):
+        self.forward.get_dataset_names(names)
+
 
 class Combined(Forwards):
     def __init__(self, datasets):
@@ -192,6 +195,10 @@ class Combined(Forwards):
             result.update(offset + m for m in d.missing)
             offset += len(d)
         return result
+
+    def get_dataset_names(self, names):
+        for d in self.datasets:
+            d.get_dataset_names(names)
 
 
 class GivenAxis(Combined):
