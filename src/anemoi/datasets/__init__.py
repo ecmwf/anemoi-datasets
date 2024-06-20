@@ -18,4 +18,5 @@ __all__ = [
     "add_dataset_path",
     "add_named_dataset",
     "list_dataset_names",
+    "__version__",
 ]
