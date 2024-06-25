@@ -11,7 +11,7 @@ from earthkit.data import from_source
 
 def forcings(context, dates, template, param):
     context.trace("✅", f"from_source(forcings, {template}, {param}")
-    return from_source("constants", source_or_dataset=template, date=dates, param=param)
+    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 
 
 execute = forcings
