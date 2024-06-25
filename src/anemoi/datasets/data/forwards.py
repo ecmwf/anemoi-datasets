@@ -91,11 +91,20 @@ class Forwards(Dataset):
     def metadata_specific(self, **kwargs):
         return super().metadata_specific(
             forward=self.forward.metadata_specific(),
+            **self.subclass_metadata_specific(),
             **kwargs,
         )
 
     def source(self, index):
         return self.forward.source(index)
+
+    def subclass_metadata_specific(self):
+        raise NotImplementedError(
+            f"subclass_metadata_specific() must be implemented in derived class {self.__class__.__name__}"
+        )
+
+    def get_dataset_names(self, names):
+        self.forward.get_dataset_names(names)
 
 
 class Combined(Forwards):
@@ -186,6 +195,10 @@ class Combined(Forwards):
             result.update(offset + m for m in d.missing)
             offset += len(d)
         return result
+
+    def get_dataset_names(self, names):
+        for d in self.datasets:
+            d.get_dataset_names(names)
 
 
 class GivenAxis(Combined):

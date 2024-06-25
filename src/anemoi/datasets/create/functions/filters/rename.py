@@ -13,6 +13,14 @@ from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class RenamedFieldMapping:
+    """Rename a field based on the value of another field.
+
+    Args:
+        field (Field): The field to be renamed.
+        what (str): The name of the field that will be used to rename the field.
+        renaming (dict): A dictionary mapping the values of 'what' to the new names.
+    """
+
     def __init__(self, field, what, renaming):
         self.field = field
         self.what = what
@@ -29,6 +37,12 @@ class RenamedFieldMapping:
 
 
 class RenamedFieldFormat:
+    """Rename a field based on a format string.
+
+    Args:
+        format (str): A string that defines the new name of the field.
+    """
+
     def __init__(self, field, format):
         self.field = field
         self.format = format

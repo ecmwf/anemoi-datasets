@@ -98,6 +98,8 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
 
 
 def compute_statistics(array, check_variables_names=None, allow_nan=False):
+    """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
+
     nvars = array.shape[1]
 
     LOG.info(f"Stats {nvars}, {array.shape}, {check_variables_names}")
@@ -243,10 +245,7 @@ class StatAggregator:
 
         for _, _dates, stats in self.owner._gather_data():
             assert isinstance(stats, dict), stats
-            assert stats["minimum"].shape[0] == len(_dates), (
-                stats["minimum"].shape,
-                len(_dates),
-            )
+            assert stats["minimum"].shape[0] == len(_dates), (stats["minimum"].shape, len(_dates))
             assert stats["minimum"].shape[1] == len(self.variables_names), (
                 stats["minimum"].shape,
                 len(self.variables_names),
@@ -271,19 +270,13 @@ class StatAggregator:
             for k in self.NAMES:
                 stats[k] = stats[k][bitmap]
 
-            assert stats["minimum"].shape[0] == len(dates), (
-                stats["minimum"].shape,
-                len(dates),
-            )
+            assert stats["minimum"].shape[0] == len(dates), (stats["minimum"].shape, len(dates))
 
             # store data in self
             found |= set(dates)
             for name in self.NAMES:
                 array = getattr(self, name)
-                assert stats[name].shape[0] == len(dates), (
-                    stats[name].shape,
-                    len(dates),
-                )
+                assert stats[name].shape[0] == len(dates), (stats[name].shape, len(dates))
                 array[offset : offset + len(dates)] = stats[name]
             offset += len(dates)
 
@@ -311,133 +304,7 @@ class StatAggregator:
         stdev = np.sqrt(x)
 
         for j, name in enumerate(self.variables_names):
-            check_data_values(
-                np.array(
-                    [
-                        mean[j],
-                    ]
-                ),
-                name=name,
-                allow_nan=False,
-            )
-
-        return Summary(
-            minimum=minimum,
-            maximum=maximum,
-            mean=mean,
-            count=count,
-            sums=sums,
-            squares=squares,
-            stdev=stdev,
-            variables_names=self.variables_names,
-            has_nans=has_nans,
-        )
-
-
-class SummaryAggregator:
-    NAMES = ["minimum", "maximum", "sums", "squares", "count", "has_nans"]
-
-    def __init__(self, owner, dates, variables_names, allow_nan):
-        dates = sorted(dates)
-        dates = to_datetimes(dates)
-        assert dates, "No dates selected"
-        self.owner = owner
-        self.dates = dates
-        self.variables_names = variables_names
-        self.allow_nan = allow_nan
-
-        self.shape = (len(self.dates), len(self.variables_names))
-        LOG.info(f"Aggregating statistics on shape={self.shape}. Variables : {self.variables_names}")
-
-        self.minimum = np.full(self.shape, np.nan, dtype=np.float64)
-        self.maximum = np.full(self.shape, np.nan, dtype=np.float64)
-        self.sums = np.full(self.shape, np.nan, dtype=np.float64)
-        self.squares = np.full(self.shape, np.nan, dtype=np.float64)
-        self.count = np.full(self.shape, -1, dtype=np.int64)
-        self.has_nans = np.full(self.shape, False, dtype=np.bool_)
-
-        self._read()
-
-    def _read(self):
-        def check_type(a, b):
-            a = list(a)
-            b = list(b)
-            a = a[0] if a else None
-            b = b[0] if b else None
-            assert type(a) is type(b), (type(a), type(b))
-
-        found = set()
-        offset = 0
-        for _, _dates, stats in self.owner._gather_data():
-            for n in self.NAMES:
-                assert n in stats, (n, list(stats.keys()))
-            _dates = to_datetimes(_dates)
-            check_type(_dates, self.dates)
-            if found:
-                check_type(found, self.dates)
-                assert found.isdisjoint(_dates), "Duplicate dates found in precomputed statistics"
-
-            # filter dates
-            dates = set(_dates) & set(self.dates)
-
-            if not dates:
-                # dates have been completely filtered for this chunk
-                continue
-
-            # filter data
-            bitmap = np.isin(_dates, self.dates)
-            for k in self.NAMES:
-                stats[k] = stats[k][bitmap]
-
-            assert stats["minimum"].shape[0] == len(dates), (
-                stats["minimum"].shape,
-                len(dates),
-            )
-
-            # store data in self
-            found |= set(dates)
-            for name in self.NAMES:
-                array = getattr(self, name)
-                assert stats[name].shape[0] == len(dates), (
-                    stats[name].shape,
-                    len(dates),
-                )
-                array[offset : offset + len(dates)] = stats[name]
-            offset += len(dates)
-
-        for d in self.dates:
-            assert d in found, f"Statistics for date {d} not precomputed."
-        assert len(self.dates) == len(found), "Not all dates found in precomputed statistics"
-        assert len(self.dates) == offset, "Not all dates found in precomputed statistics."
-        LOG.info(f"Statistics for {len(found)} dates found.")
-
-    def aggregate(self):
-        minimum = np.nanmin(self.minimum, axis=0)
-        maximum = np.nanmax(self.maximum, axis=0)
-        sums = np.nansum(self.sums, axis=0)
-        squares = np.nansum(self.squares, axis=0)
-        count = np.nansum(self.count, axis=0)
-        has_nans = np.any(self.has_nans, axis=0)
-        mean = sums / count
-
-        assert sums.shape == count.shape == squares.shape == mean.shape == minimum.shape == maximum.shape
-
-        x = squares / count - mean * mean
-        # remove negative variance due to numerical errors
-        # x[- 1e-15 < (x / (np.sqrt(squares / count) + np.abs(mean))) < 0] = 0
-        check_variance(x, self.variables_names, minimum, maximum, mean, count, sums, squares)
-        stdev = np.sqrt(x)
-
-        for j, name in enumerate(self.variables_names):
-            check_data_values(
-                np.array(
-                    [
-                        mean[j],
-                    ]
-                ),
-                name=name,
-                allow_nan=False,
-            )
+            check_data_values(np.array([mean[j]]), name=name, allow_nan=False)
 
         return Summary(
             minimum=minimum,

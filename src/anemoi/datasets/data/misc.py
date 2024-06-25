@@ -133,9 +133,9 @@ def _as_date(d, dates, last):
 
         if "-" in d and ":" in d:
             date, time = d.replace(" ", "T").split("T")
-            year, month, day = date.split("-")
-            hour, minute, second = time.split(":")
-            return np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour}:{minute}:{second}")
+            year, month, day = [int(_) for _ in date.split("-")]
+            hour, minute, second = [int(_) for _ in time.split(":")]
+            return np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}")
 
         if "-" in d:
             assert ":" not in d

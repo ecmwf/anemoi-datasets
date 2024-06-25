@@ -8,7 +8,7 @@
 import logging
 
 from .debug import Node
-from .forewards import GivenAxis
+from .forwards import GivenAxis
 from .misc import _auto_adjust
 from .misc import _open
 

@@ -5,7 +5,7 @@ input:
       args2: value2
     - forcings:
       template: ${input.join.0.source1}
-      params:
+      param:
         - insolation
         - cos_julian_day
         - sin_julian_day

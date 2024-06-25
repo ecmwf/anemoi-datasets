@@ -116,8 +116,8 @@ class StartEndDates(Dates):
         start = no_time_zone(start)
         end = no_time_zone(end)
 
-        if end <= start:
-            raise ValueError(f"End date {end} must be after start date {start}")
+        # if end <= start:
+        #     raise ValueError(f"End date {end} must be after start date {start}")
 
         increment = datetime.timedelta(hours=frequency)
 

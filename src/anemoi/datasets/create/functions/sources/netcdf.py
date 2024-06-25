@@ -7,8 +7,26 @@
 # nor does it submit to any jurisdiction.
 #
 
+import glob
+
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
+
+def _expand(paths):
+    for path in paths:
+        if path.startswith("file://"):
+            path = path[7:]
+
+        if path.startswith("http://"):
+            yield path
+            continue
+
+        if path.startswith("https://"):
+            yield path
+            continue
+
+        for p in glob.glob(path):
+            yield p
 
 
 def check(what, ds, paths, **kwargs):
@@ -32,7 +50,7 @@ def load_netcdfs(emoji, what, context, dates, path, *args, **kwargs):
 
         levels = kwargs.get("level", kwargs.get("levelist"))
 
-        for path in paths:
+        for path in _expand(paths):
             context.trace(emoji, what.upper(), path)
             s = from_source("opendap", path)
             s = s.sel(

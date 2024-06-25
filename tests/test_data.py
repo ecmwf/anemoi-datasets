@@ -16,7 +16,7 @@ import zarr
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
-from anemoi.datasets.data.grids import Grids
+from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
 from anemoi.datasets.data.misc import _frequency_to_hours
 from anemoi.datasets.data.misc import as_first_date
@@ -1044,7 +1044,7 @@ def test_grids():
         ]
     )
     test.run(
-        expected_class=Grids,
+        expected_class=GridsBase,
         expected_length=365 * 1 * 4,
         expected_shape=(365 * 1 * 4, 4, 1, VALUES + 25),
         expected_variables="abcd",

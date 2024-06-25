@@ -8,7 +8,30 @@
 #
 
 
+
+import importlib
+
+import entrypoints
+
+
 def assert_is_fieldlist(obj):
     from earthkit.data.indexing.fieldlist import FieldList
 
     assert isinstance(obj, FieldList), type(obj)
+
+def import_function(name, kind):
+
+    name = name.replace("-", "_")
+
+    plugins = {}
+    for e in entrypoints.get_group_all(f"anemoi.datasets.{kind}"):
+        plugins[e.name.replace("_", "-")] = e
+
+    if name in plugins:
+        return plugins[name].load()
+
+    module = importlib.import_module(
+        f".{kind}.{name}",
+        package=__name__,
+    )
+    return module.execute

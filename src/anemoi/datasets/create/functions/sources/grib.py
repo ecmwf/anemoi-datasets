@@ -10,6 +10,8 @@
 
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
+import glob
+
 
 
 def check(ds, paths, **kwargs):
@@ -20,6 +22,12 @@ def check(ds, paths, **kwargs):
 
     if len(ds) != count:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
+
+
+def _expand(paths):
+    for path in paths:
+        for p in glob.glob(path):
+            yield p
 
 
 def execute(context, dates, path, *args, **kwargs):
@@ -35,7 +43,7 @@ def execute(context, dates, path, *args, **kwargs):
             if name in kwargs:
                 raise ValueError(f"MARS interpolation parameter '{name}' not supported")
 
-        for path in paths:
+        for path in _expand(paths):
             context.trace("📁", "PATH", path)
             s = from_source("file", path)
             s = s.sel(valid_datetime=dates, **kwargs)

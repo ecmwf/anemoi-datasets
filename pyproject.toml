@@ -50,12 +50,13 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-utils[provenance]>=0.1.7",
+  "anemoi-utils[provenance]>=0.3.4",
   "numpy",
   "pyyaml",
   "semantic-version",
   "tqdm",
   "zarr<=2.17",
+
 ]
 
 optional-dependencies.all = [
@@ -63,16 +64,14 @@ optional-dependencies.all = [
   "boto3",
   "earthkit-data[mars]>=0.8.1",
   "earthkit-geo>=0.2",
+  "boto3",
+  "climetlab>=0.23.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
-  "numpy",
+  "entrypoints",
   "pyproj",
-  "pyyaml",
   "requests",
   "s3fs",
-  "semantic-version",
-  "tqdm",
-  "zarr<=2.17",
 ]
 
 optional-dependencies.create = [
@@ -80,6 +79,7 @@ optional-dependencies.create = [
   "earthkit-geo>=0.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
+  "entrypoints",
   "pyproj",
 ]
 
@@ -87,11 +87,14 @@ optional-dependencies.dev = [
   "boto3",
   "earthkit-data[mars]>=0.8.1",
   "earthkit-geo>=0.2",
+  "climetlab>=0.23.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
+  "entrypoints",
   "nbsphinx",
   "pandoc",
   "pyproj",
+  "pytest",
   "requests",
   "s3fs",
   "sphinx",
@@ -110,7 +113,9 @@ optional-dependencies.remote = [
   "requests",
   "s3fs",
 ]
-
+optional-dependencies.tests = [
+  "pytest",
+]
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
 urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"

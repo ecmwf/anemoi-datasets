@@ -10,7 +10,7 @@ from functools import cached_property
 
 from . import open_dataset
 from .debug import Node
-from .forewards import Forwards
+from .forwards import Forwards
 
 LOG = logging.getLogger(__name__)
 
@@ -34,11 +34,12 @@ class Statistics(Forwards):
             delta = self.frequency
         return self._statistic.statistics_tendencies(delta)
 
-    def metadata_specific(self, **kwargs):
-        return super().metadata_specific(
-            statistics=self._statistic.metadata_specific(),
-            **kwargs,
-        )
+    def subclass_metadata_specific(self):
+        return dict(statistics=self._statistic.metadata_specific())
 
     def tree(self):
         return Node(self, [self.forward.tree()])
+
+    def get_dataset_names(self, names):
+        super().get_dataset_names(names)
+        self._statistic.get_dataset_names(names)

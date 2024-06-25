@@ -14,7 +14,7 @@ from ..grids import cropping_mask
 from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
-from .forewards import Forwards
+from .forwards import Forwards
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices
@@ -70,8 +70,12 @@ class Thinning(Masked):
         self.thinning = thinning
         self.method = method
 
-        latitudes = forward.latitudes.reshape(forward.field_shape)
-        longitudes = forward.longitudes.reshape(forward.field_shape)
+        shape = forward.field_shape
+        if len(shape) != 2:
+            raise ValueError("Thinning only works latitude/longitude fields")
+
+        latitudes = forward.latitudes.reshape(shape)
+        longitudes = forward.longitudes.reshape(shape)
         latitudes = latitudes[::thinning, ::thinning].flatten()
         longitudes = longitudes[::thinning, ::thinning].flatten()
 
@@ -82,6 +86,9 @@ class Thinning(Masked):
 
     def tree(self):
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
+
+    def subclass_metadata_specific(self):
+        return dict(thinning=self.thinning, method=self.method)
 
 
 class Cropping(Masked):
@@ -104,3 +111,6 @@ class Cropping(Masked):
 
     def tree(self):
         return Node(self, [self.forward.tree()], area=self.area)
+
+    def metadata_specific(self, **kwargs):
+        return super().metadata_specific(area=self.area, **kwargs)
