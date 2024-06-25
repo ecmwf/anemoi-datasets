@@ -61,7 +61,7 @@ dependencies = [
 
 optional-dependencies.all = [
   "boto3",
-  "earthkit-data[mars]>=0.8.1",
+  "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
@@ -72,7 +72,7 @@ optional-dependencies.all = [
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.8.1",
+  "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
@@ -82,7 +82,7 @@ optional-dependencies.create = [
 
 optional-dependencies.dev = [
   "boto3",
-  "earthkit-data[mars]>=0.8.1",
+  "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
