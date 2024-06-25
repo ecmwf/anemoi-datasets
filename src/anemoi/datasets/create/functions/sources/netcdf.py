@@ -12,6 +12,7 @@ import glob
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
+
 def _expand(paths):
     for path in paths:
         if path.startswith("file://"):

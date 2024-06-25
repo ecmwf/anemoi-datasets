@@ -8,10 +8,10 @@
 #
 
 
-from earthkit.data import from_source
-from earthkit.data.utils.patterns import Pattern
 import glob
 
+from earthkit.data import from_source
+from earthkit.data.utils.patterns import Pattern
 
 
 def check(ds, paths, **kwargs):

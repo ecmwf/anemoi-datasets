@@ -8,7 +8,6 @@
 #
 
 
-
 import importlib
 
 import entrypoints
@@ -18,6 +17,7 @@ def assert_is_fieldlist(obj):
     from earthkit.data.indexing.fieldlist import FieldList
 
     assert isinstance(obj, FieldList), type(obj)
+
 
 def import_function(name, kind):
 

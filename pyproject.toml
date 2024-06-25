@@ -60,12 +60,9 @@ dependencies = [
 ]
 
 optional-dependencies.all = [
-  "anemoi-utils[provenance]>=0.1.7",
   "boto3",
   "earthkit-data[mars]>=0.8.1",
   "earthkit-geo>=0.2",
-  "boto3",
-  "climetlab>=0.23.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
   "entrypoints",
@@ -87,7 +84,6 @@ optional-dependencies.dev = [
   "boto3",
   "earthkit-data[mars]>=0.8.1",
   "earthkit-geo>=0.2",
-  "climetlab>=0.23.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
   "entrypoints",
