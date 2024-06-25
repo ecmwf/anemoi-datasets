@@ -58,15 +58,17 @@ class HTTPStore(ReadOnlyStore):
 
 
 class S3Store(ReadOnlyStore):
-    """We write our own S3Store because the one used by zarr (fsspec) does not play well with fork() and multiprocessing."""
+    """We write our own S3Store because the one used by zarr (fsspec)
+    does not play well with fork() and multiprocessing. Also, we get
+    to control the s3 client.
+    """
 
     def __init__(self, url):
-        import boto3
+        from anemoi.utils.s3 import s3_client
 
-        self.bucket, self.key = url[5:].split("/", 1)
+        _, _, self.bucket, self.key = url.split("/", 3)
 
-        # TODO: get the profile name from the url
-        self.s3 = boto3.Session(profile_name=None).client("s3")
+        self.s3 = s3_client(self.bucket)
 
     def __getitem__(self, key):
         try:
