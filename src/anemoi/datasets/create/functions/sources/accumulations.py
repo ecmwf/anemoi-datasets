@@ -395,7 +395,7 @@ def accumulations(context, dates, **request):
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")
 
-    user_accumulation_period = request.get("accumulation_period", 6)
+    user_accumulation_period = request.pop("accumulation_period", 6)
 
     KWARGS = {
         ("od", "oper"): dict(patch=scda),
