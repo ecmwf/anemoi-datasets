@@ -153,6 +153,7 @@ class DefaultCopier:
                 shape=source_data.shape,
                 chunks=self.data_chunks,
                 dtype=source_data.dtype,
+                fill_value=source_data.fill_value,
             )
         )
 

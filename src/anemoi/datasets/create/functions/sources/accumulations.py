@@ -85,6 +85,7 @@ class Accumulation:
             stepType="accum",
             startStep=self.startStep,
             endStep=self.endStep,
+            check_nans=True,
         )
         self.values = None
         self.done = True
