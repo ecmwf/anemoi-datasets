@@ -19,6 +19,8 @@ from climetlab.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from .mars import use_grib_paramid
+
 LOG = logging.getLogger(__name__)
 
 
@@ -231,6 +233,7 @@ def identity(x):
 
 
 def compute_accumulations(
+    context,
     dates,
     request,
     user_accumulation_period=6,
@@ -307,7 +310,10 @@ def compute_accumulations(
     ds = cml.load_source("empty")
     for r in compressed.iterate():
         request.update(r)
+        if context.use_grib_paramid and "param" in request:
+            request = use_grib_paramid(request)
         print("🌧️", request)
+
         ds = ds + cml.load_source("mars", **request)
 
     accumulations = {}
@@ -410,6 +416,7 @@ def accumulations(context, dates, **request):
     context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
 
     return compute_accumulations(
+        context,
         dates,
         request,
         user_accumulation_period=user_accumulation_period,
