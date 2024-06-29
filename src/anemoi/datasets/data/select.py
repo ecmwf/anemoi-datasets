@@ -23,15 +23,19 @@ LOG = logging.getLogger(__name__)
 class Select(Forwards):
     """Select a subset of the variables."""
 
-    def __init__(self, dataset, indices, title):
+    def __init__(self, dataset, indices, reason):
+
+        reason = reason.copy()
+
         while isinstance(dataset, Select):
             indices = [dataset.indices[i] for i in indices]
+            reason.update(dataset.reason)
             dataset = dataset.dataset
 
         self.dataset = dataset
         self.indices = list(indices)
         assert len(self.indices) > 0
-        self.title = title or {"indices": self.indices}
+        self.reason = reason or {"indices": self.indices}
 
         # Forward other properties to the main dataset
         super().__init__(dataset)
@@ -86,11 +90,11 @@ class Select(Forwards):
         return Source(self, index, self.dataset.source(self.indices[index]))
 
     def tree(self):
-        return Node(self, [self.dataset.tree()], **self.title)
+        return Node(self, [self.dataset.tree()], **self.reason)
 
     def subclass_metadata_specific(self):
         # return dict(indices=self.indices)
-        return {}
+        return self.reason
 
 
 class Rename(Forwards):
