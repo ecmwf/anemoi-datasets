@@ -94,7 +94,7 @@ class Select(Forwards):
 
     def subclass_metadata_specific(self):
         # return dict(indices=self.indices)
-        return self.reason
+        return dict(reason=self.reason)
 
 
 class Rename(Forwards):
