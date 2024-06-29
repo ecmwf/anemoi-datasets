@@ -9,6 +9,7 @@
 import datetime
 from copy import deepcopy
 
+from anemoi.utils.humanize import did_you_mean
 from climetlab import load_source
 from climetlab.utils.availability import Availability
 
@@ -102,6 +103,74 @@ def use_grib_paramid(r):
     return r
 
 
+MARS_KEYS = [
+    "accuracy",
+    "activity",
+    "anoffset",
+    "area",
+    "bitmap",
+    "channel",
+    "class",
+    "database",
+    "dataset",
+    "date",
+    "diagnostic",
+    "direction",
+    "domain",
+    "expect",
+    "experiment",
+    "expver",
+    "fcmonth",
+    "fcperiod",
+    "fieldset",
+    "filter",
+    "format",
+    "frame",
+    "frequency",
+    "gaussian",
+    "generation",
+    "grid",
+    "hdate",
+    "ident",
+    "instrument",
+    "interpolation",
+    "intgrid",
+    "iteration",
+    "level",
+    "levelist",
+    "levtype",
+    "method",
+    "model",
+    "month",
+    "number",
+    "obsgroup",
+    "obstype",
+    "offsetdate",
+    "offsettime",
+    "optimise",
+    "origin",
+    "packing",
+    "padding",
+    "param",
+    "quantile",
+    "realization",
+    "reference",
+    "reportype",
+    "repres",
+    "resol",
+    "resolution",
+    "rotation",
+    "step",
+    "stream",
+    "system",
+    "target",
+    "time",
+    "truncation",
+    "type",
+    "year",
+]
+
+
 def mars(context, dates, *requests, date_key="date", **kwargs):
     if not requests:
         requests = [kwargs]
@@ -117,6 +186,11 @@ def mars(context, dates, *requests, date_key="date", **kwargs):
         if DEBUG:
             context.trace("✅", f"load_source(mars, {r}")
 
+        for k, v in r.items():
+            if k not in MARS_KEYS:
+                raise ValueError(
+                    f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
+                )
         ds = ds + load_source("mars", **r)
     return ds
 

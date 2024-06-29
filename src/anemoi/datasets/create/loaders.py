@@ -693,7 +693,7 @@ class GenericAdditions(GenericDatasetHandler):
             variables_names=self.variables,
             has_nans=has_nans,
         )
-        LOG.info(f"Dataset {self.path} additions finalized.")
+        LOG.info(f"Dataset {self.path} additions finalised.")
         self.check_statistics()
         self._write(self.summary)
         self.tmp_storage.delete()
@@ -808,7 +808,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
         start = z.attrs["statistics_start_date"]
         end = z.attrs["statistics_end_date"]
         start = datetime.datetime.fromisoformat(start)
-        ds = open_dataset(self.path, start=start + datetime.timedelta(hours=delta), end=end)
+        ds = open_dataset(self.path, start=start, end=end)
         self.dates = ds.dates
         self.total = len(self.dates)
 

@@ -36,9 +36,13 @@ class S3Downloader:
         self.verbosity = verbosity
 
     def run(self):
+        if self.target == ".":
+            self.target = os.path.basename(self.source)
+
         if self.overwrite and os.path.exists(self.target):
             LOG.info(f"Deleting {self.target}")
             shutil.rmtree(self.target)
+
         download(
             self.source + "/" if not self.source.endswith("/") else self.source,
             self.target,
@@ -149,6 +153,7 @@ class DefaultCopier:
                 shape=source_data.shape,
                 chunks=self.data_chunks,
                 dtype=source_data.dtype,
+                fill_value=source_data.fill_value,
             )
         )
 
@@ -307,7 +312,7 @@ class CopyMixin:
         )
         command_parser.add_argument("--transfers", type=int, default=8, help="Number of parallel transfers.")
         command_parser.add_argument(
-            "--versosity",
+            "--verbosity",
             type=int,
             help="Verbosity level. 0 is silent, 1 is normal, 2 is verbose.",
             default=1,
