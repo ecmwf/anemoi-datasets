@@ -40,9 +40,9 @@ while ``end="2020"`` is equivalent to ``end="2020-12-31"``.
 
 Note also how the ``frequency`` of the dataset will change how the
 ``end`` option is interpreted: - ``end="2020"`` with a ``frequency`` of
-one hour is equivalent to ``end="2020-12-31 23:00"`` - ``end="2020"``
+one hour is equivalent to ``end="2020-12-31 23:00:00"`` - ``end="2020"``
 with a ``frequency`` of 6 hours is equivalent to ``end="2020-12-31
-18:00"``
+18:00:00"``
 
 .. _frequency:
 
