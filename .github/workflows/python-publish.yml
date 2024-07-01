@@ -45,7 +45,7 @@ jobs:
         pip freeze
 
     - name: Tests
-      run: pytest -k data
+      run: pytest
 
   deploy:
 
