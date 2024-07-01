@@ -6,7 +6,7 @@ name: Upload Python Package
 on:
 
   push: {}
-
+  pull_request:
   release:
     types: [created]
 
