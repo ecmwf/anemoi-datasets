@@ -19,6 +19,8 @@ from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from .mars import use_grib_paramid
+
 LOG = logging.getLogger(__name__)
 
 
@@ -94,6 +96,7 @@ class Accumulation:
             stepType="accum",
             startStep=self.startStep,
             endStep=self.endStep,
+            check_nans=True,
         )
         self.values = None
         self.done = True
@@ -243,6 +246,7 @@ def identity(x):
 
 
 def compute_accumulations(
+    context,
     dates,
     request,
     user_accumulation_period=6,
@@ -319,6 +323,8 @@ def compute_accumulations(
     ds = ekd.from_source("empty")
     for r in compressed.iterate():
         request.update(r)
+        if context.use_grib_paramid and "param" in request:
+            request = use_grib_paramid(request)
         print("🌧️", request)
         ds = ds + ekd.from_source("mars", **request)
 
@@ -408,7 +414,7 @@ def accumulations(context, dates, **request):
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")
 
-    user_accumulation_period = request.get("accumulation_period", 6)
+    user_accumulation_period = request.pop("accumulation_period", 6)
 
     KWARGS = {
         ("od", "oper"): dict(patch=scda),
@@ -422,6 +428,7 @@ def accumulations(context, dates, **request):
     context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
 
     return compute_accumulations(
+        context,
         dates,
         request,
         user_accumulation_period=user_accumulation_period,

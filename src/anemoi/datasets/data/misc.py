@@ -49,7 +49,9 @@ def load_config():
     if CONFIG is not None:
         return CONFIG
 
-    conf = os.path.expanduser("~/.anemoi.toml")
+    conf = os.path.expanduser("~/.config/anemoi/settings.toml")
+    if not os.path.exists(conf):
+        conf = os.path.expanduser("~/.anemoi.toml")
 
     if os.path.exists(conf):
 

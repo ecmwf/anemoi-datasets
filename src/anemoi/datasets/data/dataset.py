@@ -187,6 +187,8 @@ class Dataset:
                 specific=self.metadata_specific(),
                 frequency=self.frequency,
                 variables=self.variables,
+                start_date=self.dates[0].astype(str),
+                end_date=self.dates[-1].astype(str),
             )
         )
 
@@ -198,6 +200,8 @@ class Dataset:
             variables=self.variables,
             shape=self.shape,
             frequency=self.frequency,
+            start_date=self.dates[0].astype(str),
+            end_date=self.dates[-1].astype(str),
             **kwargs,
         )
 
