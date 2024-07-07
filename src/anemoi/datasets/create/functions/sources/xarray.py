@@ -539,11 +539,6 @@ def execute(context, dates, dataset, options, *args, **kwargs):
         data = xr.open_zarr(dataset, **options)
     else:
         data = xr.open_dataset(dataset, **options)
-    # print(data)
-    fs = XarrayFieldList.from_xarray(data, mars_naming)
-    result = MultiFieldList([fs.sel(time=date, **kwargs) for date in dates])
 
-    # print("-----------------")
-    # print(len(result))
-    # print("-----------------")
-    return result
+    fs = XarrayFieldList.from_xarray(data, mars_naming)
+    return MultiFieldList([fs.sel(time=date, **kwargs) for date in dates])
