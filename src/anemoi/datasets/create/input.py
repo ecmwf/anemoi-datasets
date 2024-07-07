@@ -8,6 +8,7 @@
 #
 import datetime
 import logging
+import math
 import time
 from collections import defaultdict
 from copy import deepcopy
@@ -165,6 +166,10 @@ class Coords:
         grid_points = first_field.grid_points()
 
         lats, lons = grid_points
+
+        assert len(lats) == len(lons), (len(lats), len(lons), first_field)
+        assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
+
         north = np.amax(lats)
         south = np.amin(lats)
         east = np.amax(lons)
