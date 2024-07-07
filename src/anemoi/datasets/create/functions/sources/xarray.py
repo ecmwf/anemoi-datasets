@@ -189,14 +189,10 @@ class Variable:
         k, v = kwargs.popitem()
         c = self.by_name.get(k)
         if c is None:
-            assert False, f"Coordinate {k} not found in {self.coordinates}"
             return None
-
-        # print("++++++", c, v, kwargs)
 
         i = c.index(v)
         if i is None:
-            assert False, f"Value {v} not found in {c.variable.values[:10]}"
             return None
 
         coordinates = [x.singleton(i) if c is x else x for x in self.coordinates]
@@ -217,21 +213,21 @@ class Variable:
         return variable.sel(**kwargs)
 
 
-class Longitude(Coordinate):
+class LongitudeCoordinate(Coordinate):
     is_grid = True
     is_lon = True
 
 
-class Latitude(Coordinate):
+class LatitudeCoordinate(Coordinate):
     is_grid = True
     is_lat = True
 
 
-class X(Coordinate):
+class XCoordinate(Coordinate):
     is_grid = True
 
 
-class Y(Coordinate):
+class YCoordinate(Coordinate):
     is_grid = True
 
 
@@ -360,29 +356,31 @@ class CoordinateGuesser:
 
     def _is_longitude(self, c, axis, coord_name, long_name, standard_name, units):
         if standard_name == "longitude":
-            return Longitude(c)
+            return LongitudeCoordinate(c)
+
         if long_name == "longitude" and units == "degrees_east":
-            return Longitude(c)
+            return LongitudeCoordinate(c)
 
     def _is_latitude(self, c, axis, coord_name, long_name, standard_name, units):
         if standard_name == "latitude":
-            return Latitude(c)
+            return LatitudeCoordinate(c)
+
         if long_name == "latitude" and units == "degrees_north":
-            return Latitude(c)
+            return LatitudeCoordinate(c)
 
     def _is_x(self, c, axis, coord_name, long_name, standard_name, units):
         if standard_name == "projection_x_coordinate":
-            return X(c)
+            return XCoordinate(c)
 
     def _is_y(self, c, axis, coord_name, long_name, standard_name, units):
         if standard_name == "projection_y_coordinate":
-            return Y(c)
+            return YCoordinate(c)
 
     def _is_time(self, c, axis, coord_name, long_name, standard_name, units):
         if standard_name == "time":
             return TimeCoordinate(c)
 
-        if coord_name == "time":  # and c.dtype == np.datetime64:
+        if coord_name == "time":
             return TimeCoordinate(c)
 
     def _is_level(self, c, axis, coord_name, long_name, standard_name, units):
@@ -450,7 +448,7 @@ class XarrayFieldList(FieldList):
     @classmethod
     def from_xarray(cls, ds, metadata_handler=None):
         variables = []
-        coordinates_cache = CoordinateGuesser(ds)
+        guess = CoordinateGuesser(ds)
 
         skip = set()
 
@@ -483,7 +481,7 @@ class XarrayFieldList(FieldList):
             # non_dim_coords = []
             for coord in v.coords:
 
-                c = coordinates_cache.guess(ds[coord], coord)
+                c = guess.guess(ds[coord], coord)
                 assert c, f"Could not guess coordinate for {coord}"
                 if coord not in v.dims:
                     c.is_dim = False
@@ -501,7 +499,7 @@ class XarrayFieldList(FieldList):
                     ds,
                     v,
                     coordinates,
-                    coordinates_cache.grid(coordinates),
+                    guess.grid(coordinates),
                     {},
                     metadata_handler,
                     {},
