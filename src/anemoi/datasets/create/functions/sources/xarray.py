@@ -7,8 +7,10 @@
 # nor does it submit to any jurisdiction.
 #
 
+import json
 import logging
 import math
+import textwrap
 
 import numpy as np
 from earthkit.data.core.fieldlist import FieldList
@@ -16,17 +18,18 @@ from earthkit.data.core.fieldlist import MultiFieldList
 
 LOG = logging.getLogger(__name__)
 
-GEOGRAPHIC_COORDS = {
-    "x": ["x", "projection_x_coordinate", "lon", "longitude"],
-    "y": ["y", "projection_y_coordinate", "lat", "latitude"],
-}
-
 
 class Coordinate:
+    is_grid = False
+    is_dim = True
+    is_lat = False
+    is_lon = False
+
     def __init__(self, variable):
         self.variable = variable
         self.scalar = variable.shape == tuple()
-        print(self)
+        self.kwargs = {}
+        # print(self)
 
     def __len__(self):
         return 1 if self.scalar else len(self.variable)
@@ -39,7 +42,7 @@ class Coordinate:
         )
 
     def singleton(self, i):
-        return self.__class__(self.variable.isel({self.variable.dims[0]: i}))
+        return self.__class__(self.variable.isel({self.variable.dims[0]: i}), **self.kwargs)
 
     def index(self, value):
 
@@ -58,6 +61,10 @@ class Coordinate:
 
         return None
 
+    @property
+    def name(self):
+        return self.variable.name
+
 
 class TimeCoordinate(Coordinate):
 
@@ -66,7 +73,11 @@ class TimeCoordinate(Coordinate):
 
 
 class LevelCoordinate(Coordinate):
-    pass
+
+    def __init__(self, variable, levtype):
+        super().__init__(variable)
+        self.levtype = levtype
+        self.kwargs = {"levtype": levtype}
 
 
 class EnsembleCoordinate(Coordinate):
@@ -97,11 +108,15 @@ class Field:
         for coord_name, coord_value in self.selection.coords.items():
             if coord_name in selection.dims:
                 continue
+            # print(coord_name, coord_value)
             if np.issubdtype(coord_value.dtype, np.datetime64):
                 # self._metadata[coord_name] = coord_value.values.astype(object)
                 self._metadata[coord_name] = str(coord_value.values).split(".")[0]
             else:
-                self._metadata[coord_name] = coord_value.values.item()
+                if isinstance(coord_value.values, np.ndarray):
+                    self._metadata[coord_name] = coord_value.values.tolist()
+                else:
+                    self._metadata[coord_name] = coord_value.values.item()
 
     def to_numpy(self, flatten=False, dtype=None):
         assert dtype is None
@@ -128,29 +143,29 @@ class Field:
         return self.selection.shape
 
     def __repr__(self):
-        return "Field[%s]" % (self._metadata)
+        return textwrap.shorten("Field[%s]" % (self._metadata), width=80, placeholder="...")
 
 
 class Variable:
-    def __init__(self, ds, var, coordinates, lat, lon, metadata={}):
+    def __init__(self, ds, var, coordinates, grid, mars_names, metadata_handler, metadata):
         self.ds = ds
         self.var = var
-        self.lat = lat
-        self.lon = lon
+        self.mars_names = mars_names
+        self.metadata_handler = metadata_handler
         self._metadata = metadata.copy()
         self._metadata.update(var.attrs)
         self._metadata.update({"variable": var.name})
+        self.grid = grid
 
         self.coordinates = coordinates
-        self.shape = tuple(len(c.variable) for c in coordinates if not c.scalar)
-        self.names = {c.variable.name: c for c in coordinates if not c.scalar}
+        self.shape = tuple(len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid)
+        self.names = {c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid}
         self.by_name = {c.variable.name: c for c in coordinates}
 
         self.length = math.prod(self.shape)
 
     def grid_points(self):
-        x, y = np.meshgrid(self.ds[self.lat].values, self.ds[self.lon].values)
-        return x.flatten(), y.flatten()
+        return self.grid.grid_points()
 
     def __repr__(self):
         return "Variable[name=%s,coordinates=%s,lat=%s,lon=%s,metadata=%s]" % (
@@ -174,26 +189,247 @@ class Variable:
         k, v = kwargs.popitem()
         c = self.by_name.get(k)
         if c is None:
+            assert False, f"Coordinate {k} not found in {self.coordinates}"
             return None
+
+        # print("++++++", c, v, kwargs)
 
         i = c.index(v)
         if i is None:
+            assert False, f"Value {v} not found in {c.variable.values[:10]}"
             return None
 
         coordinates = [x.singleton(i) if c is x else x for x in self.coordinates]
 
         metadata = self._metadata.copy()
         metadata.update({k: v})
-        variable = Variable(self.ds, self.var.isel({k: i}), coordinates, self.lat, self.lon, metadata)
+
+        variable = Variable(
+            self.ds,
+            self.var.isel({k: i}),
+            coordinates,
+            self.grid,
+            self.mars_names,
+            self.metadata_handler,
+            metadata,
+        )
 
         return variable.sel(**kwargs)
 
 
+class Longitude(Coordinate):
+    is_grid = True
+    is_lon = True
+
+
+class Latitude(Coordinate):
+    is_grid = True
+    is_lat = True
+
+
+class X(Coordinate):
+    is_grid = True
+
+
+class Y(Coordinate):
+    is_grid = True
+
+
+class ScalarCoordinate(Coordinate):
+    pass
+
+
+class Grid:
+    def __init__(self, lat, lon):
+        self.lat = lat
+        self.lon = lon
+
+
+class MeshedGrid(Grid):
+    _cache = None
+
+    def grid_points(self):
+        if self._cache is not None:
+            return self._cache
+        lat = self.lat.variable.values
+        lon = self.lon.variable.values
+
+        lat, lon = np.meshgrid(lat, lon)
+        self._cache = (lat.flatten(), lon.flatten())
+        return self._cache
+
+
+class UnstructuredGrid(Grid):
+    def grid_points(self):
+        lat = self.lat.variable.values.flatten()
+        lon = self.lon.variable.values.flatten()
+        return lat, lon
+
+
+class CoordinateGuesser:
+
+    def __init__(self, ds):
+        self.ds = ds
+        self._cache = {}
+
+    def guess(self, c, coord):
+        if coord not in self._cache:
+            self._cache[coord] = self._guess(c, coord)
+        return self._cache[coord]
+
+    def _guess(self, c, coord):
+        standard_name = getattr(c, "standard_name", "")
+        axis = getattr(c, "axis", "")
+        long_name = getattr(c, "long_name", "")
+        coord_name = getattr(c, "name", "")
+        units = getattr(c, "units", "")
+
+        d = self._is_longitude(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
+        d = self._is_latitude(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
+        d = self._is_x(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
+        d = self._is_y(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
+        d = self._is_time(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
+        d = self._is_level(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
+        if len(c.values) == 1:
+            return ScalarCoordinate(c)
+
+        raise NotImplementedError(
+            f"Coordinate {coord} not supported\n{axis=}, {coord_name=},"
+            f" {long_name=}, {standard_name=}, units\n\n{c}"
+        )
+
+    def _is_longitude(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "longitude":
+            return Longitude(c)
+        if long_name == "longitude" and units == "degrees_east":
+            return Longitude(c)
+
+    def _is_latitude(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "latitude":
+            return Latitude(c)
+        if long_name == "latitude" and units == "degrees_north":
+            return Latitude(c)
+
+    def _is_x(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "projection_x_coordinate":
+            return X(c)
+
+    def _is_y(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "projection_y_coordinate":
+            return Y(c)
+
+    def _is_time(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "time":
+            return TimeCoordinate(c)
+
+        if coord_name == "time":  # and c.dtype == np.datetime64:
+            return TimeCoordinate(c)
+
+    def _is_level(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
+            return LevelCoordinate(c, "ml")
+
+        if long_name == "height" and units == "m":
+            return LevelCoordinate(c, "height")
+
+        if standard_name == "air_pressure" and units == "hPa":
+            return LevelCoordinate(c, "pl")
+
+        if coord_name == "level":
+            return LevelCoordinate(c, "pl")
+
+    def grid(self, coordinates):
+        lat = [c for c in coordinates if c.is_lat]
+        lon = [c for c in coordinates if c.is_lon]
+
+        if len(lat) != 1:
+            raise NotImplementedError(f"Expected 1 latitude coordinate, got {len(lat)}")
+
+        if len(lon) != 1:
+            raise NotImplementedError(f"Expected 1 longitude coordinate, got {len(lon)}")
+
+        lat = lat[0]
+        lon = lon[0]
+
+        if (lat.name, lon.name) in self._cache:
+            return self._cache[(lat.name, lon.name)]
+
+        assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
+        if len(lat.variable.shape) == 1:
+            grid = MeshedGrid(lat, lon)
+        else:
+            grid = UnstructuredGrid(lat, lon)
+
+        self._cache[(lat.name, lon.name)] = grid
+        return grid
+
+
 class XarrayFieldList(FieldList):
-    def __init__(self, ds, variables):
+    def __init__(self, ds, variables, metadata_handler):
         self.ds = ds
         self.variables = variables.copy()
         self.total_length = sum(v.length for v in variables)
+        self.metadata_handler = metadata_handler
 
     def __len__(self):
         return self.total_length
@@ -212,15 +448,11 @@ class XarrayFieldList(FieldList):
         raise IndexError(k)
 
     @classmethod
-    def from_xarray(cls, ds):
+    def from_xarray(cls, ds, metadata_handler=None):
         variables = []
-        coordinates_cache = {}
+        coordinates_cache = CoordinateGuesser(ds)
 
         skip = set()
-
-        def _add_coordinates(name, coordinates, coordinate):
-            coordinates.append(coordinate)
-            coordinates_cache[name] = coordinate
 
         def _skip_attr(v, attr_name):
             attr_val = getattr(v, attr_name, "")
@@ -235,100 +467,48 @@ class XarrayFieldList(FieldList):
 
         for name in ds.data_vars:
             # Select only geographical variables
-            has_lat = None
-            has_lon = None
+            # mars_names = {"levtype": "sfc"}
 
             if name in skip:
                 continue
 
             v = ds[name]
+            # print(v)
 
             coordinates = []
 
             # self.log.info('Scanning file: %s var=%s coords=%s', self.path, name, v.coords)
 
             # info = [value for value in v.coords if value not in v.dims]
-            non_dim_coords = {}
+            # non_dim_coords = []
             for coord in v.coords:
+
+                c = coordinates_cache.guess(ds[coord], coord)
+                assert c, f"Could not guess coordinate for {coord}"
                 if coord not in v.dims:
-                    non_dim_coords[coord] = ds[coord].values
-                    continue
+                    c.is_dim = False
+                coordinates.append(c)
 
-                if coord in coordinates_cache:
-                    coordinates.append(coordinates_cache[coord])
-                    continue
+            grid_coords = sum(1 for c in coordinates if c.is_grid and c.is_dim)
+            assert grid_coords <= 2
 
-                c = ds[coord]
-
-                # self.log.info("COORD %s %s %s %s", coord, type(coord), hasattr(c, 'calendar'), c)
-
-                standard_name = getattr(c, "standard_name", "")
-                axis = getattr(c, "axis", "")
-                long_name = getattr(c, "long_name", "")
-                coord_name = getattr(c, "name", "")
-
-                # LOG.debug(f"{standard_name=} {long_name=} {axis=} {coord_name}")
-                use = False
-
-                if (
-                    standard_name.lower() in GEOGRAPHIC_COORDS["x"]
-                    or (long_name == "longitude")
-                    or (axis == "X")
-                    or coord_name.lower() in GEOGRAPHIC_COORDS["x"]
-                ):
-                    has_lon = coord
-                    use = True
-
-                if (
-                    standard_name.lower() in GEOGRAPHIC_COORDS["y"]
-                    or (long_name == "latitude")
-                    or (axis == "Y")
-                    or coord_name.lower() in GEOGRAPHIC_COORDS["y"]
-                ):
-                    has_lat = coord
-                    use = True
-
-                # Of course, not every one sets the standard_name
-                if (
-                    standard_name in ["time", "forecast_reference_time"]
-                    or long_name in ["time"]
-                    or coord_name.lower() in ["time"]
-                    or axis == "T"
-                ):
-                    # we might not be able to convert time to datetime
-                    try:
-                        _add_coordinates(coord, coordinates, TimeCoordinate(c))
-                        use = True
-                    except ValueError:
-                        break
-
-                # TODO: Support other level types
-                if (
-                    standard_name
-                    in [
-                        "air_pressure",
-                        "model_level_number",
-                        "altitude",
-                    ]
-                    or long_name in ["pressure_level"]
-                    or coord_name in ["level"]
-                ):  # or axis == 'Z':
-                    _add_coordinates(coord, coordinates, LevelCoordinate(c))
-                    use = True
-
-                if axis in ("X", "Y"):
-                    use = True
-
-                if not use:
-                    _add_coordinates(coord, coordinates, OtherCoordinate(c))
-
-            if not (has_lat and has_lon):
+            if grid_coords < 2:
                 # self.log.info("NetCDFReader: skip %s (Not a 2 field)", name)
                 continue
 
-            variables.append(Variable(ds, v, coordinates, has_lat, has_lon))
+            variables.append(
+                Variable(
+                    ds,
+                    v,
+                    coordinates,
+                    coordinates_cache.grid(coordinates),
+                    {},
+                    metadata_handler,
+                    {},
+                )
+            )
 
-        return cls(ds, variables)
+        return cls(ds, variables, metadata_handler)
 
     def sel(self, **kwargs):
         variables = kwargs.pop("variables", kwargs.pop("param", None))
@@ -336,19 +516,34 @@ class XarrayFieldList(FieldList):
             variables = [v for v in self.variables if v.var.name in variables]
             if not variables:
                 return EmptyFieldList()
-            return self.__class__(self.ds, variables).sel(**kwargs)
+            # print("++++++", len(variables))
+            return self.__class__(self.ds, variables, self.metadata_handler).sel(**kwargs)
 
         variables = [v.sel(**kwargs) for v in self.variables]
         variables = [v for v in variables if v is not None]
         if not variables:
             return EmptyFieldList()
 
-        return self.__class__(self.ds, variables)
+        return self.__class__(self.ds, variables, self.metadata_handler)
+
+
+def mars_naming(name, metadata, default=None):
+    return metadata.get(name, default)
 
 
 def execute(context, dates, dataset, options, *args, **kwargs):
     import xarray as xr
 
-    data = xr.open_zarr(dataset, **options)
-    fs = XarrayFieldList.from_xarray(data)
-    return MultiFieldList([fs.sel(time=date, **kwargs) for date in dates])
+    print(json.dumps([dataset, options], indent=4))
+    if isinstance(dataset, str) and ".zarr" in dataset:
+        data = xr.open_zarr(dataset, **options)
+    else:
+        data = xr.open_dataset(dataset, **options)
+    # print(data)
+    fs = XarrayFieldList.from_xarray(data, mars_naming)
+    result = MultiFieldList([fs.sel(time=date, **kwargs) for date in dates])
+
+    # print("-----------------")
+    # print(len(result))
+    # print("-----------------")
+    return result
