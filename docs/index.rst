@@ -89,6 +89,7 @@ datasets <building-introduction>`.
    building/handling-missing-dates
    building/handling-missing-values
    building/statistics
+   building/advanced-options
 
 **Command line tool**
 
