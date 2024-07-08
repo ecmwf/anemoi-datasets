@@ -72,6 +72,12 @@ class TimeCoordinate(Coordinate):
         return super().index(np.datetime64(time))
 
 
+class StepCoordinate(Coordinate):
+    pass
+    # def index(self, time):
+    #     return super().index(np.datetime64(time))
+
+
 class LevelCoordinate(Coordinate):
 
     def __init__(self, variable, levtype):
@@ -274,9 +280,9 @@ class CoordinateGuesser:
         return self._cache[coord]
 
     def _guess(self, c, coord):
-        standard_name = getattr(c, "standard_name", "")
+        standard_name = getattr(c, "standard_name", "").lower()
         axis = getattr(c, "axis", "")
-        long_name = getattr(c, "long_name", "")
+        long_name = getattr(c, "long_name", "").lower()
         coord_name = getattr(c, "name", "")
         units = getattr(c, "units", "")
 
@@ -335,6 +341,17 @@ class CoordinateGuesser:
         if d is not None:
             return d
 
+        d = self._is_step(
+            c,
+            axis=axis,
+            coord_name=coord_name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
         d = self._is_level(
             c,
             axis=axis,
@@ -346,12 +363,12 @@ class CoordinateGuesser:
         if d is not None:
             return d
 
-        if len(c.values) == 1:
+        if isinstance(c.values, np.ndarray) and c.shape in ((1,), tuple()):
             return ScalarCoordinate(c)
 
         raise NotImplementedError(
             f"Coordinate {coord} not supported\n{axis=}, {coord_name=},"
-            f" {long_name=}, {standard_name=}, units\n\n{c}"
+            f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
     def _is_longitude(self, c, axis, coord_name, long_name, standard_name, units):
@@ -383,6 +400,13 @@ class CoordinateGuesser:
         if coord_name == "time":
             return TimeCoordinate(c)
 
+    def _is_step(self, c, axis, coord_name, long_name, standard_name, units):
+        if standard_name == "forecast_period":
+            return StepCoordinate(c)
+
+        if long_name == "time elapsed since the start of the forecast":
+            return StepCoordinate(c)
+
     def _is_level(self, c, axis, coord_name, long_name, standard_name, units):
         if standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
             return LevelCoordinate(c, "ml")
@@ -395,6 +419,12 @@ class CoordinateGuesser:
 
         if coord_name == "level":
             return LevelCoordinate(c, "pl")
+
+        if coord_name == "vertical" and units == "hPa":
+            return LevelCoordinate(c, "pl")
+
+        if standard_name == "depth":
+            return LevelCoordinate(c, "depth")
 
     def grid(self, coordinates):
         lat = [c for c in coordinates if c.is_lat]

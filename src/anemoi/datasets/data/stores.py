@@ -117,7 +117,8 @@ def open_zarr(path, dont_fail=False, cache=None):
 
                 if not os.path.isdir(store):
                     raise NotImplementedError(
-                        "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. Please disable it for other backends."
+                        "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
+                        "Please disable it for other backends."
                     )
                 store = zarr.storage.DirectoryStore(store)
             store = DebugStore(store)

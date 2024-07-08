@@ -14,6 +14,7 @@ from functools import cached_property
 
 import numpy as np
 import zarr
+from anemoi.utils.config import DotDict
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
@@ -25,7 +26,6 @@ from anemoi.datasets.dates.groups import Groups
 from .check import DatasetName
 from .check import check_data_values
 from .chunks import ChunkFilter
-from .config import DictObj
 from .config import build_output
 from .config import loader_config
 from .input import build_input
@@ -65,7 +65,7 @@ def set_to_test_mode(cfg):
             for v in obj:
                 set_element_to_test(v)
             return
-        if isinstance(obj, (dict, DictObj)):
+        if isinstance(obj, (dict, DotDict)):
             if "grid" in obj:
                 previous = obj["grid"]
                 obj["grid"] = "20./20."

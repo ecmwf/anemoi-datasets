@@ -7,7 +7,48 @@
 # nor does it submit to any jurisdiction.
 #
 
-from .netcdf import load_netcdfs
+import glob
+
+from earthkit.data import from_source
+from earthkit.data.utils.patterns import Pattern
+
+from .xarray import execute as xarray_execute
+
+
+def _expand(paths):
+    for path in paths:
+        if path.startswith("file://"):
+            path = path[7:]
+
+        if path.startswith("http://"):
+            yield path
+            continue
+
+        if path.startswith("https://"):
+            yield path
+            continue
+
+        for p in glob.glob(path):
+            yield p
+
+
+def load_netcdfs(emoji, what, context, dates, path, *args, **kwargs):
+    given_paths = path if isinstance(path, list) else [path]
+
+    dates = [d.isoformat() for d in dates]
+    ds = from_source("empty")
+
+    for path in given_paths:
+        paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
+        for path in _expand(paths):
+            context.trace(emoji, what.upper(), path)
+            s = xarray_execute(context, dates, path, options={}, **kwargs)
+            print(s)
+            ds = ds.merge([s])
+
+    # check(what, ds, given_paths, valid_datetime=dates, **kwargs)
+
+    return ds
 
 
 def execute(context, dates, url, *args, **kwargs):

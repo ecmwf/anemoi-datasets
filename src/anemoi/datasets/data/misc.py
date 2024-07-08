@@ -8,63 +8,35 @@
 import calendar
 import datetime
 import logging
-import os
 import re
 from pathlib import PurePath
 
 import numpy as np
 import zarr
+from anemoi.utils.config import load_config as load_settings
 
 from .dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
-CONFIG = None
 
-try:
-    import tomllib  # Only available since 3.11
-except ImportError:
-    import tomli as tomllib
+def load_config():
+    return load_settings(defaults={"datasets": {"named": {}, "path": []}})
 
 
 def add_named_dataset(name, path, **kwargs):
-    load_config()
-    if name in CONFIG["datasets"]["named"]:
+    config = load_config()
+    if name["datasets"]["named"]:
         raise ValueError(f"Dataset {name} already exists")
 
-    CONFIG["datasets"]["named"][name] = path
+    config["datasets"]["named"][name] = path
 
 
 def add_dataset_path(path):
-    load_config()
+    config = load_config()
 
-    if path not in CONFIG["datasets"]["path"]:
-        CONFIG["datasets"]["path"].append(path)
-
-    # save_config()
-
-
-def load_config():
-    global CONFIG
-    if CONFIG is not None:
-        return CONFIG
-
-    conf = os.path.expanduser("~/.config/anemoi/settings.toml")
-    if not os.path.exists(conf):
-        conf = os.path.expanduser("~/.anemoi.toml")
-
-    if os.path.exists(conf):
-
-        with open(conf, "rb") as f:
-            CONFIG = tomllib.load(f)
-    else:
-        CONFIG = {}
-
-    CONFIG.setdefault("datasets", {})
-    CONFIG["datasets"].setdefault("path", [])
-    CONFIG["datasets"].setdefault("named", {})
-
-    return CONFIG
+    if path not in config["datasets"]["path"]:
+        config["datasets"]["path"].append(path)
 
 
 def _frequency_to_hours(frequency):

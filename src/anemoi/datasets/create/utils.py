@@ -7,12 +7,10 @@
 # nor does it submit to any jurisdiction.
 #
 
-import json
 import os
 from contextlib import contextmanager
 
 import numpy as np
-import yaml
 from earthkit.data import settings
 from earthkit.data.utils.humanize import seconds  # noqa: F401
 from tqdm.auto import tqdm
@@ -31,26 +29,6 @@ def cache_context(dirname):
     return settings.temporary({"cache-policy": "user", "user-cache-directory": dirname})
 
 
-def bytes(n):
-    """>>> bytes(4096)
-    '4 KiB'
-    >>> bytes(4000)
-    '3.9 KiB'
-    """
-    if n < 0:
-        sign = "-"
-        n -= 0
-    else:
-        sign = ""
-
-    u = ["", " KiB", " MiB", " GiB", " TiB", " PiB", " EiB", " ZiB", " YiB"]
-    i = 0
-    while n >= 1024:
-        n /= 1024.0
-        i += 1
-    return "%s%g%s" % (sign, int(n * 10 + 0.5) / 10.0, u[i])
-
-
 def to_datetime_list(*args, **kwargs):
     from earthkit.data.utils.dates import to_datetime_list as to_datetime_list_
 
@@ -61,15 +39,6 @@ def to_datetime(*args, **kwargs):
     from earthkit.data.utils.dates import to_datetime as to_datetime_
 
     return to_datetime_(*args, **kwargs)
-
-
-def load_json_or_yaml(path):
-    with open(path, "r") as f:
-        if path.endswith(".json"):
-            return json.load(f)
-        if path.endswith(".yaml") or path.endswith(".yml"):
-            return yaml.safe_load(f)
-        raise ValueError(f"Cannot read file {path}. Need json or yaml with appropriate extension.")
 
 
 def make_list_int(value):
