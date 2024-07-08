@@ -410,6 +410,7 @@ class Result(HasCoordsMixin):
             "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
         )
         print("Number of fields in the dataset  :", len(ds))
+        print("Difference                       :", abs(len(ds) - math.prod(user_shape)))
         print()
 
         remapping = build_remapping(remapping, patches)
@@ -425,8 +426,8 @@ class Result(HasCoordsMixin):
             print("Missing fields:")
             for i, f in enumerate(sorted(expected)):
                 print(" ", f)
-                if i > 10:
-                    print("...", len(expected) - i, "more")
+                if i >= 9 and len(expected) > 10:
+                    print("...", len(expected) - i - 1, "more")
                     break
 
         print()

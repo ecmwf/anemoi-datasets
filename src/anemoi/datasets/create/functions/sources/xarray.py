@@ -334,11 +334,9 @@ class Variable:
         return self.grid.grid_points()
 
     def __repr__(self):
-        return "Variable[name=%s,coordinates=%s,lat=%s,lon=%s,metadata=%s]" % (
+        return "Variable[name=%s,coordinates=%s,metadata=%s]" % (
             self.var.name,
             self.coordinates,
-            self.lat,
-            self.lon,
             self._metadata,
         )
 
@@ -353,7 +351,12 @@ class Variable:
             return self
 
         k, v = kwargs.popitem()
+
+        if k == "valid_datetime":
+            k = "time"
+
         c = self.by_name.get(k)
+
         if c is None:
             return None
 
@@ -389,8 +392,9 @@ class Variable:
                 if self._metadata[name] not in v:
                     return False, None
 
-            kwargs.pop(k)
+                kwargs.pop(k)
 
+        print("match", kwargs)
         return True, kwargs
 
 
@@ -719,10 +723,14 @@ class XarrayFieldList(FieldList):
 
     def sel(self, **kwargs):
 
+        print("=================== sel", kwargs)
+
         variables = []
         for v in self.variables:
             match, rest = v.match(**kwargs)
+
             if match:
+                print("=================== sel", rest, v, kwargs)
                 v = v.sel(**rest)
                 if v is not None:
                     variables.append(v)
@@ -744,4 +752,4 @@ def execute(context, dates, dataset, options, *args, **kwargs):
         data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data)
-    return MultiFieldList([fs.sel(time=date, **kwargs) for date in dates])
+    return MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
