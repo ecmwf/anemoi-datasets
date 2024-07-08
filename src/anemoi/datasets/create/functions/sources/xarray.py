@@ -350,6 +350,8 @@ class Variable:
         if not kwargs:
             return self
 
+        # print('sel', kwargs, self.by_name.keys())
+
         k, v = kwargs.popitem()
 
         if k == "valid_datetime":
@@ -394,7 +396,7 @@ class Variable:
 
                 kwargs.pop(k)
 
-        print("match", kwargs)
+        # print("match", kwargs)
         return True, kwargs
 
 
@@ -722,15 +724,11 @@ class XarrayFieldList(FieldList):
         return cls(ds, variables)
 
     def sel(self, **kwargs):
-
-        print("=================== sel", kwargs)
-
         variables = []
         for v in self.variables:
             match, rest = v.match(**kwargs)
 
             if match:
-                print("=================== sel", rest, v, kwargs)
                 v = v.sel(**rest)
                 if v is not None:
                     variables.append(v)
