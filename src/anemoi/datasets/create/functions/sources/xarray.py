@@ -11,10 +11,15 @@ import json
 import logging
 import math
 import textwrap
+from functools import cached_property
 
 import numpy as np
+from earthkit.data.core.fieldlist import Field
 from earthkit.data.core.fieldlist import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
+from earthkit.data.core.geography import Geography
+from earthkit.data.core.metadata import RawMetadata
+from earthkit.data.utils.projections import Projection
 
 LOG = logging.getLogger(__name__)
 
@@ -103,26 +108,136 @@ class EmptyFieldList:
         raise IndexError(i)
 
 
-class Field:
-    __slots__ = ["owner", "selection", "_metadata"]
+class XArrayFieldGeography(Geography):
+    def __init__(self, field):
+        self._field = field
+
+    def _unique_grid_id(self):
+        raise NotImplementedError()
+
+    def bounding_box(self):
+        raise NotImplementedError()
+        # return BoundingBox(north=self.north, south=self.south, east=self.east, west=self.west)
+
+    def gridspec(self):
+        raise NotImplementedError()
+
+    def latitudes(self, dtype=None):
+        result = self._field.grid.lat.variable.values
+        if dtype is not None:
+            return result.astype(dtype)
+        return result
+
+    def longitudes(self, dtype=None):
+        result = self._field.grid.lon.variable.values
+        if dtype is not None:
+            return result.astype(dtype)
+        return result
+
+    def resolution(self):
+        # TODO: implement resolution
+        return None
+
+    @property
+    def mars_grid(self):
+        # TODO: implement mars_grid
+        return None
+
+    @property
+    def mars_area(self):
+        # TODO: code me
+        # return [self.north, self.west, self.south, self.east]
+        return None
+
+    def x(self, dtype=None):
+        raise NotImplementedError()
+
+    def y(self, dtype=None):
+        raise NotImplementedError()
+
+    def shape(self):
+        return self._field.shape
+
+    def projection(self):
+        return Projection.from_cf_grid_mapping(**self._field.grid_mapping)
+
+
+class XArrayMetadata(RawMetadata):
+    LS_KEYS = ["variable", "level", "valid_datetime", "units"]
+    NAMESPACES = ["default", "mars"]
+    MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
+
+    def __init__(self, field):
+        super().__init__(field._md)
+        self._field = field
+
+    @cached_property
+    def geography(self):
+        return XArrayFieldGeography(self._field)
+
+    def as_namespace(self, namespace=None):
+        if not isinstance(namespace, str) and namespace is not None:
+            raise TypeError("namespace must be a str or None")
+
+        if namespace == "default" or namespace == "" or namespace is None:
+            return dict(self)
+        elif namespace == "mars":
+            return self._as_mars()
+
+    def _as_mars(self):
+        return dict(
+            param=self["variable"],
+            step=self.get("step", None),
+            levelist=self["level"],
+            levtype=self["levtype"],
+            number=self["number"],
+            date=self.get("date", None),
+            time=self.get("time", None),
+        )
+
+    def _base_datetime(self):
+        return None
+        # v = self._valid_datetime()
+        # if v is not None:
+        #     return v - timedelta(hours=self.get("hour", 0))
+
+    def _valid_datetime(self):
+        return self._field._md["time"]
+
+    def _get(self, key, **kwargs):
+        if key.startswith("mars."):
+            key = key[5:]
+            if key not in self.MARS_KEYS:
+                if kwargs.get("raise_on_missing", False):
+                    raise KeyError(f"Invalid key '{key}' in namespace='mars'")
+                else:
+                    return kwargs.get("default", None)
+
+        _key_name = {"param": "variable", "levelist": "level"}
+
+        return super()._get(_key_name.get(key, key), **kwargs)
+
+
+class XArrayField(Field):
 
     def __init__(self, owner, selection):
+        super().__init__(owner)
         self.owner = owner
         self.selection = selection
-        self._metadata = owner._metadata.copy()
+        self._md = owner._metadata.copy()
 
         for coord_name, coord_value in self.selection.coords.items():
             if coord_name in selection.dims:
                 continue
             # print(coord_name, coord_value)
             if np.issubdtype(coord_value.dtype, np.datetime64):
-                # self._metadata[coord_name] = coord_value.values.astype(object)
-                self._metadata[coord_name] = str(coord_value.values).split(".")[0]
+                # self._md[coord_name] = coord_value.values.astype(object)
+                self._md[coord_name] = str(coord_value.values).split(".")[0]
             else:
                 if isinstance(coord_value.values, np.ndarray):
-                    self._metadata[coord_name] = coord_value.values.tolist()
+                    self._md[coord_name] = coord_value.values.tolist()
                 else:
-                    self._metadata[coord_name] = coord_value.values.item()
+                    self._md[coord_name] = coord_value.values.item()
 
     def to_numpy(self, flatten=False, dtype=None):
         assert dtype is None
@@ -130,12 +245,8 @@ class Field:
             return self.selection.values.flatten()
         return self.selection.values
 
-    def metadata(self, key, default=None):
-        if "valid_datetime" == key:
-            key = "time"
-        if "param" == key:
-            key = "variable"
-        return self._metadata.get(key, default)
+    def _make_metadata(self):
+        return XArrayMetadata(self)
 
     def grid_points(self):
         return self.owner.grid_points()
@@ -147,6 +258,10 @@ class Field:
     @property
     def shape(self):
         return self.selection.shape
+
+    @property
+    def grid_mapping(self):
+        return self.owner.grid_mapping
 
     def __repr__(self):
         return textwrap.shorten("Field[%s]" % (self._metadata), width=80, placeholder="...")
@@ -161,6 +276,11 @@ class Variable:
         self._metadata = metadata.copy()
         self._metadata.update(var.attrs)
         self._metadata.update({"variable": var.name})
+
+        self._metadata.setdefault("level", None)
+        self._metadata.setdefault("number", 0)
+        self._metadata.setdefault("levtype", "sfc")
+
         self.grid = grid
 
         self.coordinates = coordinates
@@ -169,6 +289,13 @@ class Variable:
         self.by_name = {c.variable.name: c for c in coordinates}
 
         self.length = math.prod(self.shape)
+
+    @property
+    def grid_mapping(self):
+        grid_mapping = self.var.attrs.get("grid_mapping", None)
+        if grid_mapping is None:
+            return None
+        return self.ds[grid_mapping].attrs
 
     def grid_points(self):
         return self.grid.grid_points()
@@ -185,7 +312,7 @@ class Variable:
     def __getitem__(self, i):
         coords = np.unravel_index(i, self.shape)
         kwargs = {k: v for k, v in zip(self.names, coords)}
-        return Field(self, self.var.isel(kwargs))
+        return XArrayField(self, self.var.isel(kwargs))
 
     def sel(self, **kwargs):
 

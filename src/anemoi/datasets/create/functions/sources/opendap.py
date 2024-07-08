@@ -43,8 +43,7 @@ def load_netcdfs(emoji, what, context, dates, path, *args, **kwargs):
         for path in _expand(paths):
             context.trace(emoji, what.upper(), path)
             s = xarray_execute(context, dates, path, options={}, **kwargs)
-            print(s)
-            ds = ds.merge([s])
+            ds = ds + s
 
     # check(what, ds, given_paths, valid_datetime=dates, **kwargs)
 
