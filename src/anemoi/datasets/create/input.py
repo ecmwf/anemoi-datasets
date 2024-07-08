@@ -7,6 +7,7 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
+import itertools
 import logging
 import math
 import time
@@ -360,16 +361,78 @@ class Result(HasCoordsMixin):
         start = time.time()
         LOG.info("Sorting dataset %s %s", order_by, remapping)
         assert order_by, order_by
-        cube = ds.cube(
-            order_by,
-            remapping=remapping,
-            flatten_values=flatten_grid,
-            patches={"number": {None: 0}},
-        )
-        cube = cube.squeeze()
-        LOG.info(f"Sorting done in {seconds(time.time()-start)}.")
+
+        patches = {"number": {None: 0}}
+
+        try:
+            cube = ds.cube(
+                order_by,
+                remapping=remapping,
+                flatten_values=flatten_grid,
+                patches=patches,
+            )
+            cube = cube.squeeze()
+            LOG.info(f"Sorting done in {seconds(time.time()-start)}.")
+        except ValueError:
+            self.explain(ds, order_by, remapping=remapping, patches=patches)
+            raise ValueError(f"Error in {self}")
 
         return cube
+
+    def explain(self, ds, *args, remapping, patches):
+        # We redo the logic here
+        print()
+        print("=====================================")
+        print()
+        if len(args) == 1 and isinstance(args[0], (list, tuple)):
+            args = args[0]
+
+        names = []
+        for a in args:
+            if isinstance(a, str):
+                names.append(a)
+            elif isinstance(a, dict):
+                names += list(a.keys())
+
+        print(f"Building a {len(names)}D hypercube using", names)
+
+        ds = ds.order_by(*args, remapping=remapping, patches=patches)
+        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches)
+
+        print()
+        print("Number of unique values found for each coordinate:")
+        for k, v in user_coords.items():
+            print(f"  {k:20}:", len(v))
+        print()
+        user_shape = tuple(len(v) for k, v in user_coords.items())
+        print("Shape of the hypercube           :", user_shape)
+        print(
+            "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
+        )
+        print("Number of fields in the dataset  :", len(ds))
+        print()
+
+        remapping = build_remapping(remapping, patches)
+        expected = set(itertools.product(*user_coords.values()))
+
+        if math.prod(user_shape) > len(ds):
+            print(f"This means that all the fields in the datasets do not exists for all combinations of {names}.")
+
+            for f in ds:
+                metadata = remapping(f.metadata)
+                expected.remove(tuple(metadata(n) for n in names))
+
+            print("Missing fields:")
+            for i, f in enumerate(sorted(expected)):
+                print(" ", f)
+                if i > 10:
+                    print("...", len(expected) - i, "more")
+                    break
+
+        print()
+        print("=====================================")
+        print()
+        exit(1)
 
     def __repr__(self, *args, _indent_="\n", **kwargs):
         more = ",".join([str(a)[:5000] for a in args])

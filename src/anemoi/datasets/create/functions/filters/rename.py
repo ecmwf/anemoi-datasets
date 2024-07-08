@@ -35,6 +35,9 @@ class RenamedFieldMapping:
     def __getattr__(self, name):
         return getattr(self.field, name)
 
+    def __repr__(self) -> str:
+        return f"{self.field} -> {self.what} -> {self.renaming}"
+
 
 class RenamedFieldFormat:
     """Rename a field based on a format string.

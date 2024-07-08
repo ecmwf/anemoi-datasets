@@ -7,7 +7,6 @@
 # nor does it submit to any jurisdiction.
 #
 
-import json
 import logging
 import math
 import textwrap
@@ -19,9 +18,35 @@ from earthkit.data.core.fieldlist import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.core.geography import Geography
 from earthkit.data.core.metadata import RawMetadata
+from earthkit.data.utils.dates import to_datetime
 from earthkit.data.utils.projections import Projection
 
 LOG = logging.getLogger(__name__)
+
+
+def _is_scalar(variable):
+    shape = variable.shape
+    if shape == (1,):
+        return True
+    if len(shape) == 0:
+        return True
+    return False
+
+
+def _extract_single_value(variable):
+    shape = variable.shape
+    if np.issubdtype(variable.values.dtype, np.datetime64):
+        if len(shape) == 0:
+            return to_datetime(variable.values)  # Convert to python datetime
+        assert False, (shape, variable.values)
+
+    if shape == (1,):
+        return variable.values[0]
+
+    if len(shape) == 0:
+        return variable.values.item()
+
+    assert False, (shape, variable.values)
 
 
 class Coordinate:
@@ -32,7 +57,7 @@ class Coordinate:
 
     def __init__(self, variable):
         self.variable = variable
-        self.scalar = variable.shape == tuple()
+        self.scalar = _is_scalar(variable)
         self.kwargs = {}
         # print(self)
 
@@ -79,8 +104,6 @@ class TimeCoordinate(Coordinate):
 
 class StepCoordinate(Coordinate):
     pass
-    # def index(self, time):
-    #     return super().index(np.datetime64(time))
 
 
 class LevelCoordinate(Coordinate):
@@ -92,7 +115,6 @@ class LevelCoordinate(Coordinate):
 
 
 class EnsembleCoordinate(Coordinate):
-    # TODO: Implement
     pass
 
 
@@ -168,8 +190,23 @@ class XArrayMetadata(RawMetadata):
     MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
 
     def __init__(self, field):
-        super().__init__(field._md)
         self._field = field
+        md = field._md.copy()
+
+        time = to_datetime(md.pop("time"))
+        base = to_datetime(self._base_datetime())
+
+        step = (time - base).total_seconds() // 3600
+        assert step >= 0
+        assert step == int(step)
+
+        md["step"] = int(step)
+        md["date"] = base.strftime("%Y%m%d")
+        md["time"] = base.strftime("%H%M")
+
+        self._time = time
+
+        super().__init__(md)
 
     @cached_property
     def geography(self):
@@ -180,6 +217,7 @@ class XArrayMetadata(RawMetadata):
             raise TypeError("namespace must be a str or None")
 
         if namespace == "default" or namespace == "" or namespace is None:
+            assert False
             return dict(self)
         elif namespace == "mars":
             return self._as_mars()
@@ -187,24 +225,22 @@ class XArrayMetadata(RawMetadata):
     def _as_mars(self):
         return dict(
             param=self["variable"],
-            step=self.get("step", None),
+            step=self["step"],
             levelist=self["level"],
             levtype=self["levtype"],
             number=self["number"],
-            date=self.get("date", None),
-            time=self.get("time", None),
+            date=self["date"],
+            time=self["time"],
         )
 
     def _base_datetime(self):
-        return None
-        # v = self._valid_datetime()
-        # if v is not None:
-        #     return v - timedelta(hours=self.get("hour", 0))
+        return self._field.forecast_reference_time
 
     def _valid_datetime(self):
-        return self._field._md["time"]
+        return self._time
 
     def _get(self, key, **kwargs):
+
         if key.startswith("mars."):
             key = key[5:]
             if key not in self.MARS_KEYS:
@@ -229,15 +265,9 @@ class XArrayField(Field):
         for coord_name, coord_value in self.selection.coords.items():
             if coord_name in selection.dims:
                 continue
-            # print(coord_name, coord_value)
-            if np.issubdtype(coord_value.dtype, np.datetime64):
-                # self._md[coord_name] = coord_value.values.astype(object)
-                self._md[coord_name] = str(coord_value.values).split(".")[0]
-            else:
-                if isinstance(coord_value.values, np.ndarray):
-                    self._md[coord_name] = coord_value.values.tolist()
-                else:
-                    self._md[coord_name] = coord_value.values.item()
+
+            if _is_scalar(coord_value):
+                self._md[coord_name] = _extract_single_value(coord_value)
 
     def to_numpy(self, flatten=False, dtype=None):
         assert dtype is None
@@ -263,16 +293,22 @@ class XArrayField(Field):
     def grid_mapping(self):
         return self.owner.grid_mapping
 
+    @property
+    def forecast_reference_time(self):
+        return self.owner.forecast_reference_time
+
     def __repr__(self):
         return textwrap.shorten("Field[%s]" % (self._metadata), width=80, placeholder="...")
 
 
 class Variable:
-    def __init__(self, ds, var, coordinates, grid, mars_names, metadata_handler, metadata):
+    def __init__(self, *, ds, var, coordinates, grid, forecast_reference_time, metadata):
         self.ds = ds
         self.var = var
-        self.mars_names = mars_names
-        self.metadata_handler = metadata_handler
+        self.forecast_reference_time = forecast_reference_time
+        self.grid = grid
+        self.coordinates = coordinates
+
         self._metadata = metadata.copy()
         self._metadata.update(var.attrs)
         self._metadata.update({"variable": var.name})
@@ -281,9 +317,6 @@ class Variable:
         self._metadata.setdefault("number", 0)
         self._metadata.setdefault("levtype", "sfc")
 
-        self.grid = grid
-
-        self.coordinates = coordinates
         self.shape = tuple(len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid)
         self.names = {c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid}
         self.by_name = {c.variable.name: c for c in coordinates}
@@ -334,16 +367,31 @@ class Variable:
         metadata.update({k: v})
 
         variable = Variable(
-            self.ds,
-            self.var.isel({k: i}),
-            coordinates,
-            self.grid,
-            self.mars_names,
-            self.metadata_handler,
-            metadata,
+            ds=self.ds,
+            var=self.var.isel({k: i}),
+            coordinates=coordinates,
+            grid=self.grid,
+            forecast_reference_time=self.forecast_reference_time,
+            metadata=metadata,
         )
 
         return variable.sel(**kwargs)
+
+    def match(self, **kwargs):
+        for k, v in list(kwargs.items()):
+
+            if not isinstance(v, list):
+                v = [v]
+
+            name = "variable" if k == "param" else k
+
+            if name in self._metadata:
+                if self._metadata[name] not in v:
+                    return False, None
+
+            kwargs.pop(k)
+
+        return True, kwargs
 
 
 class LongitudeCoordinate(Coordinate):
@@ -407,6 +455,9 @@ class CoordinateGuesser:
         return self._cache[coord]
 
     def _guess(self, c, coord):
+
+        assert c.name == coord
+
         standard_name = getattr(c, "standard_name", "").lower()
         axis = getattr(c, "axis", "")
         long_name = getattr(c, "long_name", "").lower()
@@ -498,43 +549,43 @@ class CoordinateGuesser:
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
-    def _is_longitude(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_longitude(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "longitude":
             return LongitudeCoordinate(c)
 
         if long_name == "longitude" and units == "degrees_east":
             return LongitudeCoordinate(c)
 
-    def _is_latitude(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_latitude(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "latitude":
             return LatitudeCoordinate(c)
 
         if long_name == "latitude" and units == "degrees_north":
             return LatitudeCoordinate(c)
 
-    def _is_x(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_x(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "projection_x_coordinate":
             return XCoordinate(c)
 
-    def _is_y(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_y(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "projection_y_coordinate":
             return YCoordinate(c)
 
-    def _is_time(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_time(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "time":
             return TimeCoordinate(c)
 
         if coord_name == "time":
             return TimeCoordinate(c)
 
-    def _is_step(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_step(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "forecast_period":
             return StepCoordinate(c)
 
         if long_name == "time elapsed since the start of the forecast":
             return StepCoordinate(c)
 
-    def _is_level(self, c, axis, coord_name, long_name, standard_name, units):
+    def _is_level(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
             return LevelCoordinate(c, "ml")
 
@@ -580,11 +631,10 @@ class CoordinateGuesser:
 
 
 class XarrayFieldList(FieldList):
-    def __init__(self, ds, variables, metadata_handler):
+    def __init__(self, ds, variables):
         self.ds = ds
         self.variables = variables.copy()
         self.total_length = sum(v.length for v in variables)
-        self.metadata_handler = metadata_handler
 
     def __len__(self):
         return self.total_length
@@ -603,7 +653,7 @@ class XarrayFieldList(FieldList):
         raise IndexError(k)
 
     @classmethod
-    def from_xarray(cls, ds, metadata_handler=None):
+    def from_xarray(cls, ds):
         variables = []
         guess = CoordinateGuesser(ds)
 
@@ -620,22 +670,26 @@ class XarrayFieldList(FieldList):
             _skip_attr(v, "bounds")
             _skip_attr(v, "grid_mapping")
 
+        forecast_reference_time = None
+        # Special variables
         for name in ds.data_vars:
-            # Select only geographical variables
-            # mars_names = {"levtype": "sfc"}
+            if name in skip:
+                continue
+
+            v = ds[name]
+            if v.attrs.get("standard_name", "").lower() == "forecast_reference_time":
+                forecast_reference_time = _extract_single_value(v)
+                continue
+
+        # Select only geographical variables
+        for name in ds.data_vars:
 
             if name in skip:
                 continue
 
             v = ds[name]
-            # print(v)
-
             coordinates = []
 
-            # self.log.info('Scanning file: %s var=%s coords=%s', self.path, name, v.coords)
-
-            # info = [value for value in v.coords if value not in v.dims]
-            # non_dim_coords = []
             for coord in v.coords:
 
                 c = guess.guess(ds[coord], coord)
@@ -648,52 +702,46 @@ class XarrayFieldList(FieldList):
             assert grid_coords <= 2
 
             if grid_coords < 2:
-                # self.log.info("NetCDFReader: skip %s (Not a 2 field)", name)
                 continue
 
             variables.append(
                 Variable(
-                    ds,
-                    v,
-                    coordinates,
-                    guess.grid(coordinates),
-                    {},
-                    metadata_handler,
-                    {},
+                    ds=ds,
+                    var=v,
+                    coordinates=coordinates,
+                    grid=guess.grid(coordinates),
+                    forecast_reference_time=forecast_reference_time,
+                    metadata={},
                 )
             )
 
-        return cls(ds, variables, metadata_handler)
+        return cls(ds, variables)
 
     def sel(self, **kwargs):
-        variables = kwargs.pop("variables", kwargs.pop("param", None))
-        if variables is not None:
-            variables = [v for v in self.variables if v.var.name in variables]
-            if not variables:
-                return EmptyFieldList()
-            # print("++++++", len(variables))
-            return self.__class__(self.ds, variables, self.metadata_handler).sel(**kwargs)
 
-        variables = [v.sel(**kwargs) for v in self.variables]
-        variables = [v for v in variables if v is not None]
+        variables = []
+        for v in self.variables:
+            match, rest = v.match(**kwargs)
+            if match:
+                v = v.sel(**rest)
+                if v is not None:
+                    variables.append(v)
+
         if not variables:
             return EmptyFieldList()
 
-        return self.__class__(self.ds, variables, self.metadata_handler)
-
-
-def mars_naming(name, metadata, default=None):
-    return metadata.get(name, default)
+        return self.__class__(self.ds, variables)
 
 
 def execute(context, dates, dataset, options, *args, **kwargs):
     import xarray as xr
 
-    print(json.dumps([dataset, options], indent=4))
+    context.trace("🌐", dataset, options)
+
     if isinstance(dataset, str) and ".zarr" in dataset:
         data = xr.open_zarr(dataset, **options)
     else:
         data = xr.open_dataset(dataset, **options)
 
-    fs = XarrayFieldList.from_xarray(data, mars_naming)
+    fs = XarrayFieldList.from_xarray(data)
     return MultiFieldList([fs.sel(time=date, **kwargs) for date in dates])

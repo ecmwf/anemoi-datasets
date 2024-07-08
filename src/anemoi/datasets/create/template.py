@@ -23,7 +23,7 @@ def step(action_path):
 
 
 def trace(emoji, *args):
-    if os.environ.get("ANEMOI_DATASET_TRACE_CREATE") is None:
+    if "ANEMOI_DATASET_NO_TRACE" in os.environ:
         return
     print(emoji, " " * TRACE_INDENT, *args)
 
