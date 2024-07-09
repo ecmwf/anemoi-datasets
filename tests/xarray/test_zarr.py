@@ -33,7 +33,8 @@ def test_weatherbench():
             "step": {"name": "prediction_timedelta"},
             "time": {"name": "time"},
             "level": {"name": "level"},
-        }
+        },
+        "levtype": "pl",
     }
 
     fs = XarrayFieldList.from_xarray(ds, flavour)
@@ -41,4 +42,4 @@ def test_weatherbench():
 
 
 if __name__ == "__main__":
-    test_arco_era5()
+    test_weatherbench()

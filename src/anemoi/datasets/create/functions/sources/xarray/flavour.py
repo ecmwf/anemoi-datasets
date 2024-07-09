@@ -231,14 +231,14 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
 class FlavourCoordinateGuesser(CoordinateGuesser):
     def __init__(self, ds, flavour):
         super().__init__(ds)
-        self.flavour = flavour["rules"]
+        self.flavour = flavour
 
     def _match(self, c, key, values):
 
-        if key not in self.flavour:
+        if key not in self.flavour["rules"]:
             return None
 
-        rules = self.flavour[key]
+        rules = self.flavour["rules"][key]
 
         if not isinstance(rules, list):
             rules = [rules]
@@ -282,4 +282,20 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         rule = self._match(c, "level", locals())
         if rule:
             # assert False, rule
-            return LevelCoordinate(c, levtype="pl")
+            return LevelCoordinate(
+                c,
+                self._levtype(
+                    c,
+                    axis=axis,
+                    name=name,
+                    long_name=long_name,
+                    standard_name=standard_name,
+                    units=units,
+                ),
+            )
+
+    def _levtype(self, c, *, axis, name, long_name, standard_name, units):
+        if "levtype" in self.flavour:
+            return self.flavour["levtype"]
+
+        raise NotImplementedError(f"levtype for {c=}")
