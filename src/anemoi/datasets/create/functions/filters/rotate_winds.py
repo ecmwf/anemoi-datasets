@@ -9,6 +9,7 @@
 
 from collections import defaultdict
 
+from anemoi.utils.humanize import plural
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import rotate_vector
 
@@ -24,6 +25,9 @@ class NewDataField:
     def __getattr__(self, name):
         return getattr(self.field, name)
 
+    def __repr__(self) -> str:
+        return repr(self.field)
+
 
 def execute(
     context,
@@ -34,6 +38,8 @@ def execute(
     target_projection="+proj=longlat",
 ):
     from pyproj import CRS
+
+    context.trace("🔄", "Rotating", plural(len(x_wind), "wind"))
 
     result = FieldArray()
 

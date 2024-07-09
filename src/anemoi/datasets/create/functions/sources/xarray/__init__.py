@@ -50,10 +50,10 @@ def _expand(paths):
             yield path
 
 
-def load_one(context, dates, dataset, options, flavour=None, *args, **kwargs):
+def load_one(emoji, context, dates, dataset, options, flavour=None, *args, **kwargs):
     import xarray as xr
 
-    context.trace("🌐", dataset, options)
+    context.trace(emoji, dataset, options)
 
     if isinstance(dataset, str) and ".zarr" in dataset:
         data = xr.open_zarr(dataset, **options)
@@ -64,7 +64,7 @@ def load_one(context, dates, dataset, options, flavour=None, *args, **kwargs):
     return MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
 
-def load_many(emoji, what, context, dates, path, *args, **kwargs):
+def load_many(emoji, context, dates, path, *args, **kwargs):
     given_paths = path if isinstance(path, list) else [path]
 
     dates = [d.isoformat() for d in dates]
@@ -73,8 +73,7 @@ def load_many(emoji, what, context, dates, path, *args, **kwargs):
     for path in given_paths:
         paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
         for path in _expand(paths):
-            context.trace(emoji, what.upper(), path)
-            s = load_one(context, dates, path, options={}, **kwargs)
+            s = load_one(emoji, context, dates, path, options={}, **kwargs)
             ds = ds + s
 
     # check(what, ds, given_paths, valid_datetime=dates, **kwargs)
@@ -83,4 +82,4 @@ def load_many(emoji, what, context, dates, path, *args, **kwargs):
 
 
 def execute(context, dates, url, *args, **kwargs):
-    return load_many("🌐", "url", context, dates, url, *args, **kwargs)
+    return load_many("🌐", context, dates, url, *args, **kwargs)

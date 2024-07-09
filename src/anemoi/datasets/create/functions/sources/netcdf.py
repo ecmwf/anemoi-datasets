@@ -11,4 +11,4 @@ from .xarray import load_many
 
 
 def execute(context, dates, path, *args, **kwargs):
-    return load_many("📁", "path", context, dates, path, *args, **kwargs)
+    return load_many("📁", context, dates, path, *args, **kwargs)

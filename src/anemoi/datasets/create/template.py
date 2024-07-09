@@ -99,7 +99,7 @@ class Context:
         self.used_references.add(key)
 
     def notify_result(self, key, result):
-        trace("🎯", step(key), "notify result", result)
+        trace("🎯", step(key), "notify result", textwrap.shorten(repr(result), width=40))
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         if key in self.used_references:

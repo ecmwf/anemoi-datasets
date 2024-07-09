@@ -12,4 +12,4 @@ from .xarray import load_many
 
 
 def execute(context, dates, url, *args, **kwargs):
-    return load_many("🌐", "url", context, dates, url, *args, **kwargs)
+    return load_many("🌐", context, dates, url, *args, **kwargs)
