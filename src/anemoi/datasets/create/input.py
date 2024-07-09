@@ -18,6 +18,7 @@ from functools import wraps
 
 import numpy as np
 from earthkit.data.core.fieldlist import FieldList
+from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.dates import Dates
@@ -81,6 +82,7 @@ def assert_fieldlist(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         result = method(self, *args, **kwargs)
+        assert "MultiFieldList(MultiFieldList" not in repr(result), (result, method)
         assert isinstance(result, FieldList), type(result)
         return result
 
@@ -516,6 +518,22 @@ class EmptyResult(Result):
         return []
 
 
+def _flatten(ds):
+    if isinstance(ds, MultiFieldList):
+        return [_tidy(f) for s in ds._indexes for f in _flatten(s)]
+    return [ds]
+
+
+def _tidy(ds, indent=0):
+    if isinstance(ds, MultiFieldList):
+
+        sources = [s for s in _flatten(ds) if len(s) > 0]
+        if len(sources) == 1:
+            return sources[0]
+        return MultiFieldList(sources)
+    return ds
+
+
 class FunctionResult(Result):
     def __init__(self, context, action_path, dates, action):
         super().__init__(context, action_path, dates)
@@ -535,7 +553,7 @@ class FunctionResult(Result):
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
         try:
-            return self.action.function(FunctionContext(self), self.dates, *args, **kwargs)
+            return _tidy(self.action.function(FunctionContext(self), self.dates, *args, **kwargs))
         except Exception:
             LOG.error(f"Error in {self.action.function.__name__}", exc_info=True)
             raise
@@ -564,7 +582,7 @@ class JoinResult(Result):
         ds = EmptyResult(self.context, self.action_path, self.dates).datasource
         for i in self.results:
             ds += i.datasource
-        return ds
+        return _tidy(ds)
 
     def __repr__(self):
         content = "\n".join([str(i) for i in self.results])
@@ -638,7 +656,7 @@ class UnShiftResult(Result):
 
         ds = self.result.datasource
         ds = FieldArray([DateShiftedField(fs, self.action.delta) for fs in ds])
-        return ds
+        return _tidy(ds)
 
 
 class FunctionAction(Action):
@@ -725,11 +743,13 @@ class StepFunctionResult(StepResult):
     @trace_datasource
     def datasource(self):
         try:
-            return self.action.function(
-                FunctionContext(self),
-                self.upstream_result.datasource,
-                *self.action.args[1:],
-                **self.action.kwargs,
+            return _tidy(
+                self.action.function(
+                    FunctionContext(self),
+                    self.upstream_result.datasource,
+                    *self.action.args[1:],
+                    **self.action.kwargs,
+                )
             )
 
         except Exception:
@@ -748,7 +768,7 @@ class FilterStepResult(StepResult):
     def datasource(self):
         ds = self.upstream_result.datasource
         ds = ds.sel(**self.action.kwargs)
-        return ds
+        return _tidy(ds)
 
 
 class FilterStepAction(StepAction):
@@ -777,7 +797,7 @@ class ConcatResult(Result):
         ds = EmptyResult(self.context, self.action_path, self.dates).datasource
         for i in self.results:
             ds += i.datasource
-        return ds
+        return _tidy(ds)
 
     @property
     def variables(self):
@@ -813,7 +833,7 @@ class DataSourcesResult(Result):
             self.context.notify_result(i.action_path[:-1], i.datasource)
         # then return the input result
         # which can use the datasources of the included results
-        return self.input_result.datasource
+        return _tidy(self.input_result.datasource)
 
 
 class DataSourcesAction(Action):

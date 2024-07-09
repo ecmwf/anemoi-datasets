@@ -42,8 +42,12 @@ def _expand(paths):
             yield path
             continue
 
+        cnt = 0
         for p in glob.glob(path):
             yield p
+            cnt += 1
+        if cnt == 0:
+            yield path
 
 
 def load_one(context, dates, dataset, options, flavour=None, *args, **kwargs):
