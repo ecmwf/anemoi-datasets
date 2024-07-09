@@ -9,6 +9,7 @@
 
 from collections import defaultdict
 
+import tqdm
 from anemoi.utils.humanize import plural
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import rotate_vector
@@ -39,7 +40,7 @@ def execute(
 ):
     from pyproj import CRS
 
-    context.trace("🔄", "Rotating", plural(len(x_wind), "wind"))
+    context.trace("🔄", "Rotating winds (extracting winds from ", plural(len(input), "field"))
 
     result = FieldArray()
 
@@ -61,7 +62,9 @@ def execute(
 
         wind_pairs[key][param] = f
 
-    for _, pairs in wind_pairs.items():
+    context.trace("🔄", "Rotating", plural(len(wind_pairs), "wind"), "(speed will likely include data download)")
+
+    for _, pairs in tqdm.tqdm(list(wind_pairs.items())):
         if len(pairs) != 2:
             raise ValueError("Missing wind component")
 
