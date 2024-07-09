@@ -7,16 +7,46 @@
 # nor does it submit to any jurisdiction.
 #
 
+import glob
 import logging
 
+from earthkit.data import from_source
 from earthkit.data.core.fieldlist import MultiFieldList
+from earthkit.data.utils.patterns import Pattern
 
 from .fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
 
 
-def execute(context, dates, dataset, options, flavour=None, *args, **kwargs):
+def check(what, ds, paths, **kwargs):
+    count = 1
+    for k, v in kwargs.items():
+        if isinstance(v, (tuple, list)):
+            count *= len(v)
+
+    if len(ds) != count:
+        raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
+
+
+def _expand(paths):
+    for path in paths:
+        if path.startswith("file://"):
+            path = path[7:]
+
+        if path.startswith("http://"):
+            yield path
+            continue
+
+        if path.startswith("https://"):
+            yield path
+            continue
+
+        for p in glob.glob(path):
+            yield p
+
+
+def load_one(context, dates, dataset, options, flavour=None, *args, **kwargs):
     import xarray as xr
 
     context.trace("🌐", dataset, options)
@@ -28,3 +58,25 @@ def execute(context, dates, dataset, options, flavour=None, *args, **kwargs):
 
     fs = XarrayFieldList.from_xarray(data, flavour)
     return MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
+
+
+def load_many(emoji, what, context, dates, path, *args, **kwargs):
+    given_paths = path if isinstance(path, list) else [path]
+
+    dates = [d.isoformat() for d in dates]
+    ds = from_source("empty")
+
+    for path in given_paths:
+        paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
+        for path in _expand(paths):
+            context.trace(emoji, what.upper(), path)
+            s = load_one(context, dates, path, options={}, **kwargs)
+            ds = ds + s
+
+    # check(what, ds, given_paths, valid_datetime=dates, **kwargs)
+
+    return ds
+
+
+def execute(context, dates, url, *args, **kwargs):
+    return load_many("🌐", "url", context, dates, url, *args, **kwargs)

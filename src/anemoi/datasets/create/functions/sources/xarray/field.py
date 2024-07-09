@@ -11,8 +11,8 @@ import logging
 
 from earthkit.data.core.fieldlist import Field
 
-from .coordinates import _extract_single_value
-from .coordinates import _is_scalar
+from .coordinates import extract_single_value
+from .coordinates import is_scalar
 from .metadata import XArrayMetadata
 
 LOG = logging.getLogger(__name__)
@@ -42,8 +42,8 @@ class XArrayField(Field):
             if coord_name in selection.dims:
                 continue
 
-            if _is_scalar(coord_value):
-                self._md[coord_name] = _extract_single_value(coord_value)
+            if is_scalar(coord_value):
+                self._md[coord_name] = extract_single_value(coord_value)
 
     def to_numpy(self, flatten=False, dtype=None):
         assert dtype is None

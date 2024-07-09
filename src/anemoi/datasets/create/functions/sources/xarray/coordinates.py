@@ -15,7 +15,7 @@ from earthkit.data.utils.dates import to_datetime
 LOG = logging.getLogger(__name__)
 
 
-def _is_scalar(variable):
+def is_scalar(variable):
     shape = variable.shape
     if shape == (1,):
         return True
@@ -24,7 +24,7 @@ def _is_scalar(variable):
     return False
 
 
-def _extract_single_value(variable):
+def extract_single_value(variable):
     shape = variable.shape
     if np.issubdtype(variable.values.dtype, np.datetime64):
         if len(shape) == 0:
@@ -48,7 +48,7 @@ class Coordinate:
 
     def __init__(self, variable):
         self.variable = variable
-        self.scalar = _is_scalar(variable)
+        self.scalar = is_scalar(variable)
         self.kwargs = {}
         # print(self)
 
@@ -86,11 +86,18 @@ class Coordinate:
     def name(self):
         return self.variable.name
 
+    def update_metadata(self, metadata):
+        pass
+
 
 class TimeCoordinate(Coordinate):
 
     def index(self, time):
         return super().index(np.datetime64(time))
+
+    def update_metadata(self, metadata):
+        if self.scalar:
+            assert False, self.variable
 
 
 class StepCoordinate(Coordinate):
@@ -103,6 +110,9 @@ class LevelCoordinate(Coordinate):
         super().__init__(variable)
         self.levtype = levtype
         self.kwargs = {"levtype": levtype}
+
+    def update_metadata(self, metadata):
+        metadata.update(self.kwargs)
 
 
 class EnsembleCoordinate(Coordinate):

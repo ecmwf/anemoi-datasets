@@ -11,8 +11,8 @@ import logging
 
 from earthkit.data.core.fieldlist import FieldList
 
-from .coordinates import _extract_single_value
-from .coordinates import _is_scalar as _is_scalar
+from .coordinates import extract_single_value
+from .coordinates import is_scalar as is_scalar
 from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
 from .metadata import XArrayMetadata as XArrayMetadata
@@ -50,7 +50,7 @@ class XarrayFieldList(FieldList):
     @classmethod
     def from_xarray(cls, ds, flavour=None):
         variables = []
-        guess = CoordinateGuesser(ds, flavour)
+        guess = CoordinateGuesser.from_flavour(ds, flavour)
 
         skip = set()
 
@@ -73,7 +73,7 @@ class XarrayFieldList(FieldList):
 
             v = ds[name]
             if v.attrs.get("standard_name", "").lower() == "forecast_reference_time":
-                forecast_reference_time = _extract_single_value(v)
+                forecast_reference_time = extract_single_value(v)
                 continue
 
         # Select only geographical variables

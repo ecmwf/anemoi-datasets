@@ -24,9 +24,16 @@ from .grid import UnstructuredGrid
 
 class CoordinateGuesser:
 
-    def __init__(self, ds, flavour=None):
+    def __init__(self, ds):
         self.ds = ds
         self._cache = {}
+
+    @classmethod
+    def from_flavour(cls, ds, flavour):
+        if flavour is None:
+            return DefaultCoordinateGuesser(ds)
+        else:
+            return FlavourCoordinateGuesser(ds, flavour)
 
     def guess(self, c, coord):
         if coord not in self._cache:
@@ -128,6 +135,36 @@ class CoordinateGuesser:
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
+    def grid(self, coordinates):
+        lat = [c for c in coordinates if c.is_lat]
+        lon = [c for c in coordinates if c.is_lon]
+
+        if len(lat) != 1:
+            raise NotImplementedError(f"Expected 1 latitude coordinate, got {len(lat)}")
+
+        if len(lon) != 1:
+            raise NotImplementedError(f"Expected 1 longitude coordinate, got {len(lon)}")
+
+        lat = lat[0]
+        lon = lon[0]
+
+        if (lat.name, lon.name) in self._cache:
+            return self._cache[(lat.name, lon.name)]
+
+        assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
+        if len(lat.variable.shape) == 1:
+            grid = MeshedGrid(lat, lon)
+        else:
+            grid = UnstructuredGrid(lat, lon)
+
+        self._cache[(lat.name, lon.name)] = grid
+        return grid
+
+
+class DefaultCoordinateGuesser(CoordinateGuesser):
+    def __init__(self, ds):
+        super().__init__(ds)
+
     def _is_longitude(self, c, *, axis, coord_name, long_name, standard_name, units):
         if standard_name == "longitude":
             return LongitudeCoordinate(c)
@@ -183,27 +220,29 @@ class CoordinateGuesser:
         if standard_name == "depth":
             return LevelCoordinate(c, "depth")
 
-    def grid(self, coordinates):
-        lat = [c for c in coordinates if c.is_lat]
-        lon = [c for c in coordinates if c.is_lon]
 
-        if len(lat) != 1:
-            raise NotImplementedError(f"Expected 1 latitude coordinate, got {len(lat)}")
+class FlavourCoordinateGuesser(CoordinateGuesser):
+    def __init__(self, ds, flavour):
+        super().__init__(ds)
+        self.flavour = flavour
 
-        if len(lon) != 1:
-            raise NotImplementedError(f"Expected 1 longitude coordinate, got {len(lon)}")
+    def _is_longitude(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
 
-        lat = lat[0]
-        lon = lon[0]
+    def _is_latitude(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
 
-        if (lat.name, lon.name) in self._cache:
-            return self._cache[(lat.name, lon.name)]
+    def _is_x(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
 
-        assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
-        if len(lat.variable.shape) == 1:
-            grid = MeshedGrid(lat, lon)
-        else:
-            grid = UnstructuredGrid(lat, lon)
+    def _is_y(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
 
-        self._cache[(lat.name, lon.name)] = grid
-        return grid
+    def _is_time(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
+
+    def _is_step(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
+
+    def _is_level(self, c, *, axis, coord_name, long_name, standard_name, units):
+        pass
