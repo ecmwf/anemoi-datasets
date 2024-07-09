@@ -175,6 +175,22 @@ def mars(context, dates, *requests, date_key="date", **kwargs):
     if not requests:
         requests = [kwargs]
 
+    for r in requests:
+        # check for "Norway bug" where yaml transforms 'no' into False, etc.
+        for p in r.get("param", []):
+            if p is False:
+                raise ValueError(
+                    "'param' cannot be 'False'. If you wrote 'param: no' or 'param: off' in yaml, you may want to use quotes?"
+                )
+            if p is None:
+                raise ValueError(
+                    "'param' cannot be 'None'. If you wrote 'param: no' in yaml, you may want to use quotes?"
+                )
+            if p is True:
+                raise ValueError(
+                    "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
+                )
+
     requests = factorise_requests(dates, *requests, date_key=date_key)
     ds = from_source("empty")
     for r in requests:
