@@ -424,11 +424,47 @@ class Result(HasCoordsMixin):
                 expected.remove(tuple(metadata(n) for n in names))
 
             print("Missing fields:")
+            print()
             for i, f in enumerate(sorted(expected)):
                 print(" ", f)
                 if i >= 9 and len(expected) > 10:
                     print("...", len(expected) - i - 1, "more")
                     break
+
+            print()
+            print("To solve this issue, you can:")
+            print(
+                "  - Provide a better selection, like 'step: 0' or 'level: 1000' to "
+                "reduce the number of selected fields."
+            )
+            print(
+                "  - Split the 'input' part in smaller sections using 'join', "
+                "making sure that each section represent a full hypercube."
+            )
+
+        else:
+            print(f"More fields in dataset that expected for {names}. " "This means that some fields are duplicated.")
+            duplicated = defaultdict(list)
+            for f in ds:
+                metadata = remapping(f.metadata)
+                key = tuple(metadata(n) for n in names)
+                duplicated[key].append(f)
+
+            print("Duplicated fields:")
+            print()
+            duplicated = {k: v for k, v in duplicated.items() if len(v) > 1}
+            for i, (k, v) in enumerate(sorted(duplicated.items())):
+                print(" ", k)
+                for f in v:
+                    print("   ", f)
+                if i >= 9 and len(duplicated) > 10:
+                    print("...", len(duplicated) - i - 1, "more")
+                    break
+
+            print()
+            print("To solve this issue, you can:")
+            print("  - Provide a better selection, like 'step: 0' or 'level: 1000'")
+            print("  - Change the way 'param' is computed using 'variable_naming' " "in the 'build' section.")
 
         print()
         print("=====================================")

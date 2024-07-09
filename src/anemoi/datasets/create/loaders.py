@@ -256,7 +256,7 @@ class InitialiserLoader(Loader):
         """
 
         self.print("Config loaded ok:")
-        LOG.info(self.main_config)
+        # LOG.info(self.main_config)
 
         dates = self.groups.dates
         frequency = dates.frequency
@@ -266,7 +266,6 @@ class InitialiserLoader(Loader):
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
         LOG.info(f"Missing dates: {len(dates.missing)}")
         lengths = [len(g) for g in self.groups]
-        self.print(f"Found {len(dates)} datetimes {'+'.join([str(_) for _ in lengths])}.")
 
         variables = self.minimal_input.variables
         self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
