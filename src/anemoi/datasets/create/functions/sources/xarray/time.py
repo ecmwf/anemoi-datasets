@@ -18,7 +18,7 @@ class Time:
         step_coordinate = [c for c in coordinates if c.is_step]
 
         if forecast_reference_time is None and len(time_coordinate) == 1 and len(step_coordinate) == 1:
-            return ForecasstFromValidTimeAndStep(time_coordinate[0], step_coordinate[0])
+            return ForecasstFromValidTimeAndStep(step_coordinate[0])
 
         if forecast_reference_time is None and len(time_coordinate) == 1 and len(step_coordinate) == 0:
             return Analysis()
@@ -49,12 +49,11 @@ class Analysis(Time):
 
 
 class ForecasstFromValidTimeAndStep(Time):
-    def __init__(self, time_coordinate, step_coordinate):
-        self.time_coordinate = time_coordinate
-        self.step_coordinate = step_coordinate
+    def __init__(self, step_coordinate):
+        self.step_name = step_coordinate.variable.name
 
     def fill_time_metadata(self, time, metadata):
-        step = metadata.pop(self.step_coordinate.variable.name)
+        step = metadata.pop(self.step_name)
         assert isinstance(step, datetime.timedelta)
         base = time - step
 
