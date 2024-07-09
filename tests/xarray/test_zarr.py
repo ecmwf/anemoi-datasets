@@ -10,7 +10,7 @@ import xarray as xr
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
 
 
-def test_zarr():
+def test_arco_era5():
 
     ds = xr.open_zarr(
         "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
@@ -23,5 +23,22 @@ def test_zarr():
     assert len(fs) == 128677526
 
 
+def test_weatherbench():
+    ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
+
+    flavour = {
+        "rules": {
+            "latitude": {"name": "latitude"},
+            "longitude": {"name": "longitude"},
+            "step": {"name": "prediction_timedelta"},
+            "time": {"name": "time"},
+            "level": {"name": "level"},
+        }
+    }
+
+    fs = XarrayFieldList.from_xarray(ds, flavour)
+    assert len(fs) == 2430240
+
+
 if __name__ == "__main__":
-    test_zarr()
+    test_arco_era5()

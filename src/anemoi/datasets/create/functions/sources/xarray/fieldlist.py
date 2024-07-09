@@ -7,8 +7,10 @@
 # nor does it submit to any jurisdiction.
 #
 
+import json
 import logging
 
+import yaml
 from earthkit.data.core.fieldlist import FieldList
 
 from .coordinates import extract_single_value
@@ -16,6 +18,7 @@ from .coordinates import is_scalar as is_scalar
 from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
 from .metadata import XArrayMetadata as XArrayMetadata
+from .time import Time
 from .variable import FilteredVariable
 from .variable import Variable
 
@@ -50,6 +53,14 @@ class XarrayFieldList(FieldList):
     @classmethod
     def from_xarray(cls, ds, flavour=None):
         variables = []
+
+        if isinstance(flavour, str):
+            with open(flavour) as f:
+                if flavour.endswith(".yaml") or flavour.endswith(".yml"):
+                    flavour = yaml.safe_load(f)
+                else:
+                    flavour = json.load(f)
+
         guess = CoordinateGuesser.from_flavour(ds, flavour)
 
         skip = set()
@@ -105,7 +116,7 @@ class XarrayFieldList(FieldList):
                     var=v,
                     coordinates=coordinates,
                     grid=guess.grid(coordinates),
-                    forecast_reference_time=forecast_reference_time,
+                    time=Time.from_coordinates(forecast_reference_time, coordinates),
                     metadata={},
                 )
             )

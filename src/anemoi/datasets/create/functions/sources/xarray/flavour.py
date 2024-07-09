@@ -42,18 +42,16 @@ class CoordinateGuesser:
 
     def _guess(self, c, coord):
 
-        assert c.name == coord
-
+        name = c.name
         standard_name = getattr(c, "standard_name", "").lower()
         axis = getattr(c, "axis", "")
         long_name = getattr(c, "long_name", "").lower()
-        coord_name = getattr(c, "name", "")
         units = getattr(c, "units", "")
 
         d = self._is_longitude(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -64,7 +62,7 @@ class CoordinateGuesser:
         d = self._is_latitude(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -75,7 +73,7 @@ class CoordinateGuesser:
         d = self._is_x(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -86,7 +84,7 @@ class CoordinateGuesser:
         d = self._is_y(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -97,7 +95,7 @@ class CoordinateGuesser:
         d = self._is_time(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -108,7 +106,7 @@ class CoordinateGuesser:
         d = self._is_step(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -119,7 +117,7 @@ class CoordinateGuesser:
         d = self._is_level(
             c,
             axis=axis,
-            coord_name=coord_name,
+            name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
@@ -131,7 +129,7 @@ class CoordinateGuesser:
             return ScalarCoordinate(c)
 
         raise NotImplementedError(
-            f"Coordinate {coord} not supported\n{axis=}, {coord_name=},"
+            f"Coordinate {coord} not supported\n{axis=}, {name=},"
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
@@ -165,43 +163,52 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def __init__(self, ds):
         super().__init__(ds)
 
-    def _is_longitude(self, c, *, axis, coord_name, long_name, standard_name, units):
+    def _is_longitude(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "longitude":
             return LongitudeCoordinate(c)
 
         if long_name == "longitude" and units == "degrees_east":
             return LongitudeCoordinate(c)
 
-    def _is_latitude(self, c, *, axis, coord_name, long_name, standard_name, units):
+        if name == "longitude":  # WeatherBench
+            return LongitudeCoordinate(c)
+
+    def _is_latitude(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "latitude":
             return LatitudeCoordinate(c)
 
         if long_name == "latitude" and units == "degrees_north":
             return LatitudeCoordinate(c)
 
-    def _is_x(self, c, *, axis, coord_name, long_name, standard_name, units):
+        if name == "latitude":  # WeatherBench
+            return LatitudeCoordinate(c)
+
+    def _is_x(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "projection_x_coordinate":
             return XCoordinate(c)
 
-    def _is_y(self, c, *, axis, coord_name, long_name, standard_name, units):
+    def _is_y(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "projection_y_coordinate":
             return YCoordinate(c)
 
-    def _is_time(self, c, *, axis, coord_name, long_name, standard_name, units):
+    def _is_time(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "time":
             return TimeCoordinate(c)
 
-        if coord_name == "time":
+        if name == "time":
             return TimeCoordinate(c)
 
-    def _is_step(self, c, *, axis, coord_name, long_name, standard_name, units):
+    def _is_step(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "forecast_period":
             return StepCoordinate(c)
 
         if long_name == "time elapsed since the start of the forecast":
             return StepCoordinate(c)
 
-    def _is_level(self, c, *, axis, coord_name, long_name, standard_name, units):
+        if name == "prediction_timedelta":  # WeatherBench
+            return StepCoordinate(c)
+
+    def _is_level(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
             return LevelCoordinate(c, "ml")
 
@@ -211,10 +218,10 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if standard_name == "air_pressure" and units == "hPa":
             return LevelCoordinate(c, "pl")
 
-        if coord_name == "level":
+        if name == "level":
             return LevelCoordinate(c, "pl")
 
-        if coord_name == "vertical" and units == "hPa":
+        if name == "vertical" and units == "hPa":
             return LevelCoordinate(c, "pl")
 
         if standard_name == "depth":
@@ -224,25 +231,55 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
 class FlavourCoordinateGuesser(CoordinateGuesser):
     def __init__(self, ds, flavour):
         super().__init__(ds)
-        self.flavour = flavour
+        self.flavour = flavour["rules"]
 
-    def _is_longitude(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+    def _match(self, c, key, values):
 
-    def _is_latitude(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+        if key not in self.flavour:
+            return None
 
-    def _is_x(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+        rules = self.flavour[key]
 
-    def _is_y(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+        if not isinstance(rules, list):
+            rules = [rules]
 
-    def _is_time(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+        for rule in rules:
+            ok = True
+            for k, v in rule.items():
+                if isinstance(v, str) and values.get(k) != v:
+                    ok = False
+            if ok:
+                return rule
 
-    def _is_step(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+        return None
 
-    def _is_level(self, c, *, axis, coord_name, long_name, standard_name, units):
-        pass
+    def _is_longitude(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "longitude", locals()):
+            return LongitudeCoordinate(c)
+
+    def _is_latitude(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "latitude", locals()):
+            return LatitudeCoordinate(c)
+
+    def _is_x(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "x", locals()):
+            return XCoordinate(c)
+
+    def _is_y(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "y", locals()):
+            return YCoordinate(c)
+
+    def _is_time(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "time", locals()):
+            return TimeCoordinate(c)
+
+    def _is_step(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "step", locals()):
+            return StepCoordinate(c)
+
+    def _is_level(self, c, *, axis, name, long_name, standard_name, units):
+
+        rule = self._match(c, "level", locals())
+        if rule:
+            # assert False, rule
+            return LevelCoordinate(c, levtype="pl")

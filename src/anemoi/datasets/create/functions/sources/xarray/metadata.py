@@ -82,18 +82,19 @@ class XArrayMetadata(RawMetadata):
         self._field = field
         md = field._md.copy()
 
-        time = to_datetime(md.pop("time"))
-        base = to_datetime(self._base_datetime())
+        self._time = to_datetime(md.pop("time"))
+        self._field.owner.time.fill_time_metadata(self._time, md)
 
-        step = (time - base).total_seconds() // 3600
-        assert step >= 0
-        assert step == int(step)
+        # time =
+        # base = to_datetime(self._base_datetime())
 
-        md["step"] = int(step)
-        md["date"] = base.strftime("%Y%m%d")
-        md["time"] = base.strftime("%H%M")
+        # step = (time - base).total_seconds() // 3600
+        # assert step >= 0
+        # assert step == int(step)
 
-        self._time = time
+        # md["step"] = int(step)
+        # md["date"] = base.strftime("%Y%m%d")
+        # md["time"] = base.strftime("%H%M")
 
         super().__init__(md)
 

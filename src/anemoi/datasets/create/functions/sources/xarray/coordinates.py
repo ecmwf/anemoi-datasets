@@ -7,6 +7,7 @@
 # nor does it submit to any jurisdiction.
 #
 
+import datetime
 import logging
 
 import numpy as np
@@ -31,6 +32,12 @@ def extract_single_value(variable):
             return to_datetime(variable.values)  # Convert to python datetime
         assert False, (shape, variable.values)
 
+    if np.issubdtype(variable.values.dtype, np.timedelta64):
+        if len(shape) == 0:
+            # Convert to python timedelta64
+            return datetime.timedelta(seconds=variable.values.astype("timedelta64[s]").astype(int).item())
+        assert False, (shape, variable.values)
+
     if shape == (1,):
         return variable.values[0]
 
@@ -45,6 +52,8 @@ class Coordinate:
     is_dim = True
     is_lat = False
     is_lon = False
+    is_time = False
+    is_step = False
 
     def __init__(self, variable):
         self.variable = variable
@@ -91,6 +100,7 @@ class Coordinate:
 
 
 class TimeCoordinate(Coordinate):
+    is_time = True
 
     def index(self, time):
         return super().index(np.datetime64(time))
@@ -101,7 +111,7 @@ class TimeCoordinate(Coordinate):
 
 
 class StepCoordinate(Coordinate):
-    pass
+    is_step = True
 
 
 class LevelCoordinate(Coordinate):

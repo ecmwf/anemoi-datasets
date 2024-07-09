@@ -20,10 +20,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Variable:
-    def __init__(self, *, ds, var, coordinates, grid, forecast_reference_time, metadata, array_backend=None):
+    def __init__(self, *, ds, var, coordinates, grid, time, metadata, array_backend=None):
         self.ds = ds
         self.var = var
-        self.forecast_reference_time = forecast_reference_time
+
         self.grid = grid
         self.coordinates = coordinates
 
@@ -35,8 +35,7 @@ class Variable:
         self._metadata.setdefault("number", 0)
         self._metadata.setdefault("levtype", "sfc")
 
-        # for c in coordinates:
-        #     c.update_metadata(self._metadata)
+        self.time = time
 
         self.shape = tuple(len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid)
         self.names = {c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid}
@@ -112,7 +111,7 @@ class Variable:
             var=self.var.isel({k: i}),
             coordinates=coordinates,
             grid=self.grid,
-            forecast_reference_time=self.forecast_reference_time,
+            time=self.time,
             metadata=metadata,
         )
 
