@@ -24,7 +24,7 @@ from .grid import UnstructuredGrid
 
 class CoordinateGuesser:
 
-    def __init__(self, ds):
+    def __init__(self, ds, flavour=None):
         self.ds = ds
         self._cache = {}
 
