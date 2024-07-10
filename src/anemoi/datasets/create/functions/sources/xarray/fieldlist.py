@@ -124,18 +124,55 @@ class XarrayFieldList(FieldList):
         return cls(ds, variables)
 
     def sel(self, **kwargs):
+        """Override the FieldList's sel method
+
+        Returns
+        -------
+        FieldList
+            The new FieldList
+
+        The algorithm is as follows:
+        1 - Use the kwargs to select the variables that match the selection (`param` or `variable`)
+        2 - For each variable, use the remaining kwargs to select the coordinates (`level`, `number`, ...)
+        3 - Some mars like keys, like `date`, `time`, `step` are not found in the coordinates,
+            but added to the metadata of the selected fields. A example is `step` that is added to the
+            metadata of the field. Step 2 may return a variable that contain all the fields that
+            verify at the same `valid_datetime`, with different base `date` and `time` and a different `step`.
+            So we get an extra chance to filter the fields by the metadata.
+        """
+
         variables = []
+        count = 0
+
         for v in self.variables:
+            # First, select matching variables
+            # This will consume 'param' or 'variable' from kwargs
+            # and return the rest
             match, rest = v.match(**kwargs)
 
             if match:
+                count += 1
                 missing = {}
+
+                # Select from the variable's coordinates (time, level, number, ....)
+                # This may return a new variable with a isel() slice of the selection
+                # or None if the selection is not possible. In this case, missing is updated
+                # with the values of kwargs (rest) that are not relevant for this variable
                 v = v.sel(missing, **rest)
-                if missing and v is not None:
-                    v = FilteredVariable(v, **missing)
+                if missing:
+                    if v is not None:
+                        # The remaining kwargs are passed used to create a FilteredVariable
+                        # that will select 2D slices based on their metadata
+                        v = FilteredVariable(v, **missing)
+                    else:
+                        LOG.warning(f"Variable {v} has missing coordinates: {missing}")
 
                 if v is not None:
                     variables.append(v)
+
+        if count == 0:
+            LOG.warning("No variable found for %s", kwargs)
+            LOG.warning("Variables: %s", sorted([v.name for v in self.variables]))
 
         if not variables:
             return EmptyFieldList()

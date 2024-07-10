@@ -44,6 +44,10 @@ class Variable:
         self.length = math.prod(self.shape)
         self.array_backend = ensure_backend(array_backend)
 
+    @property
+    def name(self):
+        return self.var.name
+
     def __len__(self):
         return self.length
 
@@ -99,6 +103,7 @@ class Variable:
 
         i = c.index(v)
         if i is None:
+            LOG.warning(f"Could not find {k}={v} in {c}")
             return None
 
         coordinates = [x.singleton(i) if c is x else x for x in self.coordinates]
@@ -118,20 +123,11 @@ class Variable:
         return variable.sel(missing, **kwargs)
 
     def match(self, **kwargs):
-        for k, v in list(kwargs.items()):
-
-            if not isinstance(v, list):
-                v = [v]
-
-            name = "variable" if k == "param" else k
-
-            if name in self._metadata:
-                if self._metadata[name] not in v:
-                    return False, None
-
-                kwargs.pop(k)
-
-        # print("match", kwargs)
+        if "param" in kwargs or "variable" in kwargs:
+            name = kwargs.pop("param", kwargs.pop("variable", None))
+            if name != self.var.name:
+                return False, None
+            return True, kwargs
         return True, kwargs
 
 
@@ -142,6 +138,13 @@ class FilteredVariable:
 
     @cached_property
     def fields(self):
+        """Filter the fields of a variable based on metadata.
+
+        Returns
+        -------
+        list
+            A list of fields that match the metadata.
+        """
         return [field for field in self.variable if all(field.metadata(k) == v for k, v in self.kwargs.items())]
 
     @property

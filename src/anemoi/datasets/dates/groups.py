@@ -61,6 +61,9 @@ class Groups:
             count += 1
         return count
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(dates={len(self)})"
+
 
 class Filter:
     def __init__(self, missing):

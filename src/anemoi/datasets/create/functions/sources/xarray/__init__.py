@@ -10,10 +10,9 @@
 import glob
 import logging
 
-from earthkit.data import from_source
 from earthkit.data.core.fieldlist import MultiFieldList
-from earthkit.data.utils.patterns import Pattern
 
+from .. import iterate_patterns
 from .fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
@@ -50,7 +49,7 @@ def _expand(paths):
             yield path
 
 
-def load_one(emoji, context, dates, dataset, options, flavour=None, *args, **kwargs):
+def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):
     import xarray as xr
 
     context.trace(emoji, dataset, options)
@@ -61,24 +60,24 @@ def load_one(emoji, context, dates, dataset, options, flavour=None, *args, **kwa
         data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data, flavour)
-    return MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
+    result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
+
+    if len(result) == 0:
+        LOG.warning(f"No data found for {dataset} and dates {dates}")
+        LOG.warning(f"Options: {options}")
+        LOG.warning(data)
+
+    return result
 
 
-def load_many(emoji, context, dates, path, *args, **kwargs):
-    given_paths = path if isinstance(path, list) else [path]
+def load_many(emoji, context, dates, pattern, **kwargs):
 
-    dates = [d.isoformat() for d in dates]
-    ds = from_source("empty")
+    result = []
 
-    for path in given_paths:
-        paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
-        for path in _expand(paths):
-            s = load_one(emoji, context, dates, path, options={}, **kwargs)
-            ds = ds + s
+    for path, dates in iterate_patterns(pattern, dates, **kwargs):
+        result.append(load_one(emoji, context, dates, path, **kwargs))
 
-    # check(what, ds, given_paths, valid_datetime=dates, **kwargs)
-
-    return ds
+    return MultiFieldList(result)
 
 
 def execute(context, dates, url, *args, **kwargs):

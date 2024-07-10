@@ -43,7 +43,7 @@ def check_dict_value_and_set(dic, key, value):
         if dic[key] == value:
             return
         raise ValueError(f"Cannot use {key}={dic[key]}. Must use {value}.")
-    print(f"Setting {key}={value} in config")
+    LOG.info(f"Setting {key}={value} in config")
     dic[key] = value
 
 

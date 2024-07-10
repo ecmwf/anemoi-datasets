@@ -32,18 +32,36 @@ class EmptyFieldList:
 class XArrayField(Field):
 
     def __init__(self, owner, selection):
+        """Create a new XArrayField object.
+
+        Parameters
+        ----------
+        owner : Variable
+            The variable that owns this field.
+        selection : XArrayDataArray
+            A 2D sub-selection of the variable's underlying array.
+            This is actually a 3D object, but the first dimension is always 1.
+            The other two dimensions are latitude and longitude.
+        """
         super().__init__(owner.array_backend)
 
         self.owner = owner
         self.selection = selection
+
+        # Copy the metadata from the owner
         self._md = owner._metadata.copy()
 
         for coord_name, coord_value in self.selection.coords.items():
+
+            # Skip latitude and longitude
             if coord_name in selection.dims:
                 continue
 
             if is_scalar(coord_value):
-                self._md[coord_name] = extract_single_value(coord_value)
+                # Extract the single value from the scalar dimension
+                # and store it in the metadata
+                coordinate = owner.by_name[coord_name]
+                self._md[coord_name] = coordinate.normalise(extract_single_value(coord_value))
 
     def to_numpy(self, flatten=False, dtype=None):
         assert dtype is None

@@ -58,8 +58,7 @@ class Coordinate:
     def __init__(self, variable):
         self.variable = variable
         self.scalar = is_scalar(variable)
-        self.kwargs = {}
-        # print(self)
+        self.kwargs = {}  # Used when creating a new coordinate (singleton method)
 
     def __len__(self):
         return 1 if self.scalar else len(self.variable)
@@ -72,14 +71,51 @@ class Coordinate:
         )
 
     def singleton(self, i):
-        return self.__class__(self.variable.isel({self.variable.dims[0]: i}), **self.kwargs)
+        """Create a new coordinate with a single value
+
+        Parameters
+        ----------
+        i : int
+            the index of the value to select
+
+        Returns
+        -------
+        Coordinate
+            the new coordinate
+        """
+        return self.__class__(
+            self.variable.isel({self.variable.dims[0]: i}),
+            **self.kwargs,
+        )
 
     def index(self, value):
+        """Return the index of the value in the coordinate
+
+        Parameters
+        ----------
+        value : Any
+            The value to search for
+
+        Returns
+        -------
+        int or None
+            The index of the value in the coordinate or None if not found
+        """
+
+        if isinstance(value, (list, tuple)):
+            if len(value) == 1:
+                return self._index_single(value)
+            else:
+                return self._index_multiple(value)
+        return self._index_single(value)
+
+    def _index_single(self, value):
 
         values = self.variable.values
 
         # Assume the array is sorted
         index = np.searchsorted(values, value)
+
         if index < len(values) and values[index] == value:
             return index
 
@@ -91,12 +127,35 @@ class Coordinate:
 
         return None
 
+    def _index_multiple(self, value):
+
+        values = self.variable.values
+
+        # Assume the array is sorted
+
+        index = np.searchsorted(values, value)
+        index = index[index < len(values)]
+
+        if np.all(values[index] == value):
+            return index
+
+        # If not found, we need to check if the value is in the array
+
+        index = np.where(np.isin(values, value))[0]
+
+        # We could also return incomplete matches
+        if len(index) == len(value):
+            return index
+
+        return None
+
     @property
     def name(self):
         return self.variable.name
 
-    def update_metadata(self, metadata):
-        pass
+    def normalise(self, value):
+        # Subclasses to format values that will be added to the field metadata
+        return value
 
 
 class TimeCoordinate(Coordinate):
@@ -104,10 +163,6 @@ class TimeCoordinate(Coordinate):
 
     def index(self, time):
         return super().index(np.datetime64(time))
-
-    def update_metadata(self, metadata):
-        if self.scalar:
-            assert False, self.variable
 
 
 class StepCoordinate(Coordinate):
@@ -119,17 +174,17 @@ class LevelCoordinate(Coordinate):
     def __init__(self, variable, levtype):
         super().__init__(variable)
         self.levtype = levtype
+        # kwargs is used when creating a new coordinate (singleton method)
         self.kwargs = {"levtype": levtype}
 
-    def update_metadata(self, metadata):
-        metadata.update(self.kwargs)
+    def normalise(self, value):
+        # Some netcdf have pressue levels in float
+        if int(value) == value:
+            return int(value)
+        return value
 
 
 class EnsembleCoordinate(Coordinate):
-    pass
-
-
-class OtherCoordinate(Coordinate):
     pass
 
 

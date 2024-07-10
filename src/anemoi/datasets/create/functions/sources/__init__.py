@@ -6,3 +6,42 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
+
+import glob
+import logging
+
+from earthkit.data.utils.patterns import Pattern
+
+LOG = logging.getLogger(__name__)
+
+
+def _expand(paths):
+    for path in paths:
+        if path.startswith("file://"):
+            path = path[7:]
+
+        if path.startswith("http://"):
+            yield path
+            continue
+
+        if path.startswith("https://"):
+            yield path
+            continue
+
+        cnt = 0
+        for p in glob.glob(path):
+            yield p
+            cnt += 1
+        if cnt == 0:
+            yield path
+
+
+def iterate_patterns(path, dates, **kwargs):
+    given_paths = path if isinstance(path, list) else [path]
+
+    dates = [d.isoformat() for d in dates]
+
+    for path in given_paths:
+        paths = Pattern(path, ignore_missing_keys=True).substitute(date=dates, **kwargs)
+        for path in _expand(paths):
+            yield path, dates

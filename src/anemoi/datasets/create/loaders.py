@@ -5,6 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 import datetime
+import json
 import logging
 import os
 import time
@@ -109,7 +110,7 @@ class GenericDatasetHandler:
         assert os.path.exists(path), f"Path {path} does not exist."
         z = zarr.open(path, mode="r")
         config = z.attrs["_create_yaml_config"]
-        LOG.info(f"Config loaded from zarr config: {config}")
+        LOG.info("Config loaded from zarr config:\n%s", json.dumps(config, indent=4, sort_keys=True, default=str))
         return cls.from_config(config=config, path=path, print=print, **kwargs)
 
     @classmethod
@@ -202,7 +203,7 @@ class InitialiserLoader(Loader):
         if self.test:
             set_to_test_mode(self.main_config)
 
-        LOG.info(self.main_config.dates)
+        LOG.info(dict(self.main_config.dates))
 
         self.tmp_statistics.delete()
 

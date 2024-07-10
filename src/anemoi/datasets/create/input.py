@@ -37,20 +37,25 @@ LOG = logging.getLogger(__name__)
 
 
 def parse_function_name(name):
-    if "-" in name:
-        name, delta = name.split("-")
-        sign = -1
 
-    elif "+" in name:
-        name, delta = name.split("+")
-        sign = 1
+    if name.endswith("h") and name[:-1].isdigit():
 
-    else:
-        return name, None
+        if "-" in name:
+            name, delta = name.split("-")
+            sign = -1
 
-    assert delta[-1] == "h", (name, delta)
-    delta = sign * int(delta[:-1])
-    return name, delta
+        elif "+" in name:
+            name, delta = name.split("+")
+            sign = 1
+
+        else:
+            return name, None
+
+        assert delta[-1] == "h", (name, delta)
+        delta = sign * int(delta[:-1])
+        return name, delta
+
+    return name, None
 
 
 def time_delta_to_string(delta):
@@ -360,7 +365,7 @@ class Result(HasCoordsMixin):
         order_by = self.context.order_by
         flatten_grid = self.context.flatten_grid
         start = time.time()
-        LOG.info("Sorting dataset %s %s", order_by, remapping)
+        LOG.info("Sorting dataset %s %s", dict(order_by), remapping)
         assert order_by, order_by
 
         patches = {"number": {None: 0}}

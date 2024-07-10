@@ -109,6 +109,12 @@ optional-dependencies.docs = [
   "sphinx-rtd-theme",
 ]
 
+optional-dependencies.kerchunk = [
+  "gcsfs",
+  "kerchunk",
+  "s3fs",
+]
+
 optional-dependencies.remote = [
   "aiohttp",
   "boto3",
@@ -118,11 +124,6 @@ optional-dependencies.remote = [
 
 optional-dependencies.tests = [
   "pytest",
-]
-
-optional-dependencies.xarray = [
-  "gcsfs",
-  "kerchunk",
 ]
 
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
