@@ -16,7 +16,7 @@ from .misc import _open
 LOG = logging.getLogger(__name__)
 
 
-class XY(Combined):
+class Zip(Combined):
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
@@ -80,6 +80,10 @@ class XY(Combined):
         return tuple(d.name_to_index for d in self.datasets)
 
 
+class XY(Zip):
+    pass
+
+
 def xy_factory(args, kwargs):
 
     if "xy" in kwargs:
@@ -96,3 +100,15 @@ def xy_factory(args, kwargs):
     assert len(datasets) == 2
 
     return XY(datasets)._subset(**kwargs)
+
+
+def zip_factory(args, kwargs):
+
+    zip = kwargs.pop("zip")
+    assert len(args) == 0
+    assert isinstance(zip, (list, tuple))
+
+    datasets = [_open(e) for e in zip]
+    datasets, kwargs = _auto_adjust(datasets, kwargs)
+
+    return Zip(datasets)._subset(**kwargs)

@@ -188,18 +188,6 @@ class Chain(ConcatMixin, Unchecked):
         return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
-def zip_factory(args, kwargs):
-
-    zip = kwargs.pop("zip")
-    assert len(args) == 0
-    assert isinstance(zip, (list, tuple))
-
-    datasets = [_open(e) for e in zip]
-    datasets, kwargs = _auto_adjust(datasets, kwargs)
-
-    return Zip(datasets)._subset(**kwargs)
-
-
 def chain_factory(args, kwargs):
 
     chain = kwargs.pop("chain")

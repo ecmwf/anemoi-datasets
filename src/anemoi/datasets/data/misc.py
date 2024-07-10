@@ -329,7 +329,7 @@ def _open_dataset(*args, **kwargs):
         return xy_factory(args, kwargs)
 
     if "zip" in kwargs:
-        from .unchecked import zip_factory
+        from .xy import zip_factory
 
         assert not sets, sets
         return zip_factory(args, kwargs)
