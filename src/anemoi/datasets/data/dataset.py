@@ -182,14 +182,19 @@ class Dataset:
         return tidy(
             dict(
                 version=anemoi.datasets.__version__,
-                shape=self.shape,
                 arguments=self.arguments,
-                specific=self.metadata_specific(),
-                frequency=self.frequency,
-                variables=self.variables,
-                start_date=self.dates[0].astype(str),
-                end_date=self.dates[-1].astype(str),
+                **self.dataset_metadata(),
             )
+        )
+
+    def dataset_metadata(self):
+        return dict(
+            specific=self.metadata_specific(),
+            frequency=self.frequency,
+            variables=self.variables,
+            shape=self.shape,
+            start_date=self.dates[0].astype(str),
+            end_date=self.dates[-1].astype(str),
         )
 
     def metadata_specific(self, **kwargs):

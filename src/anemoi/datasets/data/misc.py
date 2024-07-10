@@ -316,6 +316,18 @@ def _open_dataset(*args, **kwargs):
     for a in args:
         sets.append(_open(a))
 
+    if "xy" in kwargs:
+        from .xy import xy_factory
+
+        assert not sets, sets
+        return xy_factory(args, kwargs)
+
+    if "x" in kwargs and "y" in kwargs:
+        from .xy import xy_factory
+
+        assert not sets, sets
+        return xy_factory(args, kwargs)
+
     if "zip" in kwargs:
         from .unchecked import zip_factory
 
