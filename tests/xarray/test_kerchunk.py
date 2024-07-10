@@ -27,6 +27,8 @@ def dont_test_kerchunk():
 
     fs = XarrayFieldList.from_xarray(ds)
 
+    print(fs[-1].metadata())
+
     assert len(fs) == 12432
 
 

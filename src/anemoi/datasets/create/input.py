@@ -82,7 +82,6 @@ def assert_fieldlist(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         result = method(self, *args, **kwargs)
-        assert "MultiFieldList(MultiFieldList" not in repr(result), (result, method)
         assert isinstance(result, FieldList), type(result)
         return result
 

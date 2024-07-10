@@ -19,6 +19,10 @@ def test_arco_era5():
     )
 
     fs = XarrayFieldList.from_xarray(ds)
+    print(len(fs))
+
+    print(fs[-1].metadata())
+    print(fs[-1].to_numpy())
 
     assert len(fs) == 128677526
 
@@ -38,6 +42,7 @@ def test_weatherbench():
     }
 
     fs = XarrayFieldList.from_xarray(ds, flavour)
+
     assert len(fs) == 2430240
 
 
@@ -72,4 +77,4 @@ def test_coop_ifs():
 
 
 if __name__ == "__main__":
-    test_coop_ifs()
+    test_arco_era5()
