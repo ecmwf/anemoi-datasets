@@ -58,7 +58,7 @@ class Coordinate:
     def __init__(self, variable):
         self.variable = variable
         self.scalar = is_scalar(variable)
-        self.kwargs = {}  # Used when creating a new coordinate (singleton method)
+        self.kwargs = {}  # Used when creating a new coordinate (reduced method)
 
     def __len__(self):
         return 1 if self.scalar else len(self.variable)
@@ -70,7 +70,7 @@ class Coordinate:
             self.variable.values if self.scalar else len(self),
         )
 
-    def singleton(self, i):
+    def reduced(self, i):
         """Create a new coordinate with a single value
 
         Parameters
@@ -160,6 +160,7 @@ class Coordinate:
 
 class TimeCoordinate(Coordinate):
     is_time = True
+    mars_names = ("valid_datetime",)
 
     def index(self, time):
         return super().index(np.datetime64(time))
@@ -167,14 +168,16 @@ class TimeCoordinate(Coordinate):
 
 class StepCoordinate(Coordinate):
     is_step = True
+    mars_names = ("step",)
 
 
 class LevelCoordinate(Coordinate):
+    mars_names = ("level", "levelist")
 
     def __init__(self, variable, levtype):
         super().__init__(variable)
         self.levtype = levtype
-        # kwargs is used when creating a new coordinate (singleton method)
+        # kwargs is used when creating a new coordinate (reduced method)
         self.kwargs = {"levtype": levtype}
 
     def normalise(self, value):
@@ -185,26 +188,34 @@ class LevelCoordinate(Coordinate):
 
 
 class EnsembleCoordinate(Coordinate):
-    pass
+    mars_names = ("number",)
 
 
 class LongitudeCoordinate(Coordinate):
     is_grid = True
     is_lon = True
+    mars_names = ("longitude",)
 
 
 class LatitudeCoordinate(Coordinate):
     is_grid = True
     is_lat = True
+    mars_names = ("latitude",)
 
 
 class XCoordinate(Coordinate):
     is_grid = True
+    mars_names = ("x",)
 
 
 class YCoordinate(Coordinate):
     is_grid = True
+    mars_names = ("x",)
 
 
 class ScalarCoordinate(Coordinate):
-    pass
+    is_grid = False
+
+    @property
+    def mars_names(self):
+        return (self.variable.name,)

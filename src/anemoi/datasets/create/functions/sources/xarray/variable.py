@@ -14,13 +14,15 @@ from functools import cached_property
 import numpy as np
 from earthkit.data.utils.array import ensure_backend
 
+from anemoi.datasets.create.functions.sources.xarray.metadata import MDMapping
+
 from .field import XArrayField
 
 LOG = logging.getLogger(__name__)
 
 
 class Variable:
-    def __init__(self, *, ds, var, coordinates, grid, time, metadata, array_backend=None):
+    def __init__(self, *, ds, var, coordinates, grid, time, metadata, mapping=None, array_backend=None):
         self.ds = ds
         self.var = var
 
@@ -28,12 +30,13 @@ class Variable:
         self.coordinates = coordinates
 
         self._metadata = metadata.copy()
-        self._metadata.update(var.attrs)
+        # self._metadata.update(var.attrs)
         self._metadata.update({"variable": var.name})
 
         self._metadata.setdefault("level", None)
         self._metadata.setdefault("number", 0)
         self._metadata.setdefault("levtype", "sfc")
+        self._mapping = mapping
 
         self.time = time
 
@@ -77,23 +80,45 @@ class Variable:
         )
 
     def __getitem__(self, i):
+        """
+        Get a 2D field from the variable
+        """
         if i >= self.length:
             raise IndexError(i)
         coords = np.unravel_index(i, self.shape)
         kwargs = {k: v for k, v in zip(self.names, coords)}
+        print("------", kwargs)
         return XArrayField(self, self.var.isel(kwargs))
+
+    @property
+    def mapping(self):
+        return self._mapping or self._build_mapping({})
+
+    def _build_mapping(self, kwargs):
+
+        result = {}
+
+        for k, v in kwargs.items():
+            if k == "param":
+                result["variable"] = k
+                continue
+
+            for c in self.coordinates:
+                if k in c.mars_names:
+                    result[c.variable.name] = k
+                    break
+
+        return MDMapping(result)
 
     def sel(self, missing, **kwargs):
 
         if not kwargs:
             return self
 
-        # print('sel', kwargs, self.by_name.keys())
+        mapping = self._mapping or self._build_mapping(kwargs)
+        kwargs = mapping.from_user(kwargs)
 
         k, v = kwargs.popitem()
-
-        if k == "valid_datetime":
-            k = "time"
 
         c = self.by_name.get(k)
 
@@ -106,7 +131,7 @@ class Variable:
             LOG.warning(f"Could not find {k}={v} in {c}")
             return None
 
-        coordinates = [x.singleton(i) if c is x else x for x in self.coordinates]
+        coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]
 
         metadata = self._metadata.copy()
         metadata.update({k: v})
@@ -118,14 +143,20 @@ class Variable:
             grid=self.grid,
             time=self.time,
             metadata=metadata,
+            mapping=self.mapping,
         )
 
         return variable.sel(missing, **kwargs)
 
     def match(self, **kwargs):
-        if "param" in kwargs or "variable" in kwargs:
-            name = kwargs.pop("param", kwargs.pop("variable", None))
-            if name != self.var.name:
+        mapping = self._mapping or self._build_mapping(kwargs)
+        kwargs = mapping.from_user(kwargs)
+
+        if "variable" in kwargs:
+            name = kwargs.pop("variable")
+            if not isinstance(name, (list, tuple)):
+                name = [name]
+            if self.var.name not in name:
                 return False, None
             return True, kwargs
         return True, kwargs

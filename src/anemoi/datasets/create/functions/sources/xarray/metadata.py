@@ -18,6 +18,23 @@ from earthkit.data.utils.projections import Projection
 LOG = logging.getLogger(__name__)
 
 
+class MDMapping:
+
+    def __init__(self, mapping):
+        self.internal_to_user = mapping
+        self.user_to_internal = {v: k for k, v in mapping.items()}
+
+    def from_user(self, kwargs):
+        if isinstance(kwargs, str):
+            return self.user_to_internal.get(kwargs, kwargs)
+        return {self.user_to_internal.get(k, k): v for k, v in kwargs.items()}
+
+    def to_user(self, kwargs):
+        if isinstance(kwargs, str):
+            return self.internal_to_user.get(kwargs, kwargs)
+        return {self.internal_to_user.get(k, k): v for k, v in kwargs.items()}
+
+
 class XArrayFieldGeography(Geography):
     def __init__(self, field, grid):
         self._field = field
@@ -78,23 +95,15 @@ class XArrayMetadata(RawMetadata):
     NAMESPACES = ["default", "mars"]
     MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
 
-    def __init__(self, field):
+    def __init__(self, field, mapping):
         self._field = field
         md = field._md.copy()
 
+        self._mapping = mapping
+        # TODO: check if this is correct
+        # self._time = to_datetime(md.pop(mapping.from_user("valid_datetime")))
         self._time = to_datetime(md.pop("time"))
         self._field.owner.time.fill_time_metadata(self._time, md)
-
-        # time =
-        # base = to_datetime(self._base_datetime())
-
-        # step = (time - base).total_seconds() // 3600
-        # assert step >= 0
-        # assert step == int(step)
-
-        # md["step"] = int(step)
-        # md["date"] = base.strftime("%Y%m%d")
-        # md["time"] = base.strftime("%H%M")
 
         super().__init__(md)
 

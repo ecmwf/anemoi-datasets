@@ -7,7 +7,6 @@
 # nor does it submit to any jurisdiction.
 #
 
-import glob
 import logging
 
 from earthkit.data.core.fieldlist import MultiFieldList
@@ -26,27 +25,6 @@ def check(what, ds, paths, **kwargs):
 
     if len(ds) != count:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
-
-
-def _expand(paths):
-    for path in paths:
-        if path.startswith("file://"):
-            path = path[7:]
-
-        if path.startswith("http://"):
-            yield path
-            continue
-
-        if path.startswith("https://"):
-            yield path
-            continue
-
-        cnt = 0
-        for p in glob.glob(path):
-            yield p
-            cnt += 1
-        if cnt == 0:
-            yield path
 
 
 def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):

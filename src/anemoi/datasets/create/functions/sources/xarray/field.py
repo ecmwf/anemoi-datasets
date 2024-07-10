@@ -10,6 +10,7 @@
 import logging
 
 from earthkit.data.core.fieldlist import Field
+from earthkit.data.core.fieldlist import math
 
 from .coordinates import extract_single_value
 from .coordinates import is_scalar
@@ -40,7 +41,7 @@ class XArrayField(Field):
             The variable that owns this field.
         selection : XArrayDataArray
             A 2D sub-selection of the variable's underlying array.
-            This is actually a 3D object, but the first dimension is always 1.
+            This is actually a nD object, but the first dimensions are always 1.
             The other two dimensions are latitude and longitude.
         """
         super().__init__(owner.array_backend)
@@ -52,25 +53,37 @@ class XArrayField(Field):
         self._md = owner._metadata.copy()
 
         for coord_name, coord_value in self.selection.coords.items():
-
-            # Skip latitude and longitude
-            if coord_name in selection.dims:
-                continue
-
+            if coord_name == "level":
+                print(coord_name, coord_value)
             if is_scalar(coord_value):
                 # Extract the single value from the scalar dimension
                 # and store it in the metadata
                 coordinate = owner.by_name[coord_name]
                 self._md[coord_name] = coordinate.normalise(extract_single_value(coord_value))
 
+        values = self.selection.values
+        # print(values.ndim, values.shape, selection.dims)
+        # By now, the only dimensions should be latitude and longitude
+        self._shape = tuple(list(values.shape)[-2:])
+        if math.prod(self._shape) != math.prod(values.shape):
+            print(values.ndim, values.shape)
+            print(self.selection)
+            raise ValueError("Invalid shape for selection")
+
+    @property
+    def shape(self):
+        return self._shape
+
     def to_numpy(self, flatten=False, dtype=None):
+        values = self.selection.values
+
         assert dtype is None
         if flatten:
-            return self.selection.values.flatten()
-        return self.selection.values
+            return values.flatten()
+        return values.reshape(self.shape)
 
     def _make_metadata(self):
-        return XArrayMetadata(self)
+        return XArrayMetadata(self, self.owner.mapping)
 
     def grid_points(self):
         return self.owner.grid_points()
@@ -78,10 +91,6 @@ class XArrayField(Field):
     @property
     def resolution(self):
         return None
-
-    @property
-    def shape(self):
-        return self.selection.shape
 
     @property
     def grid_mapping(self):
