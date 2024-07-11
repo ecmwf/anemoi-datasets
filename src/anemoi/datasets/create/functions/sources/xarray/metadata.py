@@ -21,18 +21,79 @@ LOG = logging.getLogger(__name__)
 class MDMapping:
 
     def __init__(self, mapping):
-        self.internal_to_user = mapping
-        self.user_to_internal = {v: k for k, v in mapping.items()}
+        self.user_to_internal = mapping
 
     def from_user(self, kwargs):
         if isinstance(kwargs, str):
             return self.user_to_internal.get(kwargs, kwargs)
         return {self.user_to_internal.get(k, k): v for k, v in kwargs.items()}
 
-    def to_user(self, kwargs):
-        if isinstance(kwargs, str):
-            return self.internal_to_user.get(kwargs, kwargs)
-        return {self.internal_to_user.get(k, k): v for k, v in kwargs.items()}
+    def __len__(self):
+        return len(self.user_to_internal)
+
+    def __repr__(self):
+        return f"MDMapping({self.user_to_internal})"
+
+
+class XArrayMetadata(RawMetadata):
+    LS_KEYS = ["variable", "level", "valid_datetime", "units"]
+    NAMESPACES = ["default", "mars"]
+    MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
+
+    def __init__(self, field, mapping):
+        self._field = field
+        md = field._md.copy()
+
+        self._mapping = mapping
+        time_key = mapping.from_user("valid_datetime")
+        self._time = to_datetime(md.pop(time_key))
+        self._field.owner.time.fill_time_metadata(self._time, md)
+
+        super().__init__(md)
+
+    @cached_property
+    def geography(self):
+        return XArrayFieldGeography(self._field, self._field.owner.grid)
+
+    def as_namespace(self, namespace=None):
+        if not isinstance(namespace, str) and namespace is not None:
+            raise TypeError("namespace must be a str or None")
+
+        if namespace == "default" or namespace == "" or namespace is None:
+            return dict(self)
+
+        elif namespace == "mars":
+            return self._as_mars()
+
+    def _as_mars(self):
+        return dict(
+            param=self["variable"],
+            step=self["step"],
+            levelist=self["level"],
+            levtype=self["levtype"],
+            number=self["number"],
+            date=self["date"],
+            time=self["time"],
+        )
+
+    def _base_datetime(self):
+        return self._field.forecast_reference_time
+
+    def _valid_datetime(self):
+        return self._time
+
+    def _get(self, key, **kwargs):
+
+        if key.startswith("mars."):
+            key = key[5:]
+            if key not in self.MARS_KEYS:
+                if kwargs.get("raise_on_missing", False):
+                    raise KeyError(f"Invalid key '{key}' in namespace='mars'")
+                else:
+                    return kwargs.get("default", None)
+
+        key = self._mapping.from_user(key)
+        return super()._get(key, **kwargs)
 
 
 class XArrayFieldGeography(Geography):
@@ -88,65 +149,3 @@ class XArrayFieldGeography(Geography):
 
     def projection(self):
         return Projection.from_cf_grid_mapping(**self._field.grid_mapping)
-
-
-class XArrayMetadata(RawMetadata):
-    LS_KEYS = ["variable", "level", "valid_datetime", "units"]
-    NAMESPACES = ["default", "mars"]
-    MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
-
-    def __init__(self, field, mapping):
-        self._field = field
-        md = field._md.copy()
-
-        self._mapping = mapping
-        # TODO: check if this is correct
-        # self._time = to_datetime(md.pop(mapping.from_user("valid_datetime")))
-        self._time = to_datetime(md.pop("time"))
-        self._field.owner.time.fill_time_metadata(self._time, md)
-
-        super().__init__(md)
-
-    @cached_property
-    def geography(self):
-        return XArrayFieldGeography(self._field, self._field.owner.grid)
-
-    def as_namespace(self, namespace=None):
-        if not isinstance(namespace, str) and namespace is not None:
-            raise TypeError("namespace must be a str or None")
-
-        if namespace == "default" or namespace == "" or namespace is None:
-            return dict(self)
-        elif namespace == "mars":
-            return self._as_mars()
-
-    def _as_mars(self):
-        return dict(
-            param=self["variable"],
-            step=self["step"],
-            levelist=self["level"],
-            levtype=self["levtype"],
-            number=self["number"],
-            date=self["date"],
-            time=self["time"],
-        )
-
-    def _base_datetime(self):
-        return self._field.forecast_reference_time
-
-    def _valid_datetime(self):
-        return self._time
-
-    def _get(self, key, **kwargs):
-
-        if key.startswith("mars."):
-            key = key[5:]
-            if key not in self.MARS_KEYS:
-                if kwargs.get("raise_on_missing", False):
-                    raise KeyError(f"Invalid key '{key}' in namespace='mars'")
-                else:
-                    return kwargs.get("default", None)
-
-        _key_name = {"param": "variable", "levelist": "level"}
-
-        return super()._get(_key_name.get(key, key), **kwargs)

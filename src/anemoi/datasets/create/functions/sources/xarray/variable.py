@@ -47,6 +47,24 @@ class Variable:
         self.length = math.prod(self.shape)
         self.array_backend = ensure_backend(array_backend)
 
+    def update_metadata_mapping(self, kwargs):
+
+        result = {}
+
+        for k, v in kwargs.items():
+            # result[k] = k
+            if k == "param":
+                result[k] = "variable"
+                continue
+
+            for c in self.coordinates:
+                if k in c.mars_names:
+                    for v in c.mars_names:
+                        result[v] = c.variable.name
+                    break
+
+        self._mapping = MDMapping(result)
+
     @property
     def name(self):
         return self.var.name
@@ -85,38 +103,21 @@ class Variable:
         """
         if i >= self.length:
             raise IndexError(i)
+
         coords = np.unravel_index(i, self.shape)
         kwargs = {k: v for k, v in zip(self.names, coords)}
-        print("------", kwargs)
         return XArrayField(self, self.var.isel(kwargs))
 
     @property
     def mapping(self):
-        return self._mapping or self._build_mapping({})
-
-    def _build_mapping(self, kwargs):
-
-        result = {}
-
-        for k, v in kwargs.items():
-            if k == "param":
-                result["variable"] = k
-                continue
-
-            for c in self.coordinates:
-                if k in c.mars_names:
-                    result[c.variable.name] = k
-                    break
-
-        return MDMapping(result)
+        return self._mapping
 
     def sel(self, missing, **kwargs):
 
         if not kwargs:
             return self
 
-        mapping = self._mapping or self._build_mapping(kwargs)
-        kwargs = mapping.from_user(kwargs)
+        kwargs = self._mapping.from_user(kwargs)
 
         k, v = kwargs.popitem()
 
@@ -149,8 +150,7 @@ class Variable:
         return variable.sel(missing, **kwargs)
 
     def match(self, **kwargs):
-        mapping = self._mapping or self._build_mapping(kwargs)
-        kwargs = mapping.from_user(kwargs)
+        kwargs = self._mapping.from_user(kwargs)
 
         if "variable" in kwargs:
             name = kwargs.pop("variable")

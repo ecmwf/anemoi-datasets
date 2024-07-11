@@ -452,6 +452,7 @@ class Result(HasCoordsMixin):
             print(f"More fields in dataset that expected for {names}. " "This means that some fields are duplicated.")
             duplicated = defaultdict(list)
             for f in ds:
+                print(f.metadata(namespace="default"))
                 metadata = remapping(f.metadata)
                 key = tuple(metadata(n) for n in names)
                 duplicated[key].append(f)

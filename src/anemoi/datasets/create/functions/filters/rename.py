@@ -26,10 +26,14 @@ class RenamedFieldMapping:
         self.what = what
         self.renaming = renaming
 
-    def metadata(self, key, **kwargs):
+    def metadata(self, key=None, **kwargs):
+        if key is None:
+            return self.field.metadata(**kwargs)
+
         value = self.field.metadata(key, **kwargs)
         if key == self.what:
             return self.renaming.get(value, value)
+
         return value
 
     def __getattr__(self, name):
