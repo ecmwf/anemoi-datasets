@@ -59,12 +59,11 @@ class XArrayField(Field):
                 coordinate = owner.by_name[coord_name]
                 self._md[coord_name] = coordinate.normalise(extract_single_value(coord_value))
 
-        values = self.selection.values
         # print(values.ndim, values.shape, selection.dims)
         # By now, the only dimensions should be latitude and longitude
-        self._shape = tuple(list(values.shape)[-2:])
-        if math.prod(self._shape) != math.prod(values.shape):
-            print(values.ndim, values.shape)
+        self._shape = tuple(list(self.selection.shape)[-2:])
+        if math.prod(self._shape) != math.prod(self.selection.shape):
+            print(self.selection.ndim, self.selection.shape)
             print(self.selection)
             raise ValueError("Invalid shape for selection")
 

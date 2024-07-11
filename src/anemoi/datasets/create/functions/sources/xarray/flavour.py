@@ -187,8 +187,14 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if standard_name == "projection_x_coordinate":
             return XCoordinate(c)
 
+        if name == "x":
+            return XCoordinate(c)
+
     def _is_y(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "projection_y_coordinate":
+            return YCoordinate(c)
+
+        if name == "y":
             return YCoordinate(c)
 
     def _is_time(self, c, *, axis, name, long_name, standard_name, units):
