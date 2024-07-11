@@ -53,8 +53,6 @@ class XArrayField(Field):
         self._md = owner._metadata.copy()
 
         for coord_name, coord_value in self.selection.coords.items():
-            if coord_name == "level":
-                print(coord_name, coord_value)
             if is_scalar(coord_value):
                 # Extract the single value from the scalar dimension
                 # and store it in the metadata
