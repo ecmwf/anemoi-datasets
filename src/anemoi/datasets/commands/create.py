@@ -22,6 +22,10 @@ class Create(Command):
         )
         command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")
+        command_parser.add_argument("--parallel", help="Use `n` parallel workers.", type=int, default=0)
+        command_parser.add_argument(
+            "--use-threads", action="store_true", help="Use threads instead of processes for parallelising."
+        )
 
     def run(self, args):
         kwargs = vars(args)
