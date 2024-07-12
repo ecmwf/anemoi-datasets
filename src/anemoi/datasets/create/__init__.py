@@ -9,9 +9,6 @@
 
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
-
-import tqdm
 
 LOG = logging.getLogger(__name__)
 
@@ -159,20 +156,7 @@ class Creator:
 
     def create(self):
         self.init()
-
-        if self.parallel is None or self.parallel == 0:
-            self.load()
-        else:
-            assert isinstance(self.parallel, int), self.parallel
-            assert self.parallel > 0, self.parallel
-            tasks = []
-            with ThreadPoolExecutor(max_workers=self.parallel) as executor:
-                for n in range(self.parallel):
-                    tasks.append(executor.submit(self.load, f"{n+1}/{self.parallel}"))
-
-            for i, future in tqdm.tqdm(enumerate(tasks), desc="Tasks"):
-                print(f"{i}/{self.parallel}", future.result())
-
+        self.load()
         self.finalise()
         self.additions()
         self.cleanup()
