@@ -191,7 +191,7 @@ class Loader(DatasetHandlerWithStatistics):
         LOG.info(builder)
         return builder
 
-    def allow_nan(self, name):
+    def allow_nans(self, name):
         return name in self.main_config.statistics.get("allow_nans", [])
 
 
@@ -312,6 +312,7 @@ class InitialiserLoader(Loader):
         metadata["ensemble_dimension"] = len(ensembles)
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
+        metadata["allow_nans"] = self.main_config.get("allow_nans", False)
         metadata["resolution"] = resolution
 
         metadata["data_request"] = self.minimal_input.data_request
@@ -348,10 +349,16 @@ class InitialiserLoader(Loader):
 
         self.update_metadata(**metadata)
 
-        self._add_dataset(name="data", chunks=chunks, dtype=dtype, shape=total_shape)
-        self._add_dataset(name="dates", array=dates)
-        self._add_dataset(name="latitudes", array=grid_points[0])
-        self._add_dataset(name="longitudes", array=grid_points[1])
+        self._add_dataset(
+            name="data",
+            chunks=chunks,
+            dtype=dtype,
+            shape=total_shape,
+            dimensions=("time", "variable", "ensemble", "cell"),
+        )
+        self._add_dataset(name="dates", array=dates, dimensions=("time",))
+        self._add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
+        self._add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
 
         self.registry.create(lengths=lengths)
         self.tmp_statistics.create(exist_ok=False)
@@ -450,7 +457,7 @@ class ContentLoader(Loader):
         array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
         self.load_cube(cube, array)
 
-        stats = compute_statistics(array.cache, self.variables_names, allow_nan=self.allow_nan)
+        stats = compute_statistics(array.cache, self.variables_names, allow_nans=self.allow_nans)
         self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
 
         array.flush()
@@ -482,7 +489,7 @@ class ContentLoader(Loader):
                 data[:],
                 name=name,
                 log=[i, data.shape, local_indexes],
-                allow_nan=self.allow_nan,
+                allow_nans=self.allow_nans,
             )
 
             now = time.time()
@@ -518,12 +525,16 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
 
         self.read_dataset_metadata()
 
-    def allow_nan(self, name):
+    @cached_property
+    def allow_nans(self):
         z = zarr.open(self.path, mode="r")
-        if "variables_with_nans" in z.attrs:
-            return name in z.attrs["variables_with_nans"]
+        if "allow_nans" in z.attrs:
+            return z.attrs["allow_nans"]
 
-        warnings.warn(f"Cannot find 'variables_with_nans' in {self.path}. Assuming nans allowed for {name}.")
+        if "variables_with_nans" in z.attrs:
+            return z.attrs["variables_with_nans"]
+
+        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
         return True
 
     def _get_statistics_dates(self):
@@ -562,7 +573,7 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
 
     def run(self):
         dates = self._get_statistics_dates()
-        stats = self.tmp_statistics.get_aggregated(dates, self.variables_names, self.allow_nan)
+        stats = self.tmp_statistics.get_aggregated(dates, self.variables_names, self.allow_nans)
         self.output_writer(stats)
 
     def write_stats_to_file(self, stats):
@@ -591,7 +602,7 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
             "count",
             "has_nans",
         ]:
-            self._add_dataset(name=k, array=stats[k])
+            self._add_dataset(name=k, array=stats[k], dimensions=("variable",))
 
         self.registry.add_to_history("compute_statistics_end")
         LOG.info(f"Wrote statistics in {self.path}")
@@ -730,7 +741,7 @@ class GenericAdditions(GenericDatasetHandler):
             "has_nans",
         ]:
             name = self.final_storage_name(k)
-            self._add_dataset(name=name, array=summary[k])
+            self._add_dataset(name=name, array=summary[k], dimensions=("variable",))
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
         LOG.info(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
 
@@ -744,7 +755,16 @@ class GenericAdditions(GenericDatasetHandler):
             return z.attrs["variables_with_nans"]
         return None
 
-    def allow_nan(self, name):
+    @cached_property
+    def _allow_nans(self):
+        z = zarr.open(self.path, mode="r")
+        return z.attrs.get("allow_nans", False)
+
+    def allow_nans(self, name):
+
+        if self._allow_nans:
+            return True
+
         if self._variables_with_nans is not None:
             return name in self._variables_with_nans
         warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, Assuming nans allowed for {name}.")
@@ -781,7 +801,7 @@ class StatisticsAddition(GenericAdditions):
             date = self.dates[i]
             try:
                 arr = self.ds[i : i + 1, ...]
-                stats = compute_statistics(arr, self.variables, allow_nan=self.allow_nan)
+                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
                 self.tmp_storage.add([date, i, stats], key=date)
             except MissingDateError:
                 self.tmp_storage.add([date, i, "missing"], key=date)
@@ -867,7 +887,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
             date = self.dates[i]
             try:
                 arr = self.ds[i]
-                stats = compute_statistics(arr, self.variables, allow_nan=self.allow_nan)
+                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
                 self.tmp_storage.add([date, i, stats], key=date)
             except MissingDateError:
                 self.tmp_storage.add([date, i, "missing"], key=date)

@@ -136,11 +136,9 @@ class StatisticsValueError(ValueError):
     pass
 
 
-def check_data_values(arr, *, name: str, log=[], allow_nan=False):
-    if allow_nan is False:
-        allow_nan = lambda x: False  # noqa: E731
+def check_data_values(arr, *, name: str, log=[], allow_nans=False):
 
-    if allow_nan(name):
+    if (isinstance(allow_nans, (set, list, tuple, dict)) and name in allow_nans) or allow_nans:
         arr = arr[~np.isnan(arr)]
 
     min, max = arr.min(), arr.max()

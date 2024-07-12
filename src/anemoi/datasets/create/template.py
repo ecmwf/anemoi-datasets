@@ -13,6 +13,8 @@ import re
 import textwrap
 from functools import wraps
 
+from anemoi.utils.humanize import plural
+
 LOG = logging.getLogger(__name__)
 
 TRACE_INDENT = 0
@@ -99,7 +101,13 @@ class Context:
         self.used_references.add(key)
 
     def notify_result(self, key, result):
-        trace("🎯", step(key), "notify result", textwrap.shorten(repr(result).replace(",", ", "), width=40))
+        trace(
+            "🎯",
+            step(key),
+            "notify result",
+            textwrap.shorten(repr(result).replace(",", ", "), width=40),
+            plural(len(result), "field"),
+        )
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         if key in self.used_references:

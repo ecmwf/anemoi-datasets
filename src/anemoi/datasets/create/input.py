@@ -453,8 +453,9 @@ class Result(HasCoordsMixin):
             duplicated = defaultdict(list)
             for f in ds:
                 print(f.metadata(namespace="default"))
-                metadata = remapping(f.metadata)
-                key = tuple(metadata(n) for n in names)
+                # metadata = remapping(f.metadata)
+                metadata = f.metadata
+                key = tuple(metadata(namespace="default"))
                 duplicated[key].append(f)
 
             print("Duplicated fields:")

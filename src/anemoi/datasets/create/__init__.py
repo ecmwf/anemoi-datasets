@@ -9,9 +9,7 @@
 
 import logging
 import os
-from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
 
 import tqdm
 
@@ -29,7 +27,6 @@ class Creator:
         overwrite=False,
         test=None,
         parallel=0,
-        use_threads=False,
         **kwargs,
     ):
         self.path = path  # Output path
@@ -40,7 +37,6 @@ class Creator:
         self.overwrite = overwrite
         self.test = test
         self.parallel = parallel
-        self.use_threads = use_threads
 
     def init(self, check_name=False):
         # check path
@@ -170,16 +166,11 @@ class Creator:
             assert isinstance(self.parallel, int), self.parallel
             assert self.parallel > 0, self.parallel
             tasks = []
-            if self.use_threads:
-                executor = ThreadPoolExecutor(max_workers=self.parallel)
-            else:
-                LOG.error("Parallel processing is not supported. Use threads instead.")
-                executor = ProcessPoolExecutor(max_workers=self.parallel)
-            if True:
+            with ThreadPoolExecutor(max_workers=self.parallel) as executor:
                 for n in range(self.parallel):
                     tasks.append(executor.submit(self.load, f"{n+1}/{self.parallel}"))
 
-            for i, future in tqdm.tqdm(enumerate(tasks)):
+            for i, future in tqdm.tqdm(enumerate(tasks), desc="Tasks"):
                 print(f"{i}/{self.parallel}", future.result())
 
         self.finalise()

@@ -233,6 +233,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if standard_name == "depth":
             return LevelCoordinate(c, "depth")
 
+        if name == "pressure":
+            return LevelCoordinate(c, "pl")
+
 
 class FlavourCoordinateGuesser(CoordinateGuesser):
     def __init__(self, ds, flavour):

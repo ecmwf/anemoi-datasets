@@ -29,13 +29,17 @@ class Variable:
         self.grid = grid
         self.coordinates = coordinates
 
+        print("Variable", var.name)
+        for c in coordinates:
+            print(" ", c)
+
         self._metadata = metadata.copy()
         # self._metadata.update(var.attrs)
         self._metadata.update({"variable": var.name})
 
-        self._metadata.setdefault("level", None)
-        self._metadata.setdefault("number", 0)
-        self._metadata.setdefault("levtype", "sfc")
+        # self._metadata.setdefault("level", None)
+        # self._metadata.setdefault("number", 0)
+        # self._metadata.setdefault("levtype", "sfc")
         self._mapping = mapping
 
         self.time = time
@@ -52,7 +56,6 @@ class Variable:
         result = {}
 
         for k, v in kwargs.items():
-            # result[k] = k
             if k == "param":
                 result[k] = "variable"
                 continue
@@ -176,7 +179,11 @@ class FilteredVariable:
         list
             A list of fields that match the metadata.
         """
-        return [field for field in self.variable if all(field.metadata(k) == v for k, v in self.kwargs.items())]
+        return [
+            field
+            for field in self.variable
+            if all(field.metadata(k, default=None) == v for k, v in self.kwargs.items())
+        ]
 
     @property
     def length(self):

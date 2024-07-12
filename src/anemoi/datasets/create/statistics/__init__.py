@@ -97,7 +97,7 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
     raise ValueError("Negative variance")
 
 
-def compute_statistics(array, check_variables_names=None, allow_nan=False):
+def compute_statistics(array, check_variables_names=None, allow_nans=False):
     """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
 
     nvars = array.shape[1]
@@ -118,7 +118,7 @@ def compute_statistics(array, check_variables_names=None, allow_nan=False):
         values = chunk.reshape((nvars, -1))
 
         for j, name in enumerate(check_variables_names):
-            check_data_values(values[j, :], name=name, allow_nan=allow_nan)
+            check_data_values(values[j, :], name=name, allow_nans=allow_nans)
             if np.isnan(values[j, :]).all():
                 # LOG.warning(f"All NaN values for {name} ({j}) for date {i}")
                 raise ValueError(f"All NaN values for {name} ({j}) for date {i}")
@@ -211,14 +211,14 @@ def normalise_dates(dates):
 class StatAggregator:
     NAMES = ["minimum", "maximum", "sums", "squares", "count", "has_nans"]
 
-    def __init__(self, owner, dates, variables_names, allow_nan):
+    def __init__(self, owner, dates, variables_names, allow_nans):
         dates = sorted(dates)
         dates = to_datetimes(dates)
         assert dates, "No dates selected"
         self.owner = owner
         self.dates = dates
         self.variables_names = variables_names
-        self.allow_nan = allow_nan
+        self.allow_nans = allow_nans
 
         self.shape = (len(self.dates), len(self.variables_names))
         LOG.info(f"Aggregating statistics on shape={self.shape}. Variables : {self.variables_names}")
@@ -304,7 +304,7 @@ class StatAggregator:
         stdev = np.sqrt(x)
 
         for j, name in enumerate(self.variables_names):
-            check_data_values(np.array([mean[j]]), name=name, allow_nan=False)
+            check_data_values(np.array([mean[j]]), name=name, allow_nans=False)
 
         return Summary(
             minimum=minimum,

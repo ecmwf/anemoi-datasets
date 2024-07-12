@@ -24,8 +24,12 @@ def add_zarr_dataset(
     shape=None,
     array=None,
     overwrite=True,
+    dimensions=None,
     **kwargs,
 ):
+    assert dimensions is not None, "Please pass dimensions to add_zarr_dataset."
+    assert isinstance(dimensions, (tuple, list))
+
     if dtype is None:
         assert array is not None, (name, shape, array, dtype, zarr_root)
         dtype = array.dtype
@@ -44,6 +48,7 @@ def add_zarr_dataset(
             **kwargs,
         )
         a[...] = array
+        a.attrs["_ARRAY_DIMENSIONS"] = dimensions
         return a
 
     if "fill_value" not in kwargs:
@@ -69,6 +74,7 @@ def add_zarr_dataset(
         overwrite=overwrite,
         **kwargs,
     )
+    a.attrs["_ARRAY_DIMENSIONS"] = dimensions
     return a
 
 
@@ -112,7 +118,7 @@ class ZarrBuiltRegistry:
     def new_dataset(self, *args, **kwargs):
         z = self._open_write()
         zarr_root = z["_build"]
-        add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, **kwargs)
+        add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
 
     def add_to_history(self, action, **kwargs):
         new = dict(
