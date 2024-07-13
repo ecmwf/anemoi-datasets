@@ -1,6 +1,7 @@
 import datetime
 import logging
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 from . import Command
@@ -44,6 +45,7 @@ class Create(Command):
         command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")
         command_parser.add_argument("--parallel", help="Use `n` parallel workers.", type=int, default=0)
+        command_parser.add_argument("--use-threads", action="store_true")
 
     def run(self, args):
         if args.parallel:
@@ -68,22 +70,28 @@ class Create(Command):
         options = vars(args)
         parallel = options.pop("parallel")
 
-        with ProcessPoolExecutor(max_workers=1) as executor:
+        if args.use_threads:
+            ExecutorClass = ThreadPoolExecutor
+        else:
+            ExecutorClass = ProcessPoolExecutor
+
+        with ExecutorClass(max_workers=1) as executor:
             executor.submit(task, "init", options).result()
 
         futures = []
 
-        with ProcessPoolExecutor(max_workers=parallel) as executor:
+        with ExecutorClass(max_workers=parallel) as executor:
             for n in range(parallel):
                 futures.append(executor.submit(task, "load", options, parts=f"{n+1}/{parallel}"))
 
             for future in as_completed(futures):
                 future.result()
 
-        with ProcessPoolExecutor(max_workers=1) as executor:
+        with ExecutorClass(max_workers=1) as executor:
             executor.submit(task, "statistics", options).result()
             executor.submit(task, "additions", options).result()
             executor.submit(task, "cleanup", options).result()
+            executor.submit(task, "verify", options).result()
 
 
 command = Create

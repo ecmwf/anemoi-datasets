@@ -29,9 +29,9 @@ class Variable:
         self.grid = grid
         self.coordinates = coordinates
 
-        print("Variable", var.name)
-        for c in coordinates:
-            print(" ", c)
+        # print("Variable", var.name)
+        # for c in coordinates:
+        #     print(" ", c)
 
         self._metadata = metadata.copy()
         # self._metadata.update(var.attrs)

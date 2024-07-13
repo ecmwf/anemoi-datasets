@@ -138,6 +138,9 @@ class GenericDatasetHandler:
     def registry(self):
         return ZarrBuiltRegistry(self.path)
 
+    def ready(self):
+        return all(self.registry.get_flags())
+
     def update_metadata(self, **kwargs):
         LOG.info(f"Updating metadata {kwargs}")
         z = zarr.open(self.path, mode="w+")
@@ -636,6 +639,7 @@ class GenericAdditions(GenericDatasetHandler):
         raise NotImplementedError()
 
     def finalise(self):
+
         shape = (len(self.dates), len(self.variables))
         agg = dict(
             minimum=np.full(shape, np.nan, dtype=np.float64),
@@ -893,3 +897,20 @@ class TendenciesStatisticsAddition(GenericAdditions):
                 self.tmp_storage.add([date, i, "missing"], key=date)
         self.tmp_storage.flush()
         LOG.info(f"Dataset {self.path} additions run.")
+
+
+class DatasetVerifier(GenericDatasetHandler):
+
+    def verify(self):
+        # self.verify_dates()
+        # self.verify_statistics()
+        # self.verify_size()
+        self.verify_count()
+        LOG.info(f"Dataset {self.path} verified.")
+
+    def verify_count(self):
+        z = zarr.open(self.path, mode="r")
+        data = z["data"]
+        count = z["count"][:]
+        print(count)
+        print(data.shape)

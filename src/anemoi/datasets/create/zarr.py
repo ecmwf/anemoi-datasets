@@ -149,6 +149,9 @@ class ZarrBuiltRegistry:
         z.attrs["latest_write_timestamp"] = datetime.datetime.utcnow().isoformat()
         z["_build"][self.name_flags][i] = value
 
+    def ready(self):
+        return all(self.get_flags())
+
     def create(self, lengths, overwrite=False):
         self.new_dataset(name=self.name_lengths, array=np.array(lengths, dtype="i4"))
         self.new_dataset(name=self.name_flags, array=np.array([False] * len(lengths), dtype=bool))

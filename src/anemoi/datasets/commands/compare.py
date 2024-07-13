@@ -8,6 +8,10 @@
 # nor does it submit to any jurisdiction.
 #
 
+import numpy as np
+import tqdm
+import zarr
+
 from anemoi.datasets import open_dataset
 
 from . import Command
@@ -19,6 +23,8 @@ class Compare(Command):
     def add_arguments(self, command_parser):
         command_parser.add_argument("dataset1")
         command_parser.add_argument("dataset2")
+        command_parser.add_argument("--data", action="store_true", help="Compare the data.")
+        command_parser.add_argument("--statistics", action="store_true", help="Compare the statistics.")
 
     def run(self, args):
         ds1 = open_dataset(args.dataset1)
@@ -41,6 +47,59 @@ class Compare(Command):
                 f"{ds1.statistics['mean'][ds1.name_to_index[v]]:14g}",
                 f"{ds2.statistics['mean'][ds2.name_to_index[v]]:14g}",
             )
+
+        if args.data:
+            print()
+            print("Data:")
+            print("-----")
+            print()
+
+            diff = 0
+            for a, b in tqdm.tqdm(zip(ds1, ds2)):
+                if not np.array_equal(a, b, equal_nan=True):
+                    diff += 1
+
+            print(f"Number of different rows: {diff}/{len(ds1)}")
+
+        if args.data:
+            print()
+            print("Data 2:")
+            print("-----")
+            print()
+
+            ds1 = zarr.open(args.dataset1, mode="r")
+            ds2 = zarr.open(args.dataset2, mode="r")
+
+            for name in (
+                "data",
+                "count",
+                "sums",
+                "squares",
+                "mean",
+                "stdev",
+                "minimum",
+                "maximum",
+                "latitudes",
+                "longitudes",
+            ):
+                a1 = ds1[name]
+                a2 = ds2[name]
+
+                if len(a1) != len(a2):
+                    print(f"{name}: lengths mismatch {len(a1)} != {len(a2)}")
+                    continue
+
+                diff = 0
+                for a, b in tqdm.tqdm(zip(a1, a2), leave=False):
+                    if not np.array_equal(a, b, equal_nan=True):
+                        if diff == 0:
+                            print(f"\n{name}: first different row:")
+                            print(a[a != b])
+                            print(b[a != b])
+
+                        diff += 1
+
+                print(f"{name}: {diff} different rows out of {len(a1)}")
 
 
 command = Compare

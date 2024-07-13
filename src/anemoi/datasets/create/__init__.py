@@ -79,6 +79,7 @@ class Creator:
             statistics_end=end,
         )
         loader.run()
+        assert loader.ready()
 
     def size(self):
         from .loaders import DatasetHandler
@@ -87,6 +88,7 @@ class Creator:
         metadata = compute_directory_sizes(self.path)
         handle = DatasetHandler.from_dataset(path=self.path, print=self.print)
         handle.update_metadata(**metadata)
+        assert handle.ready()
 
     def cleanup(self):
         from .loaders import DatasetHandlerWithStatistics
@@ -160,6 +162,7 @@ class Creator:
         self.finalise()
         self.additions()
         self.cleanup()
+        self.verify()
 
     def additions(self, delta=[1, 3, 6, 12, 24]):
         self.init_additions(delta=delta)
@@ -179,3 +182,10 @@ class Creator:
             return True
         except zarr.errors.PathNotFoundError:
             return False
+
+    def verify(self):
+        from .loaders import DatasetVerifier
+
+        handle = DatasetVerifier.from_dataset(path=self.path, print=self.print)
+
+        handle.verify()
