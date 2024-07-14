@@ -85,22 +85,27 @@ class ZarrBuiltRegistry:
     flags = None
     z = None
 
-    def __init__(self, path, synchronizer_path=None):
+    def __init__(self, path, synchronizer_path=None, use_threads=False):
         import zarr
 
         assert isinstance(path, str), path
         self.zarr_path = path
 
-        if synchronizer_path is None:
-            synchronizer_path = self.zarr_path + ".sync"
-        self.synchronizer_path = synchronizer_path
-        self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
+        if use_threads:
+            self.synchronizer = zarr.ThreadSynchronizer()
+            self.synchronizer_path = None
+        else:
+            if synchronizer_path is None:
+                synchronizer_path = self.zarr_path + ".sync"
+            self.synchronizer_path = synchronizer_path
+            self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
 
     def clean(self):
-        try:
-            shutil.rmtree(self.synchronizer_path)
-        except FileNotFoundError:
-            pass
+        if self.synchronizer_path is not None:
+            try:
+                shutil.rmtree(self.synchronizer_path)
+            except FileNotFoundError:
+                pass
 
     def _open_write(self):
         import zarr

@@ -12,7 +12,6 @@ from contextlib import contextmanager
 
 import numpy as np
 from earthkit.data import settings
-from earthkit.data.utils.humanize import seconds  # noqa: F401
 from tqdm.auto import tqdm
 
 
@@ -89,7 +88,7 @@ def normalize_and_check_dates(dates, start, end, frequency, dtype="datetime64[s]
     return dates_
 
 
-def progress_bar(*, iterable=None, total=None, initial=0, desc=None):
+def progress_bar(*, iterable=None, total=None, initial=0, desc=None, position=None):
     return tqdm(
         iterable=iterable,
         total=total,
@@ -100,5 +99,6 @@ def progress_bar(*, iterable=None, total=None, initial=0, desc=None):
         disable=False,
         leave=False,
         desc=desc,
+        position=position,
         # dynamic_ncols=True, # make this the default?
     )

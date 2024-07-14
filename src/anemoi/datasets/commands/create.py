@@ -1,8 +1,14 @@
 import datetime
 import logging
+import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+
+import tqdm
+from anemoi.utils.humanize import seconds_to_human
+
+from anemoi.datasets.create.trace import enable_trace
 
 from . import Command
 
@@ -15,14 +21,17 @@ def task(what, options, *args, **kwargs):
     """
 
     now = datetime.datetime.now()
-    LOG.info(f"Task {what}({args},{kwargs}) starting")
+    LOG.debug(f"Task {what}({args},{kwargs}) starting")
 
     from anemoi.datasets.create import Creator
+
+    if "trace" in options:
+        enable_trace(options["trace"])
 
     c = Creator(**options)
     result = getattr(c, what)(*args, **kwargs)
 
-    LOG.info(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
+    LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result
 
 
@@ -45,14 +54,18 @@ class Create(Command):
         )
         command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")
-        command_parser.add_argument("--parallel", help="Use `n` parallel workers.", type=int, default=0)
-        command_parser.add_argument("--use-threads", action="store_true")
+        group = command_parser.add_mutually_exclusive_group()
+        group.add_argument("--threads", help="Use `n` parallel thread workers.", type=int, default=0)
+        group.add_argument("--processes", help="Use `n` parallel process workers.", type=int, default=0)
+        command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args):
-        if args.parallel:
+        now = time.time()
+        if args.threads + args.processes:
             self.parallel_create(args)
         else:
             self.serial_create(args)
+        LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
     def serial_create(self, args):
         from anemoi.datasets.create import Creator
@@ -69,7 +82,8 @@ class Create(Command):
         """
 
         options = vars(args)
-        parallel = options.pop("parallel")
+        parallel = args.threads + args.processes
+        args.use_threads = args.threads > 0
 
         if args.use_threads:
             ExecutorClass = ThreadPoolExecutor
@@ -77,15 +91,17 @@ class Create(Command):
             ExecutorClass = ProcessPoolExecutor
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "init", options).result()
+            total = executor.submit(task, "init", options).result()
 
         futures = []
 
         with ExecutorClass(max_workers=parallel) as executor:
-            for n in range(parallel):
-                futures.append(executor.submit(task, "load", options, parts=f"{n+1}/{parallel}"))
+            for n in range(total):
+                futures.append(executor.submit(task, "load", options, parts=f"{n+1}/{total}"))
 
-            for future in as_completed(futures):
+            for future in tqdm.tqdm(
+                as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
+            ):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:

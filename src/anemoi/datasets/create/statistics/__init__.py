@@ -102,7 +102,7 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
 
     nvars = array.shape[1]
 
-    LOG.info(f"Stats {nvars}, {array.shape}, {check_variables_names}")
+    LOG.debug(f"Stats {nvars}, {array.shape}, {check_variables_names}")
     if check_variables_names:
         assert nvars == len(check_variables_names), (nvars, check_variables_names)
     stats_shape = (array.shape[0], nvars)
@@ -179,12 +179,12 @@ class TmpStatistics:
             pickle.dump((key, dates, data), f)
         shutil.move(tmp_path, path)
 
-        LOG.info(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
+        LOG.debug(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
 
     def _gather_data(self):
         # use glob to read all pickles
         files = glob.glob(self.dirname + "/*.npz")
-        LOG.info(f"Reading stats data, found {len(files)} files in {self.dirname}")
+        LOG.debug(f"Reading stats data, found {len(files)} files in {self.dirname}")
         assert len(files) > 0, f"No files found in {self.dirname}"
         for f in files:
             with open(f, "rb") as f:
@@ -221,7 +221,7 @@ class StatAggregator:
         self.allow_nans = allow_nans
 
         self.shape = (len(self.dates), len(self.variables_names))
-        LOG.info(f"Aggregating statistics on shape={self.shape}. Variables : {self.variables_names}")
+        LOG.debug(f"Aggregating statistics on shape={self.shape}. Variables : {self.variables_names}")
 
         self.minimum = np.full(self.shape, np.nan, dtype=np.float64)
         self.maximum = np.full(self.shape, np.nan, dtype=np.float64)
@@ -284,7 +284,7 @@ class StatAggregator:
             assert d in found, f"Statistics for date {d} not precomputed."
         assert len(self.dates) == len(found), "Not all dates found in precomputed statistics"
         assert len(self.dates) == offset, "Not all dates found in precomputed statistics."
-        LOG.info(f"Statistics for {len(found)} dates found.")
+        LOG.debug(f"Statistics for {len(found)} dates found.")
 
     def aggregate(self):
         minimum = np.nanmin(self.minimum, axis=0)

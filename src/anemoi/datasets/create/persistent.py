@@ -49,7 +49,7 @@ class PersistentDict:
     def items(self):
         # use glob to read all pickles
         files = glob.glob(self.dirname + "/*.pickle")
-        LOG.info(f"Reading {self.name} data, found {len(files)} files in {self.dirname}")
+        LOG.debug(f"Reading {self.name} data, found {len(files)} files in {self.dirname}")
         assert len(files) > 0, f"No files found in {self.dirname}"
         for f in files:
             with open(f, "rb") as f:

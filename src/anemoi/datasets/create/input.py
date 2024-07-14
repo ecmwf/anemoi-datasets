@@ -17,6 +17,7 @@ from functools import cached_property
 from functools import wraps
 
 import numpy as np
+from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.fieldlist import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
@@ -29,10 +30,9 @@ from .template import Context
 from .template import notify_result
 from .template import resolve
 from .template import substitute
-from .template import trace
-from .template import trace_datasource
-from .template import trace_select
-from .utils import seconds
+from .trace import trace
+from .trace import trace_datasource
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 
@@ -366,7 +366,7 @@ class Result(HasCoordsMixin):
         order_by = self.context.order_by
         flatten_grid = self.context.flatten_grid
         start = time.time()
-        LOG.info("Sorting dataset %s %s", dict(order_by), remapping)
+        LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
         assert order_by, order_by
 
         patches = {"number": {None: 0}}
@@ -379,21 +379,22 @@ class Result(HasCoordsMixin):
                 patches=patches,
             )
             cube = cube.squeeze()
-            LOG.info(f"Sorting done in {seconds(time.time()-start)}.")
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
         except ValueError:
             self.explain(ds, order_by, remapping=remapping, patches=patches)
             raise ValueError(f"Error in {self}")
 
-        print("Cube shape:", cube)
-        for k, v in cube.user_coords.items():
-            print("  ", k, shorten_list(v, max_length=10))
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug("Cube shape: %s", cube)
+            for k, v in cube.user_coords.items():
+                LOG.debug("  %s %s", k, shorten_list(v, max_length=10))
 
         return cube
 
     def explain(self, ds, *args, remapping, patches):
         # We redo the logic here
         print()
-        print("=====================================")
+        print("❌" * 40)
         print()
         if len(args) == 1 and isinstance(args[0], (list, tuple)):
             args = args[0]
@@ -480,7 +481,7 @@ class Result(HasCoordsMixin):
             print("  - Change the way 'param' is computed using 'variable_naming' " "in the 'build' section.")
 
         print()
-        print("=====================================")
+        print("❌" * 40)
         print()
         exit(1)
 

@@ -57,7 +57,7 @@ class ChunkFilter:
         if not parts:
             warnings.warn(f"Nothing to do for chunk {i}/{n}.")
 
-        LOG.info(f"Running parts: {parts}")
+        LOG.debug(f"Running parts: {parts}")
 
         self.allowed = parts
 
