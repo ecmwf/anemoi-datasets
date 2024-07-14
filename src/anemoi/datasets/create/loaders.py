@@ -194,8 +194,12 @@ class Loader(DatasetHandlerWithStatistics):
         LOG.info(builder)
         return builder
 
-    def allow_nans(self, name):
-        return name in self.main_config.statistics.get("allow_nans", [])
+    @property
+    def allow_nans(self):
+        if "allow_nans" in self.main_config:
+            return self.main_config.allow_nans
+
+        return self.main_config.statistics.get("allow_nans", [])
 
 
 class InitialiserLoader(Loader):
@@ -269,7 +273,7 @@ class InitialiserLoader(Loader):
         self.print(f"Found {len(dates)} datetimes.")
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
         LOG.info(f"Missing dates: {len(dates.missing)}")
-        lengths = [len(g) for g in self.groups]
+        lengths = tuple(len(g) for g in self.groups)
 
         variables = self.minimal_input.variables
         self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
@@ -764,14 +768,14 @@ class GenericAdditions(GenericDatasetHandler):
         z = zarr.open(self.path, mode="r")
         return z.attrs.get("allow_nans", False)
 
-    def allow_nans(self, name):
+    def allow_nans(self):
 
         if self._allow_nans:
             return True
 
         if self._variables_with_nans is not None:
-            return name in self._variables_with_nans
-        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, Assuming nans allowed for {name}.")
+            return self._variables_with_nans
+        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, assuming nans allowed.")
         return True
 
 

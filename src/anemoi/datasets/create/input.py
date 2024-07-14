@@ -17,6 +17,7 @@ from functools import cached_property
 from functools import wraps
 
 import numpy as np
+from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.fieldlist import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.core.order import build_remapping
@@ -382,6 +383,10 @@ class Result(HasCoordsMixin):
         except ValueError:
             self.explain(ds, order_by, remapping=remapping, patches=patches)
             raise ValueError(f"Error in {self}")
+
+        print("Cube shape:", cube)
+        for k, v in cube.user_coords.items():
+            print("  ", k, shorten_list(v, max_length=10))
 
         return cube
 

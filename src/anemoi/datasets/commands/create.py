@@ -20,9 +20,10 @@ def task(what, options, *args, **kwargs):
     from anemoi.datasets.create import Creator
 
     c = Creator(**options)
-    getattr(c, what)(*args, **kwargs)
+    result = getattr(c, what)(*args, **kwargs)
 
     LOG.info(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
+    return result
 
 
 class Create(Command):

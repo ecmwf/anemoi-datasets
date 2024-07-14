@@ -9,6 +9,7 @@ import logging
 import os
 import warnings
 from functools import cached_property
+from urllib.parse import urlparse
 
 import numpy as np
 import zarr
@@ -40,7 +41,9 @@ class ReadOnlyStore(zarr.storage.BaseStore):
 
 
 class HTTPStore(ReadOnlyStore):
-    """We write our own HTTPStore because the one used by zarr (fsspec) does not play well with fork() and multiprocessing."""
+    """We write our own HTTPStore because the one used by zarr (s3fs)
+    does not play well with fork() and multiprocessing.
+    """
 
     def __init__(self, url):
         self.url = url
@@ -58,17 +61,16 @@ class HTTPStore(ReadOnlyStore):
 
 
 class S3Store(ReadOnlyStore):
-    """We write our own S3Store because the one used by zarr (fsspec)
-    does not play well with fork() and multiprocessing. Also, we get
-    to control the s3 client.
+    """We write our own S3Store because the one used by zarr (s3fs)
+    does not play well with fork(). We also get to control the s3 client
+    options using the anemoi configs.
     """
 
-    def __init__(self, url):
+    def __init__(self, url, region=None):
         from anemoi.utils.s3 import s3_client
 
         _, _, self.bucket, self.key = url.split("/", 3)
-
-        self.s3 = s3_client(self.bucket)
+        self.s3 = s3_client(self.bucket, region=region)
 
     def __getitem__(self, key):
         try:
@@ -101,15 +103,27 @@ class DebugStore(ReadOnlyStore):
         return key in self.store
 
 
-def open_zarr(path, dont_fail=False, cache=None):
-    try:
-        store = path
+def name_to_zarr_store(path_or_url):
+    store = path_or_url
 
-        if store.startswith("http://") or store.startswith("https://"):
+    if store.startswith("s3://"):
+        store = S3Store(store)
+
+    elif store.startswith("http://") or store.startswith("https://"):
+        parsed = urlparse(store)
+        bits = parsed.netloc.split(".")
+        if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
+            s3_url = f"s3://{bits[0]}{parsed.path}"
+            store = S3Store(s3_url, region=bits[2])
+        else:
             store = HTTPStore(store)
 
-        elif store.startswith("s3://"):
-            store = S3Store(store)
+    return store
+
+
+def open_zarr(path, dont_fail=False, cache=None):
+    try:
+        store = name_to_zarr_store(path)
 
         if DEBUG_ZARR_LOADING:
             if isinstance(store, str):

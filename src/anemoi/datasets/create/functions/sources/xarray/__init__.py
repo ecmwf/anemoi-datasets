@@ -11,6 +11,8 @@ import logging
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
+from anemoi.datasets.data.stores import name_to_zarr_store
+
 from .. import iterate_patterns
 from .fieldlist import XarrayFieldList
 
@@ -30,10 +32,19 @@ def check(what, ds, paths, **kwargs):
 def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):
     import xarray as xr
 
+    """
+    We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
+    zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
+    connection error). In that case,  Zarr will silently fill the chunks that could not be downloaded with NaNs.
+    See https://github.com/pydata/xarray/issues/8842
+
+    We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
+    """
+
     context.trace(emoji, dataset, options)
 
     if isinstance(dataset, str) and ".zarr" in dataset:
-        data = xr.open_zarr(dataset, **options)
+        data = xr.open_zarr(name_to_zarr_store(dataset), **options)
     else:
         data = xr.open_dataset(dataset, **options)
 
