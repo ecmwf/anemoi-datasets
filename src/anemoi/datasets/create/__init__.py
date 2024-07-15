@@ -145,7 +145,7 @@ class Creator:
                 )
                 a.run(parts)
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
-                LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
+                LOG.debug(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
     def finalise_additions(self, delta=[1, 3, 6, 12, 24], statistics=True):
         from .loaders import StatisticsAddition
@@ -163,7 +163,7 @@ class Creator:
                 )
                 a.finalise()
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
-                LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
+                LOG.debug(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
     def finalise(self, **kwargs):
         self.statistics(**kwargs)
@@ -175,7 +175,6 @@ class Creator:
         self.finalise()
         self.additions()
         self.cleanup()
-        self.verify()
 
     def additions(self, delta=[1, 3, 6, 12, 24]):
         self.init_additions(delta=delta)

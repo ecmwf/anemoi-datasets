@@ -45,9 +45,17 @@ class XArrayMetadata(RawMetadata):
         md = field._md.copy()
 
         self._mapping = mapping
-        time_key = mapping.from_user("valid_datetime")
+        if mapping is None:
+            time_coord = [c for c in field.owner.coordinates if c.is_time]
+            if len(time_coord) == 1:
+                time_key = time_coord[0].name
+            else:
+                time_key = "time"
+        else:
+            time_key = mapping.from_user("valid_datetime")
         self._time = to_datetime(md.pop(time_key))
         self._field.owner.time.fill_time_metadata(self._time, md)
+        md["valid_datetime"] = self._time.isoformat()
 
         super().__init__(md)
 
