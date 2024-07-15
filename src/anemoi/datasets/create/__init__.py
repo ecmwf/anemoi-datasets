@@ -13,6 +13,10 @@ import os
 LOG = logging.getLogger(__name__)
 
 
+def _ignore(*args, **kwargs):
+    pass
+
+
 class Creator:
     def __init__(
         self,
@@ -23,6 +27,7 @@ class Creator:
         statistics_tmp=None,
         overwrite=False,
         test=None,
+        progress=None,
         **kwargs,
     ):
         self.path = path  # Output path
@@ -32,6 +37,7 @@ class Creator:
         self.statistics_tmp = statistics_tmp
         self.overwrite = overwrite
         self.test = test
+        self.progress = progress if progress is not None else _ignore
 
     def init(self, check_name=False):
         # check path
@@ -48,6 +54,7 @@ class Creator:
                 config=self.config,
                 statistics_tmp=self.statistics_tmp,
                 use_threads=self.use_threads,
+                progress=self.progress,
                 test=self.test,
             )
             return obj.initialise(check_name=check_name)
@@ -60,6 +67,7 @@ class Creator:
                 path=self.path,
                 statistics_tmp=self.statistics_tmp,
                 use_threads=self.use_threads,
+                progress=self.progress,
                 parts=parts,
             )
             loader.load()
@@ -70,6 +78,7 @@ class Creator:
         loader = StatisticsAdder.from_dataset(
             path=self.path,
             use_threads=self.use_threads,
+            progress=self.progress,
             statistics_tmp=self.statistics_tmp,
             statistics_output=output,
             recompute=False,
@@ -92,7 +101,7 @@ class Creator:
         from .loaders import DatasetHandlerWithStatistics
 
         cleaner = DatasetHandlerWithStatistics.from_dataset(
-            path=self.path, use_threads=self.use_threads, statistics_tmp=self.statistics_tmp
+            path=self.path, use_threads=self.use_threads, progress=self.progress, statistics_tmp=self.statistics_tmp
         )
         cleaner.tmp_statistics.delete()
         cleaner.registry.clean()
@@ -113,7 +122,9 @@ class Creator:
 
         for d in delta:
             try:
-                a = TendenciesStatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads, delta=d)
+                a = TendenciesStatisticsAddition.from_dataset(
+                    path=self.path, use_threads=self.use_threads, progress=self.progress, delta=d
+                )
                 a.initialise()
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
@@ -129,7 +140,9 @@ class Creator:
 
         for d in delta:
             try:
-                a = TendenciesStatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads, delta=d)
+                a = TendenciesStatisticsAddition.from_dataset(
+                    path=self.path, use_threads=self.use_threads, progress=self.progress, delta=d
+                )
                 a.run(parts)
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
@@ -145,7 +158,9 @@ class Creator:
 
         for d in delta:
             try:
-                a = TendenciesStatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads, delta=d)
+                a = TendenciesStatisticsAddition.from_dataset(
+                    path=self.path, use_threads=self.use_threads, progress=self.progress, delta=d
+                )
                 a.finalise()
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
