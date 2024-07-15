@@ -243,7 +243,8 @@ class Result:
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
         except ValueError:
             self.explain(ds, order_by, remapping=remapping, patches=patches)
-            raise ValueError(f"Error in {self}")
+            # raise ValueError(f"Error in {self}")
+            exit(1)
 
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug("Cube shape: %s", cube)
@@ -253,6 +254,22 @@ class Result:
         return cube
 
     def explain(self, ds, *args, remapping, patches):
+
+        METADATA = (
+            "date",
+            "time",
+            "step",
+            "hdate",
+            "valid_datetime",
+            "levtype",
+            "levelist",
+            "number",
+            "level",
+            "shortName",
+            "paramId",
+            "variable",
+        )
+
         # We redo the logic here
         print()
         print("❌" * 40)
@@ -319,10 +336,9 @@ class Result:
             print(f"More fields in dataset that expected for {names}. " "This means that some fields are duplicated.")
             duplicated = defaultdict(list)
             for f in ds:
-                print(f.metadata(namespace="default"))
-                # metadata = remapping(f.metadata)
-                metadata = f.metadata
-                key = tuple(metadata(namespace="default"))
+                # print(f.metadata(namespace="default"))
+                metadata = remapping(f.metadata)
+                key = tuple(metadata(n, default=None) for n in names)
                 duplicated[key].append(f)
 
             print("Duplicated fields:")
@@ -331,7 +347,8 @@ class Result:
             for i, (k, v) in enumerate(sorted(duplicated.items())):
                 print(" ", k)
                 for f in v:
-                    print("   ", f)
+                    x = {k: f.metadata(k, default=None) for k in METADATA if f.metadata(k, default=None) is not None}
+                    print("   ", f, x)
                 if i >= 9 and len(duplicated) > 10:
                     print("...", len(duplicated) - i - 1, "more")
                     break
