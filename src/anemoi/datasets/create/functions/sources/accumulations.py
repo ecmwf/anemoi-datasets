@@ -24,7 +24,7 @@ from .mars import use_grib_paramid
 LOG = logging.getLogger(__name__)
 
 
-def member(field):
+def _member(field):
     # Bug in eccodes has number=0 randomly
     number = field.metadata("number", default=0)
     if number is None:
@@ -68,7 +68,7 @@ class Accumulation:
                 self.time,
                 field.metadata("time"),
             )
-            assert self.number == member(field), (self.number, member(field))
+            assert self.number == _member(field), (self.number, _member(field))
 
             return
 
@@ -241,17 +241,17 @@ class AccumulationFromLastStep(Accumulation):
         )
 
 
-def identity(x):
+def _identity(x):
     return x
 
 
-def compute_accumulations(
+def _compute_accumulations(
     context,
     dates,
     request,
     user_accumulation_period=6,
     data_accumulation_period=None,
-    patch=identity,
+    patch=_identity,
     base_times=None,
 ):
     adjust_step = isinstance(user_accumulation_period, int)
@@ -340,7 +340,7 @@ def compute_accumulations(
             field.metadata("date"),
             field.metadata("time"),
             field.metadata("step"),
-            member(field),
+            _member(field),
         )
         values = field.values  # optimisation
         assert accumulations[key], key
@@ -365,43 +365,13 @@ def compute_accumulations(
     return ds
 
 
-def to_list(x):
+def _to_list(x):
     if isinstance(x, (list, tuple)):
         return x
     return [x]
 
 
-def normalise_time_to_hours(r):
-    r = deepcopy(r)
-    if "time" not in r:
-        return r
-
-    times = []
-    for t in to_list(r["time"]):
-        assert len(t) == 4, r
-        assert t.endswith("00"), r
-        times.append(int(t) // 100)
-    r["time"] = tuple(times)
-    return r
-
-
-def normalise_number(r):
-    if "number" not in r:
-        return r
-    number = r["number"]
-    number = to_list(number)
-
-    if len(number) > 4 and (number[1] == "to" and number[3] == "by"):
-        return list(range(int(number[0]), int(number[2]) + 1, int(number[4])))
-
-    if len(number) > 2 and number[1] == "to":
-        return list(range(int(number[0]), int(number[2]) + 1))
-
-    r["number"] = number
-    return r
-
-
-def scda(request):
+def _scda(request):
     if request["time"] in (6, 18, 600, 1800):
         request["stream"] = "scda"
     else:
@@ -410,14 +380,14 @@ def scda(request):
 
 
 def accumulations(context, dates, **request):
-    to_list(request["param"])
+    _to_list(request["param"])
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")
 
     user_accumulation_period = request.pop("accumulation_period", 6)
 
     KWARGS = {
-        ("od", "oper"): dict(patch=scda),
+        ("od", "oper"): dict(patch=_scda),
         ("od", "elda"): dict(base_times=(6, 18)),
         ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
         ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
@@ -427,7 +397,7 @@ def accumulations(context, dates, **request):
 
     context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
 
-    return compute_accumulations(
+    return _compute_accumulations(
         context,
         dates,
         request,
