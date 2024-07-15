@@ -46,35 +46,5 @@ def test_weatherbench():
     assert len(fs) == 2430240
 
 
-def test_dynamical():
-    ds = xr.open_zarr("https://data.dynamical.org/noaa/gfs/analysis-hourly/latest.zarr")
-    fs = XarrayFieldList.from_xarray(ds)
-    print(len(fs))
-    for i, f in enumerate(fs):
-        print(f)
-        if i > 10:
-            break
-
-
-def test_coop_gfs():
-    ds = xr.open_zarr("https://data.source.coop/aldenks/gfs-dynamical/analysis/v0.1.0.zarr")
-    fs = XarrayFieldList.from_xarray(ds)
-    print(len(fs))
-    for i, f in enumerate(fs):
-        print(f)
-        if i > 10:
-            break
-
-
-def test_coop_ifs():
-    ds = xr.open_zarr("https://data.source.coop/aldenks/ifs-dynamical/analysis/v0.1.0.zarr")
-    fs = XarrayFieldList.from_xarray(ds)
-    print(len(fs))
-    for i, f in enumerate(fs):
-        print(f)
-        if i > 10:
-            break
-
-
 if __name__ == "__main__":
     test_arco_era5()

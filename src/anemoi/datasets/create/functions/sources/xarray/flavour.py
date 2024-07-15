@@ -8,8 +8,6 @@
 #
 
 
-import numpy as np
-
 from .coordinates import LatitudeCoordinate
 from .coordinates import LevelCoordinate
 from .coordinates import LongitudeCoordinate
@@ -125,7 +123,7 @@ class CoordinateGuesser:
         if d is not None:
             return d
 
-        if isinstance(c.values, np.ndarray) and c.shape in ((1,), tuple()):
+        if c.shape in ((1,), tuple()):
             return ScalarCoordinate(c)
 
         raise NotImplementedError(
