@@ -761,7 +761,7 @@ class GenericAdditions(GenericDatasetHandler):
             name = self.final_storage_name(k)
             self._add_dataset(name=name, array=summary[k], dimensions=("variable",))
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
-        LOG.info(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
+        LOG.debug(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
 
     def check_statistics(self):
         pass
