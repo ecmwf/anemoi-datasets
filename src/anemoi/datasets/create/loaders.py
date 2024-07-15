@@ -78,6 +78,10 @@ def set_to_test_mode(cfg):
                     LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
             for k, v in obj.items():
                 set_element_to_test(v)
+            if "constants" in obj:
+                constants = obj["constants"]
+                if "param" in constants and isinstance(constants["param"], list):
+                    constants["param"] = ["cos_latitude"]
 
     set_element_to_test(cfg)
 
