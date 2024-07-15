@@ -143,145 +143,6 @@ def _data_request(data):
     return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
-class Coords:
-    def __init__(self, owner):
-        self.owner = owner
-
-    @cached_property
-    def _build_coords(self):
-        from_data = self.owner.get_cube().user_coords
-        from_config = self.owner.context.order_by
-
-        keys_from_config = list(from_config.keys())
-        keys_from_data = list(from_data.keys())
-        assert (
-            keys_from_data == keys_from_config
-        ), f"Critical error: {keys_from_data=} != {keys_from_config=}. {self.owner=}"
-
-        variables_key = list(from_config.keys())[1]
-        ensembles_key = list(from_config.keys())[2]
-
-        if isinstance(from_config[variables_key], (list, tuple)):
-            assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
-                from_data[variables_key],
-                from_config[variables_key],
-            )
-
-        self._variables = from_data[variables_key]  # "param_level"
-        self._ensembles = from_data[ensembles_key]  # "number"
-
-        first_field = self.owner.datasource[0]
-        grid_points = first_field.grid_points()
-
-        lats, lons = grid_points
-
-        assert len(lats) == len(lons), (len(lats), len(lons), first_field)
-        assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
-
-        north = np.amax(lats)
-        south = np.amin(lats)
-        east = np.amax(lons)
-        west = np.amin(lons)
-
-        assert -90 <= south <= north <= 90, (south, north, first_field)
-        assert (-180 <= west <= east <= 180) or (0 <= west <= east <= 360), (
-            west,
-            east,
-            first_field,
-        )
-
-        grid_values = list(range(len(grid_points[0])))
-
-        self._grid_points = grid_points
-        self._resolution = first_field.resolution
-        self._grid_values = grid_values
-        self._field_shape = first_field.shape
-        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
-
-    @cached_property
-    def variables(self):
-        self._build_coords
-        return self._variables
-
-    @cached_property
-    def ensembles(self):
-        self._build_coords
-        return self._ensembles
-
-    @cached_property
-    def resolution(self):
-        self._build_coords
-        return self._resolution
-
-    @cached_property
-    def grid_values(self):
-        self._build_coords
-        return self._grid_values
-
-    @cached_property
-    def grid_points(self):
-        self._build_coords
-        return self._grid_points
-
-    @cached_property
-    def field_shape(self):
-        self._build_coords
-        return self._field_shape
-
-    @cached_property
-    def proj_string(self):
-        self._build_coords
-        return self._proj_string
-
-
-class HasCoordsMixin:
-    @cached_property
-    def variables(self):
-        return self._coords.variables
-
-    @cached_property
-    def ensembles(self):
-        return self._coords.ensembles
-
-    @cached_property
-    def resolution(self):
-        return self._coords.resolution
-
-    @cached_property
-    def grid_values(self):
-        return self._coords.grid_values
-
-    @cached_property
-    def grid_points(self):
-        return self._coords.grid_points
-
-    @cached_property
-    def field_shape(self):
-        return self._coords.field_shape
-
-    @cached_property
-    def proj_string(self):
-        return self._coords.proj_string
-
-    @cached_property
-    def shape(self):
-        return [
-            len(self.dates),
-            len(self.variables),
-            len(self.ensembles),
-            len(self.grid_values),
-        ]
-
-    @cached_property
-    def coords(self):
-        return {
-            "dates": self.dates,
-            "variables": self.variables,
-            "ensembles": self.ensembles,
-            "values": self.grid_values,
-        }
-
-
 class Action:
     def __init__(self, context, action_path, /, *args, **kwargs):
         if "args" in kwargs and "kwargs" in kwargs:
@@ -336,15 +197,15 @@ def shorten(dates):
     return dates
 
 
-class Result(HasCoordsMixin):
+class Result:
     empty = False
+    _coords_already_built = False
 
     def __init__(self, context, action_path, dates):
         assert isinstance(context, ActionContext), type(context)
         assert isinstance(action_path, list), action_path
 
         self.context = context
-        self._coords = Coords(self)
         self.dates = dates
         self.action_path = action_path
 
@@ -509,6 +370,109 @@ class Result(HasCoordsMixin):
 
     def _trace_datasource(self, *args, **kwargs):
         return f"{self.__class__.__name__}({shorten(self.dates)})"
+
+    def build_coords(self):
+        if self._coords_already_built:
+            return
+        from_data = self.get_cube().user_coords
+        from_config = self.context.order_by
+
+        keys_from_config = list(from_config.keys())
+        keys_from_data = list(from_data.keys())
+        assert keys_from_data == keys_from_config, f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
+
+        variables_key = list(from_config.keys())[1]
+        ensembles_key = list(from_config.keys())[2]
+
+        if isinstance(from_config[variables_key], (list, tuple)):
+            assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
+                from_data[variables_key],
+                from_config[variables_key],
+            )
+
+        self._variables = from_data[variables_key]  # "param_level"
+        self._ensembles = from_data[ensembles_key]  # "number"
+
+        first_field = self.datasource[0]
+        grid_points = first_field.grid_points()
+
+        lats, lons = grid_points
+
+        assert len(lats) == len(lons), (len(lats), len(lons), first_field)
+        assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
+
+        north = np.amax(lats)
+        south = np.amin(lats)
+        east = np.amax(lons)
+        west = np.amin(lons)
+
+        assert -90 <= south <= north <= 90, (south, north, first_field)
+        assert (-180 <= west <= east <= 180) or (0 <= west <= east <= 360), (
+            west,
+            east,
+            first_field,
+        )
+
+        grid_values = list(range(len(grid_points[0])))
+
+        self._grid_points = grid_points
+        self._resolution = first_field.resolution
+        self._grid_values = grid_values
+        self._field_shape = first_field.shape
+        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
+
+    @property
+    def variables(self):
+        self.build_coords()
+        return self._variables
+
+    @property
+    def ensembles(self):
+        self.build_coords()
+        return self._ensembles
+
+    @property
+    def resolution(self):
+        self.build_coords()
+        return self._resolution
+
+    @property
+    def grid_values(self):
+        self.build_coords()
+        return self._grid_values
+
+    @property
+    def grid_points(self):
+        self.build_coords()
+        return self._grid_points
+
+    @property
+    def field_shape(self):
+        self.build_coords()
+        return self._field_shape
+
+    @property
+    def proj_string(self):
+        self.build_coords()
+        return self._proj_string
+
+    @cached_property
+    def shape(self):
+        return [
+            len(self.dates),
+            len(self.variables),
+            len(self.ensembles),
+            len(self.grid_values),
+        ]
+
+    @cached_property
+    def coords(self):
+        return {
+            "dates": self.dates,
+            "variables": self.variables,
+            "ensembles": self.ensembles,
+            "values": self.grid_values,
+        }
 
 
 class EmptyResult(Result):

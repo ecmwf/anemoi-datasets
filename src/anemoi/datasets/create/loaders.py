@@ -78,6 +78,10 @@ def set_to_test_mode(cfg):
                     LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
             for k, v in obj.items():
                 set_element_to_test(v)
+            if "constants" in obj:
+                constants = obj["constants"]
+                if "param" in constants and isinstance(constants["param"], list):
+                    constants["param"] = ["cos_latitude"]
 
     set_element_to_test(cfg)
 
@@ -174,7 +178,7 @@ class DatasetHandler(GenericDatasetHandler):
 class DatasetHandlerWithStatistics(GenericDatasetHandler):
     def __init__(self, statistics_tmp=None, **kwargs):
         super().__init__(**kwargs)
-        statistics_tmp = kwargs.get("statistics_tmp") or os.path.join(self.path + ".tmp_data", "statistics")
+        statistics_tmp = kwargs.get("statistics_tmp") or os.path.join(self.path + ".storage_for_statistics.tmp")
         self.tmp_statistics = TmpStatistics(statistics_tmp)
 
 
@@ -404,8 +408,6 @@ class ContentLoader(Loader):
         self.n_groups = len(self.groups)
 
     def load(self):
-        self.registry.add_to_history("loading_data_start", parts=self.parts)
-
         for igroup, group in enumerate(self.groups):
             if not self.chunk_filter(igroup):
                 continue
@@ -425,7 +427,6 @@ class ContentLoader(Loader):
             self.load_result(result)
             self.registry.set_flag(igroup)
 
-        self.registry.add_to_history("loading_data_end", parts=self.parts)
         self.registry.add_provenance(name="provenance_load")
         self.tmp_statistics.add_provenance(name="provenance_load", config=self.main_config)
 
@@ -760,7 +761,7 @@ class GenericAdditions(GenericDatasetHandler):
             name = self.final_storage_name(k)
             self._add_dataset(name=name, array=summary[k], dimensions=("variable",))
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
-        LOG.info(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
+        LOG.debug(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
 
     def check_statistics(self):
         pass
@@ -805,7 +806,7 @@ class StatisticsAddition(GenericAdditions):
 
     @property
     def tmp_storage_path(self):
-        return f"{self.path}.tmp_storage_statistics"
+        return f"{self.path}.storage_statistics.tmp"
 
     def final_storage_name(self, k):
         return k
@@ -883,7 +884,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
 
     @property
     def tmp_storage_path(self):
-        return f"{self.path}.tmp_storage_statistics_{self.delta}h"
+        return f"{self.path}.storage_statistics_{self.delta}h.tmp"
 
     def final_storage_name(self, k):
         return self.final_storage_name_from_delta(k, delta=self.delta)

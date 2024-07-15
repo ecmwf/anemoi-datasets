@@ -89,10 +89,13 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
             continue
         print("---")
         print(f"❗ Negative variance for {name=}, variance={y}")
-        print(f" max={maximum[i]} min={minimum[i]} mean={mean[i]} count={count[i]} sum={sums[i]} square={squares[i]}")
+        print(f" min={minimum[i]} max={maximum[i]} mean={mean[i]} count={count[i]} sums={sums[i]} squares={squares[i]}")
         print(f" -> sums: min={np.min(sums[i])}, max={np.max(sums[i])}, argmin={np.argmin(sums[i])}")
         print(f" -> squares: min={np.min(squares[i])}, max={np.max(squares[i])}, argmin={np.argmin(squares[i])}")
         print(f" -> count: min={np.min(count[i])}, max={np.max(count[i])}, argmin={np.argmin(count[i])}")
+        print(
+            f" squares / count - mean * mean =  {squares[i] / count[i]} - {mean[i] * mean[i]} = {squares[i] / count[i] - mean[i] * mean[i]}"
+        )
 
     raise ValueError("Negative variance")
 
@@ -298,13 +301,43 @@ class StatAggregator:
         assert sums.shape == count.shape == squares.shape == mean.shape == minimum.shape == maximum.shape
 
         x = squares / count - mean * mean
-        # remove negative variance due to numerical errors
-        # x[- 1e-15 < (x / (np.sqrt(squares / count) + np.abs(mean))) < 0] = 0
-        check_variance(x, self.variables_names, minimum, maximum, mean, count, sums, squares)
-        stdev = np.sqrt(x)
 
-        for j, name in enumerate(self.variables_names):
-            check_data_values(np.array([mean[j]]), name=name, allow_nans=False)
+        # def fix_variance(x, name, minimum, maximum, mean, count, sums, squares):
+        #     assert x.shape == minimum.shape == maximum.shape == mean.shape == count.shape == sums.shape == squares.shape
+        #     assert x.shape == (1,)
+        #     x, minimum, maximum, mean, count, sums, squares = x[0], minimum[0], maximum[0], mean[0], count[0], sums[0], squares[0]
+        #     if x >= 0:
+        #         return x
+        #
+        #     order = np.sqrt((squares / count + mean * mean)/2)
+        #     range = maximum - minimum
+        #     LOG.warning(f"Negative variance for {name=}, variance={x}")
+        #     LOG.warning(f"square / count - mean * mean =  {squares / count} - {mean * mean} = {squares / count - mean * mean}")
+        #     LOG.warning(f"Variable order of magnitude is {order}.")
+        #     LOG.warning(f"Range is {range} ({maximum=} - {minimum=}).")
+        #     LOG.warning(f"Count is {count}.")
+        #     if abs(x) < order * 1e-6 and abs(x) < range * 1e-6:
+        #         LOG.warning(f"Variance is negative but very small, setting to 0.")
+        #         return x*0
+        #     return x
+
+        for i, name in enumerate(self.variables_names):
+            # remove negative variance due to numerical errors
+            # Not needed for now, fix_variance is disabled
+            # x[i] = fix_variance(x[i:i+1], name, minimum[i:i+1], maximum[i:i+1], mean[i:i+1], count[i:i+1], sums[i:i+1], squares[i:i+1])
+            check_variance(
+                x[i : i + 1],
+                [name],
+                minimum[i : i + 1],
+                maximum[i : i + 1],
+                mean[i : i + 1],
+                count[i : i + 1],
+                sums[i : i + 1],
+                squares[i : i + 1],
+            )
+            check_data_values(np.array([mean[i]]), name=name, allow_nans=False)
+
+        stdev = np.sqrt(x)
 
         return Summary(
             minimum=minimum,
