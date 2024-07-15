@@ -10,9 +10,8 @@
 import logging
 import os
 
-from anemoi.utils.humanize import bytes
-
-from anemoi.datasets.create.utils import progress_bar
+import tqdm
+from anemoi.utils.humanize import bytes_to_human
 
 LOG = logging.getLogger(__name__)
 
@@ -22,14 +21,14 @@ def compute_directory_sizes(path):
         return None
 
     size, n = 0, 0
-    bar = progress_bar(iterable=os.walk(path), desc=f"Computing size of {path}")
+    bar = tqdm.tqdm(iterable=os.walk(path), desc=f"Computing size of {path}")
     for dirpath, _, filenames in bar:
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
             size += os.path.getsize(file_path)
             n += 1
 
-    LOG.info(f"Total size: {bytes(size)}")
+    LOG.info(f"Total size: {bytes_to_human(size)}")
     LOG.info(f"Total number of files: {n}")
 
     return dict(total_size=size, total_number_of_files=n)

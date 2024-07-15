@@ -12,7 +12,6 @@ from contextlib import contextmanager
 
 import numpy as np
 from earthkit.data import settings
-from tqdm.auto import tqdm
 
 
 def cache_context(dirname):
@@ -86,19 +85,3 @@ def normalize_and_check_dates(dates, start, end, frequency, dtype="datetime64[s]
         assert d1 == d2, (i, d1, d2)
 
     return dates_
-
-
-def progress_bar(*, iterable=None, total=None, initial=0, desc=None, position=None):
-    return tqdm(
-        iterable=iterable,
-        total=total,
-        initial=initial,
-        unit_scale=True,
-        unit_divisor=1024,
-        unit="B",
-        disable=False,
-        leave=False,
-        desc=desc,
-        position=position,
-        # dynamic_ncols=True, # make this the default?
-    )
