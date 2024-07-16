@@ -92,15 +92,19 @@ optional-dependencies.dev = [
   "pyproj",
   "pytest",
   "requests",
+  "rstfmt",
   "s3fs",
   "sphinx",
+  "sphinx-argparse<0.5",
   "sphinx-rtd-theme",
 ]
 
 optional-dependencies.docs = [
   "nbsphinx",
   "pandoc",
+  "rstfmt",
   "sphinx",
+  "sphinx-argparse<0.5",
   "sphinx-rtd-theme",
 ]
 
@@ -109,9 +113,11 @@ optional-dependencies.remote = [
   "requests",
   "s3fs",
 ]
+
 optional-dependencies.tests = [
   "pytest",
 ]
+
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
 urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
