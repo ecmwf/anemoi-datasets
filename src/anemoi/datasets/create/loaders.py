@@ -345,7 +345,7 @@ class InitialiserLoader(Loader):
         if check_name:
             basename, ext = os.path.splitext(os.path.basename(self.path))  # noqa: F841
             ds_name = DatasetName(basename, resolution, dates[0], dates[-1], frequency)
-            ds_name.raise_if_not_valid(print=self.print)
+            ds_name.raise_if_not_valid()
 
         if len(dates) != total_shape[0]:
             raise ValueError(
