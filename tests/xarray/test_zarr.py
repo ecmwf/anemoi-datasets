@@ -30,12 +30,14 @@ def test_arco_era5():
 def test_weatherbench():
     ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
 
+    # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
+
     flavour = {
         "rules": {
             "latitude": {"name": "latitude"},
             "longitude": {"name": "longitude"},
             "step": {"name": "prediction_timedelta"},
-            "time": {"name": "time"},
+            "date": {"name": "time"},
             "level": {"name": "level"},
         },
         "levtype": "pl",
@@ -45,6 +47,8 @@ def test_weatherbench():
 
     assert len(fs) == 2430240
 
+    assert fs[0].metadata("valid_datetime") == "2020-01-01T00:00:00", fs[0].metadata("valid_datetime")
+
 
 if __name__ == "__main__":
-    test_arco_era5()
+    test_weatherbench()

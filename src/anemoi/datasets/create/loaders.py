@@ -136,7 +136,12 @@ class GenericDatasetHandler:
         z = zarr.open(self.path, "r")
         missing_dates = z.attrs.get("missing_dates", [])
         missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-        assert missing_dates == self.missing_dates, (missing_dates, self.missing_dates)
+
+        if missing_dates != self.missing_dates:
+            LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+            LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+            LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  self.missing_dates)}")
+            raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
     @cached_property
     def registry(self):
@@ -200,8 +205,8 @@ class Loader(DatasetHandlerWithStatistics):
 
     @property
     def allow_nans(self):
-        if "allow_nans" in self.main_config:
-            return self.main_config.allow_nans
+        if "allow_nans" in self.main_config.build:
+            return self.main_config.build.allow_nans
 
         return self.main_config.statistics.get("allow_nans", [])
 
@@ -323,7 +328,7 @@ class InitialiserLoader(Loader):
         metadata["ensemble_dimension"] = len(ensembles)
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.main_config.get("allow_nans", False)
+        metadata["allow_nans"] = self.main_config.build.get("allow_nans", False)
         metadata["resolution"] = resolution
 
         metadata["data_request"] = self.minimal_input.data_request

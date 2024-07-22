@@ -96,7 +96,7 @@ class ValuesDates(Dates):
 
 
 class StartEndDates(Dates):
-    def __init__(self, start, end, frequency=1, **kwargs):
+    def __init__(self, start, end, frequency=1, months=None, **kwargs):
         frequency = frequency_to_hours(frequency)
 
         def _(x):
@@ -128,6 +128,12 @@ class StartEndDates(Dates):
         date = start
         self.values = []
         while date <= end:
+
+            if months is not None:
+                if date.month not in months:
+                    date += increment
+                    continue
+
             self.values.append(date)
             date += increment
 
