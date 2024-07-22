@@ -8,6 +8,7 @@
 #
 
 
+from .coordinates import DateCoordinate
 from .coordinates import LatitudeCoordinate
 from .coordinates import LevelCoordinate
 from .coordinates import LongitudeCoordinate
@@ -112,6 +113,17 @@ class CoordinateGuesser:
         if d is not None:
             return d
 
+        d = self._is_date(
+            c,
+            axis=axis,
+            name=name,
+            long_name=long_name,
+            standard_name=standard_name,
+            units=units,
+        )
+        if d is not None:
+            return d
+
         d = self._is_level(
             c,
             axis=axis,
@@ -202,6 +214,12 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if name == "time":
             return TimeCoordinate(c)
 
+    def _is_date(self, c, *, axis, name, long_name, standard_name, units):
+        if standard_name == "forecast_reference_time":
+            return DateCoordinate(c)
+        if name == "forecast_reference_time":
+            return DateCoordinate(c)
+
     def _is_step(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "forecast_period":
             return StepCoordinate(c)
@@ -283,6 +301,10 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_step(self, c, *, axis, name, long_name, standard_name, units):
         if self._match(c, "step", locals()):
             return StepCoordinate(c)
+
+    def _is_date(self, c, *, axis, name, long_name, standard_name, units):
+        if self._match(c, "date", locals()):
+            return DateCoordinate(c)
 
     def _is_level(self, c, *, axis, name, long_name, standard_name, units):
 

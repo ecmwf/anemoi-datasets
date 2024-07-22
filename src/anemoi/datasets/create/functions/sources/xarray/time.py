@@ -13,23 +13,27 @@ import datetime
 
 class Time:
     @classmethod
-    def from_coordinates(cls, forecast_reference_time, coordinates):
+    def from_coordinates(cls, coordinates):
         time_coordinate = [c for c in coordinates if c.is_time]
         step_coordinate = [c for c in coordinates if c.is_step]
+        date_coordinate = [c for c in coordinates if c.is_date]
 
-        if forecast_reference_time is None and len(time_coordinate) == 1 and len(step_coordinate) == 1:
+        if len(date_coordinate) == 0 and len(time_coordinate) == 1 and len(step_coordinate) == 1:
             return ForecasstFromValidTimeAndStep(step_coordinate[0])
 
-        if forecast_reference_time is None and len(time_coordinate) == 1 and len(step_coordinate) == 0:
+        if len(date_coordinate) == 0 and len(time_coordinate) == 1 and len(step_coordinate) == 0:
             return Analysis()
 
-        if forecast_reference_time is None and len(time_coordinate) == 0 and len(step_coordinate) == 0:
+        if len(date_coordinate) == 0 and len(time_coordinate) == 0 and len(step_coordinate) == 0:
             return Constant()
 
-        if forecast_reference_time is not None and len(time_coordinate) == 1 and len(step_coordinate) == 0:
-            return ForecastFromValidTimeAndBaseTime(forecast_reference_time)
+        if len(date_coordinate) == 1 and len(time_coordinate) == 1 and len(step_coordinate) == 0:
+            return ForecastFromValidTimeAndBaseTime(date_coordinate[0])
 
-        raise NotImplementedError(f"{forecast_reference_time=} {time_coordinate=} {step_coordinate=}")
+        if len(date_coordinate) == 1 and len(time_coordinate) == 0 and len(step_coordinate) == 1:
+            return ForecastFromBaseTimeAndDate(date_coordinate[0], step_coordinate[0])
+
+        raise NotImplementedError(f"{date_coordinate=} {time_coordinate=} {step_coordinate=}")
 
 
 class Constant(Time):
@@ -66,17 +70,29 @@ class ForecasstFromValidTimeAndStep(Time):
 
 
 class ForecastFromValidTimeAndBaseTime(Time):
-    def __init__(self, forecast_reference_time):
-        self.forecast_reference_time = forecast_reference_time
-        assert isinstance(self.forecast_reference_time, datetime.datetime)
+    def __init__(self, date_coordinate):
+        self.date_coordinate = date_coordinate
 
     def fill_time_metadata(self, time, metadata):
 
-        step = time - self.forecast_reference_time
+        step = time - self.date_coordinate
 
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = self.forecast_reference_time.strftime("%Y%m%d")
-        metadata["time"] = self.forecast_reference_time.strftime("%H%M")
+        metadata["date"] = self.date_coordinate.single_value.strftime("%Y%m%d")
+        metadata["time"] = self.date_coordinate.single_value.strftime("%H%M")
+        metadata["step"] = int(hours)
+
+
+class ForecastFromBaseTimeAndDate(Time):
+    def __init__(self, date_coordinate, step_coordinate):
+        self.date_coordinate = date_coordinate
+        self.step_coordinate = step_coordinate
+
+    def fill_time_metadata(self, time, metadata):
+        metadata["date"] = self.date_coordinate.single_value.strftime("%Y%m%d")
+        metadata["time"] = self.date_coordinate.single_value.strftime("%H%M")
+        hours = self.step_coordinate.total_seconds() / 3600
+        assert int(hours) == hours
         metadata["step"] = int(hours)

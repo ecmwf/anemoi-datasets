@@ -54,6 +54,7 @@ class Coordinate:
     is_lon = False
     is_time = False
     is_step = False
+    is_date = False
 
     def __init__(self, variable):
         self.variable = variable
@@ -157,6 +158,10 @@ class Coordinate:
         # Subclasses to format values that will be added to the field metadata
         return value
 
+    @property
+    def single_value(self):
+        return extract_single_value(self.variable)
+
 
 class TimeCoordinate(Coordinate):
     is_time = True
@@ -164,6 +169,14 @@ class TimeCoordinate(Coordinate):
 
     def index(self, time):
         return super().index(np.datetime64(time))
+
+
+class DateCoordinate(Coordinate):
+    is_date = True
+    mars_names = ("date",)
+
+    def index(self, date):
+        return super().index(np.datetime64(date))
 
 
 class StepCoordinate(Coordinate):
@@ -210,7 +223,7 @@ class XCoordinate(Coordinate):
 
 class YCoordinate(Coordinate):
     is_grid = True
-    mars_names = ("x",)
+    mars_names = ("y",)
 
 
 class ScalarCoordinate(Coordinate):

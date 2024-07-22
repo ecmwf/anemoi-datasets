@@ -13,7 +13,6 @@ import logging
 import yaml
 from earthkit.data.core.fieldlist import FieldList
 
-from .coordinates import extract_single_value
 from .coordinates import is_scalar as is_scalar
 from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
@@ -76,17 +75,6 @@ class XarrayFieldList(FieldList):
             _skip_attr(v, "bounds")
             _skip_attr(v, "grid_mapping")
 
-        forecast_reference_time = None
-        # Special variables
-        for name in ds.data_vars:
-            if name in skip:
-                continue
-
-            v = ds[name]
-            if v.attrs.get("standard_name", "").lower() == "forecast_reference_time":
-                forecast_reference_time = extract_single_value(v)
-                continue
-
         # Select only geographical variables
         for name in ds.data_vars:
 
@@ -116,7 +104,7 @@ class XarrayFieldList(FieldList):
                     var=v,
                     coordinates=coordinates,
                     grid=guess.grid(coordinates),
-                    time=Time.from_coordinates(forecast_reference_time, coordinates),
+                    time=Time.from_coordinates(coordinates),
                     metadata={},
                 )
             )
