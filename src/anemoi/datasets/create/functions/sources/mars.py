@@ -218,7 +218,11 @@ def mars(context, dates, *requests, request_already_using_valid_datetime=False, 
                 raise ValueError(
                     f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
                 )
-        ds = ds + from_source("mars", **r)
+        try:
+            ds = ds + from_source("mars", **r)
+        except Exception as e:
+            if "File is empty:" not in str(e):
+                raise
     return ds
 
 
