@@ -10,11 +10,17 @@ import os
 import warnings
 from functools import cached_property
 
+import numpy as np
+
 LOG = logging.getLogger(__name__)
 
 
 class Dataset:
     arguments = {}
+
+    def stack(self, lst):
+        # print("stack", self.__class__.__name__, len(lst), [type(i) for i in lst])
+        return np.stack(lst)
 
     @cached_property
     def _len(self):

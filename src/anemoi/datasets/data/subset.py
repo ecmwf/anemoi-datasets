@@ -8,8 +8,6 @@
 import logging
 from functools import cached_property
 
-import numpy as np
-
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -62,10 +60,7 @@ class Subset(Forwards):
             return self.dataset[indices]
 
         lst = [self.dataset[i] for i in indices]
-        if all(isinstance(i, np.ndarray) for i in lst):
-            return np.stack(lst)
-
-        return tuple([self.dataset[i] for i in indices])
+        return self.dataset.stack(lst)
 
     @debug_indexing
     @expand_list_indexing
