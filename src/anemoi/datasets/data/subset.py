@@ -60,7 +60,12 @@ class Subset(Forwards):
         indices = make_slice_or_index_from_list_or_tuple(indices)
         if isinstance(indices, slice):
             return self.dataset[indices]
-        return np.stack([self.dataset[i] for i in indices])
+
+        lst = [self.dataset[i] for i in indices]
+        if all(isinstance(i, np.ndarray) for i in lst):
+            return np.stack(lst)
+
+        return tuple([self.dataset[i] for i in indices])
 
     @debug_indexing
     @expand_list_indexing
