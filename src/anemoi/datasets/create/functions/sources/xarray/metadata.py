@@ -100,7 +100,9 @@ class XArrayMetadata(RawMetadata):
                 else:
                     return kwargs.get("default", None)
 
-        key = self._mapping.from_user(key)
+        if self._mapping is not None:
+            key = self._mapping.from_user(key)
+
         return super()._get(key, **kwargs)
 
 

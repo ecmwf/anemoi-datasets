@@ -91,8 +91,8 @@ class ForecastFromBaseTimeAndDate(Time):
         self.step_coordinate = step_coordinate
 
     def fill_time_metadata(self, time, metadata):
-        metadata["date"] = self.date_coordinate.single_value.strftime("%Y%m%d")
-        metadata["time"] = self.date_coordinate.single_value.strftime("%H%M")
-        hours = self.step_coordinate.total_seconds() / 3600
+        metadata["date"] = time.strftime("%Y%m%d")
+        metadata["time"] = time.strftime("%H%M")
+        hours = metadata[self.step_coordinate.name].total_seconds() / 3600
         assert int(hours) == hours
         metadata["step"] = int(hours)

@@ -30,7 +30,7 @@ def extract_single_value(variable):
     if np.issubdtype(variable.values.dtype, np.datetime64):
         if len(shape) == 0:
             return to_datetime(variable.values)  # Convert to python datetime
-        assert False, (shape, variable.values)
+        assert False, (shape, variable.values[:2])
 
     if np.issubdtype(variable.values.dtype, np.timedelta64):
         if len(shape) == 0:
