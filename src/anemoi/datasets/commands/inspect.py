@@ -16,7 +16,7 @@ import numpy as np
 import semantic_version
 import tqdm
 from anemoi.utils.humanize import bytes
-from anemoi.utils.humanize import number
+from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.humanize import when
 from anemoi.utils.text import dotted_line
 from anemoi.utils.text import progress
@@ -215,9 +215,9 @@ class Version:
             total_size, n = compute_directory_size(self.path)
 
         if total_size is not None:
-            print(f"💽 Size       : {bytes(total_size)} ({number(total_size)})")
+            print(f"💽 Size       : {bytes(total_size)} ({bytes_to_human(total_size)})")
         if n is not None:
-            print(f"📁 Files      : {number(n)}")
+            print(f"📁 Files      : {n}")
 
     @property
     def statistics(self):
