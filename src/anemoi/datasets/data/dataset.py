@@ -18,10 +18,6 @@ LOG = logging.getLogger(__name__)
 class Dataset:
     arguments = {}
 
-    def stack(self, lst):
-        # print("stack", self.__class__.__name__, len(lst), [type(i) for i in lst])
-        return np.stack(lst)
-
     def mutate(self):
         return self
 
@@ -124,7 +120,6 @@ class Dataset:
         return range(0, len(self), step)
 
     def _shuffle_indices(self):
-        import numpy as np
 
         return np.random.permutation(len(self))
 
