@@ -56,7 +56,7 @@ class DatasetName:
             raise ValueError(self.error_message)
 
     def _parse(self, name):
-        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h)-v(\d+)-?(.*)$"
+        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h)-v(\d+)-?([a-zA-Z0-9-]+)$"
         match = re.match(pattern, name)
 
         assert match, (name, pattern)
@@ -136,18 +136,19 @@ class StatisticsValueError(ValueError):
     pass
 
 
-def check_data_values(arr, *, name: str, log=[], allow_nan=False):
-    if allow_nan is False:
-        allow_nan = lambda x: False  # noqa: E731
+def check_data_values(arr, *, name: str, log=[], allow_nans=False):
 
-    if allow_nan(name):
+    if (isinstance(allow_nans, (set, list, tuple, dict)) and name in allow_nans) or allow_nans:
         arr = arr[~np.isnan(arr)]
+
+    assert arr.size > 0, (name, *log)
 
     min, max = arr.min(), arr.max()
     assert not (np.isnan(arr).any()), (name, min, max, *log)
 
     if min == 9999.0:
         warnings.warn(f"Min value 9999 for {name}")
+
     if max == 9999.0:
         warnings.warn(f"Max value 9999 for {name}")
 

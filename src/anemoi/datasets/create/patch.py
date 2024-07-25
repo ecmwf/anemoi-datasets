@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import json
+import logging
 import os
 
 import zarr
+
+LOG = logging.getLogger(__name__)
 
 
 def fix_order_by(order_by):
@@ -48,7 +51,7 @@ def fix_provenance(provenance):
             provenance["module_versions"][k] = os.path.join("...", os.path.basename(v))
 
     for k, v in list(provenance["git_versions"].items()):
-        print(k, v)
+        LOG.debug(k, v)
         modified_files = v["git"].get("modified_files", [])
         untracked_files = v["git"].get("untracked_files", [])
         if not isinstance(modified_files, int):
@@ -63,21 +66,21 @@ def fix_provenance(provenance):
             }
         )
 
-    print(json.dumps(provenance, indent=2))
+    LOG.debug(json.dumps(provenance, indent=2))
     # assert False
     return provenance
 
 
 def apply_patch(path, verbose=True, dry_run=False):
-    print("====================")
-    print(f"Patching {path}")
-    print("====================")
+    LOG.debug("====================")
+    LOG.debug(f"Patching {path}")
+    LOG.debug("====================")
 
     try:
         attrs = zarr.open(path, mode="r").attrs.asdict()
     except zarr.errors.PathNotFoundError as e:
-        print(f"Failed to open {path}")
-        print(e)
+        LOG.error(f"Failed to open {path}")
+        LOG.error(e)
         exit(0)
 
     FIXES = {
@@ -94,23 +97,23 @@ def apply_patch(path, verbose=True, dry_run=False):
     for k, v in attrs.items():
         v = attrs[k]
         if k in REMOVE:
-            print(f"✅ Remove {k}")
+            LOG.info(f"✅ Remove {k}")
             continue
 
         if k not in FIXES:
             assert not k.startswith("provenance"), f"[{k}]"
-            print(f"✅ Don't fix {k}")
+            LOG.debug(f"✅ Don't fix {k}")
             fixed_attrs[k] = v
             continue
 
         new_v = FIXES[k](v)
         if json.dumps(new_v, sort_keys=True) != json.dumps(v, sort_keys=True):
-            print(f"✅ Fix {k}")
+            LOG.info(f"✅ Fix {k}")
             if verbose:
-                print(f"  Before : {k}= {v}")
-                print(f"  After  : {k}= {new_v}")
+                LOG.info(f"  Before : {k}= {v}")
+                LOG.info(f"  After  : {k}= {new_v}")
         else:
-            print(f"✅ Unchanged {k}")
+            LOG.debug(f"✅ Unchanged {k}")
         fixed_attrs[k] = new_v
 
     if dry_run:
@@ -125,6 +128,6 @@ def apply_patch(path, verbose=True, dry_run=False):
 
     after = json.dumps(z.attrs.asdict(), sort_keys=True)
     if before != after:
-        print("CHANGED")
+        LOG.info("Dataset changed by patch")
 
     assert json.dumps(z.attrs.asdict(), sort_keys=True) == json.dumps(fixed_attrs, sort_keys=True)

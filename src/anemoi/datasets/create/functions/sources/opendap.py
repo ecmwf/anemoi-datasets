@@ -7,8 +7,9 @@
 # nor does it submit to any jurisdiction.
 #
 
-from .netcdf import load_netcdfs
+
+from .xarray import load_many
 
 
 def execute(context, dates, url, *args, **kwargs):
-    return load_netcdfs("🌐", "url", context, dates, url, *args, **kwargs)
+    return load_many("🌐", context, dates, url, *args, **kwargs)

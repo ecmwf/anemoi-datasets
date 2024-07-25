@@ -5,6 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 import datetime
+import json
 import logging
 import os
 import time
@@ -13,7 +14,10 @@ import warnings
 from functools import cached_property
 
 import numpy as np
+import tqdm
 import zarr
+from anemoi.utils.config import DotDict
+from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
@@ -25,7 +29,6 @@ from anemoi.datasets.dates.groups import Groups
 from .check import DatasetName
 from .check import check_data_values
 from .chunks import ChunkFilter
-from .config import DictObj
 from .config import build_output
 from .config import loader_config
 from .input import build_input
@@ -35,8 +38,6 @@ from .statistics import check_variance
 from .statistics import compute_statistics
 from .statistics import default_statistics_dates
 from .utils import normalize_and_check_dates
-from .utils import progress_bar
-from .utils import seconds
 from .writer import ViewCacheArray
 from .zarr import ZarrBuiltRegistry
 from .zarr import add_zarr_dataset
@@ -65,7 +66,7 @@ def set_to_test_mode(cfg):
             for v in obj:
                 set_element_to_test(v)
             return
-        if isinstance(obj, (dict, DictObj)):
+        if isinstance(obj, (dict, DotDict)):
             if "grid" in obj:
                 previous = obj["grid"]
                 obj["grid"] = "20./20."
@@ -77,12 +78,16 @@ def set_to_test_mode(cfg):
                     LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
             for k, v in obj.items():
                 set_element_to_test(v)
+            if "constants" in obj:
+                constants = obj["constants"]
+                if "param" in constants and isinstance(constants["param"], list):
+                    constants["param"] = ["cos_latitude"]
 
     set_element_to_test(cfg)
 
 
 class GenericDatasetHandler:
-    def __init__(self, *, path, print=print, **kwargs):
+    def __init__(self, *, path, use_threads=False, **kwargs):
 
         # Catch all floating point errors, including overflow, sqrt(<0), etc
         np.seterr(all="raise", under="warn")
@@ -91,33 +96,33 @@ class GenericDatasetHandler:
 
         self.path = path
         self.kwargs = kwargs
-        self.print = print
+        self.use_threads = use_threads
         if "test" in kwargs:
             self.test = kwargs["test"]
 
     @classmethod
-    def from_config(cls, *, config, path, print=print, **kwargs):
+    def from_config(cls, *, config, path, use_threads=False, **kwargs):
         """Config is the path to the config file or a dict with the config"""
 
         assert isinstance(config, dict) or isinstance(config, str), config
-        return cls(config=config, path=path, print=print, **kwargs)
+        return cls(config=config, path=path, use_threads=use_threads, **kwargs)
 
     @classmethod
-    def from_dataset_config(cls, *, path, print=print, **kwargs):
+    def from_dataset_config(cls, *, path, use_threads=False, **kwargs):
         """Read the config saved inside the zarr dataset and instantiate the class for this config."""
 
         assert os.path.exists(path), f"Path {path} does not exist."
         z = zarr.open(path, mode="r")
         config = z.attrs["_create_yaml_config"]
-        LOG.info(f"Config loaded from zarr config: {config}")
-        return cls.from_config(config=config, path=path, print=print, **kwargs)
+        LOG.debug("Config loaded from zarr config:\n%s", json.dumps(config, indent=4, sort_keys=True, default=str))
+        return cls.from_config(config=config, path=path, use_threads=use_threads, **kwargs)
 
     @classmethod
-    def from_dataset(cls, *, path, **kwargs):
+    def from_dataset(cls, *, path, use_threads=False, **kwargs):
         """Instanciate the class from the path to the zarr dataset, without config."""
 
         assert os.path.exists(path), f"Path {path} does not exist."
-        return cls(path=path, **kwargs)
+        return cls(path=path, use_threads=use_threads, **kwargs)
 
     def read_dataset_metadata(self):
         ds = open_dataset(self.path)
@@ -131,14 +136,22 @@ class GenericDatasetHandler:
         z = zarr.open(self.path, "r")
         missing_dates = z.attrs.get("missing_dates", [])
         missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-        assert missing_dates == self.missing_dates, (missing_dates, self.missing_dates)
+
+        if missing_dates != self.missing_dates:
+            LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+            LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+            LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  self.missing_dates)}")
+            raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
     @cached_property
     def registry(self):
-        return ZarrBuiltRegistry(self.path)
+        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
+
+    def ready(self):
+        return all(self.registry.get_flags())
 
     def update_metadata(self, **kwargs):
-        LOG.info(f"Updating metadata {kwargs}")
+        LOG.debug(f"Updating metadata {kwargs}")
         z = zarr.open(self.path, mode="w+")
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
@@ -170,7 +183,7 @@ class DatasetHandler(GenericDatasetHandler):
 class DatasetHandlerWithStatistics(GenericDatasetHandler):
     def __init__(self, statistics_tmp=None, **kwargs):
         super().__init__(**kwargs)
-        statistics_tmp = kwargs.get("statistics_tmp") or os.path.join(self.path + ".tmp_data", "statistics")
+        statistics_tmp = kwargs.get("statistics_tmp") or os.path.join(self.path + ".storage_for_statistics.tmp")
         self.tmp_statistics = TmpStatistics(statistics_tmp)
 
 
@@ -186,12 +199,16 @@ class Loader(DatasetHandlerWithStatistics):
             remapping=build_remapping(self.output.remapping),
             use_grib_paramid=self.main_config.build.use_grib_paramid,
         )
-        LOG.info("✅ INPUT_BUILDER")
-        LOG.info(builder)
+        LOG.debug("✅ INPUT_BUILDER")
+        LOG.debug(builder)
         return builder
 
-    def allow_nan(self, name):
-        return name in self.main_config.statistics.get("allow_nans", [])
+    @property
+    def allow_nans(self):
+        if "allow_nans" in self.main_config.build:
+            return self.main_config.build.allow_nans
+
+        return self.main_config.statistics.get("allow_nans", [])
 
 
 class InitialiserLoader(Loader):
@@ -202,7 +219,7 @@ class InitialiserLoader(Loader):
         if self.test:
             set_to_test_mode(self.main_config)
 
-        LOG.info(self.main_config.dates)
+        LOG.info(dict(self.main_config.dates))
 
         self.tmp_statistics.delete()
 
@@ -255,26 +272,25 @@ class InitialiserLoader(Loader):
         Read a small part of the data to get the shape of the data and the resolution and more metadata.
         """
 
-        self.print("Config loaded ok:")
-        LOG.info(self.main_config)
+        LOG.info("Config loaded ok:")
+        # LOG.info(self.main_config)
 
         dates = self.groups.dates
         frequency = dates.frequency
         assert isinstance(frequency, int), frequency
 
-        self.print(f"Found {len(dates)} datetimes.")
+        LOG.info(f"Found {len(dates)} datetimes.")
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
         LOG.info(f"Missing dates: {len(dates.missing)}")
-        lengths = [len(g) for g in self.groups]
-        self.print(f"Found {len(dates)} datetimes {'+'.join([str(_) for _ in lengths])}.")
+        lengths = tuple(len(g) for g in self.groups)
 
         variables = self.minimal_input.variables
-        self.print(f"Found {len(variables)} variables : {','.join(variables)}.")
+        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
 
         variables_with_nans = self.main_config.statistics.get("allow_nans", [])
 
         ensembles = self.minimal_input.ensembles
-        self.print(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
+        LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
 
         grid_points = self.minimal_input.grid_points
         LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
@@ -286,13 +302,13 @@ class InitialiserLoader(Loader):
         coords["dates"] = dates
         total_shape = self.minimal_input.shape
         total_shape[0] = len(dates)
-        self.print(f"total_shape = {total_shape}")
+        LOG.info(f"total_shape = {total_shape}")
 
         chunks = self.output.get_chunking(coords)
         LOG.info(f"{chunks=}")
         dtype = self.output.dtype
 
-        self.print(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
+        LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
 
         metadata = {}
         metadata["uuid"] = str(uuid.uuid4())
@@ -312,6 +328,7 @@ class InitialiserLoader(Loader):
         metadata["ensemble_dimension"] = len(ensembles)
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
+        metadata["allow_nans"] = self.main_config.build.get("allow_nans", False)
         metadata["resolution"] = resolution
 
         metadata["data_request"] = self.minimal_input.data_request
@@ -328,7 +345,7 @@ class InitialiserLoader(Loader):
         if check_name:
             basename, ext = os.path.splitext(os.path.basename(self.path))  # noqa: F841
             ds_name = DatasetName(basename, resolution, dates[0], dates[-1], frequency)
-            ds_name.raise_if_not_valid(print=self.print)
+            ds_name.raise_if_not_valid()
 
         if len(dates) != total_shape[0]:
             raise ValueError(
@@ -348,10 +365,16 @@ class InitialiserLoader(Loader):
 
         self.update_metadata(**metadata)
 
-        self._add_dataset(name="data", chunks=chunks, dtype=dtype, shape=total_shape)
-        self._add_dataset(name="dates", array=dates)
-        self._add_dataset(name="latitudes", array=grid_points[0])
-        self._add_dataset(name="longitudes", array=grid_points[1])
+        self._add_dataset(
+            name="data",
+            chunks=chunks,
+            dtype=dtype,
+            shape=total_shape,
+            dimensions=("time", "variable", "ensemble", "cell"),
+        )
+        self._add_dataset(name="dates", array=dates, dimensions=("time",))
+        self._add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
+        self._add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
 
         self.registry.create(lengths=lengths)
         self.tmp_statistics.create(exist_ok=False)
@@ -367,6 +390,9 @@ class InitialiserLoader(Loader):
         self.registry.add_to_history("init finished")
 
         assert chunks == self.get_zarr_chunks(), (chunks, self.get_zarr_chunks())
+
+        # Return the number of groups to process, so we can show a nice progress bar
+        return len(lengths)
 
 
 class ContentLoader(Loader):
@@ -387,35 +413,29 @@ class ContentLoader(Loader):
         self.n_groups = len(self.groups)
 
     def load(self):
-        self.registry.add_to_history("loading_data_start", parts=self.parts)
-
         for igroup, group in enumerate(self.groups):
             if not self.chunk_filter(igroup):
                 continue
             if self.registry.get_flag(igroup):
                 LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
                 continue
-            # self.print(f" -> Processing {igroup} total={len(self.groups)}")
-            # print("========", group)
+
             assert isinstance(group[0], datetime.datetime), group
 
             result = self.input.select(dates=group)
             assert result.dates == group, (len(result.dates), len(group))
 
-            msg = f"Building data for group {igroup}/{self.n_groups}"
-            LOG.info(msg)
-            self.print(msg)
+            LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             # There are several groups.
             # There is one result to load for each group.
             self.load_result(result)
             self.registry.set_flag(igroup)
 
-        self.registry.add_to_history("loading_data_end", parts=self.parts)
         self.registry.add_provenance(name="provenance_load")
         self.tmp_statistics.add_provenance(name="provenance_load", config=self.main_config)
 
-        self.print_info()
+        # self.print_info()
 
     def load_result(self, result):
         # There is one cube to load for each result.
@@ -430,7 +450,7 @@ class ContentLoader(Loader):
         shape = cube.extended_user_shape
         dates_in_data = cube.user_coords["valid_datetime"]
 
-        LOG.info(f"Loading {shape=} in {self.data_array.shape=}")
+        LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
 
         def check_dates_in_data(lst, lst2):
             lst2 = [np.datetime64(_) for _ in lst2]
@@ -450,7 +470,7 @@ class ContentLoader(Loader):
         array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
         self.load_cube(cube, array)
 
-        stats = compute_statistics(array.cache, self.variables_names, allow_nan=self.allow_nan)
+        stats = compute_statistics(array.cache, self.variables_names, allow_nans=self.allow_nans)
         self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
 
         array.flush()
@@ -463,11 +483,19 @@ class ContentLoader(Loader):
 
         reading_chunks = None
         total = cube.count(reading_chunks)
-        self.print(f"Loading datacube: {cube}")
-        bar = progress_bar(
+        LOG.debug(f"Loading datacube: {cube}")
+
+        def position(x):
+            if isinstance(x, str) and "/" in x:
+                x = x.split("/")
+                return int(x[0])
+            return None
+
+        bar = tqdm.tqdm(
             iterable=cube.iterate_cubelets(reading_chunks),
             total=total,
             desc=f"Loading datacube {cube}",
+            position=position(self.parts),
         )
         for i, cubelet in enumerate(bar):
             bar.set_description(f"Loading {i}/{total}")
@@ -482,7 +510,7 @@ class ContentLoader(Loader):
                 data[:],
                 name=name,
                 log=[i, data.shape, local_indexes],
-                allow_nan=self.allow_nan,
+                allow_nans=self.allow_nans,
             )
 
             now = time.time()
@@ -491,10 +519,11 @@ class ContentLoader(Loader):
 
         now = time.time()
         save += time.time() - now
-        LOG.info("Written.")
-        msg = f"Elapsed: {seconds(time.time() - start)}, load time: {seconds(load)}, write time: {seconds(save)}."
-        self.print(msg)
-        LOG.info(msg)
+        LOG.debug(
+            f"Elapsed: {seconds_to_human(time.time() - start)}, "
+            f"load time: {seconds_to_human(load)}, "
+            f"write time: {seconds_to_human(save)}."
+        )
 
 
 class StatisticsAdder(DatasetHandlerWithStatistics):
@@ -518,12 +547,16 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
 
         self.read_dataset_metadata()
 
-    def allow_nan(self, name):
+    @cached_property
+    def allow_nans(self):
         z = zarr.open(self.path, mode="r")
-        if "variables_with_nans" in z.attrs:
-            return name in z.attrs["variables_with_nans"]
+        if "allow_nans" in z.attrs:
+            return z.attrs["allow_nans"]
 
-        warnings.warn(f"Cannot find 'variables_with_nans' in {self.path}. Assuming nans allowed for {name}.")
+        if "variables_with_nans" in z.attrs:
+            return z.attrs["variables_with_nans"]
+
+        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
         return True
 
     def _get_statistics_dates(self):
@@ -562,7 +595,7 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
 
     def run(self):
         dates = self._get_statistics_dates()
-        stats = self.tmp_statistics.get_aggregated(dates, self.variables_names, self.allow_nan)
+        stats = self.tmp_statistics.get_aggregated(dates, self.variables_names, self.allow_nans)
         self.output_writer(stats)
 
     def write_stats_to_file(self, stats):
@@ -591,7 +624,7 @@ class StatisticsAdder(DatasetHandlerWithStatistics):
             "count",
             "has_nans",
         ]:
-            self._add_dataset(name=k, array=stats[k])
+            self._add_dataset(name=k, array=stats[k], dimensions=("variable",))
 
         self.registry.add_to_history("compute_statistics_end")
         LOG.info(f"Wrote statistics in {self.path}")
@@ -625,6 +658,7 @@ class GenericAdditions(GenericDatasetHandler):
         raise NotImplementedError()
 
     def finalise(self):
+
         shape = (len(self.dates), len(self.variables))
         agg = dict(
             minimum=np.full(shape, np.nan, dtype=np.float64),
@@ -634,7 +668,7 @@ class GenericAdditions(GenericDatasetHandler):
             count=np.full(shape, -1, dtype=np.int64),
             has_nans=np.full(shape, False, dtype=np.bool_),
         )
-        LOG.info(f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}")
+        LOG.debug(f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}")
 
         found = set()
         ifound = set()
@@ -730,9 +764,9 @@ class GenericAdditions(GenericDatasetHandler):
             "has_nans",
         ]:
             name = self.final_storage_name(k)
-            self._add_dataset(name=name, array=summary[k])
+            self._add_dataset(name=name, array=summary[k], dimensions=("variable",))
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
-        LOG.info(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
+        LOG.debug(f"Wrote additions in {self.path} ({self.final_storage_name('*')})")
 
     def check_statistics(self):
         pass
@@ -744,10 +778,19 @@ class GenericAdditions(GenericDatasetHandler):
             return z.attrs["variables_with_nans"]
         return None
 
-    def allow_nan(self, name):
+    @cached_property
+    def _allow_nans(self):
+        z = zarr.open(self.path, mode="r")
+        return z.attrs.get("allow_nans", False)
+
+    def allow_nans(self):
+
+        if self._allow_nans:
+            return True
+
         if self._variables_with_nans is not None:
-            return name in self._variables_with_nans
-        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, Assuming nans allowed for {name}.")
+            return self._variables_with_nans
+        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, assuming nans allowed.")
         return True
 
 
@@ -768,7 +811,7 @@ class StatisticsAddition(GenericAdditions):
 
     @property
     def tmp_storage_path(self):
-        return f"{self.path}.tmp_storage_statistics"
+        return f"{self.path}.storage_statistics.tmp"
 
     def final_storage_name(self, k):
         return k
@@ -781,12 +824,12 @@ class StatisticsAddition(GenericAdditions):
             date = self.dates[i]
             try:
                 arr = self.ds[i : i + 1, ...]
-                stats = compute_statistics(arr, self.variables, allow_nan=self.allow_nan)
+                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
                 self.tmp_storage.add([date, i, stats], key=date)
             except MissingDateError:
                 self.tmp_storage.add([date, i, "missing"], key=date)
         self.tmp_storage.flush()
-        LOG.info(f"Dataset {self.path} additions run.")
+        LOG.debug(f"Dataset {self.path} additions run.")
 
     def check_statistics(self):
         ds = open_dataset(self.path)
@@ -846,7 +889,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
 
     @property
     def tmp_storage_path(self):
-        return f"{self.path}.tmp_storage_statistics_{self.delta}h"
+        return f"{self.path}.storage_statistics_{self.delta}h.tmp"
 
     def final_storage_name(self, k):
         return self.final_storage_name_from_delta(k, delta=self.delta)
@@ -867,9 +910,15 @@ class TendenciesStatisticsAddition(GenericAdditions):
             date = self.dates[i]
             try:
                 arr = self.ds[i]
-                stats = compute_statistics(arr, self.variables, allow_nan=self.allow_nan)
+                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
                 self.tmp_storage.add([date, i, stats], key=date)
             except MissingDateError:
                 self.tmp_storage.add([date, i, "missing"], key=date)
         self.tmp_storage.flush()
-        LOG.info(f"Dataset {self.path} additions run.")
+        LOG.debug(f"Dataset {self.path} additions run.")
+
+
+class DatasetVerifier(GenericDatasetHandler):
+
+    def verify(self):
+        pass

@@ -7,7 +7,9 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
+import itertools
 import logging
+import math
 import time
 from collections import defaultdict
 from copy import deepcopy
@@ -15,7 +17,10 @@ from functools import cached_property
 from functools import wraps
 
 import numpy as np
+from anemoi.utils.humanize import seconds_to_human
+from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.fieldlist import FieldList
+from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.dates import Dates
@@ -25,29 +30,33 @@ from .template import Context
 from .template import notify_result
 from .template import resolve
 from .template import substitute
-from .template import trace
-from .template import trace_datasource
-from .template import trace_select
-from .utils import seconds
+from .trace import trace
+from .trace import trace_datasource
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 
 
 def parse_function_name(name):
-    if "-" in name:
-        name, delta = name.split("-")
-        sign = -1
 
-    elif "+" in name:
-        name, delta = name.split("+")
-        sign = 1
+    if name.endswith("h") and name[:-1].isdigit():
 
-    else:
-        return name, None
+        if "-" in name:
+            name, delta = name.split("-")
+            sign = -1
 
-    assert delta[-1] == "h", (name, delta)
-    delta = sign * int(delta[:-1])
-    return name, delta
+        elif "+" in name:
+            name, delta = name.split("+")
+            sign = 1
+
+        else:
+            return name, None
+
+        assert delta[-1] == "h", (name, delta)
+        delta = sign * int(delta[:-1])
+        return name, delta
+
+    return name, None
 
 
 def time_delta_to_string(delta):
@@ -134,141 +143,6 @@ def _data_request(data):
     return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
-class Coords:
-    def __init__(self, owner):
-        self.owner = owner
-
-    @cached_property
-    def _build_coords(self):
-        from_data = self.owner.get_cube().user_coords
-        from_config = self.owner.context.order_by
-
-        keys_from_config = list(from_config.keys())
-        keys_from_data = list(from_data.keys())
-        assert (
-            keys_from_data == keys_from_config
-        ), f"Critical error: {keys_from_data=} != {keys_from_config=}. {self.owner=}"
-
-        variables_key = list(from_config.keys())[1]
-        ensembles_key = list(from_config.keys())[2]
-
-        if isinstance(from_config[variables_key], (list, tuple)):
-            assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
-                from_data[variables_key],
-                from_config[variables_key],
-            )
-
-        self._variables = from_data[variables_key]  # "param_level"
-        self._ensembles = from_data[ensembles_key]  # "number"
-
-        first_field = self.owner.datasource[0]
-        grid_points = first_field.grid_points()
-
-        lats, lons = grid_points
-        north = np.amax(lats)
-        south = np.amin(lats)
-        east = np.amax(lons)
-        west = np.amin(lons)
-
-        assert -90 <= south <= north <= 90, (south, north, first_field)
-        assert (-180 <= west <= east <= 180) or (0 <= west <= east <= 360), (
-            west,
-            east,
-            first_field,
-        )
-
-        grid_values = list(range(len(grid_points[0])))
-
-        self._grid_points = grid_points
-        self._resolution = first_field.resolution
-        self._grid_values = grid_values
-        self._field_shape = first_field.shape
-        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
-
-    @cached_property
-    def variables(self):
-        self._build_coords
-        return self._variables
-
-    @cached_property
-    def ensembles(self):
-        self._build_coords
-        return self._ensembles
-
-    @cached_property
-    def resolution(self):
-        self._build_coords
-        return self._resolution
-
-    @cached_property
-    def grid_values(self):
-        self._build_coords
-        return self._grid_values
-
-    @cached_property
-    def grid_points(self):
-        self._build_coords
-        return self._grid_points
-
-    @cached_property
-    def field_shape(self):
-        self._build_coords
-        return self._field_shape
-
-    @cached_property
-    def proj_string(self):
-        self._build_coords
-        return self._proj_string
-
-
-class HasCoordsMixin:
-    @cached_property
-    def variables(self):
-        return self._coords.variables
-
-    @cached_property
-    def ensembles(self):
-        return self._coords.ensembles
-
-    @cached_property
-    def resolution(self):
-        return self._coords.resolution
-
-    @cached_property
-    def grid_values(self):
-        return self._coords.grid_values
-
-    @cached_property
-    def grid_points(self):
-        return self._coords.grid_points
-
-    @cached_property
-    def field_shape(self):
-        return self._coords.field_shape
-
-    @cached_property
-    def proj_string(self):
-        return self._coords.proj_string
-
-    @cached_property
-    def shape(self):
-        return [
-            len(self.dates),
-            len(self.variables),
-            len(self.ensembles),
-            len(self.grid_values),
-        ]
-
-    @cached_property
-    def coords(self):
-        return {
-            "dates": self.dates,
-            "variables": self.variables,
-            "ensembles": self.ensembles,
-            "values": self.grid_values,
-        }
-
-
 class Action:
     def __init__(self, context, action_path, /, *args, **kwargs):
         if "args" in kwargs and "kwargs" in kwargs:
@@ -323,15 +197,15 @@ def shorten(dates):
     return dates
 
 
-class Result(HasCoordsMixin):
+class Result:
     empty = False
+    _coords_already_built = False
 
     def __init__(self, context, action_path, dates):
         assert isinstance(context, ActionContext), type(context)
         assert isinstance(action_path, list), action_path
 
         self.context = context
-        self._coords = Coords(self)
         self.dates = dates
         self.action_path = action_path
 
@@ -353,18 +227,141 @@ class Result(HasCoordsMixin):
         order_by = self.context.order_by
         flatten_grid = self.context.flatten_grid
         start = time.time()
-        LOG.info("Sorting dataset %s %s", order_by, remapping)
+        LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
         assert order_by, order_by
-        cube = ds.cube(
-            order_by,
-            remapping=remapping,
-            flatten_values=flatten_grid,
-            patches={"number": {None: 0}},
-        )
-        cube = cube.squeeze()
-        LOG.info(f"Sorting done in {seconds(time.time()-start)}.")
+
+        patches = {"number": {None: 0}}
+
+        try:
+            cube = ds.cube(
+                order_by,
+                remapping=remapping,
+                flatten_values=flatten_grid,
+                patches=patches,
+            )
+            cube = cube.squeeze()
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
+        except ValueError:
+            self.explain(ds, order_by, remapping=remapping, patches=patches)
+            # raise ValueError(f"Error in {self}")
+            exit(1)
+
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug("Cube shape: %s", cube)
+            for k, v in cube.user_coords.items():
+                LOG.debug("  %s %s", k, shorten_list(v, max_length=10))
 
         return cube
+
+    def explain(self, ds, *args, remapping, patches):
+
+        METADATA = (
+            "date",
+            "time",
+            "step",
+            "hdate",
+            "valid_datetime",
+            "levtype",
+            "levelist",
+            "number",
+            "level",
+            "shortName",
+            "paramId",
+            "variable",
+        )
+
+        # We redo the logic here
+        print()
+        print("❌" * 40)
+        print()
+        if len(args) == 1 and isinstance(args[0], (list, tuple)):
+            args = args[0]
+
+        names = []
+        for a in args:
+            if isinstance(a, str):
+                names.append(a)
+            elif isinstance(a, dict):
+                names += list(a.keys())
+
+        print(f"Building a {len(names)}D hypercube using", names)
+
+        ds = ds.order_by(*args, remapping=remapping, patches=patches)
+        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches)
+
+        print()
+        print("Number of unique values found for each coordinate:")
+        for k, v in user_coords.items():
+            print(f"  {k:20}:", len(v))
+        print()
+        user_shape = tuple(len(v) for k, v in user_coords.items())
+        print("Shape of the hypercube           :", user_shape)
+        print(
+            "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
+        )
+        print("Number of fields in the dataset  :", len(ds))
+        print("Difference                       :", abs(len(ds) - math.prod(user_shape)))
+        print()
+
+        remapping = build_remapping(remapping, patches)
+        expected = set(itertools.product(*user_coords.values()))
+
+        if math.prod(user_shape) > len(ds):
+            print(f"This means that all the fields in the datasets do not exists for all combinations of {names}.")
+
+            for f in ds:
+                metadata = remapping(f.metadata)
+                expected.remove(tuple(metadata(n) for n in names))
+
+            print("Missing fields:")
+            print()
+            for i, f in enumerate(sorted(expected)):
+                print(" ", f)
+                if i >= 9 and len(expected) > 10:
+                    print("...", len(expected) - i - 1, "more")
+                    break
+
+            print()
+            print("To solve this issue, you can:")
+            print(
+                "  - Provide a better selection, like 'step: 0' or 'level: 1000' to "
+                "reduce the number of selected fields."
+            )
+            print(
+                "  - Split the 'input' part in smaller sections using 'join', "
+                "making sure that each section represent a full hypercube."
+            )
+
+        else:
+            print(f"More fields in dataset that expected for {names}. " "This means that some fields are duplicated.")
+            duplicated = defaultdict(list)
+            for f in ds:
+                # print(f.metadata(namespace="default"))
+                metadata = remapping(f.metadata)
+                key = tuple(metadata(n, default=None) for n in names)
+                duplicated[key].append(f)
+
+            print("Duplicated fields:")
+            print()
+            duplicated = {k: v for k, v in duplicated.items() if len(v) > 1}
+            for i, (k, v) in enumerate(sorted(duplicated.items())):
+                print(" ", k)
+                for f in v:
+                    x = {k: f.metadata(k, default=None) for k in METADATA if f.metadata(k, default=None) is not None}
+                    print("   ", f, x)
+                if i >= 9 and len(duplicated) > 10:
+                    print("...", len(duplicated) - i - 1, "more")
+                    break
+
+            print()
+            print("To solve this issue, you can:")
+            print("  - Provide a better selection, like 'step: 0' or 'level: 1000'")
+            print("  - Change the way 'param' is computed using 'variable_naming' " "in the 'build' section.")
+
+        print()
+        print("❌" * 40)
+        print()
+        exit(1)
 
     def __repr__(self, *args, _indent_="\n", **kwargs):
         more = ",".join([str(a)[:5000] for a in args])
@@ -391,6 +388,109 @@ class Result(HasCoordsMixin):
     def _trace_datasource(self, *args, **kwargs):
         return f"{self.__class__.__name__}({shorten(self.dates)})"
 
+    def build_coords(self):
+        if self._coords_already_built:
+            return
+        from_data = self.get_cube().user_coords
+        from_config = self.context.order_by
+
+        keys_from_config = list(from_config.keys())
+        keys_from_data = list(from_data.keys())
+        assert keys_from_data == keys_from_config, f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
+
+        variables_key = list(from_config.keys())[1]
+        ensembles_key = list(from_config.keys())[2]
+
+        if isinstance(from_config[variables_key], (list, tuple)):
+            assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
+                from_data[variables_key],
+                from_config[variables_key],
+            )
+
+        self._variables = from_data[variables_key]  # "param_level"
+        self._ensembles = from_data[ensembles_key]  # "number"
+
+        first_field = self.datasource[0]
+        grid_points = first_field.grid_points()
+
+        lats, lons = grid_points
+
+        assert len(lats) == len(lons), (len(lats), len(lons), first_field)
+        assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
+
+        north = np.amax(lats)
+        south = np.amin(lats)
+        east = np.amax(lons)
+        west = np.amin(lons)
+
+        assert -90 <= south <= north <= 90, (south, north, first_field)
+        assert (-180 <= west <= east <= 180) or (0 <= west <= east <= 360), (
+            west,
+            east,
+            first_field,
+        )
+
+        grid_values = list(range(len(grid_points[0])))
+
+        self._grid_points = grid_points
+        self._resolution = first_field.resolution
+        self._grid_values = grid_values
+        self._field_shape = first_field.shape
+        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
+
+    @property
+    def variables(self):
+        self.build_coords()
+        return self._variables
+
+    @property
+    def ensembles(self):
+        self.build_coords()
+        return self._ensembles
+
+    @property
+    def resolution(self):
+        self.build_coords()
+        return self._resolution
+
+    @property
+    def grid_values(self):
+        self.build_coords()
+        return self._grid_values
+
+    @property
+    def grid_points(self):
+        self.build_coords()
+        return self._grid_points
+
+    @property
+    def field_shape(self):
+        self.build_coords()
+        return self._field_shape
+
+    @property
+    def proj_string(self):
+        self.build_coords()
+        return self._proj_string
+
+    @cached_property
+    def shape(self):
+        return [
+            len(self.dates),
+            len(self.variables),
+            len(self.ensembles),
+            len(self.grid_values),
+        ]
+
+    @cached_property
+    def coords(self):
+        return {
+            "dates": self.dates,
+            "variables": self.variables,
+            "ensembles": self.ensembles,
+            "values": self.grid_values,
+        }
+
 
 class EmptyResult(Result):
     empty = True
@@ -409,6 +509,22 @@ class EmptyResult(Result):
     @property
     def variables(self):
         return []
+
+
+def _flatten(ds):
+    if isinstance(ds, MultiFieldList):
+        return [_tidy(f) for s in ds._indexes for f in _flatten(s)]
+    return [ds]
+
+
+def _tidy(ds, indent=0):
+    if isinstance(ds, MultiFieldList):
+
+        sources = [s for s in _flatten(ds) if len(s) > 0]
+        if len(sources) == 1:
+            return sources[0]
+        return MultiFieldList(sources)
+    return ds
 
 
 class FunctionResult(Result):
@@ -430,7 +546,7 @@ class FunctionResult(Result):
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
         try:
-            return self.action.function(FunctionContext(self), self.dates, *args, **kwargs)
+            return _tidy(self.action.function(FunctionContext(self), self.dates, *args, **kwargs))
         except Exception:
             LOG.error(f"Error in {self.action.function.__name__}", exc_info=True)
             raise
@@ -459,7 +575,7 @@ class JoinResult(Result):
         ds = EmptyResult(self.context, self.action_path, self.dates).datasource
         for i in self.results:
             ds += i.datasource
-        return ds
+        return _tidy(ds)
 
     def __repr__(self):
         content = "\n".join([str(i) for i in self.results])
@@ -533,7 +649,7 @@ class UnShiftResult(Result):
 
         ds = self.result.datasource
         ds = FieldArray([DateShiftedField(fs, self.action.delta) for fs in ds])
-        return ds
+        return _tidy(ds)
 
 
 class FunctionAction(Action):
@@ -620,11 +736,13 @@ class StepFunctionResult(StepResult):
     @trace_datasource
     def datasource(self):
         try:
-            return self.action.function(
-                FunctionContext(self),
-                self.upstream_result.datasource,
-                *self.action.args[1:],
-                **self.action.kwargs,
+            return _tidy(
+                self.action.function(
+                    FunctionContext(self),
+                    self.upstream_result.datasource,
+                    *self.action.args[1:],
+                    **self.action.kwargs,
+                )
             )
 
         except Exception:
@@ -643,7 +761,7 @@ class FilterStepResult(StepResult):
     def datasource(self):
         ds = self.upstream_result.datasource
         ds = ds.sel(**self.action.kwargs)
-        return ds
+        return _tidy(ds)
 
 
 class FilterStepAction(StepAction):
@@ -672,7 +790,7 @@ class ConcatResult(Result):
         ds = EmptyResult(self.context, self.action_path, self.dates).datasource
         for i in self.results:
             ds += i.datasource
-        return ds
+        return _tidy(ds)
 
     @property
     def variables(self):
@@ -708,7 +826,7 @@ class DataSourcesResult(Result):
             self.context.notify_result(i.action_path[:-1], i.datasource)
         # then return the input result
         # which can use the datasources of the included results
-        return self.input_result.datasource
+        return _tidy(self.input_result.datasource)
 
 
 class DataSourcesAction(Action):

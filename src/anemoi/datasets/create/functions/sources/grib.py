@@ -26,8 +26,12 @@ def check(ds, paths, **kwargs):
 
 def _expand(paths):
     for path in paths:
+        cnt = 0
         for p in glob.glob(path):
             yield p
+            cnt += 1
+        if cnt == 0:
+            yield path
 
 
 def execute(context, dates, path, *args, **kwargs):

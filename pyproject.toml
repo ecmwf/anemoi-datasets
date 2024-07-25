@@ -50,22 +50,24 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-utils[provenance]>=0.3.5",
+  "anemoi-utils[provenance]>=0.3.11",
   "numpy",
   "pyyaml",
   "semantic-version",
   "tqdm",
-  "zarr<=2.17",
-
+  "zarr",
 ]
 
 optional-dependencies.all = [
+  "aiohttp",
   "boto3",
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
   "entrypoints",
+  "gcsfs",
+  "kerchunk",
   "pyproj",
   "requests",
   "s3fs",
@@ -81,12 +83,15 @@ optional-dependencies.create = [
 ]
 
 optional-dependencies.dev = [
+  "aiohttp",
   "boto3",
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
   "ecmwflibs>=0.6.3",
   "entrypoints",
+  "gcsfs",
+  "kerchunk",
   "nbsphinx",
   "pandoc",
   "pyproj",
@@ -108,7 +113,14 @@ optional-dependencies.docs = [
   "sphinx-rtd-theme",
 ]
 
+optional-dependencies.kerchunk = [
+  "gcsfs",
+  "kerchunk",
+  "s3fs",
+]
+
 optional-dependencies.remote = [
+  "aiohttp",
   "boto3",
   "requests",
   "s3fs",

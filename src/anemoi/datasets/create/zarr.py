@@ -24,8 +24,12 @@ def add_zarr_dataset(
     shape=None,
     array=None,
     overwrite=True,
+    dimensions=None,
     **kwargs,
 ):
+    assert dimensions is not None, "Please pass dimensions to add_zarr_dataset."
+    assert isinstance(dimensions, (tuple, list))
+
     if dtype is None:
         assert array is not None, (name, shape, array, dtype, zarr_root)
         dtype = array.dtype
@@ -44,6 +48,7 @@ def add_zarr_dataset(
             **kwargs,
         )
         a[...] = array
+        a.attrs["_ARRAY_DIMENSIONS"] = dimensions
         return a
 
     if "fill_value" not in kwargs:
@@ -69,6 +74,7 @@ def add_zarr_dataset(
         overwrite=overwrite,
         **kwargs,
     )
+    a.attrs["_ARRAY_DIMENSIONS"] = dimensions
     return a
 
 
@@ -79,22 +85,27 @@ class ZarrBuiltRegistry:
     flags = None
     z = None
 
-    def __init__(self, path, synchronizer_path=None):
+    def __init__(self, path, synchronizer_path=None, use_threads=False):
         import zarr
 
         assert isinstance(path, str), path
         self.zarr_path = path
 
-        if synchronizer_path is None:
-            synchronizer_path = self.zarr_path + ".sync"
-        self.synchronizer_path = synchronizer_path
-        self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
+        if use_threads:
+            self.synchronizer = zarr.ThreadSynchronizer()
+            self.synchronizer_path = None
+        else:
+            if synchronizer_path is None:
+                synchronizer_path = self.zarr_path + ".sync"
+            self.synchronizer_path = synchronizer_path
+            self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
 
     def clean(self):
-        try:
-            shutil.rmtree(self.synchronizer_path)
-        except FileNotFoundError:
-            pass
+        if self.synchronizer_path is not None:
+            try:
+                shutil.rmtree(self.synchronizer_path)
+            except FileNotFoundError:
+                pass
 
     def _open_write(self):
         import zarr
@@ -112,7 +123,7 @@ class ZarrBuiltRegistry:
     def new_dataset(self, *args, **kwargs):
         z = self._open_write()
         zarr_root = z["_build"]
-        add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, **kwargs)
+        add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
 
     def add_to_history(self, action, **kwargs):
         new = dict(
@@ -142,6 +153,9 @@ class ZarrBuiltRegistry:
         z = self._open_write()
         z.attrs["latest_write_timestamp"] = datetime.datetime.utcnow().isoformat()
         z["_build"][self.name_flags][i] = value
+
+    def ready(self):
+        return all(self.get_flags())
 
     def create(self, lengths, overwrite=False):
         self.new_dataset(name=self.name_lengths, array=np.array(lengths, dtype="i4"))
