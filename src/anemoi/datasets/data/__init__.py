@@ -27,6 +27,7 @@ class MissingDateError(Exception):
 
 def open_dataset(*args, **kwargs):
     ds = _open_dataset(*args, **kwargs)
+    ds = ds.mutate()
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
     return ds

@@ -16,13 +16,19 @@ LOG = logging.getLogger(__name__)
 class Dataset:
     arguments = {}
 
+    def mutate(self):
+        return self
+
+    def swap_with_parent(self, parent):
+        return parent
+
     @cached_property
     def _len(self):
         return len(self)
 
     def _subset(self, **kwargs):
         if not kwargs:
-            return self
+            return self.mutate()
 
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
@@ -30,37 +36,43 @@ class Dataset:
 
             from .subset import Subset
 
-            return Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs)
+            return (
+                Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
+            )
 
         if "frequency" in kwargs:
             from .subset import Subset
 
             frequency = kwargs.pop("frequency")
-            return Subset(self, self._frequency_to_indices(frequency), dict(frequency=frequency))._subset(**kwargs)
+            return (
+                Subset(self, self._frequency_to_indices(frequency), dict(frequency=frequency))
+                ._subset(**kwargs)
+                .mutate()
+            )
 
         if "select" in kwargs:
             from .select import Select
 
             select = kwargs.pop("select")
-            return Select(self, self._select_to_columns(select), {"select": select})._subset(**kwargs)
+            return Select(self, self._select_to_columns(select), {"select": select})._subset(**kwargs).mutate()
 
         if "drop" in kwargs:
             from .select import Select
 
             drop = kwargs.pop("drop")
-            return Select(self, self._drop_to_columns(drop), {"drop": drop})._subset(**kwargs)
+            return Select(self, self._drop_to_columns(drop), {"drop": drop})._subset(**kwargs).mutate()
 
         if "reorder" in kwargs:
             from .select import Select
 
             reorder = kwargs.pop("reorder")
-            return Select(self, self._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs)
+            return Select(self, self._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
 
         if "rename" in kwargs:
             from .select import Rename
 
             rename = kwargs.pop("rename")
-            return Rename(self, rename)._subset(**kwargs)
+            return Rename(self, rename)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
             from ..data import open_dataset
@@ -68,20 +80,20 @@ class Dataset:
 
             statistics = kwargs.pop("statistics")
 
-            return Statistics(self, open_dataset(statistics))._subset(**kwargs)
+            return Statistics(self, open_dataset(statistics))._subset(**kwargs).mutate()
 
         if "thinning" in kwargs:
             from .masked import Thinning
 
             thinning = kwargs.pop("thinning")
             method = kwargs.pop("method", "every-nth")
-            return Thinning(self, thinning, method)._subset(**kwargs)
+            return Thinning(self, thinning, method)._subset(**kwargs).mutate()
 
         if "area" in kwargs:
             from .masked import Cropping
 
             bbox = kwargs.pop("area")
-            return Cropping(self, bbox)._subset(**kwargs)
+            return Cropping(self, bbox)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:
@@ -90,7 +102,7 @@ class Dataset:
             shuffle = kwargs.pop("shuffle")
 
             if shuffle:
-                return Subset(self, self._shuffle_indices(), dict(shuffle=True))._subset(**kwargs)
+                return Subset(self, self._shuffle_indices(), dict(shuffle=True))._subset(**kwargs).mutate()
 
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
