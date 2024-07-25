@@ -217,7 +217,7 @@ class Version:
         if total_size is not None:
             print(f"💽 Size       : {bytes(total_size)} ({bytes_to_human(total_size)})")
         if n is not None:
-            print(f"📁 Files      : {n}")
+            print(f"📁 Files      : {n:,}")
 
     @property
     def statistics(self):

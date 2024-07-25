@@ -7,8 +7,9 @@
 # nor does it submit to any jurisdiction.
 #
 
+
 from .xarray import load_many
 
 
-def execute(context, dates, path, *args, **kwargs):
-    return load_many("📁", context, dates, path, *args, **kwargs)
+def execute(context, dates, url, *args, **kwargs):
+    return load_many("🇿", context, dates, url, *args, **kwargs)

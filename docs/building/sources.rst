@@ -23,6 +23,7 @@ The following `sources` are currently available:
    sources/mars
    sources/grib
    sources/netcdf
+   sources/xarray
    sources/opendap
    sources/forcings
    sources/accumulations

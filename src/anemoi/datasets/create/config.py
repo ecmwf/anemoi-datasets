@@ -12,9 +12,9 @@ import os
 from copy import deepcopy
 
 import yaml
+from anemoi.utils.config import DotDict
+from anemoi.utils.config import load_any_dict_format
 from earthkit.data.core.order import normalize_order_by
-
-from .utils import load_json_or_yaml
 
 LOG = logging.getLogger(__name__)
 
@@ -43,29 +43,8 @@ def check_dict_value_and_set(dic, key, value):
         if dic[key] == value:
             return
         raise ValueError(f"Cannot use {key}={dic[key]}. Must use {value}.")
-    print(f"Setting {key}={value} in config")
+    LOG.info(f"Setting {key}={value} in config")
     dic[key] = value
-
-
-class DictObj(dict):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for key, value in self.items():
-            if isinstance(value, dict):
-                self[key] = DictObj(value)
-                continue
-            if isinstance(value, list):
-                self[key] = [DictObj(item) if isinstance(item, dict) else item for item in value]
-                continue
-
-    def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError:
-            raise AttributeError(attr)
-
-    def __setattr__(self, attr, value):
-        self[attr] = value
 
 
 def resolve_includes(config):
@@ -79,11 +58,11 @@ def resolve_includes(config):
     return config
 
 
-class Config(DictObj):
+class Config(DotDict):
     def __init__(self, config=None, **kwargs):
         if isinstance(config, str):
             self.config_path = os.path.realpath(config)
-            config = load_json_or_yaml(config)
+            config = load_any_dict_format(config)
         else:
             config = deepcopy(config if config is not None else {})
         config = resolve_includes(config)

@@ -18,6 +18,9 @@ def constants(context, dates, template, param):
         stacklevel=2,
     )
     context.trace("✅", f"from_source(constants, {template}, {param}")
+    if len(template) == 0:
+        raise ValueError("Forcings template is empty.")
+
     return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 
 

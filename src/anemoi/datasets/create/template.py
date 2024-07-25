@@ -8,72 +8,16 @@
 #
 
 import logging
-import os
 import re
 import textwrap
 from functools import wraps
 
+from anemoi.utils.humanize import plural
+
+from .trace import step
+from .trace import trace
+
 LOG = logging.getLogger(__name__)
-
-TRACE_INDENT = 0
-
-
-def step(action_path):
-    return f"[{'.'.join(action_path)}]"
-
-
-def trace(emoji, *args):
-    if os.environ.get("ANEMOI_DATASET_TRACE_CREATE") is None:
-        return
-    print(emoji, " " * TRACE_INDENT, *args)
-
-
-def trace_datasource(method):
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        global TRACE_INDENT
-        trace(
-            "🌍",
-            "=>",
-            step(self.action_path),
-            self._trace_datasource(*args, **kwargs),
-        )
-        TRACE_INDENT += 1
-        result = method(self, *args, **kwargs)
-        TRACE_INDENT -= 1
-        trace(
-            "🍎",
-            "<=",
-            step(self.action_path),
-            textwrap.shorten(repr(result), 256),
-        )
-        return result
-
-    return wrapper
-
-
-def trace_select(method):
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        global TRACE_INDENT
-        trace(
-            "👓",
-            "=>",
-            ".".join(self.action_path),
-            self._trace_select(*args, **kwargs),
-        )
-        TRACE_INDENT += 1
-        result = method(self, *args, **kwargs)
-        TRACE_INDENT -= 1
-        trace(
-            "🍍",
-            "<=",
-            ".".join(self.action_path),
-            textwrap.shorten(repr(result), 256),
-        )
-        return result
-
-    return wrapper
 
 
 def notify_result(method):
@@ -99,7 +43,13 @@ class Context:
         self.used_references.add(key)
 
     def notify_result(self, key, result):
-        trace("🎯", step(key), "notify result", result)
+        trace(
+            "🎯",
+            step(key),
+            "notify result",
+            textwrap.shorten(repr(result).replace(",", ", "), width=40),
+            plural(len(result), "field"),
+        )
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         if key in self.used_references:
