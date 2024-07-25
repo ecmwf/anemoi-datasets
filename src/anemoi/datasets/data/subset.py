@@ -8,6 +8,8 @@
 import logging
 from functools import cached_property
 
+import numpy as np
+
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -102,9 +104,7 @@ class Subset(Forwards):
         indices = make_slice_or_index_from_list_or_tuple(indices)
         if isinstance(indices, slice):
             return self.dataset[indices]
-
-        lst = [self.dataset[i] for i in indices]
-        return self.dataset.stack(lst)
+        return np.stack([self.dataset[i] for i in indices])
 
     @debug_indexing
     @expand_list_indexing

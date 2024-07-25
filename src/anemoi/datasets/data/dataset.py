@@ -10,8 +10,6 @@ import os
 import warnings
 from functools import cached_property
 
-import numpy as np
-
 LOG = logging.getLogger(__name__)
 
 
@@ -120,6 +118,7 @@ class Dataset:
         return range(0, len(self), step)
 
     def _shuffle_indices(self):
+        import numpy as np
 
         return np.random.permutation(len(self))
 

@@ -31,9 +31,6 @@ class ZipBase(Combined):
     def __len__(self):
         return min(len(d) for d in self.datasets)
 
-    def stack(self, lst):
-        return tuple(d.stack([e[i] for e in lst]) for i, d in enumerate(self.datasets))
-
     def __getitem__(self, n):
         return tuple(d[n] for d in self.datasets)
 
