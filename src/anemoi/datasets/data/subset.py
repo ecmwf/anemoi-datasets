@@ -21,13 +21,51 @@ from .indexing import update_tuple
 LOG = logging.getLogger(__name__)
 
 
+def _default(a, b, dates):
+    return [a, b]
+
+
+def _start(a, b, dates):
+    from .misc import as_first_date
+
+    c = as_first_date(a, dates)
+    d = as_first_date(b, dates)
+    if c < d:
+        return b
+    else:
+        return a
+
+
+def _end(a, b, dates):
+    from .misc import as_last_date
+
+    c = as_last_date(a, dates)
+    d = as_last_date(b, dates)
+    if c < d:
+        return a
+    else:
+        return b
+
+
+def _combine_reasons(reason1, reason2, dates):
+
+    reason = reason1.copy()
+    for k, v in reason2.items():
+        if k not in reason:
+            reason[k] = v
+        else:
+            func = globals().get(f"_{k}", _default)
+            reason[k] = func(reason[k], v, dates)
+    return reason
+
+
 class Subset(Forwards):
     """Select a subset of the dates."""
 
     def __init__(self, dataset, indices, reason):
         while isinstance(dataset, Subset):
             indices = [dataset.indices[i] for i in indices]
-            reason = {**reason, **dataset.reason}
+            reason = _combine_reasons(reason, dataset.reason, dataset.dates)
             dataset = dataset.dataset
 
         self.dataset = dataset
@@ -36,6 +74,12 @@ class Subset(Forwards):
 
         # Forward other properties to the super dataset
         super().__init__(dataset)
+
+    def clone(self, dataset):
+        return self.__class__(dataset, self.indices, self.reason).mutate()
+
+    def mutate(self):
+        return self.forward.swap_with_parent(parent=self)
 
     @debug_indexing
     def __getitem__(self, n):

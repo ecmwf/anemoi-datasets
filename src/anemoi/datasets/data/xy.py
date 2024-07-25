@@ -16,7 +16,14 @@ from .misc import _open
 LOG = logging.getLogger(__name__)
 
 
-class Zip(Combined):
+class ZipBase(Combined):
+
+    def swap_with_parent(self, parent):
+        new_parents = [parent.clone(ds) for ds in self.datasets]
+        return self.clone(new_parents)
+
+    def clone(self, datasets):
+        return self.__class__(datasets)
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
@@ -83,7 +90,11 @@ class Zip(Combined):
         return tuple(d.name_to_index for d in self.datasets)
 
 
-class XY(Zip):
+class Zip(ZipBase):
+    pass
+
+
+class XY(ZipBase):
     pass
 
 
