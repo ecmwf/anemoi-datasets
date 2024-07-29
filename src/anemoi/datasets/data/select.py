@@ -101,7 +101,7 @@ class Rename(Forwards):
     def __init__(self, dataset, rename):
         super().__init__(dataset)
         for n in rename:
-            assert n in dataset.variables
+            assert n in dataset.variables, n
         self._variables = [rename.get(v, v) for v in dataset.variables]
         self.rename = rename
 
