@@ -95,7 +95,6 @@ class Creator:
         metadata = compute_directory_sizes(self.path)
         handle = DatasetHandler.from_dataset(path=self.path, use_threads=self.use_threads)
         handle.update_metadata(**metadata)
-        assert handle.ready()
 
     def cleanup(self):
         from .loaders import DatasetHandlerWithStatistics
