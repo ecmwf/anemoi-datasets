@@ -108,6 +108,9 @@ class Rename(Forwards):
         super().__init__(dataset)
         for n in rename:
             assert n in dataset.variables, n
+            # make sure n only contain alphanumeric lowercase and _
+            if not n.replace("_", "").isalnum() or not n.islower():
+                raise ValueError(f"Invalid variable name {n}")
         self._variables = [rename.get(v, v) for v in dataset.variables]
         self.rename = rename
 

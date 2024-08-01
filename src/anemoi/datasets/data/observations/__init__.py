@@ -60,6 +60,10 @@ class ObservationsBase:
             current_date += delta
         return dates
 
+    @property
+    def variables(self):
+        raise NotImplementedError()
+
 
 class Dictionary(ObservationsBase):
     def __init__(self, datasets):
@@ -80,13 +84,118 @@ class Dictionary(ObservationsBase):
     def tree(self):
         return Node(self, [d.tree() for k, d in self.datasets.items()])
 
+    def _check(self):
+        names_dict = {k: d.variables for k, d in self.datasets.items()}
 
-class Padded(ObservationsBase):
-    def __init__(self, dataset, start, end):
+        names = []
+        for _, v in names_dict.items():
+            names += list(v)
+
+        if len(set(names)) != len(names):
+            # Found duplicated names
+            msg = ""
+            for name in set(names):
+                if names.count(name) > 1:
+                    for k, v in names_dict.items():
+                        if name in v:
+                            msg += f"Variable '{name}' is found in dataset '{k}'. "
+                    break
+            raise ValueError(f"Duplicated variable: {msg}")
+
+    @property
+    def variables(self):
+        variables = []
+        for k, d in self.datasets.items():
+            variables += list(d.variables)
+        return variables
+
+    @cached_property
+    def name_to_index(self):
+        dic = {}
+        for k, d in self.datasets.items():
+            for name in d.variables:
+                dic[name] = (k, d.name_to_index[name])
+        return dic
+
+    @property
+    def statistics(self):
+        return {k: v.statistics for k, v in self.datasets.items()}
+
+
+class Forward(ObservationsBase):
+    def __init__(self, dataset):
         self.forward = dataset.mutate()
-        self.frequency = self.forward.frequency
-        self.start_date = start
-        self.end_date = end
+
+    def tree(self):
+        return Node(self, [self.forward.tree()])
+
+    @property
+    def variables(self):
+        return self.forward.variables
+
+    def __repr__(self):
+        return f"Forward({self.forward})"
+
+    def getitem(self, i):
+        return self.forward[i]
+
+    @property
+    def frequency(self):
+        return self.forward.frequency
+
+    @property
+    def start_date(self):
+        return self.forward.start_date
+
+    @property
+    def end_date(self):
+        return self.forward.end_date
+
+    @cached_property
+    def name_to_index(self):
+        return {k: i for i, k in enumerate(self.variables)}
+
+    @cached_property
+    def statistics(self):
+        return self.forward.statistics
+
+
+class Rename(Forward):
+    def __init__(self, dataset, rename):
+        super().__init__(dataset)
+        if "{name}" in rename:
+            rename = {n: rename.format(name=n) for n in self.forward.variables}
+        for n in rename:
+            assert n in dataset.variables, n
+        self._variables = [rename.get(v, v) for v in dataset.variables]
+        self.rename = rename
+
+    @property
+    def variables(self):
+        return self._variables
+
+    def tree(self):
+        return Node(self, [self.forward.tree()], rename=self.rename)
+
+
+class Padded(Forward):
+    def __init__(self, dataset, start, end):
+        super().__init__(dataset)
+        self._frequency = self.forward.frequency
+        self._start_date = start
+        self._end_date = end
+
+    @property
+    def frequency(self):
+        return self._frequency
+
+    @property
+    def start_date(self):
+        return self._start_date
+
+    @property
+    def end_date(self):
+        return self._end_date
 
     def getitem(self, i):
         date = self.dates[i]
@@ -159,6 +268,20 @@ class Observations(ObservationsBase):
         else:
             return data
 
+    @property
+    def variables(self):
+        colnames = self.forward.colnames
+        variables = []
+        for n in colnames:
+            if n.startswith("obsvalue_"):
+                n = n.replace("obsvalue_", "")
+            variables.append(n)
+        return variables
+
+    @property
+    def statistics(self):
+        return StatisticsOfObsDataset(self.forward)
+
     def tree(self):
         return Node(
             self,
@@ -205,7 +328,17 @@ def _open_observations(*args, **kwargs):
         datasets = {k: _open(d).mutate() for k, d in dictionary.items()}
         return Dictionary(datasets).mutate()
 
+    if "rename" in kwargs:
+        rename = kwargs.pop("rename")
+        dataset = _open(kwargs).mutate()
+        return Rename(dataset, rename).mutate()
+
     assert len(args) == 0, args
     for k, v in kwargs.items():
         assert k in ["dataset", "start", "end", "frequency", "time_span"], k
     return Observations(*args, **kwargs).mutate()
+
+
+class StatisticsOfObsDataset:
+    def __init__(self, dataset):
+        self.dataset = dataset
