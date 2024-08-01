@@ -38,4 +38,3 @@ jobs:
     with:
       anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
     secrets: inherit
-    
