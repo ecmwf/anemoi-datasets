@@ -25,6 +25,33 @@ def _resolve_path(path):
     return zarr_lookup(path)
 
 
+def make_dates(start, end, frequency):
+    if isinstance(start, np.datetime64):
+        start = start.astype(datetime.datetime)
+    if isinstance(end, np.datetime64):
+        end = end.astype(datetime.datetime)
+
+    delta = datetime.timedelta(hours=frequency)
+    dates = []
+    current_date = start
+    while current_date <= end:
+        dates.append(current_date)
+        current_date += delta
+    return dates
+
+
+def merge_dates(datasets):
+    start_date = None
+    end_date = None
+    for d in datasets:
+        s, e = min(d.dates), max(d.dates)
+        if start_date is None or s < start_date:
+            start_date = s
+        if end_date is None or e > end_date:
+            end_date = e
+    return start_date, end_date
+
+
 class ObservationsBase:
     def mutate(self):
         return self
@@ -50,16 +77,6 @@ class ObservationsBase:
         #    return [self.getitem(j) for j in i]
         raise TypeError(f"Expected int, got {type(i)}")
 
-    @cached_property
-    def dates(self):
-        delta = datetime.timedelta(hours=self.frequency)
-        dates = []
-        current_date = self.start_date
-        while current_date <= self.end_date:
-            dates.append(current_date)
-            current_date += delta
-        return dates
-
     @property
     def variables(self):
         raise NotImplementedError()
@@ -72,10 +89,10 @@ class Dictionary(ObservationsBase):
         for d in _datasets[1:]:
             assert d.frequency == self.frequency, f"Expected {self.frequency}, got {d.frequency}"
 
-        self.start_date = min(d.start_date for d in _datasets)
-        self.end_date = max(d.end_date for d in _datasets)
+        start_date, end_date = merge_dates(_datasets)
 
-        self.datasets = {k: Padded(d, self.start_date, self.end_date).mutate() for k, d in datasets.items()}
+        self.datasets = {k: Padded(d, start_date, end_date).mutate() for k, d in datasets.items()}
+        self.dates = make_dates(start_date, end_date, self.frequency)
 
     def getitem(self, i):
         item = {k: d[i] for k, d in self.datasets.items()}
@@ -125,6 +142,7 @@ class Dictionary(ObservationsBase):
 class Forward(ObservationsBase):
     def __init__(self, dataset):
         self.forward = dataset.mutate()
+        self.dates = self.forward.dates
 
     def tree(self):
         return Node(self, [self.forward.tree()])
@@ -142,14 +160,6 @@ class Forward(ObservationsBase):
     @property
     def frequency(self):
         return self.forward.frequency
-
-    @property
-    def start_date(self):
-        return self.forward.start_date
-
-    @property
-    def end_date(self):
-        return self.forward.end_date
 
     @cached_property
     def name_to_index(self):
@@ -184,18 +194,11 @@ class Padded(Forward):
         self._frequency = self.forward.frequency
         self._start_date = start
         self._end_date = end
+        self.dates = make_dates(start, end, self._frequency)
 
     @property
     def frequency(self):
         return self._frequency
-
-    @property
-    def start_date(self):
-        return self._start_date
-
-    @property
-    def end_date(self):
-        return self._end_date
 
     def getitem(self, i):
         date = self.dates[i]
@@ -209,8 +212,8 @@ class Padded(Forward):
             self,
             [self.forward.tree()],
             frequency=self.frequency,
-            start=self.start_date,
-            end=self.end_date,
+            start=self._start_date,
+            end=self._end_date,
         )
 
 
@@ -220,19 +223,20 @@ class Observations(ObservationsBase):
         self.frequency = _frequency_to_hours(frequency)
         self.time_span = time_span  # not used
         self.path = _resolve_path(dataset)
-        self.start_date = start
-        self.end_date = end
+        self.dates = make_dates(start, end, self.frequency)
+        self._start_date = start
+        self._end_date = end
 
         # _start_date must be the begginning of the time window of the first item
-        _start_date = (self.start_date - datetime.timedelta(hours=self.frequency)).strftime("%Y%m%d%H%M%S")
-        _start_date = int(_start_date)
-        # _end_date must be the end of the time window of the last item
-        _end_date = int(self.end_date.strftime("%Y%m%d%H%M%S"))
+        first_window_begin = (self._start_date - datetime.timedelta(hours=self.frequency)).strftime("%Y%m%d%H%M%S")
+        first_window_begin = int(first_window_begin)
+        # last_window_end must be the end of the time window of the last item
+        last_window_end = int(self._end_date.strftime("%Y%m%d%H%M%S"))
 
         self.forward = ObsDataset(
             self.path,
-            _start_date,
-            _end_date,
+            first_window_begin,
+            last_window_end,
             len_hrs=self.frequency,  # length the time windows, i.e. the time span of one item
             step_hrs=self.frequency,  # frequency of the dataset, i.e. the time shift between two items
             normalize=False,
@@ -247,7 +251,7 @@ class Observations(ObservationsBase):
                     f"Dates are not consistent with the number of items in the dataset. "
                     f"The dataset contains {len(self.forward)} time windows. "
                     f"This is not compatible with what is requested: "
-                    f"{len(self.dates)} are requested from {self.start_date} to {self.end_date} "
+                    f"{len(self.dates)} are requested from {self._start_date} to {self._end_date} "
                     f"with frequency={self.frequency}."
                 )
             )
@@ -288,8 +292,8 @@ class Observations(ObservationsBase):
             [],
             path=self.path,
             frequency=self.frequency,
-            START=self.start_date,
-            END=self.end_date,
+            START=self._start_date,
+            END=self._end_date,
         )
 
     def __repr__(self):
@@ -300,9 +304,9 @@ def _open(a):
     if isinstance(a, ObservationsBase):
         return a.mutate()
     if isinstance(a, dict):
-        return _open_observations(**a)
-    # if isinstance(a, str):
-    #     return Observations(a)
+        return _open_observations(**a).mutate()
+    if isinstance(a, str):
+        return _open_observations(a).mutate()
     raise NotImplementedError(f"Expected ObservationsBase or dict, got {type(a)}")
 
 
@@ -333,10 +337,14 @@ def _open_observations(*args, **kwargs):
         dataset = _open(kwargs).mutate()
         return Rename(dataset, rename).mutate()
 
-    assert len(args) == 0, args
-    for k, v in kwargs.items():
-        assert k in ["dataset", "start", "end", "frequency", "time_span"], k
-    return Observations(*args, **kwargs).mutate()
+    if "is_observations" in kwargs:
+        kwargs.pop("is_observations")
+        assert len(args) == 0, args
+        return Observations(*args, **kwargs).mutate()
+
+    from ..misc import _open_dataset as _open_fields
+
+    return _open_fields(*args, **kwargs).mutate()
 
 
 class StatisticsOfObsDataset:
