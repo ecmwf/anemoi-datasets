@@ -24,6 +24,7 @@ from anemoi.datasets.create import Creator
 from anemoi.datasets.data.stores import open_zarr
 
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+SELF_HOSTED_RUNNER = os.getenv("RUNNER_TYPE") == "self-hosted"
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create/"
 
@@ -211,7 +212,7 @@ class Comparer:
         compare_statistics(self.ds_output, self.ds_reference)
 
 
-@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions.")
+@pytest.mark.skipif(IN_GITHUB_ACTIONS and SELF_HOSTED_RUNNER, reason="Test doesn't work in Github Actions.")
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name):
