@@ -21,8 +21,6 @@ Keep it human-readable, your future self will thank you!
 ### Added
 - earthkit-data replaces climetlab
 
-### Changed
-
 ### Removed
 - climetlab
 
@@ -34,14 +32,10 @@ Keep it human-readable, your future self will thank you!
 ### Changed
 - updated documentation
 
-### Removed
-
 ## [0.2.0] Minor Release
 
 ### Added
 - statistics tendencies
-
-### Changed
 
 ### Removed
 - CubesFilter
@@ -53,10 +47,6 @@ Keep it human-readable, your future self will thank you!
 - Initial code release for anemoi-datasets: create datasets for data-driven weather-models
 - open datasets
 - combine datasets
-
-### Changed
-
-### Removed
 
 ## Git Diffs:
 [0.4.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.3.0...0.4.0
