@@ -1,0 +1,9 @@
+dates:
+  start: 2021-06-28
+  end: 2021-06-29
+
+input:
+  zenodo:
+    record_id: 6470725
+    file_key: "{param}_INCA_202106280700.nc"
+    param: [RR,PN, PT]

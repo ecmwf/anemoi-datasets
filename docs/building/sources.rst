@@ -20,11 +20,14 @@ The following `sources` are currently available:
 .. toctree::
    :maxdepth: 1
 
-   sources/mars
-   sources/grib
-   sources/netcdf
-   sources/xarray
-   sources/opendap
-   sources/forcings
    sources/accumulations
+   sources/forcings
+   sources/grib
+   sources/hindcasts
+   sources/mars
+   sources/netcdf
+   sources/opendap
    sources/recentre
+   sources/xarray-kerchunk
+   sources/xarray-zarr
+   sources/zenodo
