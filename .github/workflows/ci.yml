@@ -4,7 +4,7 @@ on:
   # Trigger the workflow on push to master or develop, except tag creation
   push:
     branches:
-      - 'master'
+      - 'main'
       - 'develop'
     tags-ignore:
       - '**'
