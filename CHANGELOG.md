@@ -11,6 +11,7 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
+- adds the reusable cd pypi workflow
 
 ### Changed
 
