@@ -80,7 +80,7 @@ class XArrayField(Field):
         return values.reshape(self.shape)
 
     def _make_metadata(self):
-        return XArrayMetadata(self, self.owner.mapping)
+        return XArrayMetadata(self)
 
     def grid_points(self):
         return self.owner.grid_points()

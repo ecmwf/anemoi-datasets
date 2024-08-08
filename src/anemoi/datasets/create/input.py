@@ -288,7 +288,6 @@ class Result:
                 names += list(a.keys())
 
         print(f"Building a {len(names)}D hypercube using", names)
-
         ds = ds.order_by(*args, remapping=remapping, patches=patches)
         user_coords = ds.unique_values(*names, remapping=remapping, patches=patches, progress_bar=False)
 

@@ -52,9 +52,19 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:
-        LOG.warning(f"No data found for {dataset} and dates {dates}")
+        LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
         LOG.warning(f"Options: {options}")
-        LOG.warning(data)
+
+        for i, k in enumerate(fs):
+            a = ["valid_datetime", k.metadata("valid_datetime", default=None)]
+            for n in kwargs.keys():
+                a.extend([n, k.metadata(n, default=None)])
+            print([str(x) for x in a])
+
+            if i > 16:
+                break
+
+        # LOG.warning(data)
 
     return result
 

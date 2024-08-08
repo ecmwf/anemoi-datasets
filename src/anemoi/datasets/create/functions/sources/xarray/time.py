@@ -87,12 +87,20 @@ class ForecastFromValidTimeAndBaseTime(Time):
 
 class ForecastFromBaseTimeAndDate(Time):
     def __init__(self, date_coordinate, step_coordinate):
-        self.date_coordinate = date_coordinate
-        self.step_coordinate = step_coordinate
+        self.date_coordinate = date_coordinate.name
+        self.step_coordinate = step_coordinate.name
 
-    def fill_time_metadata(self, time, metadata):
-        metadata["date"] = time.strftime("%Y%m%d")
-        metadata["time"] = time.strftime("%H%M")
-        hours = metadata[self.step_coordinate.name].total_seconds() / 3600
+    def fill_time_metadata(self, coords_values, metadata):
+
+        date = coords_values[self.date_coordinate]
+        step = coords_values[self.step_coordinate]
+
+        metadata["date"] = date.strftime("%Y%m%d")
+        metadata["time"] = date.strftime("%H%M")
+
+        hours = step.total_seconds() / 3600
+
         assert int(hours) == hours
         metadata["step"] = int(hours)
+
+        return date + step

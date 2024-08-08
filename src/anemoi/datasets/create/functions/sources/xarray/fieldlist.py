@@ -134,8 +134,6 @@ class XarrayFieldList(FieldList):
 
         for v in self.variables:
 
-            v.update_metadata_mapping(kwargs)
-
             # First, select matching variables
             # This will consume 'param' or 'variable' from kwargs
             # and return the rest
