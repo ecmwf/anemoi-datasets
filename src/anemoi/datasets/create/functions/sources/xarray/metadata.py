@@ -82,8 +82,8 @@ class XArrayMetadata(RawMetadata):
     def _base_datetime(self):
         return self._field.forecast_reference_time
 
-    # def _valid_datetime(self):
-    #     return self._field.valid_time
+    def _valid_datetime(self):
+        return self._get("valid_datetime")
 
     def _get(self, key, **kwargs):
 
