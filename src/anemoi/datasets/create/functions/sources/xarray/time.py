@@ -12,6 +12,7 @@ import datetime
 
 
 class Time:
+
     @classmethod
     def from_coordinates(cls, coordinates):
         time_coordinate = [c for c in coordinates if c.is_time]
@@ -62,6 +63,7 @@ class Analysis(Time):
 
 
 class ForecastFromValidTimeAndStep(Time):
+
     def __init__(self, time_coordinate, step_coordinate):
         self.time_coordinate_name = time_coordinate.variable.name
         self.step_coordinate_name = step_coordinate.variable.name
@@ -83,6 +85,7 @@ class ForecastFromValidTimeAndStep(Time):
 
 
 class ForecastFromValidTimeAndBaseTime(Time):
+
     def __init__(self, date_coordinate, time_coordinate):
         self.date_coordinate.name = date_coordinate.name
         self.time_coordinate.name = time_coordinate.name
@@ -104,6 +107,7 @@ class ForecastFromValidTimeAndBaseTime(Time):
 
 
 class ForecastFromBaseTimeAndDate(Time):
+
     def __init__(self, date_coordinate, step_coordinate):
         self.date_coordinate_name = date_coordinate.name
         self.step_coordinate_name = step_coordinate.name
