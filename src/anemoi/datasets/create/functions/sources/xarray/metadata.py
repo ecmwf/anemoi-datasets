@@ -82,13 +82,13 @@ class XArrayMetadata(RawMetadata):
     def _base_datetime(self):
         return self._field.forecast_reference_time
 
-    def _valid_datetime(self):
-        assert False, "Not implemented"
+    # def _valid_datetime(self):
+    #     return self._field.valid_time
 
     def _get(self, key, **kwargs):
 
-        # if key == 'valid_datetime':
-        #     return self._valid_datetime()
+        if key == "valid_datetime":
+            return super()._get(key, **kwargs)
 
         if key.startswith("mars."):
             key = key[5:]
