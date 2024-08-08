@@ -64,7 +64,7 @@ def recentre(
 
     keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
 
-    number_list = members.unique_values("number")["number"]
+    number_list = members.unique_values("number", progress_bar=False)["number"]
     n_numbers = len(number_list)
 
     assert None not in number_list

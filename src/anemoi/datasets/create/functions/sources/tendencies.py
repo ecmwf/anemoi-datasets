@@ -56,7 +56,7 @@ def tendencies(dates, time_increment, **kwargs):
 
     ds = mars(dates=all_dates, **kwargs)
 
-    dates_in_data = ds.unique_values("valid_datetime")["valid_datetime"]
+    dates_in_data = ds.unique_values("valid_datetime", progress_bar=False)["valid_datetime"]
     for d in all_dates:
         assert d.isoformat() in dates_in_data, d
 
