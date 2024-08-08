@@ -14,6 +14,8 @@ Keep it human-readable, your future self will thank you!
 
 ### Changed
 
+- Bug fix in accumulations() that did not work with webmars
+
 ### Removed
 
 ## [0.4.0] Minor Release
