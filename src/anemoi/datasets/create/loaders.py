@@ -17,6 +17,7 @@ import numpy as np
 import tqdm
 import zarr
 from anemoi.utils.config import DotDict
+from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets import MissingDateError
@@ -24,6 +25,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
+from anemoi.datasets.dates import compress_dates
 from anemoi.datasets.dates.groups import Groups
 
 from .check import DatasetName
@@ -442,13 +444,23 @@ class ContentLoader(Loader):
         dates = result.dates
 
         cube = result.get_cube()
-        assert cube.extended_user_shape[0] == len(dates), (
-            cube.extended_user_shape[0],
-            len(dates),
-        )
-
         shape = cube.extended_user_shape
         dates_in_data = cube.user_coords["valid_datetime"]
+
+        if cube.extended_user_shape[0] != len(dates):
+            print(f"Cube shape does not match the number of dates {cube.extended_user_shape[0]}, {len(dates)}")
+            print("Requested dates", compress_dates(dates))
+            print("Cube dates", compress_dates(dates_in_data))
+
+            a = set(as_datetime(_) for _ in dates)
+            b = set(as_datetime(_) for _ in dates_in_data)
+
+            print("Missing dates", compress_dates(a - b))
+            print("Extra dates", compress_dates(b - a))
+
+            raise ValueError(
+                f"Cube shape does not match the number of dates {cube.extended_user_shape[0]}, {len(dates)}"
+            )
 
         LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
 

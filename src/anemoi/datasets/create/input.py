@@ -277,6 +277,9 @@ class Result:
         if len(args) == 1 and isinstance(args[0], (list, tuple)):
             args = args[0]
 
+        # print("Executing", self.action_path)
+        # print("Dates:", compress_dates(self.dates))
+
         names = []
         for a in args:
             if isinstance(a, str):
@@ -287,12 +290,12 @@ class Result:
         print(f"Building a {len(names)}D hypercube using", names)
 
         ds = ds.order_by(*args, remapping=remapping, patches=patches)
-        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches)
+        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches, progress_bar=False)
 
         print()
         print("Number of unique values found for each coordinate:")
         for k, v in user_coords.items():
-            print(f"  {k:20}:", len(v))
+            print(f"  {k:20}:", len(v), shorten_list(v, max_length=10))
         print()
         user_shape = tuple(len(v) for k, v in user_coords.items())
         print("Shape of the hypercube           :", user_shape)
@@ -305,13 +308,18 @@ class Result:
 
         remapping = build_remapping(remapping, patches)
         expected = set(itertools.product(*user_coords.values()))
+        extra = set()
 
         if math.prod(user_shape) > len(ds):
             print(f"This means that all the fields in the datasets do not exists for all combinations of {names}.")
 
             for f in ds:
                 metadata = remapping(f.metadata)
-                expected.remove(tuple(metadata(n) for n in names))
+                key = tuple(metadata(n, default=None) for n in names)
+                if key in expected:
+                    expected.remove(key)
+                else:
+                    extra.add(key)
 
             print("Missing fields:")
             print()
@@ -321,7 +329,35 @@ class Result:
                     print("...", len(expected) - i - 1, "more")
                     break
 
+            print("Extra fields:")
             print()
+            for i, f in enumerate(sorted(extra)):
+                print(" ", f)
+                if i >= 9 and len(extra) > 10:
+                    print("...", len(extra) - i - 1, "more")
+                    break
+
+            print()
+            print("Missing values:")
+            per_name = defaultdict(set)
+            for e in expected:
+                for n, v in zip(names, e):
+                    per_name[n].add(v)
+
+            for n, v in per_name.items():
+                print(" ", n, len(v), shorten_list(sorted(v), max_length=10))
+            print()
+
+            print("Extra values:")
+            per_name = defaultdict(set)
+            for e in extra:
+                for n, v in zip(names, e):
+                    per_name[n].add(v)
+
+            for n, v in per_name.items():
+                print(" ", n, len(v), shorten_list(sorted(v), max_length=10))
+            print()
+
             print("To solve this issue, you can:")
             print(
                 "  - Provide a better selection, like 'step: 0' or 'level: 1000' to "
