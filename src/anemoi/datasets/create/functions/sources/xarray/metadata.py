@@ -87,8 +87,8 @@ class XArrayMetadata(RawMetadata):
 
     def _get(self, key, **kwargs):
 
-        if key == "valid_datetime":
-            return super()._get(key, **kwargs)
+        if key in self._d:
+            return self._d[key]
 
         if key.startswith("mars."):
             key = key[5:]
