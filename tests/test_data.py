@@ -18,7 +18,7 @@ from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
-from anemoi.datasets.data.misc import _frequency_to_hours
+from anemoi.datasets.data.misc import _frequency_to_timedelta
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.data.select import Rename
@@ -170,7 +170,7 @@ def zarr_from_str(name, mode):
     return create_zarr(
         start=int(args["start"]),
         end=int(args["end"]),
-        frequency=_frequency_to_hours(args["frequency"]),
+        frequency=_frequency_to_timedelta(args["frequency"]),
         resolution=args["resolution"],
         vars=[x for x in args["vars"]],
         k=int(args["k"]),

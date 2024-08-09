@@ -95,10 +95,10 @@ class Dataset:
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency):
-        from .misc import _frequency_to_hours
+        from .misc import _frequency_to_timedelta
 
-        requested_frequency = _frequency_to_hours(frequency)
-        dataset_frequency = _frequency_to_hours(self.frequency)
+        requested_frequency = _frequency_to_timedelta(frequency)
+        dataset_frequency = _frequency_to_timedelta(self.frequency)
         assert requested_frequency % dataset_frequency == 0
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
         step = requested_frequency // dataset_frequency

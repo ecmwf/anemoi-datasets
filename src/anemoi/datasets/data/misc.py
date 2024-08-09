@@ -39,7 +39,7 @@ def add_dataset_path(path):
         config["datasets"]["path"].append(path)
 
 
-def _frequency_to_hours(frequency):
+def _frequency_to_timedelta(frequency):
     if isinstance(frequency, int):
         return frequency
 
@@ -173,7 +173,7 @@ def _concat_or_join(datasets, kwargs):
 
     # For now we should have the datasets in order with no gaps
 
-    frequency = _frequency_to_hours(datasets[0].frequency)
+    frequency = _frequency_to_timedelta(datasets[0].frequency)
 
     for i in range(len(ranges) - 1):
         r = ranges[i]

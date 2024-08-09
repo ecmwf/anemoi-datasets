@@ -7,6 +7,7 @@
 
 
 import datetime
+import re
 import warnings
 
 from anemoi.utils.dates import as_datetime
@@ -53,14 +54,70 @@ def no_time_zone(date):
     return date.replace(tzinfo=None)
 
 
-def frequency_to_hours(frequency):
-    if isinstance(frequency, int):
+def frequency_to_string(frequency):
+    # TODO: use iso8601
+    frequency = frequency_to_timedelta(frequency)
+
+    total_seconds = frequency.total_seconds()
+    assert int(total_seconds) == total_seconds, total_seconds
+    total_seconds = int(total_seconds)
+
+    seconds = total_seconds
+
+    days = seconds // (24 * 3600)
+    seconds %= 24 * 3600
+    hours = seconds // 3600
+    seconds %= 3600
+    minutes = seconds // 60
+    seconds %= 60
+
+    if days > 0 and hours == 0 and minutes == 0 and seconds == 0:
+        return f"{days}d"
+
+    if days == 0 and hours > 0 and minutes == 0 and seconds == 0:
+        return f"{hours}h"
+
+    if days == 0 and hours == 0 and minutes > 0 and seconds == 0:
+        return f"{minutes}m"
+
+    if days == 0 and hours == 0 and minutes == 0 and seconds > 0:
+        return f"{seconds}s"
+
+    if days > 0:
+        return f"{total_seconds}s"
+
+    return str(frequency)
+
+
+def frequency_to_timedelta(frequency):
+
+    if isinstance(frequency, datetime.timedelta):
         return frequency
+
+    if isinstance(frequency, int):
+        return datetime.timedelta(hours=frequency)
+
     assert isinstance(frequency, str), (type(frequency), frequency)
 
-    unit = frequency[-1].lower()
-    v = int(frequency[:-1])
-    return {"h": v, "d": v * 24}[unit]
+    try:
+        return frequency_to_timedelta(int(frequency))
+    except ValueError:
+        pass
+
+    if re.match(r"^\d+[hdms]$", frequency, re.IGNORECASE):
+        unit = frequency[-1].lower()
+        v = int(frequency[:-1])
+        unit = {"h": "hours", "d": "days", "s": "seconds", "m": "minutes"}[unit]
+        return datetime.timedelta(**{unit: v})
+
+    m = frequency.split(":")
+    if len(m) == 2:
+        return datetime.timedelta(hours=int(m[0]), minutes=int(m[1]))
+
+    if len(m) == 3:
+        return datetime.timedelta(hours=int(m[0]), minutes=int(m[1]), seconds=int(m[2]))
+
+    raise ValueError(f"Cannot convert frequency {frequency} to timedelta")
 
 
 def normalize_date(x):
@@ -81,7 +138,7 @@ def extend(x):
             start, end, step = x.split("/")
             start = normalize_date(start)
             end = normalize_date(end)
-            step = frequency_to_hours(step)
+            step = frequency_to_timedelta(step)
             while start <= end:
                 yield start
                 start += datetime.timedelta(hours=step)
@@ -157,7 +214,8 @@ class ValuesDates(Dates):
 
 class StartEndDates(Dates):
     def __init__(self, start, end, frequency=1, months=None, **kwargs):
-        frequency = frequency_to_hours(frequency)
+        frequency = frequency_to_timedelta(frequency)
+        assert isinstance(frequency, datetime.timedelta), frequency
 
         def _(x):
             if isinstance(x, str):
@@ -179,7 +237,7 @@ class StartEndDates(Dates):
         # if end <= start:
         #     raise ValueError(f"End date {end} must be after start date {start}")
 
-        increment = datetime.timedelta(hours=frequency)
+        increment = frequency
 
         self.start = start
         self.end = end
