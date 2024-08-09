@@ -90,6 +90,7 @@ def frequency_to_string(frequency):
 
 
 def frequency_to_timedelta(frequency):
+    # TODO: use iso8601 or check pytimeparse
 
     if isinstance(frequency, datetime.timedelta):
         return frequency
