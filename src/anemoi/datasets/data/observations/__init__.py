@@ -11,7 +11,6 @@ import os
 from functools import cached_property
 
 import numpy as np
-from obsdata.dataset.obs_dataset import ObsDataset
 
 from anemoi.datasets.data.misc import _frequency_to_hours
 
@@ -82,7 +81,7 @@ class ObservationsBase:
         raise NotImplementedError()
 
 
-class Dictionary(ObservationsBase):
+class Multiple(ObservationsBase):
     def __init__(self, datasets):
         _datasets = list(datasets.values())
         self.frequency = _datasets[0].frequency
@@ -170,22 +169,18 @@ class Forward(ObservationsBase):
         return self.forward.statistics
 
 
-class Rename(Forward):
-    def __init__(self, dataset, rename):
+class RenamePrefix(Forward):
+    def __init__(self, dataset, prefix):
         super().__init__(dataset)
-        if "{name}" in rename:
-            rename = {n: rename.format(name=n) for n in self.forward.variables}
-        for n in rename:
-            assert n in dataset.variables, n
-        self._variables = [rename.get(v, v) for v in dataset.variables]
-        self.rename = rename
+        self.prefix = prefix
+        self._variables = [f"{prefix}_{n}" for n in self.forward.variables]
 
     @property
     def variables(self):
         return self._variables
 
     def tree(self):
-        return Node(self, [self.forward.tree()], rename=self.rename)
+        return Node(self, [self.forward.tree()], rename_prefix=self.prefix)
 
 
 class Padded(Forward):
@@ -233,6 +228,8 @@ class Observations(ObservationsBase):
         # last_window_end must be the end of the time window of the last item
         last_window_end = int(self._end_date.strftime("%Y%m%d%H%M%S"))
 
+        from obsdata.dataset.obs_dataset import ObsDataset
+
         self.forward = ObsDataset(
             self.path,
             first_window_begin,
@@ -264,8 +261,12 @@ class Observations(ObservationsBase):
         #    # this should get directly the numpy array
         #    data = self.forward.get_data_from_dates_interval(start, end)
         data = self.forward[i]
-        data = data.numpy().astype(np.float32)
         ##########################
+        data = data.numpy().astype(np.float32)
+        assert len(data.shape) == 2, f"Expected 2D array, got {data.shape}"
+        data = data.T
+        # insert an additional dimension of size 1 to have a layout similar to fields datasets (a, b) -> (a, 1, b)
+        data = np.expand_dims(data, axis=1)
 
         if data.shape[0] == 0:
             return None
@@ -326,16 +327,16 @@ def _open_observations(*args, **kwargs):
         dataset = _open(pad).mutate()
         return Padded(dataset, **kwargs).mutate()
 
-    if "dictionary" in kwargs:
+    if "multiple" in kwargs:
         assert len(args) == 0
-        dictionary = kwargs.pop("dictionary")
-        datasets = {k: _open(d).mutate() for k, d in dictionary.items()}
-        return Dictionary(datasets).mutate()
+        multiple = kwargs.pop("multiple")
+        datasets = {k: _open(d).mutate() for k, d in multiple.items()}
+        return Multiple(datasets).mutate()
 
-    if "rename" in kwargs:
-        rename = kwargs.pop("rename")
+    if "rename_prefix" in kwargs:
+        prefix = kwargs.pop("rename_prefix")
         dataset = _open(kwargs).mutate()
-        return Rename(dataset, rename).mutate()
+        return RenamePrefix(dataset, prefix).mutate()
 
     if "is_observations" in kwargs:
         kwargs.pop("is_observations")
