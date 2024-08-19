@@ -83,59 +83,46 @@ class ObservationsBase:
 
 class Multiple(ObservationsBase):
     def __init__(self, datasets):
-        _datasets = list(datasets.values())
-        self.frequency = _datasets[0].frequency
-        for d in _datasets[1:]:
+        self.frequency = datasets[0].frequency
+        for d in datasets[1:]:
             assert d.frequency == self.frequency, f"Expected {self.frequency}, got {d.frequency}"
 
-        start_date, end_date = merge_dates(_datasets)
+        start_date, end_date = merge_dates(datasets)
 
-        self.datasets = {k: Padded(d, start_date, end_date).mutate() for k, d in datasets.items()}
+        self.datasets = [Padded(d, start_date, end_date).mutate() for d in datasets]
         self.dates = make_dates(start_date, end_date, self.frequency)
 
     def getitem(self, i):
-        item = {k: d[i] for k, d in self.datasets.items()}
-        return {k: v for k, v in item.items() if v is not None}
+        return [d[i] for d in self.datasets]
 
     def tree(self):
-        return Node(self, [d.tree() for k, d in self.datasets.items()])
+        return Node(self, [d.tree() for d in self.datasets])
 
     def _check(self):
-        names_dict = {k: d.variables for k, d in self.datasets.items()}
-
         names = []
-        for _, v in names_dict.items():
-            names += list(v)
-
-        if len(set(names)) != len(names):
-            # Found duplicated names
-            msg = ""
-            for name in set(names):
-                if names.count(name) > 1:
-                    for k, v in names_dict.items():
-                        if name in v:
-                            msg += f"Variable '{name}' is found in dataset '{k}'. "
-                    break
-            raise ValueError(f"Duplicated variable: {msg}")
+        for ds in self.datasets:
+            for name in ds.variables:
+                if name in names:
+                    raise ValueError(f"Duplicated variable: {name}. Use rename_prefix to avoid this issue.")
 
     @property
     def variables(self):
         variables = []
-        for k, d in self.datasets.items():
-            variables += list(d.variables)
+        for ds in self.datasets:
+            variables += ds.variables
         return variables
 
     @cached_property
     def name_to_index(self):
         dic = {}
-        for k, d in self.datasets.items():
+        for i, d in enumerate(self.datasets):
             for name in d.variables:
-                dic[name] = (k, d.name_to_index[name])
+                dic[name] = (i, d.name_to_index[name])
         return dic
 
     @property
     def statistics(self):
-        return {k: v.statistics for k, v in self.datasets.items()}
+        return [v.statistics for v in self.datasets]
 
 
 class Forward(ObservationsBase):
@@ -330,7 +317,7 @@ def _open_observations(*args, **kwargs):
     if "multiple" in kwargs:
         assert len(args) == 0
         multiple = kwargs.pop("multiple")
-        datasets = {k: _open(d).mutate() for k, d in multiple.items()}
+        datasets = [_open(d).mutate() for d in multiple]
         return Multiple(datasets).mutate()
 
     if "rename_prefix" in kwargs:
