@@ -9,6 +9,45 @@
 import datetime
 import warnings
 
+from anemoi.utils.dates import as_datetime
+
+
+def _compress_dates(dates):
+    dates = sorted(dates)
+    if len(dates) < 3:
+        yield dates
+        return
+
+    prev = first = dates.pop(0)
+    curr = dates.pop(0)
+    delta = curr - prev
+    while curr - prev == delta:
+        prev = curr
+        if not dates:
+            break
+        curr = dates.pop(0)
+
+    yield (first, prev, delta)
+    if dates:
+        yield from _compress_dates([curr] + dates)
+
+
+def compress_dates(dates):
+    dates = [as_datetime(_) for _ in dates]
+    result = []
+
+    for n in _compress_dates(dates):
+        if isinstance(n, list):
+            result.extend([str(_) for _ in n])
+        else:
+            result.append(" ".join([str(n[0]), "to", str(n[1]), "by", str(n[2])]))
+
+    return result
+
+
+def print_dates(dates):
+    print(compress_dates(dates))
+
 
 def no_time_zone(date):
     return date.replace(tzinfo=None)
@@ -28,6 +67,27 @@ def normalize_date(x):
     if isinstance(x, str):
         return no_time_zone(datetime.datetime.fromisoformat(x))
     return x
+
+
+def extend(x):
+
+    if isinstance(x, (list, tuple)):
+        for y in x:
+            yield from extend(y)
+        return
+
+    if isinstance(x, str):
+        if "/" in x:
+            start, end, step = x.split("/")
+            start = normalize_date(start)
+            end = normalize_date(end)
+            step = frequency_to_hours(step)
+            while start <= end:
+                yield start
+                start += datetime.timedelta(hours=step)
+            return
+
+    yield normalize_date(x)
 
 
 class Dates:
@@ -59,7 +119,7 @@ class Dates:
     def __init__(self, missing=None):
         if not missing:
             missing = []
-        self.missing = [normalize_date(x) for x in missing]
+        self.missing = list(extend(missing))
         if set(self.missing) - set(self.values):
             warnings.warn(f"Missing dates {self.missing} not in list.")
 
@@ -145,3 +205,9 @@ class StartEndDates(Dates):
             "end": self.end.isoformat(),
             "frequency": f"{self.frequency}h",
         }
+
+
+if __name__ == "__main__":
+    print_dates([datetime.datetime(2023, 1, 1, 0, 0)])
+    s = StartEndDates(start="2023-01-01 00:00", end="2023-01-02 00:00", frequency=1)
+    print_dates(list(s))

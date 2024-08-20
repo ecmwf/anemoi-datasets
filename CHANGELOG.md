@@ -12,11 +12,17 @@ Keep it human-readable, your future self will thank you!
 
 ### Added
 - CI workflow to update the changelog on release
+- adds the reusable cd pypi workflow
 
 ### Changed
  -  update CI to reusable workflows for PRs and releases
 
 ### Removed
+
+## [0.4.4] Bug fixes
+
+- Bug fix in accumulations() that did not work with webmars
+- Bug fix when using hindcasts input (missing dates on leap years)
 
 ## [0.4.0] Minor Release
 
