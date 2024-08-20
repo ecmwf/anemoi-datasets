@@ -199,12 +199,23 @@ class Padded(Forward):
         )
 
 
+def is_observations_dataset(path):
+    import zarr
+
+    z = zarr.open(path, mode="r")
+    try:
+        return z.data.attrs["is_observations"] is True
+    except:  # noqa
+        return False
+
+
 class Observations(ObservationsBase):
     def __init__(self, dataset, start, end, frequency, time_span=None):
         assert not dataset.endswith(".zarr"), f"Expected dataset name, got {dataset}"
         self.frequency = _frequency_to_hours(frequency)
         self.time_span = time_span  # not used
         self.path = _resolve_path(dataset)
+        assert is_observations_dataset(self.path), f"Expected observations dataset, got {self.path}"
         self.dates = make_dates(start, end, self.frequency)
         self._start_date = start
         self._end_date = end
