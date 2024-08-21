@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import sys
+
 from anemoi.datasets import open_dataset
 
 
 def str_(t):
-    """ Not needed, but useful for debugging """
+    """Not needed, but useful for debugging"""
     import numpy as np
 
     if isinstance(t, (list, tuple)):
@@ -14,6 +14,7 @@ def str_(t):
     if isinstance(t, dict):
         return "{" + " , ".join(f"{k}: {str_(v)}" for k, v in t.items()) + "}"
     return str(t)
+
 
 def main(path, filter):
     with open(path, "r") as f:
@@ -43,11 +44,13 @@ def main(path, filter):
         data = ds[i]
         print(f"✅Got item {i} for time window ending {date}: {str_(data)}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', help='Path to config file', default='config.yaml')
-    parser.add_argument('--filter', help='filter dates (ex: 2017 or 2017-11)', default='2017-11-11')
+    parser.add_argument("--config", help="Path to config file", default="config.yaml")
+    parser.add_argument("--filter", help="filter dates (ex: 2017 or 2017-11)", default="2017-11-11")
     args = parser.parse_args()
 
     main(args.config, args.filter)
