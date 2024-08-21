@@ -220,10 +220,16 @@ def round_datetime(dt, frequency, up=True):
 
 
 class Observations(ObservationsBase):
-    def __init__(self, dataset, frequency, time_span=None):
+    def __init__(self, dataset, frequency, window=None):
         assert not dataset.endswith(".zarr"), f"Expected dataset name, got {dataset}"
         self.frequency = _frequency_to_hours(frequency)
-        self.time_span = time_span  # not used
+
+        if window is None:
+            window = (-self.frequency, 0)
+        if window == (-self.frequency, 0):
+            raise ValueError("For now, only window = (- frequency, 0) are supported")
+
+        self.window = window
         self.path = _resolve_path(dataset)
         assert is_observations_dataset(self.path), f"Expected observations dataset, got {self.path}"
 
