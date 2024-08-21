@@ -183,6 +183,7 @@ class Padded(Forward):
         return self._frequency
 
     def getitem(self, i):
+        # TODO: very inefficient, improve this
         date = self.dates[i]
         for j, d in enumerate(self.forward.dates):
             if date == d:
@@ -209,22 +210,40 @@ def is_observations_dataset(path):
         return False
 
 
+def round_datetime(dt, frequency, up=True):
+    dt = dt.replace(minute=0, second=0, microsecond=0)
+    hour = dt.hour
+    if hour % frequency != 0:
+        dt = dt.replace(hour=(hour // frequency) * frequency)
+        dt = dt + datetime.timedelta(hours=frequency)
+    return dt
+
+
 class Observations(ObservationsBase):
-    def __init__(self, dataset, start, end, frequency, time_span=None):
+    def __init__(self, dataset, frequency, time_span=None):
         assert not dataset.endswith(".zarr"), f"Expected dataset name, got {dataset}"
         self.frequency = _frequency_to_hours(frequency)
         self.time_span = time_span  # not used
         self.path = _resolve_path(dataset)
         assert is_observations_dataset(self.path), f"Expected observations dataset, got {self.path}"
-        self.dates = make_dates(start, end, self.frequency)
-        self._start_date = start
-        self._end_date = end
 
-        # _start_date must be the begginning of the time window of the first item
-        first_window_begin = (self._start_date - datetime.timedelta(hours=self.frequency)).strftime("%Y%m%d%H%M%S")
+        # print(f"dataset={self.path}, frequency={frequency}")
+        start, end = self._probe_attributes["start_date"], self._probe_attributes["end_date"]
+        # print(f"✅ from attribute start={start}, end={end}")
+        start, end = datetime.datetime.fromisoformat(start), datetime.datetime.fromisoformat(end)
+        # print(f'          nb of windows of size {self.frequency}h: {(end-start).total_seconds()/3600/self.frequency}')
+        start, end = round_datetime(start, self.frequency), round_datetime(end, self.frequency)
+        # print(f"       rounded to start={start}, end={end}")
+        # print(f'          nb of windows of size {self.frequency}h: {(end-start).total_seconds()/3600/self.frequency}')
+
+        self.dates = make_dates(start + datetime.timedelta(hours=self.frequency), end, self.frequency)
+        # print(f"              -> dates: {self.dates[0]}, {self.dates[-1]}")
+        # print(f"                   nb of dates: {len(self.dates)}")
+
+        first_window_begin = start.strftime("%Y%m%d%H%M%S")
         first_window_begin = int(first_window_begin)
         # last_window_end must be the end of the time window of the last item
-        last_window_end = int(self._end_date.strftime("%Y%m%d%H%M%S"))
+        last_window_end = int(end.strftime("%Y%m%d%H%M%S"))
 
         from obsdata.dataset.obs_dataset import ObsDataset
 
@@ -236,6 +255,8 @@ class Observations(ObservationsBase):
             step_hrs=self.frequency,  # frequency of the dataset, i.e. the time shift between two items
             normalize=False,
         )
+        # print(f"obs = Obsdataset('{self.path}', {first_window_begin=}, {last_window_end=}, len_hrs={self.frequency}, step_hrs={self.frequency}, normalize=False)")
+        # print(f"len(obs)={len(self.forward)}")
 
         assert self.frequency == self.forward.step_hrs, f"Expected {self.frequency}, got {self.forward.len_hrs}"
         assert self.frequency == self.forward.len_hrs, f"Expected {self.frequency}, got {self.forward.step_hrs}"
@@ -245,11 +266,18 @@ class Observations(ObservationsBase):
                 (
                     f"Dates are not consistent with the number of items in the dataset. "
                     f"The dataset contains {len(self.forward)} time windows. "
-                    f"This is not compatible with what is requested: "
-                    f"{len(self.dates)} are requested from {self._start_date} to {self._end_date} "
-                    f"with frequency={self.frequency}."
+                    f"This is not compatible with the "
+                    f"{len(self.dates)} requested dates with frequency={self.frequency}"
+                    f"{self.dates[0]}, {self.dates[1]}, ..., {self.dates[-2]}, {self.dates[-1]} "
                 )
             )
+
+    @cached_property
+    def _probe_attributes(self):
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        return dict(z.data.attrs)
 
     def getitem(self, i):
         ##########################
@@ -291,8 +319,6 @@ class Observations(ObservationsBase):
             [],
             path=self.path,
             frequency=self.frequency,
-            START=self._start_date,
-            END=self._end_date,
         )
 
     def __repr__(self):
