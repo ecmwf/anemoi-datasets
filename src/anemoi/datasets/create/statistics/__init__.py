@@ -79,6 +79,37 @@ def to_datetimes(dates):
     return [to_datetime(d) for d in dates]
 
 
+def fix_variance(x, name, count, sums, squares):
+    assert count.shape == sums.shape == squares.shape
+    assert isinstance(x, float)
+
+    mean = sums / count
+    assert mean.shape == count.shape
+
+    if x >= 0:
+        return x
+
+    LOG.warning(f"Negative variance for {name=}, variance={x}")
+    magnitude = np.sqrt((squares / count + mean * mean) / 2)
+    LOG.warning(f"square / count - mean * mean =  {squares/count} - {mean*mean} = {squares/count - mean*mean}")
+    LOG.warning(f"Variable span order of magnitude is {magnitude}.")
+    LOG.warning(f"Count is {count}.")
+
+    variances = squares / count - mean * mean
+    assert variances.shape == squares.shape == mean.shape
+    if all(variances >= 0):
+        LOG.warning(f"All individual variances for {name} are positive, setting variance to 0.")
+        return 0
+
+    # if abs(x) < magnitude * 1e-6 and abs(x) < range * 1e-6:
+    #     LOG.warning("Variance is negative but very small.")
+    #     variances = squares / count - mean * mean
+    #     return 0
+
+    LOG.warning(f"ERROR at least one individual variance is negative ({np.nanmin(variances)}).")
+    return x
+
+
 def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squares):
     if (x >= 0).all():
         return
@@ -292,39 +323,24 @@ class StatAggregator:
     def aggregate(self):
         minimum = np.nanmin(self.minimum, axis=0)
         maximum = np.nanmax(self.maximum, axis=0)
+
         sums = np.nansum(self.sums, axis=0)
         squares = np.nansum(self.squares, axis=0)
         count = np.nansum(self.count, axis=0)
         has_nans = np.any(self.has_nans, axis=0)
-        mean = sums / count
+        assert sums.shape == count.shape == squares.shape == minimum.shape == maximum.shape
 
-        assert sums.shape == count.shape == squares.shape == mean.shape == minimum.shape == maximum.shape
+        mean = sums / count
+        assert mean.shape == minimum.shape
 
         x = squares / count - mean * mean
-
-        # def fix_variance(x, name, minimum, maximum, mean, count, sums, squares):
-        #     assert x.shape == minimum.shape == maximum.shape == mean.shape == count.shape == sums.shape == squares.shape
-        #     assert x.shape == (1,)
-        #     x, minimum, maximum, mean, count, sums, squares = x[0], minimum[0], maximum[0], mean[0], count[0], sums[0], squares[0]
-        #     if x >= 0:
-        #         return x
-        #
-        #     order = np.sqrt((squares / count + mean * mean)/2)
-        #     range = maximum - minimum
-        #     LOG.warning(f"Negative variance for {name=}, variance={x}")
-        #     LOG.warning(f"square / count - mean * mean =  {squares / count} - {mean * mean} = {squares / count - mean * mean}")
-        #     LOG.warning(f"Variable order of magnitude is {order}.")
-        #     LOG.warning(f"Range is {range} ({maximum=} - {minimum=}).")
-        #     LOG.warning(f"Count is {count}.")
-        #     if abs(x) < order * 1e-6 and abs(x) < range * 1e-6:
-        #         LOG.warning(f"Variance is negative but very small, setting to 0.")
-        #         return x*0
-        #     return x
+        assert x.shape == minimum.shape
 
         for i, name in enumerate(self.variables_names):
             # remove negative variance due to numerical errors
-            # Not needed for now, fix_variance is disabled
-            # x[i] = fix_variance(x[i:i+1], name, minimum[i:i+1], maximum[i:i+1], mean[i:i+1], count[i:i+1], sums[i:i+1], squares[i:i+1])
+            x[i] = fix_variance(x[i], name, self.count[i : i + 1], self.sums[i : i + 1], self.squares[i : i + 1])
+
+        for i, name in enumerate(self.variables_names):
             check_variance(
                 x[i : i + 1],
                 [name],

@@ -14,6 +14,7 @@ Keep it human-readable, your future self will thank you!
 - adds the reusable cd pypi workflow
 
 ### Changed
+- Change negative variance detection to make it less restrictive
 
 ### Removed
 

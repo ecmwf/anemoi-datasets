@@ -39,6 +39,7 @@ from .statistics import TmpStatistics
 from .statistics import check_variance
 from .statistics import compute_statistics
 from .statistics import default_statistics_dates
+from .statistics import fix_variance
 from .utils import normalize_and_check_dates
 from .writer import ViewCacheArray
 from .zarr import ZarrBuiltRegistry
@@ -741,8 +742,10 @@ class GenericAdditions(GenericDatasetHandler):
         assert sums.shape == mean.shape
 
         x = squares / count - mean * mean
-        # remove negative variance due to numerical errors
         # x[- 1e-15 < (x / (np.sqrt(squares / count) + np.abs(mean))) < 0] = 0
+        # remove negative variance due to numerical errors
+        for i, name in enumerate(self.variables):
+            x[i] = fix_variance(x[i], name, agg["count"][i : i + 1], agg["sums"][i : i + 1], agg["squares"][i : i + 1])
         check_variance(x, self.variables, minimum, maximum, mean, count, sums, squares)
 
         stdev = np.sqrt(x)
