@@ -8,12 +8,12 @@
 import calendar
 import datetime
 import logging
-import re
 from pathlib import PurePath
 
 import numpy as np
 import zarr
 from anemoi.utils.config import load_config as load_settings
+from anemoi.utils.dates import frequency_to_timedelta
 
 from .dataset import Dataset
 
@@ -37,28 +37,6 @@ def add_dataset_path(path):
 
     if path not in config["datasets"]["path"]:
         config["datasets"]["path"].append(path)
-
-
-def _frequency_to_timedelta(frequency):
-    if isinstance(frequency, int):
-        return frequency
-
-    if isinstance(frequency, float):
-        assert int(frequency) == frequency
-        return int(frequency)
-
-    m = re.match(r"(\d+)([dh])?", frequency)
-    if m is None:
-        raise ValueError("Invalid frequency: " + frequency)
-
-    frequency = int(m.group(1))
-    if m.group(2) == "h":
-        return frequency
-
-    if m.group(2) == "d":
-        return frequency * 24
-
-    raise NotImplementedError()
 
 
 def _as_date(d, dates, last):
@@ -173,12 +151,12 @@ def _concat_or_join(datasets, kwargs):
 
     # For now we should have the datasets in order with no gaps
 
-    frequency = _frequency_to_timedelta(datasets[0].frequency)
+    frequency = frequency_to_timedelta(datasets[0].frequency)
 
     for i in range(len(ranges) - 1):
         r = ranges[i]
         s = ranges[i + 1]
-        if r[1] + datetime.timedelta(hours=frequency) != s[0]:
+        if r[1] + frequency != s[0]:
             raise ValueError(
                 "Datasets must be sorted by dates, with no gaps: " f"{r} and {s} ({datasets[i]} {datasets[i+1]})"
             )

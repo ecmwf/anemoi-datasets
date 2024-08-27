@@ -12,13 +12,14 @@ from unittest.mock import patch
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
-from anemoi.datasets.data.misc import _frequency_to_timedelta
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.data.select import Rename
@@ -63,12 +64,13 @@ def create_zarr(
     missing=False,
 ):
     root = zarr.group()
+    assert isinstance(frequency, datetime.timedelta)
 
     dates = []
     date = datetime.datetime(start, 1, 1)
     while date.year <= end:
         dates.append(date)
-        date += datetime.timedelta(hours=frequency)
+        date += frequency
 
     dates = np.array(dates, dtype="datetime64")
 
@@ -105,7 +107,7 @@ def create_zarr(
         compressor=None,
     )
 
-    root.attrs["frequency"] = frequency
+    root.attrs["frequency"] = frequency_to_string(frequency)
     root.attrs["resolution"] = resolution
     root.attrs["name_to_index"] = {k: i for i, k in enumerate(vars)}
 
@@ -170,7 +172,7 @@ def zarr_from_str(name, mode):
     return create_zarr(
         start=int(args["start"]),
         end=int(args["end"]),
-        frequency=_frequency_to_timedelta(args["frequency"]),
+        frequency=frequency_to_timedelta(args["frequency"]),
         resolution=args["resolution"],
         vars=[x for x in args["vars"]],
         k=int(args["k"]),
@@ -1111,4 +1113,7 @@ def test_cropping():
 
 
 if __name__ == "__main__":
-    test_cropping()
+    for name, obj in list(globals().items()):
+        if name.startswith("test_") and callable(obj):
+            print(f"Running {name}...")
+            obj()

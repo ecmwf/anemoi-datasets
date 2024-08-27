@@ -10,6 +10,7 @@
 import logging
 from functools import cached_property
 
+from anemoi.utils.dates import as_datetime
 from earthkit.data.core.geography import Geography
 from earthkit.data.core.metadata import RawMetadata
 from earthkit.data.utils.projections import Projection
@@ -39,7 +40,7 @@ class _MDMapping:
         return f"MDMapping({self.mapping})"
 
     def fill_time_metadata(self, field, md):
-        md["valid_datetime"] = self.variable.time.fill_time_metadata(field._md, md).isoformat()
+        md["valid_datetime"] = as_datetime(self.variable.time.fill_time_metadata(field._md, md)).isoformat()
 
 
 class XArrayMetadata(RawMetadata):

@@ -10,6 +10,8 @@
 
 import datetime
 
+from anemoi.utils.dates import as_datetime
+
 
 class Time:
 
@@ -55,8 +57,8 @@ class Analysis(Time):
     def fill_time_metadata(self, coords_values, metadata):
         valid_datetime = coords_values[self.time_coordinate_name]
 
-        metadata["date"] = valid_datetime.strftime("%Y%m%d")
-        metadata["time"] = valid_datetime.strftime("%H%M")
+        metadata["date"] = as_datetime(valid_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(valid_datetime).strftime("%H%M")
         metadata["step"] = 0
 
         return valid_datetime
@@ -78,8 +80,8 @@ class ForecastFromValidTimeAndStep(Time):
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = base_datetime.strftime("%Y%m%d")
-        metadata["time"] = base_datetime.strftime("%H%M")
+        metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
         metadata["step"] = int(hours)
         return valid_datetime
 
@@ -99,8 +101,8 @@ class ForecastFromValidTimeAndBaseTime(Time):
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = base_datetime.strftime("%Y%m%d")
-        metadata["time"] = base_datetime.strftime("%H%M")
+        metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
         metadata["step"] = int(hours)
 
         return valid_datetime
@@ -118,8 +120,8 @@ class ForecastFromBaseTimeAndDate(Time):
         step = coords_values[self.step_coordinate_name]
         assert isinstance(step, datetime.timedelta)
 
-        metadata["date"] = date.strftime("%Y%m%d")
-        metadata["time"] = date.strftime("%H%M")
+        metadata["date"] = as_datetime(date).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(date).strftime("%H%M")
 
         hours = step.total_seconds() / 3600
 

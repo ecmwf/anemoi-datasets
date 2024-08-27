@@ -10,8 +10,8 @@ import datetime
 import warnings
 
 # from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
-from anemoi.utils.dates import normalize_date
 from anemoi.utils.dates import print_dates
 
 
@@ -25,15 +25,15 @@ def extend(x):
     if isinstance(x, str):
         if "/" in x:
             start, end, step = x.split("/")
-            start = normalize_date(start)
-            end = normalize_date(end)
+            start = as_datetime(start)
+            end = as_datetime(end)
             step = frequency_to_timedelta(step)
             while start <= end:
                 yield start
                 start += datetime.timedelta(hours=step)
             return
 
-    yield normalize_date(x)
+    yield as_datetime(x)
 
 
 class Dates:
@@ -91,7 +91,7 @@ class Dates:
 
 class ValuesDates(Dates):
     def __init__(self, values, **kwargs):
-        self.values = sorted([normalize_date(_) for _ in values])
+        self.values = sorted([as_datetime(_) for _ in values])
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -120,8 +120,8 @@ class StartEndDates(Dates):
         if isinstance(end, datetime.date) and not isinstance(end, datetime.datetime):
             end = datetime.datetime(end.year, end.month, end.day)
 
-        start = normalize_date(start)
-        end = normalize_date(end)
+        start = as_datetime(start)
+        end = as_datetime(end)
 
         # if end <= start:
         #     raise ValueError(f"End date {end} must be after start date {start}")

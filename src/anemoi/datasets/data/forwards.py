@@ -9,6 +9,7 @@ import logging
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_timedelta
 
 from .dataset import Dataset
 from .debug import debug_indexing
@@ -123,8 +124,10 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible resolutions: {d1.resolution} and {d2.resolution} ({d1} {d2})")
 
     def check_same_frequency(self, d1, d2):
-        if d1.frequency != d2.frequency:
-            raise ValueError(f"Incompatible frequencies: {d1.frequency} and {d2.frequency} ({d1} {d2})")
+        f1 = frequency_to_timedelta(d1.frequency)
+        f2 = frequency_to_timedelta(d2.frequency)
+        if f1 != f2:
+            raise ValueError(f"Incompatible frequencies: {d1.frequency} ({f1}) and {d2.frequency} ({f2}) ({d1} {d2})")
 
     def check_same_grid(self, d1, d2):
         if (d1.latitudes != d2.latitudes).any() or (d1.longitudes != d2.longitudes).any():

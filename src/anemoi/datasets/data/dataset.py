@@ -10,6 +10,10 @@ import os
 import warnings
 from functools import cached_property
 
+from anemoi.utils.dates import frequency_to_seconds
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
+
 LOG = logging.getLogger(__name__)
 
 
@@ -95,10 +99,9 @@ class Dataset:
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency):
-        from .misc import _frequency_to_timedelta
 
-        requested_frequency = _frequency_to_timedelta(frequency)
-        dataset_frequency = _frequency_to_timedelta(self.frequency)
+        requested_frequency = frequency_to_seconds(frequency)
+        dataset_frequency = frequency_to_seconds(self.frequency)
         assert requested_frequency % dataset_frequency == 0
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
         step = requested_frequency // dataset_frequency
@@ -194,12 +197,12 @@ class Dataset:
 
     def metadata_specific(self, **kwargs):
         action = self.__class__.__name__.lower()
-        assert isinstance(self.frequency, int), (self.frequency, self, action)
+        # assert isinstance(self.frequency, datetime.timedelta), (self.frequency, self, action)
         return dict(
             action=action,
             variables=self.variables,
             shape=self.shape,
-            frequency=self.frequency,
+            frequency=frequency_to_string(frequency_to_timedelta(self.frequency)),
             start_date=self.dates[0].astype(str),
             end_date=self.dates[-1].astype(str),
             **kwargs,

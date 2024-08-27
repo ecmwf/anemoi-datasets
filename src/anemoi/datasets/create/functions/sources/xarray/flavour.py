@@ -265,7 +265,7 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
             return LevelCoordinate(c, "pl")
 
     def _is_number(self, c, *, axis, name, long_name, standard_name, units):
-        if name == "realization":
+        if name in ("realization", "number"):
             return EnsembleCoordinate(c)
 
 

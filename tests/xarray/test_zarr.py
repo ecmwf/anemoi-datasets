@@ -52,4 +52,7 @@ def test_weatherbench():
 
 
 if __name__ == "__main__":
-    test_arco_era5()
+    for name, obj in list(globals().items()):
+        if name.startswith("test_") and callable(obj):
+            print(f"Running {name}...")
+            obj()
