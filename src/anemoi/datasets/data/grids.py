@@ -128,7 +128,7 @@ class Grids(GridsBase):
 
 
 class Cutout(GridsBase):
-    def __init__(self, datasets, axis):
+    def __init__(self, datasets, axis, min_distance_km=None, cropping_distance=2.0, plot=False):
         from anemoi.datasets.grids import cutout_mask
 
         super().__init__(datasets, axis)
@@ -144,7 +144,9 @@ class Cutout(GridsBase):
             self.lam.longitudes,
             self.globe.latitudes,
             self.globe.longitudes,
-            # plot="cutout",
+            plot=plot,
+            min_distance_km=min_distance_km,
+            cropping_distance=cropping_distance,
         )
         assert len(self.mask) == self.globe.shape[3], (
             len(self.mask),
@@ -229,6 +231,9 @@ def cutout_factory(args, kwargs):
 
     cutout = kwargs.pop("cutout")
     axis = kwargs.pop("axis", 3)
+    plot = kwargs.pop("plot", None)
+    min_distance_km = kwargs.pop("min_distance_km", None)
+    cropping_distance = kwargs.pop("cropping_distance", 2.0)
 
     assert len(args) == 0
     assert isinstance(cutout, (list, tuple))
@@ -236,4 +241,10 @@ def cutout_factory(args, kwargs):
     datasets = [_open(e) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Cutout(datasets, axis=axis)._subset(**kwargs)
+    return Cutout(
+        datasets,
+        axis=axis,
+        min_distance_km=min_distance_km,
+        cropping_distance=cropping_distance,
+        plot=plot,
+    )._subset(**kwargs)

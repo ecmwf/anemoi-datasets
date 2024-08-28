@@ -56,7 +56,7 @@ class DatasetName:
             raise ValueError(self.error_message)
 
     def _parse(self, name):
-        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h)-v(\d+)-?([a-zA-Z0-9-]+)$"
+        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h)-v(\d+)-?([a-zA-Z0-9-]+)?$"
         match = re.match(pattern, name)
 
         assert match, (name, pattern)

@@ -11,9 +11,13 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
+- adds the reusable cd pypi workflow
 
 ### Changed
+
 - Support sub-hourly datasets.
+- Change negative variance detection to make it less restrictive
+- Fix cutout bug that left some global grid points in the lam part
 
 ### Removed
 
