@@ -51,6 +51,21 @@ def test_weatherbench():
     assert fs[-1].metadata("valid_datetime") == "2021-01-10T12:00:00", fs[-1].metadata("valid_datetime")
 
 
+def test_inca_one_date():
+    url = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/example-inca-one-date.zarr"
+
+    ds = xr.open_zarr(url)
+    fs = XarrayFieldList.from_xarray(ds)
+    vars = ["DD_10M", "SP_10M", "TD_2M", "TOT_PREC", "T_2M"]
+
+    for i, f in enumerate(fs):
+        print(f)
+        assert f.metadata("valid_datetime") == "2023-01-01T00:00:00"
+        assert f.metadata("step") == 0
+        assert f.metadata("number") == 0
+        assert f.metadata("variable") == vars[i]
+
+
 if __name__ == "__main__":
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
