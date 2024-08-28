@@ -15,6 +15,7 @@ Keep it human-readable, your future self will thank you!
 
 ### Changed
 - Change negative variance detection to make it less restrictive
+- Fix cutout bug that left some global grid points in the lam part
 
 ### Removed
 
