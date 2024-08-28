@@ -13,6 +13,7 @@ Keep it human-readable, your future self will thank you!
 ### Added
 
 ### Changed
+- Support sub-hourly datasets.
 
 ### Removed
 
