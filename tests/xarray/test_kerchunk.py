@@ -33,4 +33,7 @@ def dont_test_kerchunk():
 
 
 if __name__ == "__main__":
-    dont_test_kerchunk()
+    for name, obj in list(globals().items()):
+        if name.startswith("test_") and callable(obj):
+            print(f"Running {name}...")
+            obj()

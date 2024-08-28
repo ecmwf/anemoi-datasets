@@ -10,8 +10,11 @@
 
 import datetime
 
+from anemoi.utils.dates import as_datetime
+
 
 class Time:
+
     @classmethod
     def from_coordinates(cls, coordinates):
         time_coordinate = [c for c in coordinates if c.is_time]
@@ -19,16 +22,16 @@ class Time:
         date_coordinate = [c for c in coordinates if c.is_date]
 
         if len(date_coordinate) == 0 and len(time_coordinate) == 1 and len(step_coordinate) == 1:
-            return ForecasstFromValidTimeAndStep(step_coordinate[0])
+            return ForecastFromValidTimeAndStep(time_coordinate[0], step_coordinate[0])
 
         if len(date_coordinate) == 0 and len(time_coordinate) == 1 and len(step_coordinate) == 0:
-            return Analysis()
+            return Analysis(time_coordinate[0])
 
         if len(date_coordinate) == 0 and len(time_coordinate) == 0 and len(step_coordinate) == 0:
             return Constant()
 
         if len(date_coordinate) == 1 and len(time_coordinate) == 1 and len(step_coordinate) == 0:
-            return ForecastFromValidTimeAndBaseTime(date_coordinate[0])
+            return ForecastFromValidTimeAndBaseTime(date_coordinate[0], time_coordinate[0])
 
         if len(date_coordinate) == 1 and len(time_coordinate) == 0 and len(step_coordinate) == 1:
             return ForecastFromBaseTimeAndDate(date_coordinate[0], step_coordinate[0])
@@ -38,61 +41,91 @@ class Time:
 
 class Constant(Time):
 
-    def fill_time_metadata(self, time, metadata):
-        metadata["date"] = time.strftime("%Y%m%d")
-        metadata["time"] = time.strftime("%H%M")
-        metadata["step"] = 0
+    def fill_time_metadata(self, coords_values, metadata):
+        raise NotImplementedError("Constant time not implemented")
+        # print("Constant", coords_values, metadata)
+        # metadata["date"] = time.strftime("%Y%m%d")
+        # metadata["time"] = time.strftime("%H%M")
+        # metadata["step"] = 0
 
 
 class Analysis(Time):
 
-    def fill_time_metadata(self, time, metadata):
-        metadata["date"] = time.strftime("%Y%m%d")
-        metadata["time"] = time.strftime("%H%M")
+    def __init__(self, time_coordinate):
+        self.time_coordinate_name = time_coordinate.variable.name
+
+    def fill_time_metadata(self, coords_values, metadata):
+        valid_datetime = coords_values[self.time_coordinate_name]
+
+        metadata["date"] = as_datetime(valid_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(valid_datetime).strftime("%H%M")
         metadata["step"] = 0
 
+        return valid_datetime
 
-class ForecasstFromValidTimeAndStep(Time):
-    def __init__(self, step_coordinate):
-        self.step_name = step_coordinate.variable.name
 
-    def fill_time_metadata(self, time, metadata):
-        step = metadata.pop(self.step_name)
+class ForecastFromValidTimeAndStep(Time):
+
+    def __init__(self, time_coordinate, step_coordinate):
+        self.time_coordinate_name = time_coordinate.variable.name
+        self.step_coordinate_name = step_coordinate.variable.name
+
+    def fill_time_metadata(self, coords_values, metadata):
+        valid_datetime = coords_values[self.time_coordinate_name]
+        step = coords_values[self.step_coordinate_name]
+
         assert isinstance(step, datetime.timedelta)
-        base = time - step
+        base_datetime = valid_datetime - step
 
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = base.strftime("%Y%m%d")
-        metadata["time"] = base.strftime("%H%M")
+        metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
         metadata["step"] = int(hours)
+        return valid_datetime
 
 
 class ForecastFromValidTimeAndBaseTime(Time):
-    def __init__(self, date_coordinate):
-        self.date_coordinate = date_coordinate
 
-    def fill_time_metadata(self, time, metadata):
+    def __init__(self, date_coordinate, time_coordinate):
+        self.date_coordinate.name = date_coordinate.name
+        self.time_coordinate.name = time_coordinate.name
 
-        step = time - self.date_coordinate
+    def fill_time_metadata(self, coords_values, metadata):
+        valid_datetime = coords_values[self.time_coordinate_name]
+        base_datetime = coords_values[self.date_coordinate_name]
+
+        step = valid_datetime - base_datetime
 
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = self.date_coordinate.single_value.strftime("%Y%m%d")
-        metadata["time"] = self.date_coordinate.single_value.strftime("%H%M")
+        metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
         metadata["step"] = int(hours)
+
+        return valid_datetime
 
 
 class ForecastFromBaseTimeAndDate(Time):
-    def __init__(self, date_coordinate, step_coordinate):
-        self.date_coordinate = date_coordinate
-        self.step_coordinate = step_coordinate
 
-    def fill_time_metadata(self, time, metadata):
-        metadata["date"] = time.strftime("%Y%m%d")
-        metadata["time"] = time.strftime("%H%M")
-        hours = metadata[self.step_coordinate.name].total_seconds() / 3600
+    def __init__(self, date_coordinate, step_coordinate):
+        self.date_coordinate_name = date_coordinate.name
+        self.step_coordinate_name = step_coordinate.name
+
+    def fill_time_metadata(self, coords_values, metadata):
+
+        date = coords_values[self.date_coordinate_name]
+        step = coords_values[self.step_coordinate_name]
+        assert isinstance(step, datetime.timedelta)
+
+        metadata["date"] = as_datetime(date).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(date).strftime("%H%M")
+
+        hours = step.total_seconds() / 3600
+
         assert int(hours) == hours
         metadata["step"] = int(hours)
+
+        return date + step

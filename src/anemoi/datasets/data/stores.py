@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_timedelta
 
 from . import MissingDateError
 from .dataset import Dataset
@@ -268,12 +269,11 @@ class Zarr(Dataset):
     @property
     def frequency(self):
         try:
-            return self.z.attrs["frequency"]
+            return frequency_to_timedelta(self.z.attrs["frequency"])
         except KeyError:
             LOG.warning("No 'frequency' in %r, computing from 'dates'", self)
         dates = self.dates
-        delta = dates[1].astype(object) - dates[0].astype(object)
-        return int(delta.total_seconds() / 3600)
+        return dates[1].astype(object) - dates[0].astype(object)
 
     @property
     def name_to_index(self):

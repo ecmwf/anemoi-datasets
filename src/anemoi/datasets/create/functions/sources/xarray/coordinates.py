@@ -55,6 +55,7 @@ class Coordinate:
     is_time = False
     is_step = False
     is_date = False
+    is_member = False
 
     def __init__(self, variable):
         self.variable = variable
@@ -201,7 +202,13 @@ class LevelCoordinate(Coordinate):
 
 
 class EnsembleCoordinate(Coordinate):
+    is_member = True
     mars_names = ("number",)
+
+    def normalise(self, value):
+        if int(value) == value:
+            return int(value)
+        return value
 
 
 class LongitudeCoordinate(Coordinate):

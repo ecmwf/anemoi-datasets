@@ -26,6 +26,8 @@ from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates import compress_dates
+from anemoi.datasets.dates import frequency_to_string
+from anemoi.datasets.dates import frequency_to_timedelta
 from anemoi.datasets.dates.groups import Groups
 
 from .check import DatasetName
@@ -48,6 +50,20 @@ from .zarr import add_zarr_dataset
 LOG = logging.getLogger(__name__)
 
 VERSION = "0.20"
+
+
+def json_tidy(o):
+
+    if isinstance(o, datetime.datetime):
+        return o.isoformat()
+
+    if isinstance(o, datetime.datetime):
+        return o.isoformat()
+
+    if isinstance(o, datetime.timedelta):
+        return frequency_to_string(o)
+
+    raise TypeError(repr(o) + " is not JSON serializable")
 
 
 def set_to_test_mode(cfg):
@@ -161,7 +177,7 @@ class GenericDatasetHandler:
                 v = v.astype(datetime.datetime)
             if isinstance(v, datetime.date):
                 v = v.isoformat()
-            z.attrs[k] = v
+            z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
     def _add_dataset(self, mode="r+", **kwargs):
         z = zarr.open(self.path, mode=mode)
@@ -280,7 +296,7 @@ class InitialiserLoader(Loader):
 
         dates = self.groups.dates
         frequency = dates.frequency
-        assert isinstance(frequency, int), frequency
+        assert isinstance(frequency, datetime.timedelta), frequency
 
         LOG.info(f"Found {len(dates)} datetimes.")
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
@@ -878,16 +894,18 @@ class TendenciesStatisticsAddition(GenericAdditions):
         full_ds = open_dataset(path)
         self.variables = full_ds.variables
 
-        frequency = full_ds.frequency
+        frequency = frequency_to_timedelta(full_ds.frequency)
         if delta is None:
             delta = frequency
-        assert isinstance(delta, int), delta
-        if not delta % frequency == 0:
+
+        delta = frequency_to_timedelta(delta)
+
+        if not delta.total_seconds() % frequency.total_seconds() == 0:
             raise TendenciesStatisticsDeltaNotMultipleOfFrequency(
                 f"Delta {delta} is not a multiple of frequency {frequency}"
             )
         self.delta = delta
-        idelta = delta // frequency
+        idelta = delta.total_seconds() // frequency.total_seconds()
 
         super().__init__(path=path, **kwargs)
 

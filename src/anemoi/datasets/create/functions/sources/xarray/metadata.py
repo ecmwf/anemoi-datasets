@@ -10,29 +10,37 @@
 import logging
 from functools import cached_property
 
+from anemoi.utils.dates import as_datetime
 from earthkit.data.core.geography import Geography
 from earthkit.data.core.metadata import RawMetadata
-from earthkit.data.utils.dates import to_datetime
 from earthkit.data.utils.projections import Projection
 
 LOG = logging.getLogger(__name__)
 
 
-class MDMapping:
+class _MDMapping:
 
-    def __init__(self, mapping):
-        self.user_to_internal = mapping
+    def __init__(self, variable):
+        self.variable = variable
+        self.time = variable.time
+        self.mapping = dict(param="variable")
+        for c in variable.coordinates:
+            for v in c.mars_names:
+                assert v not in self.mapping, f"Duplicate key '{v}' in {c}"
+                self.mapping[v] = c.variable.name
+
+    def _from_user(self, key):
+        return self.mapping.get(key, key)
 
     def from_user(self, kwargs):
-        if isinstance(kwargs, str):
-            return self.user_to_internal.get(kwargs, kwargs)
-        return {self.user_to_internal.get(k, k): v for k, v in kwargs.items()}
-
-    def __len__(self):
-        return len(self.user_to_internal)
+        print("from_user", kwargs, self)
+        return {self._from_user(k): v for k, v in kwargs.items()}
 
     def __repr__(self):
-        return f"MDMapping({self.user_to_internal})"
+        return f"MDMapping({self.mapping})"
+
+    def fill_time_metadata(self, field, md):
+        md["valid_datetime"] = as_datetime(self.variable.time.fill_time_metadata(field._md, md)).isoformat()
 
 
 class XArrayMetadata(RawMetadata):
@@ -40,23 +48,11 @@ class XArrayMetadata(RawMetadata):
     NAMESPACES = ["default", "mars"]
     MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
 
-    def __init__(self, field, mapping):
+    def __init__(self, field):
         self._field = field
         md = field._md.copy()
-
-        self._mapping = mapping
-        if mapping is None:
-            time_coord = [c for c in field.owner.coordinates if c.is_time]
-            if len(time_coord) == 1:
-                time_key = time_coord[0].name
-            else:
-                time_key = "time"
-        else:
-            time_key = mapping.from_user("valid_datetime")
-        self._time = to_datetime(md.pop(time_key))
-        self._field.owner.time.fill_time_metadata(self._time, md)
-        md["valid_datetime"] = self._time.isoformat()
-
+        self._mapping = _MDMapping(field.owner)
+        self._mapping.fill_time_metadata(field, md)
         super().__init__(md)
 
     @cached_property
@@ -88,9 +84,12 @@ class XArrayMetadata(RawMetadata):
         return self._field.forecast_reference_time
 
     def _valid_datetime(self):
-        return self._time
+        return self._get("valid_datetime")
 
     def _get(self, key, **kwargs):
+
+        if key in self._d:
+            return self._d[key]
 
         if key.startswith("mars."):
             key = key[5:]
@@ -100,8 +99,7 @@ class XArrayMetadata(RawMetadata):
                 else:
                     return kwargs.get("default", None)
 
-        if self._mapping is not None:
-            key = self._mapping.from_user(key)
+        key = self._mapping._from_user(key)
 
         return super()._get(key, **kwargs)
 

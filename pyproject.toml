@@ -50,7 +50,7 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-utils[provenance]>=0.3.13",
+  "anemoi-utils[provenance]>=0.3.15",
   "numpy",
   "pyyaml",
   "semantic-version",

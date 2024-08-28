@@ -9,64 +9,10 @@
 import datetime
 import warnings
 
+# from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import as_datetime
-
-
-def _compress_dates(dates):
-    dates = sorted(dates)
-    if len(dates) < 3:
-        yield dates
-        return
-
-    prev = first = dates.pop(0)
-    curr = dates.pop(0)
-    delta = curr - prev
-    while curr - prev == delta:
-        prev = curr
-        if not dates:
-            break
-        curr = dates.pop(0)
-
-    yield (first, prev, delta)
-    if dates:
-        yield from _compress_dates([curr] + dates)
-
-
-def compress_dates(dates):
-    dates = [as_datetime(_) for _ in dates]
-    result = []
-
-    for n in _compress_dates(dates):
-        if isinstance(n, list):
-            result.extend([str(_) for _ in n])
-        else:
-            result.append(" ".join([str(n[0]), "to", str(n[1]), "by", str(n[2])]))
-
-    return result
-
-
-def print_dates(dates):
-    print(compress_dates(dates))
-
-
-def no_time_zone(date):
-    return date.replace(tzinfo=None)
-
-
-def frequency_to_hours(frequency):
-    if isinstance(frequency, int):
-        return frequency
-    assert isinstance(frequency, str), (type(frequency), frequency)
-
-    unit = frequency[-1].lower()
-    v = int(frequency[:-1])
-    return {"h": v, "d": v * 24}[unit]
-
-
-def normalize_date(x):
-    if isinstance(x, str):
-        return no_time_zone(datetime.datetime.fromisoformat(x))
-    return x
+from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import print_dates
 
 
 def extend(x):
@@ -79,15 +25,15 @@ def extend(x):
     if isinstance(x, str):
         if "/" in x:
             start, end, step = x.split("/")
-            start = normalize_date(start)
-            end = normalize_date(end)
-            step = frequency_to_hours(step)
+            start = as_datetime(start)
+            end = as_datetime(end)
+            step = frequency_to_timedelta(step)
             while start <= end:
                 yield start
                 start += datetime.timedelta(hours=step)
             return
 
-    yield normalize_date(x)
+    yield as_datetime(x)
 
 
 class Dates:
@@ -145,7 +91,7 @@ class Dates:
 
 class ValuesDates(Dates):
     def __init__(self, values, **kwargs):
-        self.values = sorted([no_time_zone(_) for _ in values])
+        self.values = sorted([as_datetime(_) for _ in values])
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -157,7 +103,8 @@ class ValuesDates(Dates):
 
 class StartEndDates(Dates):
     def __init__(self, start, end, frequency=1, months=None, **kwargs):
-        frequency = frequency_to_hours(frequency)
+        frequency = frequency_to_timedelta(frequency)
+        assert isinstance(frequency, datetime.timedelta), frequency
 
         def _(x):
             if isinstance(x, str):
@@ -173,13 +120,13 @@ class StartEndDates(Dates):
         if isinstance(end, datetime.date) and not isinstance(end, datetime.datetime):
             end = datetime.datetime(end.year, end.month, end.day)
 
-        start = no_time_zone(start)
-        end = no_time_zone(end)
+        start = as_datetime(start)
+        end = as_datetime(end)
 
         # if end <= start:
         #     raise ValueError(f"End date {end} must be after start date {start}")
 
-        increment = datetime.timedelta(hours=frequency)
+        increment = frequency
 
         self.start = start
         self.end = end
