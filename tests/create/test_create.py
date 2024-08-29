@@ -22,7 +22,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.create import Creator
 from anemoi.datasets.data.stores import open_zarr
 
-TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/pytest/create"
+TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
 
 
 HERE = os.path.dirname(__file__)
@@ -58,7 +58,7 @@ class LoadSource:
         print()
         print("⚠️ To upload the test data, run this:")
         print()
-        print(f"{exe} {upload_path} anemoi-datasets/pytest/create/{os.path.basename(path)}")
+        print(f"{exe} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
         print()
         exit(1)
         raise ValueError("Test data is missing")

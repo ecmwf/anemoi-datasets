@@ -906,6 +906,8 @@ class TendenciesStatisticsAddition(GenericAdditions):
             )
         self.delta = delta
         idelta = delta.total_seconds() // frequency.total_seconds()
+        assert int(idelta) == idelta, idelta
+        idelta = int(idelta)
 
         super().__init__(path=path, **kwargs)
 
@@ -929,10 +931,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
 
     @classmethod
     def final_storage_name_from_delta(_, k, delta):
-        if isinstance(delta, int):
-            delta = str(delta)
-        if not delta.endswith("h"):
-            delta = delta + "h"
+        delta = frequency_to_string(delta)
         return f"statistics_tendencies_{delta}_{k}"
 
     def run(self, parts):
