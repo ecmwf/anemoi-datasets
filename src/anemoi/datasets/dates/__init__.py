@@ -12,7 +12,7 @@ import warnings
 # from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
-from anemoi.utils.dates import print_dates
+from anemoi.utils.humanize import print_dates
 
 
 def extend(x):
