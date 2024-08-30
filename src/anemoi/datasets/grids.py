@@ -189,16 +189,14 @@ def cutout_mask(
     xyx = latlon_to_xyz(lats, lons)
     lam_points = np.array(xyx).transpose()
 
-    # Use a KDTree to find the nearest points
-    kdtree = KDTree(lam_points)
-
-    distances, indices = kdtree.query(global_points, k=neighbours)
-
     if min_distance_km is not None:
         min_distance = min_distance_km / 6371.0
     else:
         distances, _ = KDTree(global_points).query(global_points, k=2)
         min_distance = np.min(distances[:, 1])
+
+    # Use a KDTree to find the nearest points
+    distances, indices = KDTree(lam_points).query(global_points, k=neighbours)
 
     LOG.debug(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
@@ -291,8 +289,7 @@ def thinning_mask(
     points = np.array(xyx).transpose()
 
     # Use a KDTree to find the nearest points
-    kdtree = KDTree(points)
-    _, indices = kdtree.query(global_points, k=1)
+    _, indices = KDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
 
