@@ -151,7 +151,6 @@ def cutout_mask(
 ):
     """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
     from scipy.spatial import KDTree
-    from scipy.spatial import distance_matrix
 
     # TODO: transform min_distance from lat/lon to xyz
 
@@ -198,9 +197,8 @@ def cutout_mask(
     if min_distance_km is not None:
         min_distance = min_distance_km / 6371.0
     else:
-        min_distance = 0
-        dm = distance_matrix(global_points, global_points)
-        min_distance = np.min(dm[dm > 0])
+        distances, _ = KDTree(global_points).query(global_points, k=2)
+        min_distance = np.min(distances[:, 1])
 
     LOG.debug(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
