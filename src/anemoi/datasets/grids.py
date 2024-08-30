@@ -189,16 +189,17 @@ def cutout_mask(
     xyx = latlon_to_xyz(lats, lons)
     lam_points = np.array(xyx).transpose()
 
-    if min_distance_km is not None:
+    if isinstance(min_distance_km, (int, float)):
         min_distance = min_distance_km / 6371.0
     else:
-        distances, _ = KDTree(global_points).query(global_points, k=2)
+        points = {"lam": lam_points, "global": global_points, None: global_points}[min_distance_km]
+        distances, _ = KDTree(points).query(points, k=2)
         min_distance = np.min(distances[:, 1])
+
+        LOG.info(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
     # Use a KDTree to find the nearest points
     distances, indices = KDTree(lam_points).query(global_points, k=neighbours)
-
-    LOG.debug(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])

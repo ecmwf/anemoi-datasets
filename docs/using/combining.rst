@@ -156,10 +156,6 @@ cutout:
    :align: center
    :alt: Cutout
 
-To debug the combination, you pass `plot=True` to the `cutout` function
-(when running from a Notebook), of use `plot="prefix"` to save the plots
-to series of PNG files in the current directory.
-
 You can also pass a `min_distance_km` parameter to the `cutout`
 function. Any grid points in the global dataset that are closer than
 this distance to a grid point in the LAM dataset will be removed. This
@@ -168,3 +164,20 @@ the cutout area. If no value is provided, the algorithm will compute its
 value as the smallest distance between two grid points in the global
 dataset over the cutout area. If you do not want to use this feature,
 you can set `min_distance_km=0`.
+
+The plots below illustrate how the cutout differs if `min_distance_km`
+is set to `0` or not given:
+
+.. image:: images/cutout-5.png
+   :width: 75%
+   :align: center
+   :alt: Cutout
+
+.. image:: images/cutout-6.png
+   :width: 75%
+   :align: center
+   :alt: Cutout
+
+To debug the combination, you pass `plot=True` to the `cutout` function
+(when running from a Notebook), of use `plot="prefix"` to save the plots
+to series of PNG files in the current directory.
