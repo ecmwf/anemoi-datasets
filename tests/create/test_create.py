@@ -23,6 +23,7 @@ from anemoi.datasets.create import Creator
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
+TEST_DATA_S3_ROOT = "s3://ml-tests/test-data/anemoi-datasets/create"
 
 
 HERE = os.path.dirname(__file__)
@@ -94,29 +95,44 @@ class LoadSource:
 _from_source = LoadSource()
 
 
-def compare_dot_zattrs(a, b):
+def compare_dot_zattrs(a, b, path, errors):
     if isinstance(a, dict):
         a_keys = list(a.keys())
         b_keys = list(b.keys())
         for k in set(a_keys) & set(b_keys):
-            if k in ["timestamp", "uuid", "latest_write_timestamp", "yaml_config"]:
-                assert type(a[k]) == type(b[k]), (  # noqa: E721
-                    type(a[k]),
-                    type(b[k]),
-                    a[k],
-                    b[k],
-                )
-            assert k in a_keys, (k, a_keys)
-            assert k in b_keys, (k, b_keys)
-            return compare_dot_zattrs(a[k], b[k])
+            if k in [
+                "timestamp",
+                "uuid",
+                "latest_write_timestamp",
+                "yaml_config",
+                "history",
+                "provenance",
+                "provenance_load",
+                "description",
+                "config_path",
+                "dataset_status",
+            ]:
+                if type(a[k]) != type(b[k]):  # noqa : E721
+                    errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
+                continue
+            compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
+        return
 
     if isinstance(a, list):
-        assert len(a) == len(b), (a, b)
-        for v, w in zip(a, b):
-            return compare_dot_zattrs(v, w)
+        if len(a) != len(b):
+            errors.append(f"❌ {path} : lengths are different {len(a)} != {len(b)}")
+            return
+        for i, (v, w) in enumerate(zip(a, b)):
+            compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+        return
 
-    assert type(a) == type(b), (type(a), type(b), a, b)  # noqa: E721
-    return a == b, (a, b)
+    if type(a) != type(b):  # noqa : E721
+        msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
+        errors.append(msg)
+        return
+    if a != b:
+        msg = f"❌ {path} actual != expected : {a} != {b}"
+        errors.append(msg)
 
 
 def compare_datasets(a, b):
@@ -169,19 +185,29 @@ def compare_statistics(ds1, ds2):
 class Comparer:
     def __init__(self, name, output_path=None, reference_path=None):
         self.name = name
-        self.reference = reference_path or os.path.join(TEST_DATA_ROOT, name + ".zarr")
         self.output = output_path or os.path.join(name + ".zarr")
-        print(f"Comparing {self.reference} and {self.output}")
+        self.reference_path = reference_path
+        print(f"Comparing {self.output} and {self.reference_path}")
 
-        self.z_reference = open_zarr(self.reference)
         self.z_output = open_zarr(self.output)
+        self.z_reference = open_zarr(self.reference_path)
 
-        self.ds_reference = open_dataset(self.reference)
+        self.z_reference["data"]
         self.ds_output = open_dataset(self.output)
+        self.ds_reference = open_dataset(self.reference_path)
 
     def compare(self):
-        compare_dot_zattrs(self.z_output.attrs, self.z_reference.attrs)
+        errors = []
+        compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), "metadata", errors)
+        if errors:
+            print("Comparison failed")
+            print("\n".join(errors))
+
+        if errors:
+            raise AssertionError("Comparison failed")
+
         compare_datasets(self.ds_output, self.ds_reference)
+
         compare_statistics(self.ds_output, self.ds_reference)
 
 
@@ -199,8 +225,14 @@ def test_run(name):
     c.additions(delta=[1, 3, 6, 12])
     c.cleanup()
 
-    comparer = Comparer(name, output_path=output)
-    comparer.compare()
+    # reference_path = os.path.join(HERE, name + "-reference.zarr")
+    s3_uri = TEST_DATA_S3_ROOT + "/" + name + ".zarr"
+    # if not os.path.exists(reference_path):
+    #    from anemoi.utils.s3 import download as s3_download
+    #    s3_download(s3_uri + '/', reference_path, overwrite=True)
+
+    Comparer(name, output_path=output, reference_path=s3_uri).compare()
+    # Comparer(name, output_path=output, reference_path=reference_path).compare()
 
 
 if __name__ == "__main__":
