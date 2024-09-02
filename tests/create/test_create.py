@@ -100,7 +100,6 @@ def compare_dot_zattrs(a, b, path, errors):
         b_keys = list(b.keys())
         for k in set(a_keys) & set(b_keys):
             if k in [
-                "frequency",
                 "licence",
                 "total_number_of_files",
             ]:
