@@ -23,7 +23,6 @@ from anemoi.datasets.create import Creator
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
-TEST_DATA_S3_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
 
 
 HERE = os.path.dirname(__file__)
@@ -104,13 +103,14 @@ def compare_dot_zattrs(a, b, path, errors):
                 "timestamp",
                 "uuid",
                 "latest_write_timestamp",
-                "yaml_config",
+                "_create_yaml_config",
                 "history",
                 "provenance",
                 "provenance_load",
                 "description",
                 "config_path",
                 "dataset_status",
+                "total_size",
             ]:
                 if type(a[k]) != type(b[k]):  # noqa : E721
                     errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
@@ -226,7 +226,7 @@ def test_run(name):
     c.cleanup()
 
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
-    s3_uri = TEST_DATA_S3_ROOT + "/" + name + ".zarr"
+    s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
     # if not os.path.exists(reference_path):
     #    from anemoi.utils.s3 import download as s3_download
     #    s3_download(s3_uri + '/', reference_path, overwrite=True)
