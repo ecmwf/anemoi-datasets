@@ -171,7 +171,7 @@ def _open(a):
     from .stores import zarr_lookup
 
     if isinstance(a, Dataset):
-        return a
+        return a.mutate()
 
     if isinstance(a, zarr.hierarchy.Group):
         return Zarr(a).mutate()
@@ -180,13 +180,13 @@ def _open(a):
         return Zarr(zarr_lookup(a)).mutate()
 
     if isinstance(a, PurePath):
-        return _open(str(a))
+        return _open(str(a)).mutate()
 
     if isinstance(a, dict):
-        return _open_dataset(**a)
+        return _open_dataset(**a).mutate()
 
     if isinstance(a, (list, tuple)):
-        return _open_dataset(*a)
+        return _open_dataset(*a).mutate()
 
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
@@ -266,47 +266,59 @@ def _open_dataset(*args, **kwargs):
     for a in args:
         sets.append(_open(a))
 
-    if "zip" in kwargs:
-        from .unchecked import zip_factory
+    if "xy" in kwargs:
+        from .xy import xy_factory
 
         assert not sets, sets
-        return zip_factory(args, kwargs)
+        return xy_factory(args, kwargs).mutate()
+
+    if "x" in kwargs and "y" in kwargs:
+        from .xy import xy_factory
+
+        assert not sets, sets
+        return xy_factory(args, kwargs).mutate()
+
+    if "zip" in kwargs:
+        from .xy import zip_factory
+
+        assert not sets, sets
+        return zip_factory(args, kwargs).mutate()
 
     if "chain" in kwargs:
         from .unchecked import chain_factory
 
         assert not sets, sets
-        return chain_factory(args, kwargs)
+        return chain_factory(args, kwargs).mutate()
 
     if "join" in kwargs:
         from .join import join_factory
 
         assert not sets, sets
-        return join_factory(args, kwargs)
+        return join_factory(args, kwargs).mutate()
 
     if "concat" in kwargs:
         from .concat import concat_factory
 
         assert not sets, sets
-        return concat_factory(args, kwargs)
+        return concat_factory(args, kwargs).mutate()
 
     if "ensemble" in kwargs:
         from .ensemble import ensemble_factory
 
         assert not sets, sets
-        return ensemble_factory(args, kwargs)
+        return ensemble_factory(args, kwargs).mutate()
 
     if "grids" in kwargs:
         from .grids import grids_factory
 
         assert not sets, sets
-        return grids_factory(args, kwargs)
+        return grids_factory(args, kwargs).mutate()
 
     if "cutout" in kwargs:
         from .grids import cutout_factory
 
         assert not sets, sets
-        return cutout_factory(args, kwargs)
+        return cutout_factory(args, kwargs).mutate()
 
     for name in ("datasets", "dataset"):
         if name in kwargs:

@@ -104,13 +104,36 @@ class Unchecked(Combined):
     def shape(self):
         raise NotImplementedError()
 
-    @property
-    def dtype(self):
-        raise NotImplementedError()
+    # @property
+    # def field_shape(self):
+    #     return tuple(d.shape for d in self.datasets)
 
-    @property
-    def grids(self):
-        raise NotImplementedError()
+    # @property
+    # def latitudes(self):
+    #     return tuple(d.latitudes for d in self.datasets)
+
+    # @property
+    # def longitudes(self):
+    #     return tuple(d.longitudes for d in self.datasets)
+
+    # @property
+    # def statistics(self):
+    #     return tuple(d.statistics for d in self.datasets)
+
+    # @property
+    # def resolution(self):
+    #     return tuple(d.resolution for d in self.datasets)
+
+    # @property
+    # def name_to_index(self):
+    #     return tuple(d.name_to_index for d in self.datasets)
+
+    @cached_property
+    def missing(self):
+        result = set()
+        for d in self.datasets:
+            result = result | d.missing
+        return result
 
 
 class Zip(Unchecked):
@@ -128,6 +151,25 @@ class Zip(Unchecked):
             result = result | d.missing
         return result
 
+    @property
+    def shape(self):
+        return tuple(d.shape for d in self.datasets)
+
+    @property
+    def dtype(self):
+        return tuple(d.dtype for d in self.datasets)
+
+    @property
+    def grids(self):
+        return tuple(d.grids for d in self.datasets)
+
+    @property
+    def variables(self):
+        return tuple(d.variables for d in self.datasets)
+
+    def dataset_metadata(self):
+        return {"multiple": [d.dataset_metadata() for d in self.datasets]}
+
 
 class Chain(ConcatMixin, Unchecked):
     """Same as Concat, but with no checks"""
@@ -142,17 +184,8 @@ class Chain(ConcatMixin, Unchecked):
     def dates(self):
         raise NotImplementedError()
 
-
-def zip_factory(args, kwargs):
-
-    zip = kwargs.pop("zip")
-    assert len(args) == 0
-    assert isinstance(zip, (list, tuple))
-
-    datasets = [_open(e) for e in zip]
-    datasets, kwargs = _auto_adjust(datasets, kwargs)
-
-    return Zip(datasets)._subset(**kwargs)
+    def dataset_metadata(self):
+        return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
 def chain_factory(args, kwargs):

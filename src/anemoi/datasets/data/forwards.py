@@ -23,7 +23,7 @@ LOG = logging.getLogger(__name__)
 
 class Forwards(Dataset):
     def __init__(self, forward):
-        self.forward = forward
+        self.forward = forward.mutate()
 
     def __len__(self):
         return len(self.forward)
@@ -117,6 +117,9 @@ class Combined(Forwards):
 
         # Forward most properties to the first dataset
         super().__init__(datasets[0])
+
+    def mutate(self):
+        return self
 
     def check_same_resolution(self, d1, d2):
         if d1.resolution != d2.resolution:
