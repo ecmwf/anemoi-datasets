@@ -12,7 +12,8 @@ from functools import cached_property
 
 import numpy as np
 
-from anemoi.datasets.data.misc import _frequency_to_hours
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
 from ..debug import Node
 from ..stores import zarr_lookup
@@ -30,12 +31,11 @@ def make_dates(start, end, frequency):
     if isinstance(end, np.datetime64):
         end = end.astype(datetime.datetime)
 
-    delta = datetime.timedelta(hours=frequency)
     dates = []
     current_date = start
     while current_date <= end:
         dates.append(current_date)
-        current_date += delta
+        current_date += frequency
     return dates
 
 
@@ -174,6 +174,7 @@ class Padded(Forward):
     def __init__(self, dataset, start, end):
         super().__init__(dataset)
         self._frequency = self.forward.frequency
+        assert isinstance(self._frequency, datetime.timedelta), f"Expected timedelta, got {type(self._frequency)}"
         self._start_date = start
         self._end_date = end
         self.dates = make_dates(start, end, self._frequency)
@@ -222,27 +223,28 @@ def round_datetime(dt, frequency, up=True):
 class Observations(ObservationsBase):
     def __init__(self, dataset, frequency, window=None):
         assert not dataset.endswith(".zarr"), f"Expected dataset name, got {dataset}"
-        self.frequency = _frequency_to_hours(frequency)
+        self.frequency = frequency_to_timedelta(frequency)
+        assert self.frequency.total_seconds() % 3600 == 0, f"Expected multiple of 3600, got {self.frequency}"
 
+        frequency_hours = int(self.frequency.total_seconds() // 3600)
+        assert isinstance(frequency_hours, int), f"Expected int, got {type(frequency_hours)}"
+        
         if window is None:
-            window = (-self.frequency, 0)
-        if window == (-self.frequency, 0):
+            window = (-frequency_hours, 0)
+        if window == (-frequency_hours, 0):
             raise ValueError("For now, only window = (- frequency, 0) are supported")
 
         self.window = window
         self.path = _resolve_path(dataset)
         assert is_observations_dataset(self.path), f"Expected observations dataset, got {self.path}"
 
-        # print(f"dataset={self.path}, frequency={frequency}")
         start, end = self._probe_attributes["start_date"], self._probe_attributes["end_date"]
         # print(f"✅ from attribute start={start}, end={end}")
         start, end = datetime.datetime.fromisoformat(start), datetime.datetime.fromisoformat(end)
-        # print(f'          nb of windows of size {self.frequency}h: {(end-start).total_seconds()/3600/self.frequency}')
-        start, end = round_datetime(start, self.frequency), round_datetime(end, self.frequency)
+        start, end = round_datetime(start, frequency_hours), round_datetime(end, frequency_hours)
         # print(f"       rounded to start={start}, end={end}")
-        # print(f'          nb of windows of size {self.frequency}h: {(end-start).total_seconds()/3600/self.frequency}')
 
-        self.dates = make_dates(start + datetime.timedelta(hours=self.frequency), end, self.frequency)
+        self.dates = make_dates(start + self.frequency, end, self.frequency)
         # print(f"              -> dates: {self.dates[0]}, {self.dates[-1]}")
         # print(f"                   nb of dates: {len(self.dates)}")
 
@@ -257,15 +259,14 @@ class Observations(ObservationsBase):
             self.path,
             first_window_begin,
             last_window_end,
-            len_hrs=self.frequency,  # length the time windows, i.e. the time span of one item
-            step_hrs=self.frequency,  # frequency of the dataset, i.e. the time shift between two items
+            len_hrs=frequency_hours,  # length the time windows, i.e. the time span of one item
+            step_hrs=frequency_hours,  # frequency of the dataset, i.e. the time shift between two items
             normalize=False,
         )
-        # print(f"obs = Obsdataset('{self.path}', {first_window_begin=}, {last_window_end=}, len_hrs={self.frequency}, step_hrs={self.frequency}, normalize=False)")
         # print(f"len(obs)={len(self.forward)}")
 
-        assert self.frequency == self.forward.step_hrs, f"Expected {self.frequency}, got {self.forward.len_hrs}"
-        assert self.frequency == self.forward.len_hrs, f"Expected {self.frequency}, got {self.forward.step_hrs}"
+        assert frequency_hours == self.forward.step_hrs, f"Expected {frequency_hours}, got {self.forward.len_hrs}"
+        assert frequency_hours == self.forward.len_hrs, f"Expected {frequency_hours}, got {self.forward.step_hrs}"
 
         if len(self.forward) != len(self.dates):
             raise ValueError(
@@ -273,7 +274,7 @@ class Observations(ObservationsBase):
                     f"Dates are not consistent with the number of items in the dataset. "
                     f"The dataset contains {len(self.forward)} time windows. "
                     f"This is not compatible with the "
-                    f"{len(self.dates)} requested dates with frequency={self.frequency}"
+                    f"{len(self.dates)} requested dates with frequency={frequency_hours}"
                     f"{self.dates[0]}, {self.dates[1]}, ..., {self.dates[-2]}, {self.dates[-1]} "
                 )
             )
