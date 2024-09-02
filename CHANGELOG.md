@@ -11,9 +11,11 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
+- CI workflow to update the changelog on release
 - adds the reusable cd pypi workflow
 
 ### Changed
+ -  update CI to reusable workflows for PRs and releases
 
 - Support sub-hourly datasets.
 - Change negative variance detection to make it less restrictive
