@@ -23,7 +23,7 @@ from anemoi.datasets.create import Creator
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
-TEST_DATA_S3_ROOT = "s3://ml-tests/test-data/anemoi-datasets/create"
+TEST_DATA_S3_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
 
 
 HERE = os.path.dirname(__file__)
