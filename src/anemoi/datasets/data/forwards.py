@@ -252,3 +252,10 @@ class GivenAxis(Combined):
             return self._get_slice(n)
 
         return np.concatenate([d[n] for d in self.datasets], axis=self.axis - 1)
+
+    @cached_property
+    def missing(self):
+        if self.axis == 0:
+            return super().missing
+
+        raise NotImplementedError(f"missing() not implemented for GivenAxis(axis={self.axis})")

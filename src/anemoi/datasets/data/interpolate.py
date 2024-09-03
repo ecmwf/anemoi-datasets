@@ -106,10 +106,17 @@ class InterpolateTime(Forwards):
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
 
-    @property
+    @cached_property
     def missing(self):
-        raise NotImplementedError("missing not implemented for InterpolateTime")
-        return self.forward.missing
+        result = set()
+        j = 0
+        for i, d in enumerate(self.forward.dates):
+            missing = self.forward.missing[i]
+            for _ in self.ratio:
+                if missing:
+                    result.add(j)
+            j += 1
+        return result
 
 
 def interpolate_factory(args, kwargs):

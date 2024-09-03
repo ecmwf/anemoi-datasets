@@ -105,6 +105,13 @@ class GridsBase(GivenAxis):
         # We don't check the resolution, because we want to be able to combine
         pass
 
+    @cached_property
+    def missing(self):
+        result = set()
+        for d in self.datasets:
+            result.update(d.missing)
+        return result
+
 
 class Grids(GridsBase):
     # TODO: select the statistics of the most global grid?
