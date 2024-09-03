@@ -12,6 +12,7 @@ import re
 import warnings
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 
 LOG = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class DatasetName:
     def check_frequency(self, frequency):
         if frequency is None:
             return
-        frequency_str = f"{frequency}h"
+        frequency_str = frequency_to_string(frequency)
         self._check_missing("frequency", frequency_str)
         self._check_mismatch("frequency", frequency_str)
 
