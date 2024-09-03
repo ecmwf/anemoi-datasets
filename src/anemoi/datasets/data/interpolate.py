@@ -45,6 +45,7 @@ class InterpolateTime(Forwards):
         self.ratio = other // mine
         self.seconds = mine
         self.alphas = np.linspace(0, 1, self.ratio + 1)
+        print(self.alphas, self.alphas.shape)
         self.other_len = len(dataset)
 
     @debug_indexing
@@ -79,6 +80,7 @@ class InterpolateTime(Forwards):
             return self.forward[i1]
 
         alphas = self.alphas[x]
+        assert 0 < alphas < 1, alphas
         return self.forward[i1] * (1 - alphas) + self.forward[i1 + 1] * alphas
 
     def __len__(self):
