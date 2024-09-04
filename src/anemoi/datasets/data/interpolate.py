@@ -75,18 +75,20 @@ class InterpolateTime(Forwards):
             n += self._len
 
         if n == self._len - 1:
+            # Special case for the last element
             return self.forward[-1]
 
-        i1 = n // self.ratio
+        i = n // self.ratio
         x = n % self.ratio
 
         if x == 0:
-            return self.forward[i1]
+            # No interpolation needed
+            return self.forward[i]
 
         alpha = self.alphas[x]
 
         assert 0 < alpha < 1, alpha
-        return self.forward[i1] * (1 - alpha) + self.forward[i1 + 1] * alpha
+        return self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
 
     def __len__(self):
         return (self.other_len - 1) * self.ratio + 1
