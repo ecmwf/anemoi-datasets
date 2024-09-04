@@ -190,3 +190,4 @@ _build/
 _dev/
 *.to_upload
 *.tmp
+tempCodeRunnerFile*
