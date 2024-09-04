@@ -29,23 +29,27 @@ class InterpolateTime(Forwards):
         super().__init__(dataset)
         self._frequency = frequency_to_timedelta(frequency)
 
-        mine = self._frequency.total_seconds()
-        other = dataset.frequency.total_seconds()
+        self.seconds = self._frequency.total_seconds()
+        other_seconds = dataset.frequency.total_seconds()
 
-        mine = int(mine)
-        assert mine == self._frequency.total_seconds()
+        self.seconds = int(self.seconds)
+        assert self.seconds == self._frequency.total_seconds()
 
-        other = int(other)
-        assert other == dataset.frequency.total_seconds()
+        other_seconds = int(other_seconds)
+        assert other_seconds == dataset.frequency.total_seconds()
 
-        if mine >= other:
-            raise ValueError(f"Interpolate frequency must be higher {self._frequency} <= {dataset.frequency}")
+        if self.seconds >= other_seconds:
+            raise ValueError(
+                f"Interpolate frequency {self._frequency} must be more frequent than dataset frequency {dataset.frequency}"
+            )
 
-        assert other % mine == 0, (other, mine)
-        self.ratio = other // mine
-        self.seconds = mine
+        if other_seconds % self.seconds != 0:
+            raise ValueError(
+                f"Interpolate frequency {self._frequency}  must be a multiple of the dataset frequency {dataset.frequency}"
+            )
+
+        self.ratio = other_seconds // self.seconds
         self.alphas = np.linspace(0, 1, self.ratio + 1)
-        print(self.alphas, self.alphas.shape)
         self.other_len = len(dataset)
 
     @debug_indexing
@@ -79,12 +83,13 @@ class InterpolateTime(Forwards):
         if x == 0:
             return self.forward[i1]
 
-        alphas = self.alphas[x]
-        assert 0 < alphas < 1, alphas
-        return self.forward[i1] * (1 - alphas) + self.forward[i1 + 1] * alphas
+        alpha = self.alphas[x]
+
+        assert 0 < alpha < 1, alpha
+        return self.forward[i1] * (1 - alpha) + self.forward[i1 + 1] * alpha
 
     def __len__(self):
-        return len(self.forward) * self.ratio
+        return (self.other_len - 1) * self.ratio + 1
 
     @property
     def frequency(self):
@@ -94,30 +99,31 @@ class InterpolateTime(Forwards):
     def dates(self):
         result = []
         deltas = [np.timedelta64(self.seconds * i, "s") for i in range(self.ratio)]
-
-        for d in self.forward.dates:
-            for i in deltas[:-1]:
+        for d in self.forward.dates[:-1]:
+            for i in deltas:
                 result.append(d + i)
-            result.append(d)
+        result.append(self.forward.dates[-1])
         return result
 
     @property
     def shape(self):
-        return (len(self),) + self.forward.shape[1:]
+        return (self._len,) + self.forward.shape[1:]
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
 
     @cached_property
     def missing(self):
-        result = set()
+        result = []
         j = 0
-        for i, d in enumerate(self.forward.dates):
+        for i in range(self.other_len):
             missing = self.forward.missing[i]
-            for _ in self.ratio:
+            for _ in range(self.ratio):
                 if missing:
-                    result.add(j)
-            j += 1
+                    result.append(j)
+                j += 1
+
+        result = set(x for x in result if x < self._len)
         return result
 
 
