@@ -17,13 +17,20 @@ from pydantic import ValidationError
 from pydantic import validator
 
 
-class Dates(BaseModel):
+class Interval(BaseModel):
+    start: datetime.datetime = None
+    end: datetime.datetime = None
+
+
+class Datelist(BaseModel):
+    values: list[datetime.datetime] = None
+
+
+class Dates(Interval, Datelist):
     class Config:
         extra = "forbid"
 
-    start: datetime.datetime
-    end: datetime.datetime
-    frequency: datetime.timedelta
+    frequency: datetime.timedelta = None
     missing: list[datetime.datetime] = None
 
     @validator("frequency", pre=True)
@@ -42,24 +49,63 @@ class Dates(BaseModel):
     #     return value
 
 
-class Input(BaseModel):
+class Step(BaseModel):
     pass
+
+
+class FilteredStep(Step):
+    dates: Interval
+
+
+class Input(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    concat: list[FilteredStep] = None
+    join: list[Step] = None
+
+    accumulations: Step = None
+    mars: Step = None
+    constants: Step = None
+    dates: Step = None
+    netcdf: Step = None
+    grib: Step = None
 
 
 class Output(BaseModel):
-    pass
+    class Config:
+        extra = "forbid"
+
+    statistics_end: Union[datetime.datetime, int] = None
+
+    chunking: dict = None
+    dtype: str = "float32"
+    flatten_grid: bool = True
+    order_by: list[str] = None
+    remapping: dict = None
+    statistics: Union[dict, str] = None
 
 
 class Build(BaseModel):
+    class Config:
+        extra = "forbid"
+
     group_by: Union[int, str] = "monthly"
+    use_grib_paramid: bool = False
+    variable_naming: str = None
 
 
 class Common(BaseModel):
+
     pass
 
 
 class Statistics(BaseModel):
-    pass
+    class Config:
+        extra = "forbid"
+
+    end: Union[datetime.datetime, int] = None
+    allow_nans: list[str] = None
 
 
 class Recipe(BaseModel):
@@ -77,6 +123,7 @@ class Recipe(BaseModel):
     build: Build = Build()
     statistics: Statistics = Statistics()
     common: Common = None
+    sources: Common = None
 
     # Legacy fields
     dataset_status: str = None
@@ -86,6 +133,7 @@ class Recipe(BaseModel):
     config_format_version: int = None
     flatten_grid: bool = True
     ensemble_dimension: int = 2
+    status: str = None
 
     # @validator("dataset_status", pre=True, always=True)
     # def warn_deprecated_field(cls, value):
