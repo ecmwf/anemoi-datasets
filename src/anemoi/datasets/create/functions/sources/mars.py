@@ -7,15 +7,16 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
+from typing import Literal
 from typing import Tuple
 from typing import Union
 
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
-from pydantic import field_validator
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -26,19 +27,24 @@ class Mars(BaseModel):
     class Config:
         extra = "forbid"
 
-    class_: str = Field(alias="class")
-    type: str
-    expver: Union[str, int]
-    param: list[Union[str, int]]
-    grid: Union[str, list[float], Tuple[float, float]]
-    levtype: str
-    levelist: list[int] = Field(None, alias="level")
+    class_: str = Field("od", alias="class")
+    type: str = "an"
+    stream: str = "oper"
+    expver: Union[str, int] = "0001"
+    origin: str = None
+    param: list[Union[str, float]] = ["z"]
+    grid: Union[str, list[float], Tuple[float, float]] = None
+    levtype: str = "pl"
+    levelist: Union[list[int], int, Literal["all"]] = Field(
+        [1000, 850, 700, 500, 400, 300], validation_alias=AliasChoices("levelist", "level")
+    )
+    step: Union[list[Union[int, str]], str, int] = 0
 
-    @field_validator("grid")
-    def check_length(cls, v):
-        if isinstance(v, list) and len(v) != 2:
-            raise ValueError("List must have exactly two floats")
-        return v
+    # @field_validator("grid")
+    # def check_length(cls, v):
+    #     if isinstance(v, list) and len(v) != 2:
+    #         raise ValueError("List must have exactly two floats")
+    #     return v
 
 
 def to_list(x):

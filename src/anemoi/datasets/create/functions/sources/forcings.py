@@ -7,6 +7,16 @@
 # nor does it submit to any jurisdiction.
 #
 from earthkit.data import from_source
+from pydantic import BaseModel
+
+
+class Forcings(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    # constants: dict
+    template: str
+    param: list[str]
 
 
 def forcings(context, dates, template, param):
@@ -14,4 +24,5 @@ def forcings(context, dates, template, param):
     return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 
 
+schema = Forcings
 execute = forcings

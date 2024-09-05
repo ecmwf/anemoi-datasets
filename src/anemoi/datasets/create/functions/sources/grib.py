@@ -9,9 +9,19 @@
 
 
 import glob
+from typing import Union
 
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
+
+from .mars import Mars
+
+
+class Grib(Mars):
+    class Config:
+        extra = "forbid"
+
+    path: Union[str, list[str]]
 
 
 def check(ds, paths, **kwargs):
@@ -57,3 +67,6 @@ def execute(context, dates, path, *args, **kwargs):
         check(ds, given_paths, valid_datetime=dates, **kwargs)
 
     return ds
+
+
+schema = Grib

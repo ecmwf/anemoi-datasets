@@ -15,17 +15,17 @@ import earthkit.data as ekd
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
-from pydantic import BaseModel
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from .mars import Mars
 from .mars import mars
 
 LOG = logging.getLogger(__name__)
 
 
-class Accumulations(BaseModel):
-    pass
+class Accumulations(Mars):
+    accumulation_period: int = 6
 
 
 def _member(field):
