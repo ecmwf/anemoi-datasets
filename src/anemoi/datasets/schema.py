@@ -11,7 +11,6 @@ import datetime
 import json
 from enum import Enum
 from typing import Annotated
-from typing import Any
 from typing import Union
 
 from anemoi.utils.dates import frequency_to_timedelta
@@ -148,15 +147,22 @@ def init():
     simple_steps = Annotated[Union[tuple(union)], Discriminator(_input_discriminator)]
 
     Pipe = create_model("Pipe", pipe=(list[simple_steps], ...))
-    Dates = create_model("Dates", dates=(Any, ...))
+
+    simple_steps_and_pipe = Annotated[
+        Union[tuple(union + [Annotated[Pipe, Tag("pipe")]])], Discriminator(_input_discriminator)
+    ]
+
+    Dates = create_model("Dates", dates=(Interval, ...), join=(list[simple_steps_and_pipe], ...))
 
     union.append(Annotated[Pipe, Tag("pipe")])
     union.append(Annotated[Dates, Tag("dates")])
 
-    d = Annotated[Union[tuple(union)], Discriminator(_input_discriminator)]
+    simple_steps_and_dates = Annotated[
+        Union[tuple(union + [Annotated[Dates, Tag("dates")]])], Discriminator(_input_discriminator)
+    ]
 
-    Concat = create_model("Concat", concat=(list, ...))
-    Join = create_model("Join", join=(list[d], ...))
+    Concat = create_model("Concat", concat=(list[simple_steps_and_dates], ...))
+    Join = create_model("Join", join=(list[simple_steps_and_pipe], ...))
 
     union.extend(
         [
