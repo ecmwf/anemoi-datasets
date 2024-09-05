@@ -10,6 +10,8 @@ import datetime
 import logging
 import warnings
 from copy import deepcopy
+from typing import Tuple
+from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
@@ -25,7 +27,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Accumulations(Mars):
-    accumulation_period: int = 6
+    accumulation_period: Union[int, list[int], Tuple[int, int]] = 6
 
 
 def _member(field):

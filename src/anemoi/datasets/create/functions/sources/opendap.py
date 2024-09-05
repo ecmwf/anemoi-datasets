@@ -8,8 +8,25 @@
 #
 
 
+from typing import Any
+from typing import Union
+
+from pydantic import BaseModel
+
 from .xarray import load_many
+
+
+class OpenDAP(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    url: Union[str, list[str]]
+    param: Union[str, list[str]]
+    level: Any = None
 
 
 def execute(context, dates, url, *args, **kwargs):
     return load_many("🌐", context, dates, url, *args, **kwargs)
+
+
+schema = OpenDAP

@@ -12,6 +12,11 @@ from collections import defaultdict
 # import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import unrotate_vector
+from pydantic import BaseModel
+
+
+class UnrotateWinds(BaseModel):
+    pass
 
 
 class NewDataField:
@@ -93,3 +98,6 @@ if __name__ == "__main__":
     source.save("source.grib")
 
     execute(None, source, "10u", "10v")
+
+
+schema = UnrotateWinds

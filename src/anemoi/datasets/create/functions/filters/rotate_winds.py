@@ -13,6 +13,11 @@ import tqdm
 from anemoi.utils.humanize import plural
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import rotate_vector
+from pydantic import BaseModel
+
+
+class RotateWinds(BaseModel):
+    pass
 
 
 class NewDataField:
@@ -87,3 +92,6 @@ def execute(
         result.append(NewDataField(y, y_new))
 
     return result
+
+
+schema = RotateWinds
