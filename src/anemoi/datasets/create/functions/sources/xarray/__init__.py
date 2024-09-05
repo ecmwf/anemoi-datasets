@@ -12,7 +12,9 @@ from typing import Any
 from typing import Union
 
 from earthkit.data.core.fieldlist import MultiFieldList
+from pydantic import AliasChoices
 from pydantic import BaseModel
+from pydantic import Field
 
 from anemoi.datasets.data.stores import name_to_zarr_store
 
@@ -27,9 +29,9 @@ class Xarray(BaseModel):
         extra = "forbid"
 
     param: Union[str, list[str]]
-    level: Any = None
     step: Any = None
     levtype: Any = None
+    levelist: Union[list[int], int] = Field(None, validation_alias=AliasChoices("levelist", "level"))
 
 
 def check(what, ds, paths, **kwargs):
