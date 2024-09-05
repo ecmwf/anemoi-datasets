@@ -8,7 +8,13 @@
 #
 
 
+from .xarray import Xarray
 from .xarray import load_many
+
+
+class Zarr(Xarray):
+    class Config:
+        extra = "forbid"
 
 
 def execute(context, dates, url, *args, **kwargs):

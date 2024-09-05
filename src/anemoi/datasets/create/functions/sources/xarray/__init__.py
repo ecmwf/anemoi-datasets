@@ -8,8 +8,11 @@
 #
 
 import logging
+from typing import Any
+from typing import Union
 
 from earthkit.data.core.fieldlist import MultiFieldList
+from pydantic import BaseModel
 
 from anemoi.datasets.data.stores import name_to_zarr_store
 
@@ -17,6 +20,16 @@ from .. import iterate_patterns
 from .fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
+
+
+class Xarray(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    param: Union[str, list[str]]
+    level: Any = None
+    step: Any = None
+    levtype: Any = None
 
 
 def check(what, ds, paths, **kwargs):

@@ -8,21 +8,17 @@
 #
 
 
-from typing import Any
 from typing import Union
 
-from pydantic import BaseModel
-
+from .xarray import Xarray
 from .xarray import load_many
 
 
-class OpenDAP(BaseModel):
+class OpenDAP(Xarray):
     class Config:
         extra = "forbid"
 
     url: Union[str, list[str]]
-    param: Union[str, list[str]]
-    level: Any = None
 
 
 def execute(context, dates, url, *args, **kwargs):

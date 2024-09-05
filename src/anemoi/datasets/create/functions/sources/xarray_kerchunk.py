@@ -11,7 +11,13 @@
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from . import iterate_patterns
+from .xarray import Xarray
 from .xarray import load_one
+
+
+class Kerchunk(Xarray):
+    class Config:
+        extra = "forbid"
 
 
 def load_many(emoji, context, dates, pattern, options, **kwargs):
