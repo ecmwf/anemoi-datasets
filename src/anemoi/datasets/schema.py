@@ -121,23 +121,6 @@ class Statistics(BaseModel):
     allow_nans: list[str] = []
 
 
-def _input_discriminator(input):
-
-    if isinstance(input, dict):
-        keys = sorted(input.keys())
-        if len(keys) != 1:
-            raise ValueError(f"Invalid input: {keys}")
-
-        action = keys[0]
-        if action in ("concat", "join"):
-            return action
-
-        return "other"
-
-    print("DISCRIMINATOR", input)
-    raise ValueError(f"Invalid input type: {type(input)}")
-
-
 def other(*args, **kwargs):
     action = list(kwargs.keys())[0]
     name = action[0].upper() + action[1:].lower() + "Step"

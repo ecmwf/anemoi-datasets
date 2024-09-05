@@ -40,6 +40,7 @@ class Mars(BaseModel):
         [1000, 850, 700, 500, 400, 300], validation_alias=AliasChoices("levelist", "level")
     )
     step: Union[list[Union[int, str]], str, int] = 0
+    domain: str = "g"
 
     # @field_validator("grid")
     # def check_length(cls, v):
