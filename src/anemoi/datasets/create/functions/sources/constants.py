@@ -7,6 +7,16 @@
 # nor does it submit to any jurisdiction.
 #
 from earthkit.data import from_source
+from pydantic import BaseModel
+
+
+class Constants(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    # constants: dict
+    template: str
+    param: list[str]
 
 
 def constants(context, dates, template, param):
@@ -24,4 +34,5 @@ def constants(context, dates, template, param):
     return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 
 
+schema = Constants
 execute = constants

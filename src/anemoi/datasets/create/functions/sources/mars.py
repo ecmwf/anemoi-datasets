@@ -7,11 +7,15 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
+from typing import Tuple
+from typing import Union
 
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 from pydantic import BaseModel
+from pydantic import Field
+from pydantic import field_validator
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -19,7 +23,22 @@ DEBUG = False
 
 
 class Mars(BaseModel):
-    pass
+    class Config:
+        extra = "forbid"
+
+    class_: str = Field(alias="class")
+    type: str
+    expver: Union[str, int]
+    param: list[Union[str, int]]
+    grid: Union[str, list[float], Tuple[float, float]]
+    levtype: str
+    levelist: list[int] = Field(None, alias="level")
+
+    @field_validator("grid")
+    def check_length(cls, v):
+        if isinstance(v, list) and len(v) != 2:
+            raise ValueError("List must have exactly two floats")
+        return v
 
 
 def to_list(x):

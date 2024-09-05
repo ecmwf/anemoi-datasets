@@ -49,7 +49,7 @@ def function_schemas(kind):
     path = os.path.join(os.path.dirname(__file__), kind)
     print(path)
     for n in os.listdir(path):
-        print(n)
+        # print(n)
         if n.startswith("_"):
             continue
 
@@ -64,5 +64,5 @@ def function_schemas(kind):
         if not hasattr(module, "schema"):
             continue
 
-        print(module, module.schema)
+        # print(module, module.schema)
         yield name, module.schema

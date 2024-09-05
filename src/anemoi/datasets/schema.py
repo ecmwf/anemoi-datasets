@@ -120,14 +120,6 @@ class Statistics(BaseModel):
     allow_nans: list[str] = []
 
 
-class Concat(BaseModel):
-    concat: list
-
-
-class Join(BaseModel):
-    join: list
-
-
 def _input_discriminator(input):
 
     if isinstance(input, dict):
@@ -151,12 +143,33 @@ def other(*args, **kwargs):
     return create_model(name, **{action: (dict, ...)}, __base__=Step)
 
 
-def actions():
-    return Union[
-        Annotated[Concat, Tag("concat")],
-        Annotated[Join, Tag("join")],
-        Annotated[other, Tag("other")],
-    ]
+def init():
+
+    def _input_discriminator(input):
+        print("DISCRIMINATOR", input)
+        return list(input.keys())[0]
+
+    union = []
+
+    for name, schema in function_schemas("sources"):
+        model = create_model(name, **{name: (schema, ...)}, __base__=Step)
+        a = Annotated[model, Tag(name)]
+        union.append(a)
+
+    d = Annotated[Union[tuple(union)], Discriminator(_input_discriminator)]
+
+    Concat = create_model("Concat", concat=(list[d], ...))
+    Join = create_model("Join", join=(list[d], ...))
+
+    union.extend([Annotated[Concat, Tag("concat")], Annotated[Join, Tag("join")]])
+
+    Input = create_model(
+        "Input",
+        input=(Annotated[Union[tuple(union)], Discriminator(_input_discriminator)], ...),
+        __base__=Recipe,
+    )
+
+    return Input
 
 
 class Recipe(BaseModel):
@@ -179,10 +192,7 @@ class Recipe(BaseModel):
     ]
 
     # https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions-with-callable-discriminator
-    input: Annotated[actions, Discriminator(_input_discriminator)]
-
-        Discriminator(_input_discriminator),
-    ]
+    # input: Annotated[actions, Discriminator(_input_discriminator)]
 
     output: Output = Output()
     build: Build = Build()
@@ -206,14 +216,15 @@ class Recipe(BaseModel):
 
 def validate(config, schema=False):
 
+    model = init()
 
     try:
-        recipe = Recipe(**config)
+        recipe = model(**config)
         print("Validation successful!")
-        # if schema:
-        #     print(json.dumps(recipe.model_json_schema(), default=str, indent=4))
-        # else:
-        #     print(json.dumps(recipe.model_dump(), default=str, indent=4))
+        if schema:
+            print(json.dumps(recipe.model_json_schema(), default=str, indent=4))
+        else:
+            print(json.dumps(recipe.model_dump(), default=str, indent=4))
         return True
     except ValidationError as e:
         print("Validation failed:")
