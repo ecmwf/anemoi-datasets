@@ -140,8 +140,16 @@ def init():
         a = Annotated[model, Tag(name)]
         union.append(a)
 
-    Pipe = create_model("Pipe", pipe=(Any, ...))
+    for name, schema in function_schemas("filters"):
+        model = create_model(name, **{name: (schema, ...)}, __base__=Step)
+        a = Annotated[model, Tag(name)]
+        union.append(a)
+
+    simple_steps = Annotated[Union[tuple(union)], Discriminator(_input_discriminator)]
+
+    Pipe = create_model("Pipe", pipe=(list[simple_steps], ...))
     Dates = create_model("Dates", dates=(Any, ...))
+
     union.append(Annotated[Pipe, Tag("pipe")])
     union.append(Annotated[Dates, Tag("dates")])
 

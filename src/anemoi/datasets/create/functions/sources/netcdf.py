@@ -9,17 +9,15 @@
 
 from typing import Union
 
-from pydantic import BaseModel
-
+from .xarray import Xarray
 from .xarray import load_many
 
 
-class Netcdf(BaseModel):
+class Netcdf(Xarray):
     class Config:
         extra = "forbid"
 
     path: Union[str, list[str]]
-    param: Union[str, list[str]]
 
 
 def execute(context, dates, path, *args, **kwargs):

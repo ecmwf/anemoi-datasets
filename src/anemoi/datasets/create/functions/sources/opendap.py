@@ -8,8 +8,21 @@
 #
 
 
+from typing import Union
+
+from .xarray import Xarray
 from .xarray import load_many
+
+
+class OpenDAP(Xarray):
+    class Config:
+        extra = "forbid"
+
+    url: Union[str, list[str]]
 
 
 def execute(context, dates, url, *args, **kwargs):
     return load_many("🌐", context, dates, url, *args, **kwargs)
+
+
+schema = OpenDAP

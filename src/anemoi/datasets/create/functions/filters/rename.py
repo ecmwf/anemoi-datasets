@@ -10,6 +10,11 @@
 import re
 
 from earthkit.data.indexing.fieldlist import FieldArray
+from pydantic import BaseModel
+
+
+class Rename(BaseModel):
+    pass
 
 
 class RenamedFieldMapping:
@@ -73,3 +78,6 @@ def execute(context, input, what="param", **kwargs):
         return FieldArray([RenamedFieldFormat(fs, kwargs[what]) for fs in input])
 
     return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])
+
+
+schema = Rename
