@@ -9,6 +9,7 @@ import logging
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from .debug import Node
@@ -127,6 +128,11 @@ class InterpolateTime(Forwards):
 
         result = set(x for x in result if x < self._len)
         return result
+
+    def subclass_metadata_specific(self):
+        return {
+            "frequency": frequency_to_string(self._frequency),
+        }
 
 
 def interpolate_factory(args, kwargs):
