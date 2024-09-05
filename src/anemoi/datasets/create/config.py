@@ -153,6 +153,8 @@ class LoadersConfig(Config):
             raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
 
         self.setdefault("statistics", Config())
+        if not 'allow_nans' in self.statistics:
+            self.statistics.allow_nans = []
 
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)

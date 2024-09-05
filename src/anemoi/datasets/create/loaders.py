@@ -52,78 +52,11 @@ LOG = logging.getLogger(__name__)
 VERSION = "0.20"
 
 
-def json_tidy(o):
 
-    if isinstance(o, datetime.datetime):
-        return o.isoformat()
-
-    if isinstance(o, datetime.datetime):
-        return o.isoformat()
-
-    if isinstance(o, datetime.timedelta):
-        return frequency_to_string(o)
-
-    raise TypeError(repr(o) + " is not JSON serializable")
-
-
-def set_to_test_mode(cfg):
-    NUMBER_OF_DATES = 4
-
-    dates = cfg.dates
-    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
-    groups = Groups(**cfg.dates)
-    dates = groups.dates
-    cfg.dates = dict(
-        start=dates[0],
-        end=dates[NUMBER_OF_DATES - 1],
-        frequency=dates.frequency,
-        group_by=NUMBER_OF_DATES,
-    )
-
-    def set_element_to_test(obj):
-        if isinstance(obj, (list, tuple)):
-            for v in obj:
-                set_element_to_test(v)
-            return
-        if isinstance(obj, (dict, DotDict)):
-            if "grid" in obj:
-                previous = obj["grid"]
-                obj["grid"] = "20./20."
-                LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
-            if "number" in obj:
-                if isinstance(obj["number"], (list, tuple)):
-                    previous = obj["number"]
-                    obj["number"] = previous[0:3]
-                    LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
-            for k, v in obj.items():
-                set_element_to_test(v)
-            if "constants" in obj:
-                constants = obj["constants"]
-                if "param" in constants and isinstance(constants["param"], list):
-                    constants["param"] = ["cos_latitude"]
-
-    set_element_to_test(cfg)
-
-
-def read_temporary_config_from_dataset(path):
-    """Returns None if the config is not found."""
-    z = zarr.open(path, mode="r")
-    return z.attrs.get("_create_yaml_config")
 
 
 class GenericDatasetHandler:
-    def __init__(self, *, path, use_threads=False, **kwargs):
 
-        # Catch all floating point errors, including overflow, sqrt(<0), etc
-        np.seterr(all="raise", under="warn")
-
-        assert isinstance(path, str), path
-
-        self.path = path
-        self.kwargs = kwargs
-        self.use_threads = use_threads
-        if "test" in kwargs:
-            self.test = kwargs["test"]
 
     @classmethod
     def from_config(cls, *, config, path, use_threads=False, **kwargs):
@@ -148,24 +81,6 @@ class GenericDatasetHandler:
         assert os.path.exists(path), f"Path {path} does not exist."
         return cls(path=path, use_threads=use_threads, **kwargs)
 
-    def read_dataset_metadata(self):
-        ds = open_dataset(self.path)
-        self.dataset_shape = ds.shape
-        self.variables_names = ds.variables
-        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
-
-        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
-
-        z = zarr.open(self.path, "r")
-        missing_dates = z.attrs.get("missing_dates", [])
-        missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-
-        if missing_dates != self.missing_dates:
-            LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-            LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-            LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  self.missing_dates)}")
-            raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
     @cached_property
     def registry(self):
@@ -174,23 +89,7 @@ class GenericDatasetHandler:
     def ready(self):
         return all(self.registry.get_flags())
 
-    def update_metadata(self, **kwargs):
-        LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="w+")
-        for k, v in kwargs.items():
-            if isinstance(v, np.datetime64):
-                v = v.astype(datetime.datetime)
-            if isinstance(v, datetime.date):
-                v = v.isoformat()
-            z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
-    def _add_dataset(self, mode="r+", **kwargs):
-        z = zarr.open(self.path, mode=mode)
-        return add_zarr_dataset(zarr_root=z, **kwargs)
-
-    def get_zarr_chunks(self):
-        z = zarr.open(self.path, mode="r")
-        return z["data"].chunks
 
     def print_info(self):
         z = zarr.open(self.path, mode="r")
@@ -221,20 +120,6 @@ class DatasetHandlerWithStatistics(GenericDatasetHandler):
 
 
 class Loader(DatasetHandlerWithStatistics):
-    def build_input(self):
-        from earthkit.data.core.order import build_remapping
-
-        builder = build_input(
-            self.main_config.input,
-            data_sources=self.main_config.get("data_sources", {}),
-            order_by=self.output.order_by,
-            flatten_grid=self.output.flatten_grid,
-            remapping=build_remapping(self.output.remapping),
-            use_grib_paramid=self.main_config.build.use_grib_paramid,
-        )
-        LOG.debug("✅ INPUT_BUILDER")
-        LOG.debug(builder)
-        return builder
 
     @property
     def allow_nans(self):
@@ -248,199 +133,10 @@ class InitialiserLoader(Loader):
     def __init__(self, config, **kwargs):
         super().__init__(**kwargs)
 
-        self.main_config = loader_config(config)
-        if self.test:
-            set_to_test_mode(self.main_config)
-
-        LOG.info(dict(self.main_config.dates))
-
-        self.tmp_statistics.delete()
-
-        self.groups = Groups(**self.main_config.dates)
-        LOG.info(self.groups)
-
-        self.output = build_output(self.main_config.output, parent=self)
-        self.input = self.build_input()
-        LOG.info(self.input)
-
-        first_date = self.groups.dates[0]
-        self.minimal_input = self.input.select([first_date])
-        LOG.info("Minimal input (using only the first date) :")
-        LOG.info(self.minimal_input)
-
-    def build_statistics_dates(self, start, end):
-        """Compute the start and end dates for the statistics, based on :
-        - The start and end dates in the config
-        - The default statistics dates convention
-
-        Then adapt according to the actual dates in the dataset.
-        """
-
-        ds = open_dataset(self.path)
-        dates = ds.dates
-
-        # if not specified, use the default statistics dates
-        default_start, default_end = default_statistics_dates(dates)
-        if start is None:
-            start = default_start
-        if end is None:
-            end = default_end
-
-        # in any case, adapt to the actual dates in the dataset
-        start = as_first_date(start, dates)
-        end = as_last_date(end, dates)
-
-        # and convert to datetime to isoformat
-        start = start.astype(datetime.datetime)
-        end = end.astype(datetime.datetime)
-        return (start.isoformat(), end.isoformat())
-
-    def initialise_dataset_backend(self):
-        z = zarr.open(self.path, mode="w")
-        z.create_group("_build")
-
-    def initialise(self, check_name=True):
-        """Create an empty dataset of the right final shape
-
-        Read a small part of the data to get the shape of the data and the resolution and more metadata.
-        """
-
-        LOG.info("Config loaded ok:")
-        # LOG.info(self.main_config)
-
-        dates = self.groups.dates
-        frequency = dates.frequency
-        assert isinstance(frequency, datetime.timedelta), frequency
-
-        LOG.info(f"Found {len(dates)} datetimes.")
-        LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
-        LOG.info(f"Missing dates: {len(dates.missing)}")
-        lengths = tuple(len(g) for g in self.groups)
-
-        variables = self.minimal_input.variables
-        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
-
-        variables_with_nans = self.main_config.statistics.get("allow_nans", [])
-
-        ensembles = self.minimal_input.ensembles
-        LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
-
-        grid_points = self.minimal_input.grid_points
-        LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
-
-        resolution = self.minimal_input.resolution
-        LOG.info(f"{resolution=}")
-
-        coords = self.minimal_input.coords
-        coords["dates"] = dates
-        total_shape = self.minimal_input.shape
-        total_shape[0] = len(dates)
-        LOG.info(f"total_shape = {total_shape}")
-
-        chunks = self.output.get_chunking(coords)
-        LOG.info(f"{chunks=}")
-        dtype = self.output.dtype
-
-        LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
-
-        metadata = {}
-        metadata["uuid"] = str(uuid.uuid4())
-
-        metadata.update(self.main_config.get("add_metadata", {}))
-
-        metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-
-        metadata["description"] = self.main_config.description
-        metadata["licence"] = self.main_config["licence"]
-        metadata["attribution"] = self.main_config["attribution"]
-
-        metadata["remapping"] = self.output.remapping
-        metadata["order_by"] = self.output.order_by_as_list
-        metadata["flatten_grid"] = self.output.flatten_grid
-
-        metadata["ensemble_dimension"] = len(ensembles)
-        metadata["variables"] = variables
-        metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.main_config.build.get("allow_nans", False)
-        metadata["resolution"] = resolution
-
-        metadata["data_request"] = self.minimal_input.data_request
-        metadata["field_shape"] = self.minimal_input.field_shape
-        metadata["proj_string"] = self.minimal_input.proj_string
-
-        metadata["start_date"] = dates[0].isoformat()
-        metadata["end_date"] = dates[-1].isoformat()
-        metadata["frequency"] = frequency
-        metadata["missing_dates"] = [_.isoformat() for _ in dates.missing]
-
-        metadata["version"] = VERSION
-
-        basename, ext = os.path.splitext(os.path.basename(self.path))  # noqa: F841
-        try:
-            DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
-        except Exception as e:
-            if check_name and not self.test:
-                raise e
-            else:
-                LOG.error(f"Error in dataset name: {e}")
-
-        if len(dates) != total_shape[0]:
-            raise ValueError(
-                f"Final date size {len(dates)} (from {dates[0]} to {dates[-1]}, {frequency=}) "
-                f"does not match data shape {total_shape[0]}. {total_shape=}"
-            )
-
-        dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
-
-        metadata.update(self.main_config.get("force_metadata", {}))
-
-        ###############################################################
-        # write metadata
-        ###############################################################
-
-        self.initialise_dataset_backend()
-
-        self.update_metadata(**metadata)
-
-        self._add_dataset(
-            name="data",
-            chunks=chunks,
-            dtype=dtype,
-            shape=total_shape,
-            dimensions=("time", "variable", "ensemble", "cell"),
-        )
-        self._add_dataset(name="dates", array=dates, dimensions=("time",))
-        self._add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
-        self._add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
-
-        self.registry.create(lengths=lengths)
-        self.tmp_statistics.create(exist_ok=False)
-        self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
-
-        statistics_start, statistics_end = self.build_statistics_dates(
-            self.main_config.statistics.get("start"),
-            self.main_config.statistics.get("end"),
-        )
-        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
-        LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
-
-        self.registry.add_to_history("init finished")
-
-        assert chunks == self.get_zarr_chunks(), (chunks, self.get_zarr_chunks())
-
-        # Return the number of groups to process, so we can show a nice progress bar
-        return len(lengths)
 
 
 class ContentLoader(Loader):
     def __init__(self, config, parts, **kwargs):
-        super().__init__(**kwargs)
-        self.main_config = loader_config(config)
-
-        self.groups = Groups(**self.main_config.dates)
-        self.output = build_output(self.main_config.output, parent=self)
-        self.input = self.build_input()
-        self.read_dataset_metadata()
 
         self.parts = parts
         total = len(self.registry.get_flags())

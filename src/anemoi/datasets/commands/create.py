@@ -28,7 +28,7 @@ def task(what, options, *args, **kwargs):
     LOG.error('')
     LOG.error('')
 
-    from anemoi.datasets.create import Creator
+    from anemoi.datasets.create import creator_factory
 
     if "trace" in options:
         enable_trace(options["trace"])
@@ -39,9 +39,11 @@ def task(what, options, *args, **kwargs):
 
     if "debug" in options:
         options.pop("debug")
+    
+    options = {k: v for k, v in options.items() if v is not None}
 
-    c = Creator(**options)
-    result = getattr(c, what.replace('-','_'))()
+    c = creator_factory(what.replace('-', '_'), **options)
+    result = c.run_it()
 
     LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result
