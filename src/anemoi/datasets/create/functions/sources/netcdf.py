@@ -7,8 +7,23 @@
 # nor does it submit to any jurisdiction.
 #
 
+from typing import Union
+
+from pydantic import BaseModel
+
 from .xarray import load_many
+
+
+class Netcdf(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    path: Union[str, list[str]]
+    param: Union[str, list[str]]
 
 
 def execute(context, dates, path, *args, **kwargs):
     return load_many("📁", context, dates, path, *args, **kwargs)
+
+
+schema = Netcdf

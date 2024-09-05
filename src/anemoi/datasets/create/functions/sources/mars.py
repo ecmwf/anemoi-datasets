@@ -34,6 +34,7 @@ class Mars(BaseModel):
     origin: str = None
     param: list[Union[str, float]] = ["z"]
     grid: Union[str, list[float], Tuple[float, float]] = None
+    area: Union[list[float], Tuple[float, float, float, float]] = None
     levtype: str = "pl"
     levelist: Union[list[int], int, Literal["all"]] = Field(
         [1000, 850, 700, 500, 400, 300], validation_alias=AliasChoices("levelist", "level")
