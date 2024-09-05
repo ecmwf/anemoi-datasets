@@ -16,7 +16,11 @@ from pydantic import BaseModel
 
 
 class UnrotateWinds(BaseModel):
-    pass
+    class Config:
+        extra = "forbid"
+
+    u: str
+    v: str
 
 
 class NewDataField:

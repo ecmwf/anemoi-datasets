@@ -10,6 +10,8 @@
 
 from typing import Union
 
+from pydantic import AnyHttpUrl
+
 from .xarray import Xarray
 from .xarray import load_many
 
@@ -18,7 +20,7 @@ class OpenDAP(Xarray):
     class Config:
         extra = "forbid"
 
-    url: Union[str, list[str]]
+    url: Union[AnyHttpUrl, list[AnyHttpUrl]]
 
 
 def execute(context, dates, url, *args, **kwargs):

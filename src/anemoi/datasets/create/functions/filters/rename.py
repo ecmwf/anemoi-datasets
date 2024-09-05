@@ -8,13 +8,17 @@
 #
 
 import re
+from typing import Union
 
 from earthkit.data.indexing.fieldlist import FieldArray
 from pydantic import BaseModel
 
 
 class Rename(BaseModel):
-    pass
+    class Config:
+        extra = "forbid"
+
+    param: Union[str, dict[str, str]]
 
 
 class RenamedFieldMapping:
@@ -72,12 +76,17 @@ class RenamedFieldFormat:
         return getattr(self.field, name)
 
 
-def execute(context, input, what="param", **kwargs):
-    # print('🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍 ==========', kwargs)
-    if what in kwargs:
-        return FieldArray([RenamedFieldFormat(fs, kwargs[what]) for fs in input])
+def execute(context, input, **kwargs):
+    print("🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍 ==========", kwargs)
+    keys = list(kwargs.keys())
+    assert len(keys) == 1, keys
+    what = keys[0]
+    rename = kwargs[what]
 
-    return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])
+    if isinstance(rename, str):
+        return FieldArray([RenamedFieldFormat(fs, rename) for fs in input])
+
+    return FieldArray([RenamedFieldMapping(fs, what, rename) for fs in input])
 
 
 schema = Rename

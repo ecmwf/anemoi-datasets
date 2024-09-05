@@ -7,6 +7,7 @@
 # nor does it submit to any jurisdiction.
 #
 import datetime
+from typing import Any
 from typing import Literal
 from typing import Tuple
 from typing import Union
@@ -17,6 +18,7 @@ from earthkit.data.utils.availability import Availability
 from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import field_validator
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -32,22 +34,28 @@ class Mars(BaseModel):
     stream: str = "oper"
     expver: Union[str, int] = "0001"
     origin: str = None
-    param: list[Union[str, float]] = ["z"]
-    grid: Union[str, list[float], Tuple[float, float]] = None
-    area: Union[list[float], Tuple[float, float, float, float]] = None
-    rotation: Union[list[float], Tuple[float, float]] = None
+    domain: str = "g"
     levtype: str = "pl"
+
+    param: list[Union[str, float]] = ["z"]
+
     levelist: Union[list[int], int, Literal["all"]] = Field(
         [1000, 850, 700, 500, 400, 300], validation_alias=AliasChoices("levelist", "level")
     )
-    step: Union[list[Union[int, str]], str, int] = 0
-    domain: str = "g"
 
-    # @field_validator("grid")
-    # def check_length(cls, v):
-    #     if isinstance(v, list) and len(v) != 2:
-    #         raise ValueError("List must have exactly two floats")
-    #     return v
+    step: Union[list[Union[int, str]], str, int] = 0
+
+    # Post-processing
+    grid: Union[str, list[float], Tuple[float, float]] = None
+    area: Union[list[float], Tuple[float, float, float, float]] = None
+    rotation: Union[list[float], Tuple[float, float]] = None
+
+    @field_validator("param", "levelist", "step")
+    @classmethod
+    def as_list(cls, v: Any) -> list[Any]:
+        if isinstance(v, (list, tuple)):
+            return v
+        return [v]
 
 
 def to_list(x):

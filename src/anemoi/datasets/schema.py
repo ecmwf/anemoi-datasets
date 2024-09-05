@@ -66,25 +66,6 @@ class Step(BaseModel):
     pass
 
 
-class FilteredStep(Step):
-    dates: Interval
-
-
-class Input(BaseModel):
-    class Config:
-        extra = "forbid"
-
-    concat: list[FilteredStep] = None
-    join: list[Step] = None
-
-    accumulations: Step = None
-    mars: Step = None
-    constants: Step = None
-    dates: Step = None
-    netcdf: Step = None
-    grib: Step = None
-
-
 class Output(BaseModel):
     class Config:
         extra = "forbid"
@@ -120,16 +101,9 @@ class Statistics(BaseModel):
     allow_nans: list[str] = []
 
 
-def other(*args, **kwargs):
-    action = list(kwargs.keys())[0]
-    name = action[0].upper() + action[1:].lower() + "Step"
-    return create_model(name, **{action: (dict, ...)}, __base__=Step)
-
-
 def init():
 
     def _input_discriminator(input):
-        # print("DISCRIMINATOR", input)
         return list(input.keys())[0]
 
     union = []
@@ -149,7 +123,8 @@ def init():
     Pipe = create_model("Pipe", pipe=(list[simple_steps], ...))
 
     simple_steps_and_pipe = Annotated[
-        Union[tuple(union + [Annotated[Pipe, Tag("pipe")]])], Discriminator(_input_discriminator)
+        Union[tuple(union + [Annotated[Pipe, Tag("pipe")]])],
+        Discriminator(_input_discriminator),
     ]
 
     Dates = create_model("Dates", dates=(Interval, ...), join=(list[simple_steps_and_pipe], ...))
@@ -167,10 +142,7 @@ def init():
     union.extend(
         [
             Annotated[Concat, Tag("concat")],
-            Annotated[
-                Join,
-                Tag("join"),
-            ],
+            Annotated[Join, Tag("join")],
         ]
     )
 
