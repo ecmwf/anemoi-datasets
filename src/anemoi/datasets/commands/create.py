@@ -22,14 +22,26 @@ def task(what, options, *args, **kwargs):
 
     now = datetime.datetime.now()
     LOG.debug(f"Task {what}({args},{kwargs}) starting")
+    LOG.error(f"✅✅✅Task {what}({args},{kwargs}) starting")
+    LOG.error('')
+    LOG.error('')
+    LOG.error('')
+    LOG.error('')
 
     from anemoi.datasets.create import Creator
 
     if "trace" in options:
         enable_trace(options["trace"])
+        options.pop("trace")
+    
+    if "version" in options:
+        options.pop("version")
+
+    if "debug" in options:
+        options.pop("debug")
 
     c = Creator(**options)
-    result = getattr(c, what)(*args, **kwargs)
+    result = getattr(c, what.replace('-','_'))()
 
     LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result
@@ -71,6 +83,12 @@ class Create(Command):
         from anemoi.datasets.create import Creator
 
         options = vars(args)
+        options.pop("command")
+        options.pop("threads")
+        options.pop("processes")
+        options.pop("trace")
+        options.pop("debug")
+        options.pop("version")
         c = Creator(**options)
         c.create()
 
@@ -81,7 +99,6 @@ class Create(Command):
         of the modules are imported.
         """
 
-        options = vars(args)
         parallel = args.threads + args.processes
         args.use_threads = args.threads > 0
 
@@ -89,6 +106,11 @@ class Create(Command):
             ExecutorClass = ThreadPoolExecutor
         else:
             ExecutorClass = ProcessPoolExecutor
+
+        options = vars(args)
+        options.pop("command")
+        options.pop("threads")
+        options.pop("processes")
 
         with ExecutorClass(max_workers=1) as executor:
             total = executor.submit(task, "init", options).result()

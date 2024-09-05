@@ -105,6 +105,12 @@ def set_to_test_mode(cfg):
     set_element_to_test(cfg)
 
 
+def read_temporary_config_from_dataset(path):
+    """Returns None if the config is not found."""
+    z = zarr.open(path, mode="r")
+    return z.attrs.get("_create_yaml_config")
+
+
 class GenericDatasetHandler:
     def __init__(self, *, path, use_threads=False, **kwargs):
 
@@ -131,8 +137,7 @@ class GenericDatasetHandler:
         """Read the config saved inside the zarr dataset and instantiate the class for this config."""
 
         assert os.path.exists(path), f"Path {path} does not exist."
-        z = zarr.open(path, mode="r")
-        config = z.attrs["_create_yaml_config"]
+        config = read_temporary_config_from_dataset(path)
         LOG.debug("Config loaded from zarr config:\n%s", json.dumps(config, indent=4, sort_keys=True, default=str))
         return cls.from_config(config=config, path=path, use_threads=use_threads, **kwargs)
 
@@ -193,6 +198,15 @@ class GenericDatasetHandler:
             LOG.info(z["data"].info)
         except Exception as e:
             LOG.info(e)
+
+    def _path_readable(self):
+        import zarr
+
+        try:
+            zarr.open(self.path, "r")
+            return True
+        except zarr.errors.PathNotFoundError:
+            return False
 
 
 class DatasetHandler(GenericDatasetHandler):
@@ -361,10 +375,14 @@ class InitialiserLoader(Loader):
 
         metadata["version"] = VERSION
 
-        if check_name:
-            basename, ext = os.path.splitext(os.path.basename(self.path))  # noqa: F841
-            ds_name = DatasetName(basename, resolution, dates[0], dates[-1], frequency)
-            ds_name.raise_if_not_valid()
+        basename, ext = os.path.splitext(os.path.basename(self.path))  # noqa: F841
+        try:
+            DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
+        except Exception as e:
+            if check_name and not self.test:
+                raise e
+            else:
+                LOG.error(f"Error in dataset name: {e}")
 
         if len(dates) != total_shape[0]:
             raise ValueError(

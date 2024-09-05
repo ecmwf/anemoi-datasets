@@ -38,15 +38,23 @@ class Creator:
         self.overwrite = overwrite
         self.test = test
         self.progress = progress if progress is not None else _ignore
+        self.kwargs = kwargs
 
-    def init(self, check_name=False):
+    def check_unkown_kwargs(self):
+        for k in self.kwargs:
+            raise Exception(f"Unknown kwargs: {self.kwargs}")
+
+    def init(self):
+        check_name = self.kwargs.pop("check_name", False)
+        self.check_unkown_kwargs()
+
         # check path
         _, ext = os.path.splitext(self.path)
         assert ext != "zarr", f"Unsupported extension={ext}"
-        from .loaders import InitialiserLoader
-
         if self._path_readable() and not self.overwrite:
             raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
+
+        from .loaders import InitialiserLoader
 
         with self._cache_context():
             obj = InitialiserLoader.from_config(
@@ -59,7 +67,8 @@ class Creator:
             )
             return obj.initialise(check_name=check_name)
 
-    def load(self, parts=None):
+    def load(self):
+        parts = self.kwargs.pop("parts", None)
         from .loaders import ContentLoader
 
         with self._cache_context():
@@ -72,7 +81,12 @@ class Creator:
             )
             loader.load()
 
-    def statistics(self, force=False, output=None, start=None, end=None):
+    def statistics(self):
+        output = self.kwargs.pop("output", None)
+        start = self.kwargs.pop("start", None)
+        end = self.kwargs.pop("end", None)
+        self.check_unkown_kwargs()
+
         from .loaders import StatisticsAdder
 
         loader = StatisticsAdder.from_dataset(
@@ -105,17 +119,21 @@ class Creator:
         cleaner.tmp_statistics.delete()
         cleaner.registry.clean()
 
-    def patch(self, **kwargs):
+    def patch(self):
         from .patch import apply_patch
 
-        apply_patch(self.path, **kwargs)
+        apply_patch(self.path, **self.kwargs)
 
-    def init_additions(self, delta=[1, 3, 6, 12, 24], statistics=True):
+    def init_additions(self):
+        delta = self.kwargs.pop("delta", [])
+        recompute_statistics = self.kwargs.pop("recompute_statistics", False)
+        self.check_unkown_kwargs()
+
         from .loaders import StatisticsAddition
         from .loaders import TendenciesStatisticsAddition
         from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
 
-        if statistics:
+        if recompute_statistics:
             a = StatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads)
             a.initialise()
 
@@ -128,12 +146,17 @@ class Creator:
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
-    def run_additions(self, parts=None, delta=[1, 3, 6, 12, 24], statistics=True):
+    def run_additions(self):
+        delta = self.kwargs.pop("delta", [])
+        recompute_statistics = self.kwargs.pop("recompute_statistics", False)
+        parts = self.kwargs.pop("parts", None)
+        self.check_unkown_kwargs()
+
         from .loaders import StatisticsAddition
         from .loaders import TendenciesStatisticsAddition
         from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
 
-        if statistics:
+        if recompute_statistics:
             a = StatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads)
             a.run(parts)
 
@@ -146,12 +169,16 @@ class Creator:
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 LOG.debug(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
-    def finalise_additions(self, delta=[1, 3, 6, 12, 24], statistics=True):
+    def finalise_additions(self):
+        delta = self.kwargs.pop("delta", [])
+        recompute_statistics = self.kwargs.pop("recompute_statistics", False)
+        self.check_unkown_kwargs()
+
         from .loaders import StatisticsAddition
         from .loaders import TendenciesStatisticsAddition
         from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
 
-        if statistics:
+        if recompute_statistics:
             a = StatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads)
             a.finalise()
 
@@ -164,8 +191,8 @@ class Creator:
             except TendenciesStatisticsDeltaNotMultipleOfFrequency:
                 LOG.debug(f"Skipping delta={d} as it is not a multiple of the frequency.")
 
-    def finalise(self, **kwargs):
-        self.statistics(**kwargs)
+    def finalise(self):
+        self.statistics()
         self.size()
 
     def create(self):
@@ -175,10 +202,13 @@ class Creator:
         self.additions()
         self.cleanup()
 
-    def additions(self, delta=[1, 3, 6, 12, 24]):
-        self.init_additions(delta=delta)
-        self.run_additions(delta=delta)
-        self.finalise_additions(delta=delta)
+    def additions(self):
+        #from .loaders import read_temporary_config_from_dataset
+        #config = read_temporary_config_from_dataset(self.path)
+
+        self.init_additions()
+        self.run_additions()
+        self.finalise_additions()
 
     def _cache_context(self):
         from .utils import cache_context
