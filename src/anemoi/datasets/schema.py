@@ -9,6 +9,7 @@
 
 import datetime
 import json
+from enum import Enum
 from typing import Annotated
 from typing import Union
 
@@ -21,46 +22,44 @@ from pydantic import ValidationError
 from pydantic import create_model
 from pydantic import field_validator
 
-
-class Deprecated:
-    def __init__(self, name):
-        self.name = name
-
-    def __get_pydantic_core_schema__(self, *args, **kwargs):
-        print("DEPRECATED FIELD", args, kwargs)
-        return {"type": "str"}
+from anemoi.datasets.create.functions import function_schemas
 
 
-class Interval(BaseModel):
-    start: datetime.datetime = None
-    end: datetime.datetime = None
+class GroupByEnum(str, Enum):
+    monthly = "monthly"
+    daily = "daily"
+    weekly = "weekly"
+    MMDD = "MMDD"
 
 
-class Datelist(BaseModel):
-    values: list[datetime.datetime] = None
-
-
-class Dates(Interval, Datelist):
+class Dates(BaseModel):
     class Config:
         extra = "forbid"
 
-    frequency: datetime.timedelta = None
     missing: list[datetime.datetime] = None
+
+    # Deprecated fields
+    group_by: Union[int, GroupByEnum] = "monthly"
+
+
+class Interval(Dates):
+    start: datetime.datetime = None
+    end: datetime.datetime = None
+    frequency: datetime.timedelta = None
 
     @field_validator("frequency", mode="before")
     def parse_frequency(cls, value):
         return frequency_to_timedelta(value)
 
-    group_by: Union[int, str] = None
-    # @validator("group_by", pre=True, always=True)
-    # def warn_deprecated_field(cls, value):
-    #     if value is not None:
-    #         warnings.warn(
-    #             "The field 'group_by' is deprecated and will be removed in future versions.",
-    #             DeprecationWarning,
-    #             stacklevel=2,
-    #         )
-    #     return value
+
+class DateList(Dates):
+    values: list[datetime.datetime] = None
+
+
+def _dates_discriminator(input):
+    if "values" in input:
+        return "values"
+    return "interval"
 
 
 class Step(BaseModel):
@@ -104,13 +103,12 @@ class Build(BaseModel):
     class Config:
         extra = "forbid"
 
-    group_by: Union[int, str] = "monthly"
+    group_by: Union[int, GroupByEnum] = "monthly"
     use_grib_paramid: bool = False
     variable_naming: str = None
 
 
 class Common(BaseModel):
-
     pass
 
 
@@ -119,7 +117,7 @@ class Statistics(BaseModel):
         extra = "forbid"
 
     end: Union[datetime.datetime, int] = None
-    allow_nans: list[str] = None
+    allow_nans: list[str] = []
 
 
 class Concat(BaseModel):
@@ -153,24 +151,36 @@ def other(*args, **kwargs):
     return create_model(name, **{action: (dict, ...)}, __base__=Step)
 
 
+def actions():
+    return Union[
+        Annotated[Concat, Tag("concat")],
+        Annotated[Join, Tag("join")],
+        Annotated[other, Tag("other")],
+    ]
+
+
 class Recipe(BaseModel):
     class Config:
         extra = "forbid"
 
     description: str = None
     name: str = None
-    copyright: str = None
-    licence: str = None
 
-    dates: Dates
+    copyright: str = Annotated[int, Field(deprecated="This is deprecated. Set `attribution` instead")]
+    licence: str = "unknown"
+    attribution: str = "unknown"
+
+    dates: Annotated[
+        Union[
+            Annotated[Interval, Tag("interval")],
+            Annotated[DateList, Tag("values")],
+        ],
+        Discriminator(_dates_discriminator),
+    ]
 
     # https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions-with-callable-discriminator
-    input: Annotated[
-        Union[
-            Annotated[Concat, Tag("concat")],
-            Annotated[Join, Tag("join")],
-            Annotated[other, Tag("other")],
-        ],
+    input: Annotated[actions, Discriminator(_input_discriminator)]
+
         Discriminator(_input_discriminator),
     ]
 
@@ -181,21 +191,29 @@ class Recipe(BaseModel):
     sources: Common = None
 
     # Legacy fields
-    dataset_status: str = Annotated[int, Field(deprecated="This is deprecated")]
+
     purpose: str = Annotated[int, Field(deprecated="This is deprecated")]
-    attribution: str = None
+
     aliases: Union[Common, list] = None
-    config_format_version: int = Annotated[int, Field(deprecated="This is deprecated")]
+
     flatten_grid: bool = True
     ensemble_dimension: int = 2
+
+    config_format_version: int = Annotated[int, Field(deprecated="This is deprecated")]
     status: str = Annotated[int, Field(deprecated="This is deprecated")]
+    dataset_status: str = Annotated[int, Field(deprecated="This is deprecated")]
 
 
-def validate(config):
+def validate(config, schema=False):
+
+
     try:
-        validated_data = Recipe(**config)
+        recipe = Recipe(**config)
         print("Validation successful!")
-        print(json.dumps(validated_data.dict(), default=str, indent=4))
+        # if schema:
+        #     print(json.dumps(recipe.model_json_schema(), default=str, indent=4))
+        # else:
+        #     print(json.dumps(recipe.model_dump(), default=str, indent=4))
         return True
     except ValidationError as e:
         print("Validation failed:")

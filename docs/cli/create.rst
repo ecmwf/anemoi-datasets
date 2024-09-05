@@ -9,3 +9,6 @@ The syntax of the recipe file is described in :doc:`building datasets <../buildi
     :func: create_parser
     :prog: anemoi-datasets
     :path: create
+
+
+.. autopydantic_settings:: anemoi.datasets.schema.Recipe

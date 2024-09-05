@@ -9,6 +9,7 @@
 
 
 import importlib
+import os
 
 import entrypoints
 
@@ -35,3 +36,33 @@ def import_function(name, kind):
         package=__name__,
     )
     return module.execute
+
+
+def function_schemas(kind):
+    plugins = {}
+    for e in entrypoints.get_group_all(f"anemoi.datasets.{kind}"):
+        plugins[e.name.replace("_", "-")] = e
+
+    for name, plugin in plugins.items():
+        yield name, plugin.load().schema
+
+    path = os.path.join(os.path.dirname(__file__), kind)
+    print(path)
+    for n in os.listdir(path):
+        print(n)
+        if n.startswith("_"):
+            continue
+
+        if not n.endswith(".py"):
+            continue
+        name = n.replace(".py", "")
+        module = importlib.import_module(
+            f".{kind}.{name}",
+            package=__name__,
+        )
+
+        if not hasattr(module, "schema"):
+            continue
+
+        print(module, module.schema)
+        yield name, module.schema

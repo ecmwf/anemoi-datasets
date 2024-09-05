@@ -11,10 +11,15 @@ import datetime
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
+from pydantic import BaseModel
 
 from anemoi.datasets.create.utils import to_datetime_list
 
 DEBUG = False
+
+
+class Mars(BaseModel):
+    pass
 
 
 def to_list(x):
@@ -226,6 +231,7 @@ def mars(context, dates, *requests, request_already_using_valid_datetime=False, 
     return ds
 
 
+schema = Mars
 execute = mars
 
 if __name__ == "__main__":
