@@ -101,7 +101,14 @@ class CreateStep(Command):
         options.pop("command")
         step = options.pop("step")
         now = time.time()
-        task(step, options)
+
+        if "version" in options:
+            options.pop("version")
+
+        if "debug" in options:
+            options.pop("debug")
+            task(step, options)
+
         LOG.info(f"Create step '{step}' completed in {seconds_to_human(time.time()-now)}")
 
 

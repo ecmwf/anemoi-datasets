@@ -8,7 +8,6 @@ from concurrent.futures import as_completed
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.create.trace import enable_trace
 
 from . import Command
 
@@ -24,16 +23,6 @@ def task(what, options, *args, **kwargs):
     LOG.info(f"Task {what}({args},{kwargs}) starting")
 
     from anemoi.datasets.create import creator_factory
-
-    if "trace" in options:
-        enable_trace(options["trace"])
-        options.pop("trace")
-    
-    if "version" in options:
-        options.pop("version")
-
-    if "debug" in options:
-        options.pop("debug")
     
     options = {k: v for k, v in options.items() if v is not None}
 

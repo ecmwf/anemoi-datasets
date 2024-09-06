@@ -99,7 +99,6 @@ def _ignore(*args, **kwargs):
     pass
 
 
-
 def _path_readable(path):
     import zarr
 
@@ -171,7 +170,7 @@ class Dataset:
             if raise_exception and not is_test:
                 raise e
             else:
-                LOG.error(f"Error in dataset name: {e}")
+                LOG.warning(f"Dataset name error: {e}")
 
     def get_main_config(self):
         """Returns None if the config is not found."""
@@ -342,7 +341,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.statistics_temp_dir = statistics_temp_dir
         self.progress = progress
         self.test = test
-
 
         self.main_config = loader_config(config, is_test=test)
 
@@ -900,7 +898,6 @@ class FinaliseAddition(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.debug(f"Wrote additions in {self.path}")
 
 
-
 class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
     def __init__(self, path, use_threads=False, statistics_temp_dir=None, progress=None, **kwargs):
         super().__init__(path)
@@ -945,6 +942,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
         return True
 
+
 def chain(tasks):
     class Chain(Actor):
         def __init__(self, **kwargs):
@@ -954,10 +952,16 @@ def chain(tasks):
             for cls in tasks:
                 t = cls(**self.kwargs)
                 t.run_it()
+
     return Chain
 
 
-def creator_factory(name, **kwargs):
+def creator_factory(name, trace=None, **kwargs):
+    if trace:
+        from anemoi.datasets.create.trace import enable_trace
+
+        enable_trace(trace)
+
     cls = dict(
         init=Init,
         load=Load,
@@ -970,40 +974,6 @@ def creator_factory(name, **kwargs):
         init_additions=InitAddition,
         run_additions=RunAddition,
         finalise_additions=FinaliseAddition,
-        additions = chain([InitAddition, RunAddition, FinaliseAddition]),
+        additions=chain([InitAddition, RunAddition, FinaliseAddition]),
     )[name]
     return cls(**kwargs)
-
-class Creator:
-    def __init__( self, path, config=None, cache=None, use_threads=False, statistics_tmp=None, overwrite=False, test=None, progress=None, **kwargs):  # fmt: skip
-        self.path = path  # Output path
-        self.config = config
-        self.cache = cache
-        self.use_threads = use_threads
-        self.statistics_tmp = statistics_tmp
-        self.overwrite = overwrite
-        self.test = test
-        self.progress = progress if progress is not None else _ignore
-        self.kwargs = kwargs
-
-    @property
-    def allow_nans(self):
-        if "allow_nans" in self.main_config.build:
-            return self.main_config.build.allow_nans
-
-        return self.main_config.statistics.get("allow_nans", [])
-
-    def create(self):
-        self.init()
-        self.load()
-        self.finalise()
-        self.additions()
-        self.cleanup()
-
-    def additions(self):
-        # from .loaders import read_temporary_config_from_dataset
-        # config = read_temporary_config_from_dataset(self.path)
-
-        self.init_additions()
-        self.run_additions()
-        self.finalise_additions()

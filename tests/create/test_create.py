@@ -19,7 +19,7 @@ from earthkit.data import from_source as original_from_source
 from multiurl import download
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create import Creator
+from anemoi.datasets.create import creator_factory
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
@@ -222,13 +222,16 @@ def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
 
-    # cache=None is using the default cache
-    c = Creator(output, config=config, cache=None, overwrite=True)
-    c.init()
-    c.load()
-    c.finalise()
-    c.additions(delta=[1, 3, 6, 12])
-    c.cleanup()
+    creator_factory("init", config=config,path=output, overwrite=True).run_it()
+    creator_factory("load", path=output).run_it()
+    creator_factory("statistics", path=output).run_it()
+    creator_factory("size", path=output).run_it()
+    # creator_factory("finalise", path=output).run_it()
+    creator_factory("patch", path=output).run_it()
+    creator_factory("init_additions", path=output, delta=12).run_it()
+    creator_factory("run_additions", path=output, delta=12).run_it()
+    creator_factory("finalise_additions", path=output, delta=12).run_it()
+    creator_factory("cleanup", path=output).run_it()
 
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
     s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
