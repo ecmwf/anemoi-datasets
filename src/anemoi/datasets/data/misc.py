@@ -345,6 +345,12 @@ def _open_dataset(*args, **kwargs):
         assert not sets, sets
         return interpolate_factory(args, kwargs).mutate()
 
+    if "missing" in kwargs:
+        from .missing import missing_factory
+
+        assert not sets, sets
+        return missing_factory(args, kwargs).mutate()
+
     for name in ("datasets", "dataset"):
         if name in kwargs:
             datasets = kwargs.pop(name)
