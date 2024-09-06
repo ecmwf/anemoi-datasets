@@ -95,55 +95,9 @@ def build_statistics_dates(dates, start, end):
     return (start.isoformat(), end.isoformat())
 
 
-def set_to_test_mode(cfg):
-    NUMBER_OF_DATES = 4
-
-    dates = cfg.dates
-    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
-    groups = Groups(**cfg.dates)
-    dates = groups.dates
-    cfg.dates = dict(
-        start=dates[0],
-        end=dates[NUMBER_OF_DATES - 1],
-        frequency=dates.frequency,
-        group_by=NUMBER_OF_DATES,
-    )
-
-    def set_element_to_test(obj):
-        if isinstance(obj, (list, tuple)):
-            for v in obj:
-                set_element_to_test(v)
-            return
-        if isinstance(obj, (dict, DotDict)):
-            if "grid" in obj:
-                previous = obj["grid"]
-                obj["grid"] = "20./20."
-                LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
-            if "number" in obj:
-                if isinstance(obj["number"], (list, tuple)):
-                    previous = obj["number"]
-                    obj["number"] = previous[0:3]
-                    LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
-            for k, v in obj.items():
-                set_element_to_test(v)
-            if "constants" in obj:
-                constants = obj["constants"]
-                if "param" in constants and isinstance(constants["param"], list):
-                    constants["param"] = ["cos_latitude"]
-
-    set_element_to_test(cfg)
-
-
 def _ignore(*args, **kwargs):
     pass
 
-
-def creator_factory(name, **kwargs):
-    cls = dict(
-        init=Init,
-        load=Load,
-    )[name]
-    return cls(**kwargs)
 
 
 def _path_readable(path):
@@ -154,79 +108,6 @@ def _path_readable(path):
         return True
     except zarr.errors.PathNotFoundError:
         return False
-
-
-class Actor:
-    cache = None
-
-    def __init__(self, path):
-        # Catch all floating point errors, including overflow, sqrt(<0), etc
-        np.seterr(all="raise", under="warn")
-
-        self.path = path
-
-    def update_metadata(self, **kwargs):
-        self.dataset.update_metadata(**kwargs)
-
-    def _cache_context(self):
-        from .utils import cache_context
-
-        return cache_context(self.cache)
-
-    def check_unkown_kwargs(self, kwargs):
-        # remove this latter
-        LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
-
-    def read_dataset_metadata(self, path):
-        ds = open_dataset(path)
-        self.dataset_shape = ds.shape
-        self.variables_names = ds.variables
-        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
-
-        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
-
-        z = zarr.open(path, "r")
-        missing_dates = z.attrs.get("missing_dates", [])
-        missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-
-        if missing_dates != self.missing_dates:
-            LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-            LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-            LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  self.missing_dates)}")
-            raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-
-
-class HasRegistryMixin:
-    @cached_property
-    def registry(self):
-        from .zarr import ZarrBuiltRegistry
-
-        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
-
-
-class HasStatisticTempMixin:
-    @cached_property
-    def tmp_statistics(self):
-        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
-        return TmpStatistics(directory)
-
-
-class HasElementForDataMixin:
-    def create_elements(self, config):
-
-        assert self.registry
-        assert self.tmp_statistics
-
-        LOG.info(dict(config.dates))
-
-        self.groups = Groups(**config.dates)
-        LOG.info(self.groups)
-
-        self.output = build_output(config.output, parent=self)
-
-        self.input = build_input_(main_config=config, output_config=self.output)
-        LOG.info(self.input)
 
 
 class Dataset:
@@ -256,6 +137,25 @@ class Dataset:
             if isinstance(v, datetime.date):
                 v = v.isoformat()
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
+
+    @property
+    def anemoi_dataset(self):
+        return open_dataset(self.path)
+
+    @cached_property
+    def zarr_metadata(self):
+        import zarr
+
+        return dict(zarr.open(self.path, mode="r").attrs)
+
+    def print_info(self):
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        try:
+            LOG.info(z["data"].info)
+        except Exception as e:
+            LOG.info(e)
 
     def get_zarr_chunks(self):
         import zarr
@@ -308,6 +208,111 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
+class Actor:
+    cache = None
+    dataset_class = WritableDataset
+
+    def __init__(self, path):
+        # Catch all floating point errors, including overflow, sqrt(<0), etc
+        np.seterr(all="raise", under="warn")
+
+        self.path = path
+        self.dataset = self.dataset_class(self.path)
+
+    def run_it(self):
+        # to be implemented in the sub-classes
+        raise NotImplementedError()
+
+    def update_metadata(self, **kwargs):
+        self.dataset.update_metadata(**kwargs)
+
+    def _cache_context(self):
+        from .utils import cache_context
+
+        return cache_context(self.cache)
+
+    def check_unkown_kwargs(self, kwargs):
+        # remove this latter
+        LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
+
+    def read_dataset_metadata(self, path):
+        ds = open_dataset(path)
+        self.dataset_shape = ds.shape
+        self.variables_names = ds.variables
+        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
+        self.dates = ds.dates
+
+        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
+
+        def check_missing_dates(expected):
+            import zarr
+
+            z = zarr.open(path, "r")
+            missing_dates = z.attrs.get("missing_dates", [])
+            missing_dates = sorted([np.datetime64(d) for d in missing_dates])
+            if missing_dates != expected:
+                LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+
+        check_missing_dates(self.missing_dates)
+
+
+class Patch(Actor):
+    def __init__(self, path, **kwargs):
+        self.path = path
+        self.kwargs = kwargs
+
+    def run_it(self):
+        from .patch import apply_patch
+
+        apply_patch(self.path, **self.kwargs)
+
+
+class Size(Actor):
+    def __init__(self, path, **kwargs):
+        super().__init__(path)
+
+    def run_it(self):
+        from .size import compute_directory_sizes
+
+        metadata = compute_directory_sizes(self.path)
+        self.update_metadata(**metadata)
+
+
+class HasRegistryMixin:
+    @cached_property
+    def registry(self):
+        from .zarr import ZarrBuiltRegistry
+
+        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
+
+
+class HasStatisticTempMixin:
+    @cached_property
+    def tmp_statistics(self):
+        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
+        return TmpStatistics(directory)
+
+
+class HasElementForDataMixin:
+    def create_elements(self, config):
+
+        assert self.registry
+        assert self.tmp_statistics
+
+        LOG.info(dict(config.dates))
+
+        self.groups = Groups(**config.dates)
+        LOG.info(self.groups)
+
+        self.output = build_output(config.output, parent=self)
+
+        self.input = build_input_(main_config=config, output_config=self.output)
+        LOG.info(self.input)
+
+
 def build_input_(main_config, output_config):
     from earthkit.data.core.order import build_remapping
 
@@ -325,6 +330,7 @@ def build_input_(main_config, output_config):
 
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+    dataset_class = NewDataset
     def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, **kwargs):  # fmt: skip
         super().__init__(path)
         self.config = config
@@ -338,11 +344,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         if _path_readable(path) and not overwrite:
             raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
 
-        self.dataset = NewDataset(self.path)
-
-        self.main_config = loader_config(config)
-        if self.test:
-            set_to_test_mode(self.main_config)
+        self.main_config = loader_config(config, is_test=test)
 
         # self.registry.delete() ??
         self.tmp_statistics.delete()
@@ -518,6 +520,459 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
 
+    def run_it(self):
+        with self._cache_context():
+            self._run()
+
+    def _run(self):
+        for igroup, group in enumerate(self.groups):
+            if not self.chunk_filter(igroup):
+                continue
+            if self.registry.get_flag(igroup):
+                LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
+                continue
+
+            assert isinstance(group[0], datetime.datetime), group
+            LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
+
+            result = self.input.select(dates=group)
+            assert result.dates == group, (len(result.dates), len(group))
+
+            # There are several groups.
+            # There is one result to load for each group.
+            self.load_result(result)
+            self.registry.set_flag(igroup)
+
+        self.registry.add_provenance(name="provenance_load")
+        self.tmp_statistics.add_provenance(name="provenance_load", config=self.main_config)
+
+        self.dataset.print_info()
+
+    def load_result(self, result):
+        # There is one cube to load for each result.
+        dates = result.dates
+
+        cube = result.get_cube()
+        shape = cube.extended_user_shape
+        dates_in_data = cube.user_coords["valid_datetime"]
+
+        LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
+
+        def check_shape(cube, dates, dates_in_data):
+            if cube.extended_user_shape[0] != len(dates):
+                print(f"Cube shape does not match the number of dates {cube.extended_user_shape[0]}, {len(dates)}")
+                print("Requested dates", compress_dates(dates))
+                print("Cube dates", compress_dates(dates_in_data))
+
+                a = set(as_datetime(_) for _ in dates)
+                b = set(as_datetime(_) for _ in dates_in_data)
+
+                print("Missing dates", compress_dates(a - b))
+                print("Extra dates", compress_dates(b - a))
+
+                raise ValueError(
+                    f"Cube shape does not match the number of dates {cube.extended_user_shape[0]}, {len(dates)}"
+                )
+
+        check_shape(cube, dates, dates_in_data)
+
+        def check_dates_in_data(lst, lst2):
+            lst2 = [np.datetime64(_) for _ in lst2]
+            lst = [np.datetime64(_) for _ in lst]
+            assert lst == lst2, ("Dates in data are not the requested ones:", lst, lst2)
+
+        check_dates_in_data(dates_in_data, dates)
+
+        def dates_to_indexes(dates, all_dates):
+            x = np.array(dates, dtype=np.datetime64)
+            y = np.array(all_dates, dtype=np.datetime64)
+            bitmap = np.isin(x, y)
+            return np.where(bitmap)[0]
+
+        indexes = dates_to_indexes(self.dates, dates_in_data)
+
+        array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
+        self.load_cube(cube, array)
+
+        stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
+        self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
+
+        array.flush()
+
+    def _get_allow_nans(self):
+        config = self.main_config
+        if "allow_nans" in config.build:
+            return config.build.allow_nans
+
+        return config.statistics.get("allow_nans", [])
+
+    def load_cube(self, cube, array):
+        # There are several cubelets for each cube
+        start = time.time()
+        load = 0
+        save = 0
+
+        reading_chunks = None
+        total = cube.count(reading_chunks)
+        LOG.debug(f"Loading datacube: {cube}")
+
+        def position(x):
+            if isinstance(x, str) and "/" in x:
+                x = x.split("/")
+                return int(x[0])
+            return None
+
+        bar = tqdm.tqdm(
+            iterable=cube.iterate_cubelets(reading_chunks),
+            total=total,
+            desc=f"Loading datacube {cube}",
+            position=position(self.parts),
+        )
+        for i, cubelet in enumerate(bar):
+            bar.set_description(f"Loading {i}/{total}")
+
+            now = time.time()
+            data = cubelet.to_numpy()
+            local_indexes = cubelet.coords
+            load += time.time() - now
+
+            name = self.variables_names[local_indexes[1]]
+            check_data_values(
+                data[:],
+                name=name,
+                log=[i, data.shape, local_indexes],
+                allow_nans=self._get_allow_nans(),
+            )
+
+            now = time.time()
+            array[local_indexes] = data
+            save += time.time() - now
+
+        now = time.time()
+        save += time.time() - now
+        LOG.debug(
+            f"Elapsed: {seconds_to_human(time.time() - start)}, "
+            f"load time: {seconds_to_human(load)}, "
+            f"write time: {seconds_to_human(save)}."
+        )
+
+
+class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
+    def __init__(self, path, statistics_temp_dir=None, use_threads=False, **kwargs):
+        super().__init__(path)
+        self.use_threads = use_threads
+        self.statistics_temp_dir = statistics_temp_dir
+
+    def run_it(self):
+        self.tmp_statistics.delete()
+        self.registry.clean()
+
+
+class Verify(Actor):
+    def run_it(self):
+        LOG.info(f"Verifying dataset at {self.path}")
+        LOG.info(str(self.dataset.anemoi_dataset))
+
+
+class AdditionsMixin:
+    def skip(self):
+        frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
+        if not self.delta.total_seconds() % frequency.total_seconds() == 0:
+            LOG.debug(f"Delta {self.delta} is not a multiple of frequency {frequency}. Skipping.")
+            return True
+        return False
+
+    @cached_property
+    def tmp_storage_path(self):
+        name = "storage_for_additions"
+        if self.delta:
+            name += frequency_to_string(self.delta)
+        return os.path.join(f"{self.path}.{name}.tmp")
+
+    def read_from_dataset(self):
+        self.variables = self.dataset.anemoi_dataset.variables
+        self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
+        start = self.dataset.zarr_metadata["statistics_start_date"]
+        end = self.dataset.zarr_metadata["statistics_end_date"]
+        self.start = datetime.datetime.fromisoformat(start)
+        self.end = datetime.datetime.fromisoformat(end)
+
+        ds = open_dataset(self.path, start=self.start, end=self.end)
+        self.dates = ds.dates
+        self.total = len(self.dates)
+
+        idelta = self.delta.total_seconds() // self.frequency.total_seconds()
+        assert int(idelta) == idelta, idelta
+        idelta = int(idelta)
+        self.ds = DeltaDataset(ds, idelta)
+
+
+class DeltaDataset:
+    def __init__(self, ds, idelta):
+        self.ds = ds
+        self.idelta = idelta
+
+    def __getitem__(self, i):
+        j = i - self.idelta
+        if j < 0:
+            raise MissingDateError(f"Missing date {j}")
+        return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
+
+
+class InitAddition(Actor, HasRegistryMixin, AdditionsMixin):
+    def __init__(self, path, delta, use_threads=False, progress=None, **kwargs):
+        super().__init__(path)
+        self.delta = frequency_to_timedelta(delta)
+        self.use_threads = use_threads
+        self.progress = progress
+
+    def run_it(self):
+        if self.skip():
+            LOG.info(f"Skipping delta={self.delta}")
+            return
+
+        self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=True)
+        self.tmp_storage.delete()
+        self.tmp_storage.create()
+        LOG.info(f"Dataset {self.tmp_storage_path} additions initialized.")
+
+
+class RunAddition(Actor, HasRegistryMixin, AdditionsMixin):
+    def __init__(self, path, delta, parts=None, use_threads=False, progress=None, **kwargs):
+        super().__init__(path)
+        self.delta = frequency_to_timedelta(delta)
+        self.use_threads = use_threads
+        self.progress = progress
+        self.parts = parts
+
+        self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
+        LOG.info(f"Writing in {self.tmp_storage_path}")
+
+    def run_it(self):
+        if self.skip():
+            LOG.info(f"Skipping delta={self.delta}")
+            return
+
+        self.read_from_dataset()
+
+        chunk_filter = ChunkFilter(parts=self.parts, total=self.total)
+        for i in range(0, self.total):
+            if not chunk_filter(i):
+                continue
+            date = self.dates[i]
+            try:
+                arr = self.ds[i]
+                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
+                self.tmp_storage.add([date, i, stats], key=date)
+            except MissingDateError:
+                self.tmp_storage.add([date, i, "missing"], key=date)
+        self.tmp_storage.flush()
+        LOG.debug(f"Dataset {self.path} additions run.")
+
+    def allow_nans(self):
+        if self.dataset.anemoi_dataset.metadata.get("allow_nans", False):
+            return True
+
+        variables_with_nans = self.dataset.anemoi_dataset.metadata.get("variables_with_nans", None)
+        if variables_with_nans is not None:
+            return variables_with_nans
+        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, assuming nans allowed.")
+        return True
+
+
+class FinaliseAddition(Actor, HasRegistryMixin, AdditionsMixin):
+    def __init__(self, path, delta, use_threads=False, progress=None, **kwargs):
+        super().__init__(path)
+        self.delta = frequency_to_timedelta(delta)
+        self.use_threads = use_threads
+        self.progress = progress
+
+        self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
+        LOG.info(f"Reading from {self.tmp_storage_path}.")
+
+    def run_it(self):
+        if self.skip():
+            LOG.info(f"Skipping delta={self.delta}.")
+            return
+
+        self.read_from_dataset()
+
+        shape = (len(self.dates), len(self.variables))
+        agg = dict(
+            minimum=np.full(shape, np.nan, dtype=np.float64),
+            maximum=np.full(shape, np.nan, dtype=np.float64),
+            sums=np.full(shape, np.nan, dtype=np.float64),
+            squares=np.full(shape, np.nan, dtype=np.float64),
+            count=np.full(shape, -1, dtype=np.int64),
+            has_nans=np.full(shape, False, dtype=np.bool_),
+        )
+        LOG.debug(f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}")
+
+        found = set()
+        ifound = set()
+        missing = set()
+        for _date, (date, i, stats) in self.tmp_storage.items():
+            assert _date == date
+            if stats == "missing":
+                missing.add(date)
+                continue
+
+            assert date not in found, f"Duplicates found {date}"
+            found.add(date)
+            ifound.add(i)
+
+            for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+                agg[k][i, ...] = stats[k]
+
+        assert len(found) + len(missing) == len(self.dates), (
+            len(found),
+            len(missing),
+            len(self.dates),
+        )
+        assert found.union(missing) == set(self.dates), (
+            found,
+            missing,
+            set(self.dates),
+        )
+
+        if len(ifound) < 2:
+            LOG.warn(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
+            self.tmp_storage.delete()
+            return
+
+        mask = sorted(list(ifound))
+        for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+            agg[k] = agg[k][mask, ...]
+
+        for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+            assert agg[k].shape == agg["count"].shape, (
+                agg[k].shape,
+                agg["count"].shape,
+            )
+
+        minimum = np.nanmin(agg["minimum"], axis=0)
+        maximum = np.nanmax(agg["maximum"], axis=0)
+        sums = np.nansum(agg["sums"], axis=0)
+        squares = np.nansum(agg["squares"], axis=0)
+        count = np.nansum(agg["count"], axis=0)
+        has_nans = np.any(agg["has_nans"], axis=0)
+
+        assert sums.shape == count.shape
+        assert sums.shape == squares.shape
+        assert sums.shape == minimum.shape
+        assert sums.shape == maximum.shape
+        assert sums.shape == has_nans.shape
+
+        mean = sums / count
+        assert sums.shape == mean.shape
+
+        x = squares / count - mean * mean
+        # x[- 1e-15 < (x / (np.sqrt(squares / count) + np.abs(mean))) < 0] = 0
+        # remove negative variance due to numerical errors
+        for i, name in enumerate(self.variables):
+            x[i] = fix_variance(x[i], name, agg["count"][i : i + 1], agg["sums"][i : i + 1], agg["squares"][i : i + 1])
+        check_variance(x, self.variables, minimum, maximum, mean, count, sums, squares)
+
+        stdev = np.sqrt(x)
+        assert sums.shape == stdev.shape
+
+        self.summary = Summary(
+            minimum=minimum,
+            maximum=maximum,
+            mean=mean,
+            count=count,
+            sums=sums,
+            squares=squares,
+            stdev=stdev,
+            variables_names=self.variables,
+            has_nans=has_nans,
+        )
+        LOG.info(f"Dataset {self.path} additions finalised.")
+        # self.check_statistics()
+        self._write(self.summary)
+        self.tmp_storage.delete()
+
+    def _write(self, summary):
+        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+            name = f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
+            self.dataset.add_dataset(name=name, array=summary[k], dimensions=("variable",))
+        self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
+        LOG.debug(f"Wrote additions in {self.path}")
+
+
+
+class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
+    def __init__(self, path, use_threads=False, statistics_temp_dir=None, progress=None, **kwargs):
+        super().__init__(path)
+        self.use_threads = use_threads
+        self.progress = progress
+        self.statistics_temp_dir = statistics_temp_dir
+
+    def run_it(self):
+        start, end = (
+            self.dataset.zarr_metadata["statistics_start_date"],
+            self.dataset.zarr_metadata["statistics_end_date"],
+        )
+        start, end = np.datetime64(start), np.datetime64(end)
+        dates = self.dataset.anemoi_dataset.dates
+        assert type(dates[0]) == type(start), (type(dates[0]), type(start))  # noqa
+        dates = [d for d in dates if d >= start and d <= end]
+        variables = self.dataset.anemoi_dataset.variables
+        stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
+
+        LOG.info(stats)
+
+        if not all(self.registry.get_flags(sync=False)):
+            raise Exception(f"❗Zarr {self.path} is not fully built, not writting statistics into dataset.")
+
+        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+            self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
+
+        self.registry.add_to_history("compute_statistics_end")
+        LOG.info(f"Wrote statistics in {self.path}")
+
+    @cached_property
+    def allow_nans(self):
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        if "allow_nans" in z.attrs:
+            return z.attrs["allow_nans"]
+
+        if "variables_with_nans" in z.attrs:
+            return z.attrs["variables_with_nans"]
+
+        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
+        return True
+
+def chain(tasks):
+    class Chain(Actor):
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def run_it(self):
+            for cls in tasks:
+                t = cls(**self.kwargs)
+                t.run_it()
+    return Chain
+
+
+def creator_factory(name, **kwargs):
+    cls = dict(
+        init=Init,
+        load=Load,
+        size=Size,
+        patch=Patch,
+        statistics=Statistics,
+        finalise=chain([Statistics, Size, Cleanup]),
+        cleanup=Cleanup,
+        verify=Verify,
+        init_additions=InitAddition,
+        run_additions=RunAddition,
+        finalise_additions=FinaliseAddition,
+        additions = chain([InitAddition, RunAddition, FinaliseAddition]),
+    )[name]
+    return cls(**kwargs)
 
 class Creator:
     def __init__( self, path, config=None, cache=None, use_threads=False, statistics_tmp=None, overwrite=False, test=None, progress=None, **kwargs):  # fmt: skip
@@ -531,166 +986,12 @@ class Creator:
         self.progress = progress if progress is not None else _ignore
         self.kwargs = kwargs
 
-    def check_unkown_kwargs(self):
-        for k in self.kwargs:
-            raise Exception(f"Unknown kwargs: {self.kwargs}")
+    @property
+    def allow_nans(self):
+        if "allow_nans" in self.main_config.build:
+            return self.main_config.build.allow_nans
 
-    def init(self):
-        check_name = self.kwargs.pop("check_name", False)
-        self.check_unkown_kwargs()
-
-        from .loaders import InitialiserLoader
-
-        with self._cache_context():
-            obj = InitialiserLoader.from_config(
-                path=self.path,
-                config=self.config,
-                statistics_tmp=self.statistics_tmp,
-                use_threads=self.use_threads,
-                progress=self.progress,
-                test=self.test,
-            )
-            return obj.initialise(check_name=check_name)
-
-    def load(self):
-        parts = self.kwargs.pop("parts", None)
-        from .loaders import ContentLoader
-
-        with self._cache_context():
-            loader = ContentLoader.from_dataset_config(
-                path=self.path,
-                statistics_tmp=self.statistics_tmp,
-                use_threads=self.use_threads,
-                progress=self.progress,
-                parts=parts,
-            )
-            loader.load()
-
-    def statistics(self):
-        output = self.kwargs.pop("output", None)
-        start = self.kwargs.pop("start", None)
-        end = self.kwargs.pop("end", None)
-        self.check_unkown_kwargs()
-
-        from .loaders import StatisticsAdder
-
-        loader = StatisticsAdder.from_dataset(
-            path=self.path,
-            use_threads=self.use_threads,
-            progress=self.progress,
-            statistics_tmp=self.statistics_tmp,
-            statistics_output=output,
-            recompute=False,
-            statistics_start=start,
-            statistics_end=end,
-        )
-        loader.run()
-        assert loader.ready()
-
-    def size(self):
-        from .loaders import DatasetHandler
-        from .size import compute_directory_sizes
-
-        metadata = compute_directory_sizes(self.path)
-        handle = DatasetHandler.from_dataset(path=self.path, use_threads=self.use_threads)
-        handle.update_metadata(**metadata)
-
-    def cleanup(self):
-        from .loaders import DatasetHandlerWithStatistics
-
-        cleaner = DatasetHandlerWithStatistics.from_dataset(
-            path=self.path,
-            use_threads=self.use_threads,
-            progress=self.progress,
-            statistics_tmp=self.statistics_tmp,
-        )
-        cleaner.tmp_statistics.delete()
-        cleaner.registry.clean()
-
-    def patch(self):
-        from .patch import apply_patch
-
-        apply_patch(self.path, **self.kwargs)
-
-    def init_additions(self):
-        delta = self.kwargs.pop("delta", [])
-        recompute_statistics = self.kwargs.pop("recompute_statistics", False)
-        self.check_unkown_kwargs()
-
-        from .loaders import StatisticsAddition
-        from .loaders import TendenciesStatisticsAddition
-        from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
-
-        if recompute_statistics:
-            a = StatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads)
-            a.initialise()
-
-        for d in delta:
-            try:
-                a = TendenciesStatisticsAddition.from_dataset(
-                    path=self.path,
-                    use_threads=self.use_threads,
-                    progress=self.progress,
-                    delta=d,
-                )
-                a.initialise()
-            except TendenciesStatisticsDeltaNotMultipleOfFrequency:
-                LOG.info(f"Skipping delta={d} as it is not a multiple of the frequency.")
-
-    def run_additions(self):
-        delta = self.kwargs.pop("delta", [])
-        recompute_statistics = self.kwargs.pop("recompute_statistics", False)
-        parts = self.kwargs.pop("parts", None)
-        self.check_unkown_kwargs()
-
-        from .loaders import StatisticsAddition
-        from .loaders import TendenciesStatisticsAddition
-        from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
-
-        if recompute_statistics:
-            a = StatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads)
-            a.run(parts)
-
-        for d in delta:
-            try:
-                a = TendenciesStatisticsAddition.from_dataset(
-                    path=self.path,
-                    use_threads=self.use_threads,
-                    progress=self.progress,
-                    delta=d,
-                )
-                a.run(parts)
-            except TendenciesStatisticsDeltaNotMultipleOfFrequency:
-                LOG.debug(f"Skipping delta={d} as it is not a multiple of the frequency.")
-
-    def finalise_additions(self):
-        delta = self.kwargs.pop("delta", [])
-        recompute_statistics = self.kwargs.pop("recompute_statistics", False)
-        self.check_unkown_kwargs()
-
-        from .loaders import StatisticsAddition
-        from .loaders import TendenciesStatisticsAddition
-        from .loaders import TendenciesStatisticsDeltaNotMultipleOfFrequency
-
-        if recompute_statistics:
-            a = StatisticsAddition.from_dataset(path=self.path, use_threads=self.use_threads)
-            a.finalise()
-
-        for d in delta:
-            try:
-                a = TendenciesStatisticsAddition.from_dataset(
-                    path=self.path,
-                    use_threads=self.use_threads,
-                    progress=self.progress,
-                    delta=d,
-                )
-                a.finalise()
-            except TendenciesStatisticsDeltaNotMultipleOfFrequency:
-                LOG.debug(f"Skipping delta={d} as it is not a multiple of the frequency.")
-
-    def finalise(self):
-        self.statistics()
-        self.size()
+        return self.main_config.statistics.get("allow_nans", [])
 
     def create(self):
         self.init()
@@ -706,15 +1007,3 @@ class Creator:
         self.init_additions()
         self.run_additions()
         self.finalise_additions()
-
-    def _cache_context(self):
-        from .utils import cache_context
-
-        return cache_context(self.cache)
-
-    def verify(self):
-        from .loaders import DatasetVerifier
-
-        handle = DatasetVerifier.from_dataset(path=self.path, use_threads=self.use_threads)
-
-        handle.verify()

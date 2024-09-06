@@ -153,7 +153,7 @@ class LoadersConfig(Config):
             raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
 
         self.setdefault("statistics", Config())
-        if not 'allow_nans' in self.statistics:
+        if not "allow_nans" in self.statistics:
             self.statistics.allow_nans = []
 
         check_dict_value_and_set(self.output, "flatten_grid", True)
@@ -209,9 +209,50 @@ def _prepare_serialisation(o):
     return str(o)
 
 
-def loader_config(config):
+def set_to_test_mode(cfg):
+    NUMBER_OF_DATES = 4
+
+    dates = cfg.dates
+    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    groups = Groups(**cfg.dates)
+    dates = groups.dates
+    cfg.dates = dict(
+        start=dates[0],
+        end=dates[NUMBER_OF_DATES - 1],
+        frequency=dates.frequency,
+        group_by=NUMBER_OF_DATES,
+    )
+
+    def set_element_to_test(obj):
+        if isinstance(obj, (list, tuple)):
+            for v in obj:
+                set_element_to_test(v)
+            return
+        if isinstance(obj, (dict, DotDict)):
+            if "grid" in obj:
+                previous = obj["grid"]
+                obj["grid"] = "20./20."
+                LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
+            if "number" in obj:
+                if isinstance(obj["number"], (list, tuple)):
+                    previous = obj["number"]
+                    obj["number"] = previous[0:3]
+                    LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
+            for k, v in obj.items():
+                set_element_to_test(v)
+            if "constants" in obj:
+                constants = obj["constants"]
+                if "param" in constants and isinstance(constants["param"], list):
+                    constants["param"] = ["cos_latitude"]
+
+    set_element_to_test(cfg)
+
+
+def loader_config(config, is_test=False):
     config = Config(config)
     obj = LoadersConfig(config)
+    if is_test:
+        obj = set_to_test_mode(obj)
 
     # yaml round trip to check that serialisation works as expected
     copy = obj.get_serialisable_dict()

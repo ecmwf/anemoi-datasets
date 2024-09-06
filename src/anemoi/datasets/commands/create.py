@@ -21,12 +21,7 @@ def task(what, options, *args, **kwargs):
     """
 
     now = datetime.datetime.now()
-    LOG.debug(f"Task {what}({args},{kwargs}) starting")
-    LOG.error(f"✅✅✅Task {what}({args},{kwargs}) starting")
-    LOG.error('')
-    LOG.error('')
-    LOG.error('')
-    LOG.error('')
+    LOG.info(f"Task {what}({args},{kwargs}) starting")
 
     from anemoi.datasets.create import creator_factory
 

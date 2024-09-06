@@ -26,18 +26,24 @@ class CreateStep(Command):
 
     def add_arguments(self, command_parser):
         subparsers = command_parser.add_subparsers(dest="step")
+
         init = subparsers.add_parser("init")
         load = subparsers.add_parser("load")
+
         statistics = subparsers.add_parser("statistics")
-        finalise = subparsers.add_parser("finalise")
         size = subparsers.add_parser("size")
-        patch = subparsers.add_parser("patch")
+        finalise = subparsers.add_parser("finalise") # finalize = statistics + size (for now)
+
         init_additions = subparsers.add_parser("init-additions")
         run_additions = subparsers.add_parser("run-additions")
         finalise_additions = subparsers.add_parser("finalise-additions")
+        additions = subparsers.add_parser("additions") # additions = init_additions + run_additions + finalise_additions
+
+        patch = subparsers.add_parser("patch")
         cleanup = subparsers.add_parser("cleanup")
         verify = subparsers.add_parser("verify")
-        all = [
+
+        ALL = [
             init,
             load,
             statistics,
@@ -49,6 +55,7 @@ class CreateStep(Command):
             finalise_additions,
             cleanup,
             verify,
+            additions,
         ]
 
         init.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
@@ -79,16 +86,13 @@ class CreateStep(Command):
         load.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
         run_additions.add_argument("--parts", nargs="+", help="Only run the specified parts of the dataset.")
 
-        for subparser in [init_additions, run_additions, finalise_additions]:
+        for subparser in [init_additions, run_additions, finalise_additions, additions]:
             subparser.add_argument(
                 "--delta",
-                nargs="+",
-                type=int,
-                help="Only run the specified deltas of the dataset.",
-                default=[1, 3, 6, 12, 24],
+                help="Compute statistics tendencies on a given time delta, if possible. Must be a multiple of the frequency.",
             )
 
-        for subparser in all:
+        for subparser in ALL:
             subparser.add_argument("path", help="Path to store the created data.")
             subparser.add_argument("--trace", action="store_true")
 
