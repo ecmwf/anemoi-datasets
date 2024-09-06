@@ -332,6 +332,9 @@ def build_input_(main_config, output_config):
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     dataset_class = NewDataset
     def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, **kwargs):  # fmt: skip
+        if _path_readable(path) and not overwrite:
+            raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
+
         super().__init__(path)
         self.config = config
         self.check_name = check_name
@@ -339,10 +342,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.statistics_temp_dir = statistics_temp_dir
         self.progress = progress
         self.test = test
-        self.check_unkown_kwargs(kwargs)
 
-        if _path_readable(path) and not overwrite:
-            raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
 
         self.main_config = loader_config(config, is_test=test)
 

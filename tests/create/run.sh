@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eux
-NAME=join
+NAME=${1:-join}
 
 anemoi-datasets create-step init $NAME.yaml $NAME.zarr --overwrite
 anemoi-datasets create-step load $NAME.zarr --part 1/2

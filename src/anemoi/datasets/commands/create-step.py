@@ -83,18 +83,18 @@ class CreateStep(Command):
         )
         init.set_defaults(check_name=False)
 
-        load.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
-        run_additions.add_argument("--parts", nargs="+", help="Only run the specified parts of the dataset.")
+        for s in [load, run_additions]:
+            s.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
 
-        for subparser in [init_additions, run_additions, finalise_additions, additions]:
-            subparser.add_argument(
+        for s in [init_additions, run_additions, finalise_additions, additions]:
+            s.add_argument(
                 "--delta",
                 help="Compute statistics tendencies on a given time delta, if possible. Must be a multiple of the frequency.",
             )
 
-        for subparser in ALL:
-            subparser.add_argument("path", help="Path to store the created data.")
-            subparser.add_argument("--trace", action="store_true")
+        for s in ALL:
+            s.add_argument("path", help="Path to store the created data.")
+            s.add_argument("--trace", action="store_true")
 
     def run(self, args):
         options = vars(args)
