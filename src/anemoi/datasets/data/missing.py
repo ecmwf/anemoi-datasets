@@ -121,7 +121,7 @@ class SkipMissing(Subset):
 
         missing |= skip
 
-        indices = [i for i in range(len(dataset)) if i not in missing]
+        indices = [i for i in range(dataset._len) if i not in missing]
         super().__init__(dataset, indices, reason=dict(access=access))
 
     @cached_property
