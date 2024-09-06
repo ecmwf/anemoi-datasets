@@ -119,7 +119,7 @@ class InterpolateTime(Forwards):
         result = []
         j = 0
         for i in range(self.other_len):
-            missing = self.forward.missing[i]
+            missing = i in self.forward.missing
             for _ in range(self.ratio):
                 if missing:
                     result.append(j)
