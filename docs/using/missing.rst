@@ -36,8 +36,10 @@ function, as the first bound in included while the last bound is
 excluded).
 
 The algorithm is illustrated in the picture below. The cells represents
-the dates in the dataset, and the red cells are the missing dates. The
-``slice(0, 2)`` will garantee that any two consecutive dates will
+the dates in the dataset, and the red cells are the missing dates. Given
+``slice(0, 2)``, the library will consider each group of matching dates
+that are not missing (in blue). The interval between each dates of a
+group is garanteed to be constant accross all groups.
 
 .. image:: images/skip-missing.png
    :align: center
