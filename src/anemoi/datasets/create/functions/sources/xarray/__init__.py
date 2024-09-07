@@ -66,6 +66,7 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     fs = XarrayFieldList.from_xarray(data, flavour)
     result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
+    seen = set()
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
         LOG.warning(f"Options: {options}")
@@ -74,10 +75,19 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
             a = ["valid_datetime", k.metadata("valid_datetime", default=None)]
             for n in kwargs.keys():
                 a.extend([n, k.metadata(n, default=None)])
-            print([str(x) for x in a])
 
-            if i > 16:
-                break
+            p = list((i, x) for i, x in enumerate(a) if i % 2 == 1)
+
+            if all(x in seen for x in p):
+                continue
+
+            print([str(x) for x in a])
+            # print(p)
+
+            seen.update(p)
+
+            # if i > 16:
+            #     break
 
         # LOG.warning(data)
 

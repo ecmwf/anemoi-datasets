@@ -42,6 +42,7 @@ class Time:
 class Constant(Time):
 
     def fill_time_metadata(self, coords_values, metadata):
+        print("Constant", coords_values, metadata)
         raise NotImplementedError("Constant time not implemented")
         # print("Constant", coords_values, metadata)
         # metadata["date"] = time.strftime("%Y%m%d")
