@@ -47,12 +47,21 @@ class Dataset:
         if "frequency" in kwargs:
             from .subset import Subset
 
+            if "interpolate_frequency" in kwargs:
+                raise ValueError("Cannot use both `frequency` and `interpolate_frequency`")
+
             frequency = kwargs.pop("frequency")
             return (
                 Subset(self, self._frequency_to_indices(frequency), dict(frequency=frequency))
                 ._subset(**kwargs)
                 .mutate()
             )
+
+        if "interpolate_frequency" in kwargs:
+            from .interpolate import InterpolateFrequency
+
+            interpolate_frequency = kwargs.pop("interpolate_frequency")
+            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "select" in kwargs:
             from .select import Select
@@ -98,6 +107,24 @@ class Dataset:
 
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
+
+        if "missing_dates" in kwargs:
+            from .missing import MissingDates
+
+            missing_dates = kwargs.pop("missing_dates")
+            return MissingDates(self, missing_dates)._subset(**kwargs).mutate()
+
+        if "skip_missing_dates" in kwargs:
+            from .missing import SkipMissingDates
+
+            if "expected_access" not in kwargs:
+                raise ValueError("`expected_access` is required with `skip_missing_dates`")
+
+            skip_missing_dates = kwargs.pop("skip_missing_dates")
+            expected_access = kwargs.pop("expected_access")
+
+            if skip_missing_dates:
+                return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:

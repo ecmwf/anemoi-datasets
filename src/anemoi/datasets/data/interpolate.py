@@ -18,12 +18,11 @@ from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices
 from .indexing import update_tuple
-from .misc import _open
 
 LOG = logging.getLogger(__name__)
 
 
-class InterpolateTime(Forwards):
+class InterpolateFrequency(Forwards):
 
     def __init__(self, dataset, frequency):
         super().__init__(dataset)
@@ -105,14 +104,14 @@ class InterpolateTime(Forwards):
             for i in deltas:
                 result.append(d + i)
         result.append(self.forward.dates[-1])
-        return result
+        return np.array(result)
 
     @property
     def shape(self):
         return (self._len,) + self.forward.shape[1:]
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets])
+        return Node(self, [self.forward.tree()], frequency=self.frequency)
 
     @cached_property
     def missing(self):
@@ -132,20 +131,3 @@ class InterpolateTime(Forwards):
         return {
             # "frequency": frequency_to_string(self._frequency),
         }
-
-
-def interpolate_factory(args, kwargs):
-    assert len(args) == 0
-
-    axis = kwargs.pop("axis", "time")
-    assert axis in ("time",)
-
-    dataset = kwargs.pop("interpolate")
-    frequency = kwargs.pop("frequency")
-
-    dataset = _open(dataset)
-
-    return InterpolateTime(
-        dataset,
-        frequency=frequency,
-    )._subset(**kwargs)

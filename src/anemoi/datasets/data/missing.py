@@ -12,23 +12,25 @@ from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.data import MissingDateError
 from anemoi.datasets.data.subset import Subset
 
+from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
 from .indexing import expand_list_indexing
-from .misc import _open
 
 LOG = logging.getLogger(__name__)
 
 
-class ForceMissing(Forwards):
+class MissingDates(Forwards):
+    # TODO: Use that class instead of ZarrMissing
 
-    def __init__(self, dataset, dates):
+    def __init__(self, dataset, missing_dates):
         super().__init__(dataset)
+        self.missing_dates = missing_dates
 
         self._missing = set()
 
         other = []
-        for date in dates:
+        for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
             else:
@@ -46,7 +48,6 @@ class ForceMissing(Forwards):
 
     @cached_property
     def missing(self):
-        print("missing", self._missing, self.forward.missing)
         return self._missing.union(self.forward.missing)
 
     @debug_indexing
@@ -87,26 +88,30 @@ class ForceMissing(Forwards):
     def _report_missing(self, n):
         raise MissingDateError(f"Date {self.forward.dates[n]} is missing (index={n})")
 
-    def subclass_metadata_specific(self):
+    @property
+    def reason(self):
         return {
-            "missing": sorted(self.missing),
+            "missing_dates": self.missing_dates,
         }
 
+    def tree(self):
+        return Node(self, [self.forward.tree()], **self.reason)
 
-class SkipMissing(Subset):
 
-    def __init__(self, dataset, access):
+class SkipMissingDates(Subset):
 
-        if isinstance(access, (tuple, list)):
-            access = slice(*access)
+    def __init__(self, dataset, expected_access):
 
-        if isinstance(access, int):
-            access = slice(0, access)
+        if isinstance(expected_access, (tuple, list)):
+            expected_access = slice(*expected_access)
 
-        access = slice(*access.indices(dataset._len))
+        if isinstance(expected_access, int):
+            expected_access = slice(0, expected_access)
+
+        expected_access = slice(*expected_access.indices(dataset._len))
         missing = dataset.missing.copy()
 
-        width = access.stop - access.start
+        width = expected_access.stop - expected_access.start
 
         skip = set()
 
@@ -114,7 +119,7 @@ class SkipMissing(Subset):
             j = max(i - width, 0)
             k = min(i + width, dataset._len)
             for m in range(j, k):
-                s = slice(access.start + m, access.stop + m, access.step)
+                s = slice(expected_access.start + m, expected_access.stop + m, expected_access.step)
                 p = set(range(*s.indices(dataset._len)))
                 if p.intersection(missing):
                     skip.add(m)
@@ -122,31 +127,8 @@ class SkipMissing(Subset):
         missing |= skip
 
         indices = [i for i in range(dataset._len) if i not in missing]
-        super().__init__(dataset, indices, reason=dict(access=access))
-
-    @cached_property
-    def dates(self):
-        return self.forward.dates
+        super().__init__(dataset, indices, reason=dict(expected_access=expected_access))
 
     @property
     def frequency(self):
         return self.forward.frequency
-
-
-def missing_factory(args, kwargs):
-    assert len(args) == 0
-
-    dataset = kwargs.pop("missing")
-    dates = kwargs.pop("dates", None)
-
-    dataset = _open(dataset)
-
-    if dates:
-        return ForceMissing(
-            dataset,
-            dates=dates,
-        )._subset(**kwargs)
-
-    access = kwargs.pop("access")
-
-    return SkipMissing(dataset, access=access)._subset(**kwargs)
