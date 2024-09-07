@@ -12,12 +12,12 @@ import numpy as np
 
 from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.data import MissingDateError
-from anemoi.datasets.data.subset import Subset
 
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
 from .indexing import expand_list_indexing
+from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class MissingDates(Forwards):
 
     def __init__(self, dataset, missing_dates):
         super().__init__(dataset)
-        missing_dates = []
+        self.missing_dates = []
 
         self._missing = set()
 
@@ -35,20 +35,20 @@ class MissingDates(Forwards):
         for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
-                missing_dates.append(dataset.dates[date])
+                self.missing_dates.append(dataset.dates[date])
             else:
                 date = to_datetime(date)
-                missing_dates.append(date)
                 other.append(date)
 
         if other:
             for i, date in enumerate(dataset.dates):
                 if date in other:
                     self._missing.add(i)
+                    self.missing_dates.append(date)
 
         n = self.forward._len
         self._missing = set(i for i in self._missing if 0 <= i < n)
-        self.missing_dates = sorted(missing_dates)
+        self.missing_dates = sorted(to_datetime(x) for x in self.missing_dates)
 
         assert len(self._missing), "No dates to force missing"
 
@@ -105,36 +105,73 @@ class MissingDates(Forwards):
         return {"missing_dates": self.missing_dates}
 
 
-class SkipMissingDates(Subset):
+class SkipMissingDates(Forwards):
 
     def __init__(self, dataset, expected_access):
+        super().__init__(dataset)
 
-        if isinstance(expected_access, (tuple, list)):
-            expected_access = slice(*expected_access)
+        # if isinstance(expected_access, (tuple, list)):
+        #     expected_access = slice(*expected_access)
 
         if isinstance(expected_access, int):
             expected_access = slice(0, expected_access)
 
+        assert isinstance(expected_access, slice), f"Expected access must be a slice, got {expected_access}"
+
         expected_access = slice(*expected_access.indices(dataset._len))
         missing = dataset.missing.copy()
 
-        width = expected_access.stop - expected_access.start
+        size = (expected_access.stop - expected_access.start) // expected_access.step
+        indices = []
 
-        skip = set()
+        for i in range(dataset._len):
+            s = slice(expected_access.start + i, expected_access.stop + i, expected_access.step)
+            p = set(range(*s.indices(dataset._len)))
+            if p.intersection(missing):
+                continue
 
-        for i in missing:
-            j = max(i - width, 0)
-            k = min(i + width, dataset._len)
-            for m in range(j, k):
-                s = slice(expected_access.start + m, expected_access.stop + m, expected_access.step)
-                p = set(range(*s.indices(dataset._len)))
-                if p.intersection(missing):
-                    skip.add(m)
+            if len(p) != size:
+                continue
 
-        missing |= skip
+            indices.append(tuple(sorted(p)))
 
-        indices = [i for i in range(dataset._len) if i not in missing]
-        super().__init__(dataset, indices, reason=dict(expected_access=(expected_access.start, expected_access.stop)))
+        self.expected_access = expected_access
+        self.indices = indices
+
+    def __len__(self):
+        return len(self.indices)
+
+    @property
+    def dates(self):
+        raise NotImplementedError("SkipMissingDates.dates")
+
+    @debug_indexing
+    @expand_list_indexing
+    def _get_tuple(self, index):
+
+        first = index[0]
+        if isinstance(first, int):
+            result = []
+            for i in self.indices[first]:
+                s, _ = update_tuple(index, 0, i)
+                result.append(self.forward[s])
+
+            return tuple(result)
+
+        raise NotImplementedError(f"SkipMissingDates._get_tuple {index}")
+
+    def _get_slice(self, s):
+        raise NotImplementedError(f"SkipMissingDates._get_slice {s}")
+
+    @debug_indexing
+    def __getitem__(self, n):
+        if isinstance(n, tuple):
+            return self._get_tuple(n)
+
+        if isinstance(n, slice):
+            return self._get_slice(n)
+
+        return tuple(self.forward[i] for i in self.indices[n])
 
     @property
     def frequency(self):

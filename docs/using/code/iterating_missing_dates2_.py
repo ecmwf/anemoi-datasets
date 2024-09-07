@@ -4,5 +4,6 @@ ds = open_dataset(
     expected_access=slice(0, 2),
 )
 
-for i in range(len(ds) - 1):
-    ds = ds[i + 1] - ds[i]
+for i in range(len(ds)):
+    xi, xi_1 = ds[i]
+    dx = xi_1 - xi
