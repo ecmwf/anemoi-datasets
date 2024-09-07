@@ -191,3 +191,4 @@ _dev/
 *.to_upload
 *.tmp
 test.ipynb
+*tmp_data/

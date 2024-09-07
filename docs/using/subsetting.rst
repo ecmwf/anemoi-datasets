@@ -54,3 +54,6 @@ You can change the frequency of the dataset by passing a string with:
 
 .. literalinclude:: code/frequency_.py
    :language: python
+
+The new frequency must be a multiple of the original frequency. To
+artifically increase the frequency, you can use the ``upsample`` method.

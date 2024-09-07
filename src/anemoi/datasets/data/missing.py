@@ -27,7 +27,7 @@ class MissingDates(Forwards):
 
     def __init__(self, dataset, missing_dates):
         super().__init__(dataset)
-        self.missing_dates = missing_dates
+        missing_dates = []
 
         self._missing = set()
 
@@ -35,8 +35,11 @@ class MissingDates(Forwards):
         for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
+                missing_dates.append(dataset.dates[date])
             else:
-                other.append(to_datetime(date))
+                date = to_datetime(date)
+                missing_dates.append(date)
+                other.append(date)
 
         if other:
             for i, date in enumerate(dataset.dates):
@@ -45,6 +48,7 @@ class MissingDates(Forwards):
 
         n = self.forward._len
         self._missing = set(i for i in self._missing if 0 <= i < n)
+        self.missing_dates = sorted(missing_dates)
 
         assert len(self._missing), "No dates to force missing"
 
@@ -171,7 +175,4 @@ class MissingDataset(Forwards):
         return Node(self, [self.forward.tree()], start=self.start, end=self.end)
 
     def subclass_metadata_specific(self):
-        return {
-            "start": self.start,
-            "end": self.end,
-        }
+        return {"start": self.start, "end": self.end}

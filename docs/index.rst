@@ -45,6 +45,7 @@ datasets <building-introduction>`.
 -  :doc:`using/selecting`
 -  :doc:`using/grids`
 -  :doc:`using/statistics`
+-  :doc:`using/missing`
 -  :doc:`using/other`
 -  :doc:`using/matching`
 -  :doc:`using/miscellaneous`
@@ -63,6 +64,7 @@ datasets <building-introduction>`.
    using/selecting
    using/grids
    using/statistics
+   using/missing
    using/other
    using/matching
    using/miscellaneous

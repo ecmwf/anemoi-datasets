@@ -291,10 +291,6 @@ class Dataset:
             if n.startswith("_") and not n.startswith("__"):
                 warnings.warn(f"Private method {n} is overriden in {ds.__class__.__name__}")
 
-        # for n in ('metadata_specific', 'tree', 'source'):
-        #     if n not in overriden:
-        #         warnings.warn(f"Method {n} is not overriden in {ds.__class__.__name__}")
-
     def _repr_html_(self):
         return self.tree().html()
 
