@@ -8,6 +8,8 @@
 import logging
 from functools import cached_property
 
+import numpy as np
+
 from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.data import MissingDateError
 from anemoi.datasets.data.subset import Subset
@@ -90,12 +92,13 @@ class MissingDates(Forwards):
 
     @property
     def reason(self):
-        return {
-            "missing_dates": self.missing_dates,
-        }
+        return {"missing_dates": self.missing_dates}
 
     def tree(self):
         return Node(self, [self.forward.tree()], **self.reason)
+
+    def subclass_metadata_specific(self):
+        return {"missing_dates": self.missing_dates}
 
 
 class SkipMissingDates(Subset):
@@ -127,8 +130,48 @@ class SkipMissingDates(Subset):
         missing |= skip
 
         indices = [i for i in range(dataset._len) if i not in missing]
-        super().__init__(dataset, indices, reason=dict(expected_access=expected_access))
+        super().__init__(dataset, indices, reason=dict(expected_access=(expected_access.start, expected_access.stop)))
 
     @property
     def frequency(self):
         return self.forward.frequency
+
+
+class MissingDataset(Forwards):
+
+    def __init__(self, dataset, start, end):
+        super().__init__(dataset)
+        self.start = start
+        self.end = end
+
+        dates = []
+        date = start
+        while date <= end:
+            dates.append(date)
+            date += dataset.frequency
+
+        self._dates = np.array(dates, dtype="datetime64")
+        self._missing = set(range(len(dates)))
+
+    def __len__(self):
+        return len(self._dates)
+
+    @property
+    def dates(self):
+        return self._dates
+
+    @property
+    def missing(self):
+        return self._missing
+
+    def __getitem__(self, n):
+        raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
+
+    def tree(self):
+        return Node(self, [self.forward.tree()], start=self.start, end=self.end)
+
+    def subclass_metadata_specific(self):
+        return {
+            "start": self.start,
+            "end": self.end,
+        }

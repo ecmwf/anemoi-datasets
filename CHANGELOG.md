@@ -11,7 +11,7 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
-- New `interpolate` keyword in `open_dataset`
+- New `interpolate_frequency` keyword in `open_dataset`
 - CI workflow to update the changelog on release
 - adds the reusable cd pypi workflow
 

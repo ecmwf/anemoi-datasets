@@ -5,8 +5,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
+import json
 import logging
 import os
+import pprint
 import warnings
 from functools import cached_property
 
@@ -219,15 +222,36 @@ class Dataset:
                 return {k: tidy(v) for k, v in v.items()}
             if isinstance(v, str) and v.startswith("/"):
                 return os.path.basename(v)
+            if isinstance(v, datetime.datetime):
+                return v.isoformat()
+            if isinstance(v, datetime.date):
+                return v.isoformat()
+            if isinstance(v, datetime.timedelta):
+                return frequency_to_string(v)
+
+            if isinstance(v, Dataset):
+                # That can happen in the `arguments`
+                # if a dataset is passed as an argument
+                return repr(v)
+
+            if isinstance(v, slice):
+                return (v.start, v.stop, v.step)
+
             return v
 
-        return tidy(
-            dict(
-                version=anemoi.datasets.__version__,
-                arguments=self.arguments,
-                **self.dataset_metadata(),
-            )
+        md = dict(
+            version=anemoi.datasets.__version__,
+            arguments=self.arguments,
+            **self.dataset_metadata(),
         )
+
+        try:
+            return json.loads(json.dumps(tidy(md)))
+        except Exception:
+            LOG.exception("Failed to serialize metadata")
+            pprint.pprint(md)
+
+            raise
 
     def dataset_metadata(self):
         return dict(
