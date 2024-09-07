@@ -141,9 +141,9 @@ class SkipMissingDates(Forwards):
     def __len__(self):
         return len(self.indices)
 
-    @property
-    def dates(self):
-        raise NotImplementedError("SkipMissingDates.dates")
+    # @property
+    # def dates(self):
+    #     raise NotImplementedError("SkipMissingDates.dates")
 
     @debug_indexing
     @expand_list_indexing
@@ -154,6 +154,7 @@ class SkipMissingDates(Forwards):
             result = []
             for i in self.indices[first]:
                 s, _ = update_tuple(index, 0, i)
+                print(s)
                 result.append(self.forward[s])
 
             return tuple(result)
@@ -176,6 +177,15 @@ class SkipMissingDates(Forwards):
     @property
     def frequency(self):
         return self.forward.frequency
+
+    def tree(self):
+        return Node(self, [self.forward.tree()], expected_access=self.expected_access)
+
+    def subclass_metadata_specific(self):
+        return {
+            "expected_access": self.expected_access,
+            # "indices": self.indices,
+        }
 
 
 class MissingDataset(Forwards):
