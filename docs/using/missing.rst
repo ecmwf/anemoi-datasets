@@ -27,6 +27,15 @@ The library will check the slice against the missing dates and insure
 that, when iterating over the dataset with that slice, no missing dates
 are accessed.
 
+The algorithm is illustrated in the picture below. The cells represents
+the dates in the dataset, and the red cells are the missing dates. Given
+``expected_access=slice(0, 2)``, the library will consider each group of
+matching dates that are not missing (in blue). The interval between each
+dates of a group is garanteed to be constant accross all groups.
+
+.. image:: images/skip-missing.png
+   :align: center
+
 .. literalinclude:: code/iterating_missing_dates2_.py
 
 The code above will not raise an exception, even if there are missing
@@ -34,15 +43,6 @@ dates. The ``slice(0, 2)`` represents the ``i`` and ``i+1`` indices in
 the loop (the Python ``slice`` is similar the the Python's ``range``
 function, as the first bound in included while the last bound is
 excluded).
-
-The algorithm is illustrated in the picture below. The cells represents
-the dates in the dataset, and the red cells are the missing dates. Given
-``slice(0, 2)``, the library will consider each group of matching dates
-that are not missing (in blue). The interval between each dates of a
-group is garanteed to be constant accross all groups.
-
-.. image:: images/skip-missing.png
-   :align: center
 
 You can also provide a single integer to the `expected_access`
 parameter. The two forms below are identical:
