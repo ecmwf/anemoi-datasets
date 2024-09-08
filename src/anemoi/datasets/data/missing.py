@@ -141,9 +141,9 @@ class SkipMissingDates(Forwards):
     def __len__(self):
         return len(self.indices)
 
-    # @property
-    # def dates(self):
-    #     raise NotImplementedError("SkipMissingDates.dates")
+    @property
+    def dates(self):
+        raise NotImplementedError("SkipMissingDates.dates")
 
     @debug_indexing
     @expand_list_indexing
