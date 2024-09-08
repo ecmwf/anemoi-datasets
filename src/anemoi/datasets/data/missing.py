@@ -200,10 +200,7 @@ class SkipMissingDates(Forwards):
         return Node(self, [self.forward.tree()], expected_access=self.expected_access)
 
     def subclass_metadata_specific(self):
-        return {
-            "expected_access": self.expected_access,
-            # "indices": self.indices,
-        }
+        return {"expected_access": self.expected_access}
 
 
 class MissingDataset(Forwards):
