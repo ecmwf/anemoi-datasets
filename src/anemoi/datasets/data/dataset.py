@@ -253,14 +253,22 @@ class Dataset:
 
             raise
 
+    @property
+    def start_date(self):
+        return self.dates[0]
+
+    @property
+    def end_date(self):
+        return self.dates[-1]
+
     def dataset_metadata(self):
         return dict(
             specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
             shape=self.shape,
-            start_date=self.dates[0].astype(str),
-            end_date=self.dates[-1].astype(str),
+            start_date=self.start_date.astype(str),
+            end_date=self.end_date.astype(str),
         )
 
     def metadata_specific(self, **kwargs):
@@ -271,8 +279,8 @@ class Dataset:
             variables=self.variables,
             shape=self.shape,
             frequency=frequency_to_string(frequency_to_timedelta(self.frequency)),
-            start_date=self.dates[0].astype(str),
-            end_date=self.dates[-1].astype(str),
+            start_date=self.start_date.astype(str),
+            end_date=self.end_date.astype(str),
             **kwargs,
         )
 

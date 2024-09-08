@@ -142,6 +142,14 @@ class SkipMissingDates(Forwards):
         return len(self.indices)
 
     @property
+    def start_date(self):
+        return self.forward.start_date
+
+    @property
+    def end_date(self):
+        return self.forward.end_date
+
+    @property
     def dates(self):
         raise NotImplementedError("SkipMissingDates.dates")
 
@@ -149,20 +157,30 @@ class SkipMissingDates(Forwards):
     @expand_list_indexing
     def _get_tuple(self, index):
 
-        first = index[0]
-        if isinstance(first, int):
+        def _get_one(n):
             result = []
-            for i in self.indices[first]:
+            for i in self.indices[n]:
                 s, _ = update_tuple(index, 0, i)
-                print(s)
                 result.append(self.forward[s])
 
             return tuple(result)
 
-        raise NotImplementedError(f"SkipMissingDates._get_tuple {index}")
+        first = index[0]
+        if isinstance(first, int):
+            return _get_one(first)
 
+        assert isinstance(first, slice), f"SkipMissingDates._get_tuple {index}"
+
+        values = [_get_one(i) for i in range(*first.indices(self._len))]
+
+        result = [_ for _ in zip(*values)]
+        return tuple(np.stack(_) for _ in result)
+
+    @debug_indexing
     def _get_slice(self, s):
-        raise NotImplementedError(f"SkipMissingDates._get_slice {s}")
+        values = [self[i] for i in range(*s.indices(self._len))]
+        result = [_ for _ in zip(*values)]
+        return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
     def __getitem__(self, n):
