@@ -202,7 +202,7 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class Actor:
+class Actor:  # TODO: rename to Creator
     cache = None
     dataset_class = WritableDataset
 
@@ -1013,4 +1013,5 @@ def creator_factory(name, trace=None, **kwargs):
         finalise_additions=chain([FinaliseAdditions, Size]),
         additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
     )[name]
+    LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
