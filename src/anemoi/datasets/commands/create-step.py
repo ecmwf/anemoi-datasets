@@ -3,7 +3,6 @@ import time
 
 from anemoi.utils.humanize import seconds_to_human
 
-
 from . import Command
 
 LOG = logging.getLogger(__name__)
