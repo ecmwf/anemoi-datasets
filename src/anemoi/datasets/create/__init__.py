@@ -481,15 +481,16 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
 
-        def check_config(a, b):
+        def sanity_check_config(a, b):
             a = json.dumps(a, sort_keys=True, default=str)
             b = json.dumps(b, sort_keys=True, default=str)
+            b = b.replace("T", " ")  # dates are expected to be different because
             if a != b:
-                print("❌❌❌ FIXME: DIFFERENT CONFIGS (group_by different because of test)")
+                print("❌❌❌ FIXME: Config serialisation to be checked")
                 print(a)
                 print(b)
 
-        check_config(self.main_config, self.dataset.get_main_config())
+        sanity_check_config(self.main_config, self.dataset.get_main_config())
 
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)
@@ -910,6 +911,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         dates = self.dataset.anemoi_dataset.dates
         assert type(dates[0]) == type(start), (type(dates[0]), type(start))  # noqa
         dates = [d for d in dates if d >= start and d <= end]
+        dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
         variables = self.dataset.anemoi_dataset.variables
         stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
 
