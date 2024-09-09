@@ -109,11 +109,15 @@ def init():
     union = []
 
     for name, schema in function_schemas("sources"):
+        if schema is None:
+            schema = dict
         model = create_model(name, **{name: (schema, ...)}, __base__=Step)
         a = Annotated[model, Tag(name)]
         union.append(a)
 
     for name, schema in function_schemas("filters"):
+        if schema is None:
+            schema = dict
         model = create_model(name, **{name: (schema, ...)}, __base__=Step)
         a = Annotated[model, Tag(name)]
         union.append(a)

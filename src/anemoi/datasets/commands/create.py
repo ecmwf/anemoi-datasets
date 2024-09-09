@@ -6,9 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import tqdm
+import yaml
 from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets.create.trace import enable_trace
+from anemoi.datasets.schema import validate
 
 from . import Command
 
@@ -60,6 +62,13 @@ class Create(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args):
+
+        with open(args.config, "r") as f:
+            config = yaml.safe_load(f)
+
+        if not validate(config):
+            exit(1)
+
         now = time.time()
         if args.threads + args.processes:
             self.parallel_create(args)

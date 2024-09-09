@@ -29,7 +29,8 @@ def import_function(name, kind):
         plugins[e.name.replace("_", "-")] = e
 
     if name in plugins:
-        return plugins[name].load()
+        plugin = plugins[name].load()
+        return plugin.execute
 
     module = importlib.import_module(
         f".{kind}.{name}",
