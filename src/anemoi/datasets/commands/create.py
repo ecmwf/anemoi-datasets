@@ -26,7 +26,7 @@ def task(what, options, *args, **kwargs):
     options = {k: v for k, v in options.items() if v is not None}
 
     c = creator_factory(what.replace("-", "_"), **options)
-    result = c.run_it()
+    result = c.run()
 
     LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result

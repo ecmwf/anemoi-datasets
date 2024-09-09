@@ -6,7 +6,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
-VERSION = "0.20"
 
 import datetime
 import json
@@ -15,7 +14,6 @@ import os
 import time
 import uuid
 import warnings
-from copy import deepcopy
 from functools import cached_property
 
 import numpy as np
@@ -50,6 +48,8 @@ from .utils import normalize_and_check_dates
 from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
+
+VERSION = "0.20"
 
 
 def json_tidy(o):
@@ -213,7 +213,7 @@ class Actor:
         self.path = path
         self.dataset = self.dataset_class(self.path)
 
-    def run_it(self):
+    def run(self):
         # to be implemented in the sub-classes
         raise NotImplementedError()
 
@@ -258,7 +258,7 @@ class Patch(Actor):
         self.path = path
         self.kwargs = kwargs
 
-    def run_it(self):
+    def run(self):
         from .patch import apply_patch
 
         apply_patch(self.path, **self.kwargs)
@@ -268,7 +268,7 @@ class Size(Actor):
     def __init__(self, path, **kwargs):
         super().__init__(path)
 
-    def run_it(self):
+    def run(self):
         from .size import compute_directory_sizes
 
         metadata = compute_directory_sizes(self.path)
@@ -350,7 +350,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info("Minimal input for 'init' step (using only the first date) :")
         LOG.info(self.minimal_input)
 
-    def run_it(self):
+    def run(self):
         with self._cache_context():
             self._run()
 
@@ -515,7 +515,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
 
-    def run_it(self):
+    def run(self):
         with self._cache_context():
             self._run()
 
@@ -653,18 +653,25 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 
 class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
-    def __init__(self, path, statistics_temp_dir=None, use_threads=False, **kwargs):
+    def __init__(self, path, statistics_temp_dir=None, delta=[], use_threads=False, **kwargs):
         super().__init__(path)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
+        self.additinon_temp_dir = statistics_temp_dir
+        self.actors = [
+            _InitAdditions(path, delta=d, use_threads=use_threads, statistics_temp_dir=statistics_temp_dir)
+            for d in delta
+        ]
 
-    def run_it(self):
+    def run(self):
         self.tmp_statistics.delete()
         self.registry.clean()
+        for actor in self.actors:
+            actor.cleanup()
 
 
 class Verify(Actor):
-    def run_it(self):
+    def run(self):
         LOG.info(f"Verifying dataset at {self.path}")
         LOG.info(str(self.dataset.anemoi_dataset))
 
@@ -714,14 +721,14 @@ class DeltaDataset:
         return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
 
 
-class InitAddition(Actor, HasRegistryMixin, AdditionsMixin):
+class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def __init__(self, path, delta, use_threads=False, progress=None, **kwargs):
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
         self.use_threads = use_threads
         self.progress = progress
 
-    def run_it(self):
+    def run(self):
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
             return
@@ -731,8 +738,13 @@ class InitAddition(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage.create()
         LOG.info(f"Dataset {self.tmp_storage_path} additions initialized.")
 
+    def cleanup(self):
+        self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
+        self.tmp_storage.delete()
+        LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
-class RunAddition(Actor, HasRegistryMixin, AdditionsMixin):
+
+class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def __init__(self, path, delta, parts=None, use_threads=False, progress=None, **kwargs):
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
@@ -743,7 +755,7 @@ class RunAddition(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         LOG.info(f"Writing in {self.tmp_storage_path}")
 
-    def run_it(self):
+    def run(self):
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
             return
@@ -775,7 +787,7 @@ class RunAddition(Actor, HasRegistryMixin, AdditionsMixin):
         return True
 
 
-class FinaliseAddition(Actor, HasRegistryMixin, AdditionsMixin):
+class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def __init__(self, path, delta, use_threads=False, progress=None, **kwargs):
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
@@ -785,7 +797,7 @@ class FinaliseAddition(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         LOG.info(f"Reading from {self.tmp_storage_path}.")
 
-    def run_it(self):
+    def run(self):
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}.")
             return
@@ -895,6 +907,29 @@ class FinaliseAddition(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.debug(f"Wrote additions in {self.path}")
 
 
+def multi_addition(cls):
+    class MultiAdditions:
+        def __init__(self, *args, **kwargs):
+            self.actors = []
+
+            for k in kwargs.pop("delta", []):
+                self.actors.append(cls(*args, delta=k, **kwargs))
+
+            if not self.actors:
+                raise ValueError("No delta found in kwargs")
+
+        def run(self):
+            for actor in self.actors:
+                actor.run()
+
+    return MultiAdditions
+
+
+InitAdditions = multi_addition(_InitAdditions)
+RunAdditions = multi_addition(_RunAdditions)
+FinaliseAdditions = multi_addition(_FinaliseAdditions)
+
+
 class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
     def __init__(self, path, use_threads=False, statistics_temp_dir=None, progress=None, **kwargs):
         super().__init__(path)
@@ -902,7 +937,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         self.progress = progress
         self.statistics_temp_dir = statistics_temp_dir
 
-    def run_it(self):
+    def run(self):
         start, end = (
             self.dataset.zarr_metadata["statistics_start_date"],
             self.dataset.zarr_metadata["statistics_end_date"],
@@ -946,10 +981,10 @@ def chain(tasks):
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
-        def run_it(self):
+        def run(self):
             for cls in tasks:
                 t = cls(**self.kwargs)
-                t.run_it()
+                t.run()
 
     return Chain
 
@@ -969,9 +1004,10 @@ def creator_factory(name, trace=None, **kwargs):
         finalise=chain([Statistics, Size, Cleanup]),
         cleanup=Cleanup,
         verify=Verify,
-        init_additions=InitAddition,
-        run_additions=RunAddition,
-        finalise_additions=FinaliseAddition,
-        additions=chain([InitAddition, RunAddition, FinaliseAddition]),
+        init_additions=InitAdditions,
+        load_additions=RunAdditions,
+        run_additions=RunAdditions,
+        finalise_additions=chain([FinaliseAdditions, Size]),
+        additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
     )[name]
     return cls(**kwargs)
