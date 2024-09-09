@@ -188,3 +188,5 @@ _build/
 *.sync
 *.dot
 _dev/
+*.to_upload
+*.tmp

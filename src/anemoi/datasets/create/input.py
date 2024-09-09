@@ -106,30 +106,32 @@ def _data_request(data):
     area = grid = None
 
     for field in data:
-        if not hasattr(field, "as_mars"):
-            continue
+        try:
+            if date is None:
+                date = field.datetime()["valid_time"]
 
-        if date is None:
-            date = field.datetime()["valid_time"]
+            if field.datetime()["valid_time"] != date:
+                continue
 
-        if field.datetime()["valid_time"] != date:
-            continue
+            as_mars = field.metadata(namespace="mars")
+            if not as_mars:
+                continue
+            step = as_mars.get("step")
+            levtype = as_mars.get("levtype", "sfc")
+            param = as_mars["param"]
+            levelist = as_mars.get("levelist", None)
+            area = field.mars_area
+            grid = field.mars_grid
 
-        as_mars = field.metadata(namespace="mars")
-        step = as_mars.get("step")
-        levtype = as_mars.get("levtype", "sfc")
-        param = as_mars["param"]
-        levelist = as_mars.get("levelist", None)
-        area = field.mars_area
-        grid = field.mars_grid
+            if levelist is None:
+                params_levels[levtype].add(param)
+            else:
+                params_levels[levtype].add((param, levelist))
 
-        if levelist is None:
-            params_levels[levtype].add(param)
-        else:
-            params_levels[levtype].add((param, levelist))
-
-        if step:
-            params_steps[levtype].add((param, step))
+            if step:
+                params_steps[levtype].add((param, step))
+        except Exception:
+            LOG.error(f"Error in retrieving metadata (cannot build data request info) for {field}", exc_info=True)
 
     def sort(old_dic):
         new_dic = {}

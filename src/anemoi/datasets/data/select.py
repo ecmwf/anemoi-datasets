@@ -40,6 +40,12 @@ class Select(Forwards):
         # Forward other properties to the main dataset
         super().__init__(dataset)
 
+    def clone(self, dataset):
+        return self.__class__(dataset, self.indices, self.reason).mutate()
+
+    def mutate(self):
+        return self.forward.swap_with_parent(parent=self)
+
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index):

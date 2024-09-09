@@ -39,13 +39,31 @@ def add_dataset_path(path):
         config["datasets"]["path"].append(path)
 
 
+def round_datetime(d, dates, up):
+    """Round up (or down) a datetime to the nearest date in a list of dates"""
+    if dates is None or len(dates) == 0:
+        return d
+
+    for i, date in enumerate(dates):
+        if date == d:
+            return date
+        if date > d:
+            if up:
+                return date
+            if i > 0:
+                return dates[i - 1]
+            return date
+    return dates[-1]
+
+
 def _as_date(d, dates, last):
 
     # WARNING,  datetime.datetime is a subclass of datetime.date
     # so we need to check for datetime.datetime first
 
     if isinstance(d, (np.datetime64, datetime.datetime)):
-        return d
+        d = round_datetime(d, dates, up=not last)
+        return np.datetime64(d)
 
     if isinstance(d, datetime.date):
         d = d.year * 10_000 + d.month * 100 + d.day
@@ -59,27 +77,27 @@ def _as_date(d, dates, last):
         if len(str(d)) == 4:
             year = d
             if last:
-                return np.datetime64(f"{year:04}-12-31T23:59:59")
+                return _as_date(np.datetime64(f"{year:04}-12-31T23:59:59"), dates, last)
             else:
-                return np.datetime64(f"{year:04}-01-01T00:00:00")
+                return _as_date(np.datetime64(f"{year:04}-01-01T00:00:00"), dates, last)
 
         if len(str(d)) == 6:
             year = d // 100
             month = d % 100
             if last:
                 _, last_day = calendar.monthrange(year, month)
-                return np.datetime64(f"{year:04}-{month:02}-{last_day:02}T23:59:59")
+                return _as_date(np.datetime64(f"{year:04}-{month:02}-{last_day:02}T23:59:59"), dates, last)
             else:
-                return np.datetime64(f"{year:04}-{month:02}-01T00:00:00")
+                return _as_date(np.datetime64(f"{year:04}-{month:02}-01T00:00:00"), dates, last)
 
         if len(str(d)) == 8:
             year = d // 10000
             month = (d % 10000) // 100
             day = d % 100
             if last:
-                return np.datetime64(f"{year:04}-{month:02}-{day:02}T23:59:59")
+                return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T23:59:59"), dates, last)
             else:
-                return np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00")
+                return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00"), dates, last)
 
     if isinstance(d, str):
 
@@ -87,7 +105,11 @@ def _as_date(d, dates, last):
             date, time = d.replace(" ", "T").split("T")
             year, month, day = [int(_) for _ in date.split("-")]
             hour, minute, second = [int(_) for _ in time.split(":")]
-            return np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}")
+            return _as_date(
+                np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}"),
+                dates,
+                last,
+            )
 
         if "-" in d:
             assert ":" not in d
@@ -99,11 +121,8 @@ def _as_date(d, dates, last):
                 return _as_date(int(bits[0]) * 100 + int(bits[1]), dates, last)
 
             if len(bits) == 3:
-                return _as_date(
-                    int(bits[0]) * 10000 + int(bits[1]) * 100 + int(bits[2]),
-                    dates,
-                    last,
-                )
+                return _as_date(int(bits[0]) * 10000 + int(bits[1]) * 100 + int(bits[2]), dates, last)
+
         if ":" in d:
             assert len(d) == 5
             hour, minute = d.split(":")
@@ -114,7 +133,7 @@ def _as_date(d, dates, last):
             month = first.month
             day = first.day
 
-            return np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour}:00:00")
+            return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour}:00:00"), dates, last)
 
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
@@ -171,7 +190,7 @@ def _open(a):
     from .stores import zarr_lookup
 
     if isinstance(a, Dataset):
-        return a
+        return a.mutate()
 
     if isinstance(a, zarr.hierarchy.Group):
         return Zarr(a).mutate()
@@ -180,13 +199,13 @@ def _open(a):
         return Zarr(zarr_lookup(a)).mutate()
 
     if isinstance(a, PurePath):
-        return _open(str(a))
+        return _open(str(a)).mutate()
 
     if isinstance(a, dict):
-        return _open_dataset(**a)
+        return _open_dataset(**a).mutate()
 
     if isinstance(a, (list, tuple)):
-        return _open_dataset(*a)
+        return _open_dataset(*a).mutate()
 
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
@@ -266,47 +285,59 @@ def _open_dataset(*args, **kwargs):
     for a in args:
         sets.append(_open(a))
 
-    if "zip" in kwargs:
-        from .unchecked import zip_factory
+    if "xy" in kwargs:
+        from .xy import xy_factory
 
         assert not sets, sets
-        return zip_factory(args, kwargs)
+        return xy_factory(args, kwargs).mutate()
+
+    if "x" in kwargs and "y" in kwargs:
+        from .xy import xy_factory
+
+        assert not sets, sets
+        return xy_factory(args, kwargs).mutate()
+
+    if "zip" in kwargs:
+        from .xy import zip_factory
+
+        assert not sets, sets
+        return zip_factory(args, kwargs).mutate()
 
     if "chain" in kwargs:
         from .unchecked import chain_factory
 
         assert not sets, sets
-        return chain_factory(args, kwargs)
+        return chain_factory(args, kwargs).mutate()
 
     if "join" in kwargs:
         from .join import join_factory
 
         assert not sets, sets
-        return join_factory(args, kwargs)
+        return join_factory(args, kwargs).mutate()
 
     if "concat" in kwargs:
         from .concat import concat_factory
 
         assert not sets, sets
-        return concat_factory(args, kwargs)
+        return concat_factory(args, kwargs).mutate()
 
     if "ensemble" in kwargs:
         from .ensemble import ensemble_factory
 
         assert not sets, sets
-        return ensemble_factory(args, kwargs)
+        return ensemble_factory(args, kwargs).mutate()
 
     if "grids" in kwargs:
         from .grids import grids_factory
 
         assert not sets, sets
-        return grids_factory(args, kwargs)
+        return grids_factory(args, kwargs).mutate()
 
     if "cutout" in kwargs:
         from .grids import cutout_factory
 
         assert not sets, sets
-        return cutout_factory(args, kwargs)
+        return cutout_factory(args, kwargs).mutate()
 
     for name in ("datasets", "dataset"):
         if name in kwargs:

@@ -18,6 +18,9 @@ import tqdm
 import zarr
 from anemoi.utils.config import DotDict
 from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets import MissingDateError
@@ -25,9 +28,6 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
-from anemoi.datasets.dates import compress_dates
-from anemoi.datasets.dates import frequency_to_string
-from anemoi.datasets.dates import frequency_to_timedelta
 from anemoi.datasets.dates.groups import Groups
 
 from .check import DatasetName
@@ -906,6 +906,8 @@ class TendenciesStatisticsAddition(GenericAdditions):
             )
         self.delta = delta
         idelta = delta.total_seconds() // frequency.total_seconds()
+        assert int(idelta) == idelta, idelta
+        idelta = int(idelta)
 
         super().__init__(path=path, **kwargs)
 
@@ -929,10 +931,7 @@ class TendenciesStatisticsAddition(GenericAdditions):
 
     @classmethod
     def final_storage_name_from_delta(_, k, delta):
-        if isinstance(delta, int):
-            delta = str(delta)
-        if not delta.endswith("h"):
-            delta = delta + "h"
+        delta = frequency_to_string(delta)
         return f"statistics_tendencies_{delta}_{k}"
 
     def run(self, parts):

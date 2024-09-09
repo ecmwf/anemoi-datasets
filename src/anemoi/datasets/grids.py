@@ -145,12 +145,12 @@ def cutout_mask(
     global_lats,
     global_lons,
     cropping_distance=2.0,
+    neighbours=5,
     min_distance_km=None,
     plot=None,
 ):
     """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
     from scipy.spatial import KDTree
-    from scipy.spatial import distance_matrix
 
     # TODO: transform min_distance from lat/lon to xyz
 
@@ -189,18 +189,17 @@ def cutout_mask(
     xyx = latlon_to_xyz(lats, lons)
     lam_points = np.array(xyx).transpose()
 
-    # Use a KDTree to find the nearest points
-    kdtree = KDTree(lam_points)
-    distances, indices = kdtree.query(global_points, k=4)
-
-    if min_distance_km is not None:
+    if isinstance(min_distance_km, (int, float)):
         min_distance = min_distance_km / 6371.0
     else:
-        min_distance = 0
-        dm = distance_matrix(global_points, global_points)
-        min_distance = np.min(dm[dm > 0])
+        points = {"lam": lam_points, "global": global_points, None: global_points}[min_distance_km]
+        distances, _ = KDTree(points).query(points, k=2)
+        min_distance = np.min(distances[:, 1])
 
-    LOG.debug(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
+        LOG.info(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
+
+    # Use a KDTree to find the nearest points
+    distances, indices = KDTree(lam_points).query(global_points, k=neighbours)
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])
@@ -213,25 +212,18 @@ def cutout_mask(
         # We check more than one triangle in case te global point
         # is near the edge of triangle, (the lam point and global points are colinear)
 
-        t1 = Triangle3D(lam_points[index[0]], lam_points[index[1]], lam_points[index[2]])
-        t2 = Triangle3D(lam_points[index[1]], lam_points[index[2]], lam_points[index[3]])
-        t3 = Triangle3D(lam_points[index[2]], lam_points[index[3]], lam_points[index[0]])
-        t4 = Triangle3D(lam_points[index[3]], lam_points[index[0]], lam_points[index[1]])
-
-        # The point is inside the triangle if the intersection with the ray
-        # from the point to the centre of the Earth is not None
-        # (the direction of the ray is not important)
-
-        intersect = (
-            t1.intersect(zero, global_point)
-            or t2.intersect(zero, global_point)
-            or t3.intersect(zero, global_point)
-            or t4.intersect(zero, global_point)
-        )
+        inside = False
+        for j in range(neighbours):
+            t = Triangle3D(
+                lam_points[index[j]], lam_points[index[(j + 1) % neighbours]], lam_points[index[(j + 2) % neighbours]]
+            )
+            inside = t.intersect(zero, global_point)
+            if inside:
+                break
 
         close = np.min(distance) <= min_distance
 
-        inside_lam.append(intersect or close)
+        inside_lam.append(inside or close)
 
     j = 0
     inside_lam = np.array(inside_lam)
@@ -298,8 +290,7 @@ def thinning_mask(
     points = np.array(xyx).transpose()
 
     # Use a KDTree to find the nearest points
-    kdtree = KDTree(points)
-    _, indices = kdtree.query(global_points, k=1)
+    _, indices = KDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
 

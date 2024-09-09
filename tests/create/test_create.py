@@ -9,23 +9,20 @@ import glob
 import hashlib
 import json
 import os
-import shutil
-import warnings
 from functools import wraps
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 import requests
-from earthkit.data import from_source
+from earthkit.data import from_source as original_from_source
+from multiurl import download
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create import Creator
 from anemoi.datasets.data.stores import open_zarr
 
-MARS_CLIENT_PRESENT = os.path.exists("/usr/local/bin/mars")
-
-TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create/"
+TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
 
 
 HERE = os.path.dirname(__file__)
@@ -46,103 +43,101 @@ def mockup_from_source(func):
 
 
 class LoadSource:
-    def __init__(self, read_dir=None, write_dir=None):
-        self.read_dir = read_dir
-        self.write_dir = write_dir
 
     def filename(self, args, kwargs):
-        try:
-            string = json.dumps([args, kwargs])
-        except Exception as e:
-            warnings.warn(f"Could not build hash for {args}, {kwargs}, {e}")
-            return None
+        string = json.dumps([args, kwargs], sort_keys=True, default=str)
         h = hashlib.md5(string.encode("utf8")).hexdigest()
-        return h + ".copy"
+        return h + ".grib"
 
-    def write(self, directory, ds, args, kwargs):
-        if self.write_dir is None:
-            return
+    def get_data(self, args, kwargs, path):
+        upload_path = os.path.realpath(path + ".to_upload")
+        ds = original_from_source("mars", *args, **kwargs)
+        ds.save(upload_path)
+        print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
+        exe = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
+        print()
+        print("⚠️ To upload the test data, run this:")
+        print()
+        print(f"{exe} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
+        print()
+        exit(1)
+        raise ValueError("Test data is missing")
 
-        if not hasattr(ds, "path"):
-            return
+    def mars(self, args, kwargs):
         filename = self.filename(args, kwargs)
-        path = os.path.join(directory, filename)
-        print(f"Saving to {path} for {args}, {kwargs}")
-        shutil.copy(ds.path, path)
+        dirname = "."
+        path = os.path.join(dirname, filename)
+        url = TEST_DATA_ROOT + "/" + filename
 
-    def read(self, directory, args, kwargs):
-        if self.read_dir is None:
-            return None
-        filename = self.filename(args, kwargs)
-        if filename is None:
-            return None
-        path = os.path.join(directory, filename)
+        assert url.startswith("http:") or url.startswith("https:")
 
-        if os.path.exists(path):
-            print(f"Mockup: Loading path {path} for {args}, {kwargs}")
-            ds = from_source("file", path)
-            return ds
-
-        elif path.startswith("http:") or path.startswith("https:"):
+        if not os.path.exists(path):
             print(f"Mockup: Loading url {path} for {args}, {kwargs}")
             try:
-                return from_source("url", path)
-            except requests.exceptions.HTTPError:
-                print(f"Mockup: ❌ Cannot load from url for {path} for {args}, {kwargs}")
+                download(url, path + ".tmp")
+                os.rename(path + ".tmp", path)
+            except requests.exceptions.HTTPError as e:
+                print(e)
+                if e.response.status_code == 404:
+                    self.get_data(args, kwargs, path)
+                raise
 
-        return None
+        return original_from_source("file", path)
 
-    def source_name(self, *args, **kwargs):
-        if args:
-            return args[0]
-        return kwargs["name"]
+    def __call__(self, name, *args, **kwargs):
+        if name == "mars":
+            return self.mars(args, kwargs)
 
-    def __call__(self, *args, **kwargs):
-        name = self.source_name(*args, **kwargs)
-
-        if name != "mars":
-            return from_source(*args, **kwargs)
-
-        ds = self.read(self.read_dir, args, kwargs)
-        if ds is not None:
-            return ds
-
-        ds = from_source(*args, **kwargs)
-
-        self.write(self.write_dir, ds, args, kwargs)
-
-        return ds
+        return original_from_source(name, *args, **kwargs)
 
 
-_from_source = LoadSource(
-    read_dir=os.environ.get("LOAD_SOURCE_MOCKUP_READ_DIRECTORY", TEST_DATA_ROOT),
-    write_dir=os.environ.get("LOAD_SOURCE_MOCKUP_WRITE_DIRECTORY"),
-)
+_from_source = LoadSource()
 
 
-def compare_dot_zattrs(a, b):
+def compare_dot_zattrs(a, b, path, errors):
     if isinstance(a, dict):
         a_keys = list(a.keys())
         b_keys = list(b.keys())
         for k in set(a_keys) & set(b_keys):
-            if k in ["timestamp", "uuid", "latest_write_timestamp", "yaml_config"]:
-                assert type(a[k]) == type(b[k]), (  # noqa: E721
-                    type(a[k]),
-                    type(b[k]),
-                    a[k],
-                    b[k],
-                )
-            assert k in a_keys, (k, a_keys)
-            assert k in b_keys, (k, b_keys)
-            return compare_dot_zattrs(a[k], b[k])
+            if k in [
+                "licence",
+                "total_number_of_files",
+            ]:
+                continue
+            if k in [
+                "timestamp",
+                "uuid",
+                "latest_write_timestamp",
+                "_create_yaml_config",
+                "history",
+                "provenance",
+                "provenance_load",
+                "description",
+                "config_path",
+                "dataset_status",
+                "total_size",
+            ]:
+                if type(a[k]) != type(b[k]):  # noqa : E721
+                    errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
+                continue
+            compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
+        return
 
     if isinstance(a, list):
-        assert len(a) == len(b), (a, b)
-        for v, w in zip(a, b):
-            return compare_dot_zattrs(v, w)
+        if len(a) != len(b):
+            errors.append(f"❌ {path} : lengths are different {len(a)} != {len(b)}")
+            return
+        for i, (v, w) in enumerate(zip(a, b)):
+            compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+        return
 
-    assert type(a) == type(b), (type(a), type(b), a, b)  # noqa: E721
-    return a == b, (a, b)
+    if type(a) != type(b):  # noqa : E721
+        msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
+        errors.append(msg)
+        return
+    if a != b:
+        msg = f"❌ {path} actual != expected : {a} != {b}"
+        errors.append(msg)
 
 
 def compare_datasets(a, b):
@@ -195,23 +190,32 @@ def compare_statistics(ds1, ds2):
 class Comparer:
     def __init__(self, name, output_path=None, reference_path=None):
         self.name = name
-        self.reference = reference_path or os.path.join(TEST_DATA_ROOT, name + ".zarr")
         self.output = output_path or os.path.join(name + ".zarr")
-        print(f"Comparing {self.reference} and {self.output}")
+        self.reference_path = reference_path
+        print(f"Comparing {self.output} and {self.reference_path}")
 
-        self.z_reference = open_zarr(self.reference)
         self.z_output = open_zarr(self.output)
+        self.z_reference = open_zarr(self.reference_path)
 
-        self.ds_reference = open_dataset(self.reference)
+        self.z_reference["data"]
         self.ds_output = open_dataset(self.output)
+        self.ds_reference = open_dataset(self.reference_path)
 
     def compare(self):
-        compare_dot_zattrs(self.z_output.attrs, self.z_reference.attrs)
+        errors = []
+        compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), "metadata", errors)
+        if errors:
+            print("Comparison failed")
+            print("\n".join(errors))
+
+        if errors:
+            raise AssertionError("Comparison failed")
+
         compare_datasets(self.ds_output, self.ds_reference)
+
         compare_statistics(self.ds_output, self.ds_reference)
 
 
-@pytest.mark.skipif(not MARS_CLIENT_PRESENT, reason="Test requires direct mars access.")
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name):
@@ -226,8 +230,14 @@ def test_run(name):
     c.additions(delta=[1, 3, 6, 12])
     c.cleanup()
 
-    comparer = Comparer(name, output_path=output)
-    comparer.compare()
+    # reference_path = os.path.join(HERE, name + "-reference.zarr")
+    s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
+    # if not os.path.exists(reference_path):
+    #    from anemoi.utils.s3 import download as s3_download
+    #    s3_download(s3_uri + '/', reference_path, overwrite=True)
+
+    Comparer(name, output_path=output, reference_path=s3_uri).compare()
+    # Comparer(name, output_path=output, reference_path=reference_path).compare()
 
 
 if __name__ == "__main__":
