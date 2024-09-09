@@ -40,9 +40,9 @@ dates of a group is guaranteed to be constant across all groups.
 
 The code above will not raise an exception, even if there are missing
 dates. The ``slice(0, 2)`` represents the ``i`` and ``i+1`` indices in
-the loop (the Python :py:func:`slice` is similar the the Python's
-:py:func:`range` function, as the first bound in included while the last
-bound is excluded).
+the loop (the Python :py:class:`slice` is similar to Python's
+:py:class:`range`, as the first bound in included while the last bound
+is excluded).
 
 You can also provide a single integer to the ```expected_access``
 parameter. The two forms below are identical:
