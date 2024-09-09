@@ -1,8 +1,8 @@
 .. _create-incremental:
 
-################################
- Create a dataset incrementally
-################################
+##################################
+ Creating a dataset incrementally
+##################################
 
 This guide shows how to create a dataset incrementally. This is useful
 when you have a large dataset that you want to load in parts, to avoid
@@ -24,17 +24,19 @@ the dataset, so it will not be needed by following commands.
 
    anemoi-datasets init dataset.yaml dataset.zarr --overwrite
 
-
-You can then load the dataset in parts with the `load` command. You just pass which part you want to load with the `--part` flag.
-
+You can then load the dataset in parts with the `load` command. You just
+pass which part you want to load with the `--part` flag.
 
 .. note::
 
-   Parts are numbered from 1 to N, where N is the total number of parts (unlike Python, where they would start at zero). This is to make it easier to use the :manpage:`seq(1)` function in bash.
+   Parts are numbered from 1 to N, where N is the total number of parts
+   (unlike Python, where they would start at zero). This is to make it
+   easier to use the `seq(1)` command in bash.
 
-
-You can load multiple parts in any order and in parallel by running the `load` command in different terminals, slurm jobs or any other parallelisation tool. The library relies on the `zarr` library to handle concurrent writes.
-
+You can load multiple parts in any order and in parallel by running the
+`load` command in different terminals, slurm jobs or any other
+parallelisation tool. The library relies on the `zarr` library to handle
+concurrent writes.
 
 .. code:: bash
 
@@ -44,45 +46,43 @@ You can load multiple parts in any order and in parallel by running the `load` c
 
    anemoi-datasets load dataset.zarr --part 2/20
 
-
 ... and so on ... until:
 
 .. code:: bash
 
    anemoi-datasets load dataset.zarr --part 20/20
 
-Once you have loaded all the parts, you can finalise the dataset with the `finalise` command. This will write the metadata and the attributes to the dataset,
-and consolidate the statistics and cleanup some temporary files.
+Once you have loaded all the parts, you can finalise the dataset with
+the `finalise` command. This will write the metadata and the attributes
+to the dataset, and consolidate the statistics and cleanup some
+temporary files.
 
 .. code:: bash
 
    anemoi-datasets finalise dataset.zarr
 
-
-
-You can follow the progress of the dataset creation with the `inspect` command. This will show you the percentage of parts loaded.
+You can follow the progress of the dataset creation with the `inspect`
+command. This will show you the percentage of parts loaded.
 
 .. code:: bash
 
    anemoi-datasets inspect dataset.zarr
 
-
-
-It is possible that some temporary files are left behind at the end of the process. You can clean them up with the `cleanup` command.
+It is possible that some temporary files are left behind at the end of
+the process. You can clean them up with the `cleanup` command.
 
 .. code:: bash
 
    anemoi-datasets cleanup dataset.zarr
 
-
-************
+***********************
  Additional statistics
-************
+***********************
 
-`anemoi-datasets` can compute additional statistics for the dataset, mostly statistics of the increments between two dates (e.g. 6h or 12h).
+`anemoi-datasets` can compute additional statistics for the dataset,
+mostly statistics of the increments between two dates (e.g. 6h or 12h).
 
 To add statistics for 6h increments:
-
 
 .. code:: bash
 
@@ -90,7 +90,6 @@ To add statistics for 6h increments:
    anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 6h anemoi-datasets
    anemoi-datasets load-additions dataset.zarr --part 2/2 --delta 6h
    anemoi-datasets finalise-additions dataset.zarr --delta 6h
-
 
 To add statistics for 12h increments:
 
@@ -101,18 +100,20 @@ To add statistics for 12h increments:
    anemoi-datasets load-additions dataset.zarr --part 2/2 --delta 12h
    anemoi-datasets finalise-additions dataset.zarr --delta 12h
 
-
-If this process leaves temporary files behind, you can clean them up with the `cleanup` command.
+If this process leaves temporary files behind, you can clean them up
+with the `cleanup` command.
 
 .. code:: bash
 
    anemoi-datasets cleanup dataset.zarr
 
-********
+********************************
  Patching the dataset metadata:
-********
+********************************
 
-The following command will patch the dataset metadata. In particular, it will remove any references to the YAML file used to initialise the dataset.
+The following command will patch the dataset metadata. In particular, it
+will remove any references to the YAML file used to initialise the
+dataset.
 
 .. code:: bash
 
