@@ -254,14 +254,14 @@ class Actor:
 
 
 class Patch(Actor):
-    def __init__(self, path, **kwargs):
+    def __init__(self, path, options=None, **kwargs):
         self.path = path
-        self.kwargs = kwargs
+        self.options = options or {}
 
     def run(self):
         from .patch import apply_patch
 
-        apply_patch(self.path, **self.kwargs)
+        apply_patch(self.path, **self.options)
 
 
 class Size(Actor):
@@ -352,7 +352,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
     def run(self):
         with self._cache_context():
-            self._run()
+            return self._run()
 
     def _run(self):
         """Create an empty dataset of the right final shape
@@ -671,6 +671,9 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
 
 
 class Verify(Actor):
+    def __init__(self, path, **kwargs):
+        super().__init__(path)
+
     def run(self):
         LOG.info(f"Verifying dataset at {self.path}")
         LOG.info(str(self.dataset.anemoi_dataset))
@@ -916,7 +919,7 @@ def multi_addition(cls):
                 self.actors.append(cls(*args, delta=k, **kwargs))
 
             if not self.actors:
-                raise ValueError("No delta found in kwargs")
+                LOG.warning("No delta found in kwargs, no addtions will be computed.")
 
         def run(self):
             for actor in self.actors:

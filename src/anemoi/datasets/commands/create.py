@@ -65,17 +65,23 @@ class Create(Command):
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
     def serial_create(self, args):
-        from anemoi.datasets.create import Creator
 
         options = vars(args)
         options.pop("command")
         options.pop("threads")
         options.pop("processes")
-        options.pop("trace")
-        options.pop("debug")
-        options.pop("version")
-        c = Creator(**options)
-        c.create()
+
+        task("init", options)
+        task("load", options)
+        task("finalise", options)
+
+        task("patch", options)
+
+        task("init_additions", options)
+        task("run_additions", options)
+        task("finalise_additions", options)
+        task("cleanup", options)
+        task("verify", options)
 
     def parallel_create(self, args):
         """Some modules, like fsspec do not work well with fork()
@@ -84,24 +90,26 @@ class Create(Command):
         of the modules are imported.
         """
 
-        parallel = args.threads + args.processes
-        args.use_threads = args.threads > 0
+        options = vars(args)
+        options.pop("command")
 
-        if args.use_threads:
+        threads = options.pop("threads")
+        processes = options.pop("processes")
+
+        use_threads = threads > 0
+        options["use_threads"] = use_threads
+
+        if use_threads:
             ExecutorClass = ThreadPoolExecutor
         else:
             ExecutorClass = ProcessPoolExecutor
-
-        options = vars(args)
-        options.pop("command")
-        options.pop("threads")
-        options.pop("processes")
 
         with ExecutorClass(max_workers=1) as executor:
             total = executor.submit(task, "init", options).result()
 
         futures = []
 
+        parallel = threads + processes
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(total):
                 futures.append(executor.submit(task, "load", options, parts=f"{n+1}/{total}"))
@@ -110,10 +118,29 @@ class Create(Command):
                 as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
             ):
                 future.result()
+        exit()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "statistics", options).result()
-            executor.submit(task, "additions", options).result()
+            executor.submit(task, "finalise", options).result()
+
+        with ExecutorClass(max_workers=1) as executor:
+            executor.submit(task, "init-additions", options).result()
+
+        with ExecutorClass(max_workers=parallel) as executor:
+            for n in range(total):
+                futures.append(executor.submit(task, "load-additions", options, parts=f"{n+1}/{total}"))
+
+            for future in tqdm.tqdm(
+                as_completed(futures),
+                desc="Computing additions",
+                total=len(futures),
+                colour="green",
+                position=parallel + 1,
+            ):
+                future.result()
+
+        with ExecutorClass(max_workers=1) as executor:
+            executor.submit(task, "finalise-additions", options).result()
             executor.submit(task, "cleanup", options).result()
             executor.submit(task, "verify", options).result()
 
