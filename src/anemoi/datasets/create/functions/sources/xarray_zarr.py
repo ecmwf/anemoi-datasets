@@ -17,5 +17,5 @@ class Zarr(Xarray):
         extra = "forbid"
 
 
-def execute(context, dates, url, *args, **kwargs):
-    return load_many("🇿", context, dates, url, *args, **kwargs)
+def execute(context, dates, url, options=None, *args, **kwargs):
+    return load_many("🇿", context, dates, url, options, *args, **kwargs)

@@ -23,8 +23,8 @@ class OpenDAP(Xarray):
     url: Union[AnyHttpUrl, list[AnyHttpUrl]]
 
 
-def execute(context, dates, url, *args, **kwargs):
-    return load_many("🌐", context, dates, url, *args, **kwargs)
+def execute(context, dates, url, options={}, *args, **kwargs):
+    return load_many("🌐", context, dates, url, options, *args, **kwargs)
 
 
 schema = OpenDAP

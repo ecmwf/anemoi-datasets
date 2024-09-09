@@ -44,7 +44,7 @@ def check(what, ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
-def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):
+def load_one(emoji, context, dates, dataset, options=None, flavour=None, **kwargs):
     import xarray as xr
 
     """
@@ -56,7 +56,11 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
     """
 
+    if options is None:
+        options = {}
+
     context.trace(emoji, dataset, options)
+    print(f"Loading {dataset} for {dates} and {kwargs}")
 
     if isinstance(dataset, str) and ".zarr" in dataset:
         data = xr.open_zarr(name_to_zarr_store(dataset), **options)
@@ -94,15 +98,15 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     return result
 
 
-def load_many(emoji, context, dates, pattern, **kwargs):
+def load_many(emoji, context, dates, pattern, options=None, **kwargs):
 
     result = []
 
     for path, dates in iterate_patterns(pattern, dates, **kwargs):
-        result.append(load_one(emoji, context, dates, path, **kwargs))
+        result.append(load_one(emoji, context, dates, path, options, **kwargs))
 
     return MultiFieldList(result)
 
 
-def execute(context, dates, url, *args, **kwargs):
-    return load_many("🌐", context, dates, url, *args, **kwargs)
+def execute(context, dates, url, options=None, *args, **kwargs):
+    return load_many("🌐", context, dates, url, options, *args, **kwargs)
