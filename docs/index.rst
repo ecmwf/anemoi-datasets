@@ -75,6 +75,7 @@ datasets <building-introduction>`.
 -  :doc:`building/sources`
 -  :doc:`building/filters`
 -  :doc:`building/statistics`
+-  :doc:`building/incremental`
 
 .. toctree::
    :maxdepth: 1
@@ -89,6 +90,7 @@ datasets <building-introduction>`.
    building/handling-missing-dates
    building/handling-missing-values
    building/statistics
+   building/incremental
    building/advanced-options
 
 **Command line tool**
