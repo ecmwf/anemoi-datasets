@@ -1,3 +1,4 @@
+import json
 import logging
 
 from anemoi.datasets.data.stores import open_zarr
@@ -20,10 +21,14 @@ class Info(Command):
     def run(self, args):
 
         z = open_zarr(zarr_lookup(args.path))
-        print(dict(z.attrs))
 
-        for k, v in z:
-            print(k, v)
+        for a in z.arrays():
+            print(a)
+
+        # print(list(z.arrays()))
+
+        # print(dir(z))
+        print(json.dumps(dict(z.attrs), indent=2))
 
 
 command = Info
