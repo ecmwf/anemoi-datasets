@@ -112,13 +112,12 @@ class Create(Command):
         parallel = threads + processes
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(total):
-                futures.append(executor.submit(task, "load", options, parts=f"{n+1}/{total}"))
+                opt = options.copy()
+                opt["parts"] = f"{n+1}/{total}"
+                futures.append(executor.submit(task, "load", opt))
 
-            for future in tqdm.tqdm(
-                as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
-            ):
+            for future in tqdm.tqdm(as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
                 future.result()
-        exit()
 
         with ExecutorClass(max_workers=1) as executor:
             executor.submit(task, "finalise", options).result()
@@ -127,16 +126,13 @@ class Create(Command):
             executor.submit(task, "init-additions", options).result()
 
         with ExecutorClass(max_workers=parallel) as executor:
+            opt = options.copy()
+            opt["parts"] = f"{n+1}/{total}"
+            futures.append(executor.submit(task, "load", opt))
             for n in range(total):
-                futures.append(executor.submit(task, "load-additions", options, parts=f"{n+1}/{total}"))
+                futures.append(executor.submit(task, "load-additions", opt))
 
-            for future in tqdm.tqdm(
-                as_completed(futures),
-                desc="Computing additions",
-                total=len(futures),
-                colour="green",
-                position=parallel + 1,
-            ):
+            for future in tqdm.tqdm(as_completed(futures), desc="Computing additions", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
