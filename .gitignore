@@ -190,3 +190,6 @@ _build/
 _dev/
 *.to_upload
 *.tmp
+test.ipynb
+*tmp_data/
+tempCodeRunnerFile.python

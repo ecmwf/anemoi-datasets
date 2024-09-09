@@ -136,41 +136,6 @@ class Unchecked(Combined):
         return result
 
 
-class Zip(Unchecked):
-
-    def __len__(self):
-        return min(len(d) for d in self.datasets)
-
-    def __getitem__(self, n):
-        return tuple(d[n] for d in self.datasets)
-
-    @cached_property
-    def missing(self):
-        result = set()
-        for d in self.datasets:
-            result = result | d.missing
-        return result
-
-    @property
-    def shape(self):
-        return tuple(d.shape for d in self.datasets)
-
-    @property
-    def dtype(self):
-        return tuple(d.dtype for d in self.datasets)
-
-    @property
-    def grids(self):
-        return tuple(d.grids for d in self.datasets)
-
-    @property
-    def variables(self):
-        return tuple(d.variables for d in self.datasets)
-
-    def dataset_metadata(self):
-        return {"multiple": [d.dataset_metadata() for d in self.datasets]}
-
-
 class Chain(ConcatMixin, Unchecked):
     """Same as Concat, but with no checks"""
 

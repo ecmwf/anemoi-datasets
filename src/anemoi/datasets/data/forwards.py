@@ -190,14 +190,9 @@ class Combined(Forwards):
             **kwargs,
         )
 
-    @cached_property
+    @property
     def missing(self):
-        offset = 0
-        result = set()
-        for d in self.datasets:
-            result.update(offset + m for m in d.missing)
-            offset += len(d)
-        return result
+        raise NotImplementedError("missing() not implemented for Combined")
 
     def get_dataset_names(self, names):
         for d in self.datasets:
@@ -252,3 +247,14 @@ class GivenAxis(Combined):
             return self._get_slice(n)
 
         return np.concatenate([d[n] for d in self.datasets], axis=self.axis - 1)
+
+    @cached_property
+    def missing(self):
+        offset = 0
+        result = set()
+        for d in self.datasets:
+            print("--->", d.missing, d)
+            result.update(offset + m for m in d.missing)
+            if self.axis == 0:  # Advance if axis is time
+                offset += len(d)
+        return result

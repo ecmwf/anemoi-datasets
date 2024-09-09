@@ -17,6 +17,8 @@ Keep it human-readable, your future self will thank you!
 ## [0.4.5]
 
 ### Added
+
+- New `interpolate_frequency` keyword in `open_dataset`
 - CI workflow to update the changelog on release
 - adds the reusable cd pypi workflow
 - merge strategy for changelog in .gitattributes #25
@@ -27,6 +29,7 @@ Keep it human-readable, your future self will thank you!
 - Support sub-hourly datasets.
 - Change negative variance detection to make it less restrictive
 - Fix cutout bug that left some global grid points in the lam part
+- Fix bug in computing missing dates in cutout option
 
 ### Removed
 

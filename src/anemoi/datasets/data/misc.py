@@ -13,7 +13,6 @@ from pathlib import PurePath
 import numpy as np
 import zarr
 from anemoi.utils.config import load_config as load_settings
-from anemoi.utils.dates import frequency_to_timedelta
 
 from .dataset import Dataset
 
@@ -160,27 +159,9 @@ def _concat_or_join(datasets, kwargs):
 
         return Join(datasets)._overlay(), kwargs
 
-    # Make sure the dates are disjoint
-    for i in range(len(ranges)):
-        r = ranges[i]
-        for j in range(i + 1, len(ranges)):
-            s = ranges[j]
-            if r[0] <= s[0] <= r[1] or r[0] <= s[1] <= r[1]:
-                raise ValueError(f"Overlapping dates: {r} and {s} ({datasets[i]} {datasets[j]})")
-
-    # For now we should have the datasets in order with no gaps
-
-    frequency = frequency_to_timedelta(datasets[0].frequency)
-
-    for i in range(len(ranges) - 1):
-        r = ranges[i]
-        s = ranges[i + 1]
-        if r[1] + frequency != s[0]:
-            raise ValueError(
-                "Datasets must be sorted by dates, with no gaps: " f"{r} and {s} ({datasets[i]} {datasets[i+1]})"
-            )
-
     from .concat import Concat
+
+    Concat.check_dataset_compatibility(datasets)
 
     return Concat(datasets), kwargs
 

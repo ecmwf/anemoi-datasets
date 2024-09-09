@@ -5,8 +5,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
+import json
 import logging
 import os
+import pprint
 import warnings
 from functools import cached_property
 
@@ -47,12 +50,21 @@ class Dataset:
         if "frequency" in kwargs:
             from .subset import Subset
 
+            if "interpolate_frequency" in kwargs:
+                raise ValueError("Cannot use both `frequency` and `interpolate_frequency`")
+
             frequency = kwargs.pop("frequency")
             return (
                 Subset(self, self._frequency_to_indices(frequency), dict(frequency=frequency))
                 ._subset(**kwargs)
                 .mutate()
             )
+
+        if "interpolate_frequency" in kwargs:
+            from .interpolate import InterpolateFrequency
+
+            interpolate_frequency = kwargs.pop("interpolate_frequency")
+            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "select" in kwargs:
             from .select import Select
@@ -98,6 +110,24 @@ class Dataset:
 
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
+
+        if "missing_dates" in kwargs:
+            from .missing import MissingDates
+
+            missing_dates = kwargs.pop("missing_dates")
+            return MissingDates(self, missing_dates)._subset(**kwargs).mutate()
+
+        if "skip_missing_dates" in kwargs:
+            from .missing import SkipMissingDates
+
+            if "expected_access" not in kwargs:
+                raise ValueError("`expected_access` is required with `skip_missing_dates`")
+
+            skip_missing_dates = kwargs.pop("skip_missing_dates")
+            expected_access = kwargs.pop("expected_access")
+
+            if skip_missing_dates:
+                return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:
@@ -192,15 +222,44 @@ class Dataset:
                 return {k: tidy(v) for k, v in v.items()}
             if isinstance(v, str) and v.startswith("/"):
                 return os.path.basename(v)
+            if isinstance(v, datetime.datetime):
+                return v.isoformat()
+            if isinstance(v, datetime.date):
+                return v.isoformat()
+            if isinstance(v, datetime.timedelta):
+                return frequency_to_string(v)
+
+            if isinstance(v, Dataset):
+                # That can happen in the `arguments`
+                # if a dataset is passed as an argument
+                return repr(v)
+
+            if isinstance(v, slice):
+                return (v.start, v.stop, v.step)
+
             return v
 
-        return tidy(
-            dict(
-                version=anemoi.datasets.__version__,
-                arguments=self.arguments,
-                **self.dataset_metadata(),
-            )
+        md = dict(
+            version=anemoi.datasets.__version__,
+            arguments=self.arguments,
+            **self.dataset_metadata(),
         )
+
+        try:
+            return json.loads(json.dumps(tidy(md)))
+        except Exception:
+            LOG.exception("Failed to serialize metadata")
+            pprint.pprint(md)
+
+            raise
+
+    @property
+    def start_date(self):
+        return self.dates[0]
+
+    @property
+    def end_date(self):
+        return self.dates[-1]
 
     def dataset_metadata(self):
         return dict(
@@ -208,8 +267,8 @@ class Dataset:
             frequency=self.frequency,
             variables=self.variables,
             shape=self.shape,
-            start_date=self.dates[0].astype(str),
-            end_date=self.dates[-1].astype(str),
+            start_date=self.start_date.astype(str),
+            end_date=self.end_date.astype(str),
         )
 
     def metadata_specific(self, **kwargs):
@@ -220,8 +279,8 @@ class Dataset:
             variables=self.variables,
             shape=self.shape,
             frequency=frequency_to_string(frequency_to_timedelta(self.frequency)),
-            start_date=self.dates[0].astype(str),
-            end_date=self.dates[-1].astype(str),
+            start_date=self.start_date.astype(str),
+            end_date=self.end_date.astype(str),
             **kwargs,
         )
 
@@ -239,10 +298,6 @@ class Dataset:
         for n in overriden:
             if n.startswith("_") and not n.startswith("__"):
                 warnings.warn(f"Private method {n} is overriden in {ds.__class__.__name__}")
-
-        # for n in ('metadata_specific', 'tree', 'source'):
-        #     if n not in overriden:
-        #         warnings.warn(f"Method {n} is not overriden in {ds.__class__.__name__}")
 
     def _repr_html_(self):
         return self.tree().html()
