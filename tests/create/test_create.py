@@ -222,7 +222,7 @@ def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
 
-    creator_factory("init", config=config,path=output, overwrite=True).run_it()
+    creator_factory("init", config=config, path=output, overwrite=True).run_it()
     creator_factory("load", path=output).run_it()
     creator_factory("statistics", path=output).run_it()
     creator_factory("size", path=output).run_it()

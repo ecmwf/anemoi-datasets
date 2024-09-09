@@ -8,12 +8,6 @@
 #
 VERSION = "0.20"
 
-import logging
-from copy import deepcopy
-from functools import cached_property
-import numpy as np
-from anemoi.datasets.dates.groups import Groups
-import os
 import datetime
 import json
 import logging
@@ -21,11 +15,12 @@ import os
 import time
 import uuid
 import warnings
+from copy import deepcopy
 from functools import cached_property
 
 import numpy as np
 import tqdm
-from anemoi.utils.config import DotDict
+from anemoi.utils.config import DotDict as DotDict
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -486,14 +481,15 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
 
-        def check_config(a,b):
+        def check_config(a, b):
             a = json.dumps(a, sort_keys=True, default=str)
-            b = json.dumps(b , sort_keys=True, default=str)
+            b = json.dumps(b, sort_keys=True, default=str)
             if a != b:
                 print("❌❌❌ FIXME: DIFFERENT CONFIGS (group_by different because of test)")
                 print(a)
                 print(b)
-        check_config(self.main_config,self.dataset.get_main_config())
+
+        check_config(self.main_config, self.dataset.get_main_config())
 
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)

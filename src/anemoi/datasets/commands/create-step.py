@@ -1,14 +1,8 @@
-import datetime
 import logging
 import time
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
 
-import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.create.trace import enable_trace
 
 from . import Command
 
@@ -32,12 +26,14 @@ class CreateStep(Command):
 
         statistics = subparsers.add_parser("statistics")
         size = subparsers.add_parser("size")
-        finalise = subparsers.add_parser("finalise") # finalize = statistics + size (for now)
+        finalise = subparsers.add_parser("finalise")  # finalize = statistics + size (for now)
 
         init_additions = subparsers.add_parser("init-additions")
         run_additions = subparsers.add_parser("run-additions")
         finalise_additions = subparsers.add_parser("finalise-additions")
-        additions = subparsers.add_parser("additions") # additions = init_additions + run_additions + finalise_additions
+        additions = subparsers.add_parser(
+            "additions"
+        )  # additions = init_additions + run_additions + finalise_additions
 
         patch = subparsers.add_parser("patch")
         cleanup = subparsers.add_parser("cleanup")

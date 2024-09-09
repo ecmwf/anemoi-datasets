@@ -8,7 +8,6 @@ from concurrent.futures import as_completed
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-
 from . import Command
 
 LOG = logging.getLogger(__name__)
@@ -23,10 +22,10 @@ def task(what, options, *args, **kwargs):
     LOG.info(f"Task {what}({args},{kwargs}) starting")
 
     from anemoi.datasets.create import creator_factory
-    
+
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = creator_factory(what.replace('-', '_'), **options)
+    c = creator_factory(what.replace("-", "_"), **options)
     result = c.run_it()
 
     LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
