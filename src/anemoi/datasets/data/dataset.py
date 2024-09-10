@@ -90,6 +90,12 @@ class Dataset:
             rename = kwargs.pop("rename")
             return Rename(self, rename)._subset(**kwargs).mutate()
 
+        if "rescale" in kwargs:
+            from .rescale import Rescale
+
+            rescale = kwargs.pop("rescale")
+            return Rescale(self, rescale)._subset(**kwargs).mutate()
+
         if "statistics" in kwargs:
             from ..data import open_dataset
             from .statistics import Statistics
