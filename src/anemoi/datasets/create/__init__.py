@@ -203,14 +203,14 @@ class NewDataset(Dataset):
 
 
 class Actor:  # TODO: rename to Creator
-    cache = None
     dataset_class = WritableDataset
 
-    def __init__(self, path):
+    def __init__(self, path, cache=None):
         # Catch all floating point errors, including overflow, sqrt(<0), etc
         np.seterr(all="raise", under="warn")
 
         self.path = path
+        self.cache = cache
         self.dataset = self.dataset_class(self.path)
 
     def run(self):
@@ -325,11 +325,11 @@ def build_input_(main_config, output_config):
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     dataset_class = NewDataset
-    def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, **kwargs):  # fmt: skip
+    def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, cache=None, **kwargs):  # fmt: skip
         if _path_readable(path) and not overwrite:
             raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
 
-        super().__init__(path)
+        super().__init__(path, cache=cache)
         self.config = config
         self.check_name = check_name
         self.use_threads = use_threads
@@ -497,8 +497,8 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 
 class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    def __init__(self, path, parts=None,  use_threads=False, statistics_temp_dir=None, progress=None, **kwargs):  # fmt: skip
-        super().__init__(path)
+    def __init__(self, path, parts=None,  use_threads=False, statistics_temp_dir=None, progress=None, cache=None, **kwargs):  # fmt: skip
+        super().__init__(path, cache=cache)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
         self.progress = progress

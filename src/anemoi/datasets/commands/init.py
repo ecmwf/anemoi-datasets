@@ -16,36 +16,37 @@ class Init(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, init):
+    def add_arguments(self, subparser):
 
-        init.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
-        init.add_argument("path", help="Path to store the created data.")
+        subparser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
+        subparser.add_argument("path", help="Path to store the created data.")
 
-        init.add_argument(
+        subparser.add_argument(
             "--overwrite",
             action="store_true",
             help="Overwrite existing files. This will delete the target dataset if it already exists.",
         )
-        init.add_argument(
+        subparser.add_argument(
             "--test",
             action="store_true",
             help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
         )
-        init.add_argument(
+        subparser.add_argument(
             "--check-name",
             dest="check_name",
             action="store_true",
             help="Check if the dataset name is valid before creating it.",
         )
-        init.add_argument(
+        subparser.add_argument(
             "--no-check-name",
             dest="check_name",
             action="store_false",
             help="Do not check if the dataset name is valid before creating it.",
         )
-        init.set_defaults(check_name=False)
+        subparser.set_defaults(check_name=False)
+        subparser.add_argument("--cache", help="Location to store the downloaded data.", metavar="DIR")
 
-        init.add_argument("--trace", action="store_true")
+        subparser.add_argument("--trace", action="store_true")
 
     def run(self, args):
         options = vars(args)
