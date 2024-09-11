@@ -68,17 +68,12 @@ class Rescale(Forwards):
 
         for i, v in enumerate(variables):
             if v in rescale:
-                print(i)
                 self._a[i], self._b[i] = make_rescale(v, rescale[v])
 
         self._a = self._a[np.newaxis, :, np.newaxis, np.newaxis]
         self._b = self._b[np.newaxis, :, np.newaxis, np.newaxis]
 
         self.rescale = rescale
-
-    @property
-    def variables(self):
-        return self._variables
 
     def tree(self):
         return Node(self, [self.forward.tree()], rescale=self.rescale)
