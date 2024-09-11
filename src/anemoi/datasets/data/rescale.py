@@ -66,15 +66,15 @@ class Rescale(Forwards):
         self._a = np.ones(len(variables))
         self._b = np.zeros(len(variables))
 
+        self.rescale = {}
         for i, v in enumerate(variables):
             if v in rescale:
-                print(i)
-                self._a[i], self._b[i] = make_rescale(v, rescale[v])
+                a, b = make_rescale(v, rescale[v])
+                self.rescale[v] = a, b
+                self._a[i], self._b[i] = a, b
 
         self._a = self._a[np.newaxis, :, np.newaxis, np.newaxis]
         self._b = self._b[np.newaxis, :, np.newaxis, np.newaxis]
-
-        self.rescale = rescale
 
     @property
     def variables(self):
