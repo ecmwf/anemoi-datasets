@@ -12,6 +12,9 @@ Keep it human-readable, your future self will thank you!
 
 ### Added
 ### Changed
+
+- Added incremental building of datasets
+
 ### Removed
 
 ## [0.4.5]

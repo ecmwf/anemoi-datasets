@@ -25,6 +25,7 @@ class Load(Command):
         #    )
 
         subparser.add_argument("path", help="Path to store the created data.")
+        subparser.add_argument("--cache", help="Location to store the downloaded data.", metavar="DIR")
         subparser.add_argument("--trace", action="store_true")
 
     def run(self, args):
