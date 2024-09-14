@@ -11,6 +11,9 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
+
+- New `rescale` keyword in `open_dataset` to change units of variables
+
 ### Changed
 ### Removed
 
