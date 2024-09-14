@@ -115,8 +115,21 @@ class Rescale(Forwards):
 
     @cached_property
     def statistics(self):
-        warnings.warn("Statistics are not rescaled")
-        return self.forward.statistics
+        result = {}
+        a = self._a.squeeze()
+        b = self._b.squeeze()
+        for k, v in self.forward.statistics.items():
+            if k in ("maximum", "minimum", "mean"):
+                result[k] = v * a + b
+                continue
+
+            if k in ("stdev",):
+                result[k] = v * a
+                continue
+
+            raise NotImplementedError("rescale statistics", k)
+
+        return result
 
     def statistics_tendencies(self, delta=None):
         warnings.warn("Statistics are not rescaled")
