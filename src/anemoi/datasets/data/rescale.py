@@ -61,7 +61,6 @@ class Rescale(Forwards):
             assert n in dataset.variables, n
 
         variables = dataset.variables
-        print(variables)
 
         self._a = np.ones(len(variables))
         self._b = np.zeros(len(variables))
@@ -75,6 +74,9 @@ class Rescale(Forwards):
 
         self._a = self._a[np.newaxis, :, np.newaxis, np.newaxis]
         self._b = self._b[np.newaxis, :, np.newaxis, np.newaxis]
+
+        self._a = self._a.astype(self.forward.dtype)
+        self._b = self._b.astype(self.forward.dtype)
 
     def tree(self):
         return Node(self, [self.forward.tree()], rescale=self.rescale)
