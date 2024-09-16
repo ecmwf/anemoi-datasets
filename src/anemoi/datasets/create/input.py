@@ -1021,6 +1021,9 @@ class FunctionContext:
     def trace(self, emoji, *args):
         trace(emoji, *args)
 
+    def info(self, *args, **kwargs):
+        LOG.info(*args, **kwargs)
+
 
 class ActionContext(Context):
     def __init__(self, /, order_by, flatten_grid, remapping, use_grib_paramid):

@@ -11,7 +11,25 @@
 import glob
 
 from earthkit.data import from_source
+from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
+
+
+class AddGrid:
+
+    def __init__(self, field, latitudes, longitudes):
+        self._field = field
+        self._latitudes = latitudes
+        self._longitudes = longitudes
+
+    def __getattr__(self, name):
+        return getattr(self._field, name)
+
+    def __repr__(self) -> str:
+        return repr(self._field)
+
+    def grid_points(self):
+        return self._latitudes, self._longitudes
 
 
 def check(ds, paths, **kwargs):
@@ -34,8 +52,15 @@ def _expand(paths):
             yield path
 
 
-def execute(context, dates, path, *args, **kwargs):
+def execute(context, dates, path, latitudes=None, longitudes=None, *args, **kwargs):
     given_paths = path if isinstance(path, list) else [path]
+
+    if latitudes is not None and longitudes is not None:
+        context.info(f"Using latitudes and longitudes from {latitudes} and {longitudes}")
+        latitudes = from_source("file", latitudes)[0].to_numpy(flatten=True)
+        longitudes = from_source("file", longitudes)[0].to_numpy(flatten=True)
+        context.info(f"Latitudes: {len(latitudes)}, Longitudes: {len(longitudes)}")
+        assert len(latitudes) == len(longitudes)
 
     ds = from_source("empty")
     dates = [d.isoformat() for d in dates]
@@ -55,5 +80,8 @@ def execute(context, dates, path, *args, **kwargs):
 
     if kwargs:
         check(ds, given_paths, valid_datetime=dates, **kwargs)
+
+    if latitudes is not None and longitudes is not None:
+        ds = FieldArray([AddGrid(_, latitudes, longitudes) for _ in ds])
 
     return ds
