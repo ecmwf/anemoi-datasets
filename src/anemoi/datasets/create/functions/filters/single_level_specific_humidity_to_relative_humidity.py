@@ -27,7 +27,7 @@ class NewDataField:
     def metadata(self, key=None, **kwargs):
         if key is None:
             return self.field.metadata(**kwargs)
-        
+
         value = self.field.metadata(key, **kwargs)
         if key == "param":
             return self.new_name
@@ -259,7 +259,7 @@ def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
 
             needed_fields[key][levtype][param] = f
             if param == q:
-                if kwargs.get("keep_q",False):
+                if kwargs.get("keep_q", False):
                     result.append(f)
             else:
                 result.append(f)
@@ -315,11 +315,12 @@ def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
         # See https://github.com/ecmwf/earthkit-meteo/issues/15
         p_sl = pressure_at_height_level(height, q_ml, t_ml, sp_sl, np.array(kwargs["A"]), np.array(kwargs["B"]))
         td_sl = thermo.dewpoint_from_specific_humidity(q=q_sl, p=p_sl)
-        rh_sl = thermo.relative_humidity_from_dewpoint(t=t_sl, td=td_sl)        
-        
+        rh_sl = thermo.relative_humidity_from_dewpoint(t=t_sl, td=td_sl)
+
         result.append(NewDataField(values["sfc"][q], rh_sl, new_name))
 
     return result
+
 
 def test():
     from earthkit.data import from_source
@@ -376,7 +377,8 @@ def test():
     print(f"Median difference in dewpoint temperature: {np.median(np.abs(newdew - dewpoint)):02f} degC")
     print(f"Maximum difference in dewpoint temperature: {np.abs(newdew - dewpoint).max():02f} degC")
 
-    #source.save("source.grib")
+    # source.save("source.grib")
+
 
 if __name__ == "__main__":
     test()

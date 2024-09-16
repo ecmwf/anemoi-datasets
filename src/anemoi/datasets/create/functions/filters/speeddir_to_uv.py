@@ -20,7 +20,7 @@ class NewDataField:
     def metadata(self, key=None, **kwargs):
         if key is None:
             return self.field.metadata(**kwargs)
-        
+
         value = self.field.metadata(key, **kwargs)
         if key == "param":
             return self.new_name

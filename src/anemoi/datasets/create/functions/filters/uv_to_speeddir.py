@@ -6,7 +6,9 @@ from collections import defaultdict
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo.wind.array import xy_to_polar
+
 from anemoi.datasets.create.functions.filters.speeddir_to_uv import NewDataField
+
 
 def execute(context, input, u_component, v_component, wind_speed, wind_dir, in_radians=False):
     result = FieldArray()

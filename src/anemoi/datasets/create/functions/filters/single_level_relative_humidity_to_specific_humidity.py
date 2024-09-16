@@ -5,9 +5,11 @@
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
+
 from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import AutoDict
 from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import NewDataField
-from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
+from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import \
+    pressure_at_height_level
 
 
 def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):
@@ -50,7 +52,7 @@ def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):
 
             needed_fields[key][levtype][param] = f
             if param == rh:
-                if kwargs.get("keep_rh",False):
+                if kwargs.get("keep_rh", False):
                     result.append(f)
             else:
                 result.append(f)

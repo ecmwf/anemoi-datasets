@@ -3,7 +3,6 @@
 
 from collections import defaultdict
 
-import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 

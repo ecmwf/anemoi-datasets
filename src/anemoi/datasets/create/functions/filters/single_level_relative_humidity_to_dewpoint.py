@@ -5,7 +5,6 @@ from collections import defaultdict
 
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
-
 from single_level_specific_humidity_to_relative_humidity import NewDataField
 
 EPS = 1.0e-4
