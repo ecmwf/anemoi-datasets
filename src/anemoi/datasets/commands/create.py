@@ -10,7 +10,7 @@ import yaml
 from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets.create.trace import enable_trace
-from anemoi.datasets.schema import validate
+from anemoi.datasets.schema import expand, validate
 
 from . import Command
 
@@ -66,8 +66,7 @@ class Create(Command):
         with open(args.config, "r") as f:
             config = yaml.safe_load(f)
 
-        if not validate(config):
-            exit(1)
+        config  = expand(config)
 
         now = time.time()
         if args.threads + args.processes:

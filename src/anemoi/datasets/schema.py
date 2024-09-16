@@ -200,6 +200,11 @@ class Recipe(BaseModel):
     status: str = Annotated[int, Field(deprecated="This is deprecated")]
     dataset_status: str = Annotated[int, Field(deprecated="This is deprecated")]
 
+def expand(config):
+    return config
+    model = init()
+    recipe = model(**config)
+    return recipe.model_dump()
 
 def validate(config, schema=False):
 
