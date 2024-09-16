@@ -75,7 +75,7 @@ def time_delta_to_string(delta):
 
 
 def is_function(name, kind):
-    name, delta = parse_function_name(name)  # noqa
+    name, _ = parse_function_name(name)
     try:
         import_function(name, kind)
         return True

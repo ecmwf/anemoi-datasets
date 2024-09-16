@@ -947,7 +947,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         )
         start, end = np.datetime64(start), np.datetime64(end)
         dates = self.dataset.anemoi_dataset.dates
-        assert type(dates[0]) == type(start), (type(dates[0]), type(start))  # noqa
+        assert type(dates[0]) is type(start), (type(dates[0]), type(start))
         dates = [d for d in dates if d >= start and d <= end]
         dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
         variables = self.dataset.anemoi_dataset.variables
