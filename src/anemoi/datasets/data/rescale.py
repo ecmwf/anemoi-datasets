@@ -6,7 +6,6 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-import warnings
 from functools import cached_property
 
 import numpy as np
@@ -117,6 +116,8 @@ class Rescale(Forwards):
     def statistics(self):
         result = {}
         a = self._a.squeeze()
+        assert np.all(a >= 0)
+
         b = self._b.squeeze()
         for k, v in self.forward.statistics.items():
             if k in ("maximum", "minimum", "mean"):
@@ -132,5 +133,15 @@ class Rescale(Forwards):
         return result
 
     def statistics_tendencies(self, delta=None):
-        warnings.warn("Statistics are not rescaled")
-        return self.forward.statistics_tendencies(delta)
+        result = {}
+        a = self._a.squeeze()
+        assert np.all(a >= 0)
+
+        for k, v in self.forward.statistics_tendencies(delta).items():
+            if k in ("maximum", "minimum", "mean", "stdev"):
+                result[k] = v * a
+                continue
+
+            raise NotImplementedError("rescale tendencies statistics", k)
+
+        return result
