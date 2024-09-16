@@ -16,6 +16,8 @@ from anemoi.utils.config import DotDict
 from anemoi.utils.config import load_any_dict_format
 from earthkit.data.core.order import normalize_order_by
 
+from anemoi.datasets.dates.groups import Groups
+
 LOG = logging.getLogger(__name__)
 
 
@@ -213,7 +215,7 @@ def set_to_test_mode(cfg):
     NUMBER_OF_DATES = 4
 
     dates = cfg.dates
-    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
     groups = Groups(**cfg.dates)
     dates = groups.dates
     cfg.dates = dict(
