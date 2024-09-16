@@ -8,7 +8,6 @@ from concurrent.futures import as_completed
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-
 from . import Command
 
 LOG = logging.getLogger(__name__)
@@ -58,9 +57,6 @@ class Create(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args):
-
-        with open(args.config, "r") as f:
-            config = yaml.safe_load(f)
 
         now = time.time()
         if args.threads + args.processes:
