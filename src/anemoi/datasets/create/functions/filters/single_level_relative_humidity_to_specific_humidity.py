@@ -5,9 +5,9 @@
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
-from single_level_specific_humidity_to_relative_humidity import AutoDict
-from single_level_specific_humidity_to_relative_humidity import NewDataField
-from single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
+from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import AutoDict
+from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import NewDataField
+from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
 
 
 def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):
@@ -49,7 +49,11 @@ def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):
                 raise ValueError(f"Duplicate single level field {param} for {key}")
 
             needed_fields[key][levtype][param] = f
-            result.append(f)
+            if param == rh:
+                if kwargs.get("keep_rh",False):
+                    result.append(f)
+            else:
+                result.append(f)
 
         # check model level parameters
         elif param in model_level_params:
@@ -102,43 +106,3 @@ def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):
         result.append(NewDataField(values["sfc"][rh], q_sl, new_name))
 
     return result
-
-
-if __name__ == "__main__":
-    from earthkit.data import from_source
-    from earthkit.data.readers.grib.index import GribFieldList
-
-    # IFS forecast have both specific humidity and dewpoint
-    sl = from_source(
-        "mars",
-        {
-            "date": "2022-01-01",
-            "class": "od",
-            "expver": "1",
-            "stream": "oper",
-            "levtype": "sfc",
-            "param": "96.174/134.128/167.128/168.128",
-            "time": "00:00:00",
-            "type": "fc",
-            "step": "2",
-            "grid": "O640",
-        },
-    )
-
-    ml = from_source(
-        "mars",
-        {
-            "date": "2022-01-01",
-            "class": "od",
-            "expver": "1",
-            "stream": "oper",
-            "levtype": "ml",
-            "levelist": "130/131/132/133/134/135/136/137",
-            "param": "130/133",
-            "time": "00:00:00",
-            "type": "fc",
-            "step": "2",
-            "grid": "O640",
-        },
-    )
-    source = GribFieldList.merge([sl, ml])

@@ -4,7 +4,7 @@
 
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
-from earthkit.meteo import constants  # type: ignore
+from earthkit.meteo import constants
 from earthkit.meteo import thermo
 
 
@@ -24,7 +24,10 @@ class NewDataField:
     def to_numpy(self, *args, **kwargs):
         return self.data
 
-    def metadata(self, key, **kwargs):
+    def metadata(self, key=None, **kwargs):
+        if key is None:
+            return self.field.metadata(**kwargs)
+        
         value = self.field.metadata(key, **kwargs)
         if key == "param":
             return self.new_name
@@ -255,7 +258,11 @@ def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
                 raise ValueError(f"Duplicate single level field {param} for {key}")
 
             needed_fields[key][levtype][param] = f
-            result.append(f)
+            if param == q:
+                if kwargs.get("keep_q",False):
+                    result.append(f)
+            else:
+                result.append(f)
 
         # check model level parameters
         elif param in model_level_params:
@@ -308,18 +315,17 @@ def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
         # See https://github.com/ecmwf/earthkit-meteo/issues/15
         p_sl = pressure_at_height_level(height, q_ml, t_ml, sp_sl, np.array(kwargs["A"]), np.array(kwargs["B"]))
         td_sl = thermo.dewpoint_from_specific_humidity(q=q_sl, p=p_sl)
-        rh_sl = thermo.relative_humidity_from_dewpoint(t=t_sl, td=td_sl)
-
+        rh_sl = thermo.relative_humidity_from_dewpoint(t=t_sl, td=td_sl)        
+        
         result.append(NewDataField(values["sfc"][q], rh_sl, new_name))
 
     return result
 
-
-if __name__ == "__main__":
+def test():
     from earthkit.data import from_source
     from earthkit.data.readers.grib.index import GribFieldList
 
-    # IFS forecast have both specific humidity and dewpoint
+    # IFS forecasts have both specific humidity and dewpoint
     sl = from_source(
         "mars",
         {
@@ -360,15 +366,17 @@ if __name__ == "__main__":
         "B": [0.969513, 0.975078, 0.980072, 0.984542, 0.988500, 0.991984, 0.995003, 0.997630, 1.000000],
     }
     source = execute(None, source, 2, "2t", "2sh", "sp", "2r", **kwargs)
-    for s in source:
-        print(s)
 
     temperature = source[2].to_numpy(flatten=True)
     dewpoint = source[3].to_numpy(flatten=True)
     relhum = source[4].to_numpy()
     newdew = thermo.dewpoint_from_relative_humidity(temperature, relhum)
 
-    print(f"MEAN DIFFERENCE: {np.abs(newdew - dewpoint).mean()}")
-    print(f"MAX DIFFERENCE: {np.abs(newdew - dewpoint).max()}")
+    print(f"Mean difference in dewpoint temperature: {np.abs(newdew - dewpoint).mean():02f} degC")
+    print(f"Median difference in dewpoint temperature: {np.median(np.abs(newdew - dewpoint)):02f} degC")
+    print(f"Maximum difference in dewpoint temperature: {np.abs(newdew - dewpoint).max():02f} degC")
 
-    source.save("source.grib")
+    #source.save("source.grib")
+
+if __name__ == "__main__":
+    test()
