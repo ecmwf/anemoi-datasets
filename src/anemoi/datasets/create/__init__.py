@@ -245,9 +245,9 @@ class Actor:  # TODO: rename to Creator
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
-                LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-                LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-                LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
                 raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
         check_missing_dates(self.missing_dates)
@@ -846,7 +846,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         )
 
         if len(ifound) < 2:
-            LOG.warn(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
+            LOG.warning(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
             self.tmp_storage.delete()
             return
 
