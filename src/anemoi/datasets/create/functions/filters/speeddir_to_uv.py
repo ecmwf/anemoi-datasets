@@ -17,7 +17,10 @@ class NewDataField:
     def to_numpy(self, *args, **kwargs):
         return self.data
 
-    def metadata(self, key, **kwargs):
+    def metadata(self, key=None, **kwargs):
+        if key is None:
+            return self.field.metadata(**kwargs)
+        
         value = self.field.metadata(key, **kwargs)
         if key == "param":
             return self.new_name

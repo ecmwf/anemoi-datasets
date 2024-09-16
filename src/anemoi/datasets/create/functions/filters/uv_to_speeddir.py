@@ -6,26 +6,7 @@ from collections import defaultdict
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo.wind.array import xy_to_polar
-
-
-class NewDataField:
-    def __init__(self, field, data, new_name):
-        self.field = field
-        self.data = data
-        self.new_name = new_name
-
-    def to_numpy(self, *args, **kwargs):
-        return self.data
-
-    def metadata(self, key):
-        value = self.field.metadata(key)
-        if key == "param":
-            return self.new_name
-        return value
-
-    def __getattr__(self, name):
-        return getattr(self.field, name)
-
+from anemoi.datasets.create.functions.filters.speeddir_to_uv import NewDataField
 
 def execute(context, input, u_component, v_component, wind_speed, wind_dir, in_radians=False):
     result = FieldArray()
@@ -56,7 +37,7 @@ def execute(context, input, u_component, v_component, wind_speed, wind_dir, in_r
         v = pairs[v_component]
 
         # assert speed.grid_mapping == dir.grid_mapping
-        magnitude, direction = xy_to_polar(u.to_numpy(reshape=False), v.to_numpy(reshape=False))
+        magnitude, direction = xy_to_polar(u.to_numpy(flatten=True), v.to_numpy(flatten=True))
         if in_radians:
             direction = np.deg2rad(direction)
 
