@@ -262,6 +262,16 @@ def _auto_adjust(datasets, kwargs):
 
 
 def _open_dataset(*args, **kwargs):
+
+    if not args and len(kwargs) == 1 and "observations" in kwargs:
+        # TODO remove this: and integrate observation better in anemoi-datasets
+        from .observations import observations_factory
+
+        return observations_factory(args, kwargs).mutate()
+    if not kwargs and len(args) == 1 and isinstance(args[0], Dataset):
+        return _open_dataset(**args[0])
+        # TODO remove this: and integrate observation better in anemoi-datasets
+
     sets = []
     for a in args:
         sets.append(_open(a))

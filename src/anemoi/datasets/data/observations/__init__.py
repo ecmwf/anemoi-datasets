@@ -11,8 +11,7 @@ import os
 from functools import cached_property
 
 import numpy as np
-
-from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_string as frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from ..debug import Node
@@ -52,6 +51,9 @@ def merge_dates(datasets):
 
 
 class ObservationsBase:
+    resolution = None
+    ensemble_size = 1
+
     def mutate(self):
         return self
 
@@ -170,6 +172,24 @@ class RenamePrefix(Forward):
         return Node(self, [self.forward.tree()], rename_prefix=self.prefix)
 
 
+class Select(Forward):
+    def __init__(self, dataset, select):
+        super().__init__(dataset)
+        self.select = select
+        self._variables = [n for n in self.forward.variables if n in select]
+
+    def tree(self):
+        return Node(self, [self.forward.tree()], select=self.select)
+
+    def getitem(self, i):
+        data = self.forward[i]
+        data = data[:, [self.forward.name_to_index[n] for n in self.select]]
+        return data
+
+    def statistics(self):
+        return {k: v for k, v in self.forward.statistics.items() if k in self.select}
+
+
 class Padded(Forward):
     def __init__(self, dataset, start, end):
         super().__init__(dataset)
@@ -228,7 +248,7 @@ class Observations(ObservationsBase):
 
         frequency_hours = int(self.frequency.total_seconds() // 3600)
         assert isinstance(frequency_hours, int), f"Expected int, got {type(frequency_hours)}"
-        
+
         if window is None:
             window = (-frequency_hours, 0)
         if window == (-frequency_hours, 0):
@@ -352,6 +372,11 @@ def observations_factory(args, kwargs):
 
 
 def _open_observations(*args, **kwargs):
+    if "select" in kwargs:
+        select = kwargs.pop("select")
+        dataset = _open_observations(*args, **kwargs).mutate()
+        return Select(dataset, select=select).mutate()
+
     if "pad" in kwargs:
         assert len(args) == 0
         pad = kwargs.pop("pad")
