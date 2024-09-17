@@ -5,6 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+
 import logging
 import os
 import warnings
@@ -83,6 +84,8 @@ class S3Store(ReadOnlyStore):
 
 
 class DebugStore(ReadOnlyStore):
+    """A store to debug the zarr loading."""
+
     def __init__(self, store):
         assert not isinstance(store, DebugStore)
         self.store = store
@@ -148,6 +151,8 @@ def open_zarr(path, dont_fail=False, cache=None):
 
 
 class Zarr(Dataset):
+    """A zarr dataset."""
+
     def __init__(self, path):
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
@@ -244,9 +249,14 @@ class Zarr(Dataset):
             delta = self.frequency
         if isinstance(delta, int):
             delta = f"{delta}h"
-        from anemoi.datasets.create.loaders import TendenciesStatisticsAddition
+        from anemoi.utils.dates import frequency_to_string
+        from anemoi.utils.dates import frequency_to_timedelta
 
-        func = TendenciesStatisticsAddition.final_storage_name_from_delta
+        delta = frequency_to_timedelta(delta)
+
+        def func(k):
+            return f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
+
         return dict(
             mean=self.z[func("mean", delta)][:],
             stdev=self.z[func("stdev", delta)][:],
@@ -322,6 +332,8 @@ class Zarr(Dataset):
 
 
 class ZarrWithMissingDates(Zarr):
+    """A zarr dataset with missing dates."""
+
     def __init__(self, path):
         super().__init__(path)
 
