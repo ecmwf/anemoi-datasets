@@ -245,9 +245,9 @@ class Actor:  # TODO: rename to Creator
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
-                LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-                LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-                LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
                 raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
         check_missing_dates(self.missing_dates)
@@ -327,7 +327,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     dataset_class = NewDataset
     def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, cache=None, **kwargs):  # fmt: skip
         if _path_readable(path) and not overwrite:
-            raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
+            raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
 
         super().__init__(path, cache=cache)
         self.config = config
@@ -345,9 +345,11 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         assert isinstance(self.main_config.output.order_by, dict), self.main_config.output.order_by
         self.create_elements(self.main_config)
 
+        LOG.info(f"Groups: {self.groups}")
+
         first_date = self.groups.dates[0]
         self.minimal_input = self.input.select([first_date])
-        LOG.info("Minimal input for 'init' step (using only the first date) :")
+        LOG.info(f"Minimal input for 'init' step (using only the first date) : {first_date}")
         LOG.info(self.minimal_input)
 
     def run(self):
@@ -527,7 +529,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
                 continue
 
-            assert isinstance(group[0], datetime.datetime), group
+            # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             result = self.input.select(dates=group)
@@ -846,7 +848,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         )
 
         if len(ifound) < 2:
-            LOG.warn(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
+            LOG.warning(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
             self.tmp_storage.delete()
             return
 
@@ -947,7 +949,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         )
         start, end = np.datetime64(start), np.datetime64(end)
         dates = self.dataset.anemoi_dataset.dates
-        assert type(dates[0]) == type(start), (type(dates[0]), type(start))  # noqa
+        assert type(dates[0]) == type(start), (type(dates[0]), type(start))
         dates = [d for d in dates if d >= start and d <= end]
         dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
         variables = self.dataset.anemoi_dataset.variables

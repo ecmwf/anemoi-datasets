@@ -10,6 +10,8 @@ import datetime
 import warnings
 
 # from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import DateTimes
+from anemoi.utils.dates import HindcastDatesTimes
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import print_dates
@@ -71,8 +73,13 @@ class Dates:
 
     @classmethod
     def from_config(cls, **kwargs):
+
+        if kwargs.pop("hindcasts", False):
+            return HindcastsDates(**kwargs)
+
         if "values" in kwargs:
             return ValuesDates(**kwargs)
+
         return StartEndDates(**kwargs)
 
     def __iter__(self):
@@ -102,7 +109,8 @@ class ValuesDates(Dates):
 
 
 class StartEndDates(Dates):
-    def __init__(self, start, end, frequency=1, months=None, **kwargs):
+    def __init__(self, start, end, frequency=1, **kwargs):
+
         frequency = frequency_to_timedelta(frequency)
         assert isinstance(frequency, datetime.timedelta), frequency
 
@@ -123,35 +131,126 @@ class StartEndDates(Dates):
         start = as_datetime(start)
         end = as_datetime(end)
 
-        # if end <= start:
-        #     raise ValueError(f"End date {end} must be after start date {start}")
-
-        increment = frequency
-
         self.start = start
         self.end = end
         self.frequency = frequency
 
-        date = start
-        self.values = []
-        while date <= end:
+        missing = kwargs.pop("missing", [])
 
-            if months is not None:
-                if date.month not in months:
-                    date += increment
-                    continue
+        self.values = list(DateTimes(start, end, increment=frequency, **kwargs))
+        self.kwargs = kwargs
 
-            self.values.append(date)
-            date += increment
-
-        super().__init__(**kwargs)
+        super().__init__(missing=missing)
 
     def as_dict(self):
         return {
             "start": self.start.isoformat(),
             "end": self.end.isoformat(),
-            "frequency": f"{self.frequency}h",
-        }
+            "frequency": frequency_to_string(self.frequency),
+        }.update(self.kwargs)
+
+
+class hdatetime:
+    def __init__(self, hdate, refdate):
+        self.hdate = hdate
+        self.refdate = refdate
+
+    def __lt__(self, other):
+        return (self.hdate, self.refdate) < (other.hdate, other.refdate)
+
+    def __le__(self, other):
+        return (self.hdate, self.refdate) <= (other.hdate, other.refdate)
+
+    def isoformat(self):
+        return self.hdate.isoformat()
+
+    def strftime(self, fmt):
+        return self.hdate.strftime(fmt)
+
+    def __sub__(self, delta):
+        if isinstance(delta, datetime.timedelta):
+            return hdatetime(self.hdate - delta, self.refdate)
+        if isinstance(delta, hdatetime):
+            return self.hdate - delta.hdate
+        raise ValueError(f"Cannot subtract {delta}")
+
+    def __rsub__(self, other):
+        return other - self.hdate
+
+    # def __iadd__(self, delta):
+    #     self.hdate += delta
+    #     return self
+
+    def __add__(self, delta):
+        return hdatetime(self.hdate + delta, self.refdate)
+
+    @property
+    def hour(self):
+        return self.hdate.hour
+
+    def __repr__(self):
+        return f"{self.hdate} (ref={self.refdate})"
+
+
+class HindcastsDates(Dates):
+    def __init__(self, start, end, steps=[0], years=20, **kwargs):
+
+        reference_dates = list(DateTimes(start, end, increment=24, **kwargs))
+        dates = []
+
+        seen = {}
+
+        for hdate, refdate in HindcastDatesTimes(reference_dates=reference_dates, years=years):
+            assert refdate - hdate >= datetime.timedelta(days=365), (refdate - hdate, refdate, hdate)
+            for step in steps:
+
+                date = hdate + datetime.timedelta(hours=step)
+
+                if date in seen:
+                    raise ValueError(f"Duplicate date {date}={hdate}+{step} for {refdate} and {seen[date]}")
+
+                seen[date] = (refdate, step)
+
+                assert refdate - date > datetime.timedelta(days=360), (refdate - date, refdate, date, hdate, step)
+
+                dates.append(hdatetime(date, refdate))
+
+        dates = sorted(dates)
+
+        mindelta = None
+        for a, b in zip(dates, dates[1:]):
+            delta = b - a
+            assert isinstance(delta, datetime.timedelta), delta
+            if mindelta is None:
+                mindelta = delta
+            else:
+                mindelta = min(mindelta, delta)
+
+        self.frequency = mindelta
+        assert mindelta.total_seconds() > 0, mindelta
+
+        print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", dates[0], dates[-1], mindelta)
+
+        # Use all values between start and end by frequency, and set the ones that are missing
+        self.values = []
+        missing = []
+        date = dates[0]
+        print("------", date, dates[-1])
+        while date <= dates[-1]:
+            self.values.append(date)
+            # if date not in dates:
+            #     missing.append(date.hdate)
+            date = date + mindelta
+
+        print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", self.values[0], self.values[-1], mindelta)
+
+        super().__init__(missing=missing)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
+
+    def as_dict(self):
+        return {"hindcasts": self.hindcasts}
 
 
 if __name__ == "__main__":

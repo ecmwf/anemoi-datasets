@@ -8,6 +8,7 @@
 
 import itertools
 
+from anemoi.datasets.create.input import shorten
 from anemoi.datasets.dates import Dates
 from anemoi.datasets.dates import as_datetime
 
@@ -62,7 +63,10 @@ class Groups:
         return count
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(dates={len(self)})"
+        return f"{self.__class__.__name__}(dates={len(self)},{shorten(self.dates)})"
+
+    def describe(self):
+        return self.dates.summary
 
 
 class Filter:

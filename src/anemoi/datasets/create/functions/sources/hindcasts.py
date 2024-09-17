@@ -24,12 +24,46 @@ def _to_list(x):
 
 
 class HindcastCompute:
-    def __init__(self, base_times, available_steps, request):
+    def __init__(self, base_times, available_steps, request, reference_year):
+        if not isinstance(base_times, (list, tuple)):
+            base_times = [base_times]
         self.base_times = base_times
         self.available_steps = available_steps
         self.request = request
 
+        # The user set 'hindcasts: True' in the 'dates' block of the configuration file.
+        self.reference_year = reference_year
+        if reference_year is None:
+            assert self.available_steps == [0], self.available_steps
+            assert self.base_times == [0], self.base_times
+
     def compute_hindcast(self, date):
+        if self.reference_year is None:
+            return self._compute_hindcast1(date)
+        else:
+            return self._compute_hindcast2(date)
+
+    def _compute_hindcast1(self, date):
+
+        # The user set 'hindcasts: True' in the 'dates' block of the configuration file.
+        r = self.request.copy()
+
+        hdate = date.hdate
+        refdate = date.refdate
+        date = datetime.datetime(hdate.year, refdate.month, refdate.day, refdate.hour, refdate.minute, refdate.second)
+        step = date - hdate
+
+        r["date"] = refdate
+        r["hdate"] = (hdate - step).strftime("%Y-%m-%d")
+        r["time"] = 0
+
+        assert step.total_seconds() % 3600 == 0, step
+        step = int(step.total_seconds() / 3600)
+        r["step"] = step
+
+        return r
+
+    def _compute_hindcast2(self, date):
         result = []
         for step in sorted(self.available_steps):  # Use the shortest step
             start_date = date - datetime.timedelta(hours=step)
@@ -57,6 +91,9 @@ class HindcastCompute:
 
 
 def use_reference_year(reference_year, request):
+    if reference_year is None:
+        return request, True
+
     request = request.copy()
     hdate = request.pop("date")
 
@@ -76,7 +113,7 @@ def use_reference_year(reference_year, request):
 
 def hindcasts(context, dates, **request):
     request["param"] = _to_list(request["param"])
-    request["step"] = _to_list(request["step"])
+    request["step"] = _to_list(request.get("step", 0))
     request["step"] = [int(_) for _ in request["step"]]
 
     if request.get("stream") == "enfh" and "base_times" not in request:
@@ -85,14 +122,14 @@ def hindcasts(context, dates, **request):
     available_steps = request.pop("step")
     available_steps = _to_list(available_steps)
 
-    base_times = request.pop("base_times")
-
-    reference_year = request.pop("reference_year")
+    base_times = request.pop("base_times", [0])
+    reference_year = request.pop("reference_year", None)
 
     context.trace("H️", f"hindcast {request} {base_times} {available_steps} {reference_year}")
 
-    c = HindcastCompute(base_times, available_steps, request)
+    c = HindcastCompute(base_times, available_steps, request, reference_year)
     requests = []
+
     for d in dates:
         req = c.compute_hindcast(d)
         req, ok = use_reference_year(reference_year, req)

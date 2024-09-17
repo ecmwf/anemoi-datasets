@@ -75,7 +75,7 @@ def time_delta_to_string(delta):
 
 
 def is_function(name, kind):
-    name, delta = parse_function_name(name)  # noqa
+    name, _ = parse_function_name(name)
     try:
         import_function(name, kind)
         return True
@@ -953,8 +953,10 @@ def action_factory(config, context, action_path):
 
     if isinstance(config[key], list):
         args, kwargs = config[key], {}
-    if isinstance(config[key], dict):
+    elif isinstance(config[key], dict):
         args, kwargs = [], config[key]
+    else:
+        raise ValueError(f"Invalid input config {config[key]} ({type(config[key])}")
 
     cls = {
         # "date_shift": DateShiftAction,
