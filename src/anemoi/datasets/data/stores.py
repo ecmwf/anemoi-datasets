@@ -253,15 +253,16 @@ class Zarr(Dataset):
         from anemoi.utils.dates import frequency_to_timedelta
 
         delta = frequency_to_timedelta(delta)
+        delta = frequency_to_string(delta)
 
         def func(k):
-            return f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
+            return f"statistics_tendencies_{delta}_{k}"
 
         return dict(
-            mean=self.z[func("mean", delta)][:],
-            stdev=self.z[func("stdev", delta)][:],
-            maximum=self.z[func("maximum", delta)][:],
-            minimum=self.z[func("minimum", delta)][:],
+            mean=self.z[func("mean")][:],
+            stdev=self.z[func("stdev")][:],
+            maximum=self.z[func("maximum")][:],
+            minimum=self.z[func("minimum")][:],
         )
 
     @property
