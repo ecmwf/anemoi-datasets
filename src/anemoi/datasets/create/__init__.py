@@ -327,7 +327,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     dataset_class = NewDataset
     def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, cache=None, **kwargs):  # fmt: skip
         if _path_readable(path) and not overwrite:
-            raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
+            raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
 
         super().__init__(path, cache=cache)
         self.config = config
