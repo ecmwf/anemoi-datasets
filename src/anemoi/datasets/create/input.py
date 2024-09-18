@@ -204,11 +204,15 @@ class Result:
     _coords_already_built = False
 
     def __init__(self, context, action_path, dates):
+        from anemoi.datasets.dates.groups import GroupOfDates
+
+        assert isinstance(dates, GroupOfDates), dates
+
         assert isinstance(context, ActionContext), type(context)
         assert isinstance(action_path, list), action_path
 
         self.context = context
-        self.dates = dates
+        self.group_of_dates = dates
         self.action_path = action_path
 
     @property
@@ -405,10 +409,10 @@ class Result:
         more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
 
         dates = " no-dates"
-        if self.dates is not None:
-            dates = f" {len(self.dates)} dates"
+        if self.group_of_dates is not None:
+            dates = f" {len(self.group_of_dates)} dates"
             dates += " ("
-            dates += "/".join(d.strftime("%Y-%m-%d:%H") for d in self.dates)
+            dates += "/".join(d.strftime("%Y-%m-%d:%H") for d in self.group_of_dates._dates)
             if len(dates) > 100:
                 dates = dates[:100] + "..."
             dates += ")"
@@ -423,7 +427,7 @@ class Result:
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_datasource(self, *args, **kwargs):
-        return f"{self.__class__.__name__}({shorten(self.dates)})"
+        return f"{self.__class__.__name__}({shorten(self.group_of_dates._dates)})"
 
     def build_coords(self):
         if self._coords_already_built:
@@ -513,7 +517,7 @@ class Result:
     @cached_property
     def shape(self):
         return [
-            len(self.dates),
+            len(self.group_of_dates._dates),
             len(self.variables),
             len(self.ensembles),
             len(self.grid_values),
@@ -522,7 +526,7 @@ class Result:
     @cached_property
     def coords(self):
         return {
-            "dates": self.dates,
+            "dates": self.group_of_dates._dates,
             "variables": self.variables,
             "ensembles": self.ensembles,
             "values": self.grid_values,
@@ -573,7 +577,7 @@ class FunctionResult(Result):
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
 
     def _trace_datasource(self, *args, **kwargs):
-        return f"{self.action.name}({shorten(self.dates)})"
+        return f"{self.action.name}({shorten(self.group_of_dates._dates)})"
 
     @cached_property
     @assert_fieldlist
@@ -583,14 +587,21 @@ class FunctionResult(Result):
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
         try:
-            return _tidy(self.action.function(FunctionContext(self), self.dates, *args, **kwargs))
+            return _tidy(
+                self.action.function(
+                    FunctionContext(self),
+                    self.group_of_dates._dates,
+                    *args,
+                    **kwargs,
+                )
+            )
         except Exception:
             LOG.error(f"Error in {self.action.function.__name__}", exc_info=True)
             raise
 
     def __repr__(self):
         try:
-            return f"{self.action.name}({shorten(self.dates)})"
+            return f"{self.action.name}({self.group_of_dates})"
         except Exception:
             return f"{self.__class__.__name__}(unitialised)"
 
@@ -609,7 +620,7 @@ class JoinResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self):
-        ds = EmptyResult(self.context, self.action_path, self.dates).datasource
+        ds = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
         return _tidy(ds)
@@ -1025,6 +1036,10 @@ class FunctionContext:
 
     def info(self, *args, **kwargs):
         LOG.info(*args, **kwargs)
+
+    @property
+    def date_provider(self):
+        return self.owner.group_of_dates._provider
 
 
 class ActionContext(Context):

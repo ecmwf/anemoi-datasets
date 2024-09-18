@@ -69,7 +69,8 @@ class Dates:
             missing = []
         self.missing = list(extend(missing))
         if set(self.missing) - set(self.values):
-            warnings.warn(f"Missing dates {self.missing} not in list.")
+            diff = set(self.missing) - set(self.values)
+            warnings.warn(f"Missing dates {len(diff)=} not in list.")
 
     @classmethod
     def from_config(cls, **kwargs):
@@ -150,48 +151,6 @@ class StartEndDates(Dates):
         }.update(self.kwargs)
 
 
-class hdatetime:
-    def __init__(self, hdate, refdate):
-        self.hdate = hdate
-        self.refdate = refdate
-
-    def __lt__(self, other):
-        return (self.hdate, self.refdate) < (other.hdate, other.refdate)
-
-    def __le__(self, other):
-        return (self.hdate, self.refdate) <= (other.hdate, other.refdate)
-
-    def isoformat(self):
-        return self.hdate.isoformat()
-
-    def strftime(self, fmt):
-        return self.hdate.strftime(fmt)
-
-    def __sub__(self, delta):
-        if isinstance(delta, datetime.timedelta):
-            return hdatetime(self.hdate - delta, self.refdate)
-        if isinstance(delta, hdatetime):
-            return self.hdate - delta.hdate
-        raise ValueError(f"Cannot subtract {delta}")
-
-    def __rsub__(self, other):
-        return other - self.hdate
-
-    # def __iadd__(self, delta):
-    #     self.hdate += delta
-    #     return self
-
-    def __add__(self, delta):
-        return hdatetime(self.hdate + delta, self.refdate)
-
-    @property
-    def hour(self):
-        return self.hdate.hour
-
-    def __repr__(self):
-        return f"{self.hdate} (ref={self.refdate})"
-
-
 class HindcastsDates(Dates):
     def __init__(self, start, end, steps=[0], years=20, **kwargs):
 
@@ -213,7 +172,7 @@ class HindcastsDates(Dates):
 
                 assert refdate - date > datetime.timedelta(days=360), (refdate - date, refdate, date, hdate, step)
 
-                dates.append(hdatetime(date, refdate))
+                dates.append(date)
 
         dates = sorted(dates)
 
@@ -235,14 +194,21 @@ class HindcastsDates(Dates):
         self.values = []
         missing = []
         date = dates[0]
+        last = date
         print("------", date, dates[-1])
         while date <= dates[-1]:
             self.values.append(date)
-            # if date not in dates:
-            #     missing.append(date.hdate)
+            if date not in dates:
+                missing.append(date)
+                seen[date] = seen[last]
+            else:
+                last = date
             date = date + mindelta
 
+        self.mapping = seen
+
         print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", self.values[0], self.values[-1], mindelta)
+        print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", f"{len(self.values)=} - {len(missing)=}")
 
         super().__init__(missing=missing)
 

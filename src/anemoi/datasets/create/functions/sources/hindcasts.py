@@ -34,7 +34,7 @@ class HindcastCompute:
         # The user set 'hindcasts: True' in the 'dates' block of the configuration file.
         self.reference_year = reference_year
         if reference_year is None:
-            assert self.available_steps == [0], self.available_steps
+            # assert self.available_steps == [0], self.available_steps
             assert self.base_times == [0], self.base_times
 
     def compute_hindcast(self, date):
@@ -45,22 +45,13 @@ class HindcastCompute:
 
     def _compute_hindcast1(self, date):
 
-        # The user set 'hindcasts: True' in the 'dates' block of the configuration file.
+        step = date.step
+        hdate = datetime.datetime(date.year, date.refdate.month, date.refdate.day)
         r = self.request.copy()
-
-        hdate = date.hdate
-        refdate = date.refdate
-        date = datetime.datetime(hdate.year, refdate.month, refdate.day, refdate.hour, refdate.minute, refdate.second)
-        step = date - hdate
-
-        r["date"] = refdate
-        r["hdate"] = (hdate - step).strftime("%Y-%m-%d")
+        r["date"] = date.refdate
+        r["hdate"] = hdate.strftime("%Y-%m-%d")
         r["time"] = 0
-
-        assert step.total_seconds() % 3600 == 0, step
-        step = int(step.total_seconds() / 3600)
         r["step"] = step
-
         return r
 
     def _compute_hindcast2(self, date):
@@ -112,38 +103,37 @@ def use_reference_year(reference_year, request):
 
 
 def hindcasts(context, dates, **request):
+
+    from anemoi.datasets.dates import HindcastsDates
+
+    provider = context.date_provider
+    assert isinstance(provider, HindcastsDates)
+
+    context.trace("H️", f"hindcasts {len(dates)=}")
+
     request["param"] = _to_list(request["param"])
     request["step"] = _to_list(request.get("step", 0))
     request["step"] = [int(_) for _ in request["step"]]
 
-    if request.get("stream") == "enfh" and "base_times" not in request:
-        request["base_times"] = [0]
+    context.trace("H️", f"hindcast {request}")
 
-    available_steps = request.pop("step")
-    available_steps = _to_list(available_steps)
-
-    base_times = request.pop("base_times", [0])
-    reference_year = request.pop("reference_year", None)
-
-    context.trace("H️", f"hindcast {request} {base_times} {available_steps} {reference_year}")
-
-    c = HindcastCompute(base_times, available_steps, request, reference_year)
     requests = []
-
     for d in dates:
-        req = c.compute_hindcast(d)
-        req, ok = use_reference_year(reference_year, req)
-        if ok:
-            requests.append(req)
-
-    # print("HINDCASTS requests", reference_year, base_times, available_steps)
-    # print("HINDCASTS dates", compress_dates(dates))
+        r = request.copy()
+        refdate, step = provider.mapping[d]
+        r["hdate"] = d.strftime("%Y-%m-%d")
+        r["date"] = refdate.strftime("%Y-%m-%d")
+        r["time"] = refdate.strftime("%H")
+        r["step"] = step
+        requests.append(r)
 
     if len(requests) == 0:
         # print("HINDCASTS no requests")
         return MultiFieldList([])
 
-    # print("HINDCASTS requests", requests)
+    print("HINDCASTS requests", requests[0])
+
+    print("HINDCASTS requests", len(requests))
 
     return mars(
         context,
