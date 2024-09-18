@@ -39,11 +39,11 @@ def hindcasts(context, dates, **request):
     requests = []
     for d in dates:
         r = request.copy()
-        refdate, step = provider.mapping[d]
-        r["hdate"] = d.strftime("%Y-%m-%d")
-        r["date"] = refdate.strftime("%Y-%m-%d")
-        r["time"] = refdate.strftime("%H")
-        r["step"] = step
+        hindcast = provider.mapping[d]
+        r["hdate"] = hindcast.hdate.strftime("%Y-%m-%d")
+        r["date"] = hindcast.refdate.strftime("%Y-%m-%d")
+        r["time"] = hindcast.refdate.strftime("%H")
+        r["step"] = hindcast.step
         requests.append(r)
 
     if len(requests) == 0:

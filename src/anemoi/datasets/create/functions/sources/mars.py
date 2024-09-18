@@ -210,8 +210,8 @@ def mars(context, dates, *requests, request_already_using_valid_datetime=False, 
         if context.use_grib_paramid and "param" in r:
             r = use_grib_paramid(r)
 
-        if DEBUG:
-            context.trace("✅", f"from_source(mars, {r}")
+        # if DEBUG:
+        context.trace("✅", f"mars {r}")
 
         for k, v in r.items():
             if k not in MARS_KEYS:

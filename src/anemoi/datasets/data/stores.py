@@ -326,7 +326,7 @@ class ZarrWithMissingDates(Zarr):
         super().__init__(path)
 
         missing_dates = self.z.attrs.get("missing_dates", [])
-        missing_dates = [np.datetime64(x) for x in missing_dates]
+        missing_dates = set([np.datetime64(x) for x in missing_dates])
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
         self.missing = set(self.missing_to_dates)
 

@@ -105,7 +105,7 @@ class Groups:
 
 class Filter:
     def __init__(self, missing):
-        self.missing = [as_datetime(m) for m in missing]
+        self.missing = set(as_datetime(m) for m in missing)
 
     def __call__(self, dates):
         return [d for d in dates if d not in self.missing]
@@ -140,8 +140,7 @@ class ReferenceDateGroup(Grouper):
         mapping = dates.mapping
 
         def same_refdate(dt):
-            refdate, _ = mapping[dt]
-            return refdate
+            return mapping[dt].refdate
 
         for _, g in itertools.groupby(sorted(dates, key=same_refdate), key=same_refdate):
             yield GroupOfDates(list(g), dates)

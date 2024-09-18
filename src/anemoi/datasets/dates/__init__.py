@@ -32,7 +32,7 @@ def extend(x):
             step = frequency_to_timedelta(step)
             while start <= end:
                 yield start
-                start += datetime.timedelta(hours=step)
+                start += step
             return
 
     yield as_datetime(x)
@@ -151,10 +151,25 @@ class StartEndDates(DatesProvider):
         }.update(self.kwargs)
 
 
+class Hindcast:
+
+    def __init__(self, date, refdate, hdate, step):
+        self.date = date
+        self.refdate = refdate
+        self.hdate = hdate
+        self.step = step
+
 class HindcastsDates(DatesProvider):
     def __init__(self, start, end, steps=[0], years=20, **kwargs):
 
-        reference_dates = list(DateTimes(start, end, increment=24, **kwargs))
+        if not isinstance(start, list):
+            start = [start]
+            end = [end]
+
+        reference_dates = []
+        for s,e in zip(start, end):
+            reference_dates.extend(list(DateTimes(s, e, increment=24, **kwargs)))
+        # reference_dates = list(DateTimes(start, end, increment=24, **kwargs))
         dates = []
 
         seen = {}
@@ -168,7 +183,7 @@ class HindcastsDates(DatesProvider):
                 if date in seen:
                     raise ValueError(f"Duplicate date {date}={hdate}+{step} for {refdate} and {seen[date]}")
 
-                seen[date] = (refdate, step)
+                seen[date] = Hindcast(date, refdate, hdate, step)
 
                 assert refdate - date > datetime.timedelta(days=360), (refdate - date, refdate, date, hdate, step)
 
@@ -196,9 +211,10 @@ class HindcastsDates(DatesProvider):
         date = dates[0]
         last = date
         print("------", date, dates[-1])
+        dateset = set(dates)
         while date <= dates[-1]:
             self.values.append(date)
-            if date not in dates:
+            if date not in dateset:
                 missing.append(date)
                 seen[date] = seen[last]
             else:
