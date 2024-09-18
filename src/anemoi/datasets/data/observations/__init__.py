@@ -54,6 +54,9 @@ class ObservationsBase:
     resolution = None
     ensemble_size = 1
 
+    def metadata(self):
+        return dict(observations_datasets="obs datasets currenty have no metadata")
+
     def mutate(self):
         return self
 
