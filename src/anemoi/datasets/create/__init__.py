@@ -536,7 +536,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             result = self.input.select(dates=group)
-            assert result.group_of_dates._dates == group._dates, (len(result.group_of_dates._dates), len(group), group)
+            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
             # There is one result to load for each group.
@@ -550,7 +550,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
     def load_result(self, result):
         # There is one cube to load for each result.
-        dates = result.group_of_dates._dates
+        dates = list(result.group_of_dates)
 
         cube = result.get_cube()
         shape = cube.extended_user_shape

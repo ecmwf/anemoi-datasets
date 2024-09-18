@@ -10,23 +10,29 @@ import itertools
 from functools import cached_property
 
 from anemoi.datasets.create.input import shorten
-from anemoi.datasets.dates import Dates
+from anemoi.datasets.dates import DatesProvider
 from anemoi.datasets.dates import as_datetime
 
 
 class GroupOfDates:
     def __init__(self, dates, provider):
-        assert isinstance(provider, Dates), type(provider)
+        assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
-        self._dates = dates
-        self._provider = provider
+        self.dates = dates
+        self.provider = provider
 
     def __len__(self):
-        return len(self._dates)
+        return len(self.dates)
 
     def __iter__(self):
-        return iter(self._dates)
+        return iter(self.dates)
+
+    def __repr__(self) -> str:
+        return f"GroupOfDates(dates={shorten(self.dates)})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, GroupOfDates) and self.dates == other.dates
 
 
 class Groups:
@@ -58,7 +64,7 @@ class Groups:
 
     def __init__(self, **kwargs):
         group_by = kwargs.pop("group_by")
-        self._dates = Dates.from_config(**kwargs)
+        self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 
@@ -68,10 +74,10 @@ class Groups:
 
     def __iter__(self):
         for go in self._grouper(self._dates):
-            dates = self._filter(go._dates)
+            dates = self._filter(go.dates)
             if not dates:
                 continue
-            yield GroupOfDates(dates, go._provider)
+            yield GroupOfDates(dates, go.provider)
 
     def __len__(self):
         return self._len
@@ -80,7 +86,7 @@ class Groups:
     def _len(self):
         n = 0
         for go in self._grouper(self._dates):
-            dates = self._filter(go._dates)
+            dates = self._filter(go.dates)
             if not dates:
                 continue
             n += 1
@@ -94,7 +100,7 @@ class Groups:
 
     def one_date(self):
         go = next(iter(self))
-        return GroupOfDates([go._dates[0]], go._provider)
+        return GroupOfDates([go.dates[0]], go.provider)
 
 
 class Filter:
@@ -129,7 +135,7 @@ class Grouper:
 
 class ReferenceDateGroup(Grouper):
     def __call__(self, dates):
-        assert isinstance(dates, Dates), type(dates)
+        assert isinstance(dates, DatesProvider), type(dates)
 
         mapping = dates.mapping
 
@@ -143,12 +149,14 @@ class ReferenceDateGroup(Grouper):
 
 class GrouperOneGroup(Grouper):
     def __call__(self, dates):
-        assert isinstance(dates, Dates), type(dates)
+        assert isinstance(dates, DatesProvider), type(dates)
 
         yield GroupOfDates(dates.values, dates)
 
 
 class GrouperByKey(Grouper):
+    """Group dates by a key."""
+
     def __init__(self, key):
         self.key = key
 
@@ -158,6 +166,8 @@ class GrouperByKey(Grouper):
 
 
 class GrouperByFixedSize(Grouper):
+    """Group dates by a fixed size."""
+
     def __init__(self, size):
         self.size = size
 

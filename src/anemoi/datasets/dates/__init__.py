@@ -38,26 +38,26 @@ def extend(x):
     yield as_datetime(x)
 
 
-class Dates:
+class DatesProvider:
     """Base class for date generation.
 
-    >>> Dates.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-02 00:00", "frequency": "1d"}).values
+    >>> DatesProvider.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-02 00:00", "frequency": "1d"}).values
     [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 2, 0, 0)]
 
-    >>> Dates.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-03 00:00", "frequency": "18h"}).values
+    >>> DatesProvider.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-03 00:00", "frequency": "18h"}).values
     [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 1, 18, 0), datetime.datetime(2023, 1, 2, 12, 0)]
 
-    >>> Dates.from_config(start="2023-01-01 00:00", end="2023-01-02 00:00", frequency=6).as_dict()
+    >>> DatesProvider.from_config(start="2023-01-01 00:00", end="2023-01-02 00:00", frequency=6).as_dict()
     {'start': '2023-01-01T00:00:00', 'end': '2023-01-02T00:00:00', 'frequency': '6h'}
 
-    >>> len(Dates.from_config(start="2023-01-01 00:00", end="2023-01-02 00:00", frequency=12))
+    >>> len(DatesProvider.from_config(start="2023-01-01 00:00", end="2023-01-02 00:00", frequency=12))
     3
-    >>> len(Dates.from_config(start="2023-01-01 00:00",
+    >>> len(DatesProvider.from_config(start="2023-01-01 00:00",
     ...                   end="2023-01-02 00:00",
     ...                   frequency=12,
     ...                   missing=["2023-01-01 12:00"]))
     3
-    >>> len(Dates.from_config(start="2023-01-01 00:00",
+    >>> len(DatesProvider.from_config(start="2023-01-01 00:00",
     ...                   end="2023-01-02 00:00",
     ...                   frequency=12,
     ...                   missing=["2099-01-01 12:00"]))
@@ -97,7 +97,7 @@ class Dates:
         return f"📅 {self.values[0]} ... {self.values[-1]}"
 
 
-class ValuesDates(Dates):
+class ValuesDates(DatesProvider):
     def __init__(self, values, **kwargs):
         self.values = sorted([as_datetime(_) for _ in values])
         super().__init__(**kwargs)
@@ -109,7 +109,7 @@ class ValuesDates(Dates):
         return {"values": self.values[0]}
 
 
-class StartEndDates(Dates):
+class StartEndDates(DatesProvider):
     def __init__(self, start, end, frequency=1, **kwargs):
 
         frequency = frequency_to_timedelta(frequency)
@@ -151,7 +151,7 @@ class StartEndDates(Dates):
         }.update(self.kwargs)
 
 
-class HindcastsDates(Dates):
+class HindcastsDates(DatesProvider):
     def __init__(self, start, end, steps=[0], years=20, **kwargs):
 
         reference_dates = list(DateTimes(start, end, increment=24, **kwargs))
