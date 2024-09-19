@@ -132,7 +132,7 @@ class Dataset:
                 v = v.isoformat()
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
-    @property
+    @cached_property
     def anemoi_dataset(self):
         return open_dataset(self.path)
 
