@@ -5,6 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from collections import defaultdict
 import datetime
 import logging
 import os
@@ -127,7 +128,13 @@ class Multiple(ObservationsBase):
 
     @property
     def statistics(self):
-        return [v.statistics for v in self.datasets]
+        keys = self.datasets[0].statistics.keys()
+        dic = defaultdict(list)
+        for d in self.datasets:
+            for k in keys:
+                dic[k].append(d.statistics[k])
+        assert 'mean' in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
+        return dic
 
 
 class Forward(ObservationsBase):
@@ -189,8 +196,16 @@ class Select(Forward):
         data = data[:, [self.forward.name_to_index[n] for n in self.select]]
         return data
 
+    @property
     def statistics(self):
-        return {k: v for k, v in self.forward.statistics.items() if k in self.select}
+        dic = {}
+        for k, data in self.forward.statistics.items():
+            assert len(data.shape) == 1, f"Expected 1D array, got {data.shape}"
+            for n in self.select:
+                assert n in self.forward.variables, f"Expected {n} in {self.forward.variables}"
+            data = data[tuple(self.forward.name_to_index[n] for n in self.select), ]
+            dic[k] = data
+        return dic
 
 
 class Padded(Forward):
@@ -341,7 +356,21 @@ class Observations(ObservationsBase):
 
     @property
     def statistics(self):
-        return StatisticsOfObsDataset(self.forward)
+        mean = self.forward.properties["means"]
+        mean = np.array(mean, dtype=np.float32)
+        var = self.forward.properties["vars"]
+        var = np.array(var, dtype=np.float32)
+        stdev = np.sqrt(var)
+        minimum = np.full_like(mean, np.nan)
+        maximum = np.full_like(mean, np.nan)
+        print(f"✅Cannot find minimum using np.nan")
+        print(f"✅Cannot find maximum using np.nan")
+
+        assert isinstance(mean, np.ndarray), f"Expected np.ndarray, got {type(mean)}"
+        assert isinstance(stdev, np.ndarray), f"Expected np.ndarray, got {type(stdev)}"
+        assert isinstance(minimum, np.ndarray), f"Expected np.ndarray, got {type(minimum)}"
+        assert isinstance(maximum, np.ndarray), f"Expected np.ndarray, got {type(maximum)}"
+        return dict(mean=mean, stdev=stdev, minimum=minimum, maximum=maximum)
 
     def tree(self):
         return Node(
@@ -405,8 +434,3 @@ def _open_observations(*args, **kwargs):
     from ..misc import _open_dataset as _open_fields
 
     return _open_fields(*args, **kwargs).mutate()
-
-
-class StatisticsOfObsDataset:
-    def __init__(self, dataset):
-        self.dataset = dataset
