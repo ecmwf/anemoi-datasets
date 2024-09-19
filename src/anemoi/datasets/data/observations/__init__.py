@@ -206,6 +206,15 @@ class Select(Forward):
             data = data[tuple(self.forward.name_to_index[n] for n in self.select), ]
             dic[k] = data
         return dic
+    
+    @property
+    def variables(self):
+        return self._variables
+
+    @property
+    def name_to_index(self):
+        return {k:v for k,v in self.forward.name_to_index.items() if k in self._variables}
+
 
 
 class Padded(Forward):
