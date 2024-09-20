@@ -20,6 +20,49 @@ from ..stores import zarr_lookup
 
 LOG = logging.getLogger(__name__)
 
+def str_(t):
+    """Not needed, but useful for debugging"""
+    import numpy as np
+
+    if isinstance(t, (list, tuple)):
+        return "[" + " , ".join(str_(e) for e in t) + "]"
+    if isinstance(t, np.ndarray):
+        return str(t.shape).replace(" ", "").replace(",", "-")
+    if isinstance(t, dict):
+        return "{" + " , ".join(f"{k}: {str_(v)}" for k, v in t.items()) + "}"
+    return str(t)
+
+class ListOfArray:
+    def __init__(self, arrays):
+        self.arrays = arrays
+        self.lenghts = [v.size for v in arrays]
+
+    def __getitem__(self, tupl):
+        if len(tupl) == 1:
+            return self.arrays[tupl[0]]
+        assert len(tupl) == 2
+        i, j = tupl
+        return self.arrays[i][j]
+
+    def __setitem__(self, tupl, value):
+        # if len(tupl) == 1:
+        #     self.arrays[tupl[0]] = value
+        assert len(tupl) == 2
+        i, j = tupl
+        self.arrays[i][j] = value
+
+    @property
+    def size(self):
+        return sum(v.size for v in self.arrays)
+
+    def flatten(self):
+        return np.concatenate([v.flatten() for v in self.arrays])
+    
+    def map(self, f):
+        return ListOfArray([f(v) for v in self.arrays])
+    def __repr__(self):
+        return f"ListOfArray({str_(self.arrays)})"
+    
 
 def _resolve_path(path):
     return zarr_lookup(path)
@@ -53,7 +96,13 @@ def merge_dates(datasets):
 
 class ObservationsBase:
     resolution = None
-    ensemble_size = 1
+
+    @cached_property
+    def shape(self):
+        return (len(self.dates),  len(self.variables) , 'dynamic')
+    def empty_item(self):
+        return np.full((1,) + self.shape[1:-1] + (0,), 0., dtype=np.float32)
+
 
     def metadata(self):
         return dict(observations_datasets="obs datasets currenty have no metadata")
@@ -97,6 +146,10 @@ class Multiple(ObservationsBase):
 
         self.datasets = [Padded(d, start_date, end_date).mutate() for d in datasets]
         self.dates = make_dates(start_date, end_date, self.frequency)
+
+        # todo: implement missing
+        assert all(d.missing == set() for d in self.datasets), f"Expected no missing, got {[d.missing for d in self.datasets]}"
+        self.missing = set()
 
     def getitem(self, i):
         return [d[i] for d in self.datasets]
@@ -144,7 +197,6 @@ class Forward(ObservationsBase):
 
     def tree(self):
         return Node(self, [self.forward.tree()])
-
     @property
     def variables(self):
         return self.forward.variables
@@ -225,6 +277,11 @@ class Padded(Forward):
         self._start_date = start
         self._end_date = end
         self.dates = make_dates(start, end, self._frequency)
+    
+
+    @property
+    def missing(self):
+        return set()
 
     @property
     def frequency(self):
@@ -236,7 +293,7 @@ class Padded(Forward):
         for j, d in enumerate(self.forward.dates):
             if date == d:
                 return self.forward[j]
-        return None
+        return self.empty_item()
 
     def tree(self):
         return Node(
@@ -345,13 +402,10 @@ class Observations(ObservationsBase):
         data = data.numpy().astype(np.float32)
         assert len(data.shape) == 2, f"Expected 2D array, got {data.shape}"
         data = data.T
-        # insert an additional dimension of size 1 to have a layout similar to fields datasets (a, b) -> (a, 1, b)
-        data = np.expand_dims(data, axis=1)
 
-        if data.shape[0] == 0:
-            return None
-        else:
+        if data.size:
             return data
+        return self.empty_item()
 
     @property
     def variables(self):
