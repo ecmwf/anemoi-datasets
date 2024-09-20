@@ -20,6 +20,7 @@ from ..stores import zarr_lookup
 
 LOG = logging.getLogger(__name__)
 
+
 def str_(t):
     """Not needed, but useful for debugging"""
     import numpy as np
@@ -31,6 +32,7 @@ def str_(t):
     if isinstance(t, dict):
         return "{" + " , ".join(f"{k}: {str_(v)}" for k, v in t.items()) + "}"
     return str(t)
+
 
 class ListOfArray:
     def __init__(self, arrays):
@@ -57,12 +59,13 @@ class ListOfArray:
 
     def flatten(self):
         return np.concatenate([v.flatten() for v in self.arrays])
-    
+
     def map(self, f):
         return ListOfArray([f(v) for v in self.arrays])
+
     def __repr__(self):
         return f"ListOfArray({str_(self.arrays)})"
-    
+
 
 def _resolve_path(path):
     return zarr_lookup(path)
@@ -99,10 +102,10 @@ class ObservationsBase:
 
     @cached_property
     def shape(self):
-        return (len(self.dates),  len(self.variables) , 'dynamic')
-    def empty_item(self):
-        return np.full((1,) + self.shape[1:-1] + (0,), 0., dtype=np.float32)
+        return (len(self.dates), len(self.variables), "dynamic")
 
+    def empty_item(self):
+        return np.full(self.shape[1:-1] + (0,), 0.0, dtype=np.float32)
 
     def metadata(self):
         return dict(observations_datasets="obs datasets currenty have no metadata")
@@ -148,7 +151,9 @@ class Multiple(ObservationsBase):
         self.dates = make_dates(start_date, end_date, self.frequency)
 
         # todo: implement missing
-        assert all(d.missing == set() for d in self.datasets), f"Expected no missing, got {[d.missing for d in self.datasets]}"
+        assert all(
+            d.missing == set() for d in self.datasets
+        ), f"Expected no missing, got {[d.missing for d in self.datasets]}"
         self.missing = set()
 
     def getitem(self, i):
@@ -186,7 +191,7 @@ class Multiple(ObservationsBase):
         for d in self.datasets:
             for k in keys:
                 dic[k].append(d.statistics[k])
-        assert 'mean' in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
+        assert "mean" in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
         return dic
 
 
@@ -197,6 +202,7 @@ class Forward(ObservationsBase):
 
     def tree(self):
         return Node(self, [self.forward.tree()])
+
     @property
     def variables(self):
         return self.forward.variables
@@ -255,18 +261,17 @@ class Select(Forward):
             assert len(data.shape) == 1, f"Expected 1D array, got {data.shape}"
             for n in self.select:
                 assert n in self.forward.variables, f"Expected {n} in {self.forward.variables}"
-            data = data[tuple(self.forward.name_to_index[n] for n in self.select), ]
+            data = data[tuple(self.forward.name_to_index[n] for n in self.select),]
             dic[k] = data
         return dic
-    
+
     @property
     def variables(self):
         return self._variables
 
     @property
     def name_to_index(self):
-        return {k:v for k,v in self.forward.name_to_index.items() if k in self._variables}
-
+        return {k: v for k, v in self.forward.name_to_index.items() if k in self._variables}
 
 
 class Padded(Forward):
@@ -277,7 +282,6 @@ class Padded(Forward):
         self._start_date = start
         self._end_date = end
         self.dates = make_dates(start, end, self._frequency)
-    
 
     @property
     def missing(self):
@@ -359,14 +363,15 @@ class Observations(ObservationsBase):
 
         from obsdata.dataset.obs_dataset import ObsDataset
 
-        self.forward = ObsDataset(
-            self.path,
-            first_window_begin,
-            last_window_end,
+        args = [self.path, first_window_begin, last_window_end]
+        kwargs = dict(
             len_hrs=frequency_hours,  # length the time windows, i.e. the time span of one item
             step_hrs=frequency_hours,  # frequency of the dataset, i.e. the time shift between two items
             normalize=False,
         )
+        self.forward = ObsDataset(*args, **kwargs)
+        print(f"TRACE: ObsDataset({args}, {kwargs})")
+
         # print(f"len(obs)={len(self.forward)}")
 
         assert frequency_hours == self.forward.step_hrs, f"Expected {frequency_hours}, got {self.forward.len_hrs}"
