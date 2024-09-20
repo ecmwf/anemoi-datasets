@@ -12,7 +12,7 @@ Keep it human-readable, your future self will thank you!
 
 ### Added
 
-- New `rescale` keyword in `open_dataset` to change units of variables
+- New `rescale` keyword in `open_dataset` to change units of variables #36
 
 ### Changed
 ### Removed
