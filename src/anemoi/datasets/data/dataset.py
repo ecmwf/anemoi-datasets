@@ -23,7 +23,11 @@ LOG = logging.getLogger(__name__)
 class Dataset:
     arguments = {}
 
-    def mutate(self):
+    def mutate(self) -> "Dataset":
+        """
+        Give an opportunity to a subclass to return a new Dataset
+        object of a different class, if needed.
+        """
         return self
 
     def swap_with_parent(self, parent):
@@ -89,6 +93,12 @@ class Dataset:
 
             rename = kwargs.pop("rename")
             return Rename(self, rename)._subset(**kwargs).mutate()
+
+        if "rescale" in kwargs:
+            from .rescale import Rescale
+
+            rescale = kwargs.pop("rescale")
+            return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
             from ..data import open_dataset

@@ -217,6 +217,7 @@ def set_to_test_mode(cfg):
     dates = cfg["dates"]
     LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
     groups = Groups(**LoadersConfig(cfg).dates)
+
     dates = groups.dates
     cfg["dates"] = dict(
         start=dates[0],

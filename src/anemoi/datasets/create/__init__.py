@@ -926,7 +926,7 @@ def multi_addition(cls):
                 self.actors.append(cls(*args, delta=k, **kwargs))
 
             if not self.actors:
-                LOG.warning("No delta found in kwargs, no addtions will be computed.")
+                LOG.warning("No delta found in kwargs, no additions will be computed.")
 
         def run(self):
             for actor in self.actors:
@@ -954,7 +954,9 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         )
         start, end = np.datetime64(start), np.datetime64(end)
         dates = self.dataset.anemoi_dataset.dates
-        assert type(dates[0]) == type(start), (type(dates[0]), type(start))
+
+        assert type(dates[0]) is type(start), (type(dates[0]), type(start))
+
         dates = [d for d in dates if d >= start and d <= end]
         dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
         variables = self.dataset.anemoi_dataset.variables
@@ -963,7 +965,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(stats)
 
         if not all(self.registry.get_flags(sync=False)):
-            raise Exception(f"❗Zarr {self.path} is not fully built, not writting statistics into dataset.")
+            raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
         for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
