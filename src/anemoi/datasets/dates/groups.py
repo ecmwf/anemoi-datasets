@@ -7,9 +7,32 @@
 
 
 import itertools
+from functools import cached_property
 
-from anemoi.datasets.dates import Dates
+from anemoi.datasets.create.input import shorten
+from anemoi.datasets.dates import DatesProvider
 from anemoi.datasets.dates import as_datetime
+
+
+class GroupOfDates:
+    def __init__(self, dates, provider):
+        assert isinstance(provider, DatesProvider), type(provider)
+        assert isinstance(dates, list)
+
+        self.dates = dates
+        self.provider = provider
+
+    def __len__(self):
+        return len(self.dates)
+
+    def __iter__(self):
+        return iter(self.dates)
+
+    def __repr__(self) -> str:
+        return f"GroupOfDates(dates={shorten(self.dates)})"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, GroupOfDates) and self.dates == other.dates
 
 
 class Groups:
@@ -41,33 +64,48 @@ class Groups:
 
     def __init__(self, **kwargs):
         group_by = kwargs.pop("group_by")
-        self.dates = Dates.from_config(**kwargs)
-        self.grouper = Grouper.from_config(group_by)
-        self.filter = Filter(self.dates.missing)
+        self._dates = DatesProvider.from_config(**kwargs)
+        self._grouper = Grouper.from_config(group_by)
+        self._filter = Filter(self._dates.missing)
+
+    @property
+    def provider(self):
+        return self._dates
 
     def __iter__(self):
-        for dates in self.grouper(self.dates):
-            dates = self.filter(dates)
+        for go in self._grouper(self._dates):
+            dates = self._filter(go.dates)
             if not dates:
                 continue
-            yield dates
+            yield GroupOfDates(dates, go.provider)
 
     def __len__(self):
-        count = 0
-        for dates in self.grouper(self.dates):
-            dates = self.filter(dates)
+        return self._len
+
+    @cached_property
+    def _len(self):
+        n = 0
+        for go in self._grouper(self._dates):
+            dates = self._filter(go.dates)
             if not dates:
                 continue
-            count += 1
-        return count
+            n += 1
+        return n
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(dates={len(self)})"
+        return f"{self.__class__.__name__}(dates={len(self)},{shorten(self._dates)})"
+
+    def describe(self):
+        return self.dates.summary
+
+    def one_date(self):
+        go = next(iter(self))
+        return GroupOfDates([go.dates[0]], go.provider)
 
 
 class Filter:
     def __init__(self, missing):
-        self.missing = [as_datetime(m) for m in missing]
+        self.missing = set(as_datetime(m) for m in missing)
 
     def __call__(self, dates):
         return [d for d in dates if d not in self.missing]
@@ -76,10 +114,16 @@ class Filter:
 class Grouper:
     @classmethod
     def from_config(cls, group_by):
+
         if isinstance(group_by, int) and group_by > 0:
             return GrouperByFixedSize(group_by)
+
         if group_by is None:
             return GrouperOneGroup()
+
+        if group_by == "reference_date":
+            return ReferenceDateGroup()
+
         key = {
             "monthly": lambda dt: (dt.year, dt.month),
             "daily": lambda dt: (dt.year, dt.month, dt.day),
@@ -89,30 +133,51 @@ class Grouper:
         return GrouperByKey(key)
 
 
+class ReferenceDateGroup(Grouper):
+    def __call__(self, dates):
+        assert isinstance(dates, DatesProvider), type(dates)
+
+        mapping = dates.mapping
+
+        def same_refdate(dt):
+            return mapping[dt].refdate
+
+        for _, g in itertools.groupby(sorted(dates, key=same_refdate), key=same_refdate):
+            yield GroupOfDates(list(g), dates)
+
+
 class GrouperOneGroup(Grouper):
     def __call__(self, dates):
-        yield dates.values
+        assert isinstance(dates, DatesProvider), type(dates)
+
+        yield GroupOfDates(dates.values, dates)
 
 
 class GrouperByKey(Grouper):
+    """Group dates by a key."""
+
     def __init__(self, key):
         self.key = key
 
     def __call__(self, dates):
-        for _, g in itertools.groupby(dates, key=self.key):
-            yield list(g)
+        for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
+            yield GroupOfDates(list(g), dates)
 
 
 class GrouperByFixedSize(Grouper):
+    """Group dates by a fixed size."""
+
     def __init__(self, size):
         self.size = size
 
     def __call__(self, dates):
         batch = []
+
         for d in dates:
             batch.append(d)
             if len(batch) == self.size:
-                yield batch
+                yield GroupOfDates(batch, dates)
                 batch = []
+
         if batch:
-            yield batch
+            yield GroupOfDates(batch, dates)

@@ -68,7 +68,7 @@ class PersistentDict:
         path = os.path.join(self.dirname, f"{h}.pickle")
 
         if os.path.exists(path):
-            LOG.warn(f"{path} already exists")
+            LOG.warning(f"{path} already exists")
 
         tmp_path = path + f".tmp-{os.getpid()}-on-{socket.gethostname()}"
         with open(tmp_path, "wb") as f:
