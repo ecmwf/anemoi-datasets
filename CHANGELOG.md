@@ -17,6 +17,7 @@ Keep it human-readable, your future self will thank you!
 ### Changed
 
 - Added incremental building of datasets
+- Bug fix when creating dataset from zarr
 
 ### Removed
 

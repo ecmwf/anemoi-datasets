@@ -108,14 +108,15 @@ def _data_request(data):
     for field in data:
         try:
             if date is None:
-                date = field.datetime()["valid_time"]
+                date = field.metadata("valid_datetime")
 
-            if field.datetime()["valid_time"] != date:
+            if field.metadata("valid_datetime") != date:
                 continue
 
             as_mars = field.metadata(namespace="mars")
             if not as_mars:
                 continue
+
             step = as_mars.get("step")
             levtype = as_mars.get("levtype", "sfc")
             param = as_mars["param"]
