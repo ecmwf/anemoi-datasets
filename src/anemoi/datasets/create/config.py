@@ -214,11 +214,12 @@ def _prepare_serialisation(o):
 def set_to_test_mode(cfg):
     NUMBER_OF_DATES = 4
 
-    dates = cfg.dates
+    dates = cfg["dates"]
     LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
-    groups = Groups(**cfg.dates)
+    groups = Groups(**LoadersConfig(cfg).dates)
+
     dates = groups.dates
-    cfg.dates = dict(
+    cfg["dates"] = dict(
         start=dates[0],
         end=dates[NUMBER_OF_DATES - 1],
         frequency=dates.frequency,
@@ -252,16 +253,22 @@ def set_to_test_mode(cfg):
 
 def loader_config(config, is_test=False):
     config = Config(config)
-    obj = LoadersConfig(config)
     if is_test:
-        obj = set_to_test_mode(obj)
+        set_to_test_mode(config)
+    obj = LoadersConfig(config)
 
     # yaml round trip to check that serialisation works as expected
     copy = obj.get_serialisable_dict()
     copy = yaml.load(yaml.dump(copy), Loader=yaml.SafeLoader)
     copy = Config(copy)
     copy = LoadersConfig(config)
-    assert yaml.dump(obj) == yaml.dump(copy), (obj, copy)
+
+    a = yaml.dump(obj)
+    b = yaml.dump(copy)
+    if a != b:
+        print(a)
+        print(b)
+        raise ValueError("Serialisation failed")
 
     return copy
 

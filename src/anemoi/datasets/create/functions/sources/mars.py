@@ -203,15 +203,21 @@ def mars(context, dates, *requests, request_already_using_valid_datetime=False, 
         request_already_using_valid_datetime=request_already_using_valid_datetime,
         date_key=date_key,
     )
+
+    requests = list(requests)
+
     ds = from_source("empty")
+    context.trace("✅", f"{[str(d) for d in dates]}")
+    context.trace("✅", f"Will run {len(requests)} requests")
+    for r in requests:
+        r = {k: v for k, v in r.items() if v != ("-",)}
+        context.trace("✅", f"mars {r}")
+
     for r in requests:
         r = {k: v for k, v in r.items() if v != ("-",)}
 
         if context.use_grib_paramid and "param" in r:
             r = use_grib_paramid(r)
-
-        if DEBUG:
-            context.trace("✅", f"from_source(mars, {r}")
 
         for k, v in r.items():
             if k not in MARS_KEYS:

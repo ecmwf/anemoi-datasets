@@ -15,6 +15,9 @@ Keep it human-readable, your future self will thank you!
 - New `rescale` keyword in `open_dataset` to change units of variables #36
 
 ### Changed
+
+- Added incremental building of datasets
+
 ### Removed
 
 ## [0.4.5]
@@ -25,6 +28,7 @@ Keep it human-readable, your future self will thank you!
 - CI workflow to update the changelog on release
 - adds the reusable cd pypi workflow
 - merge strategy for changelog in .gitattributes #25
+- adds ci hpc config (#43)
 
 ### Changed
 

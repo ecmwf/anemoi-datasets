@@ -86,8 +86,8 @@ To add statistics for 6h increments:
 
 .. code:: bash
 
-   anemoi-datasets init-additions dataset.zarr --delta 6h anemoi-datasets
-   anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 6h anemoi-datasets
+   anemoi-datasets init-additions dataset.zarr --delta 6h
+   anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 6h
    anemoi-datasets load-additions dataset.zarr --part 2/2 --delta 6h
    anemoi-datasets finalise-additions dataset.zarr --delta 6h
 
@@ -96,7 +96,7 @@ To add statistics for 12h increments:
 .. code:: bash
 
    anemoi-datasets init-additions dataset.zarr --delta 12h
-   anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 12h anemoi-datasets
+   anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 12h
    anemoi-datasets load-additions dataset.zarr --part 2/2 --delta 12h
    anemoi-datasets finalise-additions dataset.zarr --delta 12h
 

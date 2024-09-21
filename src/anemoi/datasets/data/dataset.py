@@ -226,7 +226,7 @@ class Dataset:
         import anemoi
 
         def tidy(v):
-            if isinstance(v, (list, tuple)):
+            if isinstance(v, (list, tuple, set)):
                 return [tidy(i) for i in v]
             if isinstance(v, dict):
                 return {k: tidy(v) for k, v in v.items()}

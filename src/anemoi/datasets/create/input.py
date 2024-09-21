@@ -23,7 +23,7 @@ from earthkit.data.core.fieldlist import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.core.order import build_remapping
 
-from anemoi.datasets.dates import Dates
+from anemoi.datasets.dates import DatesProvider
 
 from .functions import import_function
 from .template import Context
@@ -204,11 +204,15 @@ class Result:
     _coords_already_built = False
 
     def __init__(self, context, action_path, dates):
+        from anemoi.datasets.dates.groups import GroupOfDates
+
+        assert isinstance(dates, GroupOfDates), dates
+
         assert isinstance(context, ActionContext), type(context)
         assert isinstance(action_path, list), action_path
 
         self.context = context
-        self.dates = dates
+        self.group_of_dates = dates
         self.action_path = action_path
 
     @property
@@ -405,10 +409,10 @@ class Result:
         more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
 
         dates = " no-dates"
-        if self.dates is not None:
-            dates = f" {len(self.dates)} dates"
+        if self.group_of_dates is not None:
+            dates = f" {len(self.group_of_dates)} dates"
             dates += " ("
-            dates += "/".join(d.strftime("%Y-%m-%d:%H") for d in self.dates)
+            dates += "/".join(d.strftime("%Y-%m-%d:%H") for d in self.group_of_dates)
             if len(dates) > 100:
                 dates = dates[:100] + "..."
             dates += ")"
@@ -423,7 +427,7 @@ class Result:
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_datasource(self, *args, **kwargs):
-        return f"{self.__class__.__name__}({shorten(self.dates)})"
+        return f"{self.__class__.__name__}({self.group_of_dates})"
 
     def build_coords(self):
         if self._coords_already_built:
@@ -513,7 +517,7 @@ class Result:
     @cached_property
     def shape(self):
         return [
-            len(self.dates),
+            len(self.group_of_dates),
             len(self.variables),
             len(self.ensembles),
             len(self.grid_values),
@@ -522,7 +526,7 @@ class Result:
     @cached_property
     def coords(self):
         return {
-            "dates": self.dates,
+            "dates": list(self.group_of_dates),
             "variables": self.variables,
             "ensembles": self.ensembles,
             "values": self.grid_values,
@@ -573,7 +577,7 @@ class FunctionResult(Result):
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
 
     def _trace_datasource(self, *args, **kwargs):
-        return f"{self.action.name}({shorten(self.dates)})"
+        return f"{self.action.name}({self.group_of_dates})"
 
     @cached_property
     @assert_fieldlist
@@ -583,14 +587,21 @@ class FunctionResult(Result):
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
         try:
-            return _tidy(self.action.function(FunctionContext(self), self.dates, *args, **kwargs))
+            return _tidy(
+                self.action.function(
+                    FunctionContext(self),
+                    list(self.group_of_dates),  # Will provide a list of datetime objects
+                    *args,
+                    **kwargs,
+                )
+            )
         except Exception:
             LOG.error(f"Error in {self.action.function.__name__}", exc_info=True)
             raise
 
     def __repr__(self):
         try:
-            return f"{self.action.name}({shorten(self.dates)})"
+            return f"{self.action.name}({self.group_of_dates})"
         except Exception:
             return f"{self.__class__.__name__}(unitialised)"
 
@@ -609,7 +620,7 @@ class JoinResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self):
-        ds = EmptyResult(self.context, self.action_path, self.dates).datasource
+        ds = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
         return _tidy(ds)
@@ -904,7 +915,7 @@ class ConcatAction(Action):
             cfg = deepcopy(cfg)
             dates_cfg = cfg.pop("dates")
             assert isinstance(dates_cfg, dict), dates_cfg
-            filtering_dates = Dates.from_config(**dates_cfg)
+            filtering_dates = DatesProvider.from_config(**dates_cfg)
             action = action_factory(cfg, context, action_path + [str(i)])
             parts.append((filtering_dates, action))
         self.parts = parts
@@ -953,8 +964,10 @@ def action_factory(config, context, action_path):
 
     if isinstance(config[key], list):
         args, kwargs = config[key], {}
-    if isinstance(config[key], dict):
+    elif isinstance(config[key], dict):
         args, kwargs = [], config[key]
+    else:
+        raise ValueError(f"Invalid input config {config[key]} ({type(config[key])}")
 
     cls = {
         # "date_shift": DateShiftAction,
@@ -1020,6 +1033,13 @@ class FunctionContext:
 
     def trace(self, emoji, *args):
         trace(emoji, *args)
+
+    def info(self, *args, **kwargs):
+        LOG.info(*args, **kwargs)
+
+    @property
+    def dates_provider(self):
+        return self.owner.group_of_dates.provider
 
 
 class ActionContext(Context):
