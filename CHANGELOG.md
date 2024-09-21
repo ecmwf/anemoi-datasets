@@ -17,6 +17,8 @@ Keep it human-readable, your future self will thank you!
 ### Changed
 
 - Added incremental building of datasets
+- Add missing dependency for documentation building
+- Fix failing test due to previous merge
 
 ### Removed
 
