@@ -835,7 +835,7 @@ class ConcatResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self):
-        ds = EmptyResult(self.context, self.action_path, self.dates).datasource
+        ds = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
         return _tidy(ds)
@@ -926,9 +926,11 @@ class ConcatAction(Action):
 
     @trace_select
     def select(self, dates):
+        from anemoi.datasets.dates.groups import GroupOfDates
+
         results = []
         for filtering_dates, action in self.parts:
-            newdates = sorted(set(dates) & set(filtering_dates))
+            newdates = GroupOfDates(sorted(set(dates) & set(filtering_dates)), dates.provider)
             if newdates:
                 results.append(action.select(newdates))
         if not results:
