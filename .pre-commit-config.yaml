@@ -69,17 +69,6 @@ repos:
   rev: "2.2.3"
   hooks:
   - id: pyproject-fmt
--   repo: https://github.com/jshwi/docsig # Check docstrings against function sig
-    rev: v0.60.1
-    hooks:
-    -   id: docsig
-        args:
-        - --ignore-no-params # Allow docstrings without parameters
-        - --check-dunders    # Check dunder methods
-        - --check-overridden # Check overridden methods
-        - --check-protected  # Check protected methods
-        - --check-class      # Check class docstrings
-        - --disable=E113     # Disable empty docstrings
-        - --summary          # Print a summary
+
 ci:
   autoupdate_schedule: monthly

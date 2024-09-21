@@ -25,6 +25,7 @@ Keep it human-readable, your future self will thank you!
 - CI workflow to update the changelog on release
 - adds the reusable cd pypi workflow
 - merge strategy for changelog in .gitattributes #25
+- adds ci hpc config (#43)
 
 ### Changed
 

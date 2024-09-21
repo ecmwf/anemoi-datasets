@@ -117,24 +117,29 @@ def compare_dot_zattrs(a, b, path, errors):
                 "dataset_status",
                 "total_size",
             ]:
-                if type(a[k]) != type(b[k]):  # noqa : E721
+                if type(a[k]) is not type(b[k]):
                     errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
                 continue
+
             compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
+
         return
 
     if isinstance(a, list):
         if len(a) != len(b):
             errors.append(f"❌ {path} : lengths are different {len(a)} != {len(b)}")
             return
+
         for i, (v, w) in enumerate(zip(a, b)):
             compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+
         return
 
-    if type(a) != type(b):  # noqa : E721
+    if type(a) is not type(b):
         msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
         errors.append(msg)
         return
+
     if a != b:
         msg = f"❌ {path} actual != expected : {a} != {b}"
         errors.append(msg)
