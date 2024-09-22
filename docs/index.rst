@@ -44,7 +44,9 @@ datasets <building-introduction>`.
 -  :doc:`using/combining`
 -  :doc:`using/selecting`
 -  :doc:`using/grids`
+-  :doc:`using/zip`
 -  :doc:`using/statistics`
+-  :doc:`using/missing`
 -  :doc:`using/other`
 -  :doc:`using/matching`
 -  :doc:`using/miscellaneous`
@@ -62,7 +64,9 @@ datasets <building-introduction>`.
    using/combining
    using/selecting
    using/grids
+   using/zip
    using/statistics
+   using/missing
    using/other
    using/matching
    using/miscellaneous
@@ -75,6 +79,7 @@ datasets <building-introduction>`.
 -  :doc:`building/sources`
 -  :doc:`building/filters`
 -  :doc:`building/statistics`
+-  :doc:`building/incremental`
 
 .. toctree::
    :maxdepth: 1
@@ -89,6 +94,7 @@ datasets <building-introduction>`.
    building/handling-missing-dates
    building/handling-missing-values
    building/statistics
+   building/incremental
    building/advanced-options
 
 **Command line tool**

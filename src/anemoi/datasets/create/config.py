@@ -16,6 +16,8 @@ from anemoi.utils.config import DotDict
 from anemoi.utils.config import load_any_dict_format
 from earthkit.data.core.order import normalize_order_by
 
+from anemoi.datasets.dates.groups import Groups
+
 LOG = logging.getLogger(__name__)
 
 
@@ -153,6 +155,8 @@ class LoadersConfig(Config):
             raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
 
         self.setdefault("statistics", Config())
+        if "allow_nans" not in self.statistics:
+            self.statistics.allow_nans = []
 
         check_dict_value_and_set(self.output, "flatten_grid", True)
         check_dict_value_and_set(self.output, "ensemble_dimension", 2)
@@ -207,8 +211,50 @@ def _prepare_serialisation(o):
     return str(o)
 
 
-def loader_config(config):
+def set_to_test_mode(cfg):
+    NUMBER_OF_DATES = 4
+
+    dates = cfg["dates"]
+    LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    groups = Groups(**LoadersConfig(cfg).dates)
+
+    dates = groups.dates
+    cfg["dates"] = dict(
+        start=dates[0],
+        end=dates[NUMBER_OF_DATES - 1],
+        frequency=dates.frequency,
+        group_by=NUMBER_OF_DATES,
+    )
+
+    def set_element_to_test(obj):
+        if isinstance(obj, (list, tuple)):
+            for v in obj:
+                set_element_to_test(v)
+            return
+        if isinstance(obj, (dict, DotDict)):
+            if "grid" in obj:
+                previous = obj["grid"]
+                obj["grid"] = "20./20."
+                LOG.warning(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
+            if "number" in obj:
+                if isinstance(obj["number"], (list, tuple)):
+                    previous = obj["number"]
+                    obj["number"] = previous[0:3]
+                    LOG.warning(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
+            for k, v in obj.items():
+                set_element_to_test(v)
+            if "constants" in obj:
+                constants = obj["constants"]
+                if "param" in constants and isinstance(constants["param"], list):
+                    constants["param"] = ["cos_latitude"]
+
+    set_element_to_test(cfg)
+
+
+def loader_config(config, is_test=False):
     config = Config(config)
+    if is_test:
+        set_to_test_mode(config)
     obj = LoadersConfig(config)
 
     # yaml round trip to check that serialisation works as expected
@@ -216,7 +262,13 @@ def loader_config(config):
     copy = yaml.load(yaml.dump(copy), Loader=yaml.SafeLoader)
     copy = Config(copy)
     copy = LoadersConfig(config)
-    assert yaml.dump(obj) == yaml.dump(copy), (obj, copy)
+
+    a = yaml.dump(obj)
+    b = yaml.dump(copy)
+    if a != b:
+        print(a)
+        print(b)
+        raise ValueError("Serialisation failed")
 
     return copy
 

@@ -1,0 +1,6 @@
+# CODEOWNERS file
+
+# Protect workflow files
+/.github/ @theissenhelen @jesperdramsch @gmertes @b8raoult @floriankrb
+/.pre-commit-config.yaml @theissenhelen @jesperdramsch @gmertes @b8raoult @floriankrb
+/pyproject.toml @theissenhelen @jesperdramsch @gmertes @b8raoult @floriankrb

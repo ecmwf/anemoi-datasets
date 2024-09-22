@@ -60,7 +60,8 @@ class DatasetName:
         pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h)-v(\d+)-?([a-zA-Z0-9-]+)?$"
         match = re.match(pattern, name)
 
-        assert match, (name, pattern)
+        if not match:
+            raise ValueError(f"the dataset name '{name}' does not follow naming convention. Does not match {pattern}")
 
         parsed = {}
         if match:

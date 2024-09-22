@@ -9,6 +9,7 @@ import logging
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_timedelta
 
 from .debug import Node
 from .debug import debug_indexing
@@ -102,20 +103,63 @@ class Concat(ConcatMixin, Combined):
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
 
+    @classmethod
+    def check_dataset_compatibility(cls, datasets, fill_missing_gaps=False):
+        # Study the dates
+        ranges = [(d.dates[0].astype(object), d.dates[-1].astype(object)) for d in datasets]
 
-def concat_factory(args, kwargs, zarr_root):
+        # Make sure the dates are disjoint
+        for i in range(len(ranges)):
+            r = ranges[i]
+            for j in range(i + 1, len(ranges)):
+                s = ranges[j]
+                if r[0] <= s[0] <= r[1] or r[0] <= s[1] <= r[1]:
+                    raise ValueError(f"Overlapping dates: {r} and {s} ({datasets[i]} {datasets[j]})")
+
+        # For now we should have the datasets in order with no gaps
+
+        frequency = frequency_to_timedelta(datasets[0].frequency)
+        result = []
+
+        for i in range(len(ranges) - 1):
+            result.append(datasets[i])
+            r = ranges[i]
+            s = ranges[i + 1]
+            if r[1] + frequency != s[0]:
+                if fill_missing_gaps:
+                    from .missing import MissingDataset
+
+                    result.append(MissingDataset(datasets[i], r[1] + frequency, s[0] - frequency))
+                else:
+                    r = [str(e) for e in r]
+                    s = [str(e) for e in s]
+                    raise ValueError(
+                        "Datasets must be sorted by dates, with no gaps: "
+                        f"{r} and {s} ({datasets[i]} {datasets[i+1]})"
+                    )
+
+        result.append(datasets[-1])
+        assert len(result) >= len(datasets), (len(result), len(datasets))
+
+        return result
+
+
+def concat_factory(args, kwargs):
 
     datasets = kwargs.pop("concat")
+    fill_missing_gaps = kwargs.pop("fill_missing_gaps", False)
     assert isinstance(datasets, (list, tuple))
     assert len(args) == 0
 
     assert isinstance(datasets, (list, tuple))
 
-    datasets = [_open(e, zarr_root) for e in datasets]
+    datasets = [_open(e) for e in datasets]
 
     if len(datasets) == 1:
         return datasets[0]._subset(**kwargs)
 
     datasets, kwargs = _auto_adjust(datasets, kwargs)
+
+    datasets = Concat.check_dataset_compatibility(datasets, fill_missing_gaps)
 
     return Concat(datasets)._subset(**kwargs)

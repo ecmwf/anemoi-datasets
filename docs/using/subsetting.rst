@@ -52,5 +52,15 @@ with a ``frequency`` of 6 hours is equivalent to ``end="2020-12-31
 
 You can change the frequency of the dataset by passing a string with:
 
-.. literalinclude:: code/frequency_.py
+.. literalinclude:: code/frequency1_.py
+   :language: python
+
+The new frequency must be a multiple of the original frequency.
+
+To artificially increase the frequency, you can use the
+``interpolate_frequency`` option. This will create new dates in the
+dataset by linearly interpolating the data values between the original
+dates.
+
+.. literalinclude:: code/frequency2_.py
    :language: python

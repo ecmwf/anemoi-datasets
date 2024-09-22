@@ -19,7 +19,7 @@ from earthkit.data import from_source as original_from_source
 from multiurl import download
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create import Creator
+from anemoi.datasets.create import creator_factory
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
@@ -117,24 +117,29 @@ def compare_dot_zattrs(a, b, path, errors):
                 "dataset_status",
                 "total_size",
             ]:
-                if type(a[k]) != type(b[k]):  # noqa : E721
+                if type(a[k]) is not type(b[k]):
                     errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
                 continue
+
             compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
+
         return
 
     if isinstance(a, list):
         if len(a) != len(b):
             errors.append(f"❌ {path} : lengths are different {len(a)} != {len(b)}")
             return
+
         for i, (v, w) in enumerate(zip(a, b)):
             compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+
         return
 
-    if type(a) != type(b):  # noqa : E721
+    if type(a) is not type(b):
         msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
         errors.append(msg)
         return
+
     if a != b:
         msg = f"❌ {path} actual != expected : {a} != {b}"
         errors.append(msg)
@@ -222,13 +227,16 @@ def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
 
-    # cache=None is using the default cache
-    c = Creator(output, config=config, cache=None, overwrite=True)
-    c.init()
-    c.load()
-    c.finalise()
-    c.additions(delta=[1, 3, 6, 12])
-    c.cleanup()
+    creator_factory("init", config=config, path=output, overwrite=True).run()
+    creator_factory("load", path=output).run()
+    creator_factory("finalise", path=output).run()
+    creator_factory("patch", path=output).run()
+    creator_factory("init_additions", path=output, delta=["12h"]).run()
+    creator_factory("run_additions", path=output, delta=["12h"]).run()
+    creator_factory("finalise_additions", path=output, delta=["12h"]).run()
+    creator_factory("cleanup", path=output).run()
+    creator_factory("cleanup", path=output, delta=["12h"]).run()
+    creator_factory("verify", path=output).run()
 
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
     s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"

@@ -11,15 +11,32 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
-- CI workflow to update the changelog on release
-- adds the reusable cd pypi workflow
+
+- New `rescale` keyword in `open_dataset` to change units of variables #36
 
 ### Changed
- -  update CI to reusable workflows for PRs and releases
 
+- Added incremental building of datasets
+
+### Removed
+
+## [0.4.5]
+
+### Added
+
+- New `interpolate_frequency` keyword in `open_dataset`
+- CI workflow to update the changelog on release
+- adds the reusable cd pypi workflow
+- merge strategy for changelog in .gitattributes #25
+- adds ci hpc config (#43)
+
+### Changed
+
+- update CI to reusable workflows for PRs and releases
 - Support sub-hourly datasets.
 - Change negative variance detection to make it less restrictive
 - Fix cutout bug that left some global grid points in the lam part
+- Fix bug in computing missing dates in cutout option
 
 ### Removed
 

@@ -862,6 +862,18 @@ def test_dates():
 
 
 @mockup_open_zarr
+def test_dates_using_list():
+    dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(6, "h") for i in range(3, 365 * 4 - 2)]
+    assert dates[0] == np.datetime64("2021-01-01T18:00:00")
+    assert dates[-1] == np.datetime64("2021-12-31T06:00:00")
+
+    assert as_first_date(2021, dates) == np.datetime64("2021-01-01T18:00:00")
+    assert as_last_date(2021, dates) == np.datetime64("2021-12-31T06:00:00")
+    assert as_first_date("2021", dates) == np.datetime64("2021-01-01T18:00:00")
+    assert as_last_date("2021", dates) == np.datetime64("2021-12-31T06:00:00")
+
+
+@mockup_open_zarr
 def test_slice_1():
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(

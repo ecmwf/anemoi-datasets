@@ -23,17 +23,16 @@ def task(what, options, *args, **kwargs):
     """
 
     now = datetime.datetime.now()
-    LOG.debug(f"Task {what}({args},{kwargs}) starting")
+    LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
-    from anemoi.datasets.create import Creator
+    from anemoi.datasets.create import creator_factory
 
-    if "trace" in options:
-        enable_trace(options["trace"])
+    options = {k: v for k, v in options.items() if v is not None}
 
-    c = Creator(**options)
-    result = getattr(c, what)(*args, **kwargs)
+    c = creator_factory(what.replace("-", "_"), **options)
+    result = c.run()
 
-    LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
+    LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result
 
 
@@ -76,11 +75,23 @@ class Create(Command):
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
     def serial_create(self, args):
-        from anemoi.datasets.create import Creator
 
         options = vars(args)
-        c = Creator(**options)
-        c.create()
+        options.pop("command")
+        options.pop("threads")
+        options.pop("processes")
+
+        task("init", options)
+        task("load", options)
+        task("finalise", options)
+
+        task("patch", options)
+
+        task("init_additions", options)
+        task("run_additions", options)
+        task("finalise_additions", options)
+        task("cleanup", options)
+        task("verify", options)
 
     def parallel_create(self, args):
         """Some modules, like fsspec do not work well with fork()
@@ -90,10 +101,15 @@ class Create(Command):
         """
 
         options = vars(args)
-        parallel = args.threads + args.processes
-        args.use_threads = args.threads > 0
+        options.pop("command")
 
-        if args.use_threads:
+        threads = options.pop("threads")
+        processes = options.pop("processes")
+
+        use_threads = threads > 0
+        options["use_threads"] = use_threads
+
+        if use_threads:
             ExecutorClass = ThreadPoolExecutor
         else:
             ExecutorClass = ProcessPoolExecutor
@@ -103,18 +119,34 @@ class Create(Command):
 
         futures = []
 
+        parallel = threads + processes
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(total):
-                futures.append(executor.submit(task, "load", options, parts=f"{n+1}/{total}"))
+                opt = options.copy()
+                opt["parts"] = f"{n+1}/{total}"
+                futures.append(executor.submit(task, "load", opt))
 
-            for future in tqdm.tqdm(
-                as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
-            ):
+            for future in tqdm.tqdm(as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "statistics", options).result()
-            executor.submit(task, "additions", options).result()
+            executor.submit(task, "finalise", options).result()
+
+        with ExecutorClass(max_workers=1) as executor:
+            executor.submit(task, "init-additions", options).result()
+
+        with ExecutorClass(max_workers=parallel) as executor:
+            opt = options.copy()
+            opt["parts"] = f"{n+1}/{total}"
+            futures.append(executor.submit(task, "load", opt))
+            for n in range(total):
+                futures.append(executor.submit(task, "load-additions", opt))
+
+            for future in tqdm.tqdm(as_completed(futures), desc="Computing additions", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
+                future.result()
+
+        with ExecutorClass(max_workers=1) as executor:
+            executor.submit(task, "finalise-additions", options).result()
             executor.submit(task, "cleanup", options).result()
             executor.submit(task, "verify", options).result()
 

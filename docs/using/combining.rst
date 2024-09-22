@@ -48,7 +48,9 @@ attempt to combine them:
 You can concatenate two or more datasets along the dates dimension. The
 package will check that all datasets are compatible (same resolution,
 same variables, etc.). Currently, the datasets must be given in
-chronological order with no gaps between them.
+chronological order with no gaps between them. If you want to
+concatenate datasets that have gaps between them, check the
+:ref:`fill_missing_gaps <fill_missing_gaps>` option.
 
 .. literalinclude:: code/concat1.py
    :language: python
