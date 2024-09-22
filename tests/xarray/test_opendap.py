@@ -19,6 +19,8 @@ def test_opendap():
 
     assert len(fs) == 79529
 
+    print(fs[0].datetime())
+
 
 if __name__ == "__main__":
     for name, obj in list(globals().items()):

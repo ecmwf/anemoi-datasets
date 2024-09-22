@@ -50,6 +50,8 @@ def skip_test_netcdf():
 
         assert len(fs) == checks["length"], (url, len(fs))
 
+        print(fs[0].datetime())
+
 
 if __name__ == "__main__":
     skip_test_netcdf()
