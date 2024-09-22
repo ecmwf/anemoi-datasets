@@ -49,6 +49,7 @@ class Mars(BaseModel):
     grid: Union[str, list[float], Tuple[float, float]] = None
     area: Union[list[float], Tuple[float, float, float, float]] = None
     rotation: Union[list[float], Tuple[float, float]] = None
+    interpolation: str = None
 
     @field_validator("param", "levelist", "step")
     @classmethod
