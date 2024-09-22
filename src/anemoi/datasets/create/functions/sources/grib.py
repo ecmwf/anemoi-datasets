@@ -14,8 +14,18 @@ from typing import Union
 from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
+from pydantic import BaseModel
 
 from .mars import Mars
+
+
+class UnstructuredGridSource(BaseModel):
+    class Config:
+        extra = "forbid"
+
+    url: str = None
+    path: str = None
+    param: str = None
 
 
 class Grib(Mars):
@@ -23,6 +33,9 @@ class Grib(Mars):
         extra = "forbid"
 
     path: Union[str, list[str]]
+
+    latitudes: UnstructuredGridSource
+    longitudes: UnstructuredGridSource
 
 
 def _load(context, name, record):

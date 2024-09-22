@@ -30,6 +30,7 @@ class GroupByEnum(str, Enum):
     daily = "daily"
     weekly = "weekly"
     MMDD = "MMDD"
+    reference_date = "reference_date"
 
 
 class Dates(BaseModel):
@@ -46,10 +47,16 @@ class Interval(Dates):
     start: datetime.datetime = None
     end: datetime.datetime = None
     frequency: datetime.timedelta = None
+    day_of_week: str | list[str] = None
 
     @field_validator("frequency", mode="before")
     def parse_frequency(cls, value):
         return frequency_to_timedelta(value)
+
+    # Hindcasts
+    years: int = 20
+    steps: list[int] = None
+    hindcasts: bool = False
 
 
 class DateList(Dates):
@@ -200,11 +207,13 @@ class Recipe(BaseModel):
     status: str = Annotated[int, Field(deprecated="This is deprecated")]
     dataset_status: str = Annotated[int, Field(deprecated="This is deprecated")]
 
+
 def expand(config):
     return config
     model = init()
     recipe = model(**config)
     return recipe.model_dump()
+
 
 def validate(config, schema=False):
 

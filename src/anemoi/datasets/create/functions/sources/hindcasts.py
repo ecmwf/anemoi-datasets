@@ -10,9 +10,14 @@ import logging
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.create.functions.sources.mars import mars
+from .mars import Mars
+from .mars import mars
 
 LOGGER = logging.getLogger(__name__)
+
+
+class Hindcasts(Mars):
+    pass
 
 
 def _to_list(x):
@@ -58,4 +63,5 @@ def hindcasts(context, dates, **request):
     )
 
 
+schema = Hindcasts
 execute = hindcasts
