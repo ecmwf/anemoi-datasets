@@ -104,6 +104,7 @@ optional-dependencies.docs = [
   "nbsphinx",
   "pandoc",
   "sphinx",
+  "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
 
