@@ -486,18 +486,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
 
-        def sanity_check_config(a, b):
-            return
-            a = json.dumps(a, sort_keys=True, default=str)
-            b = json.dumps(b, sort_keys=True, default=str)
-            b = b.replace("T", " ")  # dates are expected to be different because
-            if a != b:
-                print("❌❌❌ FIXME: Config serialisation to be checked")
-                print(a)
-                print(b)
-
-        sanity_check_config(self.main_config, self.dataset.get_main_config())
-
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)
 
