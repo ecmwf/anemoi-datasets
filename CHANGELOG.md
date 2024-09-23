@@ -19,6 +19,7 @@ Keep it human-readable, your future self will thank you!
 - Added incremental building of datasets
 - Add missing dependency for documentation building
 - Fix failing test due to previous merge
+- Bug fix when creating dataset from zarr
 
 ### Removed
 
