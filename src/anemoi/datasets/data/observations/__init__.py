@@ -65,6 +65,8 @@ class ListOfArray:
 
     def __repr__(self):
         return f"ListOfArray({str_(self.arrays)})"
+    def as_list(self):
+        return self.arrays
 
 
 def _resolve_path(path):
