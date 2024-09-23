@@ -7,6 +7,7 @@
 # nor does it submit to any jurisdiction.
 #
 
+import datetime
 import logging
 
 from earthkit.data.core.fieldlist import Field
@@ -103,7 +104,12 @@ class XArrayField(Field):
 
     @property
     def forecast_reference_time(self):
-        return self.owner.forecast_reference_time
+        date, time = self.metadata("date", "time")
+        assert len(time) == 4, time
+        assert len(date) == 8, date
+        yyyymmdd = int(date)
+        time = int(time) // 100
+        return datetime.datetime(yyyymmdd // 10000, yyyymmdd // 100 % 100, yyyymmdd % 100, time)
 
     def __repr__(self):
         return repr(self._metadata)

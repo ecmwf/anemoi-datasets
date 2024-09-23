@@ -70,15 +70,17 @@ class XArrayMetadata(RawMetadata):
             return self._as_mars()
 
     def _as_mars(self):
-        return dict(
-            param=self["variable"],
-            step=self["step"],
-            levelist=self["level"],
-            levtype=self["levtype"],
-            number=self["number"],
-            date=self["date"],
-            time=self["time"],
-        )
+        return {}
+        # p =  dict(
+        #     param=self.get("variable", self.get("param")),
+        #     step=self.get("step"),
+        #     levelist=self.get("levelist", self.get("level")),
+        #     levtype=self.get("levtype"),
+        #     number=self.get("number"),
+        #     date=self.get("date"),
+        #     time=self.get("time"),
+        # )
+        # return {k: v for k, v in p.items() if v is not None}
 
     def _base_datetime(self):
         return self._field.forecast_reference_time
@@ -135,12 +137,12 @@ class XArrayFieldGeography(Geography):
         # TODO: implement resolution
         return None
 
-    @property
+    # @property
     def mars_grid(self):
         # TODO: implement mars_grid
         return None
 
-    @property
+    # @property
     def mars_area(self):
         # TODO: code me
         # return [self.north, self.west, self.south, self.east]
