@@ -64,7 +64,7 @@ class Variable:
         return self.ds[grid_mapping].attrs
 
     def grid_points(self):
-        return self.grid.grid_points()
+        return self.grid.grid_points
 
     @property
     def latitudes(self):

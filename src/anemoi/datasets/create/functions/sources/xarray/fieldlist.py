@@ -103,7 +103,7 @@ class XarrayFieldList(FieldList):
                     ds=ds,
                     var=v,
                     coordinates=coordinates,
-                    grid=guess.grid(coordinates),
+                    grid=guess.grid(coordinates, v.attrs.get("grid_mapping", None), name),
                     time=Time.from_coordinates(coordinates),
                     metadata={},
                 )

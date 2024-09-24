@@ -8,6 +8,8 @@
 #
 
 
+import logging
+
 from .coordinates import DateCoordinate
 from .coordinates import EnsembleCoordinate
 from .coordinates import LatitudeCoordinate
@@ -18,8 +20,12 @@ from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
 from .coordinates import XCoordinate
 from .coordinates import YCoordinate
+from .coordinates import is_scalar
 from .grid import MeshedGrid
+from .grid import ProjectionGrid
 from .grid import UnstructuredGrid
+
+LOG = logging.getLogger(__name__)
 
 
 class CoordinateGuesser:
@@ -155,16 +161,22 @@ class CoordinateGuesser:
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
-    def grid(self, coordinates):
+    def grid(self, coordinates, grid_mapping, variable):
         lat = [c for c in coordinates if c.is_lat]
         lon = [c for c in coordinates if c.is_lon]
 
-        if len(lat) != 1:
-            raise NotImplementedError(f"Expected 1 latitude coordinate, got {len(lat)}")
+        if len(lat) == 1 and len(lon) == 1:
+            return self._lat_lon_provided(lat, lon)
 
-        if len(lon) != 1:
-            raise NotImplementedError(f"Expected 1 longitude coordinate, got {len(lon)}")
+        x = [c for c in coordinates if c.is_x]
+        y = [c for c in coordinates if c.is_y]
 
+        if len(x) == 1 and len(y) == 1:
+            return self._x_y_provided(x, y, grid_mapping, variable)
+
+        raise NotImplementedError(f"Cannot establish grid {coordinates}")
+
+    def _lat_lon_provided(self, lat, lon):
         lat = lat[0]
         lon = lon[0]
 
@@ -179,6 +191,53 @@ class CoordinateGuesser:
 
         self._cache[(lat.name, lon.name)] = grid
         return grid
+
+    def _x_y_provided(self, x, y, grid_mapping, variable):
+        x = x[0]
+        y = y[0]
+
+        if (x.name, y.name) in self._cache:
+            return self._cache[(x.name, y.name)]
+
+        assert len(x.variable.shape) == len(x.variable.shape), (x.variable.shape, y.variable.shape)
+
+        if grid_mapping is None:
+            LOG.warning(f"No 'grid_mapping' attribute provided for '{variable}'")
+            LOG.warning("Trying to guess...")
+
+            PROBE = {
+                "prime_meridian_name",
+                "reference_ellipsoid_name",
+                "crs_wkt",
+                "horizontal_datum_name",
+                "semi_major_axis",
+                "spatial_ref",
+                "inverse_flattening",
+                "semi_minor_axis",
+                "geographic_crs_name",
+                "GeoTransform",
+                "grid_mapping_name",
+                "longitude_of_prime_meridian",
+            }
+            candidate = None
+            for v in self.ds.variables:
+                var = self.ds[v]
+                if not is_scalar(var):
+                    continue
+
+                if PROBE.intersection(var.attrs.keys()):
+                    if candidate:
+                        raise ValueError(f"Multiple candidates for 'grid_mapping': {candidate} and {v}")
+                    candidate = v
+
+            if candidate:
+                LOG.warning(f"Using '{candidate}' as 'grid_mapping'")
+                grid_mapping = candidate
+
+        if grid_mapping is not None:
+            return ProjectionGrid(x, y, dict(self.ds[grid_mapping].attrs))
+
+        raise NotImplementedError(f"Unstructured grid {x.name} {y.name}")
 
 
 class DefaultCoordinateGuesser(CoordinateGuesser):

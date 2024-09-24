@@ -56,6 +56,8 @@ class Coordinate:
     is_step = False
     is_date = False
     is_member = False
+    is_x = False
+    is_y = False
 
     def __init__(self, variable):
         self.variable = variable
@@ -225,11 +227,13 @@ class LatitudeCoordinate(Coordinate):
 
 class XCoordinate(Coordinate):
     is_grid = True
+    is_x = True
     mars_names = ("x",)
 
 
 class YCoordinate(Coordinate):
     is_grid = True
+    is_y = True
     mars_names = ("y",)
 
 

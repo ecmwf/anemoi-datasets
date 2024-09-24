@@ -8,39 +8,70 @@
 #
 
 
+from functools import cached_property
+
 import numpy as np
 
 
 class Grid:
+
+    @property
+    def latitudes(self):
+        return self.grid_points[0]
+
+    @property
+    def longitudes(self):
+        return self.grid_points[1]
+
+
+class LatLonGrid(Grid):
     def __init__(self, lat, lon):
         self.lat = lat
         self.lon = lon
 
-    @property
-    def latitudes(self):
-        return self.grid_points()[0]
 
-    @property
-    def longitudes(self):
-        return self.grid_points()[1]
+class XYGrid(Grid):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
 
-class MeshedGrid(Grid):
-    _cache = None
+class MeshedGrid(LatLonGrid):
 
+    @cached_property
     def grid_points(self):
-        if self._cache is not None:
-            return self._cache
-        lat = self.lat.variable.values
-        lon = self.lon.variable.values
-
-        lat, lon = np.meshgrid(lat, lon)
-        self._cache = (lat.flatten(), lon.flatten())
-        return self._cache
+        return np.meshgrid(
+            self.lat.variable.values,
+            self.lon.variable.values,
+        )
 
 
-class UnstructuredGrid(Grid):
+class UnstructuredGrid(LatLonGrid):
+
+    @cached_property
     def grid_points(self):
         lat = self.lat.variable.values.flatten()
         lon = self.lon.variable.values.flatten()
         return lat, lon
+
+
+class ProjectionGrid(XYGrid):
+    def __init__(self, x, y, projection):
+        super().__init__(x, y)
+        self.projection = projection
+
+    @cached_property
+    def grid_points(self):
+        from pyproj import CRS
+        from pyproj import Transformer
+
+        data_crs = CRS.from_cf(self.projection)
+        wgs84_crs = CRS.from_epsg(4326)  # WGS84
+        transformer = Transformer.from_crs(data_crs, wgs84_crs)
+        lat, lon = transformer.transform(
+            self.x.variable.values.flatten(),
+            self.y.variable.values.flatten(),
+        )
+
+        assert False, (len(lat), len(lon))
+        return np.meshgrid(lat, lon)
