@@ -34,7 +34,7 @@ def str_(t):
     return str(t)
 
 
-class ListOfArray:
+class ListOfArrays:
     def __init__(self, arrays):
         self.arrays = arrays
         self.lenghts = [v.size for v in arrays]
@@ -65,8 +65,11 @@ class ListOfArray:
 
     def __repr__(self):
         return f"ListOfArray({str_(self.arrays)})"
+
     def as_list(self):
         return self.arrays
+
+ListOfArray = ListOfArrays
 
 
 def _resolve_path(path):
