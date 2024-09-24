@@ -12,10 +12,9 @@ import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
-from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import AutoDict
-from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import NewDataField
-from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import \
-    pressure_at_height_level
+from .single_level_specific_humidity_to_relative_humidity import AutoDict
+from .single_level_specific_humidity_to_relative_humidity import NewDataField
+from .single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
 
 
 def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):

@@ -12,7 +12,7 @@ from collections import defaultdict
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
-from anemoi.datasets.create.functions.filters.single_level_specific_humidity_to_relative_humidity import NewDataField
+from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
 def execute(context, input, t, rh, q="q"):
