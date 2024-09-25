@@ -186,21 +186,21 @@ class CoordinateGuesser:
 
         dim_vars = variable.dims[-len(lat.variable.dims) :]
 
-        if lat.variable.dims != dim_vars:
+        if set(lat.variable.dims) != set(dim_vars):
             raise ValueError(
                 f"Dimensions do not match {variable.name}{variable.dims} != {lat.name}{lat.variable.dims} and {lon.name}{lon.variable.dims}"
             )
 
-        if (lat.name, lon.name) in self._cache:
-            return self._cache[(lat.name, lon.name)]
+        if (lat.name, lon.name, dim_vars) in self._cache:
+            return self._cache[(lat.name, lon.name, dim_vars)]
 
         assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
         if len(lat.variable.shape) == 1:
-            grid = MeshedGrid(lat, lon)
+            grid = MeshedGrid(lat, lon, dim_vars)
         else:
-            grid = UnstructuredGrid(lat, lon)
+            grid = UnstructuredGrid(lat, lon, dim_vars)
 
-        self._cache[(lat.name, lon.name)] = grid
+        self._cache[(lat.name, lon.name, dim_vars)] = grid
         return grid
 
     def _x_y_provided(self, x, y, variable):

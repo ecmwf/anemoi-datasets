@@ -73,7 +73,6 @@ class XArrayField(Field):
         return self._shape
 
     def to_numpy(self, flatten=False, dtype=None, index=None):
-        print("to_numpy", flatten, dtype, index)
         if index is not None:
             values = self.selection[index]
         else:

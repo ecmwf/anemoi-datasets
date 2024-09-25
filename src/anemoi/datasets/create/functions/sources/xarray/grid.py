@@ -8,9 +8,12 @@
 #
 
 
+import logging
 from functools import cached_property
 
 import numpy as np
+
+LOG = logging.getLogger(__name__)
 
 
 class Grid:
@@ -50,15 +53,32 @@ class MeshedGrid(LatLonGrid):
 
 class UnstructuredGrid(LatLonGrid):
 
-    def __init__(self, lat, lon):
+    def __init__(self, lat, lon, variable_dims):
         super().__init__(lat, lon)
         assert len(lat) == len(lon), (len(lat), len(lon))
+        self.variable_dims = variable_dims
+        self.grid_dims = lat.variable.dims
+        assert lon.variable.dims == self.grid_dims, (lon.variable.dims, self.grid_dims)
+        assert set(self.variable_dims) == set(self.grid_dims), (self.variable_dims, self.grid_dims)
 
     @cached_property
     def grid_points(self):
-        # assert False, "Not implemented"
-        lat = self.lat.variable.values.flatten()
-        lon = self.lon.variable.values.flatten()
+
+        assert 1 <= len(self.variable_dims) <= 2
+
+        if len(self.variable_dims) == 1:
+            return self.lat.variable.values.flatten(), self.lon.variable.values.flatten()
+
+        if len(self.variable_dims) == 2 and self.variable_dims == self.grid_dims:
+            return self.lat.variable.values.flatten(), self.lon.variable.values.flatten()
+
+        LOG.warning(
+            "UnstructuredGrid: variable indexing %s does not match grid indexing %s", self.variable_dims, self.grid_dims
+        )
+
+        lat = self.lat.variable.values.transpose().flatten()
+        lon = self.lon.variable.values.transpose().flatten()
+
         return lat, lon
 
 
@@ -78,17 +98,13 @@ class ProjectionGrid(XYGrid):
         wgs84_crs = CRS.from_epsg(4326)  # WGS84
 
         return Transformer.from_crs(data_crs, wgs84_crs, always_xy=True)
-        # lon, lat = transformer.transform(
-        #     self.x.variable.values.flatten(),
-        #     self.y.variable.values.flatten(),
-        # )
 
 
 class MeshProjectionGrid(ProjectionGrid):
 
     @cached_property
     def grid_points(self):
-        assert False, "Not implemented"
+
         transformer = self.transformer()
         xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
         lon, lat = transformer.transform(xv, yv)
