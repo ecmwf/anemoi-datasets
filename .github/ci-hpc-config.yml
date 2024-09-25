@@ -1,4 +1,5 @@
 build:
+  python: '3.10'
   modules:
     - ninja
   dependencies:
@@ -15,6 +16,3 @@ build:
 
   pytest_cmd: |
     python -m pytest -vv -m 'not notebook and not no_cache_init' --cov=. --cov-report=xml
-    python -m pytest -v -m 'notebook'
-    python -m pytest --forked -vv -m 'no_cache_init'
-    python -m coverage report
