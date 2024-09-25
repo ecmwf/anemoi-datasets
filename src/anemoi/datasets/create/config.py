@@ -215,8 +215,9 @@ def set_to_test_mode(cfg):
     NUMBER_OF_DATES = 4
 
     dates = cfg["dates"]
-    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
     groups = Groups(**LoadersConfig(cfg).dates)
+
     dates = groups.dates
     cfg["dates"] = dict(
         start=dates[0],
@@ -234,12 +235,12 @@ def set_to_test_mode(cfg):
             if "grid" in obj:
                 previous = obj["grid"]
                 obj["grid"] = "20./20."
-                LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
+                LOG.warning(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
             if "number" in obj:
                 if isinstance(obj["number"], (list, tuple)):
                     previous = obj["number"]
                     obj["number"] = previous[0:3]
-                    LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
+                    LOG.warning(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
             for k, v in obj.items():
                 set_element_to_test(v)
             if "constants" in obj:

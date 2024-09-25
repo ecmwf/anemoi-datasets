@@ -11,11 +11,21 @@ Keep it human-readable, your future self will thank you!
 ## [Unreleased]
 
 ### Added
+
+- New `rescale` keyword in `open_dataset` to change units of variables #36
+- Simplify imports
+
 ### Changed
 
 - Added incremental building of datasets
+- Add missing dependency for documentation building
+- Fix failing test due to previous merge
+- Bug fix when creating dataset from zarr
+- Bug fix with area selection in cutout operation
+- add paths-ignore to ci workflow
 
 ### Removed
+- pytest for notebooks
 
 ## [0.4.5]
 
@@ -25,6 +35,7 @@ Keep it human-readable, your future self will thank you!
 - CI workflow to update the changelog on release
 - adds the reusable cd pypi workflow
 - merge strategy for changelog in .gitattributes #25
+- adds ci hpc config (#43)
 
 ### Changed
 
@@ -74,6 +85,9 @@ Keep it human-readable, your future self will thank you!
 - combine datasets
 
 ## Git Diffs:
+[Unreleased]: https://github.com/ecmwf/anemoi-datasets/compare/0.4.5...HEAD
+[0.4.5]: https://github.com/ecmwf/anemoi-datasets/compare/0.4.4...0.4.5
+[0.4.4]: https://github.com/ecmwf/anemoi-datasets/compare/0.4.0...0.4.4
 [0.4.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.1.0...0.2.0

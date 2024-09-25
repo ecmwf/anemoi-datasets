@@ -62,6 +62,9 @@ def make_list_int(value):
 
 
 def normalize_and_check_dates(dates, start, end, frequency, dtype="datetime64[s]"):
+
+    dates = [d.hdate if hasattr(d, "hdate") else d for d in dates]
+
     assert isinstance(frequency, datetime.timedelta), frequency
     start = np.datetime64(start)
     end = np.datetime64(end)

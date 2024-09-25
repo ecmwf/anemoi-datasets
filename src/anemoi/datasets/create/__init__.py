@@ -132,7 +132,7 @@ class Dataset:
                 v = v.isoformat()
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
-    @property
+    @cached_property
     def anemoi_dataset(self):
         return open_dataset(self.path)
 
@@ -245,9 +245,9 @@ class Actor:  # TODO: rename to Creator
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
-                LOG.warn("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-                LOG.warn(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-                LOG.warn(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
                 raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
         check_missing_dates(self.missing_dates)
@@ -327,7 +327,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     dataset_class = NewDataset
     def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, cache=None, **kwargs):  # fmt: skip
         if _path_readable(path) and not overwrite:
-            raise Exception(f"{self.path} already exists. Use overwrite=True to overwrite.")
+            raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
 
         super().__init__(path, cache=cache)
         self.config = config
@@ -345,9 +345,12 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         assert isinstance(self.main_config.output.order_by, dict), self.main_config.output.order_by
         self.create_elements(self.main_config)
 
-        first_date = self.groups.dates[0]
-        self.minimal_input = self.input.select([first_date])
-        LOG.info("Minimal input for 'init' step (using only the first date) :")
+        LOG.info(f"Groups: {self.groups}")
+
+        one_date = self.groups.one_date()
+        # assert False, (type(one_date), type(self.groups))
+        self.minimal_input = self.input.select(one_date)
+        LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
     def run(self):
@@ -363,13 +366,15 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info("Config loaded ok:")
         # LOG.info(self.main_config)
 
-        dates = self.groups.dates
-        frequency = dates.frequency
+        dates = self.groups.provider.values
+        frequency = self.groups.provider.frequency
+        missing = self.groups.provider.missing
+
         assert isinstance(frequency, datetime.timedelta), frequency
 
         LOG.info(f"Found {len(dates)} datetimes.")
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
-        LOG.info(f"Missing dates: {len(dates.missing)}")
+        LOG.info(f"Missing dates: {len(missing)}")
         lengths = tuple(len(g) for g in self.groups)
 
         variables = self.minimal_input.variables
@@ -426,7 +431,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata["start_date"] = dates[0].isoformat()
         metadata["end_date"] = dates[-1].isoformat()
         metadata["frequency"] = frequency
-        metadata["missing_dates"] = [_.isoformat() for _ in dates.missing]
+        metadata["missing_dates"] = [_.isoformat() for _ in missing]
 
         metadata["version"] = VERSION
 
@@ -481,17 +486,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
 
-        def sanity_check_config(a, b):
-            a = json.dumps(a, sort_keys=True, default=str)
-            b = json.dumps(b, sort_keys=True, default=str)
-            b = b.replace("T", " ")  # dates are expected to be different because
-            if a != b:
-                print("❌❌❌ FIXME: Config serialisation to be checked")
-                print(a)
-                print(b)
-
-        sanity_check_config(self.main_config, self.dataset.get_main_config())
-
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)
 
@@ -527,11 +521,11 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
                 continue
 
-            assert isinstance(group[0], datetime.datetime), group
+            # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             result = self.input.select(dates=group)
-            assert result.dates == group, (len(result.dates), len(group))
+            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
             # There is one result to load for each group.
@@ -545,7 +539,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
     def load_result(self, result):
         # There is one cube to load for each result.
-        dates = result.dates
+        dates = list(result.group_of_dates)
 
         cube = result.get_cube()
         shape = cube.extended_user_shape
@@ -555,7 +549,9 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         def check_shape(cube, dates, dates_in_data):
             if cube.extended_user_shape[0] != len(dates):
-                print(f"Cube shape does not match the number of dates {cube.extended_user_shape[0]}, {len(dates)}")
+                print(
+                    f"Cube shape does not match the number of dates got {cube.extended_user_shape[0]}, expected {len(dates)}"
+                )
                 print("Requested dates", compress_dates(dates))
                 print("Cube dates", compress_dates(dates_in_data))
 
@@ -566,7 +562,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 print("Extra dates", compress_dates(b - a))
 
                 raise ValueError(
-                    f"Cube shape does not match the number of dates {cube.extended_user_shape[0]}, {len(dates)}"
+                    f"Cube shape does not match the number of dates got {cube.extended_user_shape[0]}, expected {len(dates)}"
                 )
 
         check_shape(cube, dates, dates_in_data)
@@ -846,7 +842,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         )
 
         if len(ifound) < 2:
-            LOG.warn(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
+            LOG.warning(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
             self.tmp_storage.delete()
             return
 
@@ -919,7 +915,7 @@ def multi_addition(cls):
                 self.actors.append(cls(*args, delta=k, **kwargs))
 
             if not self.actors:
-                LOG.warning("No delta found in kwargs, no addtions will be computed.")
+                LOG.warning("No delta found in kwargs, no additions will be computed.")
 
         def run(self):
             for actor in self.actors:
@@ -947,7 +943,9 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         )
         start, end = np.datetime64(start), np.datetime64(end)
         dates = self.dataset.anemoi_dataset.dates
-        assert type(dates[0]) == type(start), (type(dates[0]), type(start))  # noqa
+
+        assert type(dates[0]) is type(start), (type(dates[0]), type(start))
+
         dates = [d for d in dates if d >= start and d <= end]
         dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
         variables = self.dataset.anemoi_dataset.variables
@@ -956,7 +954,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(stats)
 
         if not all(self.registry.get_flags(sync=False)):
-            raise Exception(f"❗Zarr {self.path} is not fully built, not writting statistics into dataset.")
+            raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
         for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))

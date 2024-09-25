@@ -112,5 +112,5 @@ class Cropping(Masked):
     def tree(self):
         return Node(self, [self.forward.tree()], area=self.area)
 
-    def metadata_specific(self, **kwargs):
-        return super().metadata_specific(area=self.area, **kwargs)
+    def subclass_metadata_specific(self):
+        return dict(area=self.area)

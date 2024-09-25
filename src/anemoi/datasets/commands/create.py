@@ -19,7 +19,7 @@ def task(what, options, *args, **kwargs):
     """
 
     now = datetime.datetime.now()
-    LOG.info(f"Task {what}({args},{kwargs}) starting")
+    LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
     from anemoi.datasets.create import creator_factory
 
@@ -28,7 +28,7 @@ def task(what, options, *args, **kwargs):
     c = creator_factory(what.replace("-", "_"), **options)
     result = c.run()
 
-    LOG.debug(f"Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
+    LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result
 
 
@@ -57,6 +57,7 @@ class Create(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args):
+
         now = time.time()
         if args.threads + args.processes:
             self.parallel_create(args)

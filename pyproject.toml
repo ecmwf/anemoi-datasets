@@ -51,44 +51,42 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-utils[provenance]>=0.3.15",
+  "cfunits",
   "numpy",
   "pyyaml",
   "semantic-version",
   "tqdm",
-  "zarr",
+  "zarr<=2.17",
 ]
 
 optional-dependencies.all = [
-  "aiohttp",
   "boto3",
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "eccodes>=2.37",
+  "ecmwflibs>=0.6.3",
   "entrypoints",
   "gcsfs",
   "kerchunk",
   "pyproj",
   "requests",
-  "s3fs",
 ]
 
 optional-dependencies.create = [
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "eccodes>=2.37",
+  "ecmwflibs>=0.6.3",
   "entrypoints",
   "pyproj",
 ]
 
 optional-dependencies.dev = [
-  "aiohttp",
   "boto3",
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "eccodes>=2.37",
+  "ecmwflibs>=0.6.3",
   "entrypoints",
   "gcsfs",
   "kerchunk",
@@ -97,37 +95,30 @@ optional-dependencies.dev = [
   "pyproj",
   "pytest",
   "requests",
-  "rstfmt",
-  "s3fs",
   "sphinx",
-  "sphinx-argparse<0.5",
   "sphinx-rtd-theme",
 ]
 
 optional-dependencies.docs = [
   "nbsphinx",
   "pandoc",
-  "rstfmt",
   "sphinx",
-  "sphinx-argparse<0.5",
+  "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
 
-optional-dependencies.kerchunk = [
-  "gcsfs",
-  "kerchunk",
-  "s3fs",
-]
-
 optional-dependencies.remote = [
-  "aiohttp",
   "boto3",
   "requests",
-  "s3fs",
 ]
 
 optional-dependencies.tests = [
   "pytest",
+]
+
+optional-dependencies.xarray = [
+  "gcsfs",
+  "kerchunk",
 ]
 
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
@@ -145,3 +136,6 @@ scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools_scm]
 version_file = "src/anemoi/datasets/_version.py"
+
+[tool.isort]
+profile = "black"
