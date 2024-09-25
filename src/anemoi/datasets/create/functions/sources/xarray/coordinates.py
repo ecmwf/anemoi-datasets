@@ -68,10 +68,11 @@ class Coordinate:
         return 1 if self.scalar else len(self.variable)
 
     def __repr__(self):
-        return "%s[name=%s,values=%s]" % (
+        return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
             self.variable.name,
             self.variable.values if self.scalar else len(self),
+            self.variable.shape,
         )
 
     def reduced(self, i):

@@ -26,6 +26,7 @@ class Grid:
 
 class LatLonGrid(Grid):
     def __init__(self, lat, lon):
+        print("LatLonGrid", lat, lon)
         self.lat = lat
         self.lon = lon
 
@@ -40,6 +41,7 @@ class MeshedGrid(LatLonGrid):
 
     @cached_property
     def grid_points(self):
+        assert False, "Not implemented"
         return np.meshgrid(
             self.lat.variable.values,
             self.lon.variable.values,
@@ -48,8 +50,13 @@ class MeshedGrid(LatLonGrid):
 
 class UnstructuredGrid(LatLonGrid):
 
+    def __init__(self, lat, lon):
+        super().__init__(lat, lon)
+        assert len(lat) == len(lon), (len(lat), len(lon))
+
     @cached_property
     def grid_points(self):
+        # assert False, "Not implemented"
         lat = self.lat.variable.values.flatten()
         lon = self.lon.variable.values.flatten()
         return lat, lon
@@ -60,18 +67,48 @@ class ProjectionGrid(XYGrid):
         super().__init__(x, y)
         self.projection = projection
 
-    @cached_property
-    def grid_points(self):
+    def transformer(self):
         from pyproj import CRS
         from pyproj import Transformer
 
-        data_crs = CRS.from_cf(self.projection)
+        if isinstance(self.projection, dict):
+            data_crs = CRS.from_cf(self.projection)
+        else:
+            data_crs = self.projection
         wgs84_crs = CRS.from_epsg(4326)  # WGS84
-        transformer = Transformer.from_crs(data_crs, wgs84_crs)
-        lat, lon = transformer.transform(
-            self.x.variable.values.flatten(),
-            self.y.variable.values.flatten(),
-        )
 
-        assert False, (len(lat), len(lon))
-        return np.meshgrid(lat, lon)
+        return Transformer.from_crs(data_crs, wgs84_crs, always_xy=True)
+        # lon, lat = transformer.transform(
+        #     self.x.variable.values.flatten(),
+        #     self.y.variable.values.flatten(),
+        # )
+
+
+class MeshProjectionGrid(ProjectionGrid):
+
+    @cached_property
+    def grid_points(self):
+        assert False, "Not implemented"
+        transformer = self.transformer()
+        xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
+        lon, lat = transformer.transform(xv, yv)
+        return lat.flatten(), lon.flatten()
+
+
+class UnstructuredProjectionGrid(XYGrid):
+    @cached_property
+    def grid_points(self):
+        assert False, "Not implemented"
+
+        # lat, lon = transformer.transform(
+        #      self.y.variable.values.flatten(),
+        #     self.x.variable.values.flatten(),
+
+        # )
+
+        # lat = lat[::len(lat)//100]
+        # lon = lon[::len(lon)//100]
+
+        # print(len(lat), len(lon))
+
+        # return np.meshgrid(lat, lon)
