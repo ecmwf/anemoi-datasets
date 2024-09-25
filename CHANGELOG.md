@@ -22,8 +22,10 @@ Keep it human-readable, your future self will thank you!
 - Fix failing test due to previous merge
 - Bug fix when creating dataset from zarr
 - Bug fix with area selection in cutout operation
+- add paths-ignore to ci workflow
 
 ### Removed
+- pytest for notebooks
 
 ## [0.4.5]
 
