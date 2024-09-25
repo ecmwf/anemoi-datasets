@@ -225,11 +225,6 @@ class CoordinateGuesser:
 
         assert len(x.variable.shape) == len(x.variable.shape), (x.variable.shape, y.variable.shape)
 
-        assert False, (x.coords, y.coords)
-
-        assert x.coords == x.coords, (x.coords, y.coords)
-        assert variable.coords == x.coords, (variable.coords, x.coords)
-
         grid_mapping = variable.attrs.get("grid_mapping", None)
 
         if grid_mapping is None:
