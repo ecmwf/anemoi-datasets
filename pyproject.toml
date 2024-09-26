@@ -136,3 +136,6 @@ scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools_scm]
 version_file = "src/anemoi/datasets/_version.py"
+
+[tool.isort]
+profile = "black"
