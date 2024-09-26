@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
-## [Unreleased]
+## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.0...HEAD)
+
+## [0.5.0 - Incremental builds and Rescaling](https://github.com/ecmwf/anemoi-datasets/compare/0.4.5...0.5.0) - 2024-09-25
 
 ### Added
 
@@ -25,9 +27,10 @@ Keep it human-readable, your future self will thank you!
 - add paths-ignore to ci workflow
 
 ### Removed
+
 - pytest for notebooks
 
-## [0.4.5]
+## [0.4.5](https://github.com/ecmwf/anemoi-datasets/compare/0.4.4...0.4.5)
 
 ### Added
 
@@ -47,48 +50,48 @@ Keep it human-readable, your future self will thank you!
 
 ### Removed
 
-## [0.4.4] Bug fixes
+## [0.4.4](https://github.com/ecmwf/anemoi-datasets/compare/0.4.0...0.4.4) Bug fixes
 
 - Bug fix in accumulations() that did not work with webmars
 - Bug fix when using hindcasts input (missing dates on leap years)
 
-## [0.4.0] Minor Release
+## [0.4.0](https://github.com/ecmwf/anemoi-datasets/compare/0.3.0...0.4.0) Minor Release
 
 ### Added
+
 - earthkit-data replaces climetlab
 
 ### Removed
+
 - climetlab
 
-## [0.3.0] Minor Release
+## [0.3.0](https://github.com/ecmwf/anemoi-datasets/compare/0.2.0...0.3.0) Minor Release
 
 ### Added
+
 - hindcast source
 
 ### Changed
+
 - updated documentation
 
-## [0.2.0] Minor Release
+## [0.2.0](https://github.com/ecmwf/anemoi-datasets/compare/0.1.0...0.2.0) Minor Release
 
 ### Added
+
 - statistics tendencies
 
 ### Removed
+
 - CubesFilter
 
-## [0.1.0] Initial Release
+## [0.1.0](https://github.com/ecmwf/anemoi-models/releases/tag/0.1.0) Initial Release
 
 ### Added
+
 - Documentation
 - Initial code release for anemoi-datasets: create datasets for data-driven weather-models
 - open datasets
 - combine datasets
 
 ## Git Diffs:
-[Unreleased]: https://github.com/ecmwf/anemoi-datasets/compare/0.4.5...HEAD
-[0.4.5]: https://github.com/ecmwf/anemoi-datasets/compare/0.4.4...0.4.5
-[0.4.4]: https://github.com/ecmwf/anemoi-datasets/compare/0.4.0...0.4.4
-[0.4.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.3.0...0.4.0
-[0.3.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.2.0...0.3.0
-[0.2.0]: https://github.com/ecmwf/anemoi-datasets/compare/0.1.0...0.2.0
-[0.1.0]: https://github.com/ecmwf/anemoi-models/releases/tag/0.1.0
