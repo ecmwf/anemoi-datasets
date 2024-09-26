@@ -798,7 +798,7 @@ class StepFunctionResult(StepResult):
             raise
 
     def _trace_datasource(self, *args, **kwargs):
-        return f"{self.action.name}({shorten(self.dates)})"
+        return f"{self.action.name}({shorten(self.group_of_dates)})"
 
 
 class FilterStepResult(StepResult):
