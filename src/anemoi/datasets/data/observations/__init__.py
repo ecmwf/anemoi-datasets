@@ -62,6 +62,12 @@ class ListOfArrays:
 
     def map(self, f):
         return ListOfArray([f(v) for v in self.arrays])
+    
+    @cached_property
+    def dtype(self):
+        assert all(v.dtype == self.arrays[0].dtype for v in self.arrays)
+        return self.arrays[0].dtype
+    
 
     def __repr__(self):
         return f"ListOfArray({str_(self.arrays)})"
