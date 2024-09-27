@@ -333,32 +333,32 @@ def tidy_recipe(config: object):
     if isinstance(config, (dict, DotDict)):
         for k, v in config.items():
             if k.startswith("_"):
-                config[k] = None
+                config[k] = "*** REMOVED FOR SECURITY ***"
             else:
                 config[k] = tidy_recipe(v)
     if isinstance(config, str):
         if config.startswith("_"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("s3://"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("gs://"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("http"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("ftp"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("file"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("ssh"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("scp"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("rsync"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if config.startswith("/"):
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
         if "@" in config:
-            return ""
+            return "*** REMOVED FOR SECURITY ***"
     return config
 
 
