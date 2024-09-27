@@ -20,7 +20,6 @@ from functools import cached_property
 import numpy as np
 import tqdm
 from anemoi.utils.config import DotDict as DotDict
-from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -370,7 +369,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         super().__init__(path, cache=cache)
         self.config = config
-        self._recipe = tidy_recipe(load_any_dict_format(config))
         self.check_name = check_name
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
@@ -449,7 +447,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata.update(self.main_config.get("add_metadata", {}))
 
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-        metadata["recipe"] = self._recipe
+        metadata["recipe"] = tidy_recipe(self.main_config.get_serialisable_dict())
 
         metadata["description"] = self.main_config.description
         metadata["licence"] = self.main_config["licence"]
