@@ -241,7 +241,10 @@ class RenamePrefix(Forward):
     def __init__(self, dataset, prefix):
         super().__init__(dataset)
         self.prefix = prefix
-        self._variables = [f"{prefix}_{n}" for n in self.forward.variables]
+        self._variables = [f"{prefix}{n}" for n in self.forward.variables]
+        for n in self._variables:
+            if '-' in n and '_' in n:
+                raise ValueError(f"Do nor mix '-' and '_', got {n}")
 
     @property
     def variables(self):
