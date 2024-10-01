@@ -28,16 +28,18 @@ def str_(t):
     if isinstance(t, (list, tuple)):
         return "[" + " , ".join(str_(e) for e in t) + "]"
     if isinstance(t, np.ndarray):
-        return 'np:'+str(t.shape).replace(" ", "").replace(",", "-").replace('(',"").replace(')',"")
+        return "np:" + str(t.shape).replace(" ", "").replace(",", "-").replace("(", "").replace(")", "")
     if isinstance(t, dict):
         return "{" + " , ".join(f"{k}: {str_(v)}" for k, v in t.items()) + "}"
     try:
         from torch import Tensor
+
         if isinstance(t, Tensor):
-            return "tor:"+str(tuple(t.size())).replace(" ", "").replace(",", "-").replace('(',"").replace(')',"")
+            return "tor:" + str(tuple(t.size())).replace(" ", "").replace(",", "-").replace("(", "").replace(")", "")
     except ImportError:
         pass
     return str(t)
+
 
 class AnemoiSample:
     def __init__(self, list_of_list_of_arrays):
@@ -45,11 +47,12 @@ class AnemoiSample:
             if isinstance(v, AnemoiState):
                 return v
             return AnemoiState(v)
+
         self._states = tuple(cast_to_state(_) for _ in list_of_list_of_arrays)
 
     def __iter__(self):
         return iter(self._states)
-    
+
     def __str__(self):
         return f"AnemoiSample({str_(self._states)})"
 
@@ -62,14 +65,21 @@ class AnemoiSample:
 
     def numpy_to_torch(self):
         return self.__class__([v.numpy_to_torch() for v in self])
-    
+
     def as_tuple_of_tuples(self):
         return tuple(v.as_tuple() for v in self)
 
+    def as_tuple_of_dicts(self, keys=None):
+        return tuple(v.as_dict(keys) for v in self)
+
+
 class TrainingAnemoiSample(AnemoiSample):
     pass
+
+
 class InferenceAnemoiSample(AnemoiSample):
     pass
+
 
 class AnemoiState:
     def __init__(self, arrays):
@@ -82,6 +92,7 @@ class AnemoiState:
 
     def numpy_to_torch(self):
         import torch
+
         return self.__class__([torch.from_numpy(v) for v in self.arrays])
 
     @property
@@ -113,24 +124,29 @@ class AnemoiState:
 
     def map(self, f):
         return AnemoiState([f(v) for v in self.arrays])
-    
+
     @cached_property
     def dtype(self):
         assert all(v.dtype == self.arrays[0].dtype for v in self.arrays)
         return self.arrays[0].dtype
-    
+
     def __repr__(self):
         return f"AnemoiState({str_(self.arrays)})"
 
     def as_list(self):
         return list(self.arrays)
-    
+
     def as_tuple(self):
         return tuple(self.arrays)
 
+    def as_dict(self, keys=None):
+        assert keys is not None, f"Using a list of keys from the config is not implemented yet"
+        # todo here: get the list of keys.
+        assert len(keys) == len(self.arrays), (len(keys), len(self.arrays))
+        return {k: v for k, v in zip(keys, self.arrays)}
+
     def to(self, device):
         return self.__class__([v.to(device) for v in self.arrays])
-
 
 
 def _resolve_path(path):
@@ -206,7 +222,8 @@ class ObservationsBase:
 
 
 class Multiple(ObservationsBase):
-    def __init__(self, datasets):
+    def __init__(self, datasets, names=None):
+        self._names = names
         self.frequency = datasets[0].frequency
         for d in datasets[1:]:
             assert d.frequency == self.frequency, f"Expected {self.frequency}, got {d.frequency}"
@@ -221,6 +238,10 @@ class Multiple(ObservationsBase):
             d.missing == set() for d in self.datasets
         ), f"Expected no missing, got {[d.missing for d in self.datasets]}"
         self.missing = set()
+
+    @property
+    def names(self):
+        return self._names
 
     def getitem(self, i):
         return [d[i] for d in self.datasets]
@@ -298,7 +319,7 @@ class RenamePrefix(Forward):
         self.prefix = prefix
         self._variables = [f"{prefix}{n}" for n in self.forward.variables]
         for n in self._variables:
-            if '-' in n and '_' in n:
+            if "-" in n and "_" in n:
                 raise ValueError(f"Do nor mix '-' and '_', got {n}")
 
     @property
@@ -556,7 +577,7 @@ def _open_observations(*args, **kwargs):
         assert len(args) == 0
         multiple = kwargs.pop("multiple")
         datasets = [_open(d).mutate() for d in multiple]
-        return Multiple(datasets).mutate()
+        return Multiple(datasets, **kwargs).mutate()
 
     if "rename_prefix" in kwargs:
         prefix = kwargs.pop("rename_prefix")
