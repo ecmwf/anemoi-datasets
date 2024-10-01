@@ -28,16 +28,49 @@ def str_(t):
     if isinstance(t, (list, tuple)):
         return "[" + " , ".join(str_(e) for e in t) + "]"
     if isinstance(t, np.ndarray):
-        return str(t.shape).replace(" ", "").replace(",", "-")
+        return 'np:'+str(t.shape).replace(" ", "").replace(",", "-").replace('(',"").replace(')',"")
     if isinstance(t, dict):
         return "{" + " , ".join(f"{k}: {str_(v)}" for k, v in t.items()) + "}"
+    try:
+        from torch import Tensor
+        if isinstance(t, Tensor):
+            return "tor:"+str(t.size()).replace(" ", "").replace(",", "-").replace('(',"").replace(')',"")
+    except ImportError:
+        pass
     return str(t)
 
+class AnemoiSample:
+    def __init__(self, list_of_list_of_arrays):
+        self.states = tuple(AnemoiState(list_of_arrays) for list_of_arrays in list_of_list_of_arrays)
 
-class ListOfArrays:
+    def __iter__(self):
+        return iter(self.states)
+    
+    def __str__(self):
+        return f"AnemoiSample({str_(self.states)})"
+
+    def dtype(self):
+        return self.states[0].dtype
+
+class TrainingAnemoiSample(AnemoiSample):
+    pass
+class InferenceAnemoiSample(AnemoiSample):
+    pass
+
+class AnemoiState:
     def __init__(self, arrays):
         self.arrays = arrays
         self.lenghts = [v.size for v in arrays]
+
+        # check all arrays have the same type
+        for a in self.arrays:
+            assert isinstance(a, self._type), (type(a), self._type)
+
+    @property
+    def _type(self):
+        if self.arrays:
+            return type(self.arrays[0])
+        return None
 
     def __getitem__(self, tupl):
         if len(tupl) == 1:
@@ -61,7 +94,7 @@ class ListOfArrays:
         return np.concatenate([v.flatten() for v in self.arrays])
 
     def map(self, f):
-        return ListOfArray([f(v) for v in self.arrays])
+        return AnemoiState([f(v) for v in self.arrays])
     
     @cached_property
     def dtype(self):
@@ -70,12 +103,11 @@ class ListOfArrays:
     
 
     def __repr__(self):
-        return f"ListOfArray({str_(self.arrays)})"
+        return f"AnemoiState({str_(self.arrays)})"
 
     def as_list(self):
         return self.arrays
 
-ListOfArray = ListOfArrays
 
 
 def _resolve_path(path):
