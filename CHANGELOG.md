@@ -19,6 +19,7 @@ Keep it human-readable, your future self will thank you!
 ### Added
 
 - New `rescale` keyword in `open_dataset` to change units of variables #36
+- Add support for constant fields when creating datasets
 - Simplify imports
 
 ### Changed
