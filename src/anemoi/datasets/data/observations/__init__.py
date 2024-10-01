@@ -34,23 +34,37 @@ def str_(t):
     try:
         from torch import Tensor
         if isinstance(t, Tensor):
-            return "tor:"+str(t.size()).replace(" ", "").replace(",", "-").replace('(',"").replace(')',"")
+            return "tor:"+str(tuple(t.size())).replace(" ", "").replace(",", "-").replace('(',"").replace(')',"")
     except ImportError:
         pass
     return str(t)
 
 class AnemoiSample:
     def __init__(self, list_of_list_of_arrays):
-        self.states = tuple(AnemoiState(list_of_arrays) for list_of_arrays in list_of_list_of_arrays)
+        def cast_to_state(v):
+            if isinstance(v, AnemoiState):
+                return v
+            return AnemoiState(v)
+        self._states = tuple(cast_to_state(_) for _ in list_of_list_of_arrays)
 
     def __iter__(self):
-        return iter(self.states)
+        return iter(self._states)
     
     def __str__(self):
-        return f"AnemoiSample({str_(self.states)})"
+        return f"AnemoiSample({str_(self._states)})"
 
+    @property
     def dtype(self):
-        return self.states[0].dtype
+        return self._states[0].dtype
+
+    def to(self, device):
+        return self.__class__([s.to(device) for s in self])
+
+    def numpy_to_torch(self):
+        return self.__class__([v.numpy_to_torch() for v in self])
+    
+    def as_tuple_of_tuples(self):
+        return tuple(v.as_tuple() for v in self)
 
 class TrainingAnemoiSample(AnemoiSample):
     pass
@@ -65,6 +79,10 @@ class AnemoiState:
         # check all arrays have the same type
         for a in self.arrays:
             assert isinstance(a, self._type), (type(a), self._type)
+
+    def numpy_to_torch(self):
+        import torch
+        return self.__class__([torch.from_numpy(v) for v in self.arrays])
 
     @property
     def _type(self):
@@ -101,12 +119,17 @@ class AnemoiState:
         assert all(v.dtype == self.arrays[0].dtype for v in self.arrays)
         return self.arrays[0].dtype
     
-
     def __repr__(self):
         return f"AnemoiState({str_(self.arrays)})"
 
     def as_list(self):
-        return self.arrays
+        return list(self.arrays)
+    
+    def as_tuple(self):
+        return tuple(self.arrays)
+
+    def to(self, device):
+        return self.__class__([v.to(device) for v in self.arrays])
 
 
 
