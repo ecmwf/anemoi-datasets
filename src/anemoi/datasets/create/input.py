@@ -17,6 +17,8 @@ from functools import cached_property
 from functools import wraps
 
 import numpy as np
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.fieldlist import FieldList
@@ -24,6 +26,8 @@ from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.dates import DatesProvider
+from anemoi.datasets.fields import FieldArray
+from anemoi.datasets.fields import NewValidDateTimeField
 
 from .functions import import_function
 from .template import Context
@@ -187,8 +191,8 @@ class Action:
     def _raise_not_implemented(self):
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
-    def _trace_select(self, dates):
-        return f"{self.__class__.__name__}({shorten(dates)})"
+    def _trace_select(self, group_of_dates):
+        return f"{self.__class__.__name__}({group_of_dates})"
 
 
 def shorten(dates):
@@ -569,8 +573,8 @@ def _tidy(ds, indent=0):
 
 
 class FunctionResult(Result):
-    def __init__(self, context, action_path, dates, action):
-        super().__init__(context, action_path, dates)
+    def __init__(self, context, action_path, group_of_dates, action):
+        super().__init__(context, action_path, group_of_dates)
         assert isinstance(action, Action), type(action)
         self.action = action
 
@@ -611,8 +615,8 @@ class FunctionResult(Result):
 
 
 class JoinResult(Result):
-    def __init__(self, context, action_path, dates, results, **kwargs):
-        super().__init__(context, action_path, dates)
+    def __init__(self, context, action_path, group_of_dates, results, **kwargs):
+        super().__init__(context, action_path, group_of_dates)
         self.results = [r for r in results if not r.empty]
 
     @cached_property
@@ -647,25 +651,25 @@ class DateShiftAction(Action):
         self.content = action_factory(kwargs, context, self.action_path + ["shift"])
 
     @trace_select
-    def select(self, dates):
-        shifted_dates = [d + self.delta for d in dates]
+    def select(self, group_of_dates):
+        shifted_dates = [d + self.delta for d in group_of_dates]
         result = self.content.select(shifted_dates)
-        return UnShiftResult(self.context, self.action_path, dates, result, action=self)
+        return UnShiftResult(self.context, self.action_path, group_of_dates, result, action=self)
 
     def __repr__(self):
         return super().__repr__(f"{self.delta}\n{self.content}")
 
 
 class UnShiftResult(Result):
-    def __init__(self, context, action_path, dates, result, action):
-        super().__init__(context, action_path, dates)
+    def __init__(self, context, action_path, group_of_dates, result, action):
+        super().__init__(context, action_path, group_of_dates)
         # dates are the actual requested dates
         # result does not have the same dates
         self.action = action
         self.result = result
 
     def _trace_datasource(self, *args, **kwargs):
-        return f"{self.action.delta}({shorten(self.dates)})"
+        return f"{self.action.delta}({self.group_of_dates})"
 
     @cached_property
     @assert_fieldlist
@@ -706,8 +710,8 @@ class FunctionAction(Action):
         self.name = _name
 
     @trace_select
-    def select(self, dates):
-        return FunctionResult(self.context, self.action_path, dates, action=self)
+    def select(self, group_of_dates):
+        return FunctionResult(self.context, self.action_path, group_of_dates, action=self)
 
     @property
     def function(self):
@@ -721,8 +725,8 @@ class FunctionAction(Action):
         content = self._short_str(content)
         return super().__repr__(_inline_=content, _indent_=" ")
 
-    def _trace_select(self, dates):
-        return f"{self.name}({shorten(dates)})"
+    def _trace_select(self, group_of_dates):
+        return f"{self.name}({group_of_dates})"
 
 
 class PipeAction(Action):
@@ -735,16 +739,16 @@ class PipeAction(Action):
         self.last_step = current
 
     @trace_select
-    def select(self, dates):
-        return self.last_step.select(dates)
+    def select(self, group_of_dates):
+        return self.last_step.select(group_of_dates)
 
     def __repr__(self):
         return super().__repr__(self.last_step)
 
 
 class StepResult(Result):
-    def __init__(self, context, action_path, dates, action, upstream_result):
-        super().__init__(context, action_path, dates)
+    def __init__(self, context, action_path, group_of_dates, action, upstream_result):
+        super().__init__(context, action_path, group_of_dates)
         assert isinstance(upstream_result, Result), type(upstream_result)
         self.upstream_result = upstream_result
         self.action = action
@@ -764,13 +768,13 @@ class StepAction(Action):
         self.previous_step = previous_step
 
     @trace_select
-    def select(self, dates):
+    def select(self, group_of_dates):
         return self.result_class(
             self.context,
             self.action_path,
-            dates,
+            group_of_dates,
             self,
-            self.previous_step.select(dates),
+            self.previous_step.select(group_of_dates),
         )
 
     def __repr__(self):
@@ -826,8 +830,8 @@ class FunctionStepAction(StepAction):
 
 
 class ConcatResult(Result):
-    def __init__(self, context, action_path, dates, results, **kwargs):
-        super().__init__(context, action_path, dates)
+    def __init__(self, context, action_path, group_of_dates, results, **kwargs):
+        super().__init__(context, action_path, group_of_dates)
         self.results = [r for r in results if not r.empty]
 
     @cached_property
@@ -859,8 +863,8 @@ class ConcatResult(Result):
 
 
 class DataSourcesResult(Result):
-    def __init__(self, context, action_path, dates, input_result, sources_results):
-        super().__init__(context, action_path, dates)
+    def __init__(self, context, action_path, group_of_dates, input_result, sources_results):
+        super().__init__(context, action_path, group_of_dates)
         # result is the main input result
         self.input_result = input_result
         # sources_results is the list of the sources_results
@@ -890,13 +894,13 @@ class DataSourcesAction(Action):
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
 
-    def select(self, dates):
-        sources_results = [a.select(dates) for a in self.sources]
+    def select(self, group_of_dates):
+        sources_results = [a.select(group_of_dates) for a in self.sources]
         return DataSourcesResult(
             self.context,
             self.action_path,
-            dates,
-            self.input.select(dates),
+            group_of_dates,
+            self.input.select(group_of_dates),
             sources_results,
         )
 
@@ -925,18 +929,18 @@ class ConcatAction(Action):
         return super().__repr__(content)
 
     @trace_select
-    def select(self, dates):
+    def select(self, group_of_dates):
         from anemoi.datasets.dates.groups import GroupOfDates
 
         results = []
         for filtering_dates, action in self.parts:
-            newdates = GroupOfDates(sorted(set(dates) & set(filtering_dates)), dates.provider)
+            newdates = GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
             if newdates:
                 results.append(action.select(newdates))
         if not results:
-            return EmptyResult(self.context, self.action_path, dates)
+            return EmptyResult(self.context, self.action_path, group_of_dates)
 
-        return ConcatResult(self.context, self.action_path, dates, results)
+        return ConcatResult(self.context, self.action_path, group_of_dates, results)
 
 
 class JoinAction(Action):
@@ -949,9 +953,91 @@ class JoinAction(Action):
         return super().__repr__(content)
 
     @trace_select
-    def select(self, dates):
-        results = [a.select(dates) for a in self.actions]
-        return JoinResult(self.context, self.action_path, dates, results)
+    def select(self, group_of_dates):
+        results = [a.select(group_of_dates) for a in self.actions]
+        return JoinResult(self.context, self.action_path, group_of_dates, results)
+
+
+class DateMapper:
+
+    @staticmethod
+    def from_config(config):
+
+        if isinstance(config, dict):
+            if "every" in config and "reference" in config:
+                return DateMapperEverySince(**config)
+
+        raise ValueError(f"Invalid config for DateMapper: {config}")
+
+
+class DateMapperEverySince(DateMapper):
+    def __init__(self, every, reference):
+        self.every = frequency_to_timedelta(every)
+        self.reference = as_datetime(reference)
+
+    def transform(self, group_of_dates):
+        from anemoi.datasets.dates.groups import GroupOfDates
+
+        dates = list(group_of_dates)
+        if not dates:
+            return []
+
+        new_dates = defaultdict(list)
+        for date in dates:
+
+            if date < self.reference:
+                raise ValueError(f"Date {date} is before the reference {self.reference}")
+
+            new_date = date + (date - self.reference) % self.every
+            new_dates[new_date].append(date)
+
+        for date, dates in new_dates.items():
+            yield GroupOfDates([date], group_of_dates.provider), GroupOfDates(dates, group_of_dates.provider)
+
+
+class DateMapperResult(Result):
+    def __init__(self, context, action_path, group_of_dates, source_result, mapper, original_group_of_dates):
+        super().__init__(context, action_path, group_of_dates)
+        self.source_results = source_result
+        self.mapper = mapper
+        self.original_group_of_dates = original_group_of_dates
+
+    @property
+    def datasource(self):
+        result = []
+
+        for field in self.source_results.datasource:
+            for date in self.original_group_of_dates:
+                result.append(NewValidDateTimeField(field, date))
+
+        return FieldArray(result)
+
+
+class MultiDateMatchAction(Action):
+    def __init__(self, context, action_path, source, when):
+        super().__init__(context, action_path, source, when)
+        self.source = action_factory(source, context, action_path + ["source"])
+        self.when = DateMapper.from_config(when)
+
+    @trace_select
+    def select(self, group_of_dates):
+        results = []
+        for one_date_group, many_dates_group in self.when.transform(group_of_dates):
+            results.append(
+                DateMapperResult(
+                    self.context,
+                    self.action_path,
+                    one_date_group,
+                    self.source.select(one_date_group),
+                    self.when,
+                    many_dates_group,
+                )
+            )
+
+        return JoinResult(self.context, self.action_path, group_of_dates, results)
+
+    def __repr__(self):
+        return f"MultiDateMatchAction({self.source}, {self.when})"
 
 
 def action_factory(config, context, action_path):
@@ -979,6 +1065,7 @@ def action_factory(config, context, action_path):
         "join": JoinAction,
         "pipe": PipeAction,
         "function": FunctionAction,
+        "multi_dates_match": MultiDateMatchAction,
     }.get(key)
 
     if cls is None:
@@ -1069,19 +1156,19 @@ class InputBuilder:
         self.action_path = ["input"]
 
     @trace_select
-    def select(self, dates):
+    def select(self, group_of_dates):
         """This changes the context."""
         context = ActionContext(**self.kwargs)
         action = action_factory(self.config, context, self.action_path)
-        return action.select(dates)
+        return action.select(group_of_dates)
 
     def __repr__(self):
         context = ActionContext(**self.kwargs)
         a = action_factory(self.config, context, self.action_path)
         return repr(a)
 
-    def _trace_select(self, dates):
-        return f"InputBuilder({shorten(dates)})"
+    def _trace_select(self, group_of_dates):
+        return f"InputBuilder({group_of_dates})"
 
 
 build_input = InputBuilder
