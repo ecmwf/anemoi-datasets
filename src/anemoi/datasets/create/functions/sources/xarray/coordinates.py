@@ -56,6 +56,8 @@ class Coordinate:
     is_step = False
     is_date = False
     is_member = False
+    is_x = False
+    is_y = False
 
     def __init__(self, variable):
         self.variable = variable
@@ -66,10 +68,11 @@ class Coordinate:
         return 1 if self.scalar else len(self.variable)
 
     def __repr__(self):
-        return "%s[name=%s,values=%s]" % (
+        return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
             self.variable.name,
             self.variable.values if self.scalar else len(self),
+            self.variable.shape,
         )
 
     def reduced(self, i):
@@ -225,11 +228,13 @@ class LatitudeCoordinate(Coordinate):
 
 class XCoordinate(Coordinate):
     is_grid = True
+    is_x = True
     mars_names = ("x",)
 
 
 class YCoordinate(Coordinate):
     is_grid = True
+    is_y = True
     mars_names = ("y",)
 
 

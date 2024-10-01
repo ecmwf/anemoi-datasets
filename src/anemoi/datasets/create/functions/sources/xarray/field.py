@@ -72,13 +72,18 @@ class XArrayField(Field):
     def shape(self):
         return self._shape
 
-    def to_numpy(self, flatten=False, dtype=None):
-        values = self.selection.values
+    def to_numpy(self, flatten=False, dtype=None, index=None):
+        if index is not None:
+            values = self.selection[index]
+        else:
+            values = self.selection
 
         assert dtype is None
+
         if flatten:
-            return values.flatten()
-        return values.reshape(self.shape)
+            return values.values.flatten()
+
+        return values  # .reshape(self.shape)
 
     def _make_metadata(self):
         return XArrayMetadata(self)
@@ -113,3 +118,7 @@ class XArrayField(Field):
 
     def __repr__(self):
         return repr(self._metadata)
+
+    def _values(self):
+        # we don't use .values as this will download the data
+        return self.selection

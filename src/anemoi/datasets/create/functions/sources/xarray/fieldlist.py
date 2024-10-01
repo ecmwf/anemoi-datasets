@@ -70,10 +70,10 @@ class XarrayFieldList(FieldList):
                 skip.update(attr_val.split(" "))
 
         for name in ds.data_vars:
-            v = ds[name]
-            _skip_attr(v, "coordinates")
-            _skip_attr(v, "bounds")
-            _skip_attr(v, "grid_mapping")
+            variable = ds[name]
+            _skip_attr(variable, "coordinates")
+            _skip_attr(variable, "bounds")
+            _skip_attr(variable, "grid_mapping")
 
         # Select only geographical variables
         for name in ds.data_vars:
@@ -81,14 +81,14 @@ class XarrayFieldList(FieldList):
             if name in skip:
                 continue
 
-            v = ds[name]
+            variable = ds[name]
             coordinates = []
 
-            for coord in v.coords:
+            for coord in variable.coords:
 
                 c = guess.guess(ds[coord], coord)
                 assert c, f"Could not guess coordinate for {coord}"
-                if coord not in v.dims:
+                if coord not in variable.dims:
                     c.is_dim = False
                 coordinates.append(c)
 
@@ -98,16 +98,16 @@ class XarrayFieldList(FieldList):
             if grid_coords < 2:
                 continue
 
-            variables.append(
-                Variable(
-                    ds=ds,
-                    var=v,
-                    coordinates=coordinates,
-                    grid=guess.grid(coordinates),
-                    time=Time.from_coordinates(coordinates),
-                    metadata={},
-                )
+            v = Variable(
+                ds=ds,
+                variable=variable,
+                coordinates=coordinates,
+                grid=guess.grid(coordinates, variable),
+                time=Time.from_coordinates(coordinates),
+                metadata={},
             )
+
+            variables.append(v)
 
         return cls(ds, variables)
 

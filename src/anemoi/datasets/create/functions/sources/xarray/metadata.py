@@ -40,7 +40,9 @@ class _MDMapping:
         return f"MDMapping({self.mapping})"
 
     def fill_time_metadata(self, field, md):
-        md["valid_datetime"] = as_datetime(self.variable.time.fill_time_metadata(field._md, md)).isoformat()
+        valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
+        if valid_datetime is not None:
+            md["valid_datetime"] = as_datetime(valid_datetime).isoformat()
 
 
 class XArrayMetadata(RawMetadata):
@@ -71,16 +73,6 @@ class XArrayMetadata(RawMetadata):
 
     def _as_mars(self):
         return {}
-        # p =  dict(
-        #     param=self.get("variable", self.get("param")),
-        #     step=self.get("step"),
-        #     levelist=self.get("levelist", self.get("level")),
-        #     levtype=self.get("levtype"),
-        #     number=self.get("number"),
-        #     date=self.get("date"),
-        #     time=self.get("time"),
-        # )
-        # return {k: v for k, v in p.items() if v is not None}
 
     def _base_datetime(self):
         return self._field.forecast_reference_time

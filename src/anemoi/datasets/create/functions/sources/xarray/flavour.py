@@ -8,6 +8,8 @@
 #
 
 
+import logging
+
 from .coordinates import DateCoordinate
 from .coordinates import EnsembleCoordinate
 from .coordinates import LatitudeCoordinate
@@ -18,8 +20,13 @@ from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
 from .coordinates import XCoordinate
 from .coordinates import YCoordinate
+from .coordinates import is_scalar
 from .grid import MeshedGrid
+from .grid import MeshProjectionGrid
 from .grid import UnstructuredGrid
+from .grid import UnstructuredProjectionGrid
+
+LOG = logging.getLogger(__name__)
 
 
 class CoordinateGuesser:
@@ -155,30 +162,124 @@ class CoordinateGuesser:
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
-    def grid(self, coordinates):
+    def grid(self, coordinates, variable):
         lat = [c for c in coordinates if c.is_lat]
         lon = [c for c in coordinates if c.is_lon]
 
-        if len(lat) != 1:
-            raise NotImplementedError(f"Expected 1 latitude coordinate, got {len(lat)}")
+        if len(lat) == 1 and len(lon) == 1:
+            return self._lat_lon_provided(lat, lon, variable)
 
-        if len(lon) != 1:
-            raise NotImplementedError(f"Expected 1 longitude coordinate, got {len(lon)}")
+        x = [c for c in coordinates if c.is_x]
+        y = [c for c in coordinates if c.is_y]
 
+        if len(x) == 1 and len(y) == 1:
+            return self._x_y_provided(x, y, variable)
+
+        raise NotImplementedError(f"Cannot establish grid {coordinates}")
+
+    def _lat_lon_provided(self, lat, lon, variable):
         lat = lat[0]
         lon = lon[0]
 
-        if (lat.name, lon.name) in self._cache:
-            return self._cache[(lat.name, lon.name)]
+        if lat.variable.dims != lon.variable.dims:
+            raise ValueError(f"Dimensions do not match {lat.name}{lat.variable.dims} != {lon.name}{lon.variable.dims}")
+
+        dim_vars = variable.dims[-len(lat.variable.dims) :]
+
+        if set(lat.variable.dims) != set(dim_vars):
+            raise ValueError(
+                f"Dimensions do not match {variable.name}{variable.dims} != {lat.name}{lat.variable.dims} and {lon.name}{lon.variable.dims}"
+            )
+
+        if (lat.name, lon.name, dim_vars) in self._cache:
+            return self._cache[(lat.name, lon.name, dim_vars)]
 
         assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
         if len(lat.variable.shape) == 1:
-            grid = MeshedGrid(lat, lon)
+            grid = MeshedGrid(lat, lon, dim_vars)
         else:
-            grid = UnstructuredGrid(lat, lon)
+            grid = UnstructuredGrid(lat, lon, dim_vars)
 
-        self._cache[(lat.name, lon.name)] = grid
+        self._cache[(lat.name, lon.name, dim_vars)] = grid
         return grid
+
+    def _x_y_provided(self, x, y, variable):
+        x = x[0]
+        y = y[0]
+
+        if x.variable.dims != y.variable.dims:
+            raise ValueError(f"Dimensions do not match {x.name}{x.variable.dims} != {y.name}{y.variable.dims}")
+
+        dim_vars = variable.dims[-len(x.variable.dims) :]
+
+        if x.variable.dims != dim_vars:
+            raise ValueError(
+                f"Dimensions do not match {variable.name}{variable.dims} != {x.name}{x.variable.dims} and {y.name}{y.variable.dims}"
+            )
+
+        if (x.name, y.name) in self._cache:
+            return self._cache[(x.name, y.name)]
+
+        if (x.name, y.name) in self._cache:
+            return self._cache[(x.name, y.name)]
+
+        assert len(x.variable.shape) == len(x.variable.shape), (x.variable.shape, y.variable.shape)
+
+        grid_mapping = variable.attrs.get("grid_mapping", None)
+
+        if grid_mapping is None:
+            LOG.warning(f"No 'grid_mapping' attribute provided for '{variable.name}'")
+            LOG.warning("Trying to guess...")
+
+            PROBE = {
+                "prime_meridian_name",
+                "reference_ellipsoid_name",
+                "crs_wkt",
+                "horizontal_datum_name",
+                "semi_major_axis",
+                "spatial_ref",
+                "inverse_flattening",
+                "semi_minor_axis",
+                "geographic_crs_name",
+                "GeoTransform",
+                "grid_mapping_name",
+                "longitude_of_prime_meridian",
+            }
+            candidate = None
+            for v in self.ds.variables:
+                var = self.ds[v]
+                if not is_scalar(var):
+                    continue
+
+                if PROBE.intersection(var.attrs.keys()):
+                    if candidate:
+                        raise ValueError(f"Multiple candidates for 'grid_mapping': {candidate} and {v}")
+                    candidate = v
+
+            if candidate:
+                LOG.warning(f"Using '{candidate}' as 'grid_mapping'")
+                grid_mapping = candidate
+            else:
+                LOG.warning("Could not fine a candidate for 'grid_mapping'")
+
+        if grid_mapping is None:
+            if "crs" in self.ds[variable].attrs:
+                grid_mapping = self.ds[variable].attrs["crs"]
+                LOG.warning(f"Using CRS {grid_mapping} from variable '{variable.name}' attributes")
+
+        if grid_mapping is None:
+            if "crs" in self.ds.attrs:
+                grid_mapping = self.ds.attrs["crs"]
+                LOG.warning(f"Using CRS {grid_mapping} from global attributes")
+
+        if grid_mapping is not None:
+            if len(x.variable.shape) == 1:
+                return MeshProjectionGrid(x, y, grid_mapping)
+            else:
+                return UnstructuredProjectionGrid(x, y, grid_mapping)
+
+        LOG.error("Could not fine a candidate for 'grid_mapping'")
+        raise NotImplementedError(f"Unstructured grid {x.name} {y.name}")
 
 
 class DefaultCoordinateGuesser(CoordinateGuesser):
