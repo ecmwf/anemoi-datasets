@@ -15,12 +15,13 @@ from anemoi.datasets.dates import as_datetime
 
 
 class GroupOfDates:
-    def __init__(self, dates, provider):
+    def __init__(self, dates, provider, partial_ok=False):
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
         self.dates = dates
         self.provider = provider
+        self.partial_ok = partial_ok
 
     def __len__(self):
         return len(self.dates)

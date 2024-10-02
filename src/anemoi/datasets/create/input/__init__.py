@@ -958,119 +958,10 @@ class JoinAction(Action):
         return JoinResult(self.context, self.action_path, group_of_dates, results)
 
 
-class DateMapper:
-
-    @staticmethod
-    def from_config(config):
-
-        if isinstance(config, dict):
-            if "frequency" in config and "reference" in config:
-                return DateMapperEverySince(**config)
-
-            if "year" in config and "day" in config:
-                return DateMapperClim(**config)
-
-        raise ValueError(f"Invalid config for DateMapper: {config}")
-
-
-class DateMapperEverySince(DateMapper):
-    def __init__(self, frequency, reference):
-        self.frequency = frequency_to_timedelta(frequency)
-        self.reference = as_datetime(reference)
-
-    def transform(self, group_of_dates):
-        from anemoi.datasets.dates.groups import GroupOfDates
-
-        dates = list(group_of_dates)
-        if not dates:
-            return []
-
-        new_dates = defaultdict(list)
-        for date in dates:
-
-            if date < self.reference:
-                raise ValueError(f"Date {date} is before the reference {self.reference}")
-
-            delta = (date - self.reference) % self.frequency
-            new_date = date - delta
-
-            new_dates[new_date].append(date)
-
-        # for date, dates in new_dates.items():
-        #     print('🎃🎃🎃🎃🎃🎃', str(date), '->', [str(_) for _ in dates])
-
-        for date, dates in new_dates.items():
-            yield GroupOfDates([date], group_of_dates.provider), GroupOfDates(dates, group_of_dates.provider)
-
-
-class DateMapperClim(DateMapper):
-    def __init__(self, year, day):
-        self.year = year
-        self.day = day
-
-    def transform(self, group_of_dates):
-        from anemoi.datasets.dates.groups import GroupOfDates
-
-        dates = list(group_of_dates)
-        if not dates:
-            return []
-
-        new_dates = defaultdict(list)
-        for date in dates:
-            new_date = date.replace(year=self.year, day=self.day)
-            new_dates[new_date].append(date)
-
-        for date, dates in new_dates.items():
-            yield GroupOfDates([date], group_of_dates.provider), GroupOfDates(dates, group_of_dates.provider)
-
-
-class DateMapperResult(Result):
-    def __init__(self, context, action_path, group_of_dates, source_result, mapper, original_group_of_dates):
-        super().__init__(context, action_path, group_of_dates)
-        self.source_results = source_result
-        self.mapper = mapper
-        self.original_group_of_dates = original_group_of_dates
-
-    @property
-    def datasource(self):
-        result = []
-
-        for field in self.source_results.datasource:
-            for date in self.original_group_of_dates:
-                result.append(NewValidDateTimeField(field, date))
-
-        return FieldArray(result)
-
-
-class RepeatedDatesAction(Action):
-    def __init__(self, context, action_path, source, when):
-        super().__init__(context, action_path, source, when)
-        self.source = action_factory(source, context, action_path + ["source"])
-        self.when = DateMapper.from_config(when)
-
-    @trace_select
-    def select(self, group_of_dates):
-        results = []
-        for one_date_group, many_dates_group in self.when.transform(group_of_dates):
-            # print('🎃🎃🎃🎃🎃🎃🎃🎃🎃', one_date_group, many_dates_group)
-            results.append(
-                DateMapperResult(
-                    self.context,
-                    self.action_path,
-                    one_date_group,
-                    self.source.select(one_date_group),
-                    self.when,
-                    many_dates_group,
-                )
-            )
-
-        return JoinResult(self.context, self.action_path, group_of_dates, results)
-
-    def __repr__(self):
-        return f"MultiDateMatchAction({self.source}, {self.when})"
-
-
 def action_factory(config, context, action_path):
+
+    from .repeated_dates import RepeatedDatesAction
+
     assert isinstance(context, Context), (type, context)
     if not isinstance(config, dict):
         raise ValueError(f"Invalid input config {config}")
@@ -1136,7 +1027,6 @@ def step_factory(config, context, action_path, previous_step):
             raise ValueError(f"Unknown step {key}")
         cls = FunctionStepAction
         args = [key] + args
-        # print("========", args)
 
     return cls(context, action_path, previous_step, *args, **kwargs)
 
@@ -1159,6 +1049,10 @@ class FunctionContext:
     @property
     def dates_provider(self):
         return self.owner.group_of_dates.provider
+
+    @property
+    def partial_ok(self):
+        return self.owner.group_of_dates.partial_ok
 
 
 class ActionContext(Context):
