@@ -151,6 +151,9 @@ class StartEndDates(DatesProvider):
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.start},{self.end},{self.frequency})"
+
 
 class Hindcast:
 

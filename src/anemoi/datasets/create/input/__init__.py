@@ -54,13 +54,13 @@ class InputBuilder:
         action = action_factory(self.config, context, self.action_path)
         return action.select(group_of_dates)
 
-    def __repr__(self):
-        from .action import ActionContext
-        from .action import action_factory
+    # def __repr__(self):
+    #     from .action import ActionContext
+    #     from .action import action_factory
 
-        context = ActionContext(**self.kwargs)
-        a = action_factory(self.config, context, self.action_path)
-        return repr(a)
+    #     context = ActionContext(**self.kwargs)
+    #     a = action_factory(self.config, context, self.action_path)
+    #     return repr(a)
 
     def _trace_select(self, group_of_dates):
         return f"InputBuilder({group_of_dates})"
