@@ -167,7 +167,7 @@ class Forward(ObservationsBase):
         return self.forward.variables
 
     def __repr__(self):
-        return f"Forward({self.forward})"
+        return f"{self.__class__.__name__}({self.forward})"
 
     def getitem(self, i):
         return self.forward[i]
@@ -205,15 +205,18 @@ class RenamePrefix(Forward):
 class Select(Forward):
     def __init__(self, dataset, select):
         super().__init__(dataset)
-        self.select = select
-        self._variables = [n for n in self.forward.variables if n in select]
+        self._select = select
+        assert all(n in self.forward.variables for n in select), f"Expected {select} in {self.forward.variables}"
+
+        self._variables = select
+        self._indexes = tuple(self.forward.name_to_index[n] for n in self._variables)
 
     def tree(self):
-        return Node(self, [self.forward.tree()], select=self.select)
+        return Node(self, [self.forward.tree()], select=self._select)
 
     def getitem(self, i):
         data = self.forward[i]
-        data = data[:, [self.forward.name_to_index[n] for n in self.select]]
+        data = data[self._indexes,:]
         return data
 
     @property
@@ -221,10 +224,7 @@ class Select(Forward):
         dic = {}
         for k, data in self.forward.statistics.items():
             assert len(data.shape) == 1, f"Expected 1D array, got {data.shape}"
-            for n in self.select:
-                assert n in self.forward.variables, f"Expected {n} in {self.forward.variables}"
-            data = data[tuple(self.forward.name_to_index[n] for n in self.select),]
-            dic[k] = data
+            dic[k] = data[self._indexes,] # notice the "," here because this 1D array is indexed using a tuple.
         return dic
 
     @property
@@ -233,7 +233,7 @@ class Select(Forward):
 
     @property
     def name_to_index(self):
-        return {k: v for k, v in self.forward.name_to_index.items() if k in self._variables}
+        return {n:i for i, n in enumerate(self._variables)}
 
 
 class Padded(Forward):
@@ -365,14 +365,16 @@ class Observations(ObservationsBase):
         #    # this should get directly the numpy array
         #    data = self.forward.get_data_from_dates_interval(start, end)
         data = self.forward[i]
+
         ##########################
         data = data.numpy().astype(np.float32)
         assert len(data.shape) == 2, f"Expected 2D array, got {data.shape}"
         data = data.T
 
-        if data.size:
-            return data
-        return self.empty_item()
+        if not data.size:
+            data = self.empty_item()
+        assert data.shape[0] == self.shape[1], f"Data shape {data.shape} does not match {self.shape}"
+        return data
 
     @property
     def variables(self):

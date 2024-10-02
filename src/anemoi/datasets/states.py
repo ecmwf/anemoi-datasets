@@ -20,14 +20,14 @@ def str_(t):
     if isinstance(t, (list, tuple)):
         return "[" + " , ".join(str_(e) for e in t) + "]"
     if isinstance(t, np.ndarray):
-        return "np:" + str(t.shape).replace(" ", "").replace(",", "-").replace("(", "").replace(")", "")
+        return "🔢" + str(t.shape).replace(" ", "").replace(",", "-").replace("(", "").replace(")", "")
     if isinstance(t, dict):
         return "{" + " , ".join(f"{k}: {str_(v)}" for k, v in t.items()) + "}"
     try:
         from torch import Tensor
 
         if isinstance(t, Tensor):
-            return "tor:" + str(tuple(t.size())).replace(" ", "").replace(",", "-").replace("(", "").replace(")", "")
+            return "🔥" + str(tuple(t.size())).replace(" ", "").replace(",", "-").replace("(", "").replace(")", "")
     except ImportError:
         pass
     return str(t)
