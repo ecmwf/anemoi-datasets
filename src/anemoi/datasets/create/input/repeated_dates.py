@@ -85,10 +85,12 @@ class DateMapperClosest(DateMapper):
             for f in result.datasource:
                 # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
                 date = as_datetime(f.metadata("valid_datetime"))
+
                 if self.skip_all_nans:
                     if np.isnan(f.to_numpy()).all():
                         LOG.warning(f"Skipping {date} because all values are NaN")
                         continue
+
                 self.found.add(date)
 
             self.tried.update(to_try)
@@ -161,8 +163,17 @@ class DateMapperConstant(DateMapper):
 
 
 class DateMapperResult(Result):
-    def __init__(self, context, action_path, group_of_dates, source_result, mapper, original_group_of_dates):
+    def __init__(
+        self,
+        context,
+        action_path,
+        group_of_dates,
+        source_result,
+        mapper,
+        original_group_of_dates,
+    ):
         super().__init__(context, action_path, group_of_dates)
+
         self.source_results = source_result
         self.mapper = mapper
         self.original_group_of_dates = original_group_of_dates
@@ -181,6 +192,7 @@ class DateMapperResult(Result):
 class RepeatedDatesAction(Action):
     def __init__(self, context, action_path, source, mode, **kwargs):
         super().__init__(context, action_path, source, mode, **kwargs)
+
         self.source = action_factory(source, context, action_path + ["source"])
         self.mapper = DateMapper.from_mode(mode, self.source, kwargs)
 
