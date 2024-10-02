@@ -964,15 +964,18 @@ class DateMapper:
     def from_config(config):
 
         if isinstance(config, dict):
-            if "every" in config and "reference" in config:
+            if "frequency" in config and "reference" in config:
                 return DateMapperEverySince(**config)
+
+            if "year" in config and "day" in config:
+                return DateMapperClim(**config)
 
         raise ValueError(f"Invalid config for DateMapper: {config}")
 
 
 class DateMapperEverySince(DateMapper):
-    def __init__(self, every, reference):
-        self.every = frequency_to_timedelta(every)
+    def __init__(self, frequency, reference):
+        self.frequency = frequency_to_timedelta(frequency)
         self.reference = as_datetime(reference)
 
     def transform(self, group_of_dates):
@@ -988,7 +991,33 @@ class DateMapperEverySince(DateMapper):
             if date < self.reference:
                 raise ValueError(f"Date {date} is before the reference {self.reference}")
 
-            new_date = date + (date - self.reference) % self.every
+            delta = (date - self.reference) % self.frequency
+            new_date = date - delta
+
+            new_dates[new_date].append(date)
+
+        # for date, dates in new_dates.items():
+        #     print('🎃🎃🎃🎃🎃🎃', str(date), '->', [str(_) for _ in dates])
+
+        for date, dates in new_dates.items():
+            yield GroupOfDates([date], group_of_dates.provider), GroupOfDates(dates, group_of_dates.provider)
+
+
+class DateMapperClim(DateMapper):
+    def __init__(self, year, day):
+        self.year = year
+        self.day = day
+
+    def transform(self, group_of_dates):
+        from anemoi.datasets.dates.groups import GroupOfDates
+
+        dates = list(group_of_dates)
+        if not dates:
+            return []
+
+        new_dates = defaultdict(list)
+        for date in dates:
+            new_date = date.replace(year=self.year, day=self.day)
             new_dates[new_date].append(date)
 
         for date, dates in new_dates.items():
@@ -1013,7 +1042,7 @@ class DateMapperResult(Result):
         return FieldArray(result)
 
 
-class MultiDateMatchAction(Action):
+class RepeatedDatesAction(Action):
     def __init__(self, context, action_path, source, when):
         super().__init__(context, action_path, source, when)
         self.source = action_factory(source, context, action_path + ["source"])
@@ -1023,6 +1052,7 @@ class MultiDateMatchAction(Action):
     def select(self, group_of_dates):
         results = []
         for one_date_group, many_dates_group in self.when.transform(group_of_dates):
+            # print('🎃🎃🎃🎃🎃🎃🎃🎃🎃', one_date_group, many_dates_group)
             results.append(
                 DateMapperResult(
                     self.context,
@@ -1065,7 +1095,7 @@ def action_factory(config, context, action_path):
         "join": JoinAction,
         "pipe": PipeAction,
         "function": FunctionAction,
-        "multi_dates_match": MultiDateMatchAction,
+        "repeated_dates": RepeatedDatesAction,
     }.get(key)
 
     if cls is None:
