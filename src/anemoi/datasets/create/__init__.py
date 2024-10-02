@@ -29,6 +29,7 @@ from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
+from anemoi.datasets.create.input.trace import enable_trace
 from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
@@ -1031,7 +1032,6 @@ def chain(tasks):
 
 def creator_factory(name, trace=None, **kwargs):
     if trace:
-        from anemoi.datasets.create.trace import enable_trace
 
         enable_trace(trace)
 
