@@ -69,14 +69,6 @@ def assert_is_fieldlist(obj):
     assert isinstance(obj, FieldList), type(obj)
 
 
-def shorten(dates):
-    if isinstance(dates, (list, tuple)):
-        dates = [d.isoformat() for d in dates]
-        if len(dates) > 5:
-            return f"{dates[0]}...{dates[-1]}"
-    return dates
-
-
 def _flatten(ds):
     if isinstance(ds, MultiFieldList):
         return [_tidy(f) for s in ds._indexes for f in _flatten(s)]

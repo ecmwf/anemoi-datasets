@@ -9,9 +9,16 @@
 import itertools
 from functools import cached_property
 
-from anemoi.datasets.create.input.misc import shorten
 from anemoi.datasets.dates import DatesProvider
 from anemoi.datasets.dates import as_datetime
+
+
+def _shorten(dates):
+    if isinstance(dates, (list, tuple)):
+        dates = [d.isoformat() for d in dates]
+        if len(dates) > 5:
+            return f"{dates[0]}...{dates[-1]}"
+    return dates
 
 
 class GroupOfDates:
@@ -30,7 +37,7 @@ class GroupOfDates:
         return iter(self.dates)
 
     def __repr__(self) -> str:
-        return f"GroupOfDates(dates={shorten(self.dates)})"
+        return f"GroupOfDates(dates={_shorten(self.dates)})"
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, GroupOfDates) and self.dates == other.dates
@@ -94,7 +101,7 @@ class Groups:
         return n
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(dates={len(self)},{shorten(self._dates)})"
+        return f"{self.__class__.__name__}(dates={len(self)},{_shorten(self._dates)})"
 
     def describe(self):
         return self.dates.summary
