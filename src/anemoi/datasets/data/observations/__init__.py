@@ -201,6 +201,31 @@ class RenamePrefix(Forward):
     def tree(self):
         return Node(self, [self.forward.tree()], rename_prefix=self.prefix)
 
+class Subset(Forward):
+    # TODO : delete this class
+    def __init__(self, dataset, start, end):
+        super().__init__(dataset)
+
+        from ..misc import as_first_date
+        from ..misc import as_last_date
+        self._start =  self.forward.dates[0] if start is None else as_first_date(start, self.forward.dates)
+        self._end =  self.forward.dates[-1] if end is None else as_last_date(end, self.forward.dates)
+
+        self.dates = make_dates(self._start, self._end, self.forward.frequency)
+
+        self._indices = [i for i, date in enumerate(self.dates) if self._start <= date <= self._end]
+        assert len(self._indices) > 0, f"Expected at least one date, got {len(self._indices)}"
+
+
+
+    def getitem(self, i):
+        i = self._indices[i]
+        return self.forward[i]
+
+
+    def tree(self):
+        return Node(self, [self.forward.tree()], start=self._start, end=self._end)
+
 
 class Select(Forward):
     def __init__(self, dataset, select):
@@ -436,6 +461,12 @@ def observations_factory(args, kwargs):
 
 
 def _open_observations(*args, **kwargs):
+    if "_start" in kwargs or "_end" in kwargs:
+        start = kwargs.pop("_start", None)
+        end = kwargs.pop("_end", None)
+        dataset = _open_observations(*args, **kwargs).mutate()
+        return Subset(dataset, start, end).mutate()
+
     if "select" in kwargs:
         select = kwargs.pop("select")
         dataset = _open_observations(*args, **kwargs).mutate()
