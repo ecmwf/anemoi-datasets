@@ -81,6 +81,7 @@ class ActionContext(Context):
 def action_factory(config, context, action_path):
 
     from .concat import ConcatAction
+    from .data_sources import DataSourcesAction
     from .function import FunctionAction
     from .join import JoinAction
     from .pipe import PipeAction
@@ -105,6 +106,7 @@ def action_factory(config, context, action_path):
         raise ValueError(f"Invalid input config {config[key]} ({type(config[key])}")
 
     cls = {
+        "data_sources": DataSourcesAction,
         "concat": ConcatAction,
         "join": JoinAction,
         "pipe": PipeAction,
