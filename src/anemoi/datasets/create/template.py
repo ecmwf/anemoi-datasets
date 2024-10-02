@@ -9,13 +9,7 @@
 
 import logging
 import re
-import textwrap
 from functools import wraps
-
-from anemoi.utils.humanize import plural
-
-from .trace import step
-from .trace import trace
 
 LOG = logging.getLogger(__name__)
 
@@ -28,42 +22,6 @@ def notify_result(method):
         return result
 
     return wrapper
-
-
-class Context:
-    def __init__(self):
-        # used_references is a set of reference paths that will be needed
-        self.used_references = set()
-        # results is a dictionary of reference path -> obj
-        self.results = {}
-
-    def will_need_reference(self, key):
-        assert isinstance(key, (list, tuple)), key
-        key = tuple(key)
-        self.used_references.add(key)
-
-    def notify_result(self, key, result):
-        trace(
-            "🎯",
-            step(key),
-            "notify result",
-            textwrap.shorten(repr(result).replace(",", ", "), width=40),
-            plural(len(result), "field"),
-        )
-        assert isinstance(key, (list, tuple)), key
-        key = tuple(key)
-        if key in self.used_references:
-            if key in self.results:
-                raise ValueError(f"Duplicate result {key}")
-            self.results[key] = result
-
-    def get_result(self, key):
-        assert isinstance(key, (list, tuple)), key
-        key = tuple(key)
-        if key in self.results:
-            return self.results[key]
-        all_keys = sorted(list(self.results.keys()))
-        raise ValueError(f"Cannot find result {key} in {all_keys}")
 
 
 class Substitution:

@@ -9,7 +9,7 @@
 import itertools
 from functools import cached_property
 
-from anemoi.datasets.create.input import shorten
+from anemoi.datasets.create.input.misc import shorten
 from anemoi.datasets.dates import DatesProvider
 from anemoi.datasets.dates import as_datetime
 

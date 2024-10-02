@@ -18,10 +18,10 @@ from anemoi.datasets.fields import FieldArray
 from anemoi.datasets.fields import NewValidDateTimeField
 
 from ..trace import trace_select
-from . import Action
-from . import JoinResult
-from . import Result
-from . import action_factory
+from .action import Action
+from .action import action_factory
+from .join import JoinResult
+from .result import Result
 
 LOG = logging.getLogger(__name__)
 

@@ -25,6 +25,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
+from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
@@ -309,7 +310,6 @@ class HasElementForDataMixin:
 
 
 def build_input_(main_config, output_config):
-    from earthkit.data.core.order import build_remapping
 
     builder = build_input(
         main_config.input,
