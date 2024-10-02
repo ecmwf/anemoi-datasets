@@ -31,7 +31,11 @@ class DateMapper:
     @staticmethod
     def from_mode(mode, source, config):
 
-        MODES = dict(closest=DateMapperClosest, climatology=DateMapperClimatology, constant=DateMapperConstant)
+        MODES = dict(
+            closest=DateMapperClosest,
+            climatology=DateMapperClimatology,
+            constant=DateMapperConstant,
+        )
 
         if mode not in MODES:
             raise ValueError(f"Invalid mode for DateMapper: {mode}")
@@ -70,7 +74,14 @@ class DateMapperClosest(DateMapper):
         to_try = sorted(to_try - self.tried)
 
         if to_try:
-            result = self.source.select(GroupOfDates(sorted(to_try), group_of_dates.provider, partial_ok=True))
+            result = self.source.select(
+                GroupOfDates(
+                    sorted(to_try),
+                    group_of_dates.provider,
+                    partial_ok=True,
+                )
+            )
+
             for f in result.datasource:
                 # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
                 date = as_datetime(f.metadata("valid_datetime"))
@@ -95,7 +106,10 @@ class DateMapperClosest(DateMapper):
             new_dates[best[1]].append(date)
 
         for date, dates in new_dates.items():
-            yield GroupOfDates([date], group_of_dates.provider), GroupOfDates(dates, group_of_dates.provider)
+            yield (
+                GroupOfDates([date], group_of_dates.provider),
+                GroupOfDates(dates, group_of_dates.provider),
+            )
 
 
 class DateMapperClimatology(DateMapper):
@@ -116,7 +130,10 @@ class DateMapperClimatology(DateMapper):
             new_dates[new_date].append(date)
 
         for date, dates in new_dates.items():
-            yield GroupOfDates([date], group_of_dates.provider), GroupOfDates(dates, group_of_dates.provider)
+            yield (
+                GroupOfDates([date], group_of_dates.provider),
+                GroupOfDates(dates, group_of_dates.provider),
+            )
 
 
 class DateMapperConstant(DateMapper):
@@ -128,8 +145,19 @@ class DateMapperConstant(DateMapper):
         from anemoi.datasets.dates.groups import GroupOfDates
 
         if self.date is None:
-            return [(GroupOfDates([], group_of_dates.provider), group_of_dates)]
-        return [(GroupOfDates([self.date], group_of_dates.provider), group_of_dates)]
+            return [
+                (
+                    GroupOfDates([], group_of_dates.provider),
+                    group_of_dates,
+                )
+            ]
+
+        return [
+            (
+                GroupOfDates([self.date], group_of_dates.provider),
+                group_of_dates,
+            )
+        ]
 
 
 class DateMapperResult(Result):
