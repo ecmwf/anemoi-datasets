@@ -12,15 +12,15 @@ from functools import cached_property
 
 from anemoi.datasets.dates import DatesProvider
 
-from ..template import notify_result
-from ..trace import trace_datasource
-from ..trace import trace_select
 from .action import Action
 from .action import action_factory
 from .empty import EmptyResult
 from .misc import _tidy
 from .misc import assert_fieldlist
 from .result import Result
+from .template import notify_result
+from .trace import trace_datasource
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 

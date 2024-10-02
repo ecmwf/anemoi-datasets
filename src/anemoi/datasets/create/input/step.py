@@ -16,13 +16,13 @@ from anemoi.datasets.dates import DatesProvider as DatesProvider
 from anemoi.datasets.fields import FieldArray as FieldArray
 from anemoi.datasets.fields import NewValidDateTimeField as NewValidDateTimeField
 
-from ..template import notify_result
-from ..trace import trace_datasource
-from ..trace import trace_select
 from .action import Action
 from .context import Context
 from .misc import is_function
 from .result import Result
+from .template import notify_result
+from .trace import trace_datasource
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 

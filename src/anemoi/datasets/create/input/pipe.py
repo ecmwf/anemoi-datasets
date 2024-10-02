@@ -8,10 +8,10 @@
 #
 import logging
 
-from ..trace import trace_select
 from .action import Action
 from .action import action_factory
 from .step import step_factory
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 

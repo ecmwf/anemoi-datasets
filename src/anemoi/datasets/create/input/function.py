@@ -17,16 +17,16 @@ from anemoi.datasets.fields import FieldArray as FieldArray
 from anemoi.datasets.fields import NewValidDateTimeField as NewValidDateTimeField
 
 from ..functions import import_function
-from ..template import notify_result
-from ..template import resolve
-from ..template import substitute
-from ..trace import trace
-from ..trace import trace_datasource
-from ..trace import trace_select
 from .action import Action
 from .misc import _tidy
 from .misc import assert_fieldlist
 from .result import Result
+from .template import notify_result
+from .template import resolve
+from .template import substitute
+from .trace import trace
+from .trace import trace_datasource
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 

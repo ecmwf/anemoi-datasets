@@ -17,11 +17,11 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets.fields import FieldArray
 from anemoi.datasets.fields import NewValidDateTimeField
 
-from ..trace import trace_select
 from .action import Action
 from .action import action_factory
 from .join import JoinResult
 from .result import Result
+from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 

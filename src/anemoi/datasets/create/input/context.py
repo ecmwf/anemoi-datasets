@@ -17,8 +17,8 @@ from anemoi.datasets.dates import DatesProvider as DatesProvider
 from anemoi.datasets.fields import FieldArray as FieldArray
 from anemoi.datasets.fields import NewValidDateTimeField as NewValidDateTimeField
 
-from ..trace import step
-from ..trace import trace
+from .trace import step
+from .trace import trace
 
 LOG = logging.getLogger(__name__)
 
