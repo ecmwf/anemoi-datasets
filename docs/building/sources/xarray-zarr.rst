@@ -2,5 +2,5 @@
  xarray-zarr
 #############
 
-.. literalinclude:: xarray-zarr.yaml
+.. literalinclude:: yaml/xarray-zarr.yaml
    :language: yaml
