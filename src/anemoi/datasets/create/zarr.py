@@ -128,7 +128,7 @@ class ZarrBuiltRegistry:
     def add_to_history(self, action, **kwargs):
         new = dict(
             action=action,
-            timestamp=datetime.datetime.utcnow().isoformat(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
         )
         new.update(kwargs)
 
@@ -151,7 +151,9 @@ class ZarrBuiltRegistry:
 
     def set_flag(self, i, value=True):
         z = self._open_write()
-        z.attrs["latest_write_timestamp"] = datetime.datetime.utcnow().isoformat()
+        z.attrs["latest_write_timestamp"] = (
+            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+        )
         z["_build"][self.name_flags][i] = value
 
     def ready(self):

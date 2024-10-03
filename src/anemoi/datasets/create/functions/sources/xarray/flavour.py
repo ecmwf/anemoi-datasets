@@ -177,28 +177,46 @@ class CoordinateGuesser:
 
         raise NotImplementedError(f"Cannot establish grid {coordinates}")
 
+    def _check_dims(self, variable, x_or_lon, y_or_lat):
+
+        x_dims = set(x_or_lon.variable.dims)
+        y_dims = set(y_or_lat.variable.dims)
+        variable_dims = set(variable.dims)
+
+        if not (x_dims <= variable_dims) or not (y_dims <= variable_dims):
+            raise ValueError(
+                f"Dimensions do not match {variable.name}{variable.dims} !="
+                f" {x_or_lon.name}{x_or_lon.variable.dims} and {y_or_lat.name}{y_or_lat.variable.dims}"
+            )
+
+        variable_dims = tuple(v for v in variable.dims if v in (x_dims | y_dims))
+        if x_dims == y_dims:
+            # It's unstructured
+            return variable_dims, True
+
+        if len(x_dims) == 1 and len(y_dims) == 1:
+            # It's a mesh
+            return variable_dims, False
+
+        raise ValueError(
+            f"Cannot establish grid for {variable.name}{variable.dims},"
+            f" {x_or_lon.name}{x_or_lon.variable.dims},"
+            f" {y_or_lat.name}{y_or_lat.variable.dims}"
+        )
+
     def _lat_lon_provided(self, lat, lon, variable):
         lat = lat[0]
         lon = lon[0]
 
-        if lat.variable.dims != lon.variable.dims:
-            raise ValueError(f"Dimensions do not match {lat.name}{lat.variable.dims} != {lon.name}{lon.variable.dims}")
-
-        dim_vars = variable.dims[-len(lat.variable.dims) :]
-
-        if set(lat.variable.dims) != set(dim_vars):
-            raise ValueError(
-                f"Dimensions do not match {variable.name}{variable.dims} != {lat.name}{lat.variable.dims} and {lon.name}{lon.variable.dims}"
-            )
+        dim_vars, unstructured = self._check_dims(variable, lon, lat)
 
         if (lat.name, lon.name, dim_vars) in self._cache:
             return self._cache[(lat.name, lon.name, dim_vars)]
 
-        assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
-        if len(lat.variable.shape) == 1:
-            grid = MeshedGrid(lat, lon, dim_vars)
-        else:
+        if unstructured:
             grid = UnstructuredGrid(lat, lon, dim_vars)
+        else:
+            grid = MeshedGrid(lat, lon, dim_vars)
 
         self._cache[(lat.name, lon.name, dim_vars)] = grid
         return grid
@@ -207,23 +225,18 @@ class CoordinateGuesser:
         x = x[0]
         y = y[0]
 
+        _, unstructured = self._check_dims(variable, x, y)
+
         if x.variable.dims != y.variable.dims:
             raise ValueError(f"Dimensions do not match {x.name}{x.variable.dims} != {y.name}{y.variable.dims}")
 
-        dim_vars = variable.dims[-len(x.variable.dims) :]
-
-        if x.variable.dims != dim_vars:
-            raise ValueError(
-                f"Dimensions do not match {variable.name}{variable.dims} != {x.name}{x.variable.dims} and {y.name}{y.variable.dims}"
-            )
-
         if (x.name, y.name) in self._cache:
             return self._cache[(x.name, y.name)]
 
         if (x.name, y.name) in self._cache:
             return self._cache[(x.name, y.name)]
 
-        assert len(x.variable.shape) == len(x.variable.shape), (x.variable.shape, y.variable.shape)
+        assert len(x.variable.shape) == len(y.variable.shape), (x.variable.shape, y.variable.shape)
 
         grid_mapping = variable.attrs.get("grid_mapping", None)
 
@@ -273,10 +286,10 @@ class CoordinateGuesser:
                 LOG.warning(f"Using CRS {grid_mapping} from global attributes")
 
         if grid_mapping is not None:
-            if len(x.variable.shape) == 1:
-                return MeshProjectionGrid(x, y, grid_mapping)
-            else:
+            if unstructured:
                 return UnstructuredProjectionGrid(x, y, grid_mapping)
+            else:
+                return MeshProjectionGrid(x, y, grid_mapping)
 
         LOG.error("Could not fine a candidate for 'grid_mapping'")
         raise NotImplementedError(f"Unstructured grid {x.name} {y.name}")
