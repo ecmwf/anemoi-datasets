@@ -1,16 +1,11 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Create a report to help us improve. **❗ IMPORTANT:** If you have difficulties creating a dataset from a GRIB, NetCDF, OpenDAP, Zarr, or any other source, please provide us with a sample data file or a URL to the source data.
 title: ''
 labels: ''
 assignees: ''
 
 ---
-
-> **❗ IMPORTANT:** If you have difficulties creating a dataset from a GRIB, NetCDF, OpenDAP, Zarr, or any other source, please provide us with a sample data file or a URL to the source data.
-
----
-
 **Describe the bug**
 A clear and concise description of what the bug is.
 
@@ -20,6 +15,9 @@ Steps to reproduce the behavior:
 2. Click on '....'
 3. Scroll down to '....'
 4. See error
+
+**URL to sample input data**
+Provide a URL to a sample input data, or attach a file to that report if it is small enough.
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
