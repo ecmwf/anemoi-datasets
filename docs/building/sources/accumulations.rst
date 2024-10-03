@@ -54,12 +54,12 @@ accumulation between step 1h and step 7h if it is the most appropriate
 data available, while in the second case, the source will always return
 the accumulation between step 0h and step 6h, if available.
 
-.. literalinclude:: accumulations1.yaml
+.. literalinclude:: yaml/accumulations1.yaml
    :language: yaml
 
 or:
 
-.. literalinclude:: accumulations2.yaml
+.. literalinclude:: yaml/accumulations2.yaml
    :language: yaml
 
 .. [1]

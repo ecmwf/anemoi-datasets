@@ -4,5 +4,5 @@
 
 https://zenodo.org/records/6470725
 
-.. literalinclude:: zenodo.yaml
+.. literalinclude:: yaml/zenodo.yaml
    :language: yaml
