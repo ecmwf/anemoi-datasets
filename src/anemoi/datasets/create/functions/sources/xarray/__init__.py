@@ -10,10 +10,9 @@
 import logging
 
 from earthkit.data.core.fieldlist import MultiFieldList
-from earthkit.data.indexing.fieldlist import FieldArray
 
 from anemoi.datasets.data.stores import name_to_zarr_store
-from anemoi.datasets.utils.fields import NewMetadataField
+from anemoi.datasets.utils.fields import NewMetadataField as NewMetadataField
 
 from .. import iterate_patterns
 from .fieldlist import XarrayFieldList
@@ -31,7 +30,7 @@ def check(what, ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
-def load_one(emoji, context, dates, dataset, options={}, match_all_dates=False, flavour=None, **kwargs):
+def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):
     import xarray as xr
 
     """
@@ -52,12 +51,8 @@ def load_one(emoji, context, dates, dataset, options={}, match_all_dates=False, 
 
     fs = XarrayFieldList.from_xarray(data, flavour)
 
-    if match_all_dates:
-        match = fs.sel(**kwargs)
-        result = []
-        for date in dates:
-            result.append(FieldArray([NewMetadataField(f, valid_datetime=date) for f in match]))
-        result = MultiFieldList(result)
+    if len(dates) == 0:
+        return fs.sel(**kwargs)
     else:
         result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 

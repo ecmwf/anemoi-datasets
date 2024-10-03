@@ -25,9 +25,11 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
+from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
+from anemoi.datasets.create.input.trace import enable_trace
 from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
@@ -309,7 +311,6 @@ class HasElementForDataMixin:
 
 
 def build_input_(main_config, output_config):
-    from earthkit.data.core.order import build_remapping
 
     builder = build_input(
         main_config.input,
@@ -563,7 +564,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(dates=group)
+            result = self.input.select(group_of_dates=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -1031,7 +1032,6 @@ def chain(tasks):
 
 def creator_factory(name, trace=None, **kwargs):
     if trace:
-        from anemoi.datasets.create.trace import enable_trace
 
         enable_trace(trace)
 

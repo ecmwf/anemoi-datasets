@@ -16,6 +16,10 @@ LOG = logging.getLogger(__name__)
 
 
 def _expand(paths):
+
+    if not isinstance(paths, list):
+        paths = [paths]
+
     for path in paths:
         if path.startswith("file://"):
             path = path[7:]
@@ -40,8 +44,10 @@ def iterate_patterns(path, dates, **kwargs):
     given_paths = path if isinstance(path, list) else [path]
 
     dates = [d.isoformat() for d in dates]
+    if len(dates) > 0:
+        kwargs["date"] = dates
 
     for path in given_paths:
-        paths = Pattern(path, ignore_missing_keys=True).substitute(date=dates, **kwargs)
+        paths = Pattern(path, ignore_missing_keys=True).substitute(**kwargs)
         for path in _expand(paths):
             yield path, dates
