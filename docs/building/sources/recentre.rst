@@ -19,7 +19,7 @@ formula:
 
 Additionally, some variables must be non-negative to have a physical
 meaning (e.g. accumulated variables or `specific humidity`). To ensure
-this, positive clipping is performed using the alternative fomula :
+this, positive clipping is performed using the alternative formula:
 
 .. math::
 
