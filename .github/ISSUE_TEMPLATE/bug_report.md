@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve. **❗ IMPORTANT:** If you have difficulties creating a dataset from a GRIB, NetCDF, OpenDAP, Zarr, or any other source, please provide us with a sample data file or a URL to the source data.
+about: Create a report to help us improve. **❗ IMPORTANT:** If you have difficulties creating a dataset from any source, please provide us with a sample data file or a URL to the source data.
 title: ''
 labels: ''
 assignees: ''
