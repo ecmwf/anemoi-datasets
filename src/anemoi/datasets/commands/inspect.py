@@ -311,7 +311,7 @@ class Version:
                 print(f"🕰️  Dataset initialized {when(start)}.")
                 if built and latest:
                     speed = (latest - start) / built
-                    eta = datetime.datetime.utcnow() + speed * (total - built)
+                    eta = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + speed * (total - built)
                     print(f"🏁 ETA {when(eta)}.")
         else:
             if latest:

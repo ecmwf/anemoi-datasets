@@ -18,6 +18,9 @@ LOG = logging.getLogger(__name__)
 
 class Grid:
 
+    def __init__(self):
+        pass
+
     @property
     def latitudes(self):
         return self.grid_points[0]
@@ -28,8 +31,8 @@ class Grid:
 
 
 class LatLonGrid(Grid):
-    def __init__(self, lat, lon):
-        print("LatLonGrid", lat, lon)
+    def __init__(self, lat, lon, variable_dims):
+        super().__init__()
         self.lat = lat
         self.lon = lon
 
@@ -44,17 +47,19 @@ class MeshedGrid(LatLonGrid):
 
     @cached_property
     def grid_points(self):
-        assert False, "Not implemented"
-        return np.meshgrid(
+
+        lat, lon = np.meshgrid(
             self.lat.variable.values,
             self.lon.variable.values,
         )
+
+        return lat.flatten(), lon.flatten()
 
 
 class UnstructuredGrid(LatLonGrid):
 
     def __init__(self, lat, lon, variable_dims):
-        super().__init__(lat, lon)
+        super().__init__(lat, lon, variable_dims)
         assert len(lat) == len(lon), (len(lat), len(lon))
         self.variable_dims = variable_dims
         self.grid_dims = lat.variable.dims

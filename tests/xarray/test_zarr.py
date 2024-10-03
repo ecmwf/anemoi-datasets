@@ -10,6 +10,30 @@ import xarray as xr
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
 
 
+def _check(fs, size, start, end):
+    assert len(fs) == size
+
+    first = fs[0]
+    last = fs[-1]
+
+    assert first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
+    assert last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
+
+    print(first.datetime())
+    print(last.metadata())
+
+    first = first
+    latitudes, longitudes = first.grid_points()
+
+    assert len(latitudes.shape) == 1, latitudes.shape
+    assert len(longitudes.shape) == 1, longitudes.shape
+
+    assert len(latitudes) == len(longitudes), (len(latitudes), len(longitudes))
+    data = first.to_numpy(flatten=True)
+
+    assert len(data) == len(latitudes), (len(data), len(latitudes))
+
+
 def test_arco_era5_1():
 
     ds = xr.open_zarr(
@@ -19,14 +43,12 @@ def test_arco_era5_1():
     )
 
     fs = XarrayFieldList.from_xarray(ds)
-    print(len(fs))
-
-    print(fs[0].datetime())
-
-    print(fs[-1].metadata())
-    # print(fs[-1].to_numpy())
-
-    assert len(fs) == 128677526
+    _check(
+        fs,
+        128677526,
+        "1959-01-01T00:00:00",
+        "2021-12-31T23:00:00",
+    )
 
 
 def test_arco_era5_2():
@@ -38,12 +60,12 @@ def test_arco_era5_2():
     )
 
     fs = XarrayFieldList.from_xarray(ds)
-    print(len(fs))
-
-    print(fs[-1].metadata())
-    # print(fs[-1].to_numpy())
-
-    assert len(fs) == 128677526
+    _check(
+        fs,
+        128677526,
+        "1959-01-01T00:00:00",
+        "2021-12-31T23:00:00",
+    )
 
 
 def test_weatherbench():
@@ -64,12 +86,12 @@ def test_weatherbench():
 
     fs = XarrayFieldList.from_xarray(ds, flavour)
 
-    assert len(fs) == 2430240
-
-    assert fs[0].metadata("valid_datetime") == "2020-01-01T06:00:00", fs[0].metadata("valid_datetime")
-    assert fs[-1].metadata("valid_datetime") == "2021-01-10T12:00:00", fs[-1].metadata("valid_datetime")
-
-    print(fs[0].datetime())
+    _check(
+        fs,
+        2430240,
+        "2020-01-01T06:00:00",
+        "2021-01-10T12:00:00",
+    )
 
 
 def test_inca_one_date():
@@ -90,8 +112,8 @@ def test_inca_one_date():
 
 
 if __name__ == "__main__":
-    test_arco_era5_2()
-    exit()
+    # test_arco_era5_2()
+    # exit()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")
