@@ -1,0 +1,4 @@
+rename:
+  param:
+    from: "old"
+    to: "new"

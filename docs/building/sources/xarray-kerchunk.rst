@@ -2,7 +2,7 @@
  xarray-kerchunk
 #################
 
-.. literalinclude:: xarray-kerchunk.yaml
+.. literalinclude:: yaml/xarray-kerchunk.yaml
    :language: yaml
 
 The code below is inspired by the `kerchunk tutorial`_, and makes use of
