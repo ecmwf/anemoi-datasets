@@ -10,6 +10,8 @@ Keep it human-readable, your future self will thank you!
 
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.5...HEAD)
 
+- Update documentation
+
 ## [0.5.5](https://github.com/ecmwf/anemoi-datasets/compare/0.5.4...0.5.5) - 2024-10-04
 
 ### Changed
