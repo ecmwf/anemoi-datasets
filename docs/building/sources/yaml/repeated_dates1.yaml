@@ -1,0 +1,6 @@
+
+repeated_dates:
+    mode: mode
+    # ... parameters related to the mode ...
+    source:
+      # ... a source definition ...

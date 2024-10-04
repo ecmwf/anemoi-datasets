@@ -28,6 +28,7 @@ The following `sources` are currently available:
    sources/netcdf
    sources/opendap
    sources/recentre
+   sources/repeated_dates
    sources/xarray-kerchunk
    sources/xarray-zarr
    sources/zenodo

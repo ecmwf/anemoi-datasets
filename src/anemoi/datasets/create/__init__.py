@@ -14,6 +14,7 @@ import os
 import time
 import uuid
 import warnings
+from copy import deepcopy
 from functools import cached_property
 
 import numpy as np
@@ -24,9 +25,11 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
+from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
+from anemoi.datasets.create.input.trace import enable_trace
 from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
@@ -308,7 +311,6 @@ class HasElementForDataMixin:
 
 
 def build_input_(main_config, output_config):
-    from earthkit.data.core.order import build_remapping
 
     builder = build_input(
         main_config.input,
@@ -321,6 +323,43 @@ def build_input_(main_config, output_config):
     LOG.debug("✅ INPUT_BUILDER")
     LOG.debug(builder)
     return builder
+
+
+def tidy_recipe(config: object):
+    """Remove potentially private information in the config"""
+    config = deepcopy(config)
+    if isinstance(config, (tuple, list)):
+        return [tidy_recipe(_) for _ in config]
+    if isinstance(config, (dict, DotDict)):
+        for k, v in config.items():
+            if k.startswith("_"):
+                config[k] = "*** REMOVED FOR SECURITY ***"
+            else:
+                config[k] = tidy_recipe(v)
+    if isinstance(config, str):
+        if config.startswith("_"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("s3://"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("gs://"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("http"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("ftp"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("file"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("ssh"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("scp"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("rsync"):
+            return "*** REMOVED FOR SECURITY ***"
+        if config.startswith("/"):
+            return "*** REMOVED FOR SECURITY ***"
+        if "@" in config:
+            return "*** REMOVED FOR SECURITY ***"
+    return config
 
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
@@ -409,6 +448,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata.update(self.main_config.get("add_metadata", {}))
 
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
+        metadata["recipe"] = tidy_recipe(self.main_config.get_serialisable_dict())
 
         metadata["description"] = self.main_config.description
         metadata["licence"] = self.main_config["licence"]
@@ -524,7 +564,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(dates=group)
+            result = self.input.select(group_of_dates=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -992,7 +1032,6 @@ def chain(tasks):
 
 def creator_factory(name, trace=None, **kwargs):
     if trace:
-        from anemoi.datasets.create.trace import enable_trace
 
         enable_trace(trace)
 

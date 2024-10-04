@@ -24,7 +24,7 @@ class Variable:
         self,
         *,
         ds,
-        var,
+        variable,
         coordinates,
         grid,
         time,
@@ -32,13 +32,13 @@ class Variable:
         array_backend=None,
     ):
         self.ds = ds
-        self.var = var
+        self.variable = variable
 
         self.grid = grid
         self.coordinates = coordinates
 
         self._metadata = metadata.copy()
-        self._metadata.update({"variable": var.name})
+        self._metadata.update({"variable": variable.name})
 
         self.time = time
 
@@ -51,20 +51,20 @@ class Variable:
 
     @property
     def name(self):
-        return self.var.name
+        return self.variable.name
 
     def __len__(self):
         return self.length
 
     @property
     def grid_mapping(self):
-        grid_mapping = self.var.attrs.get("grid_mapping", None)
+        grid_mapping = self.variable.attrs.get("grid_mapping", None)
         if grid_mapping is None:
             return None
         return self.ds[grid_mapping].attrs
 
     def grid_points(self):
-        return self.grid.grid_points()
+        return self.grid.grid_points
 
     @property
     def latitudes(self):
@@ -76,7 +76,7 @@ class Variable:
 
     def __repr__(self):
         return "Variable[name=%s,coordinates=%s,metadata=%s]" % (
-            self.var.name,
+            self.variable.name,
             self.coordinates,
             self._metadata,
         )
@@ -90,7 +90,7 @@ class Variable:
 
         coords = np.unravel_index(i, self.shape)
         kwargs = {k: v for k, v in zip(self.names, coords)}
-        return XArrayField(self, self.var.isel(kwargs))
+        return XArrayField(self, self.variable.isel(kwargs))
 
     def sel(self, missing, **kwargs):
 
@@ -117,7 +117,7 @@ class Variable:
 
         variable = Variable(
             ds=self.ds,
-            var=self.var.isel({k: i}),
+            var=self.variable.isel({k: i}),
             coordinates=coordinates,
             grid=self.grid,
             time=self.time,
@@ -136,7 +136,7 @@ class Variable:
             name = kwargs.pop("variable")
             if not isinstance(name, (list, tuple)):
                 name = [name]
-            if self.var.name not in name:
+            if self.variable.name not in name:
                 return False, None
             return True, kwargs
         return True, kwargs

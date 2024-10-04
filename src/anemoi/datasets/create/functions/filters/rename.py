@@ -32,7 +32,7 @@ class RenamedFieldMapping:
 
         value = self.field.metadata(key, **kwargs)
         if key == self.what:
-            return self.renaming.get(value, value)
+            return self.renaming.get(self.what, {}).get(value, value)
 
         return value
 
@@ -68,8 +68,7 @@ class RenamedFieldFormat:
 
 
 def execute(context, input, what="param", **kwargs):
-    # print('🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍 ==========', kwargs)
-    if what in kwargs:
+    if what in kwargs and isinstance(kwargs[what], str):
         return FieldArray([RenamedFieldFormat(fs, kwargs[what]) for fs in input])
 
     return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])

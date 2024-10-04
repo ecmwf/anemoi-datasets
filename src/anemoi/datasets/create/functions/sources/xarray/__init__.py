@@ -12,6 +12,7 @@ import logging
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.data.stores import name_to_zarr_store
+from anemoi.datasets.utils.fields import NewMetadataField as NewMetadataField
 
 from .. import iterate_patterns
 from .fieldlist import XarrayFieldList
@@ -49,7 +50,11 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
         data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data, flavour)
-    result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
+
+    if len(dates) == 0:
+        return fs.sel(**kwargs)
+    else:
+        result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")

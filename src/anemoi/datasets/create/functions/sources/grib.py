@@ -135,7 +135,7 @@ def execute(context, dates, path, latitudes=None, longitudes=None, *args, **kwar
             s = s.sel(valid_datetime=dates, **kwargs)
             ds = ds + s
 
-    if kwargs:
+    if kwargs and not context.partial_ok:
         check(ds, given_paths, valid_datetime=dates, **kwargs)
 
     if geography is not None:

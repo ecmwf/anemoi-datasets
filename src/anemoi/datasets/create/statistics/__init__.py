@@ -155,7 +155,7 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
             check_data_values(values[j, :], name=name, allow_nans=allow_nans)
             if np.isnan(values[j, :]).all():
                 # LOG.warning(f"All NaN values for {name} ({j}) for date {i}")
-                raise ValueError(f"All NaN values for {name} ({j}) for date {i}")
+                LOG.warning(f"All NaN values for {name} ({j}) for date {i}")
 
         # Ignore NaN values
         minimum[i] = np.nanmin(values, axis=1)

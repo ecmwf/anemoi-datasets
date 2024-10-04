@@ -140,8 +140,14 @@ class StatisticsValueError(ValueError):
 
 def check_data_values(arr, *, name: str, log=[], allow_nans=False):
 
+    shape = arr.shape
+
     if (isinstance(allow_nans, (set, list, tuple, dict)) and name in allow_nans) or allow_nans:
         arr = arr[~np.isnan(arr)]
+
+    if arr.size == 0:
+        warnings.warn(f"Empty array for {name} ({shape})")
+        return
 
     assert arr.size > 0, (name, *log)
 
