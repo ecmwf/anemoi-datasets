@@ -42,7 +42,7 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
     """
 
-    context.trace(emoji, dataset, options)
+    context.trace(emoji, dataset, options, kwargs)
 
     if isinstance(dataset, str) and ".zarr" in dataset:
         data = xr.open_zarr(name_to_zarr_store(dataset), **options)

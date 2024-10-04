@@ -12,6 +12,10 @@ Keep it human-readable, your future self will thank you!
 
 ## [0.5.5](https://github.com/ecmwf/anemoi-datasets/compare/0.5.4...0.5.5) - 2024-10-04
 
+### Changed
+
+- Allow for unknown coordinates when parsing CF input
+
 ## [Add support for (semi-)constant fields](https://github.com/ecmwf/anemoi-datasets/compare/0.5.1...0.5.2) - 2024-10-03
 
 ### Changed

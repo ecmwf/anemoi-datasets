@@ -18,6 +18,7 @@ from .coordinates import LongitudeCoordinate
 from .coordinates import ScalarCoordinate
 from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
+from .coordinates import UnsupportedCoordinate
 from .coordinates import XCoordinate
 from .coordinates import YCoordinate
 from .coordinates import is_scalar
@@ -157,10 +158,12 @@ class CoordinateGuesser:
         if c.shape in ((1,), tuple()):
             return ScalarCoordinate(c)
 
-        raise NotImplementedError(
+        LOG.warning(
             f"Coordinate {coord} not supported\n{axis=}, {name=},"
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
+
+        return UnsupportedCoordinate(c)
 
     def grid(self, coordinates, variable):
         lat = [c for c in coordinates if c.is_lat]
