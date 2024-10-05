@@ -108,7 +108,7 @@ class ForecastFromValidTimeAndStep(Time):
         # When date is present, it should be compatible with time and step
 
         if self.date_coordinate_name is not None:
-            # Not sure that is correct
+            # Not sure that this is the correct assumption
             assert coords_values[self.date_coordinate_name] == base_datetime, (
                 coords_values[self.date_coordinate_name],
                 base_datetime,
