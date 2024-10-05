@@ -343,12 +343,14 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if standard_name == "time":
             return TimeCoordinate(c)
 
-        if name == "time":
+        # That is the output of `cfgrib` for forecasts
+        if name == "time" and standard_name != "forecast_reference_time":
             return TimeCoordinate(c)
 
     def _is_date(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "forecast_reference_time":
             return DateCoordinate(c)
+
         if name == "forecast_reference_time":
             return DateCoordinate(c)
 

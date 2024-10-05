@@ -18,7 +18,7 @@ SAMPLES = list(range(19))
 SKIP = [0, 1, 2, 3, 4]
 
 
-def _test_samples(n):
+def _test_samples(n, check_skip=True):
 
     r = requests.get(f"{URL}sample-{n:04d}.json")
     if r.status_code not in [200, 404]:
@@ -30,7 +30,7 @@ def _test_samples(n):
         kwargs = r.json()
 
     skip = kwargs.pop("skip", None)
-    if skip:
+    if skip and check_skip:
         pytest.skip(skip if isinstance(skip, str) else "Skipping test")
 
     open_zarr_kwargs = kwargs.pop("open_zarr_kwargs", {})
@@ -52,7 +52,14 @@ def test_samples(n):
 
 
 if __name__ == "__main__":
-    for s in SAMPLES:
-        if s in SKIP:
-            continue
-        _test_samples(s)
+    import sys
+
+    if len(sys.argv) > 1:
+        for n in sys.argv[1:]:
+            _test_samples(int(n), check_skip=False)
+    else:
+        for s in SAMPLES:
+            if s in SKIP:
+                continue
+            print("-------------------", s)
+            _test_samples(s, check_skip=False)
