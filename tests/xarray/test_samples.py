@@ -29,11 +29,19 @@ def _test_samples(n):
     else:
         kwargs = r.json()
 
-    ds = xr.open_zarr(f"{URL}sample-{n:04d}.zarr", consolidated=True)
+    skip = kwargs.pop("skip", None)
+    if skip:
+        pytest.skip(skip if isinstance(skip, str) else "Skipping test")
+
+    open_zarr_kwargs = kwargs.pop("open_zarr_kwargs", {})
+
+    ds = xr.open_zarr(f"{URL}sample-{n:04d}.zarr", consolidated=True, **open_zarr_kwargs)
 
     print(ds)
 
-    fs = XarrayFieldList.from_xarray(ds)
+    from_xarray_kwargs = kwargs.pop("from_xarray_kwargs", {})
+
+    fs = XarrayFieldList.from_xarray(ds, **from_xarray_kwargs)
 
     assert_field_list(fs, **kwargs)
 

@@ -14,16 +14,20 @@ import logging
 LOG = logging.getLogger(__name__)
 
 
-def assert_field_list(fs, size=None, start=None, end=None):
+def assert_field_list(fs, size=None, start=None, end=None, constant=False, skip=None):
     assert size is None or len(fs) == size, (len(fs), size)
 
     first = fs[0]
     last = fs[-1]
 
-    assert start is None or first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
-    assert end is None or last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
+    if constant:
+        # TODO: add a check for constant fields
+        pass
+    else:
+        assert start is None or first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
+        assert end is None or last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
+        print(first.datetime())
 
-    print(first.datetime())
     print(last.metadata())
 
     first = first
