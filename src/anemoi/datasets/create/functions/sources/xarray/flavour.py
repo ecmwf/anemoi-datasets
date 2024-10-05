@@ -228,20 +228,15 @@ class CoordinateGuesser:
         x = x[0]
         y = y[0]
 
-        _, unstructured = self._check_dims(variable, x, y)
+        dim_vars, unstructured = self._check_dims(variable, x, y)
 
-        if x.variable.dims != y.variable.dims:
-            raise ValueError(f"Dimensions do not match {x.name}{x.variable.dims} != {y.name}{y.variable.dims}")
-
-        if (x.name, y.name) in self._cache:
-            return self._cache[(x.name, y.name)]
-
-        if (x.name, y.name) in self._cache:
-            return self._cache[(x.name, y.name)]
-
-        assert len(x.variable.shape) == len(y.variable.shape), (x.variable.shape, y.variable.shape)
+        if (x.name, y.name, dim_vars) in self._cache:
+            return self._cache[(x.name, y.name, dim_vars)]
 
         grid_mapping = variable.attrs.get("grid_mapping", None)
+        if grid_mapping is not None:
+            print(f"grid_mapping: {grid_mapping}")
+            print(self.ds[grid_mapping])
 
         if grid_mapping is None:
             LOG.warning(f"No 'grid_mapping' attribute provided for '{variable.name}'")
@@ -288,11 +283,19 @@ class CoordinateGuesser:
                 grid_mapping = self.ds.attrs["crs"]
                 LOG.warning(f"Using CRS {grid_mapping} from global attributes")
 
+        grid = None
         if grid_mapping is not None:
+
+            grid_mapping = dict(self.ds[grid_mapping].attrs)
+
             if unstructured:
-                return UnstructuredProjectionGrid(x, y, grid_mapping)
+                grid = UnstructuredProjectionGrid(x, y, grid_mapping)
             else:
-                return MeshProjectionGrid(x, y, grid_mapping)
+                grid = MeshProjectionGrid(x, y, grid_mapping)
+
+        if grid is not None:
+            self._cache[(x.name, y.name, dim_vars)] = grid
+            return grid
 
         LOG.error("Could not fine a candidate for 'grid_mapping'")
         raise NotImplementedError(f"Unstructured grid {x.name} {y.name}")

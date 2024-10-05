@@ -7,22 +7,21 @@
 # nor does it submit to any jurisdiction.
 #
 
-"""
-A collection of functions to support pytest testing
-"""
+# A collection of functions to support pytest testing
 
 import logging
 
 LOG = logging.getLogger(__name__)
 
-def assert_field_list(fs, size, start, end):
-    assert len(fs) == size
+
+def assert_field_list(fs, size=None, start=None, end=None):
+    assert size is None or len(fs) == size, (len(fs), size)
 
     first = fs[0]
     last = fs[-1]
 
-    assert first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
-    assert last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
+    assert start is None or first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
+    assert end is None or last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
 
     print(first.datetime())
     print(last.metadata())
