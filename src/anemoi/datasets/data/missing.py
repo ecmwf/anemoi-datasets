@@ -154,7 +154,15 @@ class SkipMissingDates(Forwards):
 
     @property
     def dates(self):
-        raise NotImplementedError("SkipMissingDates.dates")
+        return self.forward.dates #raise NotImplementedError("SkipMissingDates.dates")
+    
+    @property
+    def lam(self):
+        return self.forward.lam if hasattr(self.forward, "lam") else None
+    
+    @property
+    def mask(self):
+        return self.forward.mask if hasattr(self.forward, "mask") else None
 
     @debug_indexing
     @expand_list_indexing

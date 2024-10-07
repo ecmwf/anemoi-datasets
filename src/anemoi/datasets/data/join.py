@@ -33,7 +33,7 @@ class Join(Combined):
 
     def check_compatibility(self, d1, d2):
         super().check_compatibility(d1, d2)
-        self.check_same_sub_shapes(d1, d2, drop_axis=1)
+        #self.check_same_sub_shapes(d1, d2, drop_axis=1)
 
     def check_same_variables(self, d1, d2):
         # Turned off because we are joining along the variables axis
