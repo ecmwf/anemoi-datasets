@@ -244,3 +244,9 @@ class ScalarCoordinate(Coordinate):
     @property
     def mars_names(self):
         return (self.variable.name,)
+
+
+class UnsupportedCoordinate(Coordinate):
+    @property
+    def mars_names(self):
+        return (self.variable.name,)

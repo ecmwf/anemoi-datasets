@@ -13,13 +13,13 @@ specification`_, with the exception of the ``date``, ``time``` and
 The missing keys will be filled with the default values, as defined in
 the MARS language specification.
 
-.. literalinclude:: mars1.yaml
+.. literalinclude:: yaml/mars1.yaml
    :language: yaml
 
 Data from several levels types must be requested in separate requests,
 with the ``join`` command.
 
-.. literalinclude:: mars2.yaml
+.. literalinclude:: yaml/mars2.yaml
    :language: yaml
 
 See :ref:`naming-variables` for information on how to name the variables

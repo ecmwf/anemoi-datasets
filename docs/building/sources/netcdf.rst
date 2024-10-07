@@ -2,5 +2,7 @@
  netcdf
 ########
 
-.. literalinclude:: netcdf.yaml
+.. literalinclude:: yaml/netcdf.yaml
    :language: yaml
+
+.. include:: xarray-based.rst
