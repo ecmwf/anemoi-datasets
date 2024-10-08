@@ -389,6 +389,11 @@ class Result:
         return self._variables
 
     @property
+    def variables_metadata(self):
+        cube = self.build_coords()
+        return _fields_metatata(self.variables, cube)
+
+    @property
     def ensembles(self):
         self.build_coords()
         return self._ensembles
@@ -435,8 +440,3 @@ class Result:
             "ensembles": self.ensembles,
             "values": self.grid_values,
         }
-
-    @property
-    def variables_metadata(self):
-        cube = self.build_coords()
-        return _fields_metatata(self.variables, cube)

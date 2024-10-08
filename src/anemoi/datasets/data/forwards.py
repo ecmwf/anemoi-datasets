@@ -64,6 +64,10 @@ class Forwards(Dataset):
         return self.forward.variables
 
     @property
+    def variables_metadata(self):
+        return self.forward.variables_metadata
+
+    @property
     def statistics(self):
         return self.forward.statistics
 
