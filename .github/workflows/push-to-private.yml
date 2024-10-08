@@ -31,4 +31,6 @@ jobs:
         
     - name: Push changes to private repository
       run: |
-        git push --verbose private develop 
+        git remote rm origin
+        git remote add origin https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/ecmwf/anemoi-datasets-private.git
+        git push --verbose
