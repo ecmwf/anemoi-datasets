@@ -37,7 +37,17 @@ def _fields_metatata(variables, cube, namespace="mars"):
     for i, c in enumerate(cube.iterate_cubelets()):
         assert c._coords_names[1] == variables[i], (c._coords_names[1], variables[i])
         f = cube[c.coords]
-        result[variables[i]] = f.metadata(namespace=namespace)
+        md = f.metadata(namespace=namespace)
+
+        if md.get("param") == "~":
+            md["param"] = f.metadata("param")
+            assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
+
+        if md.get("param") == "unknown":
+            md["param"] = str(f.metadata("paramId", default="unknown"))
+            # assert md['param'] != 'unknown', (md, f.metadata('param'))
+
+        result[variables[i]] = md
 
     assert i + 1 == len(variables), (i + 1, len(variables))
     return result
@@ -92,7 +102,7 @@ def _data_request(data):
 
 class Result:
     empty = False
-    _coords_already_built = None
+    _coords_already_built = False
 
     def __init__(self, context, action_path, dates):
         from anemoi.datasets.dates.groups import GroupOfDates
@@ -324,7 +334,7 @@ class Result:
 
     def build_coords(self):
         if self._coords_already_built:
-            return self._coords_already_built
+            return
 
         cube = self.get_cube()
 
@@ -375,13 +385,9 @@ class Result:
         self._field_shape = first_field.shape
         self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
-        self._coords_already_built = cube
-        return cube
+        self._cube = cube
 
-        # for c in cube:
-        #     print(c)
-
-        # assert False, cube
+        self._coords_already_built = True
 
     @property
     def variables(self):
@@ -390,8 +396,7 @@ class Result:
 
     @property
     def variables_metadata(self):
-        cube = self.build_coords()
-        return _fields_metatata(self.variables, cube)
+        return _fields_metatata(self.variables, self._cube)
 
     @property
     def ensembles(self):

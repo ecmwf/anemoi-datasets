@@ -52,7 +52,7 @@ from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.20"
+VERSION = "0.30"
 
 
 def json_tidy(o):
