@@ -1,4 +1,4 @@
-name: Push to another repository
+name: Push to private repository
 
 on:
   push:
