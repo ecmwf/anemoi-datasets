@@ -23,10 +23,8 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-
+        git remote add-url private https://x-access-token:${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
+        
     - name: Push changes to private repository
-      env:
-        MLX_TOKEN: ${{ secrets.MLX_TOKEN }}
       run: |
-        git remote add private https://x-access-token:${MLX_TOKEN}@github.com/ecmwf-lab/anemoi-datasets-private.git
-        git push private develop 
+        git --verbose push private develop 
