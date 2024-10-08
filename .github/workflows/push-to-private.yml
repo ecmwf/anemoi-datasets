@@ -1,42 +1,42 @@
-name: Push to another repository
-
-on:
-  push:
-    branches:
-      - develop
-
-jobs:
-  push_changes:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout source repository
-      uses: actions/checkout@v3
-
-    - name: Set up Git configuration
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-
-    - name: env
-      run: |
-        env | sort
-
-    - name: clone
-      run: |
-        git clone https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git check-clone
-
-    - name: set-url
-      run: |
-        git remote set-url origin https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
-
-    - name: fetch
-      run: |
-        git remote set-url origin https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
-        git fetch
-
-    - name: Push changes to private repository
-      run: |
-        git remote set-url origin https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
-        git fetch
-        git push develop
+# name: Push to another repository
+#
+# on:
+#   push:
+#     branches:
+#       - develop
+#
+# jobs:
+#   push_changes:
+#     runs-on: ubuntu-latest
+#
+#     steps:
+#     - name: Checkout source repository
+#       uses: actions/checkout@v3
+#
+#     - name: Set up Git configuration
+#       run: |
+#         git config user.name "github-actions[bot]"
+#         git config user.email "github-actions[bot]@users.noreply.github.com"
+#
+#     - name: env
+#       run: |
+#         env | sort
+#
+#     - name: clone
+#       run: |
+#         git clone https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git check-clone
+#
+#     - name: set-url
+#       run: |
+#         git remote set-url origin https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
+#
+#     - name: fetch
+#       run: |
+#         git remote set-url origin https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
+#         git fetch
+#
+#     - name: Push changes to private repository
+#       run: |
+#         git remote set-url origin https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
+#         git fetch
+#         git push develop
