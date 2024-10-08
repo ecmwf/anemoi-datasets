@@ -1,0 +1,26 @@
+name: Push to another repository
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  push_changes:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source repository
+      uses: actions/checkout@v3
+
+    - name: Set up Git configuration
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Push changes to private repository
+      env:
+        MLX_TOKEN: ${{ secrets.MLX_TOKEN }}
+      run: |
+        git remote add target-repo https://x-access-token:${MLX_TOKEN}@github.com/ecmwf-lab/anemoi-datasets-private.git
+        git push target-repo develop
