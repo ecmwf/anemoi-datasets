@@ -96,6 +96,80 @@ class ObservationsBase:
 
 
 class Multiple(ObservationsBase):
+    @property
+    def names(self):
+        return self._names
+
+    def _check(self):
+        names = []
+        for ds in self.datasets_as_list():
+            for name in ds.variables:
+                if name in names:
+                    raise ValueError(f"Duplicated variable: {name}. Use rename_prefix to avoid this issue.")
+
+    @classmethod
+    def _rearrange_array(cls, data):
+            if len(data.shape) == 3:
+                assert data.shape[1] == 1, f"Expected ensemble dimmension of 1, got {data.shape}"
+                data = data[:, 0, :]
+            return data
+    @property
+    def variables(self):
+        variables = []
+        for ds in self._datasets_as_list:
+            variables += ds.variables
+        return variables
+
+
+class MultipleDict(Multiple):
+    def __init__(self, datasets, names=None):
+        self._names = names
+        self.frequency = list(datasets.values())[0].frequency
+        for k, d in datasets.items():
+            assert d.frequency == self.frequency, f"Expected {self.frequency}, got {d.frequency}"
+
+        start_date, end_date = merge_dates(list(datasets.values()))
+
+        self.datasets = {k:Padded(d, start_date, end_date).mutate() for k,d in datasets.items()}
+        self.dates = make_dates(start_date, end_date, self.frequency)
+
+        # todo: implement missing
+        assert all( d.missing == set() for k, d in self.datasets.items()), f"Expected no missing, got {[d.missing for d in self.datasets]}"
+        self.missing = set()
+
+    def tree(self):
+        return Node(self, [d.tree() for k, d in self.datasets.items()])
+        #return Node(self, {k:d.tree() for k, d in self.datasets.items()})
+
+    @property
+    def _datasets_as_list(self):
+        return list(self.datasets.values())
+
+    def _datasets_as_dict(self):
+        return self.datasets
+
+    def getitem(self, i):
+        return {k:self._rearrange_array(d[i]) for k, d in self.datasets.items()}
+
+    @cached_property
+    def name_to_index(self):
+        dic = {}
+        for k, d in self.datasets.items():
+            for name in d.variables:
+                dic[name] = (k, d.name_to_index[name])
+        return dic
+
+    @property
+    def statistics(self):
+        keys = self._datasets_as_list[0].statistics.keys()
+        dic = defaultdict(dict)
+        for k,d in self.datasets.items():
+            for key in keys:
+                dic[key][k] = d.statistics[key]
+        assert "mean" in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
+        return dic
+
+class MultipleList(Multiple):
     def __init__(self, datasets, names=None):
         self._names = names
         self.frequency = datasets[0].frequency
@@ -108,39 +182,21 @@ class Multiple(ObservationsBase):
         self.dates = make_dates(start_date, end_date, self.frequency)
 
         # todo: implement missing
-        assert all(
-            d.missing == set() for d in self.datasets
-        ), f"Expected no missing, got {[d.missing for d in self.datasets]}"
+        assert all( d.missing == set() for d in self.datasets), f"Expected no missing, got {[d.missing for d in self.datasets]}"
         self.missing = set()
 
     @property
-    def names(self):
-        return self._names
+    def _datasets_as_list(self):
+        return self.datasets
 
-    def getitem(self, i):
-        def rearrange(data):
-            if len(data.shape) == 3:
-                assert data.shape[1] == 1, f"Expected ensemble dimmension of 1, got {data.shape}"
-                data = data[:, 0, :]
-            return data
-        return [rearrange(d[i]) for d in self.datasets]
+    def _datasets_as_dict(self):
+        return {i:d for i,d in enumerate(self.datasets)}
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
 
-    def _check(self):
-        names = []
-        for ds in self.datasets:
-            for name in ds.variables:
-                if name in names:
-                    raise ValueError(f"Duplicated variable: {name}. Use rename_prefix to avoid this issue.")
-
-    @property
-    def variables(self):
-        variables = []
-        for ds in self.datasets:
-            variables += ds.variables
-        return variables
+    def getitem(self, i):
+        return [self._rearrange_array(d[i]) for d in self.datasets]
 
     @cached_property
     def name_to_index(self):
@@ -149,7 +205,6 @@ class Multiple(ObservationsBase):
             for name in d.variables:
                 dic[name] = (i, d.name_to_index[name])
         return dic
-
     @property
     def statistics(self):
         keys = self.datasets[0].statistics.keys()
@@ -159,7 +214,6 @@ class Multiple(ObservationsBase):
                 dic[k].append(d.statistics[k])
         assert "mean" in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
         return dic
-
 
 class Forward(ObservationsBase):
     def __init__(self, dataset):
@@ -515,8 +569,13 @@ def _open_observations(*args, **kwargs):
     if "multiple" in kwargs:
         assert len(args) == 0
         multiple = kwargs.pop("multiple")
-        datasets = [_open(d).mutate() for d in multiple]
-        return Multiple(datasets, **kwargs).mutate()
+        if isinstance(multiple, list):
+            datasets = [_open(d).mutate() for d in multiple]
+            return MultipleList(datasets, **kwargs).mutate()
+        elif isinstance(multiple, dict):
+            datasets = {k: _open(d).mutate() for k, d in multiple.items()}
+            return MultipleDict(datasets, **kwargs).mutate()
+        raise NotImplementedError(f"Expected list or dict for multiple, got {type(multiple)}")
 
     if "rename_prefix" in kwargs:
         prefix = kwargs.pop("rename_prefix")
