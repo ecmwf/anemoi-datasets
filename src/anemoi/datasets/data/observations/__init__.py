@@ -36,6 +36,8 @@ def make_dates(start, end, frequency):
     while current_date <= end:
         dates.append(current_date)
         current_date += frequency
+
+    dates = [np.datetime64(d, 's') for d in dates]
     return dates
 
 
@@ -116,7 +118,12 @@ class Multiple(ObservationsBase):
         return self._names
 
     def getitem(self, i):
-        return [d[i] for d in self.datasets]
+        def rearrange(data):
+            if len(data.shape) == 3:
+                assert data.shape[1] == 1, f"Expected ensemble dimmension of 1, got {data.shape}"
+                data = data[:, 0, :]
+            return data
+        return [rearrange(d[i]) for d in self.datasets]
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
@@ -178,11 +185,15 @@ class Forward(ObservationsBase):
 
     @cached_property
     def name_to_index(self):
-        return {k: i for i, k in enumerate(self.variables)}
+        return self.forward.name_to_index
 
     @cached_property
     def statistics(self):
         return self.forward.statistics
+
+    @property
+    def missing(self):
+        return self.forward.missing
 
 
 class RenamePrefix(Forward):
@@ -197,6 +208,10 @@ class RenamePrefix(Forward):
     @property
     def variables(self):
         return self._variables
+
+    @property
+    def name_to_index(self):
+        return {k: i for i, k in enumerate(self.variables)}
 
     def tree(self):
         return Node(self, [self.forward.tree()], rename_prefix=self.prefix)
@@ -213,9 +228,15 @@ class Subset(Forward):
 
         self.dates = make_dates(self._start, self._end, self.forward.frequency)
 
-        self._indices = [i for i, date in enumerate(self.dates) if self._start <= date <= self._end]
-        assert len(self._indices) > 0, f"Expected at least one date, got {len(self._indices)}"
+        assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]), type(self.forward.dates[0]))
+        _dates = set(self.forward.dates)
+        for d in self.dates:
+            assert d in _dates, f"Expected {d} in {self.forward.dates[0]}...{self.forward.dates[-1]}, {self._start=}, {self._end=}"
+        date_to_index = {date: i for i, date in enumerate(self.forward.dates)}
+        self._indices = {i:date_to_index[d] for i, d in enumerate(self.dates)}
 
+        assert len(self._indices) > 0, f"Expected at least one date, got {len(self._indices)}"
+        assert len(self.forward.missing) == 0, f"Expected no missing dates, got {self.forward.missing}"
 
 
     def getitem(self, i):
@@ -269,6 +290,16 @@ class Padded(Forward):
         self._start_date = start
         self._end_date = end
         self.dates = make_dates(start, end, self._frequency)
+        self._indices = {}
+
+        assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]) , type(self.forward.dates[0]))
+
+        dates_to_indices = {date: i for i, date in enumerate(self.forward.dates)}
+        _forward_dates = set(self.forward.dates)
+        assert len(dates_to_indices) == len(_forward_dates)
+        self._indices = {j:dates_to_indices[date] for j, date in enumerate(self.dates) if date in _forward_dates}
+        assert len(self._indices) == len(_forward_dates), (len(self._indices), len(_forward_dates))
+
 
     @property
     def missing(self):
@@ -279,12 +310,13 @@ class Padded(Forward):
         return self._frequency
 
     def getitem(self, i):
-        # TODO: very inefficient, improve this
-        date = self.dates[i]
-        for j, d in enumerate(self.forward.dates):
-            if date == d:
-                return self.forward[j]
-        return self.empty_item()
+        # TODO: need to handle dates that are missing in forward
+        if i not in self._indices:
+            # print(f"❌Requested {i} {self.dates[i]}: No data in {self.forward} ")
+            return self.empty_item()
+        j = self._indices[i]
+        print(f'  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}')
+        return self.forward[j]
 
     def tree(self):
         return Node(
@@ -390,6 +422,7 @@ class Observations(ObservationsBase):
         #    # this should get directly the numpy array
         #    data = self.forward.get_data_from_dates_interval(start, end)
         data = self.forward[i]
+        print(f'      reading from {self.path} {i} {self.dates[i]}')
 
         ##########################
         data = data.numpy().astype(np.float32)
@@ -397,6 +430,7 @@ class Observations(ObservationsBase):
         data = data.T
 
         if not data.size:
+            # print(f"❌❌ No data for {self} {i} {self.dates[i]}")
             data = self.empty_item()
         assert data.shape[0] == self.shape[1], f"Data shape {data.shape} does not match {self.shape}"
         return data

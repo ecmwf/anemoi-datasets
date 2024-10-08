@@ -11,7 +11,6 @@ from .data import add_dataset_path
 from .data import add_named_dataset
 from .data import list_dataset_names
 from .data import open_dataset
-from .states import *
 
 __all__ = [
     "__version__",
