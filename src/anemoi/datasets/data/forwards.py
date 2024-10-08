@@ -257,7 +257,6 @@ class GivenAxis(Combined):
         offset = 0
         result = set()
         for d in self.datasets:
-            print("--->", d.missing, d)
             result.update(offset + m for m in d.missing)
             if self.axis == 0:  # Advance if axis is time
                 offset += len(d)

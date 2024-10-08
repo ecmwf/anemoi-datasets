@@ -25,7 +25,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
-from anemoi.utils.sanetise import sanetise
+from anemoi.utils.sanitise import sanitise
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
@@ -412,7 +412,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata.update(self.main_config.get("add_metadata", {}))
 
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-        metadata["recipe"] = sanetise(self.main_config.get_serialisable_dict())
+        metadata["recipe"] = sanitise(self.main_config.get_serialisable_dict())
 
         metadata["description"] = self.main_config.description
         metadata["licence"] = self.main_config["licence"]
