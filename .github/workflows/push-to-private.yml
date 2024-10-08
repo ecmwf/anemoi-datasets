@@ -22,6 +22,7 @@ jobs:
       # env:
       #   MLX_TOKEN: ${{ secrets.MLX_TOKEN }}
       run: |
+        git clone https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git check-clone
         git remote add private https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
         git fetch private
         git push private develop
