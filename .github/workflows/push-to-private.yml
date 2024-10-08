@@ -5,9 +5,6 @@ on:
     branches:
       - develop
 
-permissions:
-  contents: write  # Allows pushing to the repository
-  
 jobs:
   push_changes:
     if: ${{ !contains(github.repository, 'private') }}
@@ -24,12 +21,12 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        
+
     - name: Setup SSH key
       uses: webfactory/ssh-agent@v0.5.0
       with:
         ssh-private-key: ${{ secrets.KEY_TO_PRIVATE }}
-        
+
     - name: Push changes to private repository
       run: |
         git remote add private git@github.com:${{ github.repository }}-private.git
