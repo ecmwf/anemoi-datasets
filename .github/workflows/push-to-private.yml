@@ -25,6 +25,10 @@ jobs:
     - name: remote-add
       run: |
         git remote add new https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
+
+    - name: fetch
+      run: |
+        git remote add new https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
         git fetch new
 
     - name: Push changes to private repository
