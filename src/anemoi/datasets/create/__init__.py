@@ -467,6 +467,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata["data_request"] = self.minimal_input.data_request
         metadata["field_shape"] = self.minimal_input.field_shape
         metadata["proj_string"] = self.minimal_input.proj_string
+        metadata["variables_metadata"] = self.minimal_input.variables_metadata
 
         metadata["start_date"] = dates[0].isoformat()
         metadata["end_date"] = dates[-1].isoformat()

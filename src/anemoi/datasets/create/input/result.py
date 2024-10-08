@@ -30,6 +30,19 @@ from .trace import trace_datasource
 LOG = logging.getLogger(__name__)
 
 
+def _fields_metatata(variables, cube, namespace="mars"):
+    assert isinstance(variables, tuple), variables
+
+    result = {}
+    for i, c in enumerate(cube.iterate_cubelets()):
+        assert c._coords_names[1] == variables[i], (c._coords_names[1], variables[i])
+        f = cube[c.coords]
+        result[variables[i]] = f.metadata(namespace=namespace)
+
+    assert i + 1 == len(variables), (i + 1, len(variables))
+    return result
+
+
 def _data_request(data):
     date = None
     params_levels = defaultdict(set)
@@ -79,7 +92,7 @@ def _data_request(data):
 
 class Result:
     empty = False
-    _coords_already_built = False
+    _coords_already_built = None
 
     def __init__(self, context, action_path, dates):
         from anemoi.datasets.dates.groups import GroupOfDates
@@ -311,8 +324,11 @@ class Result:
 
     def build_coords(self):
         if self._coords_already_built:
-            return
-        from_data = self.get_cube().user_coords
+            return self._coords_already_built
+
+        cube = self.get_cube()
+
+        from_data = cube.user_coords
         from_config = self.context.order_by
 
         keys_from_config = list(from_config.keys())
@@ -358,6 +374,14 @@ class Result:
         self._grid_values = grid_values
         self._field_shape = first_field.shape
         self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
+
+        self._coords_already_built = cube
+        return cube
+
+        # for c in cube:
+        #     print(c)
+
+        # assert False, cube
 
     @property
     def variables(self):
@@ -411,3 +435,8 @@ class Result:
             "ensembles": self.ensembles,
             "values": self.grid_values,
         }
+
+    @property
+    def variables_metadata(self):
+        cube = self.build_coords()
+        return _fields_metatata(self.variables, cube)
