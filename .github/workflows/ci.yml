@@ -35,6 +35,7 @@ on:
 jobs:
   # Run CI including downstream packages on self-hosted runners
   downstream-ci:
+    if: ${{ !contains(github.repository, 'private') }}
     name: downstream-ci
     if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
     uses: ecmwf-actions/downstream-ci/.github/workflows/downstream-ci.yml@main
@@ -45,6 +46,7 @@ jobs:
 
    # Build downstream packages on HPC
   downstream-ci-hpc:
+    if: ${{ !contains(github.repository, 'private') }}
     name: downstream-ci-hpc
     if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
     uses: ecmwf-actions/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
