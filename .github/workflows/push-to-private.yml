@@ -23,14 +23,13 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git remote add private https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/ecmwf/anemoi-datasets-private.git
-
-    - name: env
-      run:
-        env | sort
+        
+    - name: Setup SSH key
+      uses: webfactory/ssh-agent@v0.5.0
+      with:
+        ssh-private-key: ${{ secrets.KEY_TO_PRIVATE }}
         
     - name: Push changes to private repository
       run: |
-        git remote rm origin
-        git remote add origin https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/ecmwf/anemoi-datasets-private.git
-        git push --set-upstream origin develop
+        git remote add private git@github.com:ecmwf/anemoi-datasets-private.git
+        git push --set-upstream private develop
