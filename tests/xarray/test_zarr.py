@@ -8,30 +8,7 @@
 import xarray as xr
 
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
-
-
-def _check(fs, size, start, end):
-    assert len(fs) == size
-
-    first = fs[0]
-    last = fs[-1]
-
-    assert first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
-    assert last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
-
-    print(first.datetime())
-    print(last.metadata())
-
-    first = first
-    latitudes, longitudes = first.grid_points()
-
-    assert len(latitudes.shape) == 1, latitudes.shape
-    assert len(longitudes.shape) == 1, longitudes.shape
-
-    assert len(latitudes) == len(longitudes), (len(latitudes), len(longitudes))
-    data = first.to_numpy(flatten=True)
-
-    assert len(data) == len(latitudes), (len(data), len(latitudes))
+from anemoi.datasets.testing import assert_field_list
 
 
 def test_arco_era5_1():
@@ -43,7 +20,7 @@ def test_arco_era5_1():
     )
 
     fs = XarrayFieldList.from_xarray(ds)
-    _check(
+    assert_field_list(
         fs,
         128677526,
         "1959-01-01T00:00:00",
@@ -60,7 +37,7 @@ def test_arco_era5_2():
     )
 
     fs = XarrayFieldList.from_xarray(ds)
-    _check(
+    assert_field_list(
         fs,
         128677526,
         "1959-01-01T00:00:00",
@@ -86,7 +63,7 @@ def test_weatherbench():
 
     fs = XarrayFieldList.from_xarray(ds, flavour)
 
-    _check(
+    assert_field_list(
         fs,
         2430240,
         "2020-01-01T06:00:00",

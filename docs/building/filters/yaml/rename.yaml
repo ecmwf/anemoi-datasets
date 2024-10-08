@@ -1,4 +1,11 @@
-rename:
-  param:
-    from: "old"
-    to: "new"
+input:
+  pipe:
+    - source: # mars, grib, netcdf, etc.
+      # source attributes here
+      # ...
+
+    - rename:
+        param: # Map old `param` names to new ones
+          temperature_2m: 2t
+          temperature_850hPa: t_850
+          # ...

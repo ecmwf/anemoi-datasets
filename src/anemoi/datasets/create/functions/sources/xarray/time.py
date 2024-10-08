@@ -9,8 +9,11 @@
 
 
 import datetime
+import logging
 
 from anemoi.utils.dates import as_datetime
+
+LOG = logging.getLogger(__name__)
 
 
 class Time:
@@ -36,7 +39,28 @@ class Time:
         if len(date_coordinate) == 1 and len(time_coordinate) == 0 and len(step_coordinate) == 1:
             return ForecastFromBaseTimeAndDate(date_coordinate[0], step_coordinate[0])
 
-        raise NotImplementedError(f"{date_coordinate=} {time_coordinate=} {step_coordinate=}")
+        if len(date_coordinate) == 1 and len(time_coordinate) == 1 and len(step_coordinate) == 1:
+            return ForecastFromValidTimeAndStep(time_coordinate[0], step_coordinate[0], date_coordinate[0])
+
+        LOG.error("")
+        LOG.error(f"{len(date_coordinate)} date_coordinate")
+        for c in date_coordinate:
+            LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
+            # LOG.error('    %s', c.variable)
+
+        LOG.error("")
+        LOG.error(f"{len(time_coordinate)} time_coordinate")
+        for c in time_coordinate:
+            LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
+            # LOG.error('    %s', c.variable)
+
+        LOG.error("")
+        LOG.error(f"{len(step_coordinate)} step_coordinate")
+        for c in step_coordinate:
+            LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
+            # LOG.error('    %s', c.variable)
+
+        raise NotImplementedError(f"{len(date_coordinate)=} {len(time_coordinate)=} {len(step_coordinate)=}")
 
 
 class Constant(Time):
@@ -62,9 +86,10 @@ class Analysis(Time):
 
 class ForecastFromValidTimeAndStep(Time):
 
-    def __init__(self, time_coordinate, step_coordinate):
+    def __init__(self, time_coordinate, step_coordinate, date_coordinate=None):
         self.time_coordinate_name = time_coordinate.variable.name
         self.step_coordinate_name = step_coordinate.variable.name
+        self.date_coordinate_name = date_coordinate.variable.name if date_coordinate else None
 
     def fill_time_metadata(self, coords_values, metadata):
         valid_datetime = coords_values[self.time_coordinate_name]
@@ -79,6 +104,16 @@ class ForecastFromValidTimeAndStep(Time):
         metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
         metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
         metadata["step"] = int(hours)
+
+        # When date is present, it should be compatible with time and step
+
+        if self.date_coordinate_name is not None:
+            # Not sure that this is the correct assumption
+            assert coords_values[self.date_coordinate_name] == base_datetime, (
+                coords_values[self.date_coordinate_name],
+                base_datetime,
+            )
+
         return valid_datetime
 
 
