@@ -27,4 +27,4 @@ jobs:
         
     - name: Push changes to private repository
       run: |
-        git --verbose push private develop 
+        git push --verbose private develop 
