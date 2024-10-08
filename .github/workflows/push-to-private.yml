@@ -33,4 +33,4 @@ jobs:
       run: |
         git remote rm origin
         git remote add origin https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/ecmwf/anemoi-datasets-private.git
-        git push --verbose
+        git push --set-upstream origin develop
