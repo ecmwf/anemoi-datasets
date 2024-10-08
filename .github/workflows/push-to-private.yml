@@ -22,5 +22,6 @@ jobs:
       env:
         MLX_TOKEN: ${{ secrets.MLX_TOKEN }}
       run: |
+        echo ${MLX_TOKEN} | wc
         git remote add target-repo https://x-access-token:${MLX_TOKEN}@github.com/ecmwf-lab/anemoi-datasets-private.git
         git push target-repo develop
