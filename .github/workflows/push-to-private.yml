@@ -10,6 +10,7 @@ permissions:
   
 jobs:
   push_changes:
+    if: ${{ !contains(github.repository, 'private') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -31,5 +32,5 @@ jobs:
         
     - name: Push changes to private repository
       run: |
-        git remote add private git@github.com:ecmwf/anemoi-datasets-private.git
+        git remote add private git@github.com:ecmwf/${{ github.repository }}-private.git
         git push --set-upstream private develop
