@@ -30,14 +30,16 @@ from .trace import trace_datasource
 LOG = logging.getLogger(__name__)
 
 
-def _fields_metatata(variables, cube, namespace="mars"):
+def _fields_metatata(variables, cube):
     assert isinstance(variables, tuple), variables
 
     result = {}
     for i, c in enumerate(cube.iterate_cubelets()):
         assert c._coords_names[1] == variables[i], (c._coords_names[1], variables[i])
         f = cube[c.coords]
-        md = f.metadata(namespace=namespace)
+        md = f.metadata(namespace="mars")
+        if not md:
+            md = f.metadata(namespace="default")
 
         if md.get("param") == "~":
             md["param"] = f.metadata("param")

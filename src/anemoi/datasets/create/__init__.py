@@ -25,6 +25,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
+from anemoi.utils.sanetise import sanetise
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
@@ -325,43 +326,6 @@ def build_input_(main_config, output_config):
     return builder
 
 
-def tidy_recipe(config: object):
-    """Remove potentially private information in the config"""
-    config = deepcopy(config)
-    if isinstance(config, (tuple, list)):
-        return [tidy_recipe(_) for _ in config]
-    if isinstance(config, (dict, DotDict)):
-        for k, v in config.items():
-            if k.startswith("_"):
-                config[k] = "*** REMOVED FOR SECURITY ***"
-            else:
-                config[k] = tidy_recipe(v)
-    if isinstance(config, str):
-        if config.startswith("_"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("s3://"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("gs://"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("http"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("ftp"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("file"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("ssh"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("scp"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("rsync"):
-            return "*** REMOVED FOR SECURITY ***"
-        if config.startswith("/"):
-            return "*** REMOVED FOR SECURITY ***"
-        if "@" in config:
-            return "*** REMOVED FOR SECURITY ***"
-    return config
-
-
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     dataset_class = NewDataset
     def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, cache=None, **kwargs):  # fmt: skip
@@ -448,7 +412,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata.update(self.main_config.get("add_metadata", {}))
 
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-        metadata["recipe"] = tidy_recipe(self.main_config.get_serialisable_dict())
+        metadata["recipe"] = sanetise(self.main_config.get_serialisable_dict())
 
         metadata["description"] = self.main_config.description
         metadata["licence"] = self.main_config["licence"]
