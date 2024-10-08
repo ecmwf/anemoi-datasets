@@ -19,9 +19,9 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
     - name: Push changes to private repository
-      env:
-        MLX_TOKEN: ${{ secrets.MLX_TOKEN }}
+      # env:
+      #   MLX_TOKEN: ${{ secrets.MLX_TOKEN }}
       run: |
-        git remote add private https://${MLX_TOKEN}@github.com/ecmwf-lab/anemoi-datasets-private.git
+        git remote add private https://${{ secrets.MLX_TOKEN }}@github.com/ecmwf-lab/anemoi-datasets-private.git
         git fetch private
         git push private develop
