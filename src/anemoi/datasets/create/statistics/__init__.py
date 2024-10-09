@@ -187,8 +187,11 @@ class TmpStatistics:
 
     def add_provenance(self, **kwargs):
         self.create(exist_ok=True)
+        path = os.path.join(self.dirname, "provenance.json")
+        if os.path.exists(path):
+            return
         out = dict(provenance=gather_provenance_info(), **kwargs)
-        with open(os.path.join(self.dirname, "provenance.json"), "w") as f:
+        with open(path, "w") as f:
             json.dump(out, f)
 
     def create(self, exist_ok):

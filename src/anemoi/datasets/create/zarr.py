@@ -166,7 +166,11 @@ class ZarrBuiltRegistry:
         return self.create(lengths, overwrite=True)
 
     def add_provenance(self, name):
+        z = self._open_write()
+
+        if name in z.attrs:
+            return
+
         from anemoi.utils.provenance import gather_provenance_info
 
-        z = self._open_write()
         z.attrs[name] = gather_provenance_info()
