@@ -56,8 +56,11 @@ class PersistentDict:
                 yield pickle.load(f)
 
     def add_provenance(self, **kwargs):
+        path = os.path.join(self.dirname, "provenance.json")
+        if os.path.exists(path):
+            return
         out = dict(provenance=gather_provenance_info(), **kwargs)
-        with open(os.path.join(self.dirname, "provenance.json"), "w") as f:
+        with open(path, "w") as f:
             json.dump(out, f)
 
     def add(self, elt, *, key):

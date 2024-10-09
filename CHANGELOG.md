@@ -53,6 +53,7 @@ Keep it human-readable, your future self will thank you!
 - Bug fix when creating dataset from zarr
 - Bug fix with area selection in cutout operation
 - add paths-ignore to ci workflow
+- call provenance less often
 
 ### Removed
 
