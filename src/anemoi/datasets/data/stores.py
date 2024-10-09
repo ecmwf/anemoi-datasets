@@ -302,6 +302,10 @@ class Zarr(Dataset):
             )
         ]
 
+    @property
+    def variables_metadata(self):
+        return self.z.attrs.get("variables_metadata", {})
+
     def __repr__(self):
         return self.path
 

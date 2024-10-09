@@ -15,6 +15,13 @@ Keep it human-readable, your future self will thank you!
 - Update documentation
 
 - Update documentation
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
+
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
 
 ## [0.5.5](https://github.com/ecmwf/anemoi-datasets/compare/0.5.4...0.5.5) - 2024-10-04
 
@@ -55,6 +62,7 @@ Keep it human-readable, your future self will thank you!
 - Bug fix when creating dataset from zarr
 - Bug fix with area selection in cutout operation
 - add paths-ignore to ci workflow
+- call provenance less often
 
 ### Removed
 
