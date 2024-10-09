@@ -121,11 +121,11 @@ class Dataset:
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
-        if "force_missing_dates" in kwargs:
+        if "set_missing_dates" in kwargs:
             from .missing import MissingDates
 
-            force_missing_dates = kwargs.pop("force_missing_dates")
-            return MissingDates(self, force_missing_dates)._subset(**kwargs).mutate()
+            set_missing_dates = kwargs.pop("set_missing_dates")
+            return MissingDates(self, set_missing_dates)._subset(**kwargs).mutate()
 
         if "skip_missing_dates" in kwargs:
             from .missing import SkipMissingDates
