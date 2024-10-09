@@ -50,7 +50,7 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-utils[provenance]>=0.3.15",
+  "anemoi-utils[provenance]>=0.3.18",
   "cfunits",
   "numpy",
   "pyyaml",
@@ -64,7 +64,7 @@ optional-dependencies.all = [
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "ecmwflibs>=0.6.3",
+  "eccodes>=2.37",
   "entrypoints",
   "gcsfs",
   "kerchunk",
@@ -76,7 +76,7 @@ optional-dependencies.create = [
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "ecmwflibs>=0.6.3",
+  "eccodes>=2.37",
   "entrypoints",
   "pyproj",
 ]
@@ -86,7 +86,7 @@ optional-dependencies.dev = [
   "earthkit-data[mars]>=0.9",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "ecmwflibs>=0.6.3",
+  "eccodes>=2.37",
   "entrypoints",
   "gcsfs",
   "kerchunk",
