@@ -112,6 +112,19 @@ class Join(Combined):
         return result
 
     @cached_property
+    def variables_metadata(self):
+        seen = set()
+        result = {}
+        for d in reversed(self.datasets):
+            for v in reversed(d.variables):
+                while v in seen:
+                    v = f"({v})"
+                seen.add(v)
+                result[v] = d.variables_metadata[v]
+
+        return result
+
+    @cached_property
     def name_to_index(self):
         return {k: i for i, k in enumerate(self.variables)}
 

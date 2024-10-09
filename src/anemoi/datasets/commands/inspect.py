@@ -506,6 +506,10 @@ class Version0_6(Version):
     def variables(self):
         return self.metadata["variables"]
 
+    @property
+    def variables_metadata(self):
+        return self.metadata.get("variables_metadata", {})
+
 
 class Version0_12(Version0_6):
     def details(self):

@@ -30,6 +30,31 @@ from .trace import trace_datasource
 LOG = logging.getLogger(__name__)
 
 
+def _fields_metatata(variables, cube):
+    assert isinstance(variables, tuple), variables
+
+    result = {}
+    for i, c in enumerate(cube.iterate_cubelets()):
+        assert c._coords_names[1] == variables[i], (c._coords_names[1], variables[i])
+        f = cube[c.coords]
+        md = f.metadata(namespace="mars")
+        if not md:
+            md = f.metadata(namespace="default")
+
+        if md.get("param") == "~":
+            md["param"] = f.metadata("param")
+            assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
+
+        if md.get("param") == "unknown":
+            md["param"] = str(f.metadata("paramId", default="unknown"))
+            # assert md['param'] != 'unknown', (md, f.metadata('param'))
+
+        result[variables[i]] = md
+
+    assert i + 1 == len(variables), (i + 1, len(variables))
+    return result
+
+
 def _data_request(data):
     date = None
     params_levels = defaultdict(set)
@@ -312,7 +337,10 @@ class Result:
     def build_coords(self):
         if self._coords_already_built:
             return
-        from_data = self.get_cube().user_coords
+
+        cube = self.get_cube()
+
+        from_data = cube.user_coords
         from_config = self.context.order_by
 
         keys_from_config = list(from_config.keys())
@@ -359,10 +387,18 @@ class Result:
         self._field_shape = first_field.shape
         self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
+        self._cube = cube
+
+        self._coords_already_built = True
+
     @property
     def variables(self):
         self.build_coords()
         return self._variables
+
+    @property
+    def variables_metadata(self):
+        return _fields_metatata(self.variables, self._cube)
 
     @property
     def ensembles(self):

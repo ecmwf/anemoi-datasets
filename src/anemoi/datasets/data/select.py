@@ -77,6 +77,10 @@ class Select(Forwards):
         return [self.dataset.variables[i] for i in self.indices]
 
     @cached_property
+    def variables_metadata(self):
+        return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}
+
+    @cached_property
     def name_to_index(self):
         return {k: i for i, k in enumerate(self.variables)}
 
@@ -108,12 +112,19 @@ class Rename(Forwards):
         super().__init__(dataset)
         for n in rename:
             assert n in dataset.variables, n
+
         self._variables = [rename.get(v, v) for v in dataset.variables]
+        self._variables_metadata = {rename.get(k, k): v for k, v in dataset.variables_metadata.items()}
+
         self.rename = rename
 
     @property
     def variables(self):
         return self._variables
+
+    @property
+    def variables_metadata(self):
+        return self._variables_metadata
 
     @cached_property
     def name_to_index(self):

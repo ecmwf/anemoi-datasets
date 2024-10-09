@@ -93,6 +93,11 @@ class Unchecked(Combined):
 
     @property
     @check("check_same_variables")
+    def variables_metadata(self):
+        raise NotImplementedError()
+
+    @property
+    @check("check_same_variables")
     def statistics(self):
         raise NotImplementedError()
 
