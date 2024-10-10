@@ -109,10 +109,12 @@ class Multiple(ObservationsBase):
 
     @classmethod
     def _rearrange_array(cls, data):
-            if len(data.shape) == 3:
-                assert data.shape[1] == 1, f"Expected ensemble dimmension of 1, got {data.shape}"
-                data = data[:, 0, :]
-            return data
+        import einops
+        if len(data.shape) == 3:
+            assert data.shape[1] == 1, f"Expected ensemble dimmension of 1, got {data.shape}"
+            data = data[:, 0, :]
+        data = einops.rearrange(data, "variables latlon -> latlon variables")
+        return data
     @property
     def variables(self):
         variables = []
