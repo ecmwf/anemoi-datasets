@@ -60,43 +60,20 @@ dependencies = [
 ]
 
 optional-dependencies.all = [
-  "boto3",
-  "earthkit-data[mars]>=0.9",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.37",
-  "entrypoints",
-  "gcsfs",
-  "kerchunk",
-  "pyproj",
-  "requests",
+  "anemoi-datasets[create,remote,xarray]",
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.9",
+  "earthkit-data[mars]>=0.10.7",
   "earthkit-geo>=0.2",
   "earthkit-meteo",
-  "eccodes>=2.37",
+  "eccodes>=2.38.1",
   "entrypoints",
   "pyproj",
 ]
 
 optional-dependencies.dev = [
-  "boto3",
-  "earthkit-data[mars]>=0.9",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.37",
-  "entrypoints",
-  "gcsfs",
-  "kerchunk",
-  "nbsphinx",
-  "pandoc",
-  "pyproj",
-  "pytest",
-  "requests",
-  "sphinx",
-  "sphinx-rtd-theme",
+  "anemoi-datasets[all,docs,tests]",
 ]
 
 optional-dependencies.docs = [
