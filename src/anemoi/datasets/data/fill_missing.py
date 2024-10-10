@@ -6,7 +6,6 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from functools import cached_property
 
 import numpy as np
 
@@ -40,9 +39,9 @@ class MissingDatesFill(Forwards):
     def _get_slice(self, s):
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
-    @cached_property
+    @property
     def missing(self):
-        return []
+        return set()
 
     @debug_indexing
     def __getitem__(self, n):
