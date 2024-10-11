@@ -64,12 +64,6 @@ class Dataset:
                 .mutate()
             )
 
-        if "interpolate_frequency" in kwargs:
-            from .interpolate import InterpolateFrequency
-
-            interpolate_frequency = kwargs.pop("interpolate_frequency")
-            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
-
         if "select" in kwargs:
             from .select import Select
 
@@ -145,6 +139,12 @@ class Dataset:
             fill_missing_dates = kwargs.pop("fill_missing_dates")
             ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
             return ds._subset(**kwargs).mutate()
+
+        if "interpolate_frequency" in kwargs:
+            from .interpolate import InterpolateFrequency
+
+            interpolate_frequency = kwargs.pop("interpolate_frequency")
+            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:
