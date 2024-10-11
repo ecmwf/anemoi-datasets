@@ -491,7 +491,7 @@ class Observations(ObservationsBase):
         assert data.shape[0] == self.shape[1], f"Data shape {data.shape} does not match {self.shape}"
         return data
 
-    @property
+    @cached_property
     def variables(self):
         colnames = self.forward.colnames
         variables = []
@@ -500,6 +500,10 @@ class Observations(ObservationsBase):
                 n = n.replace("obsvalue_", "")
             variables.append(n)
         return variables
+
+    @property
+    def name_to_index(self):
+        return {n:i for i, n in enumerate(self.variables)}
 
     @property
     def statistics(self):
@@ -557,6 +561,11 @@ def _open_observations(*args, **kwargs):
         dataset = _open_observations(*args, **kwargs).mutate()
         return Subset(dataset, start, end).mutate()
 
+    if "rename_prefix" in kwargs:
+        prefix = kwargs.pop("rename_prefix")
+        dataset = _open(kwargs).mutate()
+        return RenamePrefix(dataset, prefix).mutate()
+
     if "select" in kwargs:
         select = kwargs.pop("select")
         dataset = _open_observations(*args, **kwargs).mutate()
@@ -578,11 +587,6 @@ def _open_observations(*args, **kwargs):
             datasets = {k: _open(d).mutate() for k, d in multiple.items()}
             return MultipleDict(datasets, **kwargs).mutate()
         raise NotImplementedError(f"Expected list or dict for multiple, got {type(multiple)}")
-
-    if "rename_prefix" in kwargs:
-        prefix = kwargs.pop("rename_prefix")
-        dataset = _open(kwargs).mutate()
-        return RenamePrefix(dataset, prefix).mutate()
 
     if "is_observations" in kwargs:
         kwargs.pop("is_observations")
