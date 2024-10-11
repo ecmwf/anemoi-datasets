@@ -41,6 +41,14 @@ class Dataset:
         if not kwargs:
             return self.mutate()
 
+        # This one must be first
+        if "fill_missing_dates" in kwargs:
+            from .fill_missing import fill_missing_dates_factory
+
+            fill_missing_dates = kwargs.pop("fill_missing_dates")
+            ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
+            return ds._subset(**kwargs).mutate()
+
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
             end = kwargs.pop("end", None)
@@ -132,13 +140,6 @@ class Dataset:
 
             if skip_missing_dates:
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
-
-        if "fill_missing_dates" in kwargs:
-            from .fill_missing import fill_missing_dates_factory
-
-            fill_missing_dates = kwargs.pop("fill_missing_dates")
-            ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
-            return ds._subset(**kwargs).mutate()
 
         if "interpolate_frequency" in kwargs:
             from .interpolate import InterpolateFrequency
