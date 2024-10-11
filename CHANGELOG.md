@@ -16,14 +16,16 @@ Keep it human-readable, your future self will thank you!
 
 ## [0.5.7](https://github.com/ecmwf/anemoi-datasets/compare/0.5.6...0.5.7) - 2024-10-09
 
+### Changed
+
+- Add support to fill missing dates
+
 ## [Allow for unknown CF coordinates](https://github.com/ecmwf/anemoi-datasets/compare/0.5.5...0.5.6) - 2024-10-04
 
-- Update documentation
-
-- Update documentation
 ### Changed
 
 - Add `variables_metadata` entry in the dataset metadata
+- Update documentation
 
 ### Changed
 
