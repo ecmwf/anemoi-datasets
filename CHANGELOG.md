@@ -10,9 +10,14 @@ Keep it human-readable, your future self will thank you!
 
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...HEAD)
 
+
 ### Added
 
 - Add anemoi-transform link to documentation
+
+### Changed
+
+- Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
 
 ## [0.5.7](https://github.com/ecmwf/anemoi-datasets/compare/0.5.6...0.5.7) - 2024-10-09
 
