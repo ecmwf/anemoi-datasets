@@ -15,6 +15,7 @@ Keep it human-readable, your future self will thank you!
 
 - Add anemoi-transform link to documentation
 - Control compatibility check in xy/zip
+- Add `merge` feature
 
 ### Changed
 
