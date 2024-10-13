@@ -13,6 +13,10 @@ import numpy as np
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
+from .indexing import apply_index_to_slices_changes
+from .indexing import expand_list_indexing
+from .indexing import index_to_slices
+from .indexing import update_tuple
 from .misc import _auto_adjust
 from .misc import _open
 
@@ -34,26 +38,34 @@ class Merge(Combined):
                     raise ValueError(f"Duplicate date {date} found in datasets {d1} and {d2}")
                 dates[date] = (i, j)
 
-        start = min(dates)
-        end = max(dates)
+        all_dates = sorted(dates)
+        start = all_dates[0]
+        end = all_dates[-1]
 
-        d = datasets[0].frequency
+        frequency = min(d2 - d1 for d1, d2 in zip(all_dates[:-1], all_dates[1:]))
+
         date = start
         indices = []
         _dates = []
+
         while date <= end:
             if date not in dates:
                 raise ValueError(f"Missing date {date} in dataset {datasets[0]}")
             indices.append(dates[date])
             _dates.append(date)
-            date += d
+            date += frequency
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
+        self._frequency = frequency
 
     @property
     def dates(self):
         return self._dates
+
+    @property
+    def frequency(self):
+        return self._frequency
 
     @cached_property
     def missing(self):
@@ -91,6 +103,17 @@ class Merge(Combined):
 
         dataset, row = self._indices[n]
         return self.datasets[int(dataset)][int(row)]
+
+    @debug_indexing
+    @expand_list_indexing
+    def _get_tuple(self, index):
+        index, changes = index_to_slices(index, self.shape)
+        index, previous = update_tuple(index, 0, slice(None))
+        result = self._get_slice(previous)
+        return apply_index_to_slices_changes(result[index], changes)
+
+    def _get_slice(self, s):
+        return np.stack([self[i] for i in range(*s.indices(self._len))])
 
 
 def merge_factory(args, kwargs):
