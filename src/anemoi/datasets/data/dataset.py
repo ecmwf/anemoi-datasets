@@ -284,6 +284,7 @@ class Dataset:
             specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
+            variables_metadata=self.variables_metadata,
             shape=self.shape,
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),

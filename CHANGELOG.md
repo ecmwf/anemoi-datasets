@@ -36,6 +36,10 @@ Keep it human-readable, your future self will thank you!
 
 - Add `variables_metadata` entry in the dataset metadata
 
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
+
 ## [0.5.5](https://github.com/ecmwf/anemoi-datasets/compare/0.5.4...0.5.5) - 2024-10-04
 
 ### Changed
