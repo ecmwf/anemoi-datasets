@@ -14,6 +14,7 @@ Keep it human-readable, your future self will thank you!
 ### Added
 
 - Add anemoi-transform link to documentation
+- Control compatibility check in xy/zip
 
 ### Changed
 
