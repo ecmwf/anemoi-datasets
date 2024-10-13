@@ -10,6 +10,7 @@ from functools import cached_property
 
 import numpy as np
 
+from . import MissingDateError
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
@@ -24,8 +25,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Merge(Combined):
-    def __init__(self, datasets):
+    def __init__(self, datasets, allow_gaps_in_dates=False):
         super().__init__(datasets)
+
+        self.allow_gaps_in_dates = allow_gaps_in_dates
 
         dates = dict()
 
@@ -50,7 +53,13 @@ class Merge(Combined):
 
         while date <= end:
             if date not in dates:
-                raise ValueError(f"Missing date {date} in dataset {datasets[0]}")
+                if self.allow_gaps_in_dates:
+                    dates[date] = (-1, -1)
+                else:
+                    raise ValueError(
+                        f"merge: date {date} not covered by dataset. Start={start}, end={end}, frequency={frequency}"
+                    )
+
             indices.append(dates[date])
             _dates.append(date)
             date += frequency
@@ -73,7 +82,10 @@ class Merge(Combined):
         result = set()
 
         for i, (dataset, row) in enumerate(self._indices):
-            if row in self.datasets[int(dataset)].missing:
+            if dataset < 0:
+                result.add(i)
+                continue
+            if row in self.datasets[dataset].missing:
                 result.add(i)
 
         return result
@@ -91,7 +103,7 @@ class Merge(Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=0)
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets])
+        return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
 
     @debug_indexing
     def __getitem__(self, n):
@@ -102,7 +114,11 @@ class Merge(Combined):
             return self._get_slice(n)
 
         dataset, row = self._indices[n]
-        return self.datasets[int(dataset)][int(row)]
+
+        if dataset < 0:
+            raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
+
+        return self.datasets[dataset][int(row)]
 
     @debug_indexing
     @expand_list_indexing
@@ -130,4 +146,6 @@ def merge_factory(args, kwargs):
 
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Merge(datasets)._subset(**kwargs)
+    allow_gaps_in_dates = kwargs.pop("allow_gaps_in_dates", False)
+
+    return Merge(datasets, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)
