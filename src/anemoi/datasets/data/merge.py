@@ -51,10 +51,12 @@ class Merge(Combined):
         indices = []
         _dates = []
 
+        self._missing_index = len(datasets)
+
         while date <= end:
             if date not in dates:
                 if self.allow_gaps_in_dates:
-                    dates[date] = (-1, -1)
+                    dates[date] = (self._missing_index, -1)
                 else:
                     raise ValueError(
                         f"merge: date {date} not covered by dataset. Start={start}, end={end}, frequency={frequency}"
@@ -82,9 +84,10 @@ class Merge(Combined):
         result = set()
 
         for i, (dataset, row) in enumerate(self._indices):
-            if dataset < 0:
+            if dataset == self._missing_index:
                 result.add(i)
                 continue
+
             if row in self.datasets[dataset].missing:
                 result.add(i)
 
@@ -115,7 +118,7 @@ class Merge(Combined):
 
         dataset, row = self._indices[n]
 
-        if dataset < 0:
+        if dataset == self._missing_index:
             raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
         return self.datasets[dataset][int(row)]
