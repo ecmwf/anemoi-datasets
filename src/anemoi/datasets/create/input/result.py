@@ -33,9 +33,38 @@ LOG = logging.getLogger(__name__)
 def _fields_metatata(variables, cube):
     assert isinstance(variables, tuple), variables
 
+    def _merge(md1, md2):
+        assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
+        result = {}
+        for k in md1.keys():
+            v1 = md1[k]
+            v2 = md2[k]
+
+            if v1 == v2:
+                result[k] = v1
+                continue
+
+            if isinstance(v1, list):
+                assert v2 not in v1, (v1, v2)
+                result[k] = sorted(v1 + [v2])
+                continue
+
+            if isinstance(v2, list):
+                assert v1 not in v2, (v1, v2)
+                result[k] = sorted(v2 + [v1])
+                continue
+
+            result[k] = sorted([v1, v2])
+
+        return result
+
     result = {}
-    for i, c in enumerate(cube.iterate_cubelets()):
-        assert c._coords_names[1] == variables[i], (c._coords_names[1], variables[i])
+    i = -1
+    for c in cube.iterate_cubelets():
+
+        if i == -1 or c._coords_names[1] != variables[i]:
+            i += 1
+
         f = cube[c.coords]
         md = f.metadata(namespace="mars")
         if not md:
@@ -49,7 +78,10 @@ def _fields_metatata(variables, cube):
             md["param"] = str(f.metadata("paramId", default="unknown"))
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
-        result[variables[i]] = md
+        if variables[i] in result:
+            result[variables[i]] = _merge(md, result[variables[i]])
+        else:
+            result[variables[i]] = md
 
     assert i + 1 == len(variables), (i + 1, len(variables))
     return result
