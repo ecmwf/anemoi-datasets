@@ -112,6 +112,7 @@ def create_zarr(
     root.attrs["name_to_index"] = {k: i for i, k in enumerate(vars)}
 
     root.attrs["data_request"] = {"grid": 1, "area": "g", "param_level": {}}
+    root.attrs["variables_metadata"] = {v: {} for v in vars}
 
     if missing:
         missing_dates = []
@@ -262,6 +263,9 @@ class DatasetTester:
         assert len([row for row in self.ds]) == len(self.ds)
         assert self.ds.shape == expected_shape, (self.ds.shape, expected_shape)
         assert self.ds.variables == expected_variables
+
+        assert set(self.ds.variables_metadata.keys()) == set(expected_variables)
+
         assert self.ds.name_to_index == expected_name_to_index
         assert self.ds.dates[0] == start_date
         assert self.ds.dates[1] - self.ds.dates[0] == time_increment
