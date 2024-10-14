@@ -100,6 +100,7 @@ class ProjectionGrid(XYGrid):
             data_crs = CRS.from_cf(self.projection)
         else:
             data_crs = self.projection
+
         wgs84_crs = CRS.from_epsg(4326)  # WGS84
 
         return Transformer.from_crs(data_crs, wgs84_crs, always_xy=True)

@@ -8,7 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
-## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.5...HEAD)
+## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...HEAD)
+
+
+### Added
+
+- Add anemoi-transform link to documentation
+- Various bug fixes
+
+### Changed
+
+- Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
+
+## [0.5.7](https://github.com/ecmwf/anemoi-datasets/compare/0.5.6...0.5.7) - 2024-10-09
+
+### Changed
+
+- Add support to fill missing dates
+
+## [Allow for unknown CF coordinates](https://github.com/ecmwf/anemoi-datasets/compare/0.5.5...0.5.6) - 2024-10-04
+
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
+- Update documentation
+
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
 
 ### Changed
 
@@ -53,6 +80,7 @@ Keep it human-readable, your future self will thank you!
 - Bug fix when creating dataset from zarr
 - Bug fix with area selection in cutout operation
 - add paths-ignore to ci workflow
+- call provenance less often
 
 ### Removed
 

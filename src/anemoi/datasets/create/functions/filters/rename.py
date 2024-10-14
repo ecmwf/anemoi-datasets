@@ -56,11 +56,14 @@ class RenamedFieldFormat:
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
 
-    def metadata(self, key, **kwargs):
-        value = self.field.metadata(key, **kwargs)
-        if "{" + key + "}" in self.format:
-            bits = {b: self.field.metadata(b, **kwargs) for b in self.bits}
-            return self.format.format(**bits)
+    def metadata(self, *args, **kwargs):
+        value = self.field.metadata(*args, **kwargs)
+        if args:
+            assert len(args) == 1
+            key = args[0]
+            if "{" + key + "}" in self.format:
+                bits = {b: self.field.metadata(b, **kwargs) for b in self.bits}
+                return self.format.format(**bits)
         return value
 
     def __getattr__(self, name):

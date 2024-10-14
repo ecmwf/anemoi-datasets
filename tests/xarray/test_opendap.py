@@ -7,6 +7,7 @@
 import xarray as xr
 
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
+from anemoi.datasets.testing import assert_field_list
 
 
 def test_opendap():
@@ -16,10 +17,7 @@ def test_opendap():
     )
 
     fs = XarrayFieldList.from_xarray(ds)
-
-    assert len(fs) == 79529
-
-    print(fs[0].datetime())
+    assert_field_list(fs, 79529, "2023-01-01T00:00:00", "2023-01-03T18:00:00")
 
 
 if __name__ == "__main__":

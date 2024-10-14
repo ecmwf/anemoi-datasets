@@ -18,16 +18,22 @@ URLS = {
     "https://get.ecmwf.int/repository/test-data/metview/gallery/era5_2000_aug.nc": dict(length=3),
     "https://get.ecmwf.int/repository/test-data/metview/gallery/era5_ozone_1999.nc": dict(length=4),
     "https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/fa_ta850.nc": dict(length=37),
-    # 'https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/htessel_points.nc': dict(length=1),
+    "https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/htessel_points.nc": dict(length=1),
     "https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/test_single.nc": dict(length=1),
-    # 'https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/zgrid_rhgmet_metop_200701_R_2305_0010.nc': dict(length=1),
-    # 'https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/20210101-C3S-L2_GHG-GHG_PRODUCTS-TANSO2-GOSAT2-SRFP-DAILY-v2.0.0.nc': dict(length=1),
+    "https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/zgrid_rhgmet_metop_200701_R_2305_0010.nc": dict(
+        length=1
+    ),
+    "https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/20210101-C3S-L2_GHG-GHG_PRODUCTS-TANSO2-GOSAT2-SRFP-DAILY-v2.0.0.nc": dict(
+        length=1
+    ),
     "https://get.ecmwf.int/repository/test-data/earthkit-data/test-data/20220401-C3S-L3S_FIRE-BA-OLCI-AREA_3-fv1.1.nc": dict(
         length=3
     ),
-    # 'https://github.com/ecmwf/magics-test/raw/master/test/efas/tamir.nc': dict(length=1),
-    # 'https://github.com/ecmwf/magics-test/raw/master/test/gallery/C3S_OZONE-L4-TC-ASSIM_MSR-201608-fv0020.nc': dict(length=1),
-    # 'https://github.com/ecmwf/magics-test/raw/master/test/gallery/avg_data.nc': dict(length=1),
+    "https://github.com/ecmwf/magics-test/raw/master/test/efas/tamir.nc": dict(length=1),
+    "https://github.com/ecmwf/magics-test/raw/master/test/gallery/C3S_OZONE-L4-TC-ASSIM_MSR-201608-fv0020.nc": dict(
+        length=1
+    ),
+    "https://github.com/ecmwf/magics-test/raw/master/test/gallery/avg_data.nc": dict(length=1),
     "https://github.com/ecmwf/magics-test/raw/master/test/gallery/era5_2000_aug_1.nc": dict(length=3),
     "https://github.com/ecmwf/magics-test/raw/master/test/gallery/missing.nc": dict(length=20),
     "https://github.com/ecmwf/magics-test/raw/master/test/gallery/netcdf3_t_z.nc": dict(length=30),

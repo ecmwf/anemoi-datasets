@@ -98,23 +98,22 @@ def compare_dot_zattrs(a, b, path, errors):
     if isinstance(a, dict):
         a_keys = list(a.keys())
         b_keys = list(b.keys())
-        for k in set(a_keys) & set(b_keys):
-            if k in [
-                "licence",
-                "total_number_of_files",
-            ]:
+        for k in set(a_keys) | set(b_keys):
+            if k not in a_keys:
+                errors.append(f"❌ {path}.{k} : missing key (only in reference)")
+                continue
+            if k not in b_keys:
+                errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
                 continue
             if k in [
                 "timestamp",
                 "uuid",
                 "latest_write_timestamp",
-                "_create_yaml_config",
                 "history",
                 "provenance",
                 "provenance_load",
                 "description",
                 "config_path",
-                "dataset_status",
                 "total_size",
             ]:
                 if type(a[k]) is not type(b[k]):
@@ -217,8 +216,8 @@ class Comparer:
             raise AssertionError("Comparison failed")
 
         compare_datasets(self.ds_output, self.ds_reference)
-
         compare_statistics(self.ds_output, self.ds_reference)
+        # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
 @pytest.mark.parametrize("name", NAMES)
