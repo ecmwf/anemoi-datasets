@@ -148,6 +148,7 @@ def concat_factory(args, kwargs):
 
     datasets = kwargs.pop("concat")
     fill_missing_gaps = kwargs.pop("fill_missing_gaps", False)
+
     assert isinstance(datasets, (list, tuple))
     assert len(args) == 0
 

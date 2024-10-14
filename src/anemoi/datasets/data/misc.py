@@ -302,6 +302,12 @@ def _open_dataset(*args, **kwargs):
         assert not sets, sets
         return concat_factory(args, kwargs).mutate()
 
+    if "merge" in kwargs:
+        from .merge import merge_factory
+
+        assert not sets, sets
+        return merge_factory(args, kwargs).mutate()
+
     if "ensemble" in kwargs:
         from .ensemble import ensemble_factory
 
