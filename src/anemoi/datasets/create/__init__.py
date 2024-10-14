@@ -412,7 +412,24 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata.update(self.main_config.get("add_metadata", {}))
 
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-        metadata["recipe"] = sanitise(self.main_config.get_serialisable_dict())
+
+        recipe = sanitise(self.main_config.get_serialisable_dict())
+
+        # Remove stuff added by prepml
+        for k in [
+            "build_dataset",
+            "config_format_version",
+            "config_path",
+            "dataset_status",
+            "ecflow",
+            "metadata",
+            "platform",
+            "reading_chunks",
+            "upload",
+        ]:
+            recipe.pop(k, None)
+
+        metadata["recipe"] = recipe
 
         metadata["description"] = self.main_config.description
         metadata["licence"] = self.main_config["licence"]
