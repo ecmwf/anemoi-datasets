@@ -15,6 +15,8 @@ Keep it human-readable, your future self will thank you!
 
 - Add anemoi-transform link to documentation
 - Various bug fixes
+- Control compatibility check in xy/zip
+- Add `merge` feature
 
 ### Changed
 
@@ -32,6 +34,10 @@ Keep it human-readable, your future self will thank you!
 
 - Add `variables_metadata` entry in the dataset metadata
 - Update documentation
+
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
 
 ### Changed
 
