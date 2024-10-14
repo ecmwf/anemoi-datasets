@@ -94,10 +94,6 @@ def build_statistics_dates(dates, start, end):
     return (start.isoformat(), end.isoformat())
 
 
-def _ignore(*args, **kwargs):
-    pass
-
-
 def _path_readable(path):
     import zarr
 

@@ -20,6 +20,24 @@ from anemoi.utils.dates import frequency_to_timedelta
 LOG = logging.getLogger(__name__)
 
 
+class Variable:
+
+    def __init__(self, name, metadata):
+        self.name = name
+        self.metadata = metadata
+
+    def __repr__(self):
+        return f"Variable({self.name})"
+
+    @property
+    def level(self):
+        return self.metadata.get("mars", {}).get("levelist", None)
+
+    @property
+    def is_pressure_level(self):
+        return self.metadata.get("mars", {}).get("levtype", None) == "pl"
+
+
 class Dataset:
     arguments = {}
 
@@ -229,6 +247,10 @@ class Dataset:
         shape = list(shape)
         shape.pop(drop_axis)
         return tuple(shape)
+
+    @property
+    def typed_variables(self):
+        return {k: Variable(k, v) for k, v in self.variables_metadata.items()}
 
     def metadata(self):
         import anemoi

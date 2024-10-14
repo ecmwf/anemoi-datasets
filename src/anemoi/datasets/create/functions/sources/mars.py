@@ -197,12 +197,18 @@ def mars(context, dates, *requests, request_already_using_valid_datetime=False, 
                     "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
                 )
 
-    requests = factorise_requests(
-        dates,
-        *requests,
-        request_already_using_valid_datetime=request_already_using_valid_datetime,
-        date_key=date_key,
-    )
+    if len(dates) == 0:  # When using `repeated_dates`
+        assert len(requests) == 1, requests
+        assert "date" in requests[0], requests[0]
+        if isinstance(requests[0]["date"], datetime.date):
+            requests[0]["date"] = requests[0]["date"].strftime("%Y%m%d")
+    else:
+        requests = factorise_requests(
+            dates,
+            *requests,
+            request_already_using_valid_datetime=request_already_using_valid_datetime,
+            date_key=date_key,
+        )
 
     requests = list(requests)
 

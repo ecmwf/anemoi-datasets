@@ -58,7 +58,7 @@ def _fields_metatata(variables, cube):
 
         return result
 
-    result = {}
+    mars = {}
     i = -1
     for c in cube.iterate_cubelets():
 
@@ -78,10 +78,30 @@ def _fields_metatata(variables, cube):
             md["param"] = str(f.metadata("paramId", default="unknown"))
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
-        if variables[i] in result:
-            result[variables[i]] = _merge(md, result[variables[i]])
+        startStep = f.metadata("startStep", default=None)
+        assert startStep is None or isinstance(startStep, int), (startStep, type(f))
+
+        endStep = f.metadata("endStep", default=None)
+        assert endStep is None or isinstance(endStep, int), endStep
+
+        stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
+
+        assert stepTypeForConversion in (None, "accum", "unknown"), stepTypeForConversion
+
+        if startStep == endStep and stepTypeForConversion == "accum":
+            startStep = 0
+
+        if startStep != endStep:
+            md["step"] = f"{startStep}-{endStep}"
+
+        if variables[i] in mars:
+            mars[variables[i]] = _merge(md, mars[variables[i]])
         else:
-            result[variables[i]] = md
+            mars[variables[i]] = md
+
+    result = {}
+    for k, v in mars.items():
+        result[k] = dict(mars=v) if v else {}
 
     assert i + 1 == len(variables), (i + 1, len(variables))
     return result

@@ -51,8 +51,9 @@ class RenamedFieldFormat:
         format (str): A string that defines the new name of the field.
     """
 
-    def __init__(self, field, format):
+    def __init__(self, field, what, format):
         self.field = field
+        self.what = what
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
 
@@ -60,8 +61,7 @@ class RenamedFieldFormat:
         value = self.field.metadata(*args, **kwargs)
         if args:
             assert len(args) == 1
-            key = args[0]
-            if "{" + key + "}" in self.format:
+            if args[0] == self.what:
                 bits = {b: self.field.metadata(b, **kwargs) for b in self.bits}
                 return self.format.format(**bits)
         return value
@@ -72,6 +72,6 @@ class RenamedFieldFormat:
 
 def execute(context, input, what="param", **kwargs):
     if what in kwargs and isinstance(kwargs[what], str):
-        return FieldArray([RenamedFieldFormat(fs, kwargs[what]) for fs in input])
+        return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
 
     return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])
