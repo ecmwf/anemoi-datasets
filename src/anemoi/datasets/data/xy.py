@@ -18,15 +18,19 @@ LOG = logging.getLogger(__name__)
 
 class ZipBase(Combined):
 
+    def __init__(self, datasets, check_compatibility=True):
+        self._check_compatibility = check_compatibility
+        super().__init__(datasets)
+
     def swap_with_parent(self, parent):
         new_parents = [parent.clone(ds) for ds in self.datasets]
         return self.clone(new_parents)
 
     def clone(self, datasets):
-        return self.__class__(datasets)
+        return self.__class__(datasets, check_compatibility=self._check_compatibility)
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets])
+        return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
 
     def __len__(self):
         return min(len(d) for d in self.datasets)
@@ -86,6 +90,10 @@ class ZipBase(Combined):
     def name_to_index(self):
         return tuple(d.name_to_index for d in self.datasets)
 
+    def check_compatibility(self, d1, d2):
+        if self._check_compatibility:
+            super().check_compatibility(d1, d2)
+
 
 class Zip(ZipBase):
     pass
@@ -110,7 +118,9 @@ def xy_factory(args, kwargs):
 
     assert len(datasets) == 2
 
-    return XY(datasets)._subset(**kwargs)
+    check_compatibility = kwargs.pop("check_compatibility", True)
+
+    return XY(datasets, check_compatibility=check_compatibility)._subset(**kwargs)
 
 
 def zip_factory(args, kwargs):
@@ -122,4 +132,6 @@ def zip_factory(args, kwargs):
     datasets = [_open(e) for e in zip]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Zip(datasets)._subset(**kwargs)
+    check_compatibility = kwargs.pop("check_compatibility", True)
+
+    return Zip(datasets, check_compatibility=check_compatibility)._subset(**kwargs)

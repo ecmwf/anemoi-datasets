@@ -10,13 +10,31 @@ Keep it human-readable, your future self will thank you!
 
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...HEAD)
 
+
+### Added
+
+- Add anemoi-transform link to documentation
+- Various bug fixes
+- Control compatibility check in xy/zip
+- Add `merge` feature
+
+### Changed
+
+- Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
+
 ## [0.5.7](https://github.com/ecmwf/anemoi-datasets/compare/0.5.6...0.5.7) - 2024-10-09
+
+### Changed
+
+- Add support to fill missing dates
 
 ## [Allow for unknown CF coordinates](https://github.com/ecmwf/anemoi-datasets/compare/0.5.5...0.5.6) - 2024-10-04
 
+### Changed
+
+- Add `variables_metadata` entry in the dataset metadata
 - Update documentation
 
-- Update documentation
 ### Changed
 
 - Add `variables_metadata` entry in the dataset metadata

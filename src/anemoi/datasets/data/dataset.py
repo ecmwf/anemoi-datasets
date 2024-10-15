@@ -41,6 +41,14 @@ class Dataset:
         if not kwargs:
             return self.mutate()
 
+        # This one must be first
+        if "fill_missing_dates" in kwargs:
+            from .fill_missing import fill_missing_dates_factory
+
+            fill_missing_dates = kwargs.pop("fill_missing_dates")
+            ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
+            return ds._subset(**kwargs).mutate()
+
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
             end = kwargs.pop("end", None)
@@ -63,12 +71,6 @@ class Dataset:
                 ._subset(**kwargs)
                 .mutate()
             )
-
-        if "interpolate_frequency" in kwargs:
-            from .interpolate import InterpolateFrequency
-
-            interpolate_frequency = kwargs.pop("interpolate_frequency")
-            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "select" in kwargs:
             from .select import Select
@@ -121,11 +123,11 @@ class Dataset:
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
-        if "missing_dates" in kwargs:
+        if "set_missing_dates" in kwargs:
             from .missing import MissingDates
 
-            missing_dates = kwargs.pop("missing_dates")
-            return MissingDates(self, missing_dates)._subset(**kwargs).mutate()
+            set_missing_dates = kwargs.pop("set_missing_dates")
+            return MissingDates(self, set_missing_dates)._subset(**kwargs).mutate()
 
         if "skip_missing_dates" in kwargs:
             from .missing import SkipMissingDates
@@ -138,6 +140,12 @@ class Dataset:
 
             if skip_missing_dates:
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
+
+        if "interpolate_frequency" in kwargs:
+            from .interpolate import InterpolateFrequency
+
+            interpolate_frequency = kwargs.pop("interpolate_frequency")
+            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:
@@ -276,6 +284,7 @@ class Dataset:
             specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
+            variables_metadata=self.variables_metadata,
             shape=self.shape,
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),

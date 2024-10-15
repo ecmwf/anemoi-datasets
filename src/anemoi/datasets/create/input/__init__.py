@@ -6,23 +6,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 #
-import datetime
-import itertools
+
 import logging
-import math
-import time
-from collections import defaultdict
 from copy import deepcopy
-from functools import cached_property
-from functools import wraps
-
-import numpy as np
-from anemoi.utils.dates import as_datetime as as_datetime
-from anemoi.utils.dates import frequency_to_timedelta as frequency_to_timedelta
-
-from anemoi.datasets.dates import DatesProvider as DatesProvider
-from anemoi.datasets.fields import FieldArray as FieldArray
-from anemoi.datasets.fields import NewValidDateTimeField as NewValidDateTimeField
 
 from .trace import trace_select
 

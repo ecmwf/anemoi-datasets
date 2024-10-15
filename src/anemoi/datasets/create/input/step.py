@@ -59,6 +59,7 @@ class StepAction(Action):
         )
 
     def __repr__(self):
+        # raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
         return super().__repr__(self.previous_step, _inline_=str(self.kwargs))
 
 
