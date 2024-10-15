@@ -94,6 +94,10 @@ def _fields_metatata(variables, cube):
         if startStep != endStep:
             md["step"] = f"{startStep}-{endStep}"
 
+        for k in md.copy().keys():
+            if k.startswith("_"):
+                md.pop(k)
+
         if variables[i] in mars:
             mars[variables[i]] = _merge(md, mars[variables[i]])
         else:
