@@ -424,7 +424,7 @@ class Observations(ObservationsBase):
 
         if window is None:
             window = (-frequency_hours, 0)
-        if window == (-frequency_hours, 0):
+        if window != (-frequency_hours, 0):
             raise ValueError("For now, only window = (- frequency, 0) are supported")
 
         self.window = window
