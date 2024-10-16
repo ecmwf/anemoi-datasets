@@ -5,10 +5,10 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from collections import defaultdict
 import datetime
 import logging
 import os
+from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
@@ -37,7 +37,7 @@ def make_dates(start, end, frequency):
         dates.append(current_date)
         current_date += frequency
 
-    dates = [np.datetime64(d, 's') for d in dates]
+    dates = [np.datetime64(d, "s") for d in dates]
     return dates
 
 
@@ -110,11 +110,13 @@ class Multiple(ObservationsBase):
     @classmethod
     def _rearrange_array(cls, data):
         import einops
+
         if len(data.shape) == 3:
             assert data.shape[1] == 1, f"Expected ensemble dimmension of 1, got {data.shape}"
             data = data[:, 0, :]
         data = einops.rearrange(data, "variables latlon -> latlon variables")
         return data
+
     @property
     def variables(self):
         variables = []
@@ -132,16 +134,18 @@ class MultipleDict(Multiple):
 
         start_date, end_date = merge_dates(list(datasets.values()))
 
-        self.datasets = {k:Padded(d, start_date, end_date).mutate() for k,d in datasets.items()}
+        self.datasets = {k: Padded(d, start_date, end_date).mutate() for k, d in datasets.items()}
         self.dates = make_dates(start_date, end_date, self.frequency)
 
         # todo: implement missing
-        assert all( d.missing == set() for k, d in self.datasets.items()), f"Expected no missing, got {[d.missing for d in self.datasets]}"
+        assert all(
+            d.missing == set() for k, d in self.datasets.items()
+        ), f"Expected no missing, got {[d.missing for d in self.datasets]}"
         self.missing = set()
 
     def tree(self):
         return Node(self, [d.tree() for k, d in self.datasets.items()])
-        #return Node(self, {k:d.tree() for k, d in self.datasets.items()})
+        # return Node(self, {k:d.tree() for k, d in self.datasets.items()})
 
     @property
     def _datasets_as_list(self):
@@ -151,7 +155,7 @@ class MultipleDict(Multiple):
         return self.datasets
 
     def getitem(self, i):
-        return {k:self._rearrange_array(d[i]) for k, d in self.datasets.items()}
+        return {k: self._rearrange_array(d[i]) for k, d in self.datasets.items()}
 
     @cached_property
     def name_to_index(self):
@@ -165,11 +169,12 @@ class MultipleDict(Multiple):
     def statistics(self):
         keys = self._datasets_as_list[0].statistics.keys()
         dic = defaultdict(dict)
-        for k,d in self.datasets.items():
+        for k, d in self.datasets.items():
             for key in keys:
                 dic[key][k] = d.statistics[key]
         assert "mean" in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
         return dic
+
 
 class MultipleList(Multiple):
     def __init__(self, datasets, names=None):
@@ -184,7 +189,9 @@ class MultipleList(Multiple):
         self.dates = make_dates(start_date, end_date, self.frequency)
 
         # todo: implement missing
-        assert all( d.missing == set() for d in self.datasets), f"Expected no missing, got {[d.missing for d in self.datasets]}"
+        assert all(
+            d.missing == set() for d in self.datasets
+        ), f"Expected no missing, got {[d.missing for d in self.datasets]}"
         self.missing = set()
 
     @property
@@ -192,7 +199,7 @@ class MultipleList(Multiple):
         return self.datasets
 
     def _datasets_as_dict(self):
-        return {i:d for i,d in enumerate(self.datasets)}
+        return {i: d for i, d in enumerate(self.datasets)}
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
@@ -207,6 +214,7 @@ class MultipleList(Multiple):
             for name in d.variables:
                 dic[name] = (i, d.name_to_index[name])
         return dic
+
     @property
     def statistics(self):
         keys = self.datasets[0].statistics.keys()
@@ -216,6 +224,7 @@ class MultipleList(Multiple):
                 dic[k].append(d.statistics[k])
         assert "mean" in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
         return dic
+
 
 class Forward(ObservationsBase):
     def __init__(self, dataset):
@@ -272,6 +281,7 @@ class RenamePrefix(Forward):
     def tree(self):
         return Node(self, [self.forward.tree()], rename_prefix=self.prefix)
 
+
 class Subset(Forward):
     # TODO : delete this class
     def __init__(self, dataset, start, end):
@@ -279,26 +289,27 @@ class Subset(Forward):
 
         from ..misc import as_first_date
         from ..misc import as_last_date
-        self._start =  self.forward.dates[0] if start is None else as_first_date(start, self.forward.dates)
-        self._end =  self.forward.dates[-1] if end is None else as_last_date(end, self.forward.dates)
+
+        self._start = self.forward.dates[0] if start is None else as_first_date(start, self.forward.dates)
+        self._end = self.forward.dates[-1] if end is None else as_last_date(end, self.forward.dates)
 
         self.dates = make_dates(self._start, self._end, self.forward.frequency)
 
         assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]), type(self.forward.dates[0]))
         _dates = set(self.forward.dates)
         for d in self.dates:
-            assert d in _dates, f"Expected {d} in {self.forward.dates[0]}...{self.forward.dates[-1]}, {self._start=}, {self._end=}"
+            assert (
+                d in _dates
+            ), f"Expected {d} in {self.forward.dates[0]}...{self.forward.dates[-1]}, {self._start=}, {self._end=}"
         date_to_index = {date: i for i, date in enumerate(self.forward.dates)}
-        self._indices = {i:date_to_index[d] for i, d in enumerate(self.dates)}
+        self._indices = {i: date_to_index[d] for i, d in enumerate(self.dates)}
 
         assert len(self._indices) > 0, f"Expected at least one date, got {len(self._indices)}"
         assert len(self.forward.missing) == 0, f"Expected no missing dates, got {self.forward.missing}"
 
-
     def getitem(self, i):
         i = self._indices[i]
         return self.forward[i]
-
 
     def tree(self):
         return Node(self, [self.forward.tree()], start=self._start, end=self._end)
@@ -318,7 +329,7 @@ class Select(Forward):
 
     def getitem(self, i):
         data = self.forward[i]
-        data = data[self._indexes,:]
+        data = data[self._indexes, :]
         return data
 
     @property
@@ -326,7 +337,7 @@ class Select(Forward):
         dic = {}
         for k, data in self.forward.statistics.items():
             assert len(data.shape) == 1, f"Expected 1D array, got {data.shape}"
-            dic[k] = data[self._indexes,] # notice the "," here because this 1D array is indexed using a tuple.
+            dic[k] = data[self._indexes,]  # notice the "," here because this 1D array is indexed using a tuple.
         return dic
 
     @property
@@ -335,7 +346,7 @@ class Select(Forward):
 
     @property
     def name_to_index(self):
-        return {n:i for i, n in enumerate(self._variables)}
+        return {n: i for i, n in enumerate(self._variables)}
 
 
 class Padded(Forward):
@@ -348,14 +359,13 @@ class Padded(Forward):
         self.dates = make_dates(start, end, self._frequency)
         self._indices = {}
 
-        assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]) , type(self.forward.dates[0]))
+        assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]), type(self.forward.dates[0]))
 
         dates_to_indices = {date: i for i, date in enumerate(self.forward.dates)}
         _forward_dates = set(self.forward.dates)
         assert len(dates_to_indices) == len(_forward_dates)
-        self._indices = {j:dates_to_indices[date] for j, date in enumerate(self.dates) if date in _forward_dates}
+        self._indices = {j: dates_to_indices[date] for j, date in enumerate(self.dates) if date in _forward_dates}
         assert len(self._indices) == len(_forward_dates), (len(self._indices), len(_forward_dates))
-
 
     @property
     def missing(self):
@@ -371,7 +381,7 @@ class Padded(Forward):
             # print(f"❌Requested {i} {self.dates[i]}: No data in {self.forward} ")
             return self.empty_item()
         j = self._indices[i]
-        print(f'  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}')
+        print(f"  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}")
         return self.forward[j]
 
     def tree(self):
@@ -442,7 +452,6 @@ class Observations(ObservationsBase):
         kwargs = dict(
             len_hrs=frequency_hours,  # length the time windows, i.e. the time span of one item
             step_hrs=frequency_hours,  # frequency of the dataset, i.e. the time shift between two items
-            normalize=False,
         )
         self.forward = ObsDataset(*args, **kwargs)
         print(f"TRACE: ObsDataset({args}, {kwargs})")
@@ -478,7 +487,7 @@ class Observations(ObservationsBase):
         #    # this should get directly the numpy array
         #    data = self.forward.get_data_from_dates_interval(start, end)
         data = self.forward[i]
-        print(f'      reading from {self.path} {i} {self.dates[i]}')
+        print(f"      reading from {self.path} {i} {self.dates[i]}")
 
         ##########################
         data = data.numpy().astype(np.float32)
@@ -503,7 +512,7 @@ class Observations(ObservationsBase):
 
     @property
     def name_to_index(self):
-        return {n:i for i, n in enumerate(self.variables)}
+        return {n: i for i, n in enumerate(self.variables)}
 
     @property
     def statistics(self):
@@ -514,8 +523,8 @@ class Observations(ObservationsBase):
         stdev = np.sqrt(var)
         minimum = np.full_like(mean, np.nan)
         maximum = np.full_like(mean, np.nan)
-        print(f"✅Cannot find minimum using np.nan")
-        print(f"✅Cannot find maximum using np.nan")
+        print("✅Cannot find minimum using np.nan")
+        print("✅Cannot find maximum using np.nan")
 
         assert isinstance(mean, np.ndarray), f"Expected np.ndarray, got {type(mean)}"
         assert isinstance(stdev, np.ndarray), f"Expected np.ndarray, got {type(stdev)}"
