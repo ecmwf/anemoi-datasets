@@ -182,8 +182,11 @@ def mars(context, dates, *requests, request_already_using_valid_datetime=False, 
         requests = [kwargs]
 
     for r in requests:
+        param = r.get("param", [])
+        if not isinstance(param, (list, tuple)):
+            param = [param]
         # check for "Norway bug" where yaml transforms 'no' into False, etc.
-        for p in r.get("param", []):
+        for p in param:
             if p is False:
                 raise ValueError(
                     "'param' cannot be 'False'. If you wrote 'param: no' or 'param: off' in yaml, you may want to use quotes?"

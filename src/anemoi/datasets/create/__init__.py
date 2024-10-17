@@ -14,7 +14,6 @@ import os
 import time
 import uuid
 import warnings
-from copy import deepcopy
 from functools import cached_property
 
 import numpy as np
