@@ -238,7 +238,7 @@ def _auto_adjust(datasets, kwargs):
     if "start" or "end" in adjust_set:
         common = datasets[0].dates
         for d in datasets[0:]:
-            common = np.intersect1d(common,d.dates)
+            common = np.intersect1d(common, d.dates)
 
     if "start" in adjust_set:
         assert "start" not in kwargs, "Cannot use 'start' in adjust and kwargs"
