@@ -10,6 +10,9 @@ Keep it human-readable, your future self will thank you!
 
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...HEAD)
 
+### Changed
+
+- Bugfix in `auto_adjust`
 
 ### Added
 
