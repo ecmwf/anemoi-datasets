@@ -302,10 +302,12 @@ class Dataset:
             specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
-            variables_metadata=self.variables_metadata,
+            # variables_metadata=self.variables_metadata,
             shape=self.shape,
+            dtype=str(self.dtype),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
+            typed_variables=[v.as_dict() for v in self.typed_variables.values()],
         )
 
     def metadata_specific(self, **kwargs):
