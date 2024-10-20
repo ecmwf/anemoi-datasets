@@ -273,6 +273,16 @@ class Size(Actor):
         metadata = compute_directory_sizes(self.path)
         self.update_metadata(**metadata)
 
+        # Look for constant fields
+        ds = open_dataset(self.path)
+        constants = ds.computed_constant_fields()
+
+        variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
+        for k in constants:
+            variables_metadata[k]["constant_in_time"] = True
+
+        self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
+
 
 class HasRegistryMixin:
     @cached_property
@@ -323,7 +333,20 @@ def build_input_(main_config, output_config):
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     dataset_class = NewDataset
-    def __init__(self, path, config, check_name=False, overwrite=False, use_threads=False, statistics_temp_dir=None, progress=None, test=False, cache=None, **kwargs):  # fmt: skip
+
+    def __init__(
+        self,
+        path,
+        config,
+        check_name=False,
+        overwrite=False,
+        use_threads=False,
+        statistics_temp_dir=None,
+        progress=None,
+        test=False,
+        cache=None,
+        **kwargs,
+    ):
         if _path_readable(path) and not overwrite:
             raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
 
@@ -508,7 +531,9 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 
 class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    def __init__(self, path, parts=None,  use_threads=False, statistics_temp_dir=None, progress=None, cache=None, **kwargs):  # fmt: skip
+    def __init__(
+        self, path, parts=None, use_threads=False, statistics_temp_dir=None, progress=None, cache=None, **kwargs
+    ):
         super().__init__(path, cache=cache)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir

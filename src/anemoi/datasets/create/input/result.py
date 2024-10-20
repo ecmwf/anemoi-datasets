@@ -76,7 +76,14 @@ def _fields_metatata(variables, cube):
     mars = {}
     other = defaultdict(dict)
     i = -1
+    date = None
     for c in cube.iterate_cubelets():
+
+        if date is None:
+            date = c._coords_names[0]
+
+        if date != c._coords_names[0]:
+            continue
 
         if i == -1 or c._coords_names[1] != variables[i]:
             i += 1

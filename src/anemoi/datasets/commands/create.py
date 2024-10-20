@@ -117,7 +117,9 @@ class Create(Command):
                 opt["parts"] = f"{n+1}/{total}"
                 futures.append(executor.submit(task, "load", opt))
 
-            for future in tqdm.tqdm(as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
+            for future in tqdm.tqdm(
+                as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
+            ):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
@@ -133,7 +135,13 @@ class Create(Command):
             for n in range(total):
                 futures.append(executor.submit(task, "load-additions", opt))
 
-            for future in tqdm.tqdm(as_completed(futures), desc="Computing additions", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
+            for future in tqdm.tqdm(
+                as_completed(futures),
+                desc="Computing additions",
+                total=len(futures),
+                colour="green",
+                position=parallel + 1,
+            ):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:

@@ -302,12 +302,11 @@ class Dataset:
             specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
-            # variables_metadata=self.variables_metadata,
+            variables_metadata=self.variables_metadata,
             shape=self.shape,
             dtype=str(self.dtype),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
-            typed_variables=[v.as_dict() for v in self.typed_variables.values()],
         )
 
     def metadata_specific(self, **kwargs):
@@ -348,12 +347,52 @@ class Dataset:
     def get_dataset_names(self, names):
         raise NotImplementedError(self)
 
-    @cached_property
-    def constant_fields(self):
+    def computed_constant_fields(self):
+        # Call `constant_fields` instead of `computed_constant_fields`
+        try:
+            # If the tendencies are computed, we can use them
+            return self._compute_constant_fields_from_statistics()
+        except KeyError:
+            # This can happen if the tendencies are not computed
+            pass
 
+        return self._compute_constant_fields_from_a_few_samples()
+
+    def _compute_constant_fields_from_a_few_samples(self):
+
+        import numpy as np
+
+        # Otherwise, we need to compute them
+        dates = self.dates
+        indices = set(range(len(dates)))
+        indices -= self.missing
+
+        sample_count = min(4, len(indices))
+        count = len(indices)
+
+        p = slice(0, count, count // (sample_count - 1))
+        samples = list(range(*p.indices(count)))
+        samples.append(count - 1)  # Add last
+        samples = sorted(set(samples))
+
+        first = None
+        constants = [True] * len(self.variables)
+
+        first = self[samples.pop(0)]
+
+        for sample in samples:
+            row = self[sample]
+            for i, (a, b) in enumerate(zip(row, first)):
+                if np.any(a != b):
+                    constants[i] = False
+
+        return [v for i, v in enumerate(self.variables) if constants[i]]
+
+    def _compute_constant_fields_from_statistics(self):
         result = []
 
         t = self.statistics_tendencies()
+
         for i, v in enumerate(self.variables):
             if t["mean"][i] == 0 and t["stdev"][i] == 0:
                 result.append(v)
