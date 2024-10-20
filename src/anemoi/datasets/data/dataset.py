@@ -235,11 +235,11 @@ class Dataset:
         from anemoi.transform.variables import Variable
 
         constants = self.constant_fields
-        print(constants)
 
         result = {}
         for k, v in self.variables_metadata.items():
 
+            # TODO: Once all datasets are updated, we can remove this
             v = v.copy()
             if k in constants:
                 v["is_constant_in_time"] = True
