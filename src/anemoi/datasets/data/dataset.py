@@ -242,7 +242,10 @@ class Dataset:
             # TODO: Once all datasets are updated, we can remove this
             v = v.copy()
             if k in constants:
-                v["is_constant_in_time"] = True
+                v["constant_in_time"] = True
+
+            if "is_constant_in_time" in v:
+                del v["is_constant_in_time"]
 
             result[k] = Variable.from_dict(k, v)
 
@@ -351,12 +354,12 @@ class Dataset:
         # Call `constant_fields` instead of `computed_constant_fields`
         try:
             # If the tendencies are computed, we can use them
-            return self._compute_constant_fields_from_statistics()
+            return sorted(self._compute_constant_fields_from_statistics())
         except KeyError:
             # This can happen if the tendencies are not computed
             pass
 
-        return self._compute_constant_fields_from_a_few_samples()
+        return sorted(self._compute_constant_fields_from_a_few_samples())
 
     def _compute_constant_fields_from_a_few_samples(self):
 
