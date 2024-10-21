@@ -46,6 +46,8 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
 
     if isinstance(dataset, str) and ".zarr" in dataset:
         data = xr.open_zarr(name_to_zarr_store(dataset), **options)
+    elif "planetarycomputer" in dataset:
+        data = xr.open_zarr(**name_to_zarr_store(dataset))
     else:
         data = xr.open_dataset(dataset, **options)
 
