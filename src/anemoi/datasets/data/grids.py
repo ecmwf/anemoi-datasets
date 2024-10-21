@@ -134,50 +134,79 @@ class Cutout(GridsBase):
         super().__init__(datasets, axis)
         assert len(datasets) == 2, "CutoutGrids requires two datasets"
         assert axis == 3, "CutoutGrids requires axis=3"
-
-        # We assume that the LAM is the first dataset, and the global is the second
-        # Note: the second fields does not really need to be global
-
-        self.lam, self.globe = datasets
-        self.mask = cutout_mask(
-            self.lam.latitudes,
-            self.lam.longitudes,
-            self.globe.latitudes,
-            self.globe.longitudes,
-            plot=plot,
-            min_distance_km=min_distance_km,
-            cropping_distance=cropping_distance,
-            neighbours=neighbours,
-        )
-        assert len(self.mask) == self.globe.shape[3], (
-            len(self.mask),
-            self.globe.shape[3],
-        )
+        
+        # Assume that all datasets except the last one are LAMs, and the last 
+        # one is the global model
+        self.lams = datasets[:-1]
+        self.globe = datasets[-1]
+        
+        # Initialize masks
+        self.masks = []
+        
+        # Track already used points in the global dataset
+        used_points = np.zeros(self.globe.shape[3], dtype=bool) 
+        
+        for lam in self.lams:
+            current_mask = cutout_mask(
+                lam.latitudes,
+                lam.longitudes,
+                self.globe.latitudes,
+                self.globe.longitudes,
+                plot=plot,
+                min_distance_km=min_distance_km,
+                cropping_distance=cropping_distance,
+                neighbours=neighbours,
+            )
+            # Exclude points already covered by previous LAMs
+            current_mask[used_points] = False
+            self.masks.append(current_mask)
+            # Mark the current LAM's points as used
+            # This ensures that all points already covered by any LAM (up to the 
+            # current one) are marked as True in used_points, so future LAMs or 
+            # the global dataset will avoid using these points.
+            used_points |= current_mask
+        
+        assert len(self.masks) == len(self.lams)
+        assert len(used_points) == self.globe.shape[3], "Mask length mismatch with global shape"
 
     @cached_property
     def shape(self):
-        shape = self.lam.shape
-        # Number of non-zero masked values in the globe dataset
-        nb_globe = np.count_nonzero(self.mask)
-        return shape[:-1] + (shape[-1] + nb_globe,)
+        lam_shapes = [lam.shape for lam in self.lams]
+        globe_shape = self.globe.shape
+
+        # Number of non-zero masked values in the globe dataset for each LAM
+        nb_globe = sum(np.count_nonzero(mask) for mask in self.masks)
+        # Total number of grid points covered by all the LAM datasets
+        lam_total_length = sum(shape[-1] for shape in lam_shapes)
+
+        # Combine the shape information
+        return lam_shapes[0][:-1] + (lam_total_length + nb_globe,)
 
     def check_same_resolution(self, d1, d2):
         # Turned off because we are combining different resolutions
         pass
-
+    
     @property
     def latitudes(self):
-        return np.concatenate([self.lam.latitudes, self.globe.latitudes[self.mask]])
+        # Concatenate latitudes from all LAMs and the masked global dataset
+        lam_latitudes = np.concatenate([lam.latitudes for lam in self.lams])
+        globe_latitudes = np.concatenate(
+            [self.globe.latitudes[mask] for mask in self.masks]
+            )
+        return np.concatenate([lam_latitudes, globe_latitudes])
 
     @property
     def longitudes(self):
-        return np.concatenate([self.lam.longitudes, self.globe.longitudes[self.mask]])
+        # Concatenate longitudes from all LAMs and the masked global dataset
+        lam_longitudes = np.concatenate([lam.longitudes for lam in self.lams])
+        globe_longitudes = np.concatenate([self.globe.longitudes[mask] for mask in self.masks])
+        return np.concatenate([lam_longitudes, globe_longitudes])
 
     def __getitem__(self, index):
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
-
+    
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index):
@@ -189,26 +218,34 @@ class Cutout(GridsBase):
         # In case index_to_slices has changed the last slice
         index, _ = update_tuple(index, self.axis, slice(None))
 
-        lam_data = self.lam[index]
+        # Handle data from LAMs
+        lam_data = [lam[index] for lam in self.lams]
+        lam_data = np.concatenate(lam_data, axis=self.axis)
+
+        # Handle masked global data for each LAM
         globe_data = self.globe[index]
+        globe_data = np.concatenate(
+            [globe_data[:, :, :, mask] for mask in self.masks], 
+            axis=self.axis
+            )
 
-        globe_data = globe_data[:, :, :, self.mask]
-
+        # Combine LAM data with global data
         result = np.concatenate([lam_data, globe_data], axis=self.axis)
 
         return apply_index_to_slices_changes(result, changes)
-
+    
     @property
     def grids(self):
-        for d in self.datasets:
+        # Ensure each LAM has only one grid, and then return a combined grid layout
+        for d in self.lams:
             if len(d.grids) > 1:
                 raise NotImplementedError("CutoutGrids does not support multi-grids datasets as inputs")
-        shape = self.lam.shape
-        return (shape[-1], self.shape[-1] - shape[-1])
+        lam_total = sum(lam.shape[-1] for lam in self.lams)
+        globe_not_masked = self.shape[-1] - lam_total  # Number of points in the global dataset after cutout
+        return (lam_total, globe_not_masked)
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets])
-
+        return Node(self, [d.tree() for d in self.lams] + [self.globe.tree()], mode="concat")
 
 def grids_factory(args, kwargs):
     if "ensemble" in kwargs:
@@ -223,8 +260,7 @@ def grids_factory(args, kwargs):
     datasets = [_open(e) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Grids(datasets, axis=axis)._subset(**kwargs)
-
+    return Grids(datasets, axis=axis)._subset(**kwargs)    
 
 def cutout_factory(args, kwargs):
     if "ensemble" in kwargs:
