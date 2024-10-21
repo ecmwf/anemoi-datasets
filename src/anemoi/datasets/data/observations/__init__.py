@@ -175,6 +175,10 @@ class MultipleDict(Multiple):
         assert "mean" in dic, f"Expected 'mean' in statistics, got {list(dic.keys())}"
         return dic
 
+    @property
+    def variables_as_dict(self):
+        return {k: d.variables for k, d in self.datasets.items()}
+
 
 class MultipleList(Multiple):
     def __init__(self, datasets, names=None):
@@ -319,6 +323,8 @@ class Select(Forward):
     def __init__(self, dataset, select):
         super().__init__(dataset)
         self._select = select
+        if len(select) != len(set(select)):
+            raise ValueError(f"Duplicate variables: {select}")
         assert all(n in self.forward.variables for n in select), f"Expected {select} in {self.forward.variables}"
 
         self._variables = select
