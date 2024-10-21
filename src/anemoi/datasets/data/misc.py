@@ -319,12 +319,6 @@ def _open_dataset(*args, **kwargs):
 
         assert not sets, sets
         return grids_factory(args, kwargs).mutate()
-
-    if "cutout" in kwargs:
-        from .grids import cutout_factory
-
-        assert not sets, sets
-        return cutout_factory(args, kwargs).mutate()
     
     # Handle cutout for multiple LAMs
     if "cutout" in kwargs:
