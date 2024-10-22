@@ -103,11 +103,17 @@ class PlanetaryComputerStore(ReadOnlyStore):
 
         asset = collection.assets["zarr-abfs"]
 
-        store = {
-            "store": asset.href,
-            "storage_options": asset.extra_fields["xarray:storage_options"],
-            **asset.extra_fields["xarray:open_kwargs"],
-        }
+        if "xarray:storage_options" in asset.extra_fields:
+            store = {
+                "store": asset.href,
+                "storage_options": asset.extra_fields["xarray:storage_options"],
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+        else:
+            store = {
+                "filename_or_obj": asset.href,
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
 
         return store
 
