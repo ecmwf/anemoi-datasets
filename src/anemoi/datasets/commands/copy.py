@@ -15,6 +15,7 @@ from concurrent.futures import as_completed
 import tqdm
 from anemoi.utils.s3 import download
 from anemoi.utils.s3 import upload
+from anemoi.utils.transfer.ssh import ssh_upload
 
 from . import Command
 
@@ -64,6 +65,26 @@ class S3Uploader:
 
     def run(self):
         upload(
+            self.source,
+            self.target,
+            overwrite=self.overwrite,
+            resume=self.resume,
+            verbosity=self.verbosity,
+            threads=self.transfers,
+        )
+
+
+class SSHUploader:
+    def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
+        self.source = source
+        self.target = target
+        self.transfers = transfers
+        self.overwrite = overwrite
+        self.resume = resume
+        self.verbosity = verbosity
+
+    def run(self):
+        ssh_upload(
             self.source,
             self.target,
             overwrite=self.overwrite,
@@ -333,7 +354,6 @@ class CopyMixin:
     def run(self, args):
         if args.source == args.target:
             raise ValueError("Source and target are the same.")
-
         kwargs = vars(args)
 
         if args.overwrite and args.resume:
@@ -342,9 +362,13 @@ class CopyMixin:
         source_in_s3 = args.source.startswith("s3://")
         target_in_s3 = args.target.startswith("s3://")
 
+        target_is_ssh = args.target.startswith("ssh://")
+
         copier = None
 
-        if args.rechunk or (source_in_s3 and target_in_s3):
+        if target_is_ssh:
+            copier = SSHUploader(**kwargs)
+        elif args.rechunk or (source_in_s3 and target_in_s3) or (not source_in_s3 and not target_in_s3):
             copier = DefaultCopier(**kwargs)
         else:
             if source_in_s3:
