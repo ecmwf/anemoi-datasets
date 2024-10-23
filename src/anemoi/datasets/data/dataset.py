@@ -375,8 +375,13 @@ class Dataset:
 
         p = slice(0, count, count // (sample_count - 1))
         samples = list(range(*p.indices(count)))
+
         samples.append(count - 1)  # Add last
         samples = sorted(set(samples))
+        indices = list(indices)
+        samples = [indices[i] for i in samples]
+
+        assert set(samples) <= set(indices)  # Make sure we have the samples
 
         first = None
         constants = [True] * len(self.variables)

@@ -9,6 +9,7 @@
 
 import datetime
 import os
+import warnings
 from contextlib import contextmanager
 
 import numpy as np
@@ -31,11 +32,22 @@ def cache_context(dirname):
 def to_datetime_list(*args, **kwargs):
     from earthkit.data.utils.dates import to_datetime_list as to_datetime_list_
 
+    warnings.warn(
+        "to_datetime_list() is deprecated. Call earthkit.data.utils.dates.to_datetime_list() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return to_datetime_list_(*args, **kwargs)
 
 
 def to_datetime(*args, **kwargs):
     from earthkit.data.utils.dates import to_datetime as to_datetime_
+
+    warnings.warn(
+        "to_datetime() is deprecated. Call earthkit.data.utils.dates.to_datetime() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
     return to_datetime_(*args, **kwargs)
 
