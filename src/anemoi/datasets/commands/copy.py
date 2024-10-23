@@ -15,7 +15,7 @@ from concurrent.futures import as_completed
 import tqdm
 from anemoi.utils.s3 import download
 from anemoi.utils.s3 import upload
-from anemoi.utils.transfer.ssh import ssh_upload
+from anemoi.utils.transfer.ssh import upload as ssh_upload
 
 from . import Command
 
@@ -362,22 +362,34 @@ class CopyMixin:
         source_in_s3 = args.source.startswith("s3://")
         target_in_s3 = args.target.startswith("s3://")
 
+        source_is_ssh = args.source.startswith("ssh://")
         target_is_ssh = args.target.startswith("ssh://")
 
-        copier = None
+        if source_is_ssh:
+            raise NotImplementedError("Transfer from SSH not implemented.")
 
         if target_is_ssh:
-            copier = SSHUploader(**kwargs)
-        elif args.rechunk or (source_in_s3 and target_in_s3) or (not source_in_s3 and not target_in_s3):
-            copier = DefaultCopier(**kwargs)
-        else:
             if source_in_s3:
-                copier = S3Downloader(**kwargs)
+                raise NotImplementedError("S3 to SSH not implemented.")
+            if args.rechunk:
+                raise NotImplementedError("Rechunking to SSH not implemented.")
 
-            if target_in_s3:
-                copier = S3Uploader(**kwargs)
+            SSHUploader(**kwargs).run()
+            return
 
-        copier.run()
+        if args.rechunk or (source_in_s3 and target_in_s3) or (not source_in_s3 and not target_in_s3):
+            DefaultCopier(**kwargs).run()
+            return
+
+        if source_in_s3 and not target_in_s3:
+            S3Downloader(**kwargs).run()
+            return
+
+        if target_in_s3 and not source_in_s3:
+            S3Uploader(**kwargs).run()
+            return
+
+        raise NotImplementedError(f"Transfer from {args.source} and {args.target} is not implemented.")
 
 
 class Copy(CopyMixin, Command):
