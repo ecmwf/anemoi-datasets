@@ -71,7 +71,7 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency
+        self._frequency = frequency.astype(object)
 
     @property
     def dates(self):

@@ -304,6 +304,13 @@ class Zarr(Dataset):
             )
         ]
 
+    @cached_property
+    def constant_fields(self):
+        result = self.z.attrs.get("constant_fields")
+        if result is None:
+            LOG.warning("No 'constant_fields' attribute in %r, computing them", self)
+        return self.computed_constant_fields()
+
     @property
     def variables_metadata(self):
         return self.z.attrs.get("variables_metadata", {})

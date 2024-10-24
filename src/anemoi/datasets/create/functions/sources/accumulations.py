@@ -328,7 +328,9 @@ def _compute_accumulations(
             _member(field),
         )
         values = field.values  # optimisation
-        assert accumulations[key], key
+        if key not in accumulations:
+            raise ValueError(f"Key not found: {key}. Is it an accumulation field?")
+
         for a in accumulations[key]:
             a.add(field, values)
 

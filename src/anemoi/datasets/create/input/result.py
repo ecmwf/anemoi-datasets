@@ -34,6 +34,21 @@ LOG = logging.getLogger(__name__)
 def _fields_metatata(variables, cube):
     assert isinstance(variables, tuple), variables
 
+    KNOWN = {
+        "cos_julian_day": dict(computed_forcing=True, constant_in_time=False),
+        "cos_latitude": dict(computed_forcing=True, constant_in_time=True),
+        "cos_local_time": dict(computed_forcing=True, constant_in_time=False),
+        "cos_longitude": dict(computed_forcing=True, constant_in_time=True),
+        "cos_solar_zenith_angle": dict(computed_forcing=True, constant_in_time=False),
+        "insolation": dict(computed_forcing=True, constant_in_time=False),
+        "latitude": dict(computed_forcing=True, constant_in_time=True),
+        "longitude": dict(computed_forcing=True, constant_in_time=True),
+        "sin_julian_day": dict(computed_forcing=True, constant_in_time=False),
+        "sin_latitude": dict(computed_forcing=True, constant_in_time=True),
+        "sin_local_time": dict(computed_forcing=True, constant_in_time=False),
+        "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
+    }
+
     def _merge(md1, md2):
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
         result = {}
@@ -59,9 +74,17 @@ def _fields_metatata(variables, cube):
 
         return result
 
-    result = {}
+    mars = {}
+    other = defaultdict(dict)
     i = -1
+    date = None
     for c in cube.iterate_cubelets():
+
+        if date is None:
+            date = c._coords_names[0]
+
+        if date != c._coords_names[0]:
+            continue
 
         if i == -1 or c._coords_names[1] != variables[i]:
             i += 1
@@ -79,10 +102,102 @@ def _fields_metatata(variables, cube):
             md["param"] = str(f.metadata("paramId", default="unknown"))
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
-        if variables[i] in result:
-            result[variables[i]] = _merge(md, result[variables[i]])
+        startStep = f.metadata("startStep", default=None)
+        assert startStep is None or isinstance(startStep, int), (startStep, type(f))
+
+        endStep = f.metadata("endStep", default=None)
+        assert endStep is None or isinstance(endStep, int), endStep
+
+        stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
+        typeOfStatisticalProcessing = f.metadata("typeOfStatisticalProcessing", default=None)
+        timeRangeIndicator = f.metadata("timeRangeIndicator", default=None)
+
+        # GRIB1 precipitation accumulations are not correctly encoded
+        if startStep == endStep and stepTypeForConversion == "accum":
+            startStep = 0
+
+        if startStep != endStep:
+            # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
+            TYPE_OF_STATISTICAL_PROCESSING = {
+                None: None,
+                0: "average",
+                1: "accumulation",
+                2: "maximum",
+                3: "minimum",
+                4: "difference(end-start)",
+                5: "root_mean_square",
+                6: "standard_deviation",
+                7: "covariance",
+                8: "difference(start-end)",
+                9: "ratio",
+                10: "standardized_anomaly",
+                11: "summation",
+                100: "severity",
+                101: "mode",
+            }
+
+            # https://codes.ecmwf.int/grib/format/grib1/ctable/5/
+
+            TIME_RANGE_INDICATOR = {
+                4: "accumulation",
+                3: "average",
+            }
+
+            STEP_TYPE_FOR_CONVERSION = {
+                "min": "minimum",
+                "max": "maximum",
+                "accum": "accumulation",
+            }
+
+            #
+            # A few patches
+            #
+
+            PATCHES = {
+                "10fg6": "maximum",
+                "mntpr3": "minimum",  # Not in param db
+                "mntpr6": "minimum",  # Not in param db
+                "mxtpr3": "maximum",  # Not in param db
+                "mxtpr6": "maximum",  # Not in param db
+            }
+
+            process = TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)
+            if process is None:
+                process = TIME_RANGE_INDICATOR.get(timeRangeIndicator)
+            if process is None:
+                process = STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)
+            if process is None:
+                process = PATCHES.get(md["param"])
+                if process is not None:
+                    LOG.error(f"Unknown process {stepTypeForConversion} for {md['param']}, using {process} instead")
+
+            if process is None:
+                raise ValueError(
+                    f"Unknown for {md['param']}:"
+                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get('stepTypeForConversion')}),"
+                    f" {typeOfStatisticalProcessing=} ({TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)}),"
+                    f" {timeRangeIndicator=} ({TIME_RANGE_INDICATOR.get(timeRangeIndicator)})"
+                )
+
+            # print(md["param"], "startStep", startStep, "endStep", endStep, "process", process, "typeOfStatisticalProcessing", typeOfStatisticalProcessing)
+            other[variables[i]]["process"] = process
+            other[variables[i]]["period"] = (startStep, endStep)
+
+        for k in md.copy().keys():
+            if k.startswith("_"):
+                md.pop(k)
+
+        if variables[i] in mars:
+            mars[variables[i]] = _merge(md, mars[variables[i]])
         else:
-            result[variables[i]] = md
+            mars[variables[i]] = md
+
+    result = {}
+    for k, v in mars.items():
+        result[k] = dict(mars=v) if v else {}
+        result[k].update(other[k])
+        result[k].update(KNOWN.get(k, {}))
+        assert result[k], k
 
     assert i + 1 == len(variables), (i + 1, len(variables))
     return result
