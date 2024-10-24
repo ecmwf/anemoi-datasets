@@ -27,10 +27,10 @@ class Dataset:
     arguments = {}
 
     def mutate(self) -> "Dataset":
-        """
-        Give an opportunity to a subclass to return a new Dataset
+        """Give an opportunity to a subclass to return a new Dataset
         object of a different class, if needed.
         """
+
         return self
 
     def swap_with_parent(self, parent):
