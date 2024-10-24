@@ -7,15 +7,13 @@
 
 import logging
 import os
-import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import tqdm
-from anemoi.utils.s3 import download
-from anemoi.utils.s3 import upload
-from anemoi.utils.transfer.ssh import upload as ssh_upload
+from anemoi.utils.transfer import TransferMethodNotImplementedError
+from anemoi.utils.transfer import transfer
 
 from . import Command
 
@@ -27,8 +25,11 @@ except AttributeError:
     isatty = False
 
 
-class S3Downloader:
+class DataTransfer:
     def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
+        if source.startswith("s3://") and not source.endswith("/"):
+            source = source + "/"
+
         self.source = source
         self.target = target
         self.transfers = transfers
@@ -37,34 +38,7 @@ class S3Downloader:
         self.verbosity = verbosity
 
     def run(self):
-        if self.target == ".":
-            self.target = os.path.basename(self.source)
-
-        if self.overwrite and os.path.exists(self.target):
-            LOG.info(f"Deleting {self.target}")
-            shutil.rmtree(self.target)
-
-        download(
-            self.source + "/" if not self.source.endswith("/") else self.source,
-            self.target,
-            overwrite=self.overwrite,
-            resume=self.resume,
-            verbosity=self.verbosity,
-            threads=self.transfers,
-        )
-
-
-class S3Uploader:
-    def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
-        self.source = source
-        self.target = target
-        self.transfers = transfers
-        self.overwrite = overwrite
-        self.resume = resume
-        self.verbosity = verbosity
-
-    def run(self):
-        upload(
+        transfer(
             self.source,
             self.target,
             overwrite=self.overwrite,
@@ -74,27 +48,7 @@ class S3Uploader:
         )
 
 
-class SSHUploader:
-    def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
-        self.source = source
-        self.target = target
-        self.transfers = transfers
-        self.overwrite = overwrite
-        self.resume = resume
-        self.verbosity = verbosity
-
-    def run(self):
-        ssh_upload(
-            self.source,
-            self.target,
-            overwrite=self.overwrite,
-            resume=self.resume,
-            verbosity=self.verbosity,
-            threads=self.transfers,
-        )
-
-
-class DefaultCopier:
+class ZarrCopier:
     def __init__(self, source, target, transfers, block_size, overwrite, resume, verbosity, nested, rechunk, **kwargs):
         self.source = source
         self.target = target
@@ -107,6 +61,14 @@ class DefaultCopier:
         self.rechunk = rechunk
 
         self.rechunking = rechunk.split(",") if rechunk else []
+
+        source_is_ssh = self.source.startswith("ssh://")
+        target_is_ssh = self.target.startswith("ssh://")
+
+        if source_is_ssh or target_is_ssh:
+            if self.rechunk:
+                raise NotImplementedError("Rechunking with SSH not implemented.")
+            assert NotImplementedError("SSH not implemented.")
 
     def _store(self, path, nested=False):
         if nested:
@@ -359,37 +321,19 @@ class CopyMixin:
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
-        source_in_s3 = args.source.startswith("s3://")
-        target_in_s3 = args.target.startswith("s3://")
+        if args.rechunk:
+            # rechunking is only supported for ZARR datasets, it is implemented in this package
+            ZarrCopier(**kwargs).run()
 
-        source_is_ssh = args.source.startswith("ssh://")
-        target_is_ssh = args.target.startswith("ssh://")
-
-        if source_is_ssh:
-            raise NotImplementedError("Transfer from SSH not implemented.")
-
-        if target_is_ssh:
-            if source_in_s3:
-                raise NotImplementedError("S3 to SSH not implemented.")
-            if args.rechunk:
-                raise NotImplementedError("Rechunking to SSH not implemented.")
-
-            SSHUploader(**kwargs).run()
-            return
-
-        if args.rechunk or (source_in_s3 and target_in_s3) or (not source_in_s3 and not target_in_s3):
-            DefaultCopier(**kwargs).run()
-            return
-
-        if source_in_s3 and not target_in_s3:
-            S3Downloader(**kwargs).run()
-            return
-
-        if target_in_s3 and not source_in_s3:
-            S3Uploader(**kwargs).run()
-            return
-
-        raise NotImplementedError(f"Transfer from {args.source} and {args.target} is not implemented.")
+        else:
+            try:
+                DataTransfer(**kwargs).run()
+            except TransferMethodNotImplementedError:
+                # DataTransfer relies on anemoi-utils which is agnostic to the source and target format
+                # it transfers file and folders, ignoring that it is zarr data
+                # it returns False if the transfer is not implemented
+                # then we fall back to the default copier
+                ZarrCopier(**kwargs).run()
 
 
 class Copy(CopyMixin, Command):
