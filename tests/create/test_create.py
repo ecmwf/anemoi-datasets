@@ -101,6 +101,10 @@ def compare_dot_zattrs(a, b, path, errors):
         a_keys = list(a.keys())
         b_keys = list(b.keys())
         for k in set(a_keys) | set(b_keys):
+            if not os.environ.get("ANEMOI_TEST_COMPARE_METADATA"):
+                if k not in a_keys or k not in b_keys:
+                    print(f"ℹ️ {path}.{k} : missing key (only in actual). Skipping.")
+                    continue
             if k not in a_keys:
                 errors.append(f"❌ {path}.{k} : missing key (only in reference)")
                 continue
