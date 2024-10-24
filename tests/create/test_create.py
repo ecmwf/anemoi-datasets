@@ -60,7 +60,6 @@ class LoadSource:
         print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
         print()
         print("⚠️ To upload the test data, run this:")
-        print()
         print(f"python3 {UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
         print()
         exit(1)
@@ -218,14 +217,12 @@ class Comparer:
         if errors:
             print()
             print("⚠️ To update the test reference metadata, run this:")
-            print()
             print(
                 f"python3 {UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
             )
             print()
             print()
             print("⚠️ To update the reference data, run this:")
-            print()
             print(f"anemoi-datasets copy {self.output_path} {self.reference_path} --overwrite")
             print()
             raise AssertionError("Comparison failed")
