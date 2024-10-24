@@ -114,17 +114,17 @@ class Join(Combined):
 
         return result
 
-    @cached_property
+    @property
     def variables_metadata(self):
-        seen = set()
         result = {}
-        for d in reversed(self.datasets):
-            for v in reversed(d.variables):
-                while v in seen:
-                    v = f"({v})"
-                seen.add(v)
-                result[v] = d.variables_metadata[v]
+        variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
+        for d in self.datasets:
+            md = d.variables_metadata
+            for v in variables:
+                if v in md:
+                    result[v] = md[v]
 
+        assert len(result) == len(variables), (result, variables)
         return result
 
     @cached_property
