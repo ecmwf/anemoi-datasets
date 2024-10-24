@@ -61,7 +61,7 @@ class LoadSource:
         print()
         print("⚠️ To upload the test data, run this:")
         print()
-        print(f"{UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
+        print(f"python3 {UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
         print()
         exit(1)
         raise ValueError("Test data is missing")
@@ -220,7 +220,7 @@ class Comparer:
             print("⚠️ To update the test reference metadata, run this:")
             print()
             print(
-                f"{UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
+                f"python3 {UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
             )
             print()
             print()
