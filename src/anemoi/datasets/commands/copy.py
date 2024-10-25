@@ -15,8 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import tqdm
+from anemoi.utils.transfer import Transfer
 from anemoi.utils.transfer import TransferMethodNotImplementedError
-from anemoi.utils.transfer import transfer
 
 from . import Command
 
@@ -26,29 +26,6 @@ try:
     isatty = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
 except AttributeError:
     isatty = False
-
-
-class DataTransfer:
-    def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
-        if source.startswith("s3://") and not source.endswith("/"):
-            source = source + "/"
-
-        self.source = source
-        self.target = target
-        self.transfers = transfers
-        self.overwrite = overwrite
-        self.resume = resume
-        self.verbosity = verbosity
-
-    def run(self):
-        transfer(
-            self.source,
-            self.target,
-            overwrite=self.overwrite,
-            resume=self.resume,
-            verbosity=self.verbosity,
-            threads=self.transfers,
-        )
 
 
 class ZarrCopier:
@@ -319,24 +296,34 @@ class CopyMixin:
     def run(self, args):
         if args.source == args.target:
             raise ValueError("Source and target are the same.")
-        kwargs = vars(args)
 
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
-        if args.rechunk:
+        if not args.rechunk:
             # rechunking is only supported for ZARR datasets, it is implemented in this package
-            ZarrCopier(**kwargs).run()
-
-        else:
             try:
-                DataTransfer(**kwargs).run()
+                if args.source.startswith("s3://") and not args.source.endswith("/"):
+                    args.source = args.source + "/"
+                copier = Transfer(
+                    args.source,
+                    args.target,
+                    overwrite=args.overwrite,
+                    resume=args.resume,
+                    verbosity=args.verbosity,
+                    threads=args.transfers,
+                )
+                copier.run()
+                return
             except TransferMethodNotImplementedError:
                 # DataTransfer relies on anemoi-utils which is agnostic to the source and target format
                 # it transfers file and folders, ignoring that it is zarr data
-                # it returns False if the transfer is not implemented
-                # then we fall back to the default copier
-                ZarrCopier(**kwargs).run()
+                # if it is not implemented, we fallback to the ZarrCopier
+                pass
+
+        copier = ZarrCopier(**vars(args))
+        copier.run()
+        return
 
 
 class Copy(CopyMixin, Command):
