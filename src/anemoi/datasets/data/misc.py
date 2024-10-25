@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import calendar
 import datetime
@@ -235,16 +238,21 @@ def _auto_adjust(datasets, kwargs):
             if set(d.variables) != variables:
                 subset_kwargs[i]["select"] = sorted(variables)
 
+    if "start" or "end" in adjust_set:
+        common = datasets[0].dates
+        for d in datasets[0:]:
+            common = np.intersect1d(common, d.dates)
+
     if "start" in adjust_set:
         assert "start" not in kwargs, "Cannot use 'start' in adjust and kwargs"
-        start = max(d.dates[0] for d in datasets).astype(object)
+        start = min(common).astype(object)
         for i, d in enumerate(datasets):
             if start != d.dates[0]:
                 subset_kwargs[i]["start"] = start
 
     if "end" in adjust_set:
         assert "end" not in kwargs, "Cannot use 'end' in adjust and kwargs"
-        end = min(d.dates[-1] for d in datasets).astype(object)
+        end = max(common).astype(object)
         for i, d in enumerate(datasets):
             if end != d.dates[-1]:
                 subset_kwargs[i]["end"] = end

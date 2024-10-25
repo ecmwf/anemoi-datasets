@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import datetime
 import json
@@ -230,6 +233,27 @@ class Dataset:
         shape.pop(drop_axis)
         return tuple(shape)
 
+    @property
+    def typed_variables(self):
+        from anemoi.transform.variables import Variable
+
+        constants = self.constant_fields
+
+        result = {}
+        for k, v in self.variables_metadata.items():
+
+            # TODO: Once all datasets are updated, we can remove this
+            v = v.copy()
+            if k in constants:
+                v["constant_in_time"] = True
+
+            if "is_constant_in_time" in v:
+                del v["is_constant_in_time"]
+
+            result[k] = Variable.from_dict(k, v)
+
+        return result
+
     def metadata(self):
         import anemoi
 
@@ -286,6 +310,7 @@ class Dataset:
             variables=self.variables,
             variables_metadata=self.variables_metadata,
             shape=self.shape,
+            dtype=str(self.dtype),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
         )
@@ -327,3 +352,60 @@ class Dataset:
 
     def get_dataset_names(self, names):
         raise NotImplementedError(self)
+
+    def computed_constant_fields(self):
+        # Call `constant_fields` instead of `computed_constant_fields`
+        try:
+            # If the tendencies are computed, we can use them
+            return sorted(self._compute_constant_fields_from_statistics())
+        except KeyError:
+            # This can happen if the tendencies are not computed
+            pass
+
+        return sorted(self._compute_constant_fields_from_a_few_samples())
+
+    def _compute_constant_fields_from_a_few_samples(self):
+
+        import numpy as np
+
+        # Otherwise, we need to compute them
+        dates = self.dates
+        indices = set(range(len(dates)))
+        indices -= self.missing
+
+        sample_count = min(4, len(indices))
+        count = len(indices)
+
+        p = slice(0, count, count // (sample_count - 1))
+        samples = list(range(*p.indices(count)))
+
+        samples.append(count - 1)  # Add last
+        samples = sorted(set(samples))
+        indices = list(indices)
+        samples = [indices[i] for i in samples]
+
+        assert set(samples) <= set(indices)  # Make sure we have the samples
+
+        first = None
+        constants = [True] * len(self.variables)
+
+        first = self[samples.pop(0)]
+
+        for sample in samples:
+            row = self[sample]
+            for i, (a, b) in enumerate(zip(row, first)):
+                if np.any(a != b):
+                    constants[i] = False
+
+        return [v for i, v in enumerate(self.variables) if constants[i]]
+
+    def _compute_constant_fields_from_statistics(self):
+        result = []
+
+        t = self.statistics_tendencies()
+
+        for i, v in enumerate(self.variables):
+            if t["mean"][i] == 0 and t["stdev"][i] == 0:
+                result.append(v)
+
+        return result
