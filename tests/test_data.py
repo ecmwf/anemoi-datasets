@@ -1,9 +1,12 @@
-# (C) Copyright 2023 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import datetime
 from functools import cache
@@ -112,6 +115,7 @@ def create_zarr(
     root.attrs["name_to_index"] = {k: i for i, k in enumerate(vars)}
 
     root.attrs["data_request"] = {"grid": 1, "area": "g", "param_level": {}}
+    root.attrs["variables_metadata"] = {v: {} for v in vars}
 
     if missing:
         missing_dates = []
@@ -262,6 +266,9 @@ class DatasetTester:
         assert len([row for row in self.ds]) == len(self.ds)
         assert self.ds.shape == expected_shape, (self.ds.shape, expected_shape)
         assert self.ds.variables == expected_variables
+
+        assert set(self.ds.variables_metadata.keys()) == set(expected_variables)
+
         assert self.ds.name_to_index == expected_name_to_index
         assert self.ds.dates[0] == start_date
         assert self.ds.dates[1] - self.ds.dates[0] == time_increment
