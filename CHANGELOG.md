@@ -25,6 +25,7 @@ Keep it human-readable, your future self will thank you!
 
 - Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
 - ci: pin python versions to 3.9 ... 3.12 for checks (#93)
+- Fix `__version__` import in init
 
 ## [0.5.7](https://github.com/ecmwf/anemoi-datasets/compare/0.5.6...0.5.7) - 2024-10-09
 
