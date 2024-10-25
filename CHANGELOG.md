@@ -23,6 +23,7 @@ Keep it human-readable, your future self will thank you!
 
 ### Changed
 
+- Upload with ssh (experimental)
 - Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
 - ci: pin python versions to 3.9 ... 3.12 for checks (#93)
 - Fix `__version__` import in init
