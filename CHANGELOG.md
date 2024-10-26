@@ -14,6 +14,7 @@ Keep it human-readable, your future self will thank you!
 
 - Bugfix in `auto_adjust`
 - Improve tests
+- More verbosity
 
 ### Added
 

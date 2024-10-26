@@ -405,6 +405,9 @@ class ZarrWithMissingDates(Zarr):
         return "zarr*"
 
 
+QUIET = set()
+
+
 def zarr_lookup(name, fail=True):
 
     if name.endswith(".zarr") or name.endswith(".zip"):
@@ -413,6 +416,9 @@ def zarr_lookup(name, fail=True):
     config = load_config()["datasets"]
 
     if name in config["named"]:
+        if name not in QUIET:
+            LOG.info("Opening `%s` as `%s`", name, config["named"][name])
+            QUIET.add(name)
         return config["named"][name]
 
     tried = []
@@ -426,6 +432,9 @@ def zarr_lookup(name, fail=True):
             if z is not None:
                 # Cache for next time
                 config["named"][name] = full
+                if name not in QUIET:
+                    LOG.info("Opening `%s` as `%s`", name, full)
+                    QUIET.add(name)
                 return full
         except zarr.errors.PathNotFoundError:
             pass

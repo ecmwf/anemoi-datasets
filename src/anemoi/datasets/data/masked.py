@@ -73,19 +73,34 @@ class Thinning(Masked):
         self.thinning = thinning
         self.method = method
 
-        shape = forward.field_shape
-        if len(shape) != 2:
-            raise ValueError("Thinning only works latitude/longitude fields")
+        if thinning is not None:
 
-        latitudes = forward.latitudes.reshape(shape)
-        longitudes = forward.longitudes.reshape(shape)
-        latitudes = latitudes[::thinning, ::thinning].flatten()
-        longitudes = longitudes[::thinning, ::thinning].flatten()
+            shape = forward.field_shape
+            if len(shape) != 2:
+                raise ValueError("Thinning only works latitude/longitude fields")
 
-        mask = [lat in latitudes and lon in longitudes for lat, lon in zip(forward.latitudes, forward.longitudes)]
-        mask = np.array(mask, dtype=bool)
+            # Make a copy, so we read the data only once from zarr
+            forward_latitudes = forward.latitudes.copy()
+            forward_longitudes = forward.longitudes.copy()
+
+            latitudes = forward_latitudes.reshape(shape)
+            longitudes = forward_longitudes.reshape(shape)
+            latitudes = latitudes[::thinning, ::thinning].flatten()
+            longitudes = longitudes[::thinning, ::thinning].flatten()
+
+            # TODO: This is not very efficient
+
+            mask = [lat in latitudes and lon in longitudes for lat, lon in zip(forward_latitudes, forward_longitudes)]
+            mask = np.array(mask, dtype=bool)
+        else:
+            mask = None
 
         super().__init__(forward, mask)
+
+    def mutate(self) -> Dataset:
+        if self.thinning is None:
+            return self.forward.mutate()
+        return super().mutate()
 
     def tree(self):
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
