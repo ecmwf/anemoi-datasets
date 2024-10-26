@@ -13,6 +13,7 @@ Keep it human-readable, your future self will thank you!
 ### Changed
 
 - Bugfix in `auto_adjust`
+- Fixed precommit CI errors
 - Improve tests
 
 ### Added
