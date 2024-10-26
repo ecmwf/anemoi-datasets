@@ -15,6 +15,7 @@ Keep it human-readable, your future self will thank you!
 - Bugfix in `auto_adjust`
 - Fixed precommit CI errors
 - Improve tests
+- More verbosity
 
 ### Added
 
