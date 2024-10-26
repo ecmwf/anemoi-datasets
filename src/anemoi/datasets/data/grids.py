@@ -13,6 +13,7 @@ from functools import cached_property
 
 import numpy as np
 
+from ..grids import serialise_mask
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
@@ -211,6 +212,11 @@ class Cutout(GridsBase):
 
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
+
+    def metadata_specific(self):
+        return super().metadata_specific(
+            mask=serialise_mask(self.mask),
+        )
 
 
 def grids_factory(args, kwargs):

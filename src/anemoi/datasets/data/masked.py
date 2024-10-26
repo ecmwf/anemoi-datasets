@@ -14,6 +14,7 @@ from functools import cached_property
 import numpy as np
 
 from ..grids import cropping_mask
+from ..grids import serialise_mask
 from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
@@ -106,7 +107,7 @@ class Thinning(Masked):
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
 
     def subclass_metadata_specific(self):
-        return dict(thinning=self.thinning, method=self.method)
+        return dict(thinning=self.thinning, method=self.method, mask=serialise_mask(self.mask))
 
 
 class Cropping(Masked):
@@ -131,4 +132,4 @@ class Cropping(Masked):
         return Node(self, [self.forward.tree()], area=self.area)
 
     def subclass_metadata_specific(self):
-        return dict(area=self.area)
+        return dict(area=self.area, mask=serialise_mask(self.mask))
