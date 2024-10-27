@@ -315,6 +315,16 @@ class Dataset:
             end_date=self.end_date.astype(str),
         )
 
+    def supporting_arrays(self):
+        """Arrays to be saved in the checkpoints"""
+        result = dict(latitudes=self.latitudes, longitudes=self.longitudes)
+        self.update_supporting_arrays(result)
+        return result
+
+    def update_supporting_arrays(self, result, *path):
+        # Override this method to add more arrays
+        pass
+
     def metadata_specific(self, **kwargs):
         action = self.__class__.__name__.lower()
         # assert isinstance(self.frequency, datetime.timedelta), (self.frequency, self, action)

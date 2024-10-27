@@ -34,6 +34,8 @@ class Masked(Forwards):
         self.mask = mask
         self.axis = 3
 
+        self.mask_name = f"{self.__class__.__name__.lower()}_mask"
+
     @cached_property
     def shape(self):
         return self.forward.shape[:-1] + (np.count_nonzero(self.mask),)
@@ -68,8 +70,13 @@ class Masked(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
+    def update_supporting_arrays(self, result, *path):
+        super().update_supporting_arrays(result, *path, "mask")
+        result["/".join(path) + f"/{self.mask_name}"] = self.mask
+
 
 class Thinning(Masked):
+
     def __init__(self, forward, thinning, method):
         self.thinning = thinning
         self.method = method
@@ -111,6 +118,7 @@ class Thinning(Masked):
 
 
 class Cropping(Masked):
+
     def __init__(self, forward, area):
         from ..data import open_dataset
 

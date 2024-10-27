@@ -135,6 +135,8 @@ class Subset(Forwards):
     @cached_property
     def frequency(self):
         dates = self.dates
+        if len(dates) < 2:
+            raise ValueError(f"Cannot determine frequency of a subset with less than two dates ({self.dates}).")
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
     def source(self, index):
