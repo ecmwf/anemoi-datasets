@@ -331,6 +331,7 @@ class Dataset:
 
             if path in result:
                 raise ValueError(f"Duplicate key {path}")
+
             result[path] = array
 
         return result
