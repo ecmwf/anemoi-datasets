@@ -323,7 +323,7 @@ class Dataset:
         collected = []
         self.collect_supporting_arrays(collected)
 
-        for (path, name), array in collected:
+        for path, name, array in collected:
             assert isinstance(path, tuple) and isinstance(name, str)
             assert isinstance(array, np.ndarray)
 

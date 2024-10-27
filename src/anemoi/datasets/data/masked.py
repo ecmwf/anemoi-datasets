@@ -72,7 +72,7 @@ class Masked(Forwards):
 
     def collect_supporting_arrays(self, collected, *path):
         super().collect_supporting_arrays(collected, *path, "mask")
-        collected.append((path, self.mask_name), self.mask)
+        collected.append((path, self.mask_name, self.mask))
 
 
 class Thinning(Masked):
