@@ -102,8 +102,8 @@ class Forwards(Dataset):
             **kwargs,
         )
 
-    def update_supporting_arrays(self, result, *path):
-        self.forward.update_supporting_arrays(result, *path)
+    def collect_supporting_arrays(self, collected, *path):
+        self.forward.collect_supporting_arrays(collected, *path)
 
     def source(self, index):
         return self.forward.source(index)
@@ -200,9 +200,9 @@ class Combined(Forwards):
             **kwargs,
         )
 
-    def update_supporting_arrays(self, result, *path):
+    def collect_supporting_arrays(self, collected, *path):
         for i, d in enumerate(self.datasets):
-            d.update_supporting_arrays(result, *path, str(i))
+            d.collect_supporting_arrays(collected, *path, str(i))
 
     @property
     def missing(self):

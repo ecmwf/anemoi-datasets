@@ -158,10 +158,10 @@ class Cutout(GridsBase):
             self.globe.shape[3],
         )
 
-    def update_supporting_arrays(self, result, *path):
-        self.lam.update_supporting_arrays(result, *path, "lam")
-        self.globe.update_supporting_arrays(result, *path, "global")
-        result["/".join(path) + "/cutout_mask"] = self.mask
+    def collect_supporting_arrays(self, collected, *path):
+        self.lam.collect_supporting_arrays(collected, *path, "lam")
+        self.globe.collect_supporting_arrays(collected, *path, "global")
+        collected.append((path, "cutout_mask"), self.mask)
 
     @cached_property
     def shape(self):

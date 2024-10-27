@@ -317,11 +317,25 @@ class Dataset:
 
     def supporting_arrays(self):
         """Arrays to be saved in the checkpoints"""
+        import numpy as np
+
         result = dict(latitudes=self.latitudes, longitudes=self.longitudes)
-        self.update_supporting_arrays(result)
+        collected = []
+        self.collect_supporting_arrays(collected)
+
+        for (path, name), array in collected:
+            assert isinstance(path, tuple) and isinstance(name, str)
+            assert isinstance(array, np.ndarray)
+
+            path = "/".join([*path, name])
+
+            if path in result:
+                raise ValueError(f"Duplicate key {path}")
+            result[path] = array
+
         return result
 
-    def update_supporting_arrays(self, result, *path):
+    def collect_supporting_arrays(self, collected, *path):
         # Override this method to add more arrays
         pass
 

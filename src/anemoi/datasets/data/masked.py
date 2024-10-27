@@ -70,9 +70,9 @@ class Masked(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
-    def update_supporting_arrays(self, result, *path):
-        super().update_supporting_arrays(result, *path, "mask")
-        result["/".join(path) + f"/{self.mask_name}"] = self.mask
+    def collect_supporting_arrays(self, collected, *path):
+        super().collect_supporting_arrays(collected, *path, "mask")
+        collected.append((path, self.mask_name), self.mask)
 
 
 class Thinning(Masked):
