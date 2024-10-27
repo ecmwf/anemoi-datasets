@@ -13,7 +13,6 @@ from functools import cached_property
 
 import numpy as np
 
-from ..grids import serialise_mask
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
@@ -109,6 +108,17 @@ class GridsBase(GivenAxis):
         # We don't check the resolution, because we want to be able to combine
         pass
 
+    def metadata_specific(self):
+        return super().metadata_specific(
+            multi_grids=True,
+        )
+
+    def collect_input_sources(self, collected):
+        # We assume that,because they have different grids, they have different input sources
+        for d in self.datasets:
+            collected.append(d)
+            d.collect_input_sources(collected)
+
 
 class Grids(GridsBase):
     # TODO: select the statistics of the most global grid?
@@ -159,8 +169,6 @@ class Cutout(GridsBase):
         )
 
     def collect_supporting_arrays(self, collected, *path):
-        self.lam.collect_supporting_arrays(collected, *path, "lam")
-        self.globe.collect_supporting_arrays(collected, *path, "global")
         collected.append((path, "cutout_mask", self.mask))
 
     @cached_property
@@ -218,10 +226,10 @@ class Cutout(GridsBase):
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
 
-    def metadata_specific(self):
-        return super().metadata_specific(
-            mask=serialise_mask(self.mask),
-        )
+    # def metadata_specific(self):
+    #     return super().metadata_specific(
+    #         mask=serialise_mask(self.mask),
+    #     )
 
 
 def grids_factory(args, kwargs):

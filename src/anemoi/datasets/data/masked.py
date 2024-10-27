@@ -14,7 +14,6 @@ from functools import cached_property
 import numpy as np
 
 from ..grids import cropping_mask
-from ..grids import serialise_mask
 from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
@@ -71,7 +70,7 @@ class Masked(Forwards):
         return result
 
     def collect_supporting_arrays(self, collected, *path):
-        super().collect_supporting_arrays(collected, *path, "mask")
+        super().collect_supporting_arrays(collected, *path)
         collected.append((path, self.mask_name, self.mask))
 
 
@@ -114,7 +113,7 @@ class Thinning(Masked):
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
 
     def subclass_metadata_specific(self):
-        return dict(thinning=self.thinning, method=self.method, mask=serialise_mask(self.mask))
+        return dict(thinning=self.thinning, method=self.method)
 
 
 class Cropping(Masked):
@@ -140,4 +139,4 @@ class Cropping(Masked):
         return Node(self, [self.forward.tree()], area=self.area)
 
     def subclass_metadata_specific(self):
-        return dict(area=self.area, mask=serialise_mask(self.mask))
+        return dict(area=self.area)

@@ -24,6 +24,7 @@ Keep it human-readable, your future self will thank you!
 - Control compatibility check in xy/zip
 - Add `merge` feature
 - Add support for storing `supporting_arrays` in checkpoint files
+- Allow naming of datasets components
 
 ### Changed
 

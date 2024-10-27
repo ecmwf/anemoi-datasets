@@ -9,6 +9,7 @@
 
 
 import logging
+import warnings
 from functools import cached_property
 
 import numpy as np
@@ -33,6 +34,12 @@ class Forwards(Dataset):
 
     def __getitem__(self, n):
         return self.forward[n]
+
+    @property
+    def name(self):
+        if self._name is not None:
+            return self._name
+        return self.forward.name
 
     @property
     def dates(self):
@@ -104,6 +111,9 @@ class Forwards(Dataset):
 
     def collect_supporting_arrays(self, collected, *path):
         self.forward.collect_supporting_arrays(collected, *path)
+
+    def collect_input_sources(self, collected):
+        self.forward.collect_input_sources(collected)
 
     def source(self, index):
         return self.forward.source(index)
@@ -201,8 +211,10 @@ class Combined(Forwards):
         )
 
     def collect_supporting_arrays(self, collected, *path):
+        warnings.warn(f"The behaviour of {self.__class__.__name__}.collect_supporting_arrays() is not well defined")
         for i, d in enumerate(self.datasets):
-            d.collect_supporting_arrays(collected, *path, str(i))
+            name = d.name if d.name is not None else i
+            d.collect_supporting_arrays(collected, *path, name)
 
     @property
     def missing(self):
