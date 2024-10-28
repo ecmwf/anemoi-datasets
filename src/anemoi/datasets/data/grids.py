@@ -108,6 +108,17 @@ class GridsBase(GivenAxis):
         # We don't check the resolution, because we want to be able to combine
         pass
 
+    def metadata_specific(self):
+        return super().metadata_specific(
+            multi_grids=True,
+        )
+
+    def collect_input_sources(self, collected):
+        # We assume that,because they have different grids, they have different input sources
+        for d in self.datasets:
+            collected.append(d)
+            d.collect_input_sources(collected)
+
 
 class Grids(GridsBase):
     # TODO: select the statistics of the most global grid?
@@ -156,6 +167,9 @@ class Cutout(GridsBase):
             len(self.mask),
             self.globe.shape[3],
         )
+
+    def collect_supporting_arrays(self, collected, *path):
+        collected.append((path, "cutout_mask", self.mask))
 
     @cached_property
     def shape(self):
@@ -212,6 +226,11 @@ class Cutout(GridsBase):
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets])
 
+    # def metadata_specific(self):
+    #     return super().metadata_specific(
+    #         mask=serialise_mask(self.mask),
+    #     )
+
 
 def grids_factory(args, kwargs):
     if "ensemble" in kwargs:
@@ -241,7 +260,7 @@ def cutout_factory(args, kwargs):
     neighbours = kwargs.pop("neighbours", 5)
 
     assert len(args) == 0
-    assert isinstance(cutout, (list, tuple))
+    assert isinstance(cutout, (list, tuple)), "cutout must be a list or tuple"
 
     datasets = [_open(e) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)

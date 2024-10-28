@@ -344,6 +344,12 @@ class Zarr(Dataset):
         name, _ = os.path.splitext(os.path.basename(self.path))
         names.add(name)
 
+    def collect_supporting_arrays(self, collected, *path):
+        pass
+
+    def collect_input_sources(self, collected):
+        pass
+
 
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
