@@ -23,6 +23,7 @@ Keep it human-readable, your future self will thank you!
 - Various bug fixes
 - Control compatibility check in xy/zip
 - Add `merge` feature
+- Contributors file (#105)
 
 ### Changed
 
