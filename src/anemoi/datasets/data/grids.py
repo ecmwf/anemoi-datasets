@@ -260,7 +260,7 @@ def cutout_factory(args, kwargs):
     neighbours = kwargs.pop("neighbours", 5)
 
     assert len(args) == 0
-    assert isinstance(cutout, (list, tuple))
+    assert isinstance(cutout, (list, tuple)), "cutout must be a list or tuple"
 
     datasets = [_open(e) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)

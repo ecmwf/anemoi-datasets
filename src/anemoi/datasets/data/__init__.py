@@ -25,7 +25,30 @@ class MissingDateError(Exception):
     pass
 
 
+def _convert(x):
+
+    if isinstance(x, list):
+        return [_convert(a) for a in x]
+
+    if isinstance(x, tuple):
+        return tuple(_convert(a) for a in x)
+
+    if isinstance(x, dict):
+        return {k: _convert(v) for k, v in x.items()}
+
+    if x.__class__.__name__ in ("DictConfig", "ListConfig"):
+        from omegaconf import OmegaConf
+
+        return OmegaConf.to_container(x, resolve=True)
+
+    return x
+
+
 def open_dataset(*args, **kwargs):
+
+    # That will get rif of OmegaConf objects
+    args, kwargs = _convert(args), _convert(kwargs)
+
     ds = _open_dataset(*args, **kwargs)
     ds = ds.mutate()
     ds.arguments = {"args": args, "kwargs": kwargs}

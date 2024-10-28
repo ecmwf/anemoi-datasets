@@ -376,7 +376,7 @@ class Dataset:
 
         return result
 
-    def support_arrays(self):
+    def supporting_arrays(self):
         """Arrays to be saved in the checkpoints"""
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays

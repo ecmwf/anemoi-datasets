@@ -270,6 +270,7 @@ def _auto_adjust(datasets, kwargs):
 
 
 def _open_dataset(*args, **kwargs):
+
     sets = []
     for a in args:
         sets.append(_open(a))
