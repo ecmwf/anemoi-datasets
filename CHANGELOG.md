@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
-## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...HEAD)
+## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.8...HEAD)
+
+## [0.5.8](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...0.5.8) - 2024-10-26
 
 ### Changed
 
