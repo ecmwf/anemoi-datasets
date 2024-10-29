@@ -242,8 +242,8 @@ def test_run(name):
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
     s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
     # if not os.path.exists(reference_path):
-    #    from anemoi.utils.s3 import download as s3_download
-    #    s3_download(s3_uri + '/', reference_path, overwrite=True)
+    #    from anemoi.utils.remote import transfer
+    #    transfer(s3_uri + '/', reference_path, overwrite=True)
 
     Comparer(name, output_path=output, reference_path=s3_uri).compare()
     # Comparer(name, output_path=output, reference_path=reference_path).compare()
