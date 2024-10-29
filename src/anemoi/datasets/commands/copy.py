@@ -15,8 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import tqdm
-from anemoi.utils.transfer import Transfer
-from anemoi.utils.transfer import TransferMethodNotImplementedError
+from anemoi.utils.remote import Transfer
+from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from . import Command
 
