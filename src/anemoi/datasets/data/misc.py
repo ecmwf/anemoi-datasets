@@ -320,26 +320,11 @@ def _open_dataset(*args, **kwargs):
         assert not sets, sets
         return grids_factory(args, kwargs).mutate()
     
-    # Handle cutout for multiple LAMs
     if "cutout" in kwargs:
-        cutout_datasets = kwargs["cutout"]  # Access cutout without popping
-        
-        # Wrapping in a List
-        if not isinstance(cutout_datasets, (list, tuple)):
-            cutout_datasets = [cutout_datasets]
-        
-        # Ensure we have at least one global dataset
-        global_dataset = cutout_datasets[-1]  # All but the last are LAMs
-        lam_datasets = cutout_datasets[:-1]  # Assuming the last one is the global 
-        
-        # Call cutout_factory with the LAMs and global dataset
         from .grids import cutout_factory
-        cutout_result = cutout_factory(
-            lam_datasets + [global_dataset], # TODO: could we drop passing args?
-            **kwargs
-            )
-        return cutout_result.mutate()
-    
+
+        assert not sets, sets
+        return cutout_factory(args, kwargs).mutate()
 
     for name in ("datasets", "dataset"):
         if name in kwargs:

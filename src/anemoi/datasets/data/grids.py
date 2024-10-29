@@ -128,124 +128,271 @@ class Grids(GridsBase):
 
 
 class Cutout(GridsBase):
-    def __init__(self, datasets, axis, min_distance_km=None, cropping_distance=2.0, neighbours=5, plot=False):
-        from anemoi.datasets.grids import cutout_mask
+    def __init__(
+        self, 
+        datasets, 
+        axis=3, 
+        cropping_distance=2.0, 
+        neighbours=5, 
+        min_distance_km=None, 
+        plot=None
+        ):
+        """
+        Initializes a Cutout object for hierarchical management of Limited Area 
+        Models (LAMs) and a global dataset, handling overlapping regions.
 
+        Args:
+            datasets (list): List of LAM and global datasets.
+            axis (int): Concatenation axis, must be set to 3.
+            cropping_distance (float): Distance threshold in degrees for
+                cropping cutouts.
+            neighbours (int): Number of neighboring points to consider when
+                constructing masks.
+            min_distance_km (float, optional): Minimum distance threshold in km
+                between grid points.
+            plot (bool, optional): Flag to enable or disable visualization
+                plots.
+        """
         super().__init__(datasets, axis)
-        assert len(datasets) == 2, "CutoutGrids requires two datasets"
+        assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
         assert axis == 3, "CutoutGrids requires axis=3"
-        
-        # Assume that all datasets except the last one are LAMs, and the last 
-        # one is the global model
-        self.lams = datasets[:-1]
+        assert cropping_distance >= 0, "cropping_distance must be a non-negative number"
+        if min_distance_km is not None:
+            assert min_distance_km >= 0, "min_distance_km must be a non-negative number"
+
+        self.lams = datasets[:-1]  # Assume last dataset is the global one
         self.globe = datasets[-1]
+        self.axis = axis
+        self.cropping_distance = cropping_distance
+        self.neighbours = neighbours
+        self.min_distance_km = min_distance_km
+        self.plot = plot
+        self.masks = []  # To store the masks for each LAM dataset
+        self.global_mask = np.ones(self.globe.shape[-1], dtype=bool)
+
+        # Initialize cumulative masks
+        self._initialize_masks()
+
+    def _initialize_masks(self):
+        """
+        Generates hierarchical masks for each LAM dataset by excluding
+        overlapping regions with previous LAMs and creating a global mask for
+        the global dataset.
         
-        # Initialize masks
-        self.masks = []
-        
-        # Track already used points in the global dataset
-        used_points = np.zeros(self.globe.shape[3], dtype=bool) 
-        
-        for lam in self.lams:
-            current_mask = cutout_mask(
-                lam.latitudes,
-                lam.longitudes,
-                self.globe.latitudes,
-                self.globe.longitudes,
-                plot=plot,
-                min_distance_km=min_distance_km,
-                cropping_distance=cropping_distance,
-                neighbours=neighbours,
+        Raises:
+            ValueError: If the global mask dimension does not match the global
+                dataset grid points.
+        """
+        from anemoi.datasets.grids import cutout_mask
+        for i, lam in enumerate(self.lams):
+            assert len(lam.shape) == len(self.globe.shape), (
+                "LAMs and global dataset must have the same number of dimensions"
             )
-            # Exclude points already covered by previous LAMs
-            current_mask[used_points] = False
-            self.masks.append(current_mask)
-            # Mark the current LAM's points as used
-            # This ensures that all points already covered by any LAM (up to the 
-            # current one) are marked as True in used_points, so future LAMs or 
-            # the global dataset will avoid using these points.
-            used_points |= current_mask
+            lam_lats = lam.latitudes
+            lam_lons = lam.longitudes
+            # Create a mask for the global dataset excluding all LAM points
+            global_overlap_mask = cutout_mask(
+                    lam.latitudes,
+                    lam.longitudes,
+                    self.globe.latitudes,
+                    self.globe.longitudes,
+                    plot=False,
+                    min_distance_km=self.min_distance_km,
+                    cropping_distance=self.cropping_distance,
+                    neighbours=self.neighbours,
+                )
+            
+            # Ensure the mask dimensions match the global grid points
+            if global_overlap_mask.shape[0] != self.globe.shape[-1]:
+                raise ValueError(
+                    "Global mask dimension does not match global dataset grid "
+                    "points."
+                )
+            self.global_mask[~global_overlap_mask] = False
+            
+            # Create a mask for the LAM datasets hierarchically, excluding
+            # points from previous LAMs
+            lam_current_mask = np.ones(lam.shape[-1], dtype=bool)
+            if i > 0:
+                for j in range(i): 
+                    prev_lam = self.lams[j]
+                    prev_lam_lats = prev_lam.latitudes
+                    prev_lam_lons = prev_lam.longitudes 
+                    # Check for overlap by computing distances
+                    if self.has_overlap(prev_lam_lats, prev_lam_lons, lam_lats, 
+                                        lam_lons):
+                        lam_overlap_mask = cutout_mask(
+                            prev_lam_lats,
+                            prev_lam_lons,
+                            lam_lats,
+                            lam_lons,
+                            plot=False,
+                            min_distance_km=self.min_distance_km,
+                            cropping_distance=self.cropping_distance,
+                            neighbours=self.neighbours,
+                        )
+                        lam_current_mask[~lam_overlap_mask] = False
+            self.masks.append(lam_current_mask)
+            
+    def has_overlap(self, lats1, lons1, lats2, lons2, distance_threshold=1.0):
+        """
+        Checks for overlapping points between two sets of latitudes and
+        longitudes within a specified distance threshold.
+
+        Args:
+            lats1, lons1 (np.ndarray): Latitude and longitude arrays for the
+                first dataset.
+            lats2, lons2 (np.ndarray): Latitude and longitude arrays for the
+                second dataset.
+            distance_threshold (float): Distance in degrees to consider as
+                overlapping.
+
+        Returns:
+            bool: True if any points overlap within the distance threshold,
+                otherwise False.
+        """
+        from scipy.spatial import cKDTree
+
+        # Create KDTree for the first set of points
+        tree = cKDTree(np.vstack((lats1, lons1)).T)
         
-        assert len(self.masks) == len(self.lams)
-        assert len(used_points) == self.globe.shape[3], "Mask length mismatch with global shape"
-
-    @cached_property
-    def shape(self):
-        lam_shapes = [lam.shape for lam in self.lams]
-        globe_shape = self.globe.shape
-
-        # Number of non-zero masked values in the globe dataset for each LAM
-        nb_globe = sum(np.count_nonzero(mask) for mask in self.masks)
-        # Total number of grid points covered by all the LAM datasets
-        lam_total_length = sum(shape[-1] for shape in lam_shapes)
-
-        # Combine the shape information
-        return lam_shapes[0][:-1] + (lam_total_length + nb_globe,)
-
-    def check_same_resolution(self, d1, d2):
-        # Turned off because we are combining different resolutions
-        pass
-    
-    @property
-    def latitudes(self):
-        # Concatenate latitudes from all LAMs and the masked global dataset
-        lam_latitudes = np.concatenate([lam.latitudes for lam in self.lams])
-        globe_latitudes = np.concatenate(
-            [self.globe.latitudes[mask] for mask in self.masks]
-            )
-        return np.concatenate([lam_latitudes, globe_latitudes])
-
-    @property
-    def longitudes(self):
-        # Concatenate longitudes from all LAMs and the masked global dataset
-        lam_longitudes = np.concatenate([lam.longitudes for lam in self.lams])
-        globe_longitudes = np.concatenate([self.globe.longitudes[mask] for mask in self.masks])
-        return np.concatenate([lam_longitudes, globe_longitudes])
-
+        # Query the second set of points against the first tree
+        distances, _ = tree.query(np.vstack((lats2, lons2)).T, k=1)
+        
+        # Check if any distance is less than the specified threshold
+        return np.any(distances < distance_threshold)
+            
     def __getitem__(self, index):
+        """
+        Retrieves data from the masked LAMs and global dataset based on the
+        given index.
+
+        Args:
+            index (int or slice or tuple): Index specifying the data to
+                retrieve.
+
+        Returns:
+            np.ndarray: Data array from the masked datasets based on the index.
+        """
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
     
-    @debug_indexing
-    @expand_list_indexing
     def _get_tuple(self, index):
-        assert self.axis >= len(index) or index[self.axis] == slice(
-            None
-        ), f"No support for selecting a subset of the 1D values {index} ({self.tree()})"
+        """
+        Helper method that applies masks and retrieves data from each dataset
+        according to the specified index.
+
+        Args:
+            index (tuple): Index specifying slices to retrieve data.
+
+        Returns:
+            np.ndarray: Concatenated data array from all datasets based on the
+                index.
+        """
         index, changes = index_to_slices(index, self.shape)
-
-        # In case index_to_slices has changed the last slice
-        index, _ = update_tuple(index, self.axis, slice(None))
-
-        # Handle data from LAMs
+        # Select data from each LAM
         lam_data = [lam[index] for lam in self.lams]
-        lam_data = np.concatenate(lam_data, axis=self.axis)
 
-        # Handle masked global data for each LAM
-        globe_data = self.globe[index]
-        globe_data = np.concatenate(
-            [globe_data[:, :, :, mask] for mask in self.masks], 
-            axis=self.axis
-            )
-
-        # Combine LAM data with global data
-        result = np.concatenate([lam_data, globe_data], axis=self.axis)
-
+        # First apply spatial indexing on `self.globe` and then apply the mask
+        globe_data_sliced = self.globe[index[:3]]
+        globe_data = globe_data_sliced[..., self.global_mask]
+        
+        # Concatenate LAM data with global data
+        result = np.concatenate(lam_data + [globe_data], axis=self.axis)
         return apply_index_to_slices_changes(result, changes)
-    
+
+    @property
+    def shape(self):
+        """
+        Returns the shape of the Cutout, accounting for retained grid points
+        across all LAMs and the global dataset.
+
+        Returns:
+            tuple: Shape of the concatenated masked datasets.
+        """
+        shapes = [np.sum(mask) for mask in self.masks]
+        global_shape = np.sum(self.global_mask)
+        return tuple(self.lams[0].shape[:-1] + (sum(shapes) + global_shape,))
+
+    def check_same_resolution(self, d1, d2):
+        # Skipped since we're combining different resolutions
+        pass
+            
     @property
     def grids(self):
-        # Ensure each LAM has only one grid, and then return a combined grid layout
-        for d in self.lams:
-            if len(d.grids) > 1:
-                raise NotImplementedError("CutoutGrids does not support multi-grids datasets as inputs")
-        lam_total = sum(lam.shape[-1] for lam in self.lams)
-        globe_not_masked = self.shape[-1] - lam_total  # Number of points in the global dataset after cutout
-        return (lam_total, globe_not_masked)
+        """
+        Returns the number of grid points for each LAM and the global dataset
+        after applying masks.
 
+        Returns:
+            tuple: Count of retained grid points for each dataset.
+        """
+        grids = [np.sum(mask) for mask in self.masks]
+        grids.append(np.sum(self.global_mask))
+        return tuple(grids)
+
+    @property
+    def latitudes(self):
+        """
+        Returns the concatenated latitudes of each LAM and the global dataset
+        after applying masks.
+
+        Returns:
+            np.ndarray: Concatenated latitude array for the masked datasets.
+        """
+        lam_latitudes = np.concatenate(
+            [lam.latitudes[mask] for lam, mask in zip(self.lams, self.masks)]
+        )
+        
+        assert (len(lam_latitudes) + 
+            len(self.globe.latitudes[self.global_mask]) 
+            == self.shape[-1]), "Mismatch in number of latitudes"
+
+        
+        latitudes = np.concatenate(
+            [lam_latitudes, self.globe.latitudes[self.global_mask]]
+        )
+        return latitudes
+
+    @property
+    def longitudes(self):
+        """
+        Returns the concatenated longitudes of each LAM and the global dataset
+        after applying masks.
+
+        Returns:
+            np.ndarray: Concatenated longitude array for the masked datasets.
+        """
+        lam_longitudes = np.concatenate(
+            [lam.longitudes[mask] for lam, mask in zip(self.lams, self.masks)]
+        )
+        
+        assert (len(lam_longitudes) + 
+            len(self.globe.longitudes[self.global_mask]) 
+            == self.shape[-1]), "Mismatch in number of longitudes"
+
+        longitudes = np.concatenate(
+            [lam_longitudes, self.globe.longitudes[self.global_mask]]
+        )
+        return longitudes
+
+    @property
     def tree(self):
-        return Node(self, [d.tree() for d in self.lams] + [self.globe.tree()], mode="concat")
+        """
+        Constructs and returns a KDTree for fast spatial searching across all
+        grid points in the masked datasets.
+
+        Returns:
+            cKDTree: KDTree object for spatial queries on all datasets.
+        """
+        all_points = np.concatenate(
+            [np.column_stack((lat, lon)) 
+             for lat, lon in zip(self.latitudes, self.longitudes)],
+            axis=0
+        )
+        return cKDTree(all_points)
+    
 
 def grids_factory(args, kwargs):
     if "ensemble" in kwargs:
