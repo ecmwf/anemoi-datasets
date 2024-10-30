@@ -85,6 +85,41 @@ class S3Store(ReadOnlyStore):
         return response["Body"].read()
 
 
+class PlanetaryComputerStore(ReadOnlyStore):
+    """We write our own Store to access catalogs on Planetary Computer,
+    as it requires some extra arguements to use xr.open_zarr.
+    """
+
+    def __init__(self, data_catalog_id):
+        self.data_catalog_id = data_catalog_id
+
+    def __getitem__(self):
+        import pystac_client
+        import planetary_computer
+
+        catalog = pystac_client.Client.open(
+            "https://planetarycomputer.microsoft.com/api/stac/v1/",
+            modifier=planetary_computer.sign_inplace,
+        )
+        collection = catalog.get_collection(self.data_catalog_id)
+
+        asset = collection.assets["zarr-abfs"]
+
+        if "xarray:storage_options" in asset.extra_fields:
+            store = {
+                "store": asset.href,
+                "storage_options": asset.extra_fields["xarray:storage_options"],
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+        else:
+            store = {
+                "filename_or_obj": asset.href,
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+
+        return store
+
+
 class DebugStore(ReadOnlyStore):
     """A store to debug the zarr loading."""
 
@@ -121,6 +156,9 @@ def name_to_zarr_store(path_or_url):
         if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
             s3_url = f"s3://{bits[0]}{parsed.path}"
             store = S3Store(s3_url, region=bits[2])
+        elif store.startswith("https://planetarycomputer.microsoft.com/"):
+            data_catalog_id = store.rsplit('/', 1)[-1]
+            store = PlanetaryComputerStore(data_catalog_id).__getitem__()
         else:
             store = HTTPStore(store)
 
