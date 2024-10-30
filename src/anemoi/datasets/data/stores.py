@@ -94,8 +94,8 @@ class PlanetaryComputerStore(ReadOnlyStore):
         self.data_catalog_id = data_catalog_id
 
     def __getitem__(self):
-        import pystac_client
         import planetary_computer
+        import pystac_client
 
         catalog = pystac_client.Client.open(
             "https://planetarycomputer.microsoft.com/api/stac/v1/",
@@ -157,7 +157,7 @@ def name_to_zarr_store(path_or_url):
             s3_url = f"s3://{bits[0]}{parsed.path}"
             store = S3Store(s3_url, region=bits[2])
         elif store.startswith("https://planetarycomputer.microsoft.com/"):
-            data_catalog_id = store.rsplit('/', 1)[-1]
+            data_catalog_id = store.rsplit("/", 1)[-1]
             store = PlanetaryComputerStore(data_catalog_id).__getitem__()
         else:
             store = HTTPStore(store)

@@ -97,9 +97,9 @@ optional-dependencies.tests = [
 optional-dependencies.xarray = [
   "gcsfs",
   "kerchunk",
-  "pandas", 
-  "pystac_client",
-  "planetary_computer",
+  "pandas",
+  "planetary-computer",
+  "pystac-client",
 ]
 
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
