@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import base64
 import logging
 
 import numpy as np
@@ -326,6 +327,56 @@ def outline(lats, lons, neighbours=5):
             outside.append(i)
 
     return outside
+
+
+def deserialise_mask(encoded):
+    import pickle
+    import zlib
+
+    packed = pickle.loads(zlib.decompress(base64.b64decode(encoded)))
+
+    mask = []
+    value = False
+    for count in packed:
+        mask.extend([value] * count)
+        value = not value
+    return np.array(mask, dtype=bool)
+
+
+def _serialise_mask(mask):
+    import pickle
+    import zlib
+
+    assert len(mask.shape) == 1
+    assert len(mask)
+
+    packed = []
+    last = mask[0]
+    count = 1
+
+    for value in mask[1:]:
+        if value == last:
+            count += 1
+        else:
+            packed.append(count)
+            last = value
+            count = 1
+
+    packed.append(count)
+
+    # We always start with an 'off' value
+    # So if the first value is 'on', we need to add a zero
+    if mask[0]:
+        packed.insert(0, 0)
+
+    return base64.b64encode(zlib.compress(pickle.dumps(packed))).decode("utf-8")
+
+
+def serialise_mask(mask):
+    result = _serialise_mask(mask)
+    # Make sure we can deserialise it
+    assert np.all(mask == deserialise_mask(result))
+    return result
 
 
 if __name__ == "__main__":

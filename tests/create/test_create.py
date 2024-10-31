@@ -26,6 +26,8 @@ from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
 
+UPLOAD_EXE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
+
 
 HERE = os.path.dirname(__file__)
 # find_yamls
@@ -56,11 +58,9 @@ class LoadSource:
         ds = original_from_source("mars", *args, **kwargs)
         ds.save(upload_path)
         print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
-        exe = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
         print()
         print("⚠️ To upload the test data, run this:")
-        print()
-        print(f"{exe} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
+        print(f"python3 {UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
         print()
         exit(1)
         raise ValueError("Test data is missing")
@@ -196,15 +196,15 @@ def compare_statistics(ds1, ds2):
 class Comparer:
     def __init__(self, name, output_path=None, reference_path=None):
         self.name = name
-        self.output = output_path or os.path.join(name + ".zarr")
+        self.output_path = output_path or os.path.join(name + ".zarr")
         self.reference_path = reference_path
-        print(f"Comparing {self.output} and {self.reference_path}")
+        print(f"Comparing {self.output_path} and {self.reference_path}")
 
-        self.z_output = open_zarr(self.output)
+        self.z_output = open_zarr(self.output_path)
         self.z_reference = open_zarr(self.reference_path)
 
         self.z_reference["data"]
-        self.ds_output = open_dataset(self.output)
+        self.ds_output = open_dataset(self.output_path)
         self.ds_reference = open_dataset(self.reference_path)
 
     def compare(self):
@@ -215,6 +215,16 @@ class Comparer:
             print("\n".join(errors))
 
         if errors:
+            print()
+            print("⚠️ To update the test reference metadata, run this:")
+            print(
+                f"python3 {UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
+            )
+            print()
+            print()
+            print("⚠️ To update the reference data, run this:")
+            print(f"anemoi-datasets copy {self.output_path} {self.reference_path} --overwrite")
+            print()
             raise AssertionError("Comparison failed")
 
         compare_datasets(self.ds_output, self.ds_reference)

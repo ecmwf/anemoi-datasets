@@ -16,6 +16,7 @@ import uuid
 import warnings
 from functools import cached_property
 
+import cftime
 import numpy as np
 import tqdm
 from anemoi.utils.config import DotDict as DotDict
@@ -65,6 +66,19 @@ def json_tidy(o):
 
     if isinstance(o, datetime.timedelta):
         return frequency_to_string(o)
+
+    if isinstance(o, cftime.DatetimeJulian):
+        import pandas as pd
+
+        o = pd.Timestamp(
+            o.year,
+            o.month,
+            o.day,
+            o.hour,
+            o.minute,
+            o.second,
+        )
+        return o.isoformat()
 
     raise TypeError(repr(o) + " is not JSON serializable")
 

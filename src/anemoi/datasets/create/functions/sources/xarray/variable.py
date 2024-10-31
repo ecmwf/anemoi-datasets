@@ -83,9 +83,8 @@ class Variable:
         )
 
     def __getitem__(self, i):
-        """
-        Get a 2D field from the variable
-        """
+        """Get a 2D field from the variable"""
+
         if i >= self.length:
             raise IndexError(i)
 
@@ -118,7 +117,7 @@ class Variable:
 
         variable = Variable(
             ds=self.ds,
-            var=self.variable.isel({k: i}),
+            variable=self.variable.isel({k: i}),
             coordinates=coordinates,
             grid=self.grid,
             time=self.time,
