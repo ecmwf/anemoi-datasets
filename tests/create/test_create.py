@@ -37,7 +37,23 @@ SKIP = ["recentre"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
-skip_for_speed = sys.version_info[:2] in [(3, 9), (3, 11)]
+
+def is_ubuntu():
+    if os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            return "Ubuntu" in f.read()
+    return False
+
+
+def is_darwin():
+    if os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            return "Darwin" in f.read()
+    return False
+
+
+# run extensive tests only on Ubuntu and Darwin, and not on Python 3.9 and 3.11
+extensive_tests = (sys.version_info[:2] not in [(3, 9), (3, 11)]) and (is_ubuntu() or is_darwin())
 
 
 def mockup_from_source(func):
@@ -236,7 +252,7 @@ class Comparer:
 
 
 @pytest.mark.parametrize("name", NAMES)
-@pytest.mark.skipif(skip_for_speed, reason="Skipping to run the test faster")
+@pytest.mark.skipif(not extensive_tests, reason="Skipping to run the test faster")
 @mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
