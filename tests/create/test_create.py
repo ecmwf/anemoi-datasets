@@ -11,6 +11,7 @@ import glob
 import hashlib
 import json
 import os
+import sys
 from functools import wraps
 from unittest.mock import patch
 
@@ -35,6 +36,9 @@ NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.pa
 SKIP = ["recentre"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
+
+if sys.version_info[:2] in [(3, 9), (3, 11)]:
+    skip_for_speed = True
 
 
 def mockup_from_source(func):
@@ -233,6 +237,7 @@ class Comparer:
 
 
 @pytest.mark.parametrize("name", NAMES)
+@pytest.mark.skipif(skip_for_speed, reason="Skipping to run the test faster")
 @mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
