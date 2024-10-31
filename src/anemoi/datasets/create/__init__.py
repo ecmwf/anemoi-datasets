@@ -7,7 +7,6 @@
 # nor does it submit to any jurisdiction.
 #
 
-import cftime
 import datetime
 import json
 import logging
@@ -17,6 +16,7 @@ import uuid
 import warnings
 from functools import cached_property
 
+import cftime
 import numpy as np
 import tqdm
 from anemoi.utils.config import DotDict as DotDict
@@ -69,7 +69,7 @@ def json_tidy(o):
 
     if isinstance(o, cftime.DatetimeJulian):
         import pandas as pd
-        
+
         o = pd.Timestamp(
             o.year,
             o.month,
