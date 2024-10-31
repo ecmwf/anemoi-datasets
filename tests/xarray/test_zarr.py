@@ -8,11 +8,19 @@
 # nor does it submit to any jurisdiction.
 
 
+import pytest
 import xarray as xr
 
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
 from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
+
+try:
+    import adlfs  # noqa: F401
+
+    HAS_ADLS = True
+except ImportError:
+    HAS_ADLS = False
 
 
 def test_arco_era5_1():
@@ -118,6 +126,7 @@ def test_noaa_replay():
     )
 
 
+@pytest.mark.skipif(not HAS_ADLS, reason="package adlfs not installed")
 def test_planetary_computer_conus404():
     url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
     ds = xr.open_zarr(**name_to_zarr_store(url))

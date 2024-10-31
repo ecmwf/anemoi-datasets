@@ -11,6 +11,7 @@ import glob
 import hashlib
 import json
 import os
+import sys
 from functools import wraps
 from unittest.mock import patch
 
@@ -35,6 +36,24 @@ NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.pa
 SKIP = ["recentre"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
+
+
+def is_ubuntu():
+    if os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            return "Ubuntu" in f.read()
+    return False
+
+
+def is_darwin():
+    if os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            return "Darwin" in f.read()
+    return False
+
+
+# run extensive tests only on Ubuntu and Darwin, and not on Python 3.9 and 3.11
+extensive_tests = (sys.version_info[:2] not in [(3, 9), (3, 11)]) and (is_ubuntu() or is_darwin())
 
 
 def mockup_from_source(func):
@@ -233,6 +252,7 @@ class Comparer:
 
 
 @pytest.mark.parametrize("name", NAMES)
+@pytest.mark.skipif(not extensive_tests, reason="Skipping to run the test faster")
 @mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
