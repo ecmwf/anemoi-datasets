@@ -37,8 +37,7 @@ SKIP = ["recentre"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
-if sys.version_info[:2] in [(3, 9), (3, 11)]:
-    skip_for_speed = True
+skip_for_speed = sys.version_info[:2] in [(3, 9), (3, 11)]
 
 
 def mockup_from_source(func):
