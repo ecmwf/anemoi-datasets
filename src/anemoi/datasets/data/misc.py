@@ -319,7 +319,7 @@ def _open_dataset(*args, **kwargs):
 
         assert not sets, sets
         return grids_factory(args, kwargs).mutate()
-    
+
     if "cutout" in kwargs:
         from .grids import cutout_factory
 
