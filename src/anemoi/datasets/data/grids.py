@@ -9,6 +9,7 @@ import logging
 from functools import cached_property
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 from .debug import Node
 from .debug import debug_indexing
@@ -160,7 +161,7 @@ class Cutout(GridsBase):
         if min_distance_km is not None:
             assert min_distance_km >= 0, "min_distance_km must be a non-negative number"
 
-        self.lams = datasets[:-1]  # Assume last dataset is the global one
+        self.lams = datasets[:-1]  # Assume the last dataset is the global one
         self.globe = datasets[-1]
         self.axis = axis
         self.cropping_distance = cropping_distance
@@ -251,8 +252,6 @@ class Cutout(GridsBase):
             bool: True if any points overlap within the distance threshold,
                 otherwise False.
         """
-        from scipy.spatial import cKDTree
-
         # Create KDTree for the first set of points
         tree = cKDTree(np.vstack((lats1, lons1)).T)
         
@@ -316,7 +315,7 @@ class Cutout(GridsBase):
         return tuple(self.lams[0].shape[:-1] + (sum(shapes) + global_shape,))
 
     def check_same_resolution(self, d1, d2):
-        # Skipped since we're combining different resolutions
+        # Turned off because we are combining different resolutions
         pass
             
     @property
@@ -349,7 +348,6 @@ class Cutout(GridsBase):
             len(self.globe.latitudes[self.global_mask]) 
             == self.shape[-1]), "Mismatch in number of latitudes"
 
-        
         latitudes = np.concatenate(
             [lam_latitudes, self.globe.latitudes[self.global_mask]]
         )
@@ -407,7 +405,8 @@ def grids_factory(args, kwargs):
     datasets = [_open(e) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Grids(datasets, axis=axis)._subset(**kwargs)    
+    return Grids(datasets, axis=axis)._subset(**kwargs)   
+ 
 
 def cutout_factory(args, kwargs):
     if "ensemble" in kwargs:
