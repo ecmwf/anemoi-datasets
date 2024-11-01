@@ -326,6 +326,7 @@ class Zarr(Dataset):
             attrs=dict(self.z.attrs),
             chunks=self.chunks,
             dtype=str(self.dtype),
+            path=self.path,
         )
 
     def source(self, index):
