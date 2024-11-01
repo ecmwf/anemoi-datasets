@@ -1,14 +1,26 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+
+import pytest
 import xarray as xr
 
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
+from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
+
+try:
+    import adlfs  # noqa: F401
+
+    HAS_ADLS = True
+except ImportError:
+    HAS_ADLS = False
 
 
 def test_arco_era5_1():
@@ -86,6 +98,57 @@ def test_inca_one_date():
         assert f.metadata("variable") == vars[i]
 
     print(fs[0].datetime())
+
+
+def test_noaa_replay():
+    ds = xr.open_zarr(
+        "gs://noaa-ufs-gefsv13replay/ufs-hr1/1.00-degree/03h-freq/zarr/fv3.zarr",
+        storage_options={"token": "anon"},
+    )
+
+    flavour = {
+        "rules": {
+            "latitude": {"name": "grid_yt"},
+            "longitude": {"name": "grid_xt"},
+            "time": {"name": "time"},
+            "level": {"name": "pfull"},
+        },
+        "levtype": "pl",
+    }
+
+    fs = XarrayFieldList.from_xarray(ds, flavour)
+
+    assert_field_list(
+        fs,
+        36956954,
+        "1993-12-31T18:00:00",
+        "1999-06-13T03:00:00",
+    )
+
+
+@pytest.mark.skipif(not HAS_ADLS, reason="package adlfs not installed")
+def test_planetary_computer_conus404():
+    url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
+    ds = xr.open_zarr(**name_to_zarr_store(url))
+
+    flavour = {
+        "rules": {
+            "latitude": {"name": "lat"},
+            "longitude": {"name": "lon"},
+            "x": {"name": "west_east"},
+            "y": {"name": "south_north"},
+            "time": {"name": "time"},
+        },
+    }
+
+    fs = XarrayFieldList.from_xarray(ds, flavour)
+
+    assert_field_list(
+        fs,
+        74634912,
+        "1979-10-01T00:00:00",
+        "2022-09-30T23:00:00",
+    )
 
 
 if __name__ == "__main__":

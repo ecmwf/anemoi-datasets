@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import logging
 from functools import cached_property
@@ -105,6 +108,17 @@ class GridsBase(GivenAxis):
     def check_same_resolution(self, d1, d2):
         # We don't check the resolution, because we want to be able to combine
         pass
+
+    def metadata_specific(self):
+        return super().metadata_specific(
+            multi_grids=True,
+        )
+
+    def collect_input_sources(self, collected):
+        # We assume that,because they have different grids, they have different input sources
+        for d in self.datasets:
+            collected.append(d)
+            d.collect_input_sources(collected)
 
 
 class Grids(GridsBase):
@@ -301,7 +315,24 @@ class Cutout(GridsBase):
         result = np.concatenate(lam_data + [globe_data], axis=self.axis)
         return apply_index_to_slices_changes(result, changes)
 
-    @property
+    def collect_supporting_arrays(self, collected, *path):
+        """
+        Collects supporting arrays, including masks for each LAM and the global 
+        dataset.
+        
+        Args:
+            collected (list): List to which the supporting arrays are appended.
+            *path: Variable length argument list specifying the paths for the masks.
+        """
+        # Append masks for each LAM
+        for i, (lam, mask) in enumerate(zip(self.lams, self.masks)):
+            collected.append((path + (f"lam_{i}",), "cutout_mask", mask))
+        
+        # Append the global mask
+        collected.append((path + ("global",), "cutout_mask", self.global_mask))
+
+
+    @cached_property
     def shape(self):
         """
         Returns the shape of the Cutout, accounting for retained grid points
@@ -390,7 +421,7 @@ class Cutout(GridsBase):
             axis=0
         )
         return cKDTree(all_points)
-    
+
 
 def grids_factory(args, kwargs):
     if "ensemble" in kwargs:
@@ -420,7 +451,7 @@ def cutout_factory(args, kwargs):
     neighbours = kwargs.pop("neighbours", 5)
 
     assert len(args) == 0
-    assert isinstance(cutout, (list, tuple))
+    assert isinstance(cutout, (list, tuple)), "cutout must be a list or tuple"
 
     datasets = [_open(e) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)

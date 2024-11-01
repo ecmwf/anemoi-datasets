@@ -1,12 +1,14 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
+
+import base64
 import logging
 
 import numpy as np
@@ -293,6 +295,88 @@ def thinning_mask(
     _, indices = KDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
+
+
+def outline(lats, lons, neighbours=5):
+    from scipy.spatial import KDTree
+
+    xyx = latlon_to_xyz(lats, lons)
+    grid_points = np.array(xyx).transpose()
+
+    # Use a KDTree to find the nearest points
+    _, indices = KDTree(grid_points).query(grid_points, k=neighbours)
+
+    # Centre of the Earth
+    zero = np.array([0.0, 0.0, 0.0])
+
+    outside = []
+
+    for i, (point, index) in enumerate(zip(grid_points, indices)):
+        inside = False
+        for j in range(1, neighbours):
+            t = Triangle3D(
+                grid_points[index[j]],
+                grid_points[index[(j + 1) % neighbours]],
+                grid_points[index[(j + 2) % neighbours]],
+            )
+            inside = t.intersect(zero, point)
+            if inside:
+                break
+
+        if not inside:
+            outside.append(i)
+
+    return outside
+
+
+def deserialise_mask(encoded):
+    import pickle
+    import zlib
+
+    packed = pickle.loads(zlib.decompress(base64.b64decode(encoded)))
+
+    mask = []
+    value = False
+    for count in packed:
+        mask.extend([value] * count)
+        value = not value
+    return np.array(mask, dtype=bool)
+
+
+def _serialise_mask(mask):
+    import pickle
+    import zlib
+
+    assert len(mask.shape) == 1
+    assert len(mask)
+
+    packed = []
+    last = mask[0]
+    count = 1
+
+    for value in mask[1:]:
+        if value == last:
+            count += 1
+        else:
+            packed.append(count)
+            last = value
+            count = 1
+
+    packed.append(count)
+
+    # We always start with an 'off' value
+    # So if the first value is 'on', we need to add a zero
+    if mask[0]:
+        packed.insert(0, 0)
+
+    return base64.b64encode(zlib.compress(pickle.dumps(packed))).decode("utf-8")
+
+
+def serialise_mask(mask):
+    result = _serialise_mask(mask)
+    # Make sure we can deserialise it
+    assert np.all(mask == deserialise_mask(result))
+    return result
 
 
 if __name__ == "__main__":

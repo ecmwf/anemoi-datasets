@@ -1,3 +1,12 @@
+# (C) Copyright 2024 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
 import datetime
 import logging
 import time
@@ -14,9 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 def task(what, options, *args, **kwargs):
-    """
-    Make sure `import Creator` is done in the sub-processes, and not in the main one.
-    """
+    """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
 
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
@@ -117,7 +124,9 @@ class Create(Command):
                 opt["parts"] = f"{n+1}/{total}"
                 futures.append(executor.submit(task, "load", opt))
 
-            for future in tqdm.tqdm(as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
+            for future in tqdm.tqdm(
+                as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
+            ):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
@@ -133,7 +142,13 @@ class Create(Command):
             for n in range(total):
                 futures.append(executor.submit(task, "load-additions", opt))
 
-            for future in tqdm.tqdm(as_completed(futures), desc="Computing additions", total=len(futures), colour="green", position=parallel + 1):  # fmt: skip
+            for future in tqdm.tqdm(
+                as_completed(futures),
+                desc="Computing additions",
+                total=len(futures),
+                colour="green",
+                position=parallel + 1,
+            ):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:

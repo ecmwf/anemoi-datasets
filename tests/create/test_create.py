@@ -1,14 +1,17 @@
-#!/usr/bin/env python3
-# (C) Copyright 2023 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 import glob
 import hashlib
 import json
 import os
+import sys
 from functools import wraps
 from unittest.mock import patch
 
@@ -24,6 +27,8 @@ from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
 
+UPLOAD_EXE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
+
 
 HERE = os.path.dirname(__file__)
 # find_yamls
@@ -31,6 +36,24 @@ NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.pa
 SKIP = ["recentre"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
+
+
+def is_ubuntu():
+    if os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            return "Ubuntu" in f.read()
+    return False
+
+
+def is_darwin():
+    if os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as f:
+            return "Darwin" in f.read()
+    return False
+
+
+# run extensive tests only on Ubuntu and Darwin, and not on Python 3.9 and 3.11
+extensive_tests = (sys.version_info[:2] not in [(3, 9), (3, 11)]) and (is_ubuntu() or is_darwin())
 
 
 def mockup_from_source(func):
@@ -54,11 +77,9 @@ class LoadSource:
         ds = original_from_source("mars", *args, **kwargs)
         ds.save(upload_path)
         print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
-        exe = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
         print()
         print("⚠️ To upload the test data, run this:")
-        print()
-        print(f"{exe} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
+        print(f"python3 {UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
         print()
         exit(1)
         raise ValueError("Test data is missing")
@@ -194,15 +215,15 @@ def compare_statistics(ds1, ds2):
 class Comparer:
     def __init__(self, name, output_path=None, reference_path=None):
         self.name = name
-        self.output = output_path or os.path.join(name + ".zarr")
+        self.output_path = output_path or os.path.join(name + ".zarr")
         self.reference_path = reference_path
-        print(f"Comparing {self.output} and {self.reference_path}")
+        print(f"Comparing {self.output_path} and {self.reference_path}")
 
-        self.z_output = open_zarr(self.output)
+        self.z_output = open_zarr(self.output_path)
         self.z_reference = open_zarr(self.reference_path)
 
         self.z_reference["data"]
-        self.ds_output = open_dataset(self.output)
+        self.ds_output = open_dataset(self.output_path)
         self.ds_reference = open_dataset(self.reference_path)
 
     def compare(self):
@@ -213,6 +234,16 @@ class Comparer:
             print("\n".join(errors))
 
         if errors:
+            print()
+            print("⚠️ To update the test reference metadata, run this:")
+            print(
+                f"python3 {UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
+            )
+            print()
+            print()
+            print("⚠️ To update the reference data, run this:")
+            print(f"anemoi-datasets copy {self.output_path} {self.reference_path} --overwrite")
+            print()
             raise AssertionError("Comparison failed")
 
         compare_datasets(self.ds_output, self.ds_reference)
@@ -221,6 +252,7 @@ class Comparer:
 
 
 @pytest.mark.parametrize("name", NAMES)
+@pytest.mark.skipif(not extensive_tests, reason="Skipping to run the test faster")
 @mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")

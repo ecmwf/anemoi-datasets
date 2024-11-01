@@ -1,6 +1,8 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
@@ -83,6 +85,41 @@ class S3Store(ReadOnlyStore):
         return response["Body"].read()
 
 
+class PlanetaryComputerStore(ReadOnlyStore):
+    """We write our own Store to access catalogs on Planetary Computer,
+    as it requires some extra arguements to use xr.open_zarr.
+    """
+
+    def __init__(self, data_catalog_id):
+        self.data_catalog_id = data_catalog_id
+
+    def __getitem__(self):
+        import planetary_computer
+        import pystac_client
+
+        catalog = pystac_client.Client.open(
+            "https://planetarycomputer.microsoft.com/api/stac/v1/",
+            modifier=planetary_computer.sign_inplace,
+        )
+        collection = catalog.get_collection(self.data_catalog_id)
+
+        asset = collection.assets["zarr-abfs"]
+
+        if "xarray:storage_options" in asset.extra_fields:
+            store = {
+                "store": asset.href,
+                "storage_options": asset.extra_fields["xarray:storage_options"],
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+        else:
+            store = {
+                "filename_or_obj": asset.href,
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+
+        return store
+
+
 class DebugStore(ReadOnlyStore):
     """A store to debug the zarr loading."""
 
@@ -119,6 +156,9 @@ def name_to_zarr_store(path_or_url):
         if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
             s3_url = f"s3://{bits[0]}{parsed.path}"
             store = S3Store(s3_url, region=bits[2])
+        elif store.startswith("https://planetarycomputer.microsoft.com/"):
+            data_catalog_id = store.rsplit("/", 1)[-1]
+            store = PlanetaryComputerStore(data_catalog_id).__getitem__()
         else:
             store = HTTPStore(store)
 
@@ -302,6 +342,13 @@ class Zarr(Dataset):
             )
         ]
 
+    @cached_property
+    def constant_fields(self):
+        result = self.z.attrs.get("constant_fields")
+        if result is None:
+            LOG.warning("No 'constant_fields' attribute in %r, computing them", self)
+        return self.computed_constant_fields()
+
     @property
     def variables_metadata(self):
         return self.z.attrs.get("variables_metadata", {})
@@ -334,6 +381,12 @@ class Zarr(Dataset):
     def get_dataset_names(self, names):
         name, _ = os.path.splitext(os.path.basename(self.path))
         names.add(name)
+
+    def collect_supporting_arrays(self, collected, *path):
+        pass
+
+    def collect_input_sources(self, collected):
+        pass
 
 
 class ZarrWithMissingDates(Zarr):
@@ -396,6 +449,9 @@ class ZarrWithMissingDates(Zarr):
         return "zarr*"
 
 
+QUIET = set()
+
+
 def zarr_lookup(name, fail=True):
 
     if name.endswith(".zarr") or name.endswith(".zip"):
@@ -404,6 +460,9 @@ def zarr_lookup(name, fail=True):
     config = load_config()["datasets"]
 
     if name in config["named"]:
+        if name not in QUIET:
+            LOG.info("Opening `%s` as `%s`", name, config["named"][name])
+            QUIET.add(name)
         return config["named"][name]
 
     tried = []
@@ -417,6 +476,9 @@ def zarr_lookup(name, fail=True):
             if z is not None:
                 # Cache for next time
                 config["named"][name] = full
+                if name not in QUIET:
+                    LOG.info("Opening `%s` as `%s`", name, full)
+                    QUIET.add(name)
                 return full
         except zarr.errors.PathNotFoundError:
             pass

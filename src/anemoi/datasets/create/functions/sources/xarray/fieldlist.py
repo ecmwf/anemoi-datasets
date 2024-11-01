@@ -1,11 +1,12 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import json
 import logging
@@ -59,6 +60,15 @@ class XarrayFieldList(FieldList):
                     flavour = yaml.safe_load(f)
                 else:
                     flavour = json.load(f)
+
+        if isinstance(flavour, dict):
+            flavour_coords = [coords["name"] for coords in flavour["rules"].values()]
+            ds_dims = [dim for dim in ds._dims]
+            for dim in ds_dims:
+                if dim in flavour_coords and dim not in ds._coord_names:
+                    ds = ds.assign_coords({dim: ds[dim]})
+                else:
+                    pass
 
         guess = CoordinateGuesser.from_flavour(ds, flavour)
 

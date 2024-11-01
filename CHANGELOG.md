@@ -8,8 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
-## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...HEAD)
+## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.8...HEAD)
 
+### Changed
+- make test optional when adls is not installed Pull request #110
+
+## [0.5.8](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...0.5.8) - 2024-10-26
+
+### Changed
+
+- Bugfix in `auto_adjust`
+- Fixed precommit CI errors
+- Improve tests
+- More verbosity
 
 ### Added
 
@@ -17,10 +28,15 @@ Keep it human-readable, your future self will thank you!
 - Various bug fixes
 - Control compatibility check in xy/zip
 - Add `merge` feature
+- Add support for storing `supporting_arrays` in checkpoint files
+- Allow naming of datasets components
+- Contributors file (#105)
 
 ### Changed
 
 - Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
+- ci: pin python versions to 3.9 ... 3.12 for checks (#93)
+- Fix `__version__` import in init
 
 ## [0.5.7](https://github.com/ecmwf/anemoi-datasets/compare/0.5.6...0.5.7) - 2024-10-09
 

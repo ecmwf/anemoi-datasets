@@ -50,7 +50,8 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-utils[provenance]>=0.3.18",
+  "anemoi-transform>=0.0.5",
+  "anemoi-utils[provenance]>=0.4.2",
   "cfunits",
   "numpy",
   "pyyaml",
@@ -96,6 +97,9 @@ optional-dependencies.tests = [
 optional-dependencies.xarray = [
   "gcsfs",
   "kerchunk",
+  "pandas",
+  "planetary-computer",
+  "pystac-client",
 ]
 
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"

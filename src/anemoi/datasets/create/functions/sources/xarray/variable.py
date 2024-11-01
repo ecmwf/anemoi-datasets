@@ -1,11 +1,12 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import logging
 import math
@@ -82,9 +83,8 @@ class Variable:
         )
 
     def __getitem__(self, i):
-        """
-        Get a 2D field from the variable
-        """
+        """Get a 2D field from the variable"""
+
         if i >= self.length:
             raise IndexError(i)
 
@@ -117,7 +117,7 @@ class Variable:
 
         variable = Variable(
             ds=self.ds,
-            var=self.variable.isel({k: i}),
+            variable=self.variable.isel({k: i}),
             coordinates=coordinates,
             grid=self.grid,
             time=self.time,

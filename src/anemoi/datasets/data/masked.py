@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import logging
 from functools import cached_property
@@ -29,6 +32,8 @@ class Masked(Forwards):
         assert len(forward.shape) == 4, "Grids must be 1D for now"
         self.mask = mask
         self.axis = 3
+
+        self.mask_name = f"{self.__class__.__name__.lower()}_mask"
 
     @cached_property
     def shape(self):
@@ -64,25 +69,45 @@ class Masked(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
+    def collect_supporting_arrays(self, collected, *path):
+        super().collect_supporting_arrays(collected, *path)
+        collected.append((path, self.mask_name, self.mask))
+
 
 class Thinning(Masked):
+
     def __init__(self, forward, thinning, method):
         self.thinning = thinning
         self.method = method
 
-        shape = forward.field_shape
-        if len(shape) != 2:
-            raise ValueError("Thinning only works latitude/longitude fields")
+        if thinning is not None:
 
-        latitudes = forward.latitudes.reshape(shape)
-        longitudes = forward.longitudes.reshape(shape)
-        latitudes = latitudes[::thinning, ::thinning].flatten()
-        longitudes = longitudes[::thinning, ::thinning].flatten()
+            shape = forward.field_shape
+            if len(shape) != 2:
+                raise ValueError("Thinning only works latitude/longitude fields")
 
-        mask = [lat in latitudes and lon in longitudes for lat, lon in zip(forward.latitudes, forward.longitudes)]
-        mask = np.array(mask, dtype=bool)
+            # Make a copy, so we read the data only once from zarr
+            forward_latitudes = forward.latitudes.copy()
+            forward_longitudes = forward.longitudes.copy()
+
+            latitudes = forward_latitudes.reshape(shape)
+            longitudes = forward_longitudes.reshape(shape)
+            latitudes = latitudes[::thinning, ::thinning].flatten()
+            longitudes = longitudes[::thinning, ::thinning].flatten()
+
+            # TODO: This is not very efficient
+
+            mask = [lat in latitudes and lon in longitudes for lat, lon in zip(forward_latitudes, forward_longitudes)]
+            mask = np.array(mask, dtype=bool)
+        else:
+            mask = None
 
         super().__init__(forward, mask)
+
+    def mutate(self) -> Dataset:
+        if self.thinning is None:
+            return self.forward.mutate()
+        return super().mutate()
 
     def tree(self):
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
@@ -92,6 +117,7 @@ class Thinning(Masked):
 
 
 class Cropping(Masked):
+
     def __init__(self, forward, area):
         from ..data import open_dataset
 
