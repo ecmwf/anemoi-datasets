@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import datetime
 import json
@@ -20,14 +23,40 @@ from anemoi.utils.dates import frequency_to_timedelta
 LOG = logging.getLogger(__name__)
 
 
+def _tidy(v):
+    if isinstance(v, (list, tuple, set)):
+        return [_tidy(i) for i in v]
+    if isinstance(v, dict):
+        return {k: _tidy(v) for k, v in v.items()}
+    if isinstance(v, str) and v.startswith("/"):
+        return os.path.basename(v)
+    if isinstance(v, datetime.datetime):
+        return v.isoformat()
+    if isinstance(v, datetime.date):
+        return v.isoformat()
+    if isinstance(v, datetime.timedelta):
+        return frequency_to_string(v)
+
+    if isinstance(v, Dataset):
+        # That can happen in the `arguments`
+        # if a dataset is passed as an argument
+        return repr(v)
+
+    if isinstance(v, slice):
+        return (v.start, v.stop, v.step)
+
+    return v
+
+
 class Dataset:
     arguments = {}
+    _name = None
 
     def mutate(self) -> "Dataset":
-        """
-        Give an opportunity to a subclass to return a new Dataset
+        """Give an opportunity to a subclass to return a new Dataset
         object of a different class, if needed.
         """
+
         return self
 
     def swap_with_parent(self, parent):
@@ -38,6 +67,21 @@ class Dataset:
         return len(self)
 
     def _subset(self, **kwargs):
+
+        if not kwargs:
+            return self.mutate()
+
+        name = kwargs.pop("name", None)
+        result = self.__subset(**kwargs)
+        result._name = name
+
+        return result
+
+    @property
+    def name(self):
+        return self._name
+
+    def __subset(self, **kwargs):
         if not kwargs:
             return self.mutate()
 
@@ -230,41 +274,53 @@ class Dataset:
         shape.pop(drop_axis)
         return tuple(shape)
 
+    @property
+    def typed_variables(self):
+        from anemoi.transform.variables import Variable
+
+        constants = self.constant_fields
+
+        result = {}
+        for k, v in self.variables_metadata.items():
+
+            # TODO: Once all datasets are updated, we can remove this
+            v = v.copy()
+            if k in constants:
+                v["constant_in_time"] = True
+
+            if "is_constant_in_time" in v:
+                del v["is_constant_in_time"]
+
+            result[k] = Variable.from_dict(k, v)
+
+        return result
+
+    def _input_sources(self):
+        sources = []
+        self.collect_input_sources(sources)
+        return sources
+
     def metadata(self):
         import anemoi
 
-        def tidy(v):
-            if isinstance(v, (list, tuple, set)):
-                return [tidy(i) for i in v]
-            if isinstance(v, dict):
-                return {k: tidy(v) for k, v in v.items()}
-            if isinstance(v, str) and v.startswith("/"):
-                return os.path.basename(v)
-            if isinstance(v, datetime.datetime):
-                return v.isoformat()
-            if isinstance(v, datetime.date):
-                return v.isoformat()
-            if isinstance(v, datetime.timedelta):
-                return frequency_to_string(v)
+        _, source_to_arrays = self._supporting_arrays_and_sources()
 
-            if isinstance(v, Dataset):
-                # That can happen in the `arguments`
-                # if a dataset is passed as an argument
-                return repr(v)
-
-            if isinstance(v, slice):
-                return (v.start, v.stop, v.step)
-
-            return v
+        sources = []
+        for i, source in enumerate(self._input_sources()):
+            source_metadata = source.dataset_metadata().copy()
+            source_metadata["supporting_arrays"] = source_to_arrays[id(source)]
+            sources.append(source_metadata)
 
         md = dict(
             version=anemoi.datasets.__version__,
             arguments=self.arguments,
             **self.dataset_metadata(),
+            sources=sources,
+            supporting_arrays=source_to_arrays[id(self)],
         )
 
         try:
-            return json.loads(json.dumps(tidy(md)))
+            return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
             pprint.pprint(md)
@@ -286,9 +342,69 @@ class Dataset:
             variables=self.variables,
             variables_metadata=self.variables_metadata,
             shape=self.shape,
+            dtype=str(self.dtype),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
+            name=self.name,
         )
+
+    def _supporting_arrays(self, *path):
+
+        import numpy as np
+
+        def _path(path, name):
+            return "/".join(str(_) for _ in [*path, name])
+
+        result = {
+            _path(path, "latitudes"): self.latitudes,
+            _path(path, "longitudes"): self.longitudes,
+        }
+        collected = []
+
+        self.collect_supporting_arrays(collected, *path)
+
+        for path, name, array in collected:
+            assert isinstance(path, tuple) and isinstance(name, str)
+            assert isinstance(array, np.ndarray)
+
+            name = _path(path, name)
+
+            if name in result:
+                raise ValueError(f"Duplicate key {name}")
+
+            result[name] = array
+
+        return result
+
+    def supporting_arrays(self):
+        """Arrays to be saved in the checkpoints"""
+        arrays, _ = self._supporting_arrays_and_sources()
+        return arrays
+
+    def _supporting_arrays_and_sources(self):
+
+        source_to_arrays = {}
+
+        # Top levels arrays
+        result = self._supporting_arrays()
+        source_to_arrays[id(self)] = sorted(result.keys())
+
+        # Arrays from the input sources
+        for i, source in enumerate(self._input_sources()):
+            name = source.name if source.name is not None else i
+            src_arrays = source._supporting_arrays(name)
+            source_to_arrays[id(source)] = sorted(src_arrays.keys())
+
+            for k in src_arrays:
+                assert k not in result
+
+            result.update(src_arrays)
+
+        return result, source_to_arrays
+
+    def collect_supporting_arrays(self, collected, *path):
+        # Override this method to add more arrays
+        pass
 
     def metadata_specific(self, **kwargs):
         action = self.__class__.__name__.lower()
@@ -327,3 +443,60 @@ class Dataset:
 
     def get_dataset_names(self, names):
         raise NotImplementedError(self)
+
+    def computed_constant_fields(self):
+        # Call `constant_fields` instead of `computed_constant_fields`
+        try:
+            # If the tendencies are computed, we can use them
+            return sorted(self._compute_constant_fields_from_statistics())
+        except KeyError:
+            # This can happen if the tendencies are not computed
+            pass
+
+        return sorted(self._compute_constant_fields_from_a_few_samples())
+
+    def _compute_constant_fields_from_a_few_samples(self):
+
+        import numpy as np
+
+        # Otherwise, we need to compute them
+        dates = self.dates
+        indices = set(range(len(dates)))
+        indices -= self.missing
+
+        sample_count = min(4, len(indices))
+        count = len(indices)
+
+        p = slice(0, count, count // (sample_count - 1))
+        samples = list(range(*p.indices(count)))
+
+        samples.append(count - 1)  # Add last
+        samples = sorted(set(samples))
+        indices = list(indices)
+        samples = [indices[i] for i in samples]
+
+        assert set(samples) <= set(indices)  # Make sure we have the samples
+
+        first = None
+        constants = [True] * len(self.variables)
+
+        first = self[samples.pop(0)]
+
+        for sample in samples:
+            row = self[sample]
+            for i, (a, b) in enumerate(zip(row, first)):
+                if np.any(a != b):
+                    constants[i] = False
+
+        return [v for i, v in enumerate(self.variables) if constants[i]]
+
+    def _compute_constant_fields_from_statistics(self):
+        result = []
+
+        t = self.statistics_tendencies()
+
+        for i, v in enumerate(self.variables):
+            if t["mean"][i] == 0 and t["stdev"][i] == 0:
+                result.append(v)
+
+        return result

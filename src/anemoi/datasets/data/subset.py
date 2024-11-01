@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import logging
 from functools import cached_property
@@ -132,6 +135,8 @@ class Subset(Forwards):
     @cached_property
     def frequency(self):
         dates = self.dates
+        if len(dates) < 2:
+            raise ValueError(f"Cannot determine frequency of a subset with less than two dates ({self.dates}).")
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
     def source(self, index):
