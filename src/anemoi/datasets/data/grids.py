@@ -406,21 +406,17 @@ class Cutout(GridsBase):
         )
         return longitudes
 
-    @property
     def tree(self):
         """
-        Constructs and returns a KDTree for fast spatial searching across all
-        grid points in the masked datasets.
+        Generates a hierarchical tree structure for the `Cutout` instance and 
+        its associated datasets.
 
         Returns:
-            cKDTree: KDTree object for spatial queries on all datasets.
+            Node: A `Node` object representing the `Cutout` instance as the root 
+            node, with each dataset in `self.datasets` represented as a child 
+            node.
         """
-        all_points = np.concatenate(
-            [np.column_stack((lat, lon)) 
-             for lat, lon in zip(self.latitudes, self.longitudes)],
-            axis=0
-        )
-        return cKDTree(all_points)
+        return Node(self, [d.tree() for d in self.datasets])
 
 
 def grids_factory(args, kwargs):
