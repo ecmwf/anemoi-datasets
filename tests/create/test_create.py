@@ -253,12 +253,13 @@ class Comparer:
 
 @pytest.mark.parametrize("name", NAMES)
 @pytest.mark.skipif(not extensive_tests, reason="Skipping to run the test faster")
+@pytest.mark.parametrize("is_test", [False, True])
 @mockup_from_source
-def test_run(name):
+def test_run(name, is_test=False):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
 
-    creator_factory("init", config=config, path=output, overwrite=True).run()
+    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
     creator_factory("load", path=output).run()
     creator_factory("finalise", path=output).run()
     creator_factory("patch", path=output).run()
