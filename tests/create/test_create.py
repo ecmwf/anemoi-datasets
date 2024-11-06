@@ -255,7 +255,7 @@ class Comparer:
 @pytest.mark.skipif(not extensive_tests, reason="Skipping to run the test faster")
 @pytest.mark.parametrize("is_test", [False, True])
 @mockup_from_source
-def test_run(name, is_test=False):
+def test_run(name, is_test):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
 
@@ -286,4 +286,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("name", help="Name of the test case")
     args = parser.parse_args()
-    test_run(args.name)
+    test_run(args.name, is_test=False)
