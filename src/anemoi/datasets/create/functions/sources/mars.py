@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import re
 
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
@@ -32,6 +33,25 @@ def _date_to_datetime(d):
     return datetime.datetime.fromisoformat(d)
 
 
+def expand_to_by(x):
+
+    if isinstance(x, (str, int)):
+        return expand_to_by(str(x).split("/"))
+
+    if len(x) == 3 and x[1] == "to":
+        start = int(x[0])
+        end = int(x[2])
+        return list(range(start, end + 1))
+
+    if len(x) == 5 and x[1] == "to" and x[3] == "by":
+        start = int(x[0])
+        end = int(x[2])
+        by = int(x[4])
+        return list(range(start, end + 1, by))
+
+    return x
+
+
 def normalise_time_delta(t):
     if isinstance(t, datetime.timedelta):
         assert t == datetime.timedelta(hours=t.hours), t
@@ -43,25 +63,48 @@ def normalise_time_delta(t):
     return t
 
 
+def _normalise_time(t):
+    t = int(t)
+    if t < 100:
+        t * 100
+    return "{:04d}".format(t)
+
+
 def _expand_mars_request(request, date, request_already_using_valid_datetime=False, date_key="date"):
     requests = []
-    step = to_list(request.get("step", [0]))
-    for s in step:
+
+    user_step = to_list(expand_to_by(request.get("step", [0])))
+    user_time = None
+    user_date = None
+
+    if not request_already_using_valid_datetime:
+        user_time = request.get("time")
+        if user_time is not None:
+            user_time = to_list(user_time)
+            user_time = [_normalise_time(t) for t in user_time]
+
+        user_date = request.get(date_key)
+        if user_date is not None:
+            assert isinstance(user_date, str), user_date
+            user_date = re.compile("^{}$".format(user_date.replace("-", "").replace("?", ".")))
+
+    for step in user_step:
         r = request.copy()
 
         if not request_already_using_valid_datetime:
 
-            if isinstance(s, str) and "-" in s:
-                assert s.count("-") == 1, s
+            if isinstance(step, str) and "-" in step:
+                assert step.count("-") == 1, step
+
             # this takes care of the cases where the step is a period such as 0-24 or 12-24
-            hours = int(str(s).split("-")[-1])
+            hours = int(str(step).split("-")[-1])
 
             base = date - datetime.timedelta(hours=hours)
             r.update(
                 {
                     date_key: base.strftime("%Y%m%d"),
                     "time": base.strftime("%H%M"),
-                    "step": s,
+                    "step": step,
                 }
             )
 
@@ -70,12 +113,28 @@ def _expand_mars_request(request, date, request_already_using_valid_datetime=Fal
                 if isinstance(r[pproc], (list, tuple)):
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
+        if user_date is not None:
+            if not user_date.match(r[date_key]):
+                continue
+
+        if user_time is not None:
+            # It time is provided by the user, we only keep the requests that match the time
+            if r["time"] not in user_time:
+                continue
+
         requests.append(r)
+
+    # assert requests, requests
 
     return requests
 
 
-def factorise_requests(dates, *requests, request_already_using_valid_datetime=False, date_key="date"):
+def factorise_requests(
+    dates,
+    *requests,
+    request_already_using_valid_datetime=False,
+    date_key="date",
+):
     updates = []
     for req in requests:
         # req = normalise_request(req)
@@ -87,6 +146,9 @@ def factorise_requests(dates, *requests, request_already_using_valid_datetime=Fa
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
                 date_key=date_key,
             )
+
+    if not updates:
+        return
 
     compressed = Availability(updates)
     for r in compressed.iterate():
@@ -178,7 +240,15 @@ MARS_KEYS = [
 ]
 
 
-def mars(context, dates, *requests, request_already_using_valid_datetime=False, date_key="date", **kwargs):
+def mars(
+    context,
+    dates,
+    *requests,
+    request_already_using_valid_datetime=False,
+    date_key="date",
+    **kwargs,
+):
+
     if not requests:
         requests = [kwargs]
 

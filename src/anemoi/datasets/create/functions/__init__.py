@@ -21,6 +21,8 @@ def assert_is_fieldlist(obj):
 
 def import_function(name, kind):
 
+    from anemoi.transforms import Transform as Transform
+
     name = name.replace("-", "_")
 
     plugins = {}
