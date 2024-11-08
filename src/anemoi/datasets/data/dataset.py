@@ -94,6 +94,9 @@ class Dataset:
             return ds._subset(**kwargs).mutate()
 
         if "start" in kwargs or "end" in kwargs:
+            if "ranges" in kwargs:
+                raise ValueError("Cannot use both `ranges` and `start`/`end` together.")
+
             start = kwargs.pop("start", None)
             end = kwargs.pop("end", None)
 
@@ -101,6 +104,18 @@ class Dataset:
 
             return (
                 Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
+            )
+
+        if "ranges" in kwargs:
+            ranges = kwargs.pop("ranges")
+            from .subset import Subset
+
+            return (
+                Subset(
+                    self, [r for rang in ranges for r in self._dates_to_indices(rang[0], rang[1])], dict(ranges=ranges)
+                )
+                ._subset(**kwargs)
+                .mutate()
             )
 
         if "frequency" in kwargs:
