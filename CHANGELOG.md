@@ -13,6 +13,9 @@ Keep it human-readable, your future self will thank you!
 ### Changed
 - make test optional when adls is not installed Pull request #110
 
+### Added
+- Allow non continuous time ranges [#118](https://github.com/ecmwf/anemoi-datasets/pull/118)
+
 ## [0.5.8](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...0.5.8) - 2024-10-26
 
 ### Changed
