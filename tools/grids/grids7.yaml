@@ -19,7 +19,7 @@ input:
       type: an
   - mars:
       <<: *mars_request
-      param: [q, t, z]R. E
+      param: [q, t, z]
       levtype: pl
       level: [50, 100]
       stream: oper
