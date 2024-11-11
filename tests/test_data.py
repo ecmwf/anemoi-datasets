@@ -254,6 +254,7 @@ class DatasetTester:
         time_increment,
         statistics_reference_dataset,
         statistics_reference_variables,
+        expected_dates=None,  # Override expected dates if non continuous
     ):
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
@@ -273,15 +274,19 @@ class DatasetTester:
         assert self.ds.dates[0] == start_date
         assert self.ds.dates[1] - self.ds.dates[0] == time_increment
 
-        dates = []
+        dates = [] if not expected_dates else expected_dates
         date = start_date
 
-        for row in self.ds:
+        for i, row in enumerate(self.ds):
             # print(f"{date=} {row.shape}")
-            expect = date_to_row(date)
+
+            expected_date = date if not expected_dates else expected_dates[i]
+            expect = date_to_row(expected_date)
             assert (row == expect).all()
-            dates.append(date)
-            date += time_increment
+
+            if not expected_dates:
+                dates.append(date)
+                date += time_increment
 
         assert (self.ds.dates == np.array(dates, dtype="datetime64")).all()
 
@@ -600,6 +605,102 @@ def test_subset_8():
         time_increment=datetime.timedelta(hours=6),
         statistics_reference_dataset="test-2021-2021-1h-o96-abcd",
         statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_ranges_1():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2022-06", "2022-08")])
+    test.run(
+        expected_class=Subset,
+        expected_length=(30 + 31 + 31) * 24,
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=1),
+        expected_shape=((30 + 31 + 31) * 24, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_ranges_2():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[(202206, 202208)])
+    test.run(
+        expected_class=Subset,
+        expected_length=(30 + 31 + 31) * 24,
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=1),
+        expected_shape=((30 + 31 + 31) * 24, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_ranges_3():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2022-06", "2022-08"), ("2022-09", "2022-10")])
+    test.run(
+        expected_class=Subset,
+        expected_length=(30 + 31 + 31 + 30 + 31) * 24,
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=1),
+        expected_shape=((30 + 31 + 31 + 30 + 31) * 24, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_ranges_4():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2022-06", "2022-07"), ("2022-09", "2022-10")])
+
+    expected_dates = []
+    expected_dates.extend([datetime.datetime(2022, 6, 1) + datetime.timedelta(hours=i) for i in range((30 + 31) * 24)])
+    expected_dates.extend([datetime.datetime(2022, 9, 1) + datetime.timedelta(hours=i) for i in range((30 + 31) * 24)])
+
+    test.run(
+        expected_class=Subset,
+        expected_length=(30 + 31 + 30 + 31) * 24,
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=1),
+        expected_shape=((30 + 31 + 30 + 31) * 24, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        expected_dates=expected_dates,
+    )
+
+
+@mockup_open_zarr
+def test_ranges_5():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2021", "2021"), ("2023", "2023")], frequency=12)
+    expected_dates = []
+    expected_dates.extend([datetime.datetime(2021, 1, 1) + datetime.timedelta(hours=i * 12) for i in range(365 * 2)])
+    expected_dates.extend([datetime.datetime(2023, 1, 1) + datetime.timedelta(hours=i * 12) for i in range(365 * 2)])
+
+    test.run(
+        expected_class=Subset,
+        expected_length=(365 * 2) * 2,
+        start_date=datetime.datetime(2021, 1, 1),
+        time_increment=datetime.timedelta(hours=12),
+        expected_shape=((365 * 2) * 2, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        expected_dates=expected_dates,
     )
 
 
