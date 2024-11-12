@@ -609,8 +609,8 @@ def test_subset_8():
 
 
 @mockup_open_zarr
-def test_ranges_1():
-    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2022-06", "2022-08")])
+def test_dates_1():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-08")])
     test.run(
         expected_class=Subset,
         expected_length=(30 + 31 + 31) * 24,
@@ -626,8 +626,25 @@ def test_ranges_1():
 
 
 @mockup_open_zarr
-def test_ranges_2():
-    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[(202206, 202208)])
+def test_dates_frequency_1():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-08", 12)])
+    test.run(
+        expected_class=Subset,
+        expected_length=(30 + 31 + 31) * 2,
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=12),
+        expected_shape=((30 + 31 + 31) * 2, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_dates_2():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[(202206, 202208)])
     test.run(
         expected_class=Subset,
         expected_length=(30 + 31 + 31) * 24,
@@ -643,8 +660,8 @@ def test_ranges_2():
 
 
 @mockup_open_zarr
-def test_ranges_3():
-    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2022-06", "2022-08"), ("2022-09", "2022-10")])
+def test_dates_3():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-08"), ("2022-09", "2022-10")])
     test.run(
         expected_class=Subset,
         expected_length=(30 + 31 + 31 + 30 + 31) * 24,
@@ -660,8 +677,32 @@ def test_ranges_3():
 
 
 @mockup_open_zarr
-def test_ranges_4():
-    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2022-06", "2022-07"), ("2022-09", "2022-10")])
+def test_dates_frequency_2():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-07", 12), ("2022-09", "2022-10", 24)])
+    expected_dates = []
+    expected_dates.extend(
+        [datetime.datetime(2022, 6, 1) + datetime.timedelta(hours=i * 12) for i in range((30 + 31) * 2)]
+    )
+    expected_dates.extend([datetime.datetime(2022, 9, 1) + datetime.timedelta(hours=i * 24) for i in range((30 + 31))])
+
+    test.run(
+        expected_class=Subset,
+        expected_length=((30 + 31) * 2 + (30 + 31)),
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=12),
+        expected_shape=((30 + 31) * 2 + (30 + 31), 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        expected_dates=expected_dates,
+    )
+
+
+@mockup_open_zarr
+def test_dates_4():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-07"), ("2022-09", "2022-10")])
 
     expected_dates = []
     expected_dates.extend([datetime.datetime(2022, 6, 1) + datetime.timedelta(hours=i) for i in range((30 + 31) * 24)])
@@ -683,8 +724,8 @@ def test_ranges_4():
 
 
 @mockup_open_zarr
-def test_ranges_5():
-    test = DatasetTester("test-2021-2023-1h-o96-abcd", ranges=[("2021", "2021"), ("2023", "2023")], frequency=12)
+def test_dates_5():
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", dates=[("2021", "2021"), ("2023", "2023")], frequency=12)
     expected_dates = []
     expected_dates.extend([datetime.datetime(2021, 1, 1) + datetime.timedelta(hours=i * 12) for i in range(365 * 2)])
     expected_dates.extend([datetime.datetime(2023, 1, 1) + datetime.timedelta(hours=i * 12) for i in range(365 * 2)])
