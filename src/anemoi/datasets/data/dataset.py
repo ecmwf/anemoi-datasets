@@ -107,6 +107,9 @@ class Dataset:
             )
 
         if "dates" in kwargs:
+            if "interpolate_frequency" in kwargs:
+                raise ValueError("Cannot use both `dates` and `interpolate_frequency`")
+
             dates: list[tuple] = kwargs.pop("dates")
 
             from .subset import Subset
@@ -114,7 +117,7 @@ class Dataset:
             def get_indices(start: str | int, end: str | int, frequency: int | None = None) -> list[int]:
                 date_indices = self._dates_to_indices(start, end)
 
-                # frequency = frequency or kwargs.get("frequency", None)
+                frequency = frequency or kwargs.get("frequency", None)
                 if frequency is not None:
                     return list(
                         map(
@@ -122,7 +125,6 @@ class Dataset:
                             Subset(self, date_indices, dict(start=start, end=end))._frequency_to_indices(frequency),
                         )
                     )
-                    return list(set(date_indices).intersection(self._frequency_to_indices(frequency)))
                 return date_indices
 
             return (

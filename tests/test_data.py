@@ -746,6 +746,58 @@ def test_dates_5():
 
 
 @mockup_open_zarr
+def test_frequency_3():
+    test = DatasetTester(
+        "test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-07"), ("2022-09", "2022-10", 24)], frequency=12
+    )
+    expected_dates = []
+    expected_dates.extend(
+        [datetime.datetime(2022, 6, 1) + datetime.timedelta(hours=i * 12) for i in range((30 + 31) * 2)]
+    )
+    expected_dates.extend([datetime.datetime(2022, 9, 1) + datetime.timedelta(hours=i * 24) for i in range((30 + 31))])
+
+    test.run(
+        expected_class=Subset,
+        expected_length=((30 + 31) * 2 + (30 + 31)),
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=12),
+        expected_shape=((30 + 31) * 2 + (30 + 31), 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        expected_dates=expected_dates,
+    )
+
+
+@mockup_open_zarr
+def test_frequency_4():
+    test = DatasetTester(
+        "test-2021-2023-1h-o96-abcd", dates=[("2022-06", "2022-07", 12), ("2022-09", "2022-10")], frequency=24
+    )
+    expected_dates = []
+    expected_dates.extend(
+        [datetime.datetime(2022, 6, 1) + datetime.timedelta(hours=i * 12) for i in range((30 + 31) * 2)]
+    )
+    expected_dates.extend([datetime.datetime(2022, 9, 1) + datetime.timedelta(hours=i * 24) for i in range((30 + 31))])
+
+    test.run(
+        expected_class=Subset,
+        expected_length=((30 + 31) * 2 + (30 + 31)),
+        start_date=datetime.datetime(2022, 6, 1),
+        time_increment=datetime.timedelta(hours=12),
+        expected_shape=((30 + 31) * 2 + (30 + 31), 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd"),
+        statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        expected_dates=expected_dates,
+    )
+
+
+@mockup_open_zarr
 def test_select_1():
     test = DatasetTester("test-2021-2021-6h-o96-abcd", select=["b", "d"])
     test.run(
