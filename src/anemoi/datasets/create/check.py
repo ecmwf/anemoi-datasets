@@ -89,7 +89,7 @@ class DatasetName:
             self.messages.append(
                 f"the dataset name {self} does not follow naming convention. "
                 "See here for details: "
-                "https://confluence.ecmwf.int/display/DWF/Datasets+available+as+zarr"
+                "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
             )
 
     def check_resolution(self, resolution):
