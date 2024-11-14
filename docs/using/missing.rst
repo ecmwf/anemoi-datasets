@@ -3,6 +3,16 @@
 ########################
  Managing missing dates
 ########################
+*********************************************
+ Managing missing dates with anemoi-training
+*********************************************
+
+Anemoi-training has internal handling of missing dates, and will 
+calculate the valid date indices used during training using the 
+``missing`` property. Consequenctly, when training a model with 
+anemoi-training, you should `not` specify a method to deal with 
+missing dates in the dataloader configuration file.
+
 
 **************************************************
  Filling the missing dates with artificial values
