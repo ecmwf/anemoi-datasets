@@ -12,11 +12,10 @@ import logging
 from collections import defaultdict
 
 import numpy as np
+from anemoi.transform.fields import new_field_with_valid_datetime
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
-
-from anemoi.datasets.fields import FieldArray
-from anemoi.datasets.fields import NewValidDateTimeField
 
 from .action import Action
 from .action import action_factory
@@ -116,9 +115,10 @@ class DateMapperClosest(DateMapper):
 
 
 class DateMapperClimatology(DateMapper):
-    def __init__(self, source, year, day):
+    def __init__(self, source, year, day, hour=None):
         self.year = year
         self.day = day
+        self.hour = hour
 
     def transform(self, group_of_dates):
         from anemoi.datasets.dates.groups import GroupOfDates
@@ -130,6 +130,8 @@ class DateMapperClimatology(DateMapper):
         new_dates = defaultdict(list)
         for date in dates:
             new_date = date.replace(year=self.year, day=self.day)
+            if self.hour is not None:
+                new_date = new_date.replace(hour=self.hour, minute=0, second=0)
             new_dates[new_date].append(date)
 
         for date, dates in new_dates.items():
@@ -185,9 +187,9 @@ class DateMapperResult(Result):
 
         for field in self.source_results.datasource:
             for date in self.original_group_of_dates:
-                result.append(NewValidDateTimeField(field, date))
+                result.append(new_field_with_valid_datetime(field, date))
 
-        return FieldArray(result)
+        return new_fieldlist_from_list(result)
 
 
 class RepeatedDatesAction(Action):
