@@ -20,7 +20,7 @@ import argparse
 import logging
 import os
 
-from anemoi.utils.s3 import upload
+from anemoi.utils.remote import transfer
 
 LOG = logging.getLogger(__name__)
 
@@ -38,6 +38,8 @@ source = args.source
 target = args.target
 bucket = args.bucket
 
+assert os.path.exists(source), f"Source {source} does not exist"
+
 if not target.startswith("s3://"):
     if target.startswith("/"):
         target = target[1:]
@@ -46,5 +48,5 @@ if not target.startswith("s3://"):
     target = os.path.join(bucket, target)
 
 LOG.info(f"Uploading {source} to {target}")
-upload(source, target, overwrite=args.overwrite)
+transfer(source, target, overwrite=args.overwrite)
 LOG.info("Upload complete")

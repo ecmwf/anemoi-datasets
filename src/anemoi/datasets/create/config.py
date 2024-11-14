@@ -215,15 +215,14 @@ def _prepare_serialisation(o):
 def set_to_test_mode(cfg):
     NUMBER_OF_DATES = 4
 
-    dates = cfg["dates"]
     LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
     groups = Groups(**LoadersConfig(cfg).dates)
 
-    dates = groups.dates
+    dates = groups.provider.values
     cfg["dates"] = dict(
         start=dates[0],
         end=dates[NUMBER_OF_DATES - 1],
-        frequency=dates.frequency,
+        frequency=groups.provider.frequency,
         group_by=NUMBER_OF_DATES,
     )
 

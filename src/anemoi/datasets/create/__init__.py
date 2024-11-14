@@ -1,11 +1,11 @@
-# (C) Copyright 2023 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
 import datetime
 import json
@@ -16,6 +16,7 @@ import uuid
 import warnings
 from functools import cached_property
 
+import cftime
 import numpy as np
 import tqdm
 from anemoi.utils.config import DotDict as DotDict
@@ -65,6 +66,19 @@ def json_tidy(o):
 
     if isinstance(o, datetime.timedelta):
         return frequency_to_string(o)
+
+    if isinstance(o, cftime.DatetimeJulian):
+        import pandas as pd
+
+        o = pd.Timestamp(
+            o.year,
+            o.month,
+            o.day,
+            o.hour,
+            o.minute,
+            o.second,
+        )
+        return o.isoformat()
 
     raise TypeError(repr(o) + " is not JSON serializable")
 

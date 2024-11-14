@@ -61,6 +61,15 @@ class XarrayFieldList(FieldList):
                 else:
                     flavour = json.load(f)
 
+        if isinstance(flavour, dict):
+            flavour_coords = [coords["name"] for coords in flavour["rules"].values()]
+            ds_dims = [dim for dim in ds._dims]
+            for dim in ds_dims:
+                if dim in flavour_coords and dim not in ds._coord_names:
+                    ds = ds.assign_coords({dim: ds[dim]})
+                else:
+                    pass
+
         guess = CoordinateGuesser.from_flavour(ds, flavour)
 
         skip = set()

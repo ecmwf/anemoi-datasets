@@ -117,7 +117,7 @@ class Variable:
 
         variable = Variable(
             ds=self.ds,
-            var=self.variable.isel({k: i}),
+            variable=self.variable.isel({k: i}),
             coordinates=coordinates,
             grid=self.grid,
             time=self.time,
