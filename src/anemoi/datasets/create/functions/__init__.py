@@ -22,7 +22,6 @@ def assert_is_fieldlist(obj):
 def import_function(name, kind):
 
     from anemoi.transform.filters import filter_registry
-    from anemoi.transforms import Transform as Transform
 
     name = name.replace("-", "_")
 
