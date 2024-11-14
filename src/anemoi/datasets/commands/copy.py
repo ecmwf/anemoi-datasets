@@ -10,13 +10,14 @@
 
 import logging
 import os
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import tqdm
-from anemoi.utils.remote import Transfer
-from anemoi.utils.remote import TransferMethodNotImplementedError
+from anemoi.utils.s3 import download
+from anemoi.utils.s3 import upload
 
 from . import Command
 
@@ -28,7 +29,54 @@ except AttributeError:
     isatty = False
 
 
-class ZarrCopier:
+class S3Downloader:
+    def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
+        self.source = source
+        self.target = target
+        self.transfers = transfers
+        self.overwrite = overwrite
+        self.resume = resume
+        self.verbosity = verbosity
+
+    def run(self):
+        if self.target == ".":
+            self.target = os.path.basename(self.source)
+
+        if self.overwrite and os.path.exists(self.target):
+            LOG.info(f"Deleting {self.target}")
+            shutil.rmtree(self.target)
+
+        download(
+            self.source + "/" if not self.source.endswith("/") else self.source,
+            self.target,
+            overwrite=self.overwrite,
+            resume=self.resume,
+            verbosity=self.verbosity,
+            threads=self.transfers,
+        )
+
+
+class S3Uploader:
+    def __init__(self, source, target, transfers, overwrite, resume, verbosity, **kwargs):
+        self.source = source
+        self.target = target
+        self.transfers = transfers
+        self.overwrite = overwrite
+        self.resume = resume
+        self.verbosity = verbosity
+
+    def run(self):
+        upload(
+            self.source,
+            self.target,
+            overwrite=self.overwrite,
+            resume=self.resume,
+            verbosity=self.verbosity,
+            threads=self.transfers,
+        )
+
+
+class DefaultCopier:
     def __init__(self, source, target, transfers, block_size, overwrite, resume, verbosity, nested, rechunk, **kwargs):
         self.source = source
         self.target = target
@@ -41,14 +89,6 @@ class ZarrCopier:
         self.rechunk = rechunk
 
         self.rechunking = rechunk.split(",") if rechunk else []
-
-        source_is_ssh = self.source.startswith("ssh://")
-        target_is_ssh = self.target.startswith("ssh://")
-
-        if source_is_ssh or target_is_ssh:
-            if self.rechunk:
-                raise NotImplementedError("Rechunking with SSH not implemented.")
-            assert NotImplementedError("SSH not implemented.")
 
     def _store(self, path, nested=False):
         if nested:
@@ -297,33 +337,26 @@ class CopyMixin:
         if args.source == args.target:
             raise ValueError("Source and target are the same.")
 
+        kwargs = vars(args)
+
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
-        if not args.rechunk:
-            # rechunking is only supported for ZARR datasets, it is implemented in this package
-            try:
-                if args.source.startswith("s3://") and not args.source.endswith("/"):
-                    args.source = args.source + "/"
-                copier = Transfer(
-                    args.source,
-                    args.target,
-                    overwrite=args.overwrite,
-                    resume=args.resume,
-                    verbosity=args.verbosity,
-                    threads=args.transfers,
-                )
-                copier.run()
-                return
-            except TransferMethodNotImplementedError:
-                # DataTransfer relies on anemoi-utils which is agnostic to the source and target format
-                # it transfers file and folders, ignoring that it is zarr data
-                # if it is not implemented, we fallback to the ZarrCopier
-                pass
+        source_in_s3 = args.source.startswith("s3://")
+        target_in_s3 = args.target.startswith("s3://")
 
-        copier = ZarrCopier(**vars(args))
+        copier = None
+
+        if args.rechunk or (source_in_s3 and target_in_s3):
+            copier = DefaultCopier(**kwargs)
+        else:
+            if source_in_s3:
+                copier = S3Downloader(**kwargs)
+
+            if target_in_s3:
+                copier = S3Uploader(**kwargs)
+
         copier.run()
-        return
 
 
 class Copy(CopyMixin, Command):

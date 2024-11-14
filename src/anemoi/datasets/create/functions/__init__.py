@@ -21,9 +21,6 @@ def assert_is_fieldlist(obj):
 
 def import_function(name, kind):
 
-    from anemoi.transform.filters import filter_registry
-    from anemoi.transforms import Transform as Transform
-
     name = name.replace("-", "_")
 
     plugins = {}
@@ -33,21 +30,8 @@ def import_function(name, kind):
     if name in plugins:
         return plugins[name].load()
 
-    try:
-        module = importlib.import_module(
-            f".{kind}.{name}",
-            package=__name__,
-        )
-        return module.execute
-    except ModuleNotFoundError:
-        pass
-
-    if kind == "filters":
-        if filter_registry.lookup(name, return_none=True):
-
-            def proc(context, data, *args, **kwargs):
-                return filter_registry.create(name, *args, **kwargs)(data)
-
-            return proc
-
-    raise ValueError(f"Unknown {kind} '{name}'")
+    module = importlib.import_module(
+        f".{kind}.{name}",
+        package=__name__,
+    )
+    return module.execute

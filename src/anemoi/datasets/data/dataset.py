@@ -11,6 +11,7 @@
 import datetime
 import json
 import logging
+import os
 import pprint
 import warnings
 from functools import cached_property
@@ -27,6 +28,8 @@ def _tidy(v):
         return [_tidy(i) for i in v]
     if isinstance(v, dict):
         return {k: _tidy(v) for k, v in v.items()}
+    if isinstance(v, str) and v.startswith("/"):
+        return os.path.basename(v)
     if isinstance(v, datetime.datetime):
         return v.isoformat()
     if isinstance(v, datetime.date):
@@ -388,7 +391,7 @@ class Dataset:
 
         # Arrays from the input sources
         for i, source in enumerate(self._input_sources()):
-            name = source.name if source.name is not None else f"source{i}"
+            name = source.name if source.name is not None else i
             src_arrays = source._supporting_arrays(name)
             source_to_arrays[id(source)] = sorted(src_arrays.keys())
 

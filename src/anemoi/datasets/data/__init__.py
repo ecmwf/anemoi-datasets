@@ -49,7 +49,6 @@ def _convert(x):
 def open_dataset(*args, **kwargs):
 
     # That will get rid of OmegaConf objects
-
     args, kwargs = _convert(args), _convert(kwargs)
 
     ds = _open_dataset(*args, **kwargs)
