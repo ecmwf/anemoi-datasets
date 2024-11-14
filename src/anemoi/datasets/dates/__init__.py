@@ -8,6 +8,8 @@
 
 import datetime
 import warnings
+from functools import reduce
+from math import gcd
 
 # from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import DateTimes
@@ -193,18 +195,16 @@ class HindcastsDates(DatesProvider):
 
         dates = sorted(dates)
 
-        mindelta = None
+        deltas = set()
         for a, b in zip(dates, dates[1:]):
             delta = b - a
             assert isinstance(delta, datetime.timedelta), delta
-            if mindelta is None:
-                mindelta = delta
-            else:
-                mindelta = min(mindelta, delta)
+            deltas.add(delta)
 
+        mindelta_seconds = reduce(gcd, [int(delta.total_seconds()) for delta in deltas])
+        mindelta = datetime.timedelta(seconds=mindelta_seconds)
         self.frequency = mindelta
         assert mindelta.total_seconds() > 0, mindelta
-
         print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", dates[0], dates[-1], mindelta)
 
         # Use all values between start and end by frequency, and set the ones that are missing
