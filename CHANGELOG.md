@@ -10,8 +10,12 @@ Keep it human-readable, your future self will thank you!
 
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.8...HEAD)
 
-### Changed
+
+### Added
+
+- Call filters from anemoi-transform
 - make test optional when adls is not installed Pull request #110
+
 
 ## [0.5.8](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...0.5.8) - 2024-10-26
 
