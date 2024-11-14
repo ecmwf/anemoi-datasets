@@ -71,7 +71,7 @@ class S3Store(ReadOnlyStore):
     """
 
     def __init__(self, url, region=None):
-        from anemoi.utils.s3 import s3_client
+        from anemoi.utils.remote.s3 import s3_client
 
         _, _, self.bucket, self.key = url.split("/", 3)
         self.s3 = s3_client(self.bucket, region=region)
@@ -364,6 +364,7 @@ class Zarr(Dataset):
             attrs=dict(self.z.attrs),
             chunks=self.chunks,
             dtype=str(self.dtype),
+            path=self.path,
         )
 
     def source(self, index):
@@ -396,7 +397,7 @@ class ZarrWithMissingDates(Zarr):
         super().__init__(path)
 
         missing_dates = self.z.attrs.get("missing_dates", [])
-        missing_dates = set([np.datetime64(x) for x in missing_dates])
+        missing_dates = set([np.datetime64(x, "s") for x in missing_dates])
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
         self.missing = set(self.missing_to_dates)
 

@@ -28,21 +28,41 @@ LOG = logging.getLogger(__name__)
 
 
 class Merge(Combined):
+
+    # d0 d2 d4 d6 ...
+    # d1 d3 d5 d7 ...
+
+    # gives
+    # d0 d1 d2 d3 ...
+
     def __init__(self, datasets, allow_gaps_in_dates=False):
         super().__init__(datasets)
 
         self.allow_gaps_in_dates = allow_gaps_in_dates
 
-        dates = dict()
+        dates = dict()  # date -> (dataset_index, date_index)
 
         for i, d in enumerate(datasets):
             for j, date in enumerate(d.dates):
                 date = date.astype(object)
                 if date in dates:
-                    d1 = datasets[dates[date][0]]
-                    d2 = datasets[i]
+
+                    d1 = datasets[dates[date][0]]  # Selected
+                    d2 = datasets[i]  # The new one
+
+                    if j in d2.missing:
+                        # LOG.warning(f"Duplicate date {date} found in datasets {d1} and {d2}, but {date} is missing in {d}, ignoring")
+                        continue
+
+                    k = dates[date][1]
+                    if k in d1.missing:
+                        # LOG.warning(f"Duplicate date {date} found in datasets {d1} and {d2}, but {date} is missing in {d}, ignoring")
+                        dates[date] = (i, j)  # Replace the missing date with the new one
+                        continue
+
                     raise ValueError(f"Duplicate date {date} found in datasets {d1} and {d2}")
-                dates[date] = (i, j)
+                else:
+                    dates[date] = (i, j)
 
         all_dates = sorted(dates)
         start = all_dates[0]
@@ -71,7 +91,10 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency.astype(object)
+        self._frequency = frequency  # .astype(object)
+
+    def __len__(self):
+        return len(self._dates)
 
     @property
     def dates(self):

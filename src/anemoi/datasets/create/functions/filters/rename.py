@@ -25,7 +25,9 @@ class RenamedFieldMapping:
     def __init__(self, field, what, renaming):
         self.field = field
         self.what = what
-        self.renaming = renaming
+        self.renaming = {}
+        for k, v in renaming.items():
+            self.renaming[k] = {str(a): str(b) for a, b in v.items()}
 
     def metadata(self, key=None, **kwargs):
         if key is None:
