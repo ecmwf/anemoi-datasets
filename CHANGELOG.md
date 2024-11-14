@@ -10,8 +10,12 @@ Keep it human-readable, your future self will thank you!
 
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.8...HEAD)
 
-### Changed
+
+### Added
+
+- Call filters from anemoi-transform
 - make test optional when adls is not installed Pull request #110
+
 
 ## [0.5.8](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...0.5.8) - 2024-10-26
 
@@ -34,6 +38,7 @@ Keep it human-readable, your future self will thank you!
 
 ### Changed
 
+- Upload with ssh (experimental)
 - Remove upstream dependencies from downstream-ci workflow (temporary) (#83)
 - ci: pin python versions to 3.9 ... 3.12 for checks (#93)
 - Fix `__version__` import in init
