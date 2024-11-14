@@ -28,6 +28,13 @@ LOG = logging.getLogger(__name__)
 
 
 class Merge(Combined):
+
+    # d0 d2 d4 d6 ...
+    # d1 d3 d5 d7 ...
+
+    # gives
+    # d0 d1 d2 d3 ...
+
     def __init__(self, datasets, allow_gaps_in_dates=False):
         super().__init__(datasets)
 
@@ -71,7 +78,10 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency.astype(object)
+        self._frequency = frequency  # .astype(object)
+
+    def __len__(self):
+        return len(self._dates)
 
     @property
     def dates(self):
