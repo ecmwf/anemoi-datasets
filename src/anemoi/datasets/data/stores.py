@@ -71,7 +71,7 @@ class S3Store(ReadOnlyStore):
     """
 
     def __init__(self, url, region=None):
-        from anemoi.utils.s3 import s3_client
+        from anemoi.utils.remote.s3 import s3_client
 
         _, _, self.bucket, self.key = url.split("/", 3)
         self.s3 = s3_client(self.bucket, region=region)
