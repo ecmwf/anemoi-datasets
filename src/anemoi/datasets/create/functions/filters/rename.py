@@ -44,7 +44,6 @@ class RenamedFieldMapping:
 
     def __repr__(self) -> str:
         return repr(self.field)
-        return f"{self.field} -> {self.what} -> {self.renaming}"
 
 
 class RenamedFieldFormat:
@@ -59,6 +58,8 @@ class RenamedFieldFormat:
         self.what = what
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
+
+        assert False, (self.what, self.bits, self.format)
 
     def metadata(self, *args, **kwargs):
         value = self.field.metadata(*args, **kwargs)

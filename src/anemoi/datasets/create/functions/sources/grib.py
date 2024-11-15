@@ -9,10 +9,13 @@
 
 
 import glob
+import logging
 
 from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
+
+LOG = logging.getLogger(__name__)
 
 
 def _load(context, name, record):
@@ -140,5 +143,8 @@ def execute(context, dates, path, latitudes=None, longitudes=None, *args, **kwar
 
     if geography is not None:
         ds = FieldArray([AddGrid(_, geography) for _ in ds])
+
+    if len(ds) == 0:
+        LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={kwargs})")
 
     return ds

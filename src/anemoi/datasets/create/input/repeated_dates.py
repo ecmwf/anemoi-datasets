@@ -189,6 +189,9 @@ class DateMapperResult(Result):
             for date in self.original_group_of_dates:
                 result.append(new_field_with_valid_datetime(field, date))
 
+        if not result:
+            raise ValueError("repeated_dates: no input data found")
+
         return new_fieldlist_from_list(result)
 
 
