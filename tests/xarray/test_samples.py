@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
+import os
+
 import pytest
 import requests
 import xarray as xr
@@ -50,6 +52,9 @@ def _test_samples(n, check_skip=True):
 
 
 @pytest.mark.parametrize("n", SAMPLES)
+# it would be nice to use a @pytest.mark.slow and configure this globally
+# this could be done when refactoring the tests, and setting up canary/nightly builds
+@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 def test_samples(n):
     _test_samples(n)
 
