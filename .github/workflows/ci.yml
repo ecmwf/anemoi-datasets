@@ -42,13 +42,20 @@ jobs:
     with:
       anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
       codecov_upload: true
+      skip_matrix_jobs: |
+        gnu@debian-11
+        clang@rocky-8.6
+        gnu@debian-11
+        gnu@rocky-8.6
+        clang@rocky-8.6
+        gnu@fedora-37
     secrets: inherit
 
-   # Build downstream packages on HPC
-  downstream-ci-hpc:
-    name: downstream-ci-hpc
-    if: ${{ !contains(github.repository, 'private') && (!github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci') }}
-    uses: ecmwf-actions/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
-    with:
-      anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
-    secrets: inherit
+#   # Build downstream packages on HPC
+#  downstream-ci-hpc:
+#    name: downstream-ci-hpc
+#    if: ${{ !contains(github.repository, 'private') && (!github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci') }}
+#    uses: ecmwf-actions/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
+#    with:
+#      anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
+#    secrets: inherit

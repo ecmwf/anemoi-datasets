@@ -11,7 +11,6 @@
 import datetime
 import json
 import logging
-import os
 import pprint
 import warnings
 from functools import cached_property
@@ -23,8 +22,32 @@ from anemoi.utils.dates import frequency_to_timedelta
 LOG = logging.getLogger(__name__)
 
 
+def _tidy(v):
+    if isinstance(v, (list, tuple, set)):
+        return [_tidy(i) for i in v]
+    if isinstance(v, dict):
+        return {k: _tidy(v) for k, v in v.items()}
+    if isinstance(v, datetime.datetime):
+        return v.isoformat()
+    if isinstance(v, datetime.date):
+        return v.isoformat()
+    if isinstance(v, datetime.timedelta):
+        return frequency_to_string(v)
+
+    if isinstance(v, Dataset):
+        # That can happen in the `arguments`
+        # if a dataset is passed as an argument
+        return repr(v)
+
+    if isinstance(v, slice):
+        return (v.start, v.stop, v.step)
+
+    return v
+
+
 class Dataset:
     arguments = {}
+    _name = None
 
     def mutate(self) -> "Dataset":
         """Give an opportunity to a subclass to return a new Dataset
@@ -41,6 +64,21 @@ class Dataset:
         return len(self)
 
     def _subset(self, **kwargs):
+
+        if not kwargs:
+            return self.mutate()
+
+        name = kwargs.pop("name", None)
+        result = self.__subset(**kwargs)
+        result._name = name
+
+        return result
+
+    @property
+    def name(self):
+        return self._name
+
+    def __subset(self, **kwargs):
         if not kwargs:
             return self.mutate()
 
@@ -254,41 +292,32 @@ class Dataset:
 
         return result
 
+    def _input_sources(self):
+        sources = []
+        self.collect_input_sources(sources)
+        return sources
+
     def metadata(self):
         import anemoi
 
-        def tidy(v):
-            if isinstance(v, (list, tuple, set)):
-                return [tidy(i) for i in v]
-            if isinstance(v, dict):
-                return {k: tidy(v) for k, v in v.items()}
-            if isinstance(v, str) and v.startswith("/"):
-                return os.path.basename(v)
-            if isinstance(v, datetime.datetime):
-                return v.isoformat()
-            if isinstance(v, datetime.date):
-                return v.isoformat()
-            if isinstance(v, datetime.timedelta):
-                return frequency_to_string(v)
+        _, source_to_arrays = self._supporting_arrays_and_sources()
 
-            if isinstance(v, Dataset):
-                # That can happen in the `arguments`
-                # if a dataset is passed as an argument
-                return repr(v)
-
-            if isinstance(v, slice):
-                return (v.start, v.stop, v.step)
-
-            return v
+        sources = []
+        for i, source in enumerate(self._input_sources()):
+            source_metadata = source.dataset_metadata().copy()
+            source_metadata["supporting_arrays"] = source_to_arrays[id(source)]
+            sources.append(source_metadata)
 
         md = dict(
             version=anemoi.datasets.__version__,
             arguments=self.arguments,
             **self.dataset_metadata(),
+            sources=sources,
+            supporting_arrays=source_to_arrays[id(self)],
         )
 
         try:
-            return json.loads(json.dumps(tidy(md)))
+            return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
             pprint.pprint(md)
@@ -313,7 +342,66 @@ class Dataset:
             dtype=str(self.dtype),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
+            name=self.name,
         )
+
+    def _supporting_arrays(self, *path):
+
+        import numpy as np
+
+        def _path(path, name):
+            return "/".join(str(_) for _ in [*path, name])
+
+        result = {
+            _path(path, "latitudes"): self.latitudes,
+            _path(path, "longitudes"): self.longitudes,
+        }
+        collected = []
+
+        self.collect_supporting_arrays(collected, *path)
+
+        for path, name, array in collected:
+            assert isinstance(path, tuple) and isinstance(name, str)
+            assert isinstance(array, np.ndarray)
+
+            name = _path(path, name)
+
+            if name in result:
+                raise ValueError(f"Duplicate key {name}")
+
+            result[name] = array
+
+        return result
+
+    def supporting_arrays(self):
+        """Arrays to be saved in the checkpoints"""
+        arrays, _ = self._supporting_arrays_and_sources()
+        return arrays
+
+    def _supporting_arrays_and_sources(self):
+
+        source_to_arrays = {}
+
+        # Top levels arrays
+        result = self._supporting_arrays()
+        source_to_arrays[id(self)] = sorted(result.keys())
+
+        # Arrays from the input sources
+        for i, source in enumerate(self._input_sources()):
+            name = source.name if source.name is not None else f"source{i}"
+            src_arrays = source._supporting_arrays(name)
+            source_to_arrays[id(source)] = sorted(src_arrays.keys())
+
+            for k in src_arrays:
+                assert k not in result
+
+            result.update(src_arrays)
+
+        return result, source_to_arrays
+
+    def collect_supporting_arrays(self, collected, *path):
+        # Override this method to add more arrays
+        pass
 
     def metadata_specific(self, **kwargs):
         action = self.__class__.__name__.lower()

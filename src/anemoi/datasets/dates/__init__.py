@@ -1,6 +1,8 @@
-# (C) Copyright 2023 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
@@ -8,6 +10,8 @@
 
 import datetime
 import warnings
+from functools import reduce
+from math import gcd
 
 # from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import DateTimes
@@ -193,18 +197,16 @@ class HindcastsDates(DatesProvider):
 
         dates = sorted(dates)
 
-        mindelta = None
+        deltas = set()
         for a, b in zip(dates, dates[1:]):
             delta = b - a
             assert isinstance(delta, datetime.timedelta), delta
-            if mindelta is None:
-                mindelta = delta
-            else:
-                mindelta = min(mindelta, delta)
+            deltas.add(delta)
 
+        mindelta_seconds = reduce(gcd, [int(delta.total_seconds()) for delta in deltas])
+        mindelta = datetime.timedelta(seconds=mindelta_seconds)
         self.frequency = mindelta
         assert mindelta.total_seconds() > 0, mindelta
-
         print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", dates[0], dates[-1], mindelta)
 
         # Use all values between start and end by frequency, and set the ones that are missing

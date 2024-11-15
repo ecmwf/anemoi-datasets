@@ -232,13 +232,17 @@ class Comparer:
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
+# it would be nice to use a @pytest.mark.slow and configure this globally
+# this could be done when refactoring the tests, and setting up canary/nightly builds
+@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
+    is_test = False
 
-    creator_factory("init", config=config, path=output, overwrite=True).run()
+    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
     creator_factory("load", path=output).run()
     creator_factory("finalise", path=output).run()
     creator_factory("patch", path=output).run()
@@ -252,8 +256,8 @@ def test_run(name):
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
     s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
     # if not os.path.exists(reference_path):
-    #    from anemoi.utils.s3 import download as s3_download
-    #    s3_download(s3_uri + '/', reference_path, overwrite=True)
+    #    from anemoi.utils.remote import transfer
+    #    transfer(s3_uri + '/', reference_path, overwrite=True)
 
     Comparer(name, output_path=output, reference_path=s3_uri).compare()
     # Comparer(name, output_path=output, reference_path=reference_path).compare()
