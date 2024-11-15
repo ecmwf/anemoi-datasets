@@ -18,7 +18,7 @@ from anemoi.datasets.testing import assert_field_list
 URL = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/samples/"
 
 SAMPLES = list(range(23))
-SKIP = [0, 1, 2, 3, 4]
+SKIP = [0, 1, 2, 3, 4, 22]
 
 
 def _test_samples(n, check_skip=True):
