@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
 
 from .action import Action
@@ -20,7 +21,11 @@ LOG = logging.getLogger(__name__)
 class PipeAction(Action):
     def __init__(self, context, action_path, *configs):
         super().__init__(context, action_path, *configs)
-        assert len(configs) > 1, configs
+        if len(configs) <= 1:
+            raise ValueError(
+                f"PipeAction requires at least two actions, got {len(configs)}\n{json.dumps(configs, indent=2)}"
+            )
+
         current = action_factory(configs[0], context, action_path + ["0"])
         for i, c in enumerate(configs[1:]):
             current = step_factory(c, context, action_path + [str(i + 1)], previous_step=current)

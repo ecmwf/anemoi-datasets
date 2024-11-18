@@ -12,7 +12,6 @@ import logging
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.data.stores import name_to_zarr_store
-from anemoi.datasets.utils.fields import NewMetadataField as NewMetadataField
 
 from .. import iterate_patterns
 from .fieldlist import XarrayFieldList

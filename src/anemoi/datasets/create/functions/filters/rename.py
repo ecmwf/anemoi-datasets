@@ -44,7 +44,6 @@ class RenamedFieldMapping:
 
     def __repr__(self) -> str:
         return repr(self.field)
-        return f"{self.field} -> {self.what} -> {self.renaming}"
 
 
 class RenamedFieldFormat:

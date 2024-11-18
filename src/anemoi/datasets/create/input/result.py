@@ -15,15 +15,9 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
-from anemoi.utils.dates import as_datetime as as_datetime
-from anemoi.utils.dates import frequency_to_timedelta as frequency_to_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
-
-from anemoi.datasets.dates import DatesProvider as DatesProvider
-from anemoi.datasets.fields import FieldArray as FieldArray
-from anemoi.datasets.fields import NewValidDateTimeField as NewValidDateTimeField
 
 from .trace import trace
 from .trace import trace_datasource
