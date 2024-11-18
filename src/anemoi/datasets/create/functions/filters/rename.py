@@ -59,8 +59,6 @@ class RenamedFieldFormat:
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
 
-        assert False, (self.what, self.bits, self.format)
-
     def metadata(self, *args, **kwargs):
         value = self.field.metadata(*args, **kwargs)
         if args:
