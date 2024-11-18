@@ -50,7 +50,7 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1",
-  "anemoi-utils[provenance]>=0.4.8",
+  "anemoi-utils[provenance]>=0.4.9",
   "cfunits",
   "numpy",
   "pyyaml",
