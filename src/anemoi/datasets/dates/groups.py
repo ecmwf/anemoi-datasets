@@ -28,7 +28,7 @@ class GroupOfDates:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
-        self.dates = dates
+        self.dates = [as_datetime(_) for _ in dates]
         self.provider = provider
         self.partial_ok = partial_ok
 

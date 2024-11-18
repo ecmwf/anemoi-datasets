@@ -10,6 +10,7 @@
 
 import datetime
 import logging
+from functools import cached_property
 
 from earthkit.data.core.fieldlist import Field
 from earthkit.data.core.fieldlist import math
@@ -46,8 +47,6 @@ class XArrayField(Field):
             This is actually a nD object, but the first dimensions are always 1.
             The other two dimensions are latitude and longitude.
         """
-        super().__init__(owner.array_backend)
-
         self.owner = owner
         self.selection = selection
 
@@ -86,7 +85,8 @@ class XArrayField(Field):
 
         return values  # .reshape(self.shape)
 
-    def _make_metadata(self):
+    @cached_property
+    def _metadata(self):
         return XArrayMetadata(self)
 
     def grid_points(self):

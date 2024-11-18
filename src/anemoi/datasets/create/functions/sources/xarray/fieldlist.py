@@ -14,10 +14,8 @@ import logging
 import yaml
 from earthkit.data.core.fieldlist import FieldList
 
-from .coordinates import is_scalar as is_scalar
 from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
-from .metadata import XArrayMetadata as XArrayMetadata
 from .time import Time
 from .variable import FilteredVariable
 from .variable import Variable

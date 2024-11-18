@@ -19,7 +19,6 @@ from functools import cached_property
 import cftime
 import numpy as np
 import tqdm
-from anemoi.utils.config import DotDict as DotDict
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -327,7 +326,7 @@ class HasElementForDataMixin:
         self.output = build_output(config.output, parent=self)
 
         self.input = build_input_(main_config=config, output_config=self.output)
-        LOG.info(self.input)
+        LOG.info("%s", self.input)
 
 
 def build_input_(main_config, output_config):
