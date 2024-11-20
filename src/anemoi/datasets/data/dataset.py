@@ -15,6 +15,7 @@ import pprint
 import warnings
 from functools import cached_property
 
+import numpy as np
 from anemoi.utils.dates import frequency_to_seconds
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -41,6 +42,9 @@ def _tidy(v):
 
     if isinstance(v, slice):
         return (v.start, v.stop, v.step)
+
+    if isinstance(v, np.integer):
+        return int(v)
 
     return v
 
