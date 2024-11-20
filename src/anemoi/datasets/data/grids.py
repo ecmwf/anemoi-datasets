@@ -324,7 +324,8 @@ class Cutout(GridsBase):
         """
         shapes = [np.sum(mask) for mask in self.masks]
         global_shape = np.sum(self.global_mask)
-        return tuple(self.lams[0].shape[:-1] + (sum(shapes) + global_shape,))
+        total_shape = sum(shapes) + global_shape
+        return tuple(self.lams[0].shape[:-1] + (int(total_shape),))
 
     def check_same_resolution(self, d1, d2):
         # Turned off because we are combining different resolutions
