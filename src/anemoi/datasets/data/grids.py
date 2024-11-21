@@ -289,14 +289,15 @@ class Cutout(GridsBase):
         """
         index, changes = index_to_slices(index, self.shape)
         # Select data from each LAM
-        lam_data = [lam[index] for lam in self.lams]
+        lam_data = [lam[index[:3]] for lam in self.lams]
 
         # First apply spatial indexing on `self.globe` and then apply the mask
         globe_data_sliced = self.globe[index[:3]]
         globe_data = globe_data_sliced[..., self.global_mask]
 
-        # Concatenate LAM data with global data
-        result = np.concatenate(lam_data + [globe_data], axis=self.axis)
+        # Concatenate LAM data with global data, apply the grid slicing
+        result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
+
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected, *path):
