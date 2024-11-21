@@ -249,15 +249,15 @@ class Dataset:
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
     def _reorder_to_columns(self, vars):
-        if isinstance(vars, str) and vars=="sort":
+        if isinstance(vars, str) and vars == "sort":
             # Sorting the variables alphabetically.
             # This is cruical for pre-training then transfer learning in combination with
             # cutout and adjust = 'all'
-            
+
             indices = [self.name_to_index[k] for k, v in sorted(self.name_to_index.items(), key=lambda x: x[0])]
             assert set(indices) == set(range(len(self.name_to_index)))
             return indices
-        
+
         if isinstance(vars, (list, tuple)):
             vars = {k: i for i, k in enumerate(vars)}
 
