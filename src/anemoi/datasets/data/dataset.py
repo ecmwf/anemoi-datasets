@@ -245,7 +245,8 @@ class Dataset:
         if not isinstance(vars, (list, tuple, set)):
             vars = [vars]
 
-        assert set(vars) <= set(self.name_to_index)
+        if not set(vars) <= set(self.name_to_index):
+            raise ValueError(f"drop: unknown variables: {set(vars) - set(self.name_to_index)}")
 
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
