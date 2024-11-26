@@ -124,7 +124,14 @@ class Join(Combined):
                 if v in md:
                     result[v] = md[v]
 
-        assert len(result) == len(variables), (result, variables)
+        if len(result) != len(variables):
+            LOG.error("Some variables are missing metadata.")
+            for v in variables:
+                if v not in result:
+                    LOG.error("Missing metadata for %r.", v)
+
+            raise ValueError("Some variables are missing metadata.")
+
         return result
 
     @cached_property

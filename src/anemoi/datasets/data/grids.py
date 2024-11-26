@@ -289,14 +289,15 @@ class Cutout(GridsBase):
         """
         index, changes = index_to_slices(index, self.shape)
         # Select data from each LAM
-        lam_data = [lam[index] for lam in self.lams]
+        lam_data = [lam[index[:3]] for lam in self.lams]
 
         # First apply spatial indexing on `self.globe` and then apply the mask
         globe_data_sliced = self.globe[index[:3]]
         globe_data = globe_data_sliced[..., self.global_mask]
 
-        # Concatenate LAM data with global data
-        result = np.concatenate(lam_data + [globe_data], axis=self.axis)
+        # Concatenate LAM data with global data, apply the grid slicing
+        result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
+
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected, *path):
@@ -324,7 +325,8 @@ class Cutout(GridsBase):
         """
         shapes = [np.sum(mask) for mask in self.masks]
         global_shape = np.sum(self.global_mask)
-        return tuple(self.lams[0].shape[:-1] + (sum(shapes) + global_shape,))
+        total_shape = sum(shapes) + global_shape
+        return tuple(self.lams[0].shape[:-1] + (int(total_shape),))
 
     def check_same_resolution(self, d1, d2):
         # Turned off because we are combining different resolutions
