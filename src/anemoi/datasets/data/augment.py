@@ -53,6 +53,10 @@ class Augment(GridsBase):
         return self._variables
 
     @property
+    def shape(self):
+        return self.target.shape
+
+    @property
     def variables_metadata(self):
         return {k: v for k, v in self.source.variables_metadata.items() if k in self._variables}
 
