@@ -72,6 +72,11 @@ class DateMapperClosest(DateMapper):
                 end += self.frequency
 
         to_try = sorted(to_try - self.tried)
+        info = {k: "no-data" for k in to_try}
+
+        if not to_try:
+            LOG.warning(f"No new dates to try for {group_of_dates} in {self.source}")
+            # return []
 
         if to_try:
             result = self.source.select(
@@ -82,18 +87,31 @@ class DateMapperClosest(DateMapper):
                 )
             )
 
+            cnt = 0
             for f in result.datasource:
+                cnt += 1
                 # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
                 date = as_datetime(f.metadata("valid_datetime"))
 
                 if self.skip_all_nans:
                     if np.isnan(f.to_numpy()).all():
                         LOG.warning(f"Skipping {date} because all values are NaN")
+                        info[date] = "all-nans"
                         continue
 
+                info[date] = "ok"
                 self.found.add(date)
 
+            if cnt == 0:
+                raise ValueError(f"No data found for {group_of_dates} in {self.source}")
+
             self.tried.update(to_try)
+
+        if not self.found:
+            for k, v in info.items():
+                LOG.warning(f"{k}: {v}")
+
+            raise ValueError(f"No matching data found for {asked_dates} in {self.source}")
 
         new_dates = defaultdict(list)
 
