@@ -12,7 +12,7 @@ import logging
 
 from ..grids import nearest_grid_points
 from .debug import Node
-from .forwards import Forwards
+from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
 from .misc import _auto_adjust
@@ -21,10 +21,10 @@ from .misc import _open
 LOG = logging.getLogger(__name__)
 
 
-class Complement(Forwards):
+class Complement(Combined):
 
     def __init__(self, target, source, what="variables", interpolation="nearest"):
-        super().__init__(target)
+        super().__init__([target, source])
 
         # We had the variables of dataset[1] to dataset[0]
         # interpoated on the grid of dataset[0]
