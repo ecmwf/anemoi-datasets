@@ -68,11 +68,21 @@ class Complement(Combined):
         """
         return Node(self, [d.tree() for d in (self.target, self.source)])
 
+    def __getitem__(self, index):
+        if isinstance(index, (int, slice)):
+            index = (index, slice(None), slice(None), slice(None))
+        return self._get_tuple(index)
+
 
 class ComplementNone(Complement):
 
     def __init__(self, target, source):
         super().__init__(target, source)
+
+    def _get_tuple(self, index):
+        index, changes = index_to_slices(index, self.shape)
+        result = self.source[index]
+        return apply_index_to_slices_changes(result, changes)
 
 
 class ComplementNearest(Complement):
@@ -89,11 +99,6 @@ class ComplementNearest(Complement):
 
     def check_compatibility(self, d1, d2):
         pass
-
-    def __getitem__(self, index):
-        if isinstance(index, (int, slice)):
-            index = (index, slice(None), slice(None), slice(None))
-        return self._get_tuple(index)
 
     def _get_tuple(self, index):
         index, changes = index_to_slices(index, self.shape)
