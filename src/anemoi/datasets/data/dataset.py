@@ -192,12 +192,6 @@ class Dataset:
             interpolate_frequency = kwargs.pop("interpolate_frequency")
             return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
-        if "augment" in kwargs:
-            from .interpolate import Augment
-
-            augment = kwargs.pop("augment")
-            return Augment(self, augment)._subset(**kwargs).mutate()
-
         # Keep last
         if "shuffle" in kwargs:
             from .subset import Subset

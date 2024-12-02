@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import json
 import logging
 from functools import cached_property
 
@@ -118,8 +119,10 @@ class Join(Combined):
     def variables_metadata(self):
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
+        print(variables)
         for d in self.datasets:
             md = d.variables_metadata
+            print(json.dumps(md, indent=4))
             for v in variables:
                 if v in md:
                     result[v] = md[v]

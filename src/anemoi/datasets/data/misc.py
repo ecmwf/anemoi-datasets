@@ -338,11 +338,11 @@ def _open_dataset(*args, **kwargs):
         assert not sets, sets
         return cutout_factory(args, kwargs).mutate()
 
-    if "augment" in kwargs:
-        from .augment import augment_factory
+    if "complement" in kwargs:
+        from .complement import complement_factory
 
         assert not sets, sets
-        return augment_factory(args, kwargs).mutate()
+        return complement_factory(args, kwargs).mutate()
 
     for name in ("datasets", "dataset"):
         if name in kwargs:

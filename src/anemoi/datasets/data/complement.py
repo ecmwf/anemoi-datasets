@@ -12,7 +12,7 @@ import logging
 
 from ..grids import nearest_grid_points
 from .debug import Node
-from .grids import GridsBase
+from .forwards import Forwards
 from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
 from .misc import _auto_adjust
@@ -21,19 +21,16 @@ from .misc import _open
 LOG = logging.getLogger(__name__)
 
 
-class Augment(GridsBase):
+class Complement(Forwards):
 
-    def __init__(self, datasets, axis=3, what="variables", method="nearest"):
-
-        super().__init__(datasets, axis=axis)
-        assert len(datasets) == 2, "Augment requires two datasets"
-        assert axis == 3, "Augment requires axis=3"
+    def __init__(self, target, source, what="variables", interpolation="nearest"):
+        super().__init__(target)
 
         # We had the variables of dataset[1] to dataset[0]
         # interpoated on the grid of dataset[0]
 
-        self.target = self.datasets[0]
-        self.source = self.datasets[1]
+        self.target = target
+        self.source = source
 
         self._variables = []
 
@@ -44,10 +41,6 @@ class Augment(GridsBase):
 
         if not self._variables:
             raise ValueError("Augment: no missing variables")
-
-        self._nearest_grid_points = nearest_grid_points(
-            self.source.latitudes, self.source.longitudes, self.target.latitudes, self.target.longitudes
-        )
 
     @property
     def variables(self):
@@ -63,6 +56,36 @@ class Augment(GridsBase):
 
     def check_same_variables(self, d1, d2):
         pass
+
+    def tree(self):
+        """Generates a hierarchical tree structure for the `Cutout` instance and
+        its associated datasets.
+
+        Returns:
+            Node: A `Node` object representing the `Cutout` instance as the root
+            node, with each dataset in `self.datasets` represented as a child
+            node.
+        """
+        return Node(self, [d.tree() for d in (self.target, self.source)])
+
+
+class ComplementNone(Complement):
+
+    def __init__(self, target, source):
+        super().__init__(target, source)
+
+
+class ComplementNearest(Complement):
+
+    def __init__(self, target, source):
+        super().__init__(target, source)
+
+        self._nearest_grid_points = nearest_grid_points(
+            self.source.latitudes,
+            self.source.longitudes,
+            self.target.latitudes,
+            self.target.longitudes,
+        )
 
     def check_compatibility(self, d1, d2):
         pass
@@ -82,41 +105,33 @@ class Augment(GridsBase):
 
         return apply_index_to_slices_changes(result, changes)
 
-    def tree(self):
-        """Generates a hierarchical tree structure for the `Cutout` instance and
-        its associated datasets.
 
-        Returns:
-            Node: A `Node` object representing the `Cutout` instance as the root
-            node, with each dataset in `self.datasets` represented as a child
-            node.
-        """
-        return Node(self, [d.tree() for d in self.datasets])
+def complement_factory(args, kwargs):
+    assert len(args) == 0, args
 
-
-def augment_factory(args, kwargs):
-    if "ensemble" in kwargs:
-        raise NotImplementedError("Cannot use both 'ensemble' and 'augment'")
-
-    augment = kwargs.pop("augment")
+    source = kwargs.pop("source")
+    target = kwargs.pop("complement")
     what = kwargs.pop("what", "variables")
-    method = kwargs.pop("method", "nearest")
+    interpolation = kwargs.pop("interpolation", "none")
 
     if what != "variables":
-        raise NotImplementedError(f"Augment what={what} not implemented")
+        raise NotImplementedError(f"Complement what={what} not implemented")
 
-    if method != "nearest":
-        raise NotImplementedError(f"Augment method={method} not implemented")
+    if interpolation not in ("none", "nearest"):
+        raise NotImplementedError(f"Complement method={interpolation} not implemented")
 
-    assert len(args) == 0
-    assert isinstance(augment, (list, tuple)), "augment must be a list or tuple"
-
-    datasets = [_open(e) for e in augment]
+    source = _open(source)
+    target = _open(target)
     # select is the same as variables
-    datasets, kwargs = _auto_adjust(datasets, kwargs, exclude=["select"])
+    (source, target), kwargs = _auto_adjust([source, target], kwargs, exclude=["select"])
 
-    return Augment(
-        datasets,
-        what=what,
-        method=method,
-    )._subset(**kwargs)
+    Class = {
+        None: ComplementNone,
+        "none": ComplementNone,
+        "nearest": ComplementNearest,
+    }[interpolation]
+
+    complement = Class(target=target, source=source)._subset(**kwargs)
+
+    # Will join the datasets along the variables axis
+    return _open([target, complement])
