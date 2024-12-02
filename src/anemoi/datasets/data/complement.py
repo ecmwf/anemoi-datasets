@@ -122,7 +122,7 @@ def complement_factory(args, kwargs):
 
     source = _open(source)
     target = _open(target)
-    # select is the same as variables
+    # `select` is the same as `variables`
     (source, target), kwargs = _auto_adjust([source, target], kwargs, exclude=["select"])
 
     Class = {
