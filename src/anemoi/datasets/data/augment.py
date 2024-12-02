@@ -11,6 +11,7 @@
 import logging
 
 from ..grids import nearest_grid_points
+from .debug import Node
 from .grids import GridsBase
 from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
@@ -80,6 +81,17 @@ class Augment(GridsBase):
         result = target_data[..., index[3]]
 
         return apply_index_to_slices_changes(result, changes)
+
+    def tree(self):
+        """Generates a hierarchical tree structure for the `Cutout` instance and
+        its associated datasets.
+
+        Returns:
+            Node: A `Node` object representing the `Cutout` instance as the root
+            node, with each dataset in `self.datasets` represented as a child
+            node.
+        """
+        return Node(self, [d.tree() for d in self.datasets])
 
 
 def augment_factory(args, kwargs):
