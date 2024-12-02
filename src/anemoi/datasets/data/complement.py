@@ -48,7 +48,8 @@ class Complement(Combined):
 
     @property
     def shape(self):
-        return self.target.shape
+        shape = self.target.shape
+        return (shape[0], len(self._variables)) + shape[2:]
 
     @property
     def variables_metadata(self):
