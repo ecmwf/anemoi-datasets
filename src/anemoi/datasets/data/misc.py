@@ -194,7 +194,7 @@ def _open(a):
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
 
-def _auto_adjust(datasets, kwargs):
+def _auto_adjust(datasets, kwargs, exclude=None):
 
     if "adjust" not in kwargs:
         return datasets, kwargs
@@ -213,6 +213,9 @@ def _auto_adjust(datasets, kwargs):
 
     for a in adjust_list:
         adjust_set.update(ALIASES.get(a, [a]))
+
+    if exclude is not None:
+        adjust_set -= set(exclude)
 
     extra = set(adjust_set) - set(ALIASES["all"])
     if extra:
@@ -334,6 +337,12 @@ def _open_dataset(*args, **kwargs):
 
         assert not sets, sets
         return cutout_factory(args, kwargs).mutate()
+
+    if "augment" in kwargs:
+        from .augment import augment_factory
+
+        assert not sets, sets
+        return augment_factory(args, kwargs).mutate()
 
     for name in ("datasets", "dataset"):
         if name in kwargs:
