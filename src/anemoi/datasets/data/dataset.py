@@ -95,6 +95,9 @@ class Dataset:
             return ds._subset(**kwargs).mutate()
 
         if "start" in kwargs or "end" in kwargs:
+            if "dates" in kwargs:
+                raise ValueError("Cannot use both `dates` and `start`/`end` together.")
+
             start = kwargs.pop("start", None)
             end = kwargs.pop("end", None)
 
@@ -102,6 +105,33 @@ class Dataset:
 
             return (
                 Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
+            )
+
+        if "dates" in kwargs:
+            if "interpolate_frequency" in kwargs:
+                raise ValueError("Cannot use both `dates` and `interpolate_frequency`")
+
+            dates: list[tuple] = kwargs.pop("dates")
+
+            from .subset import Subset
+
+            def get_indices(start: str | int, end: str | int, frequency: int | None = None) -> list[int]:
+                date_indices = self._dates_to_indices(start, end)
+
+                frequency = frequency or kwargs.get("frequency", None)
+                if frequency is not None:
+                    return list(
+                        map(
+                            lambda x: x + date_indices[0],
+                            Subset(self, date_indices, dict(start=start, end=end))._frequency_to_indices(frequency),
+                        )
+                    )
+                return date_indices
+
+            return (
+                Subset(self, list([d for date_config in dates for d in get_indices(*date_config)]), dict(dates=dates))
+                ._subset(**kwargs)
+                .mutate()
             )
 
         if "frequency" in kwargs:

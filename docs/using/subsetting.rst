@@ -64,3 +64,20 @@ dates.
 
 .. literalinclude:: code/frequency2_.py
    :language: python
+
+.. _dates:
+
+*******
+ dates
+*******
+
+You can specify non continuous dates by passing a list of dates:
+
+.. literalinclude:: code/dates_.py
+   :language: python
+
+Each date must be either a 2 or 3 element tuple. The first element is
+the start date, the second element is the end date and the third element
+is an optional override of the frequency.
+
+Each element will follow the typing and rules listed above.
