@@ -17,6 +17,7 @@ from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
 from .misc import _auto_adjust
 from .misc import _open
+from functools import cached_property
 
 LOG = logging.getLogger(__name__)
 
@@ -58,6 +59,12 @@ class Complement(Combined):
     def check_same_variables(self, d1, d2):
         pass
 
+    @cached_property
+    def missing(self):
+        missing = self.source.missing.copy()
+        missing = missing | self.target.missing
+        return set(missing) 
+    
     def tree(self):
         """Generates a hierarchical tree structure for the `Cutout` instance and
         its associated datasets.
