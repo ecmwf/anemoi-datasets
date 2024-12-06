@@ -120,6 +120,7 @@ class ComplementNearest(Complement):
 
 
 def complement_factory(args, kwargs):
+    from .select import Select
     assert len(args) == 0, args
 
     source = kwargs.pop("source")
@@ -147,4 +148,7 @@ def complement_factory(args, kwargs):
     complement = Class(target=target, source=source)._subset(**kwargs)
 
     # Will join the datasets along the variables axis
-    return _open([target, complement])
+    reorder = source.variables
+    complemented = _open([target, complement])
+    ordered = Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+    return ordered
