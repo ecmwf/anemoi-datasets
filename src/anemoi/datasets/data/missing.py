@@ -155,6 +155,7 @@ class SkipMissingDates(Forwards):
     @property
     def dates(self):
         raise NotImplementedError("SkipMissingDates.dates")
+
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index):
