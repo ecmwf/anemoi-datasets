@@ -9,6 +9,7 @@
 
 
 import logging
+from functools import cached_property
 
 from ..grids import nearest_grid_points
 from .debug import Node
@@ -17,7 +18,6 @@ from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
 from .misc import _auto_adjust
 from .misc import _open
-from functools import cached_property
 
 LOG = logging.getLogger(__name__)
 
@@ -63,8 +63,8 @@ class Complement(Combined):
     def missing(self):
         missing = self.source.missing.copy()
         missing = missing | self.target.missing
-        return set(missing) 
-    
+        return set(missing)
+
     def tree(self):
         """Generates a hierarchical tree structure for the `Cutout` instance and
         its associated datasets.
@@ -121,6 +121,7 @@ class ComplementNearest(Complement):
 
 def complement_factory(args, kwargs):
     from .select import Select
+
     assert len(args) == 0, args
 
     source = kwargs.pop("source")
@@ -150,5 +151,7 @@ def complement_factory(args, kwargs):
     # Will join the datasets along the variables axis
     reorder = source.variables
     complemented = _open([target, complement])
-    ordered = Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+    ordered = (
+        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+    )
     return ordered

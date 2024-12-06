@@ -187,11 +187,11 @@ class Combined(Forwards):
     def check_compatibility(self, d1, d2):
         # These are the default checks
         # Derived classes should turn individual checks off if they are not needed
-        #self.check_same_resolution(d1, d2)
+        self.check_same_resolution(d1, d2)
         self.check_same_frequency(d1, d2)
-        #self.check_same_grid(d1, d2)
-        #self.check_same_lengths(d1, d2)
-        #self.check_same_variables(d1, d2)
+        self.check_same_grid(d1, d2)
+        self.check_same_lengths(d1, d2)
+        self.check_same_variables(d1, d2)
         self.check_same_dates(d1, d2)
 
     def provenance(self):
