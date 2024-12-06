@@ -15,8 +15,11 @@ Filters are used to modify the data or metadata in a dataset.
    :maxdepth: 1
 
    filters/select
+   filters/orog_to_z
    filters/rename
    filters/rotate_winds
+   filters/sum
    filters/unrotate_winds
+   filters/wz_to_w
    filters/noop
    filters/empty
