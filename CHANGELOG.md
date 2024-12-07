@@ -15,7 +15,7 @@ Keep it human-readable, your future self will thank you!
 - Fix metadata serialization handling of numpy.integer (#140)
 - Fix cutout slicing of grid dimension (#145)
 - Use cKDTree instead of KDTree
-- Implement 'augment' feature
+- Implement 'complement' feature
 
 ### Added
 
