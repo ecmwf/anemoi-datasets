@@ -22,6 +22,7 @@ def assert_is_fieldlist(obj):
 def import_function(name, kind):
 
     from anemoi.transform.filters import filter_registry
+    from anemoi.transform.sources import source_registry
 
     name = name.replace("-", "_")
 
@@ -45,7 +46,20 @@ def import_function(name, kind):
         if filter_registry.lookup(name, return_none=True):
 
             def proc(context, data, *args, **kwargs):
-                return filter_registry.create(name, *args, **kwargs)(data)
+                filter = filter_registry.create(name, *args, **kwargs)
+                filter.context = context
+                # filter = filter_registry.create(context, name, *args, **kwargs)
+                return filter.forward(data)
+
+            return proc
+
+    if kind == "sources":
+        if source_registry.lookup(name, return_none=True):
+
+            def proc(context, data, *args, **kwargs):
+                source = source_registry.create(name, *args, **kwargs)
+                # source = source_registry.create(context, name, *args, **kwargs)
+                return source.forward(data)
 
             return proc
 

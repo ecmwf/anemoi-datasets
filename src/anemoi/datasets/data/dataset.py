@@ -469,7 +469,7 @@ class Dataset:
         sample_count = min(4, len(indices))
         count = len(indices)
 
-        p = slice(0, count, count // (sample_count - 1))
+        p = slice(0, count, count // max(1, sample_count - 1))
         samples = list(range(*p.indices(count)))
 
         samples.append(count - 1)  # Add last

@@ -13,6 +13,7 @@ Keep it human-readable, your future self will thank you!
 ## Changed
 
 - Fix metadata serialization handling of numpy.integer (#140)
+- Fix negative variance for constant variables (#148)
 - Fix cutout slicing of grid dimension (#145)
 
 ### Added

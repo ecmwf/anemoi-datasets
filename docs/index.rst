@@ -27,6 +27,7 @@ datasets <building-introduction>`.
 
 -  :doc:`overview`
 -  :doc:`installing`
+-  :doc:`naming_conventions`
 
 .. toctree::
    :maxdepth: 1
@@ -34,6 +35,7 @@ datasets <building-introduction>`.
 
    overview
    installing
+   naming_conventions
 
 **Using training datasets**
 
