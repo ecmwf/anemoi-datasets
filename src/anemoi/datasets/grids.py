@@ -152,7 +152,7 @@ def cutout_mask(
     plot=None,
 ):
     """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
-    from scipy.spatial import KDTree
+    from scipy.spatial import cKDTree
 
     # TODO: transform min_distance from lat/lon to xyz
 
@@ -195,13 +195,13 @@ def cutout_mask(
         min_distance = min_distance_km / 6371.0
     else:
         points = {"lam": lam_points, "global": global_points, None: global_points}[min_distance_km]
-        distances, _ = KDTree(points).query(points, k=2)
+        distances, _ = cKDTree(points).query(points, k=2)
         min_distance = np.min(distances[:, 1])
 
         LOG.info(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
-    # Use a KDTree to find the nearest points
-    distances, indices = KDTree(lam_points).query(global_points, k=neighbours)
+    # Use a cKDTree to find the nearest points
+    distances, indices = cKDTree(lam_points).query(global_points, k=neighbours)
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])
@@ -255,7 +255,7 @@ def thinning_mask(
     cropping_distance=2.0,
 ):
     """Return the list of points in [lats, lons] closest to [global_lats, global_lons]"""
-    from scipy.spatial import KDTree
+    from scipy.spatial import cKDTree
 
     assert global_lats.ndim == 1
     assert global_lons.ndim == 1
@@ -291,20 +291,20 @@ def thinning_mask(
     xyx = latlon_to_xyz(lats, lons)
     points = np.array(xyx).transpose()
 
-    # Use a KDTree to find the nearest points
-    _, indices = KDTree(points).query(global_points, k=1)
+    # Use a cKDTree to find the nearest points
+    _, indices = cKDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
 
 
 def outline(lats, lons, neighbours=5):
-    from scipy.spatial import KDTree
+    from scipy.spatial import cKDTree
 
     xyx = latlon_to_xyz(lats, lons)
     grid_points = np.array(xyx).transpose()
 
-    # Use a KDTree to find the nearest points
-    _, indices = KDTree(grid_points).query(grid_points, k=neighbours)
+    # Use a cKDTree to find the nearest points
+    _, indices = cKDTree(grid_points).query(grid_points, k=neighbours)
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])
@@ -377,6 +377,19 @@ def serialise_mask(mask):
     # Make sure we can deserialise it
     assert np.all(mask == deserialise_mask(result))
     return result
+
+
+def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, target_longitudes):
+    from scipy.spatial import cKDTree
+
+    source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
+    source_points = np.array(source_xyz).transpose()
+
+    target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
+    target_points = np.array(target_xyz).transpose()
+
+    _, indices = cKDTree(source_points).query(target_points, k=1)
+    return indices
 
 
 if __name__ == "__main__":
