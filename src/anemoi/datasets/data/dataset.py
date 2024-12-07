@@ -168,13 +168,15 @@ class Dataset:
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
-        if "number" in kwargs or "numbers" in kwargs:
+        if "number" in kwargs or "numbers" or "member" in kwargs or "members" in kwargs:
             from .ensemble import Number
 
-            assert ("number" in kwargs) != ("numbers" in kwargs), "Either 'number' or 'numbers' must be provided"
+            members = {}
+            for key in ["number", "numbers", "member", "members"]:
+                if key in kwargs:
+                    members[key] = kwargs.pop(key)
 
-            numbers = kwargs.pop("number", kwargs.pop("numbers", None))
-            return Number(self, numbers)._subset(**kwargs).mutate()
+            return Number(self, **members)._subset(**kwargs).mutate()
 
         if "set_missing_dates" in kwargs:
             from .missing import MissingDates

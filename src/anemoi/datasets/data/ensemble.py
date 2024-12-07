@@ -23,24 +23,30 @@ from .misc import _open
 
 LOG = logging.getLogger(__name__)
 
+OFFSETS = dict(number=1, numbers=1, member=0, members=0)
+
 
 class Number(Forwards):
-    def __init__(self, forward, numbers):
+    def __init__(self, forward, **kwargs):
         super().__init__(forward)
-        if not isinstance(numbers, (list, tuple)):
-            numbers = [numbers]
 
-        numbers = [int(n) for n in numbers]
+        self.members = []
+        for key, values in kwargs.items():
+            if not isinstance(values, (list, tuple)):
+                values = [values]
+            self.members.extend([int(v) - OFFSETS[key] for v in values])
 
-        for n in numbers:
-            assert 1 <= n <= forward.shape[2], "Invalid number. `number` is one-based"
+        self.members = sorted(set(self.members))
+        for n in self.members:
+            if not (0 <= n < forward.shape[2]):
+                raise ValueError(f"Member {n} is out of range. `number(s)` is one-based, `member(s)` is zero-based.")
 
-        self.mask = np.array([n + 1 in numbers for n in range(forward.shape[2])], dtype=bool)
+        self.mask = np.array([n in self.members for n in range(forward.shape[2])], dtype=bool)
+        self._shape, _ = update_tuple(forward.shape, 2, len(self.members))
 
     @property
     def shape(self):
-        shape, _ = update_tuple(self.forward.shape, 2, len(self.mask))
-        return shape
+        return self._shape
 
     def __getitem__(self, index):
         if isinstance(index, int):
@@ -59,7 +65,12 @@ class Number(Forwards):
         return apply_index_to_slices_changes(result, changes)
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets])
+        return Node(self, [self.forward.tree()], numbers=[n + 1 for n in self.members])
+
+    def metadata_specific(self):
+        return {
+            "numbers": [n + 1 for n in self.members],
+        }
 
 
 class Ensemble(GivenAxis):
