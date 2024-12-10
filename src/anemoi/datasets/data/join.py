@@ -118,6 +118,7 @@ class Join(Combined):
     def variables_metadata(self):
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
+
         for d in self.datasets:
             md = d.variables_metadata
             for v in variables:

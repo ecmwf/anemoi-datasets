@@ -182,3 +182,32 @@ The difference can be seen at the boundary between the two grids:
 To debug the combination, you can pass `plot=True` to the `cutout`
 function (when running from a Notebook), of use `plot="prefix"` to save
 the plots to series of PNG files in the current directory.
+
+.. _complement:
+
+************
+ complement
+************
+
+That feature will interpolate the variables of `dataset2` that are not
+in `dataset1` to the grid of `dataset1` , add them to the list of
+variable of `dataset1` and return the result.
+
+.. literalinclude:: code/complement1_.py
+
+Currently ``what`` can only be ``variables`` and can be omitted.
+
+The value for ``interpolate`` can be one of ``none`` (default) or
+``nearest``. In the case of ``none``, the grids of the two datasets must
+match.
+
+This feature was originally designed to be used in conjunction with
+``cutout``, where `dataset1` is the lam, and `dataset2` is the global
+dataset.
+
+.. literalinclude:: code/complement2_.py
+
+Another use case is to simply bring all non-overlapping variables of a
+dataset into an other:
+
+.. literalinclude:: code/complement3_.py
