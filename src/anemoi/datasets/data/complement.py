@@ -16,6 +16,7 @@ from .debug import Node
 from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
+from .indexing import update_tuple
 from .misc import _auto_adjust
 from .misc import _open
 
@@ -46,6 +47,10 @@ class Complement(Combined):
     @property
     def variables(self):
         return self._variables
+    
+    @property
+    def name_to_index(self):
+        return {v: i for i, v in enumerate(self.variables)}
 
     @property
     def shape(self):
@@ -109,9 +114,11 @@ class ComplementNearest(Complement):
         pass
 
     def _get_tuple(self, index):
+        variable_index = 1
         index, changes = index_to_slices(index, self.shape)
-
-        source_data = self.source[index[:3]]
+        index, previous = update_tuple(index, variable_index, slice(None))
+        source_index = [self.source.name_to_index[x] for x in self.variables[previous]]
+        source_data = self.source[index[0], source_index, index[2], ...]
         target_data = source_data[..., self._nearest_grid_points]
 
         result = target_data[..., index[3]]
