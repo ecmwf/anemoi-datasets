@@ -47,7 +47,7 @@ class Complement(Combined):
     @property
     def variables(self):
         return self._variables
-    
+
     @property
     def name_to_index(self):
         return {v: i for i, v in enumerate(self.variables)}
