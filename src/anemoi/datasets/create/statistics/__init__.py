@@ -98,7 +98,7 @@ def fix_variance(x, name, count, sums, squares):
 
     variances = squares / count - mean * mean
     assert variances.shape == squares.shape == mean.shape
-    if all(variances >= 0):
+    if np.all(variances >= 0):
         LOG.warning(f"All individual variances for {name} are positive, setting variance to 0.")
         return 0
 
@@ -108,7 +108,7 @@ def fix_variance(x, name, count, sums, squares):
     #     return 0
 
     LOG.warning(f"ERROR at least one individual variance is negative ({np.nanmin(variances)}).")
-    return x
+    return 0
 
 
 def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squares):

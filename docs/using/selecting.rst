@@ -67,6 +67,28 @@ You can also rename variables:
 This will be useful when you join datasets and do not want variables
 from one dataset to override the ones from the other.
 
+********
+ number
+********
+
+If a dataset is an ensemble, you can select one or more specific members
+using the `number` option. You can also use ``numbers`` (which is an
+alias for ``number``), and ``member`` (or ``members``). The difference
+between the two is that ``number`` is **1-based**, while ``member`` is
+**0-based**.
+
+Select a single element:
+
+.. literalinclude:: code/number1_.py
+   :language: python
+
+... or a list:
+
+.. literalinclude:: code/number2_.py
+   :language: python
+
+.. _rescale:
+
 *********
  rescale
 *********
@@ -87,7 +109,9 @@ rescale the data.
 .. warning::
 
    When providing units, the library assumes that the mapping between
-   them is a linear transformation. No check is does to ensure this is
+   them is a linear transformation. No check is done to ensure this is
    the case.
 
 .. _cfunits: https://github.com/NCAS-CMS/cfunits
+
+.. _number:

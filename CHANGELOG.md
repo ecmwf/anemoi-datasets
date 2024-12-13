@@ -13,14 +13,18 @@ Keep it human-readable, your future self will thank you!
 ## Changed
 
 - Fix metadata serialization handling of numpy.integer (#140)
+- Fix negative variance for constant variables (#148)
 - Fix cutout slicing of grid dimension (#145)
 - Use cKDTree instead of KDTree
 - Implement 'complement' feature
+- Update accumulations (#158)
+
 
 ### Added
 
 - Call filters from anemoi-transform
-- make test optional when adls is not installed Pull request #110
+- Make test optional when adls is not installed Pull request #110
+- Add wz_to_w, orog_to_z, and sum filters (#149)
 
 ## [0.5.8](https://github.com/ecmwf/anemoi-datasets/compare/0.5.7...0.5.8) - 2024-10-26
 
