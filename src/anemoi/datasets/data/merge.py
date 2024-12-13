@@ -134,6 +134,9 @@ class Merge(Combined):
     def tree(self):
         return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
 
+    def metadata_specific(self):
+        return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
+
     @debug_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
