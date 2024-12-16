@@ -16,6 +16,7 @@ import earthkit.data as ekd
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
+from earthkit.data.utils.dates import to_datetime
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -47,10 +48,15 @@ class Accumulation:
         self.done = False
         self.frequency = frequency
         self._check = None
+        self._step_zero_ok = False
 
     @property
     def key(self):
         return (self.param, self.date, self.time, self.steps, self.number)
+
+    @classmethod
+    def adjust_key(cls, key):
+        return key
 
     def check(self, field):
         if self._check is None:
@@ -84,7 +90,9 @@ class Accumulation:
 
     def write(self, template):
 
-        assert self.startStep != self.endStep, (self.startStep, self.endStep)
+        if not self._step_zero_ok:
+            assert self.startStep != self.endStep, (self.startStep, self.endStep)
+
         if np.all(self.values < 0):
             LOG.warning(
                 f"Negative values when computing accumutation for {self.param} ({self.date} {self.time}): min={np.amin(self.values)} max={np.amax(self.values)}"
@@ -240,6 +248,38 @@ class AccumulationFromLastStep(Accumulation):
             tuple(steps),
         )
 
+class AccumulationStartOfInterval(Accumulation):
+    # Special case for accumulations that are valid at the start of the interval
+    # like DestinE
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.count = 0
+        assert self.steps == [0], self.steps
+        self._step_zero_ok = True
+        self.startStep = 0
+        self.endStep = 0
+
+    @classmethod
+    def mars_date_time_steps(cls, dates, step1, step2, frequency, base_times, adjust_step):
+        assert step1 == 0, step1
+        assert frequency is None, frequency
+        # assert False, (dates,  step2,  base_times, adjust_step)
+
+        for date in dates:
+            yield (date.year * 10000 + date.month * 100 + date.day, date.hour * 100 + date.minute, [step1])
+
+    @classmethod
+    def adjust_key(self, key):
+        (param, date, time, step, number)  = key
+        return (param, date, time, 0, number)
+
+    def add(self, field, values):
+        assert self.count == 0, self.count
+        self.values = values
+        self.count += 1
+        self.write(template=field)
+
 
 def _identity(x):
     return x
@@ -251,6 +291,7 @@ def _compute_accumulations(
     request,
     user_accumulation_period=6,
     data_accumulation_period=None,
+    validate_at_start_of_interval=False,
     patch=_identity,
     base_times=None,
 ):
@@ -268,7 +309,10 @@ def _compute_accumulations(
 
     base_times = [t // 100 if t > 100 else t for t in base_times]
 
-    AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
+    if validate_at_start_of_interval:
+        AccumulationClass = AccumulationStartOfInterval
+    else:
+        AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
 
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates,
@@ -327,6 +371,8 @@ def _compute_accumulations(
             field.metadata("step"),
             _member(field),
         )
+        key = AccumulationClass.adjust_key(key)
+
         values = field.values  # optimisation
         if key not in accumulations:
             raise ValueError(f"Key not found: {key}. Is it an accumulation field?")
@@ -372,6 +418,7 @@ def accumulations(context, dates, **request):
     stream = request.get("stream", "oper")
 
     user_accumulation_period = request.pop("accumulation_period", 6)
+    validate_at_start_of_interval = request.pop('validate_at_start_of_interval', False)
 
     # If `data_accumulation_period` is not set, this means that the accumulations are from the start
     # of the forecast.
@@ -394,6 +441,7 @@ def accumulations(context, dates, **request):
         dates,
         request,
         user_accumulation_period=user_accumulation_period,
+        validate_at_start_of_interval=validate_at_start_of_interval,
         **kwargs,
     )
 
