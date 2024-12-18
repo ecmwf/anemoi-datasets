@@ -622,10 +622,14 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         check_shape(cube, dates, dates_in_data)
 
-        def check_dates_in_data(lst, lst2):
-            lst2 = [np.datetime64(_) for _ in lst2]
-            lst = [np.datetime64(_) for _ in lst]
-            assert lst == lst2, ("Dates in data are not the requested ones:", lst, lst2)
+        def check_dates_in_data(dates_in_data, requested_dates):
+            requested_dates = [np.datetime64(_) for _ in requested_dates]
+            dates_in_data = [np.datetime64(_) for _ in dates_in_data]
+            assert dates_in_data == requested_dates, (
+                "Dates in data are not the requested ones:",
+                dates_in_data,
+                requested_dates,
+            )
 
         check_dates_in_data(dates_in_data, dates)
 

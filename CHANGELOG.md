@@ -17,8 +17,7 @@ Keep it human-readable, your future self will thank you!
 - Fix cutout slicing of grid dimension (#145)
 - Use cKDTree instead of KDTree
 - Implement 'complement' feature
-- Update accumulations (#158)
-
+- Add ability to patch xarrays (#160)
 
 ### Added
 

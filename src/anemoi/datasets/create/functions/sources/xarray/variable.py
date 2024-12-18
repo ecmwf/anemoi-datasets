@@ -37,13 +37,16 @@ class Variable:
         self.coordinates = coordinates
 
         self._metadata = metadata.copy()
-        self._metadata.update({"variable": variable.name})
+        self._metadata.update({"variable": variable.name, "param": variable.name})
 
         self.time = time
 
         self.shape = tuple(len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid)
         self.names = {c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid}
         self.by_name = {c.variable.name: c for c in coordinates}
+
+        # We need that alias for the time dimension
+        self._aliases = dict(valid_datetime="time")
 
         self.length = math.prod(self.shape)
 
@@ -96,7 +99,17 @@ class Variable:
 
         k, v = kwargs.popitem()
 
+        user_provided_k = k
+
+        if k == "valid_datetime":
+            # Ask the Time object to select the valid datetime
+            k = self.time.select_valid_datetime(self)
+            if k is None:
+                return None
+
         c = self.by_name.get(k)
+
+        # assert c is not None, f"Could not find coordinate {k} in {self.variable.name} {self.coordinates} {list(self.by_name)}"
 
         if c is None:
             missing[k] = v
@@ -104,7 +117,10 @@ class Variable:
 
         i = c.index(v)
         if i is None:
-            LOG.warning(f"Could not find {k}={v} in {c}")
+            if k != user_provided_k:
+                LOG.warning(f"Could not find {user_provided_k}={v} in {c} (alias of {k})")
+            else:
+                LOG.warning(f"Could not find {k}={v} in {c}")
             return None
 
         coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]

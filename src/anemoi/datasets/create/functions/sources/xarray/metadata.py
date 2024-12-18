@@ -24,6 +24,7 @@ class _MDMapping:
     def __init__(self, variable):
         self.variable = variable
         self.time = variable.time
+        # Aliases
         self.mapping = dict(param="variable")
         for c in variable.coordinates:
             for v in c.mars_names:
@@ -34,7 +35,6 @@ class _MDMapping:
         return self.mapping.get(key, key)
 
     def from_user(self, kwargs):
-        print("from_user", kwargs, self)
         return {self._from_user(k): v for k, v in kwargs.items()}
 
     def __repr__(self):
@@ -81,22 +81,16 @@ class XArrayMetadata(RawMetadata):
     def _valid_datetime(self):
         return self._get("valid_datetime")
 
-    def _get(self, key, **kwargs):
+    def get(self, key, astype=None, **kwargs):
 
         if key in self._d:
+            if astype is not None:
+                return astype(self._d[key])
             return self._d[key]
-
-        if key.startswith("mars."):
-            key = key[5:]
-            if key not in self.MARS_KEYS:
-                if kwargs.get("raise_on_missing", False):
-                    raise KeyError(f"Invalid key '{key}' in namespace='mars'")
-                else:
-                    return kwargs.get("default", None)
 
         key = self._mapping._from_user(key)
 
-        return super()._get(key, **kwargs)
+        return super().get(key, astype=astype, **kwargs)
 
 
 class XArrayFieldGeography(Geography):

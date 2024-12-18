@@ -62,10 +62,16 @@ class Time:
 
         raise NotImplementedError(f"{len(date_coordinate)=} {len(time_coordinate)=} {len(step_coordinate)=}")
 
+    def select_valid_datetime(self, variable):
+        raise NotImplementedError(f"{self.__class__.__name__}.select_valid_datetime()")
+
 
 class Constant(Time):
 
     def fill_time_metadata(self, coords_values, metadata):
+        return None
+
+    def select_valid_datetime(self, variable):
         return None
 
 
@@ -82,6 +88,9 @@ class Analysis(Time):
         metadata["step"] = 0
 
         return valid_datetime
+
+    def select_valid_datetime(self, variable):
+        return self.time_coordinate_name
 
 
 class ForecastFromValidTimeAndStep(Time):
@@ -116,6 +125,9 @@ class ForecastFromValidTimeAndStep(Time):
 
         return valid_datetime
 
+    def select_valid_datetime(self, variable):
+        return self.time_coordinate_name
+
 
 class ForecastFromValidTimeAndBaseTime(Time):
 
@@ -137,6 +149,9 @@ class ForecastFromValidTimeAndBaseTime(Time):
         metadata["step"] = int(hours)
 
         return valid_datetime
+
+    def select_valid_datetime(self, variable):
+        return self.time_coordinate_name
 
 
 class ForecastFromBaseTimeAndDate(Time):
