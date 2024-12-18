@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+
 from anemoi.datasets.create.functions import all_filters
 from anemoi.datasets.create.functions import all_sources
 
@@ -20,6 +21,10 @@ def _as_dict(obj):
 
     if isinstance(obj, Result):
         return obj.as_dict()
+
+    # if isinstance(obj, str):
+    #     if re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$", obj):
+    #         return datetime.datetime.fromisoformat(obj)
 
     if obj == "class_":
         return "class"
