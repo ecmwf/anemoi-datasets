@@ -365,6 +365,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         super().__init__(path, cache=cache)
         self.config = config
+
         self.check_name = check_name
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
@@ -457,6 +458,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             "platform",
             "reading_chunks",
             "upload",
+            "env",
         ]:
             recipe.pop(k, None)
 
