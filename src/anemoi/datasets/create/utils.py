@@ -54,6 +54,10 @@ def to_datetime(*args, **kwargs):
 
 
 def make_list_int(value):
+    # Convert a string like "1/2/3" or "1/to/3" or "1/to/10/by/2" to a list of integers.
+    # Moved to anemoi.utils.humanize
+    # replace with from anemoi.utils.humanize import make_list_int
+    # when anemoi-utils is released and pyproject.toml is updated
     if isinstance(value, str):
         if "/" not in value:
             return [value]
