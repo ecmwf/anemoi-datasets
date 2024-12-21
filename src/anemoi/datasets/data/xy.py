@@ -97,6 +97,9 @@ class ZipBase(Combined):
         if self._check_compatibility:
             super().check_compatibility(d1, d2)
 
+    def metadata_specific(self):
+        return dict(zip=[d.dataset_metadata() for d in self.datasets])
+
 
 class Zip(ZipBase):
     pass
