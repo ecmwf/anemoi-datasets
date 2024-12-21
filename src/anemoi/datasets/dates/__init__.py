@@ -16,6 +16,7 @@ from math import gcd
 # from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import DateTimes
 from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import datetimes_factory
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.hindcasts import HindcastDatesTimes
@@ -80,6 +81,9 @@ class DatesProvider:
     @classmethod
     def from_config(cls, **kwargs):
 
+        if kwargs.pop("fake_hindcasts", False):
+            return FakeHindcastsDates(**kwargs)
+
         if kwargs.pop("hindcasts", False):
             return HindcastsDates(**kwargs)
 
@@ -100,6 +104,10 @@ class DatesProvider:
     @property
     def summary(self):
         return f"📅 {self.values[0]} ... {self.values[-1]}"
+
+    def patch_result(self, result):
+        # Give an opportunity to patch the result (e.g. change the valid_time)
+        return result
 
 
 class ValuesDates(DatesProvider):
@@ -237,6 +245,52 @@ class HindcastsDates(DatesProvider):
 
     def as_dict(self):
         return {"hindcasts": self.hindcasts}
+
+
+class FakeHindcastsDates(DatesProvider):
+    def __init__(self, start, end, steps, years=20, **kwargs):
+        dates = datetimes_factory(
+            name="hindcast", reference_dates=dict(start=start, end=end, day_of_week=["monday", "thursday"]), years=years
+        )
+        all_dates = {}
+        ref = datetime.datetime(1970, 1, 1, 0, 0)
+        for hdate, refdate in dates:
+            for s in steps:
+                all_dates[(refdate, hdate, s)] = ref + datetime.timedelta(seconds=len(all_dates))
+
+        self.frequency = datetime.timedelta(seconds=1)
+
+        self.values = sorted(all_dates.values())
+        self.mapping = {v: Hindcast(v, *k) for k, v in all_dates.items()}
+        self.date_mapping = all_dates
+
+        super().__init__(missing=[])
+
+    def patch_result(self, result):
+        from anemoi.transform.fields import new_field_with_valid_datetime
+        from anemoi.transform.fields import new_fieldlist_from_list
+        from earthkit.data.utils.dates import to_datetime
+
+        from ..create.input.result import Result
+
+        ds = result.datasource
+        data = []
+        for field in ds:
+            refdate, hdate, step, time = field.metadata("date", "hdate", "step", "time")
+            assert time == 0, time
+            newdate = self.date_mapping[(to_datetime(refdate), to_datetime(hdate), step)]
+            data.append(new_field_with_valid_datetime(field, newdate))
+
+        class PatchedResult(Result):
+            def __init__(self, data):
+                super().__init__(result.context, result.action_path, result.group_of_dates)
+                self._datasource = new_fieldlist_from_list(data)
+
+            @property
+            def datasource(self):
+                return self._datasource
+
+        return PatchedResult(data)
 
 
 if __name__ == "__main__":

@@ -569,6 +569,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             self._run()
 
     def _run(self):
+
         for igroup, group in enumerate(self.groups):
             if not self.chunk_filter(igroup):
                 continue
@@ -581,6 +582,9 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
             result = self.input.select(group_of_dates=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
+
+            # This is to give a change to FakeHindcastsDates to adjust the dates
+            result = self.groups.provider.patch_result(result)
 
             # There are several groups.
             # There is one result to load for each group.

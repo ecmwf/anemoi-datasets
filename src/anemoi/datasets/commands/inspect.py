@@ -149,8 +149,8 @@ class Version:
 
     def info(self, detailed, size):
         print()
-        print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M")}')
-        print(f'📅 End        : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
+        print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M:%S")}')
+        print(f'📅 End        : {self.last_date.strftime("%Y-%m-%d %H:%M:%S")}')
         print(f"⏰ Frequency  : {self.frequency}")
         if self.n_missing_dates is not None:
             print(f"🚫 Missing    : {self.n_missing_dates:,}")

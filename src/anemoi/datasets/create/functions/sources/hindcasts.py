@@ -24,10 +24,11 @@ def _to_list(x):
 
 def hindcasts(context, dates, **request):
 
+    from anemoi.datasets.dates import FakeHindcastsDates
     from anemoi.datasets.dates import HindcastsDates
 
     provider = context.dates_provider
-    assert isinstance(provider, HindcastsDates)
+    assert isinstance(provider, (HindcastsDates, FakeHindcastsDates))
 
     context.trace("H️", f"hindcasts {len(dates)=}")
 
