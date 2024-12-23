@@ -314,6 +314,9 @@ class Subset(Forward):
     def getitem(self, i):
         i = self._indices[i]
         return self.forward[i]
+    
+    def supporting_arrays(self):
+        return dict()
 
     def tree(self):
         return Node(self, [self.forward.tree()], start=self._start, end=self._end)
