@@ -313,6 +313,34 @@ class Dataset:
 
         return result
 
+    @cached_property
+    def _fake_mappings(self):
+        from earthkit.data.utils.dates import to_datetime
+
+        def __(x):
+            return tuple(to_datetime(_) if isinstance(_, str) else _ for _ in x)
+
+        m = {to_datetime(k): __(v) for k, v in self.fake_hindcasts().items()}
+
+        return {
+            "fake_to_real": m,
+            "real_to_fake": {tuple([v[1], v[2]]): k for k, v in m.items()},
+        }
+
+    def fake_date_to_date_step(self, date):
+        from earthkit.data.utils.dates import to_datetime
+
+        date = to_datetime(date)
+        mapping = self._fake_mappings["fake_to_real"]
+        return mapping[date]
+
+    def date_step_to_fake_date(self, date, step):
+        from earthkit.data.utils.dates import to_datetime
+
+        date = to_datetime(date)
+        mapping = self._fake_mappings["real_to_fake"]
+        return mapping[(date, step)]
+
     def _input_sources(self):
         sources = []
         self.collect_input_sources(sources)

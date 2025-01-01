@@ -224,6 +224,10 @@ class Combined(Forwards):
         for d in self.datasets:
             d.get_dataset_names(names)
 
+    @property
+    def name(self):
+        return self._name
+
 
 class GivenAxis(Combined):
     """Given a given axis, combine the datasets along that axis."""

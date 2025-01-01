@@ -75,7 +75,7 @@ class Groups:
     def __init__(self, **kwargs):
         group_by = kwargs.pop("group_by")
         self._dates = DatesProvider.from_config(**kwargs)
-        self._grouper = Grouper.from_config(group_by)
+        self._grouper = Grouper.from_config(group_by, **kwargs)
         self._filter = Filter(self._dates.missing)
 
     @property
@@ -122,17 +122,20 @@ class Filter:
 
 
 class Grouper:
+    def __init__(self, **kwargs):
+        pass
+
     @classmethod
-    def from_config(cls, group_by):
+    def from_config(cls, group_by, **kwargs):
 
         if isinstance(group_by, int) and group_by > 0:
-            return GrouperByFixedSize(group_by)
+            return GrouperByFixedSize(group_by, **kwargs)
 
         if group_by is None:
-            return GrouperOneGroup()
+            return GrouperOneGroup(**kwargs)
 
         if group_by == "reference_date":
-            return ReferenceDateGroup()
+            return ReferenceDateGroup(**kwargs)
 
         key = {
             "monthly": lambda dt: (dt.year, dt.month),
@@ -140,20 +143,40 @@ class Grouper:
             "weekly": lambda dt: (dt.weekday(),),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
-        return GrouperByKey(key)
+        return GrouperByKey(key, **kwargs)
 
 
 class ReferenceDateGroup(Grouper):
-    def __call__(self, dates):
-        assert isinstance(dates, DatesProvider), type(dates)
+    def __init__(self, maximum_group_size=None, **kwargs):
+        super().__init__(**kwargs)
+        self.maximum = maximum_group_size
 
-        mapping = dates.mapping
+    def _batch(self, dates, provider):
+
+        mapping = provider.mapping
 
         def same_refdate(dt):
             return mapping[dt].refdate
 
         for _, g in itertools.groupby(sorted(dates, key=same_refdate), key=same_refdate):
-            yield GroupOfDates(list(g), dates)
+            yield GroupOfDates(list(g), provider)
+
+    def __call__(self, dates):
+        assert isinstance(dates, DatesProvider), type(dates)
+
+        if self.maximum is None:
+            yield from self._batch(dates, dates)
+            return
+
+        batch = []
+        for d in dates:
+            batch.append(d)
+            if len(batch) == self.maximum:
+                yield from self._batch(batch, dates)
+                batch = []
+
+        if batch:
+            yield from self._batch(batch, dates)
 
 
 class GrouperOneGroup(Grouper):
@@ -166,7 +189,8 @@ class GrouperOneGroup(Grouper):
 class GrouperByKey(Grouper):
     """Group dates by a key."""
 
-    def __init__(self, key):
+    def __init__(self, key, **kwargs):
+        super().__init__(**kwargs)
         self.key = key
 
     def __call__(self, dates):
@@ -177,7 +201,8 @@ class GrouperByKey(Grouper):
 class GrouperByFixedSize(Grouper):
     """Group dates by a fixed size."""
 
-    def __init__(self, size):
+    def __init__(self, size, **kwargs):
+        super().__init__(**kwargs)
         self.size = size
 
     def __call__(self, dates):

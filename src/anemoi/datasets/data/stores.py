@@ -389,6 +389,9 @@ class Zarr(Dataset):
     def collect_input_sources(self, collected):
         pass
 
+    def fake_hindcasts(self):
+        return self.z.attrs.get("fake_hindcasts", [])
+
 
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""

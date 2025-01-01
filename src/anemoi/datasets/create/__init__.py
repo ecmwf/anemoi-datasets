@@ -138,10 +138,6 @@ class Dataset:
         LOG.debug(f"Updating metadata {kwargs}")
         z = zarr.open(self.path, mode="w+")
         for k, v in kwargs.items():
-            if isinstance(v, np.datetime64):
-                v = v.astype(datetime.datetime)
-            if isinstance(v, datetime.date):
-                v = v.isoformat()
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
     @cached_property
@@ -443,6 +439,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata.update(self.main_config.get("add_metadata", {}))
 
         metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
+        metadata.update(self.groups.provider.metadata())
 
         recipe = sanitise(self.main_config.get_serialisable_dict())
 
@@ -669,6 +666,8 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         reading_chunks = None
         total = cube.count(reading_chunks)
         LOG.debug(f"Loading datacube: {cube}")
+
+        # assert False, self.variables_names
 
         def position(x):
             if isinstance(x, str) and "/" in x:

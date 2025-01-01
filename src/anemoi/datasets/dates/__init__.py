@@ -109,6 +109,9 @@ class DatesProvider:
         # Give an opportunity to patch the result (e.g. change the valid_time)
         return result
 
+    def metadata(self):
+        return {}
+
 
 class ValuesDates(DatesProvider):
     def __init__(self, values, **kwargs):
@@ -253,12 +256,12 @@ class FakeHindcastsDates(DatesProvider):
             name="hindcast", reference_dates=dict(start=start, end=end, day_of_week=["monday", "thursday"]), years=years
         )
         all_dates = {}
-        ref = datetime.datetime(1970, 1, 1, 0, 0)
+        ref = datetime.datetime(1900, 1, 1, 0, 0)
         for hdate, refdate in dates:
             for s in steps:
-                all_dates[(refdate, hdate, s)] = ref + datetime.timedelta(seconds=len(all_dates))
+                all_dates[(refdate, hdate, s)] = ref + datetime.timedelta(hours=len(all_dates))
 
-        self.frequency = datetime.timedelta(seconds=1)
+        self.frequency = datetime.timedelta(hours=1)
 
         self.values = sorted(all_dates.values())
         self.mapping = {v: Hindcast(v, *k) for k, v in all_dates.items()}
@@ -276,7 +279,13 @@ class FakeHindcastsDates(DatesProvider):
         ds = result.datasource
         data = []
         for field in ds:
-            refdate, hdate, step, time = field.metadata("date", "hdate", "step", "time")
+            # We get them one at a time because wrappers do not support lists
+            refdate, hdate, step, time = (
+                field.metadata("date"),
+                field.metadata("hdate"),
+                field.metadata("step"),
+                field.metadata("time"),
+            )
             assert time == 0, time
             newdate = self.date_mapping[(to_datetime(refdate), to_datetime(hdate), step)]
             data.append(new_field_with_valid_datetime(field, newdate))
@@ -291,6 +300,9 @@ class FakeHindcastsDates(DatesProvider):
                 return self._datasource
 
         return PatchedResult(data)
+
+    def metadata(self):
+        return {"fake_hindcasts": {v.isoformat(): k for k, v in self.date_mapping.items()}}
 
 
 if __name__ == "__main__":
