@@ -26,21 +26,21 @@ date
    Throughout this document, the term `date` refers to a date and time,
    not just a date. A training dataset covers a continuous range of
    dates with a given frequency. Missing dates are still part of the
-   dataset, but missing data are marked as such using NaNs.
-   Dates are always in UTC, and refer to date at which the data is
-   valid. For accumulations and fluxes, that would be the end of the
-   accumulation period.
+   dataset, but missing data are marked as such using NaNs. Dates are
+   always in UTC, and refer to date at which the data is valid. For
+   accumulations and fluxes, that would be the end of the accumulation
+   period.
 
 variable
-   A `variable` is a meteorological parameter, such as temperature, wind,
-   etc. Multilevel parameters are treated as separate variables, one for
-   each level. For example, temperature at 850 hPa and temperature at
-   500 hPa will be treated as two separate variables (`t_850` and
-   `t_500`).
+   A `variable` is a meteorological parameter, such as temperature,
+   wind, etc. Multilevel parameters are treated as separate variables,
+   one for each level. For example, temperature at 850 hPa and
+   temperature at 500 hPa will be treated as two separate variables
+   (`t_850` and `t_500`).
 
 field
-   A `field` is a variable at a given date. It is represented by an array
-   of values at each grid point.
+   A `field` is a variable at a given date. It is represented by an
+   array of values at each grid point.
 
 source
    The `source` is a software component that, given a list of dates and
@@ -50,9 +50,9 @@ source
 
 filter
    A `filter` is a software component that takes as input the output of
-   a source or another filter and can modify the fields and/or
-   their metadata. For example, typical filters are interpolations,
-   renaming of variables, etc. See :ref:`filters` for more information.
+   a source or another filter and can modify the fields and/or their
+   metadata. For example, typical filters are interpolations, renaming
+   of variables, etc. See :ref:`filters` for more information.
 
 ************
  Operations
@@ -63,9 +63,10 @@ using the following operations:
 
 join
    The join is the process of combining several sources of data. Each
-   source is expected to provide different variables for the same of dates.
+   source is expected to provide different variables for the same of
+   dates.
 
-pipe  
+pipe
    The pipe is the process of transforming fields using filters. The
    first step of a pipe is typically a source, a join, or another pipe.
    This can subsequently followed by more filters.
@@ -73,8 +74,8 @@ pipe
 concat
    The concatenation is the process of combining different sets of
    operations that handle different dates. This is typically used to
-   build a dataset that spans several years, when several sources
-   are involved, each providing data for different period.
+   build a dataset that spans several years, when several sources are
+   involved, each providing data for different period.
 
 Each operation is considered as a :ref:`source <sources>`, therefore
 operations can be combined to build complex datasets.
@@ -136,11 +137,11 @@ When training a data-driven model, some forcing variables may be
 required such as the solar radiation, the time of day, the day in the
 year, etc.
 
-These are provided by the ``forcings`` source. Let us add a few of them 
-to the above example. The `template` option is used to point to another 
-source, in that case the first instance of ``mars``. This source is used 
-to get information about the grid points, as some of the forcing variables 
-are grid dependent.
+These are provided by the ``forcings`` source. Let us add a few of them
+to the above example. The `template` option is used to point to another
+source, in that case the first instance of ``mars``. This source is used
+to get information about the grid points, as some of the forcing
+variables are grid dependent.
 
 .. literalinclude:: yaml/building3.yaml
    :language: yaml
