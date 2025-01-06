@@ -7,7 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
+import numpy as np
 import logging
 from functools import cached_property
 
@@ -60,6 +60,13 @@ class Complement(Combined):
     @property
     def variables_metadata(self):
         return {k: v for k, v in self.source.variables_metadata.items() if k in self._variables}
+    
+    @property
+    def statistics(self):
+        datasets = [self.target, self.source]
+        return {
+            k: np.concatenate([d.statistics[k] for d in datasets], axis=0) for k in datasets[0].statistics
+        }
 
     def check_same_variables(self, d1, d2):
         pass
