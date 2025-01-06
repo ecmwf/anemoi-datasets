@@ -158,7 +158,10 @@ def complement_factory(args, kwargs):
     # Will join the datasets along the variables axis
     reorder = source.variables
     complemented = _open([target, complement])
-    ordered = (
-        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
-    )
-    return ordered
+    if len(reorder) == len(complemented.variables):
+        # In case we want to align variables for cutout
+        ordered = (
+            Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+        )
+        return ordered
+    return complemented
