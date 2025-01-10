@@ -11,7 +11,7 @@
 from functools import wraps
 
 import numpy as np
-
+import copy
 
 def _tuple_with_slices(t, shape):
     """Replace all integers in a tuple with slices, so we preserve the dimensionality."""
@@ -121,6 +121,38 @@ def _as_tuples(index):
     return tuple(_(i) for i in index)
 
 
+# def expand_list_indexing(method):
+#     """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
+
+#     @wraps(method)
+#     def wrapper(self, index):
+#         if not isinstance(index, tuple):
+#             return method(self, index)
+
+#         if not any(isinstance(i, (list, tuple)) for i in index):
+#             return method(self, index)
+
+#         which = []
+#         for i, idx in enumerate(index):
+#             if isinstance(idx, (list, tuple)):
+#                 which.append(i)
+
+#         assert which, "No list index found"
+
+#         if len(which) > 1:
+#             raise IndexError("Only one list index is allowed")
+
+#         which = which[0]
+#         index = _as_tuples(index)
+#         result = []
+#         for i in index[which]:
+#             index, _ = update_tuple(index, which, slice(i, i + 1))
+#             result.append(method(self, index))
+
+#         return np.concatenate(result, axis=which)
+
+#     return wrapper
+
 def expand_list_indexing(method):
     """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
 
@@ -131,28 +163,10 @@ def expand_list_indexing(method):
 
         if not any(isinstance(i, (list, tuple)) for i in index):
             return method(self, index)
-
-        which = []
-        for i, idx in enumerate(index):
-            if isinstance(idx, (list, tuple)):
-                which.append(i)
-
-        assert which, "No list index found"
-
-        if len(which) > 1:
-            raise IndexError("Only one list index is allowed")
-
-        which = which[0]
-        index = _as_tuples(index)
-        result = []
-        for i in index[which]:
-            index, _ = update_tuple(index, which, slice(i, i + 1))
-            result.append(method(self, index))
-
-        return np.concatenate(result, axis=which)
+        
+        return method(self, index)
 
     return wrapper
-
 
 def make_slice_or_index_from_list_or_tuple(indices):
     """Convert a list or tuple of indices to a slice or an index, if possible."""
@@ -166,3 +180,47 @@ def make_slice_or_index_from_list_or_tuple(indices):
         return slice(indices[0], indices[-1] + step, step)
 
     return indices
+
+def get_indices_for_child_datasets_from_combined_axis_index(join_axis:int, index_combined:tuple[slice|list[int],], child_datasets_axis_lengths:list[int]) -> list[tuple[slice,list[int]]]:
+    """Given a combined axis index, and the axis along which the child datasets are joined, return the indices for each child dataset."""
+
+    # 1) ascertain the lengths of each child dataset in the combined axis
+    # 2) create new indexing indices for each child dataset by correctly adjusting the combined axis index for each child
+    # 3) index each child dataset using the new indices
+    # 4) concatenate the results in an order that matches the original combined axis index
+
+    cumulative_lengths = np.cumsum(child_datasets_axis_lengths)
+
+    start_indices_child = [0] + cumulative_lengths[:-1].tolist()
+    end_indices_child = [s+l for s,l in zip(start_indices_child, child_datasets_axis_lengths)]
+
+    index_children = []
+    for idx_child in range(len(child_datasets_axis_lengths)):
+        index_child = list( copy.deepcopy(index_combined) )
+
+        # in the join axis, select the indices that map to the child dataset at position i
+        index_at_join_axis = index_child[join_axis]
+
+        if isinstance(index_at_join_axis, slice):
+            start, stop, step = index_at_join_axis.indices(cumulative_lengths[idx_child])
+            
+            # Ensure the slice is within the bounds
+            start = max(start, start_indices_child[idx_child])
+            stop = min(stop, end_indices_child[idx_child])
+
+            adjusted_start = start - start_indices_child[idx_child]
+            adjusted_stop = stop - start_indices_child[idx_child]
+            new_index_at_join_axis = slice(adjusted_start, adjusted_stop, step)
+            index_child[join_axis] = new_index_at_join_axis
+
+
+        elif isinstance(index_at_join_axis, list):
+            new_index_at_join_aixs = [ idx for idx in index_at_join_axis if idx >= start_indices_child[idx_child] and idx < end_indices_child[idx_child] ]
+            adjusted_index_at_join_axis = [ idx - start_indices_child[idx_child] for idx in new_index_at_join_aixs ]
+            index_child[join_axis] = adjusted_index_at_join_axis
+        else:
+            ValueError("Index at join axis is not a slice or a list")
+        
+        index_child = tuple(index_child)
+        index_children.append(index_child)
+    return index_children

@@ -219,7 +219,7 @@ class Zarr(Dataset):
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n):
-        return self.data[n]
+        return self.data.oindex[*n]
 
     def _unwind(self, index, rest, shape, axis, axes):
         if not isinstance(index, (int, slice, list, tuple)):

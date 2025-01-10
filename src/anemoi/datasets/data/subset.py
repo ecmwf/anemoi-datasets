@@ -113,12 +113,7 @@ class Subset(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, n):
-        index, changes = index_to_slices(n, self.shape)
-        indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
-        indices = make_slice_or_index_from_list_or_tuple(indices)
-        index, _ = update_tuple(index, 0, indices)
-        result = self.dataset[index]
-        result = apply_index_to_slices_changes(result, changes)
+        result = self.dataset[n]
         return result
 
     def __len__(self):

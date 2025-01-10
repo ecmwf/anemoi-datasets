@@ -49,17 +49,24 @@ class Select(Forwards):
     def mutate(self):
         return self.forward.swap_with_parent(parent=self)
 
+    # @debug_indexing
+    # @expand_list_indexing
+    # def _get_tuple(self, index):
+    #     index, changes = index_to_slices(index, self.shape)
+    #     index, previous = update_tuple(index, 1, slice(None))
+    #     result = self.dataset[index]
+    #     result = result[:, self.indices]
+    #     result = result[:, previous]
+    #     result = apply_index_to_slices_changes(result, changes)
+    #     return result
+    
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index):
-        index, changes = index_to_slices(index, self.shape)
-        index, previous = update_tuple(index, 1, slice(None))
         result = self.dataset[index]
         result = result[:, self.indices]
-        result = result[:, previous]
-        result = apply_index_to_slices_changes(result, changes)
         return result
-
+    
     @debug_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):

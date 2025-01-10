@@ -21,6 +21,8 @@ from .indexing import expand_list_indexing
 from .indexing import index_to_slices
 from .indexing import length_to_slices
 from .indexing import update_tuple
+from .indexing import get_indices_for_child_datasets_from_combined_axis_index
+from .indexing import _extend_shape
 
 LOG = logging.getLogger(__name__)
 
@@ -250,16 +252,45 @@ class GivenAxis(Combined):
         assert False not in result, result
         return result
 
+    # @debug_indexing
+    # @expand_list_indexing
+    # def _get_tuple(self, index):
+    #     index, changes = index_to_slices(index, self.shape)
+    #     lengths = [d.shape[self.axis] for d in self.datasets]
+    #     slices = length_to_slices(index[self.axis], lengths)
+    #     result = [d[update_tuple(index, self.axis, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
+    #     result = np.concatenate(result, axis=self.axis)
+    #     return apply_index_to_slices_changes(result, changes)
+    
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index):
-        index, changes = index_to_slices(index, self.shape)
-        lengths = [d.shape[self.axis] for d in self.datasets]
-        slices = length_to_slices(index[self.axis], lengths)
-        result = [d[update_tuple(index, self.axis, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
-        result = np.concatenate(result, axis=self.axis)
-        return apply_index_to_slices_changes(result, changes)
+        
+        index = _extend_shape(index, self.shape)
 
+        lengths = [d.shape[self.axis] for d in self.datasets]
+        
+        # New logic required here
+        # If we are indexing along the axis which is also the axis that the two datasets are combined along, 
+        # we need to ensure we collect the correct indices from each of the child datasets:
+        # 1) ascertain the lengths of each child dataset in the combined axis
+        # 2) create new indexing indices for each child dataset by correctly adjusting the combined axis index for each child
+        # 3) index each child dataset using the new indices
+        # 4) concatenate the results in an order that matches the original combined axis index
+
+        index_children:list[tuple[slice,list[int]]] = get_indices_for_child_datasets_from_combined_axis_index(self.axis, index, lengths)
+
+        child_datasets = [d.__getitem__(index_child) for d, index_child in zip(self.datasets, index_children)]
+        
+        # Interleaving logic not needed since the datasets and its selections are already in the correct order
+        # Here we interleave the results in the order of the original combined axis index
+        # This is done by concatenating the results in the order of the original combined axis index
+        # result = interleave_child_datasets_on_combined_axis(self.axis, child_datasets, index, lengths)
+
+        result = np.concatenate(child_datasets, axis=self.axis)
+        return result
+    
+    
     @debug_indexing
     def _get_slice(self, s):
         return np.stack([self[i] for i in range(*s.indices(self._len))])
@@ -267,6 +298,7 @@ class GivenAxis(Combined):
     @debug_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
+            n = _extend_shape(n, self.shape)
             return self._get_tuple(n)
 
         if isinstance(n, slice):
