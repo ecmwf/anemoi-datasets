@@ -18,11 +18,8 @@ from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
 from .forwards import Forwards
-from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
-from .indexing import index_to_slices
 from .indexing import make_slice_or_index_from_list_or_tuple
-from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
