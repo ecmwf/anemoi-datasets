@@ -16,6 +16,7 @@ from earthkit.data.core.fieldlist import FieldList
 
 from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
+from .patch import patch_dataset
 from .time import Time
 from .variable import FilteredVariable
 from .variable import Variable
@@ -49,7 +50,11 @@ class XarrayFieldList(FieldList):
         raise IndexError(k)
 
     @classmethod
-    def from_xarray(cls, ds, flavour=None):
+    def from_xarray(cls, ds, *, flavour=None, patch=None):
+
+        if patch is not None:
+            ds = patch_dataset(ds, patch)
+
         variables = []
 
         if isinstance(flavour, str):
@@ -83,6 +88,8 @@ class XarrayFieldList(FieldList):
             _skip_attr(variable, "bounds")
             _skip_attr(variable, "grid_mapping")
 
+        LOG.debug("Xarray data_vars: %s", ds.data_vars)
+
         # Select only geographical variables
         for name in ds.data_vars:
 
@@ -97,6 +104,7 @@ class XarrayFieldList(FieldList):
                 c = guess.guess(ds[coord], coord)
                 assert c, f"Could not guess coordinate for {coord}"
                 if coord not in variable.dims:
+                    LOG.debug("%s: coord=%s (not a dimension): dims=%s", variable, coord, variable.dims)
                     c.is_dim = False
                 coordinates.append(c)
 
@@ -104,6 +112,7 @@ class XarrayFieldList(FieldList):
             assert grid_coords <= 2
 
             if grid_coords < 2:
+                LOG.debug("Skipping %s (not 2D): %s", variable, [(c, c.is_grid, c.is_dim) for c in coordinates])
                 continue
 
             v = Variable(

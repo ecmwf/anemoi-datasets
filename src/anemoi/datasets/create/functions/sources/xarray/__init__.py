@@ -29,7 +29,7 @@ def check(what, ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
-def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):
+def load_one(emoji, context, dates, dataset, *, options={}, flavour=None, patch=None, **kwargs):
     import xarray as xr
 
     """
@@ -54,10 +54,10 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     else:
         data = xr.open_dataset(dataset, **options)
 
-    fs = XarrayFieldList.from_xarray(data, flavour)
+    fs = XarrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
 
     if len(dates) == 0:
-        return fs.sel(**kwargs)
+        result = fs.sel(**kwargs)
     else:
         result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 

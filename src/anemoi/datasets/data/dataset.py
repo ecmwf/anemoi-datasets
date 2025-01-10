@@ -168,6 +168,16 @@ class Dataset:
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
+        if "number" in kwargs or "numbers" or "member" in kwargs or "members" in kwargs:
+            from .ensemble import Number
+
+            members = {}
+            for key in ["number", "numbers", "member", "members"]:
+                if key in kwargs:
+                    members[key] = kwargs.pop(key)
+
+            return Number(self, **members)._subset(**kwargs).mutate()
+
         if "set_missing_dates" in kwargs:
             from .missing import MissingDates
 
@@ -251,13 +261,19 @@ class Dataset:
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
     def _reorder_to_columns(self, vars):
+        if isinstance(vars, str) and vars == "sort":
+            # Sorting the variables alphabetically.
+            # This is cruical for pre-training then transfer learning in combination with
+            # cutout and adjust = 'all'
+
+            indices = [self.name_to_index[k] for k, v in sorted(self.name_to_index.items(), key=lambda x: x[0])]
+            assert set(indices) == set(range(len(self.name_to_index)))
+            return indices
+
         if isinstance(vars, (list, tuple)):
             vars = {k: i for i, k in enumerate(vars)}
 
-        indices = []
-
-        for k, v in sorted(vars.items(), key=lambda x: x[1]):
-            indices.append(self.name_to_index[k])
+        indices = [self.name_to_index[k] for k, v in sorted(vars.items(), key=lambda x: x[1])]
 
         # Make sure we don't forget any variables
         assert set(indices) == set(range(len(self.name_to_index)))
@@ -502,3 +518,50 @@ class Dataset:
                 result.append(v)
 
         return result
+
+    def plot(self, date, variable, member=0, **kwargs):
+        """For debugging purposes, plot a field.
+
+        Parameters
+        ----------
+        date : int or datetime.datetime or numpy.datetime64 or str
+            The date to plot.
+        variable : int or str
+            The variable to plot.
+        member : int, optional
+            The ensemble member to plot.
+
+        **kwargs:
+            Additional arguments to pass to matplotlib.pyplot.tricontourf
+
+
+        Returns
+        -------
+            matplotlib.pyplot.Axes
+        """
+
+        from anemoi.utils.devtools import plot_values
+        from earthkit.data.utils.dates import to_datetime
+
+        if not isinstance(date, int):
+            date = np.datetime64(to_datetime(date)).astype(self.dates[0].dtype)
+            index = np.where(self.dates == date)[0]
+            if len(index) == 0:
+                raise ValueError(
+                    f"Date {date} not found in the dataset {self.dates[0]} to {self.dates[-1]} by {self.frequency}"
+                )
+            date_index = index[0]
+        else:
+            date_index = date
+
+        if isinstance(variable, int):
+            variable_index = variable
+        else:
+            if variable not in self.variables:
+                raise ValueError(f"Unknown variable {variable} (available: {self.variables})")
+
+            variable_index = self.name_to_index[variable]
+
+        values = self[date_index, variable_index, member]
+
+        return plot_values(values, self.latitudes, self.longitudes, **kwargs)

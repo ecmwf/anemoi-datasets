@@ -73,7 +73,7 @@ def test_weatherbench():
         "levtype": "pl",
     }
 
-    fs = XarrayFieldList.from_xarray(ds, flavour)
+    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
 
     assert_field_list(
         fs,
@@ -116,7 +116,7 @@ def test_noaa_replay():
         "levtype": "pl",
     }
 
-    fs = XarrayFieldList.from_xarray(ds, flavour)
+    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
 
     assert_field_list(
         fs,
@@ -141,7 +141,7 @@ def test_planetary_computer_conus404():
         },
     }
 
-    fs = XarrayFieldList.from_xarray(ds, flavour)
+    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
 
     assert_field_list(
         fs,

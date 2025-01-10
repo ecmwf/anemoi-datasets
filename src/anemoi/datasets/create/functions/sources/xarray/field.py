@@ -92,6 +92,10 @@ class XArrayField(Field):
     def grid_points(self):
         return self.owner.grid_points()
 
+    def to_latlon(self, flatten=True):
+        assert flatten
+        return dict(lat=self.latitudes, lon=self.longitudes)
+
     @property
     def resolution(self):
         return None
@@ -120,6 +124,6 @@ class XArrayField(Field):
     def __repr__(self):
         return repr(self._metadata)
 
-    def _values(self):
+    def _values(self, dtype=None):
         # we don't use .values as this will download the data
         return self.selection
