@@ -881,6 +881,51 @@ def test_dates_using_list():
 
 
 @mockup_open_zarr
+def test_dates_using_list_2():
+    dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(24, "h") for i in range(0, 10)]
+    assert len(dates) == 10
+
+    assert dates[0] == as_first_date("0%", dates)
+    assert dates[0] == as_last_date("0%", dates)
+
+    assert dates[0] == as_first_date("0.01%", dates)
+    assert dates[0] == as_last_date("0.01%", dates)
+
+    assert dates[0] == as_first_date("9.99%", dates)
+    assert dates[0] == as_last_date("9.99%", dates)
+
+    assert dates[0] == as_first_date("10%", dates)
+    assert dates[0] == as_last_date("10%", dates)
+
+    assert dates[1] == as_first_date("10.01%", dates)
+    assert dates[0] == as_last_date("10.01%", dates)
+
+    assert dates[1] == as_first_date("19.99%", dates)
+    assert dates[0] == as_last_date("19.99%", dates)
+
+    assert dates[1] == as_first_date("20%", dates)
+    assert dates[1] == as_last_date("20%", dates)
+
+    assert dates[2] == as_first_date("20.01%", dates)
+    assert dates[1] == as_last_date("20.01%", dates)
+
+    assert dates[-2] == as_first_date("89.99%", dates)
+    assert dates[-3] == as_last_date("89.99%", dates)
+
+    assert dates[-2] == as_first_date("90%", dates)
+    assert dates[-2] == as_last_date("90%", dates)
+
+    assert dates[-1] == as_first_date("90.01%", dates)
+    assert dates[-2] == as_last_date("90.01%", dates)
+
+    assert dates[-1] == as_first_date("99.99%", dates)
+    assert dates[-2] == as_last_date("99.99%", dates)
+
+    assert dates[-1] == as_first_date("100%", dates)
+    assert dates[-1] == as_last_date("100%", dates)
+
+
+@mockup_open_zarr
 def test_slice_1():
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(
