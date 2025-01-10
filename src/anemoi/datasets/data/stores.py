@@ -219,7 +219,14 @@ class Zarr(Dataset):
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n):
-        return self.data.oindex[*n]
+        if isinstance(n, tuple):
+            return self.data.oindex[*n]
+        elif isinstance(n, int):
+            return self.data[n]
+        
+        else:
+            raise ValueError(f"Unsupported index {n} {type(n)}")
+
 
     def _unwind(self, index, rest, shape, axis, axes):
         if not isinstance(index, (int, slice, list, tuple)):
