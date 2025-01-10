@@ -15,10 +15,7 @@ from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
 from .forwards import Forwards
-from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -59,14 +56,14 @@ class Select(Forwards):
     #     result = result[:, previous]
     #     result = apply_index_to_slices_changes(result, changes)
     #     return result
-    
+
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index):
         result = self.dataset[index]
         result = result[:, self.indices]
         return result
-    
+
     @debug_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):

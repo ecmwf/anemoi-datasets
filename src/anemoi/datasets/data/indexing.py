@@ -8,10 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
+import copy
 from functools import wraps
 
 import numpy as np
-import copy
+
 
 def _tuple_with_slices(t, shape):
     """Replace all integers in a tuple with slices, so we preserve the dimensionality."""
@@ -153,6 +154,7 @@ def _as_tuples(index):
 
 #     return wrapper
 
+
 def expand_list_indexing(method):
     """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
 
@@ -163,10 +165,11 @@ def expand_list_indexing(method):
 
         if not any(isinstance(i, (list, tuple)) for i in index):
             return method(self, index)
-        
+
         return method(self, index)
 
     return wrapper
+
 
 def make_slice_or_index_from_list_or_tuple(indices):
     """Convert a list or tuple of indices to a slice or an index, if possible."""
@@ -181,7 +184,10 @@ def make_slice_or_index_from_list_or_tuple(indices):
 
     return indices
 
-def get_indices_for_child_datasets_from_combined_axis_index(join_axis:int, index_combined:tuple[slice|list[int],], child_datasets_axis_lengths:list[int]) -> list[tuple[slice,list[int]]]:
+
+def get_indices_for_child_datasets_from_combined_axis_index(
+    join_axis: int, index_combined: tuple[slice | list[int],], child_datasets_axis_lengths: list[int]
+) -> list[tuple[slice, list[int]]]:
     """Given a combined axis index, and the axis along which the child datasets are joined, return the indices for each child dataset."""
 
     # 1) ascertain the lengths of each child dataset in the combined axis
@@ -192,18 +198,18 @@ def get_indices_for_child_datasets_from_combined_axis_index(join_axis:int, index
     cumulative_lengths = np.cumsum(child_datasets_axis_lengths)
 
     start_indices_child = [0] + cumulative_lengths[:-1].tolist()
-    end_indices_child = [s+l for s,l in zip(start_indices_child, child_datasets_axis_lengths)]
+    end_indices_child = [s + l for s, l in zip(start_indices_child, child_datasets_axis_lengths)]
 
     index_children = []
     for idx_child in range(len(child_datasets_axis_lengths)):
-        index_child = list( copy.deepcopy(index_combined) )
+        index_child = list(copy.deepcopy(index_combined))
 
         # in the join axis, select the indices that map to the child dataset at position i
         index_at_join_axis = index_child[join_axis]
 
         if isinstance(index_at_join_axis, slice):
             start, stop, step = index_at_join_axis.indices(cumulative_lengths[idx_child])
-            
+
             # Ensure the slice is within the bounds
             start = max(start, start_indices_child[idx_child])
             stop = min(stop, end_indices_child[idx_child])
@@ -213,14 +219,17 @@ def get_indices_for_child_datasets_from_combined_axis_index(join_axis:int, index
             new_index_at_join_axis = slice(adjusted_start, adjusted_stop, step)
             index_child[join_axis] = new_index_at_join_axis
 
-
         elif isinstance(index_at_join_axis, list):
-            new_index_at_join_aixs = [ idx for idx in index_at_join_axis if idx >= start_indices_child[idx_child] and idx < end_indices_child[idx_child] ]
-            adjusted_index_at_join_axis = [ idx - start_indices_child[idx_child] for idx in new_index_at_join_aixs ]
+            new_index_at_join_aixs = [
+                idx
+                for idx in index_at_join_axis
+                if idx >= start_indices_child[idx_child] and idx < end_indices_child[idx_child]
+            ]
+            adjusted_index_at_join_axis = [idx - start_indices_child[idx_child] for idx in new_index_at_join_aixs]
             index_child[join_axis] = adjusted_index_at_join_axis
         else:
             ValueError("Index at join axis is not a slice or a list")
-        
+
         index_child = tuple(index_child)
         index_children.append(index_child)
     return index_children
