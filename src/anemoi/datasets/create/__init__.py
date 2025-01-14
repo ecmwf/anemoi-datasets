@@ -740,6 +740,11 @@ class AdditionsMixin:
         if not self.delta.total_seconds() % frequency.total_seconds() == 0:
             LOG.debug(f"Delta {self.delta} is not a multiple of frequency {frequency}. Skipping.")
             return True
+
+        if self.dataset.zarr_metadata.get("build", {}).get("additions", None) is False:
+            LOG.warning(f"Additions are disabled for {self.path} in the recipe.")
+            return True
+
         return False
 
     @cached_property
