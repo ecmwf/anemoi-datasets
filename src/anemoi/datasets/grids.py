@@ -62,6 +62,8 @@ def plot_mask(path, mask, lats, lons, global_lats, global_lons):
         plt.savefig(path + "-global-zoomed.png")
 
 
+# TODO: Use the one from anemoi.utils.grids instead
+# from anemoi.utils.grids import ...
 def xyz_to_latlon(x, y, z):
     return (
         np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
@@ -69,6 +71,8 @@ def xyz_to_latlon(x, y, z):
     )
 
 
+# TODO: Use the one from anemoi.utils.grids instead
+# from anemoi.utils.grids import ...
 def latlon_to_xyz(lat, lon, radius=1.0):
     # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
     # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
@@ -380,6 +384,8 @@ def serialise_mask(mask):
 
 
 def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, target_longitudes):
+    # TODO: Use the one from anemoi.utils.grids instead
+    # from anemoi.utils.grids import ...
     from scipy.spatial import cKDTree
 
     source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
