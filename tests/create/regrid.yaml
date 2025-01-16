@@ -26,6 +26,6 @@ input:
           type: an
       - regrid:
           # method: linear
-          method: anemoi.nearest
+          method: nearest
           in_grid: o32
           out_grid: o48
