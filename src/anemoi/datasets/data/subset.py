@@ -18,11 +18,8 @@ from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
 from .forwards import Forwards
-from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
-from .indexing import index_to_slices
 from .indexing import make_slice_or_index_from_list_or_tuple
-from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -113,12 +110,7 @@ class Subset(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, n):
-        index, changes = index_to_slices(n, self.shape)
-        indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
-        indices = make_slice_or_index_from_list_or_tuple(indices)
-        index, _ = update_tuple(index, 0, indices)
-        result = self.dataset[index]
-        result = apply_index_to_slices_changes(result, changes)
+        result = self.dataset[n]
         return result
 
     def __len__(self):
