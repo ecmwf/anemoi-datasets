@@ -79,7 +79,10 @@ def json_tidy(o):
         )
         return o.isoformat()
 
-    raise TypeError(repr(o) + " is not JSON serializable")
+    if isinstance(o, (np.float32, np.float64)):
+        return float(o)
+
+    raise TypeError(f"{repr(o)} is not JSON serializable {type(o)}")
 
 
 def build_statistics_dates(dates, start, end):
