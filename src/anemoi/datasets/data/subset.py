@@ -162,3 +162,9 @@ class Subset(Forwards):
             # "indices": self.indices,
             "reason": self.reason,
         }
+
+    @property
+    def fake_hindcasts(self):
+        fake_hindcasts = self.dataset.fake_hindcasts
+        indices = set(self.indices)
+        return {k: v for i, (k, v) in enumerate(fake_hindcasts.items()) if i in indices}

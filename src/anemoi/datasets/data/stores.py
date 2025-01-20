@@ -389,8 +389,17 @@ class Zarr(Dataset):
     def collect_input_sources(self, collected):
         pass
 
+    @cached_property
     def fake_hindcasts(self):
-        return self.z.attrs.get("fake_hindcasts", [])
+
+        from earthkit.data.utils.dates import to_datetime
+
+        fake_hindcasts = sorted(self.z.attrs.get("fake_hindcasts", {}).items())
+
+        def __(x):
+            return tuple(to_datetime(_) if isinstance(_, str) else _ for _ in x)
+
+        return {to_datetime(k): __(v) for k, v in fake_hindcasts}
 
 
 class ZarrWithMissingDates(Zarr):

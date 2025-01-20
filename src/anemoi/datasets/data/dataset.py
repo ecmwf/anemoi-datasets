@@ -117,6 +117,17 @@ class Dataset:
                 .mutate()
             )
 
+        if "fake_hindcasts" in kwargs:
+            from .subset import Subset
+
+            fake_hindcasts = kwargs.pop("fake_hindcasts")
+
+            return (
+                Subset(self, self._fake_hindcasts_to_indices(**fake_hindcasts), dict(fake_hindcasts=fake_hindcasts))
+                ._subset(**kwargs)
+                .mutate()
+            )
+
         if "select" in kwargs:
             from .select import Select
 
@@ -239,6 +250,42 @@ class Dataset:
 
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
+    def _fake_hindcasts_to_indices(self, start=None, end=None, steps=None):
+        from .misc import as_first_date
+        from .misc import as_last_date
+
+        real_to_fake = self._fake_mappings["real_to_fake"]
+        hdates = set()
+        usteps = set()
+
+        for hdate, step in real_to_fake.keys():
+            hdates.add(hdate)
+            usteps.add(step)
+
+        hdates = np.array(sorted(hdates))
+        if steps is None:
+            steps = sorted(usteps)
+
+        if not isinstance(steps, (list, tuple)):
+            steps = [steps]
+
+        if not set(steps) <= usteps:
+            raise ValueError(f"Unknown steps: {sorted(set(steps) - usteps)} (available: {sorted(usteps)})")
+
+        start = hdates[0] if start is None else as_first_date(start, hdates)
+        end = hdates[-1] if end is None else as_last_date(end, hdates)
+
+        fake_to_real = self._fake_mappings["fake_to_real"]  # Is sorted by date
+
+        steps = set(steps)
+
+        indices = []
+        for i, (_, hdate, step) in enumerate(fake_to_real.values()):
+            if start <= hdate <= end and step in steps:
+                indices.append(i)
+
+        return indices
+
     def _select_to_columns(self, vars):
         if isinstance(vars, set):
             # We keep the order of the variables as they are in the zarr file
@@ -315,12 +362,8 @@ class Dataset:
 
     @cached_property
     def _fake_mappings(self):
-        from earthkit.data.utils.dates import to_datetime
 
-        def __(x):
-            return tuple(to_datetime(_) if isinstance(_, str) else _ for _ in x)
-
-        m = {to_datetime(k): __(v) for k, v in self.fake_hindcasts().items()}
+        m = self.fake_hindcasts
 
         return {
             "fake_to_real": m,
