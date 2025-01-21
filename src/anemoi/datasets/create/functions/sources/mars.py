@@ -246,6 +246,7 @@ def mars(
     *requests,
     request_already_using_valid_datetime=False,
     date_key="date",
+    use_cdsapi_dataset=None,
     **kwargs,
 ):
 
@@ -305,7 +306,10 @@ def mars(
                     f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
                 )
         try:
-            ds = ds + from_source("mars", **r)
+            if use_cdsapi_dataset:
+                ds = ds + from_source("cds", use_cdsapi_dataset, r)
+            else:
+                ds = ds + from_source("mars", **r)
         except Exception as e:
             if "File is empty:" not in str(e):
                 raise
