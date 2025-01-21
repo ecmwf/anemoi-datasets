@@ -19,6 +19,7 @@ Keep it human-readable, your future self will thank you!
 - Implement 'complement' feature
 - Add ability to patch xarrays (#160)
 - Add support of ECCC file formats (fstd)
+- Add `use_cdsapi_dataset` option to mars and accumulations
 
 ### Added
 

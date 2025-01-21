@@ -253,6 +253,7 @@ def _compute_accumulations(
     data_accumulation_period=None,
     patch=_identity,
     base_times=None,
+    use_cdsapi_dataset=None,
 ):
     adjust_step = isinstance(user_accumulation_period, int)
 
@@ -311,7 +312,9 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-    ds = mars(context, dates, *requests, request_already_using_valid_datetime=True)
+    ds = mars(
+        context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
+    )
 
     accumulations = {}
     for a in [AccumulationClass(out, frequency=frequency, **r) for r in requests]:
@@ -366,7 +369,7 @@ def _scda(request):
     return request
 
 
-def accumulations(context, dates, **request):
+def accumulations(context, dates, use_cdsapi_dataset=None, **request):
     _to_list(request["param"])
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")
@@ -395,6 +398,7 @@ def accumulations(context, dates, **request):
         dates,
         request,
         user_accumulation_period=user_accumulation_period,
+        use_cdsapi_dataset=use_cdsapi_dataset,
         **kwargs,
     )
 
