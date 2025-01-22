@@ -599,6 +599,8 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         # There is one cube to load for each result.
         dates = list(result.group_of_dates)
 
+        LOG.debug(f"Loading cube for {len(dates)} dates")
+
         cube = result.get_cube()
         shape = cube.extended_user_shape
         dates_in_data = cube.user_coords["valid_datetime"]
@@ -645,12 +647,14 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         indexes = dates_to_indexes(self.dates, dates_in_data)
 
         array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
+        LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
         self.load_cube(cube, array)
 
         stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
         self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
-
+        LOG.info("Flush data array")
         array.flush()
+        LOG.info("Flushed data array")
 
     def _get_allow_nans(self):
         config = self.main_config
