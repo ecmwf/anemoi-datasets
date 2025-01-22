@@ -64,12 +64,12 @@ optional-dependencies.all = [
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.12.0",
+  "earthkit-data[mars]>=0.12",
   "earthkit-geo>=0.3",
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
   "entrypoints",
-  "pyproj>=3.0",
+  "pyproj>=3",
 ]
 
 optional-dependencies.dev = [
