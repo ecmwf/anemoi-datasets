@@ -219,7 +219,13 @@ class Zarr(Dataset):
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n):
-        return self.data[n]
+        if isinstance(n, tuple):
+            return self.data.oindex[*n]
+        elif isinstance(n, int):
+            return self.data[n]
+
+        else:
+            raise ValueError(f"Unsupported index {n} {type(n)}")
 
     def _unwind(self, index, rest, shape, axis, axes):
         if not isinstance(index, (int, slice, list, tuple)):
@@ -298,12 +304,15 @@ class Zarr(Dataset):
         def func(k):
             return f"statistics_tendencies_{delta}_{k}"
 
-        return dict(
-            mean=self.z[func("mean")][:],
-            stdev=self.z[func("stdev")][:],
-            maximum=self.z[func("maximum")][:],
-            minimum=self.z[func("minimum")][:],
-        )
+        try:
+            return dict(
+                mean=self.z[func("mean")][:],
+                stdev=self.z[func("stdev")][:],
+                maximum=self.z[func("maximum")][:],
+                minimum=self.z[func("minimum")][:],
+            )
+        except KeyError:
+            return {}
 
     @property
     def resolution(self):
