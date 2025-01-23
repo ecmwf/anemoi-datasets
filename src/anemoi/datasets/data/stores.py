@@ -24,7 +24,7 @@ from .debug import DEBUG_ZARR_LOADING
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .misc import load_config
 
 LOG = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class S3Store(ReadOnlyStore):
 
 class PlanetaryComputerStore(ReadOnlyStore):
     """We write our own Store to access catalogs on Planetary Computer,
-    as it requires some extra arguements to use xr.open_zarr.
+    as it requires some extra arguments to use xr.open_zarr.
     """
 
     def __init__(self, data_catalog_id):
@@ -217,8 +217,9 @@ class Zarr(Dataset):
         return self.data.shape[0]
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def __getitem__(self, n):
+
         return self.data[n]
 
     def _unwind(self, index, rest, shape, axis, axes):
@@ -405,7 +406,7 @@ class ZarrWithMissingDates(Zarr):
         return self
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, int):
             if n in self.missing:

@@ -201,12 +201,12 @@ def _debug_indexing(method):
     def wrapper(self, index):
         global DEPTH
         # if isinstance(index, tuple):
-        print("  " * DEPTH, "->", self, method.__name__, index)
+        print("  " * DEPTH, "->", self, method, index)
         DEPTH += 1
         result = method(self, index)
         DEPTH -= 1
         # if isinstance(index, tuple):
-        print("  " * DEPTH, "<-", self, method.__name__, result.shape)
+        print("  " * DEPTH, "<-", self, method, result.shape)
         return result
 
     return wrapper
@@ -216,10 +216,10 @@ def _identity(x):
     return x
 
 
-if DEBUG_ZARR_INDEXING:
-    debug_indexing = _debug_indexing
-else:
-    debug_indexing = _identity
+# if DEBUG_ZARR_INDEXING:
+debug_indexing = _debug_indexing
+# else:
+#     debug_indexing = _identity
 
 
 def debug_zarr_loading(on_off):

@@ -196,13 +196,17 @@ class IndexTester:
 
     def __getitem__(self, index):
         print("INDEX", type(self.ds), index)
-        if self.ds[index] is None:
+
+        ds_values = self.ds[index]
+        pn_values = self.np[index]
+
+        if ds_values is None:
             assert False, (self.ds, index)
 
-        if not (self.ds[index] == self.np[index]).all():
-            # print("DS", self.ds[index])
-            # print("NP", self.np[index])
-            assert (self.ds[index] == self.np[index]).all()
+        if not (ds_values == pn_values).all():
+            # print("DS", ds_values)
+            # print("NP", pn_values)
+            assert (ds_values == pn_values).all()
 
 
 def make_row(*args, ensemble=False, grid=False):
@@ -318,6 +322,8 @@ class DatasetTester:
     def indexing(self, ds):
         t = IndexTester(ds)
 
+        assert len(ds.shape) == 4
+
         print("INDEXING", ds.shape)
 
         t[0:10, :, 0]
@@ -327,8 +333,8 @@ class DatasetTester:
         t[:, :, :]
 
         if ds.shape[1] > 2:  # Variable dimension
-            t[:, (1, 2), :]
-            t[:, (1, 2)]
+            t[:, [1, 2]]
+            t[:, [1, 2], :]
 
         t[0]
         t[0, :]
@@ -349,6 +355,27 @@ class DatasetTester:
             t[start:]
             t[:end]
             t[::step]
+
+        def _idx(i):
+            idx = []
+            for n in list(range(ds.shape[i])):
+                if n % 2 == 0:
+                    idx.append(n)
+            return idx
+
+        t[_idx(0), :, :, :]
+        t[:, _idx(1), :, :]
+        t[:, :, _idx(2), :]
+        t[:, :, :, _idx(3)]
+
+        t[1, :, :, _idx(3)]
+        t[1:4, :, :, _idx(3)]
+        t[_idx(0), :, :, _idx(3)]
+
+        t[_idx(0), _idx(1), _idx(2), _idx(3)]
+        t[:, _idx(1), _idx(2), _idx(3)]
+        t[_idx(0), _idx(1), :, _idx(3)]
+        t[_idx(0), :, _idx(2), _idx(3)]
 
 
 def simple_row(date, vars):
@@ -1132,7 +1159,8 @@ def test_cropping():
 
 
 if __name__ == "__main__":
-    for name, obj in list(globals().items()):
-        if name.startswith("test_") and callable(obj):
-            print(f"Running {name}...")
-            obj()
+    test_simple()
+    # for name, obj in list(globals().items()):
+    #     if name.startswith("test_") and callable(obj):
+    #         print(f"Running {name}...")
+    #         obj()

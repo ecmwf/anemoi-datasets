@@ -19,7 +19,7 @@ from anemoi.datasets.data import MissingDateError
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class MissingDates(Forwards):
         return self._missing.union(self.forward.missing)
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, int):
             if n in self.missing:
@@ -157,7 +157,7 @@ class SkipMissingDates(Forwards):
         raise NotImplementedError("SkipMissingDates.dates")
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def _get_tuple(self, index):
 
         def _get_one(n):
@@ -180,12 +180,14 @@ class SkipMissingDates(Forwards):
         return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
+    @check_indexing
     def _get_slice(self, s):
         values = [self[i] for i in range(*s.indices(self._len))]
         result = [_ for _ in zip(*values)]
         return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
             return self._get_tuple(n)

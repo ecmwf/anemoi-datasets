@@ -18,7 +18,7 @@ from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .indexing import index_to_slices
 from .indexing import update_tuple
 from .misc import _auto_adjust
@@ -138,6 +138,7 @@ class Merge(Combined):
         return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
 
     @debug_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -153,7 +154,7 @@ class Merge(Combined):
         return self.datasets[dataset][int(row)]
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def _get_tuple(self, index):
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))

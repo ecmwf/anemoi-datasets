@@ -18,7 +18,7 @@ from .debug import Source
 from .debug import debug_indexing
 from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .indexing import index_to_slices
 from .indexing import update_tuple
 from .misc import _auto_adjust
@@ -42,7 +42,7 @@ class Join(Combined):
         return len(self.datasets[0])
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def _get_tuple(self, index):
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
@@ -54,10 +54,12 @@ class Join(Combined):
         return apply_index_to_slices_changes(result[:, previous], changes)
 
     @debug_indexing
+    @check_indexing
     def _get_slice(self, s):
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
             return self._get_tuple(n)

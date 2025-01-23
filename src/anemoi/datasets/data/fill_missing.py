@@ -18,7 +18,7 @@ from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
 from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .indexing import index_to_slices
 from .indexing import update_tuple
 
@@ -32,7 +32,7 @@ class MissingDatesFill(Forwards):
         self._warnings = set()
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def _get_tuple(self, index):
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
@@ -47,6 +47,7 @@ class MissingDatesFill(Forwards):
         return set()
 
     @debug_indexing
+    @check_indexing
     def __getitem__(self, n):
 
         try:

@@ -8,9 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 
+import logging
 from functools import wraps
 
 import numpy as np
+
+LOG = logging.getLogger(__name__)
 
 
 def _tuple_with_slices(t, shape):
@@ -126,6 +129,7 @@ def expand_list_indexing(method):
 
     @wraps(method)
     def wrapper(self, index):
+
         if not isinstance(index, tuple):
             return method(self, index)
 
@@ -142,12 +146,16 @@ def expand_list_indexing(method):
         if len(which) > 1:
             raise IndexError("Only one list index is allowed")
 
+        # assert False, (index, which)
+
         which = which[0]
         index = _as_tuples(index)
         result = []
         for i in index[which]:
             index, _ = update_tuple(index, which, slice(i, i + 1))
             result.append(method(self, index))
+
+        print(result, which)
 
         return np.concatenate(result, axis=which)
 
@@ -166,3 +174,15 @@ def make_slice_or_index_from_list_or_tuple(indices):
         return slice(indices[0], indices[-1] + step, step)
 
     return indices
+
+
+def check_indexing(method):
+    @wraps(method)
+    def wrapper(self, index):
+        try:
+            return method(self, index)
+        except Exception as e:
+            LOG.error(f"Error in {method} with index {index}: {e}")
+            raise
+
+    return wrapper

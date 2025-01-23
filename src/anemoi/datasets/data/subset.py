@@ -19,7 +19,7 @@ from .debug import Source
 from .debug import debug_indexing
 from .forwards import Forwards
 from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .indexing import index_to_slices
 from .indexing import make_slice_or_index_from_list_or_tuple
 from .indexing import update_tuple
@@ -88,6 +88,7 @@ class Subset(Forwards):
         return self.forward.swap_with_parent(parent=self)
 
     @debug_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -100,6 +101,7 @@ class Subset(Forwards):
         return self.dataset[n]
 
     @debug_indexing
+    @check_indexing
     def _get_slice(self, s):
         # TODO: check if the indices can be simplified to a slice
         # the time checking maybe be longer than the time saved
@@ -111,7 +113,7 @@ class Subset(Forwards):
         return np.stack([self.dataset[i] for i in indices])
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def _get_tuple(self, n):
         index, changes = index_to_slices(n, self.shape)
         indices = [self.indices[i] for i in range(*index[0].indices(self._len))]

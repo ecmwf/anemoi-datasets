@@ -18,7 +18,7 @@ from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
+from .indexing import check_indexing
 from .indexing import index_to_slices
 from .indexing import length_to_slices
 from .indexing import update_tuple
@@ -34,18 +34,19 @@ class ConcatMixin:
         return sum(len(i) for i in self.datasets)
 
     @debug_indexing
-    @expand_list_indexing
+    @check_indexing
     def _get_tuple(self, index):
         index, changes = index_to_slices(index, self.shape)
         # print(index, changes)
         lengths = [d.shape[0] for d in self.datasets]
         slices = length_to_slices(index[0], lengths)
-        # print("slies", slices)
+        # print("slices", slices)
         result = [d[update_tuple(index, 0, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
         result = np.concatenate(result, axis=0)
         return apply_index_to_slices_changes(result, changes)
 
     @debug_indexing
+    @check_indexing
     def __getitem__(self, n):
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -61,6 +62,7 @@ class ConcatMixin:
         return self.datasets[k][n]
 
     @debug_indexing
+    @check_indexing
     def _get_slice(self, s):
         result = []
 
