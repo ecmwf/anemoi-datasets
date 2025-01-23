@@ -223,10 +223,9 @@ class Zarr(Dataset):
             return self.data.oindex[*n]
         elif isinstance(n, int):
             return self.data[n]
-        
+
         else:
             raise ValueError(f"Unsupported index {n} {type(n)}")
-
 
     def _unwind(self, index, rest, shape, axis, axes):
         if not isinstance(index, (int, slice, list, tuple)):
