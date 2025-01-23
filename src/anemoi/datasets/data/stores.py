@@ -305,12 +305,15 @@ class Zarr(Dataset):
         def func(k):
             return f"statistics_tendencies_{delta}_{k}"
 
-        return dict(
-            mean=self.z[func("mean")][:],
-            stdev=self.z[func("stdev")][:],
-            maximum=self.z[func("maximum")][:],
-            minimum=self.z[func("minimum")][:],
-        )
+        try: 
+            return dict(
+                mean=self.z[func("mean")][:],
+                stdev=self.z[func("stdev")][:],
+                maximum=self.z[func("maximum")][:],
+                minimum=self.z[func("minimum")][:],
+            )
+        except KeyError:
+            return {}
 
     @property
     def resolution(self):

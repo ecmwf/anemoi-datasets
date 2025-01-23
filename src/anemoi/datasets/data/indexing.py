@@ -122,39 +122,6 @@ def _as_tuples(index):
     return tuple(_(i) for i in index)
 
 
-# def expand_list_indexing(method):
-#     """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
-
-#     @wraps(method)
-#     def wrapper(self, index):
-#         if not isinstance(index, tuple):
-#             return method(self, index)
-
-#         if not any(isinstance(i, (list, tuple)) for i in index):
-#             return method(self, index)
-
-#         which = []
-#         for i, idx in enumerate(index):
-#             if isinstance(idx, (list, tuple)):
-#                 which.append(i)
-
-#         assert which, "No list index found"
-
-#         if len(which) > 1:
-#             raise IndexError("Only one list index is allowed")
-
-#         which = which[0]
-#         index = _as_tuples(index)
-#         result = []
-#         for i in index[which]:
-#             index, _ = update_tuple(index, which, slice(i, i + 1))
-#             result.append(method(self, index))
-
-#         return np.concatenate(result, axis=which)
-
-#     return wrapper
-
-
 def expand_list_indexing(method):
     """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
 
