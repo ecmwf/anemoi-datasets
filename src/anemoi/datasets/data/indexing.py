@@ -165,7 +165,7 @@ def get_indices_for_child_datasets_from_combined_axis_index(
     cumulative_lengths = np.cumsum(child_datasets_axis_lengths)
 
     start_indices_child = [0] + cumulative_lengths[:-1].tolist()
-    end_indices_child = [s + l for s, l in zip(start_indices_child, child_datasets_axis_lengths)]
+    end_indices_child = [s + len_child for s, len_child in zip(start_indices_child, child_datasets_axis_lengths)]
 
     index_children = []
     for idx_child in range(len(child_datasets_axis_lengths)):
