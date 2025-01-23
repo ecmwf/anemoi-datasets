@@ -304,7 +304,7 @@ class Zarr(Dataset):
         def func(k):
             return f"statistics_tendencies_{delta}_{k}"
 
-        try: 
+        try:
             return dict(
                 mean=self.z[func("mean")][:],
                 stdev=self.z[func("stdev")][:],
