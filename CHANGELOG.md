@@ -18,6 +18,7 @@ Keep it human-readable, your future self will thank you!
 - Use cKDTree instead of KDTree
 - Implement 'complement' feature
 - Add ability to patch xarrays (#160)
+- Add flexible multi-dimensional indexing when selecting from anemoi dataset (#172)
 
 ### Added
 
