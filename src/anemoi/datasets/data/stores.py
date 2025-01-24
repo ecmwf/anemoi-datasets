@@ -25,6 +25,7 @@ from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
 from .indexing import check_indexing
+from .indexing import index_to_slices
 from .misc import load_config
 
 LOG = logging.getLogger(__name__)
@@ -218,31 +219,17 @@ class Zarr(Dataset):
 
     @debug_indexing
     @check_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, key):
+        if isinstance(key, tuple) and any(isinstance(k, (list, tuple)) for k in key):
+            return self._get_tuple(key)
+        return self.data[key]
 
-        return self.data[n]
-
-    def _unwind(self, index, rest, shape, axis, axes):
-        if not isinstance(index, (int, slice, list, tuple)):
-            try:
-                # NumPy arrays, TensorFlow tensors, etc.
-                index = tuple(index.tolist())
-                assert not isinstance(index, bool), "Mask not supported"
-            except AttributeError:
-                pass
-
-        if isinstance(index, (list, tuple)):
-            axes.append(axis)  # Dimension of the concatenation
-            for i in index:
-                yield from self._unwind((slice(i, i + 1),), rest, shape, axis, axes)
-            return
-
-        if len(rest) == 0:
-            yield (index,)
-            return
-
-        for n in self._unwind(rest[0], rest[1:], shape, axis + 1, axes):
-            yield (index,) + n
+    @debug_indexing
+    @check_indexing
+    def _get_tuple(self, key):
+        newkey, _ = index_to_slices(key, self.shape)
+        assert False, (key, newkey, self.shape)
+        return self.data[key]
 
     @cached_property
     def chunks(self):

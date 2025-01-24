@@ -10,6 +10,7 @@
 
 import numpy as np
 
+from anemoi.datasets.data.indexing import index_to_slices
 from anemoi.datasets.data.indexing import length_to_slices
 
 
@@ -37,5 +38,15 @@ def test_length_to_slices():
                 assert (combined[index] == result).all(), index
 
 
+def test_index_to_slices():
+    shape = (2920, 4, 1, 10)
+    index = (Ellipsis, (0, 1, 5))
+
+    new_index, new_shape = index_to_slices(index, shape)
+
+    print(new_index)
+    print(new_shape)
+
+
 if __name__ == "__main__":
-    test_length_to_slices()
+    test_index_to_slices()

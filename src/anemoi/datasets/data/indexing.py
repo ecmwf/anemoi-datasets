@@ -16,12 +16,37 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
+def _tuple_of_lists_to_slice(t):
+    """Convert a tuple of lists to a tuple of a slice when possible."""
+    assert isinstance(t, (list, tuple)), t
+    if len(t) == 0:
+        return t
+    if len(t) == 1:
+        return slice(t[0], t[0] + 1)
+    if len(t) == 2:
+        return slice(t[0], t[1], t[1] - t[0])
+
+    diffs = set(t[i] - t[i - 1] for i in range(1, len(t)))
+    if len(diffs) == 1:
+        return slice(t[0], t[-1], diffs.pop())
+
+    return t
+
+
 def _tuple_with_slices(t, shape):
     """Replace all integers in a tuple with slices, so we preserve the dimensionality."""
 
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
-    result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
+
+    r = []
+    for i, s in enumerate(result):
+        if isinstance(s, slice):
+            r.append(slice(*s.indices(shape[i])))
+        else:
+            r.append(s)
+
+    result = tuple(r)
 
     return result, changes
 
@@ -31,6 +56,7 @@ def _extend_shape(index, shape):
         if index.count(Ellipsis) > 1:
             raise IndexError("Only one Ellipsis is allowed")
         ellipsis_index = index.index(Ellipsis)
+
         index = list(index)
         index[ellipsis_index] = slice(None)
         while len(index) < len(shape):
@@ -57,7 +83,9 @@ def _index_to_tuple(index, shape):
 
 def index_to_slices(index, shape):
     """Convert an index to a tuple of slices, with the same dimensionality as the shape."""
-    return _tuple_with_slices(_index_to_tuple(index, shape), shape)
+
+    idx = _index_to_tuple(index, shape)
+    return _tuple_with_slices(idx, shape)
 
 
 def apply_index_to_slices_changes(result, changes):
@@ -183,6 +211,7 @@ def check_indexing(method):
             return method(self, index)
         except Exception as e:
             LOG.error(f"Error in {method} with index {index}: {e}")
+            LOG.exception(e)
             raise
 
     return wrapper

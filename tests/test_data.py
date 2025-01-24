@@ -195,7 +195,7 @@ class IndexTester:
         assert (self.ds == self.np).all()
 
     def __getitem__(self, index):
-        print("INDEX", type(self.ds), index)
+        # print("INDEX", type(self.ds), index)
 
         ds_values = self.ds[index]
         pn_values = self.np[index]
@@ -204,8 +204,8 @@ class IndexTester:
             assert False, (self.ds, index)
 
         if not (ds_values == pn_values).all():
-            # print("DS", ds_values)
-            # print("NP", pn_values)
+            print("DS", ds_values)
+            print("NP", pn_values)
             assert (ds_values == pn_values).all()
 
 
@@ -332,9 +332,15 @@ class DatasetTester:
         t[0:10, 0:3, 0]
         t[:, :, :]
 
+        t[..., 0]
+        t[..., (0, 1, 5)]
+        t[..., (0, 1)]
+
         if ds.shape[1] > 2:  # Variable dimension
             t[:, [1, 2]]
             t[:, [1, 2], :]
+            t[:, (1, 2)]
+            t[:, (1, 2), :]
 
         t[0]
         t[0, :]
