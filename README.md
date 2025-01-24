@@ -1,15 +1,15 @@
-# anemoi-datasets
+# anemoi-utils
 
 **DISCLAIMER**
 This project is **BETA** and will be **Experimental** for the foreseeable future.
 Interfaces and functionality are likely to change, and the project itself may be scrapped.
 **DO NOT** use this software in any project/software that is operational.
 
-Datasets for training data-driven weather forecasts.
+
 
 ## Documentation
 
-The documentation can be found at https://anemoi-datasets.readthedocs.io/.
+The documentation can be found at https://NaN.readthedocs.io/.
 
 ## Install
 
@@ -22,7 +22,7 @@ $ pip install anemoi-datasets
 ## License
 
 ```
-Copyright 2024, Anemoi contributors.
+Copyright 2024-2025, Anemoi Contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
