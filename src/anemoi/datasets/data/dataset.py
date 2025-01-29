@@ -541,6 +541,13 @@ class Dataset:
         """
 
         from anemoi.utils.devtools import plot_values
+
+        values = self[self.to_index(date, variable, member)]
+
+        return plot_values(values, self.latitudes, self.longitudes, **kwargs)
+
+    def to_index(self, date, variable, member=0):
+
         from earthkit.data.utils.dates import to_datetime
 
         if not isinstance(date, int):
@@ -562,6 +569,4 @@ class Dataset:
 
             variable_index = self.name_to_index[variable]
 
-        values = self[date_index, variable_index, member]
-
-        return plot_values(values, self.latitudes, self.longitudes, **kwargs)
+        return (date_index, variable_index, member)
