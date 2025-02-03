@@ -157,7 +157,7 @@ class ObsDataset(Dataset):
         )
 
         format_str = "%Y%m%d%H%M%S"
-        base_dt = datetime.datetime.strptime(str(config.base_index_yyyymmddhhmm), format_str)
+        base_dt = datetime.datetime.strptime(str(base_yyyymmddhhmm), format_str)
         self.start_dt = datetime.datetime.strptime(str(start), format_str)
         self.end_dt = datetime.datetime.strptime(str(end), format_str)
 
