@@ -221,7 +221,11 @@ class Zarr(Dataset):
     def __getitem__(self, n):
         if isinstance(n, tuple):
             return self.data.oindex[*n]
+
         elif isinstance(n, int):
+            return self.data[n]
+
+        elif isinstance(n, slice):
             return self.data[n]
 
         else:
