@@ -299,7 +299,10 @@ class Subset(Forward):
 
         self.dates = make_dates(self._start, self._end, self.forward.frequency)
 
-        assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]), type(self.forward.dates[0]))
+        assert type(self.dates[0]) == type(self.forward.dates[0]), (  # noqa: E721
+            type(self.dates[0]),
+            type(self.forward.dates[0]),
+        )
         _dates = set(self.forward.dates)
         for d in self.dates:
             assert (
@@ -314,7 +317,7 @@ class Subset(Forward):
     def getitem(self, i):
         i = self._indices[i]
         return self.forward[i]
-    
+
     def supporting_arrays(self):
         return dict()
 
@@ -368,7 +371,10 @@ class Padded(Forward):
         self.dates = make_dates(start, end, self._frequency)
         self._indices = {}
 
-        assert type(self.dates[0]) == type(self.forward.dates[0]), (type(self.dates[0]), type(self.forward.dates[0]))
+        assert type(self.dates[0]) == type(self.forward.dates[0]), (  # noqa: E721
+            type(self.dates[0]),
+            type(self.forward.dates[0]),
+        )
 
         dates_to_indices = {date: i for i, date in enumerate(self.forward.dates)}
         _forward_dates = set(self.forward.dates)
@@ -390,7 +396,7 @@ class Padded(Forward):
             # print(f"❌Requested {i} {self.dates[i]}: No data in {self.forward} ")
             return self.empty_item()
         j = self._indices[i]
-        #print(f"  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}")
+        # print(f"  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}")
         return self.forward[j]
 
     def tree(self):
@@ -496,7 +502,7 @@ class Observations(ObservationsBase):
         #    # this should get directly the numpy array
         #    data = self.forward.get_data_from_dates_interval(start, end)
         data = self.forward[i]
-        #print(f"      reading from {self.path} {i} {self.dates[i]}")
+        # print(f"      reading from {self.path} {i} {self.dates[i]}")
 
         ##########################
         data = data.numpy().astype(np.float32)
@@ -527,12 +533,15 @@ class Observations(ObservationsBase):
     def statistics(self):
         mean = self.forward.properties["means"]
         mean = np.array(mean, dtype=np.float32)
+
         var = self.forward.properties["vars"]
         var = np.array(var, dtype=np.float32)
         stdev = np.sqrt(var)
+
         minimum = np.full_like(mean, np.nan)
-        maximum = np.full_like(mean, np.nan)
         print("✅Cannot find minimum using np.nan")
+
+        maximum = np.full_like(mean, np.nan)
         print("✅Cannot find maximum using np.nan")
 
         assert isinstance(mean, np.ndarray), f"Expected np.ndarray, got {type(mean)}"
