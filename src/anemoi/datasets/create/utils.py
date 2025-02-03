@@ -1,14 +1,16 @@
-# (C) Copyright 2023 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import datetime
 import os
+import warnings
 from contextlib import contextmanager
 
 import numpy as np
@@ -31,16 +33,31 @@ def cache_context(dirname):
 def to_datetime_list(*args, **kwargs):
     from earthkit.data.utils.dates import to_datetime_list as to_datetime_list_
 
+    warnings.warn(
+        "to_datetime_list() is deprecated. Call earthkit.data.utils.dates.to_datetime_list() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return to_datetime_list_(*args, **kwargs)
 
 
 def to_datetime(*args, **kwargs):
     from earthkit.data.utils.dates import to_datetime as to_datetime_
 
+    warnings.warn(
+        "to_datetime() is deprecated. Call earthkit.data.utils.dates.to_datetime() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     return to_datetime_(*args, **kwargs)
 
 
 def make_list_int(value):
+    # Convert a string like "1/2/3" or "1/to/3" or "1/to/10/by/2" to a list of integers.
+    # Moved to anemoi.utils.humanize
+    # replace with from anemoi.utils.humanize import make_list_int
+    # when anemoi-utils is released and pyproject.toml is updated
     if isinstance(value, str):
         if "/" not in value:
             return [value]
@@ -62,6 +79,9 @@ def make_list_int(value):
 
 
 def normalize_and_check_dates(dates, start, end, frequency, dtype="datetime64[s]"):
+
+    dates = [d.hdate if hasattr(d, "hdate") else d for d in dates]
+
     assert isinstance(frequency, datetime.timedelta), frequency
     start = np.datetime64(start)
     end = np.datetime64(end)

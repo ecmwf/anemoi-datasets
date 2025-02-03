@@ -1,11 +1,15 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+
 import logging
+import warnings
 from functools import cached_property
 
 import numpy as np
@@ -30,6 +34,12 @@ class Forwards(Dataset):
 
     def __getitem__(self, n):
         return self.forward[n]
+
+    @property
+    def name(self):
+        if self._name is not None:
+            return self._name
+        return self.forward.name
 
     @property
     def dates(self):
@@ -64,6 +74,10 @@ class Forwards(Dataset):
         return self.forward.variables
 
     @property
+    def variables_metadata(self):
+        return self.forward.variables_metadata
+
+    @property
     def statistics(self):
         return self.forward.statistics
 
@@ -94,6 +108,12 @@ class Forwards(Dataset):
             **self.subclass_metadata_specific(),
             **kwargs,
         )
+
+    def collect_supporting_arrays(self, collected, *path):
+        self.forward.collect_supporting_arrays(collected, *path)
+
+    def collect_input_sources(self, collected):
+        self.forward.collect_input_sources(collected)
 
     def source(self, index):
         return self.forward.source(index)
@@ -190,6 +210,12 @@ class Combined(Forwards):
             **kwargs,
         )
 
+    def collect_supporting_arrays(self, collected, *path):
+        warnings.warn(f"The behaviour of {self.__class__.__name__}.collect_supporting_arrays() is not well defined")
+        for i, d in enumerate(self.datasets):
+            name = d.name if d.name is not None else i
+            d.collect_supporting_arrays(collected, *path, name)
+
     @property
     def missing(self):
         raise NotImplementedError("missing() not implemented for Combined")
@@ -253,7 +279,6 @@ class GivenAxis(Combined):
         offset = 0
         result = set()
         for d in self.datasets:
-            print("--->", d.missing, d)
             result.update(offset + m for m in d.missing)
             if self.axis == 0:  # Advance if axis is time
                 offset += len(d)

@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import logging
 import os
@@ -68,7 +71,7 @@ class S3Store(ReadOnlyStore):
     """
 
     def __init__(self, url, region=None):
-        from anemoi.utils.s3 import s3_client
+        from anemoi.utils.remote.s3 import s3_client
 
         _, _, self.bucket, self.key = url.split("/", 3)
         self.s3 = s3_client(self.bucket, region=region)
@@ -82,7 +85,44 @@ class S3Store(ReadOnlyStore):
         return response["Body"].read()
 
 
+class PlanetaryComputerStore(ReadOnlyStore):
+    """We write our own Store to access catalogs on Planetary Computer,
+    as it requires some extra arguements to use xr.open_zarr.
+    """
+
+    def __init__(self, data_catalog_id):
+        self.data_catalog_id = data_catalog_id
+
+    def __getitem__(self):
+        import planetary_computer
+        import pystac_client
+
+        catalog = pystac_client.Client.open(
+            "https://planetarycomputer.microsoft.com/api/stac/v1/",
+            modifier=planetary_computer.sign_inplace,
+        )
+        collection = catalog.get_collection(self.data_catalog_id)
+
+        asset = collection.assets["zarr-abfs"]
+
+        if "xarray:storage_options" in asset.extra_fields:
+            store = {
+                "store": asset.href,
+                "storage_options": asset.extra_fields["xarray:storage_options"],
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+        else:
+            store = {
+                "filename_or_obj": asset.href,
+                **asset.extra_fields["xarray:open_kwargs"],
+            }
+
+        return store
+
+
 class DebugStore(ReadOnlyStore):
+    """A store to debug the zarr loading."""
+
     def __init__(self, store):
         assert not isinstance(store, DebugStore)
         self.store = store
@@ -116,6 +156,9 @@ def name_to_zarr_store(path_or_url):
         if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
             s3_url = f"s3://{bits[0]}{parsed.path}"
             store = S3Store(s3_url, region=bits[2])
+        elif store.startswith("https://planetarycomputer.microsoft.com/"):
+            data_catalog_id = store.rsplit("/", 1)[-1]
+            store = PlanetaryComputerStore(data_catalog_id).__getitem__()
         else:
             store = HTTPStore(store)
 
@@ -148,6 +191,8 @@ def open_zarr(path, dont_fail=False, cache=None):
 
 
 class Zarr(Dataset):
+    """A zarr dataset."""
+
     def __init__(self, path):
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
@@ -244,14 +289,20 @@ class Zarr(Dataset):
             delta = self.frequency
         if isinstance(delta, int):
             delta = f"{delta}h"
-        from anemoi.datasets.create.loaders import TendenciesStatisticsAddition
+        from anemoi.utils.dates import frequency_to_string
+        from anemoi.utils.dates import frequency_to_timedelta
 
-        func = TendenciesStatisticsAddition.final_storage_name_from_delta
+        delta = frequency_to_timedelta(delta)
+        delta = frequency_to_string(delta)
+
+        def func(k):
+            return f"statistics_tendencies_{delta}_{k}"
+
         return dict(
-            mean=self.z[func("mean", delta)][:],
-            stdev=self.z[func("stdev", delta)][:],
-            maximum=self.z[func("maximum", delta)][:],
-            minimum=self.z[func("minimum", delta)][:],
+            mean=self.z[func("mean")][:],
+            stdev=self.z[func("stdev")][:],
+            maximum=self.z[func("maximum")][:],
+            minimum=self.z[func("minimum")][:],
         )
 
     @property
@@ -291,6 +342,17 @@ class Zarr(Dataset):
             )
         ]
 
+    @cached_property
+    def constant_fields(self):
+        result = self.z.attrs.get("constant_fields")
+        if result is None:
+            LOG.warning("No 'constant_fields' attribute in %r, computing them", self)
+        return self.computed_constant_fields()
+
+    @property
+    def variables_metadata(self):
+        return self.z.attrs.get("variables_metadata", {})
+
     def __repr__(self):
         return self.path
 
@@ -302,6 +364,7 @@ class Zarr(Dataset):
             attrs=dict(self.z.attrs),
             chunks=self.chunks,
             dtype=str(self.dtype),
+            path=self.path,
         )
 
     def source(self, index):
@@ -320,13 +383,21 @@ class Zarr(Dataset):
         name, _ = os.path.splitext(os.path.basename(self.path))
         names.add(name)
 
+    def collect_supporting_arrays(self, collected, *path):
+        pass
+
+    def collect_input_sources(self, collected):
+        pass
+
 
 class ZarrWithMissingDates(Zarr):
+    """A zarr dataset with missing dates."""
+
     def __init__(self, path):
         super().__init__(path)
 
         missing_dates = self.z.attrs.get("missing_dates", [])
-        missing_dates = [np.datetime64(x) for x in missing_dates]
+        missing_dates = set([np.datetime64(x, "s") for x in missing_dates])
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
         self.missing = set(self.missing_to_dates)
 
@@ -379,6 +450,9 @@ class ZarrWithMissingDates(Zarr):
         return "zarr*"
 
 
+QUIET = set()
+
+
 def zarr_lookup(name, fail=True):
 
     if name.endswith(".zarr") or name.endswith(".zip"):
@@ -387,6 +461,9 @@ def zarr_lookup(name, fail=True):
     config = load_config()["datasets"]
 
     if name in config["named"]:
+        if name not in QUIET:
+            LOG.info("Opening `%s` as `%s`", name, config["named"][name])
+            QUIET.add(name)
         return config["named"][name]
 
     tried = []
@@ -400,6 +477,9 @@ def zarr_lookup(name, fail=True):
             if z is not None:
                 # Cache for next time
                 config["named"][name] = full
+                if name not in QUIET:
+                    LOG.info("Opening `%s` as `%s`", name, full)
+                    QUIET.add(name)
                 return full
         except zarr.errors.PathNotFoundError:
             pass

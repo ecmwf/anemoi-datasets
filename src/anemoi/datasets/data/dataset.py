@@ -1,18 +1,21 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+
 import datetime
 import json
 import logging
-import os
 import pprint
 import warnings
 from functools import cached_property
 
+import numpy as np
 from anemoi.utils.dates import frequency_to_seconds
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -20,10 +23,41 @@ from anemoi.utils.dates import frequency_to_timedelta
 LOG = logging.getLogger(__name__)
 
 
+def _tidy(v):
+    if isinstance(v, (list, tuple, set)):
+        return [_tidy(i) for i in v]
+    if isinstance(v, dict):
+        return {k: _tidy(v) for k, v in v.items()}
+    if isinstance(v, datetime.datetime):
+        return v.isoformat()
+    if isinstance(v, datetime.date):
+        return v.isoformat()
+    if isinstance(v, datetime.timedelta):
+        return frequency_to_string(v)
+
+    if isinstance(v, Dataset):
+        # That can happen in the `arguments`
+        # if a dataset is passed as an argument
+        return repr(v)
+
+    if isinstance(v, slice):
+        return (v.start, v.stop, v.step)
+
+    if isinstance(v, np.integer):
+        return int(v)
+
+    return v
+
+
 class Dataset:
     arguments = {}
+    _name = None
 
-    def mutate(self):
+    def mutate(self) -> "Dataset":
+        """Give an opportunity to a subclass to return a new Dataset
+        object of a different class, if needed.
+        """
+
         return self
 
     def swap_with_parent(self, parent):
@@ -34,8 +68,31 @@ class Dataset:
         return len(self)
 
     def _subset(self, **kwargs):
+
         if not kwargs:
             return self.mutate()
+
+        name = kwargs.pop("name", None)
+        result = self.__subset(**kwargs)
+        result._name = name
+
+        return result
+
+    @property
+    def name(self):
+        return self._name
+
+    def __subset(self, **kwargs):
+        if not kwargs:
+            return self.mutate()
+
+        # This one must be first
+        if "fill_missing_dates" in kwargs:
+            from .fill_missing import fill_missing_dates_factory
+
+            fill_missing_dates = kwargs.pop("fill_missing_dates")
+            ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
+            return ds._subset(**kwargs).mutate()
 
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
@@ -59,12 +116,6 @@ class Dataset:
                 ._subset(**kwargs)
                 .mutate()
             )
-
-        if "interpolate_frequency" in kwargs:
-            from .interpolate import InterpolateFrequency
-
-            interpolate_frequency = kwargs.pop("interpolate_frequency")
-            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "select" in kwargs:
             from .select import Select
@@ -90,6 +141,12 @@ class Dataset:
             rename = kwargs.pop("rename")
             return Rename(self, rename)._subset(**kwargs).mutate()
 
+        if "rescale" in kwargs:
+            from .rescale import Rescale
+
+            rescale = kwargs.pop("rescale")
+            return Rescale(self, rescale)._subset(**kwargs).mutate()
+
         if "statistics" in kwargs:
             from ..data import open_dataset
             from .statistics import Statistics
@@ -111,11 +168,21 @@ class Dataset:
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
-        if "missing_dates" in kwargs:
+        if "number" in kwargs or "numbers" in kwargs or "member" in kwargs or "members" in kwargs:
+            from .ensemble import Number
+
+            members = {}
+            for key in ["number", "numbers", "member", "members"]:
+                if key in kwargs:
+                    members[key] = kwargs.pop(key)
+
+            return Number(self, **members)._subset(**kwargs).mutate()
+
+        if "set_missing_dates" in kwargs:
             from .missing import MissingDates
 
-            missing_dates = kwargs.pop("missing_dates")
-            return MissingDates(self, missing_dates)._subset(**kwargs).mutate()
+            set_missing_dates = kwargs.pop("set_missing_dates")
+            return MissingDates(self, set_missing_dates)._subset(**kwargs).mutate()
 
         if "skip_missing_dates" in kwargs:
             from .missing import SkipMissingDates
@@ -128,6 +195,12 @@ class Dataset:
 
             if skip_missing_dates:
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
+
+        if "interpolate_frequency" in kwargs:
+            from .interpolate import InterpolateFrequency
+
+            interpolate_frequency = kwargs.pop("interpolate_frequency")
+            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:
@@ -182,18 +255,25 @@ class Dataset:
         if not isinstance(vars, (list, tuple, set)):
             vars = [vars]
 
-        assert set(vars) <= set(self.name_to_index)
+        if not set(vars) <= set(self.name_to_index):
+            raise ValueError(f"drop: unknown variables: {set(vars) - set(self.name_to_index)}")
 
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
     def _reorder_to_columns(self, vars):
+        if isinstance(vars, str) and vars == "sort":
+            # Sorting the variables alphabetically.
+            # This is cruical for pre-training then transfer learning in combination with
+            # cutout and adjust = 'all'
+
+            indices = [self.name_to_index[k] for k, v in sorted(self.name_to_index.items(), key=lambda x: x[0])]
+            assert set(indices) == set(range(len(self.name_to_index)))
+            return indices
+
         if isinstance(vars, (list, tuple)):
             vars = {k: i for i, k in enumerate(vars)}
 
-        indices = []
-
-        for k, v in sorted(vars.items(), key=lambda x: x[1]):
-            indices.append(self.name_to_index[k])
+        indices = [self.name_to_index[k] for k, v in sorted(vars.items(), key=lambda x: x[1])]
 
         # Make sure we don't forget any variables
         assert set(indices) == set(range(len(self.name_to_index)))
@@ -212,41 +292,53 @@ class Dataset:
         shape.pop(drop_axis)
         return tuple(shape)
 
+    @property
+    def typed_variables(self):
+        from anemoi.transform.variables import Variable
+
+        constants = self.constant_fields
+
+        result = {}
+        for k, v in self.variables_metadata.items():
+
+            # TODO: Once all datasets are updated, we can remove this
+            v = v.copy()
+            if k in constants:
+                v["constant_in_time"] = True
+
+            if "is_constant_in_time" in v:
+                del v["is_constant_in_time"]
+
+            result[k] = Variable.from_dict(k, v)
+
+        return result
+
+    def _input_sources(self):
+        sources = []
+        self.collect_input_sources(sources)
+        return sources
+
     def metadata(self):
         import anemoi
 
-        def tidy(v):
-            if isinstance(v, (list, tuple, set)):
-                return [tidy(i) for i in v]
-            if isinstance(v, dict):
-                return {k: tidy(v) for k, v in v.items()}
-            if isinstance(v, str) and v.startswith("/"):
-                return os.path.basename(v)
-            if isinstance(v, datetime.datetime):
-                return v.isoformat()
-            if isinstance(v, datetime.date):
-                return v.isoformat()
-            if isinstance(v, datetime.timedelta):
-                return frequency_to_string(v)
+        _, source_to_arrays = self._supporting_arrays_and_sources()
 
-            if isinstance(v, Dataset):
-                # That can happen in the `arguments`
-                # if a dataset is passed as an argument
-                return repr(v)
-
-            if isinstance(v, slice):
-                return (v.start, v.stop, v.step)
-
-            return v
+        sources = []
+        for i, source in enumerate(self._input_sources()):
+            source_metadata = source.dataset_metadata().copy()
+            source_metadata["supporting_arrays"] = source_to_arrays[id(source)]
+            sources.append(source_metadata)
 
         md = dict(
             version=anemoi.datasets.__version__,
             arguments=self.arguments,
             **self.dataset_metadata(),
+            sources=sources,
+            supporting_arrays=source_to_arrays[id(self)],
         )
 
         try:
-            return json.loads(json.dumps(tidy(md)))
+            return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
             pprint.pprint(md)
@@ -266,10 +358,71 @@ class Dataset:
             specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
+            variables_metadata=self.variables_metadata,
             shape=self.shape,
+            dtype=str(self.dtype),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
+            name=self.name,
         )
+
+    def _supporting_arrays(self, *path):
+
+        import numpy as np
+
+        def _path(path, name):
+            return "/".join(str(_) for _ in [*path, name])
+
+        result = {
+            _path(path, "latitudes"): self.latitudes,
+            _path(path, "longitudes"): self.longitudes,
+        }
+        collected = []
+
+        self.collect_supporting_arrays(collected, *path)
+
+        for path, name, array in collected:
+            assert isinstance(path, tuple) and isinstance(name, str)
+            assert isinstance(array, np.ndarray)
+
+            name = _path(path, name)
+
+            if name in result:
+                raise ValueError(f"Duplicate key {name}")
+
+            result[name] = array
+
+        return result
+
+    def supporting_arrays(self):
+        """Arrays to be saved in the checkpoints"""
+        arrays, _ = self._supporting_arrays_and_sources()
+        return arrays
+
+    def _supporting_arrays_and_sources(self):
+
+        source_to_arrays = {}
+
+        # Top levels arrays
+        result = self._supporting_arrays()
+        source_to_arrays[id(self)] = sorted(result.keys())
+
+        # Arrays from the input sources
+        for i, source in enumerate(self._input_sources()):
+            name = source.name if source.name is not None else f"source{i}"
+            src_arrays = source._supporting_arrays(name)
+            source_to_arrays[id(source)] = sorted(src_arrays.keys())
+
+            for k in src_arrays:
+                assert k not in result
+
+            result.update(src_arrays)
+
+        return result, source_to_arrays
+
+    def collect_supporting_arrays(self, collected, *path):
+        # Override this method to add more arrays
+        pass
 
     def metadata_specific(self, **kwargs):
         action = self.__class__.__name__.lower()
@@ -308,3 +461,107 @@ class Dataset:
 
     def get_dataset_names(self, names):
         raise NotImplementedError(self)
+
+    def computed_constant_fields(self):
+        # Call `constant_fields` instead of `computed_constant_fields`
+        try:
+            # If the tendencies are computed, we can use them
+            return sorted(self._compute_constant_fields_from_statistics())
+        except KeyError:
+            # This can happen if the tendencies are not computed
+            pass
+
+        return sorted(self._compute_constant_fields_from_a_few_samples())
+
+    def _compute_constant_fields_from_a_few_samples(self):
+
+        import numpy as np
+
+        # Otherwise, we need to compute them
+        dates = self.dates
+        indices = set(range(len(dates)))
+        indices -= self.missing
+
+        sample_count = min(4, len(indices))
+        count = len(indices)
+
+        p = slice(0, count, count // max(1, sample_count - 1))
+        samples = list(range(*p.indices(count)))
+
+        samples.append(count - 1)  # Add last
+        samples = sorted(set(samples))
+        indices = list(indices)
+        samples = [indices[i] for i in samples]
+
+        assert set(samples) <= set(indices)  # Make sure we have the samples
+
+        first = None
+        constants = [True] * len(self.variables)
+
+        first = self[samples.pop(0)]
+
+        for sample in samples:
+            row = self[sample]
+            for i, (a, b) in enumerate(zip(row, first)):
+                if np.any(a != b):
+                    constants[i] = False
+
+        return [v for i, v in enumerate(self.variables) if constants[i]]
+
+    def _compute_constant_fields_from_statistics(self):
+        result = []
+
+        t = self.statistics_tendencies()
+
+        for i, v in enumerate(self.variables):
+            if t["mean"][i] == 0 and t["stdev"][i] == 0:
+                result.append(v)
+
+        return result
+
+    def plot(self, date, variable, member=0, **kwargs):
+        """For debugging purposes, plot a field.
+
+        Parameters
+        ----------
+        date : int or datetime.datetime or numpy.datetime64 or str
+            The date to plot.
+        variable : int or str
+            The variable to plot.
+        member : int, optional
+            The ensemble member to plot.
+
+        **kwargs:
+            Additional arguments to pass to matplotlib.pyplot.tricontourf
+
+
+        Returns
+        -------
+            matplotlib.pyplot.Axes
+        """
+
+        from anemoi.utils.devtools import plot_values
+        from earthkit.data.utils.dates import to_datetime
+
+        if not isinstance(date, int):
+            date = np.datetime64(to_datetime(date)).astype(self.dates[0].dtype)
+            index = np.where(self.dates == date)[0]
+            if len(index) == 0:
+                raise ValueError(
+                    f"Date {date} not found in the dataset {self.dates[0]} to {self.dates[-1]} by {self.frequency}"
+                )
+            date_index = index[0]
+        else:
+            date_index = date
+
+        if isinstance(variable, int):
+            variable_index = variable
+        else:
+            if variable not in self.variables:
+                raise ValueError(f"Unknown variable {variable} (available: {self.variables})")
+
+            variable_index = self.name_to_index[variable]
+
+        values = self[date_index, variable_index, member]
+
+        return plot_values(values, self.latitudes, self.longitudes, **kwargs)

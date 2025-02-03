@@ -2,5 +2,5 @@
  opendap
 #########
 
-.. literalinclude:: opendap.yaml
+.. literalinclude:: yaml/opendap.yaml
    :language: yaml

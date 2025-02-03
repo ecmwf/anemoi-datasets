@@ -1,11 +1,12 @@
-# (C) Copyright 2023 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 import datetime
 import logging
 import shutil
@@ -128,7 +129,7 @@ class ZarrBuiltRegistry:
     def add_to_history(self, action, **kwargs):
         new = dict(
             action=action,
-            timestamp=datetime.datetime.utcnow().isoformat(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
         )
         new.update(kwargs)
 
@@ -151,7 +152,9 @@ class ZarrBuiltRegistry:
 
     def set_flag(self, i, value=True):
         z = self._open_write()
-        z.attrs["latest_write_timestamp"] = datetime.datetime.utcnow().isoformat()
+        z.attrs["latest_write_timestamp"] = (
+            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+        )
         z["_build"][self.name_flags][i] = value
 
     def ready(self):
@@ -166,7 +169,11 @@ class ZarrBuiltRegistry:
         return self.create(lengths, overwrite=True)
 
     def add_provenance(self, name):
+        z = self._open_write()
+
+        if name in z.attrs:
+            return
+
         from anemoi.utils.provenance import gather_provenance_info
 
-        z = self._open_write()
         z.attrs[name] = gather_provenance_info()

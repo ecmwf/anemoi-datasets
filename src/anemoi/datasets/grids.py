@@ -1,12 +1,14 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
+
+import base64
 import logging
 
 import numpy as np
@@ -60,6 +62,8 @@ def plot_mask(path, mask, lats, lons, global_lats, global_lons):
         plt.savefig(path + "-global-zoomed.png")
 
 
+# TODO: Use the one from anemoi.utils.grids instead
+# from anemoi.utils.grids import ...
 def xyz_to_latlon(x, y, z):
     return (
         np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
@@ -67,6 +71,8 @@ def xyz_to_latlon(x, y, z):
     )
 
 
+# TODO: Use the one from anemoi.utils.grids instead
+# from anemoi.utils.grids import ...
 def latlon_to_xyz(lat, lon, radius=1.0):
     # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
     # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
@@ -150,7 +156,7 @@ def cutout_mask(
     plot=None,
 ):
     """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
-    from scipy.spatial import KDTree
+    from scipy.spatial import cKDTree
 
     # TODO: transform min_distance from lat/lon to xyz
 
@@ -193,13 +199,13 @@ def cutout_mask(
         min_distance = min_distance_km / 6371.0
     else:
         points = {"lam": lam_points, "global": global_points, None: global_points}[min_distance_km]
-        distances, _ = KDTree(points).query(points, k=2)
+        distances, _ = cKDTree(points).query(points, k=2)
         min_distance = np.min(distances[:, 1])
 
         LOG.info(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
-    # Use a KDTree to find the nearest points
-    distances, indices = KDTree(lam_points).query(global_points, k=neighbours)
+    # Use a cKDTree to find the nearest points
+    distances, indices = cKDTree(lam_points).query(global_points, k=neighbours)
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])
@@ -253,7 +259,7 @@ def thinning_mask(
     cropping_distance=2.0,
 ):
     """Return the list of points in [lats, lons] closest to [global_lats, global_lons]"""
-    from scipy.spatial import KDTree
+    from scipy.spatial import cKDTree
 
     assert global_lats.ndim == 1
     assert global_lons.ndim == 1
@@ -289,10 +295,107 @@ def thinning_mask(
     xyx = latlon_to_xyz(lats, lons)
     points = np.array(xyx).transpose()
 
-    # Use a KDTree to find the nearest points
-    _, indices = KDTree(points).query(global_points, k=1)
+    # Use a cKDTree to find the nearest points
+    _, indices = cKDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
+
+
+def outline(lats, lons, neighbours=5):
+    from scipy.spatial import cKDTree
+
+    xyx = latlon_to_xyz(lats, lons)
+    grid_points = np.array(xyx).transpose()
+
+    # Use a cKDTree to find the nearest points
+    _, indices = cKDTree(grid_points).query(grid_points, k=neighbours)
+
+    # Centre of the Earth
+    zero = np.array([0.0, 0.0, 0.0])
+
+    outside = []
+
+    for i, (point, index) in enumerate(zip(grid_points, indices)):
+        inside = False
+        for j in range(1, neighbours):
+            t = Triangle3D(
+                grid_points[index[j]],
+                grid_points[index[(j + 1) % neighbours]],
+                grid_points[index[(j + 2) % neighbours]],
+            )
+            inside = t.intersect(zero, point)
+            if inside:
+                break
+
+        if not inside:
+            outside.append(i)
+
+    return outside
+
+
+def deserialise_mask(encoded):
+    import pickle
+    import zlib
+
+    packed = pickle.loads(zlib.decompress(base64.b64decode(encoded)))
+
+    mask = []
+    value = False
+    for count in packed:
+        mask.extend([value] * count)
+        value = not value
+    return np.array(mask, dtype=bool)
+
+
+def _serialise_mask(mask):
+    import pickle
+    import zlib
+
+    assert len(mask.shape) == 1
+    assert len(mask)
+
+    packed = []
+    last = mask[0]
+    count = 1
+
+    for value in mask[1:]:
+        if value == last:
+            count += 1
+        else:
+            packed.append(count)
+            last = value
+            count = 1
+
+    packed.append(count)
+
+    # We always start with an 'off' value
+    # So if the first value is 'on', we need to add a zero
+    if mask[0]:
+        packed.insert(0, 0)
+
+    return base64.b64encode(zlib.compress(pickle.dumps(packed))).decode("utf-8")
+
+
+def serialise_mask(mask):
+    result = _serialise_mask(mask)
+    # Make sure we can deserialise it
+    assert np.all(mask == deserialise_mask(result))
+    return result
+
+
+def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, target_longitudes):
+    # TODO: Use the one from anemoi.utils.grids instead
+    # from anemoi.utils.grids import ...
+    from scipy.spatial import cKDTree
+
+    source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
+    source_points = np.array(source_xyz).transpose()
+
+    target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
+    target_points = np.array(target_xyz).transpose()
+
+    _, indices = cKDTree(source_points).query(target_points, k=1)
+    return indices
 
 
 if __name__ == "__main__":

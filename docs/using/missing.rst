@@ -4,6 +4,35 @@
  Managing missing dates
 ########################
 
+*********************************************
+ Managing missing dates with anemoi-training
+*********************************************
+
+Anemoi-training has internal handling of missing dates, and will
+calculate the valid date indices used during training using the
+``missing`` property. Consequenctly, when training a model with
+anemoi-training, you should `not` specify a method to deal with missing
+dates in the dataloader configuration file.
+
+**************************************************
+ Filling the missing dates with artificial values
+**************************************************
+
+When you have missing dates in a dataset, you can fill them with
+artificial values. You can either fill them with values that are the
+result of a linear interpolation between the two closest dates:
+
+.. literalinclude:: code/fill_missing_dates1_.py
+
+Or you can select the copy the value of the closest date:
+
+.. literalinclude:: code/fill_missing_dates2_.py
+
+if the missing date is exactly in the middle of two dates, the library
+will choose that value of the largest date. You can change this behavior
+by setting the ``closest`` parameter to ``'down'`` or ``'up'``
+explicitly.
+
 ************************************************
  Skipping missing when iterating over a dataset
 ************************************************
@@ -72,7 +101,7 @@ the datasets to make the dates contiguous.
  Debugging
 ***********
 
-You can set missing dates using the ``missing_dates`` option. This
+You can set missing dates using the ``set_missing_dates`` option. This
 option is for debugging purposes only.
 
-.. literalinclude:: code/missing_dates_.py
+.. literalinclude:: code/set_missing_dates_.py

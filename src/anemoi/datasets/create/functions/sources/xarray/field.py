@@ -1,13 +1,16 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
+
+import datetime
 import logging
+from functools import cached_property
 
 from earthkit.data.core.fieldlist import Field
 from earthkit.data.core.fieldlist import math
@@ -44,8 +47,6 @@ class XArrayField(Field):
             This is actually a nD object, but the first dimensions are always 1.
             The other two dimensions are latitude and longitude.
         """
-        super().__init__(owner.array_backend)
-
         self.owner = owner
         self.selection = selection
 
@@ -71,19 +72,29 @@ class XArrayField(Field):
     def shape(self):
         return self._shape
 
-    def to_numpy(self, flatten=False, dtype=None):
-        values = self.selection.values
+    def to_numpy(self, flatten=False, dtype=None, index=None):
+        if index is not None:
+            values = self.selection[index]
+        else:
+            values = self.selection
 
         assert dtype is None
-        if flatten:
-            return values.flatten()
-        return values.reshape(self.shape)
 
-    def _make_metadata(self):
+        if flatten:
+            return values.values.flatten()
+
+        return values  # .reshape(self.shape)
+
+    @cached_property
+    def _metadata(self):
         return XArrayMetadata(self)
 
     def grid_points(self):
         return self.owner.grid_points()
+
+    def to_latlon(self, flatten=True):
+        assert flatten
+        return dict(lat=self.latitudes, lon=self.longitudes)
 
     @property
     def resolution(self):
@@ -103,7 +114,16 @@ class XArrayField(Field):
 
     @property
     def forecast_reference_time(self):
-        return self.owner.forecast_reference_time
+        date, time = self.metadata("date", "time")
+        assert len(time) == 4, time
+        assert len(date) == 8, date
+        yyyymmdd = int(date)
+        time = int(time) // 100
+        return datetime.datetime(yyyymmdd // 10000, yyyymmdd // 100 % 100, yyyymmdd % 100, time)
 
     def __repr__(self):
         return repr(self._metadata)
+
+    def _values(self, dtype=None):
+        # we don't use .values as this will download the data
+        return self.selection

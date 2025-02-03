@@ -1,11 +1,12 @@
-# (C) Copyright 2023 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 import datetime
 import logging
 import os
@@ -214,14 +215,14 @@ def _prepare_serialisation(o):
 def set_to_test_mode(cfg):
     NUMBER_OF_DATES = 4
 
-    dates = cfg["dates"]
-    LOG.warn(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
     groups = Groups(**LoadersConfig(cfg).dates)
-    dates = groups.dates
+
+    dates = groups.provider.values
     cfg["dates"] = dict(
         start=dates[0],
         end=dates[NUMBER_OF_DATES - 1],
-        frequency=dates.frequency,
+        frequency=groups.provider.frequency,
         group_by=NUMBER_OF_DATES,
     )
 
@@ -234,12 +235,12 @@ def set_to_test_mode(cfg):
             if "grid" in obj:
                 previous = obj["grid"]
                 obj["grid"] = "20./20."
-                LOG.warn(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
+                LOG.warning(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
             if "number" in obj:
                 if isinstance(obj["number"], (list, tuple)):
                     previous = obj["number"]
                     obj["number"] = previous[0:3]
-                    LOG.warn(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
+                    LOG.warning(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
             for k, v in obj.items():
                 set_element_to_test(v)
             if "constants" in obj:

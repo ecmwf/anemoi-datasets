@@ -1,8 +1,8 @@
 .. _index-page:
 
-####################################
- Welcome to Anemoi's documentation!
-####################################
+#############################################
+ Welcome to `anemoi-datasets` documentation!
+#############################################
 
 .. warning::
 
@@ -27,6 +27,7 @@ datasets <building-introduction>`.
 
 -  :doc:`overview`
 -  :doc:`installing`
+-  :doc:`naming_conventions`
 
 .. toctree::
    :maxdepth: 1
@@ -34,6 +35,7 @@ datasets <building-introduction>`.
 
    overview
    installing
+   naming_conventions
 
 **Using training datasets**
 
@@ -43,6 +45,7 @@ datasets <building-introduction>`.
 -  :doc:`using/subsetting`
 -  :doc:`using/combining`
 -  :doc:`using/selecting`
+-  :doc:`using/ensembles`
 -  :doc:`using/grids`
 -  :doc:`using/zip`
 -  :doc:`using/statistics`
@@ -63,6 +66,7 @@ datasets <building-introduction>`.
    using/subsetting
    using/combining
    using/selecting
+   using/ensembles
    using/grids
    using/zip
    using/statistics
@@ -121,6 +125,7 @@ datasets <building-introduction>`.
 *****************
 
 -  :ref:`anemoi-utils <anemoi-utils:index-page>`
+-  :ref:`anemoi-transform <anemoi-transform:index-page>`
 -  :ref:`anemoi-datasets <anemoi-datasets:index-page>`
 -  :ref:`anemoi-models <anemoi-models:index-page>`
 -  :ref:`anemoi-graphs <anemoi-graphs:index-page>`

@@ -1,11 +1,12 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 import datetime
 import logging
 import warnings
@@ -252,6 +253,7 @@ def _compute_accumulations(
     data_accumulation_period=None,
     patch=_identity,
     base_times=None,
+    use_cdsapi_dataset=None,
 ):
     adjust_step = isinstance(user_accumulation_period, int)
 
@@ -310,7 +312,9 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-    ds = mars(context, dates, *requests, request_already_using_valid_datetime=True)
+    ds = mars(
+        context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
+    )
 
     accumulations = {}
     for a in [AccumulationClass(out, frequency=frequency, **r) for r in requests]:
@@ -327,7 +331,9 @@ def _compute_accumulations(
             _member(field),
         )
         values = field.values  # optimisation
-        assert accumulations[key], key
+        if key not in accumulations:
+            raise ValueError(f"Key not found: {key}. Is it an accumulation field?")
+
         for a in accumulations[key]:
             a.add(field, values)
 
@@ -363,18 +369,24 @@ def _scda(request):
     return request
 
 
-def accumulations(context, dates, **request):
+def accumulations(context, dates, use_cdsapi_dataset=None, **request):
     _to_list(request["param"])
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")
 
     user_accumulation_period = request.pop("accumulation_period", 6)
 
+    # If `data_accumulation_period` is not set, this means that the accumulations are from the start
+    # of the forecast.
+
     KWARGS = {
         ("od", "oper"): dict(patch=_scda),
         ("od", "elda"): dict(base_times=(6, 18)),
+        ("od", "enfo"): dict(base_times=(0, 6, 12, 18)),
         ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
         ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
+        ("rr", "oper"): dict(base_times=(0, 3, 6, 9, 12, 15, 18, 21)),
+        ("l5", "oper"): dict(data_accumulation_period=1, base_times=(0,)),
     }
 
     kwargs = KWARGS.get((class_, stream), {})
@@ -386,6 +398,7 @@ def accumulations(context, dates, **request):
         dates,
         request,
         user_accumulation_period=user_accumulation_period,
+        use_cdsapi_dataset=use_cdsapi_dataset,
         **kwargs,
     )
 

@@ -120,6 +120,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+.envrc
 .env
 .venv
 env/
@@ -193,3 +194,4 @@ _dev/
 test.ipynb
 *tmp_data/
 tempCodeRunnerFile.python
+Untitled-*.py

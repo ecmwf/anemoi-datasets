@@ -1,11 +1,12 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 import datetime
 import glob
 import hashlib
@@ -17,6 +18,7 @@ import shutil
 import socket
 
 import numpy as np
+import tqdm
 from anemoi.utils.provenance import gather_provenance_info
 
 from ..check import check_data_values
@@ -97,7 +99,7 @@ def fix_variance(x, name, count, sums, squares):
 
     variances = squares / count - mean * mean
     assert variances.shape == squares.shape == mean.shape
-    if all(variances >= 0):
+    if np.all(variances >= 0):
         LOG.warning(f"All individual variances for {name} are positive, setting variance to 0.")
         return 0
 
@@ -107,7 +109,7 @@ def fix_variance(x, name, count, sums, squares):
     #     return 0
 
     LOG.warning(f"ERROR at least one individual variance is negative ({np.nanmin(variances)}).")
-    return x
+    return 0
 
 
 def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squares):
@@ -133,7 +135,7 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
 
 def compute_statistics(array, check_variables_names=None, allow_nans=False):
     """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
-
+    LOG.info(f"Computing statistics for {array.shape} array")
     nvars = array.shape[1]
 
     LOG.debug(f"Stats {nvars}, {array.shape}, {check_variables_names}")
@@ -148,14 +150,14 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
     maximum = np.zeros(stats_shape, dtype=np.float64)
     has_nans = np.zeros(stats_shape, dtype=np.bool_)
 
-    for i, chunk in enumerate(array):
+    for i, chunk in tqdm.tqdm(enumerate(array), delay=1, total=array.shape[0], desc="Computing statistics"):
         values = chunk.reshape((nvars, -1))
 
         for j, name in enumerate(check_variables_names):
             check_data_values(values[j, :], name=name, allow_nans=allow_nans)
             if np.isnan(values[j, :]).all():
                 # LOG.warning(f"All NaN values for {name} ({j}) for date {i}")
-                raise ValueError(f"All NaN values for {name} ({j}) for date {i}")
+                LOG.warning(f"All NaN values for {name} ({j}) for date {i}")
 
         # Ignore NaN values
         minimum[i] = np.nanmin(values, axis=1)
@@ -164,6 +166,8 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
         squares[i] = np.nansum(values * values, axis=1)
         count[i] = np.sum(~np.isnan(values), axis=1)
         has_nans[i] = np.isnan(values).any()
+
+    LOG.info(f"Statistics computed for {nvars} variables.")
 
     return {
         "minimum": minimum,
@@ -187,8 +191,11 @@ class TmpStatistics:
 
     def add_provenance(self, **kwargs):
         self.create(exist_ok=True)
+        path = os.path.join(self.dirname, "provenance.json")
+        if os.path.exists(path):
+            return
         out = dict(provenance=gather_provenance_info(), **kwargs)
-        with open(os.path.join(self.dirname, "provenance.json"), "w") as f:
+        with open(path, "w") as f:
             json.dump(out, f)
 
     def create(self, exist_ok):

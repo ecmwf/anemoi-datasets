@@ -11,7 +11,7 @@ Because the source needs to generate fields on the same grids as the
 other, it requires a template field. This is provided in the recipe with
 the ``template`` keyword:
 
-.. literalinclude:: forcings.yaml
+.. literalinclude:: yaml/forcings.yaml
    :language: yaml
 
 .. _yaml-reference:

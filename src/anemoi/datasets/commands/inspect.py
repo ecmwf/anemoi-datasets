@@ -1,6 +1,8 @@
-# (C) Copyright 2023 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
@@ -311,7 +313,7 @@ class Version:
                 print(f"🕰️  Dataset initialized {when(start)}.")
                 if built and latest:
                     speed = (latest - start) / built
-                    eta = datetime.datetime.utcnow() + speed * (total - built)
+                    eta = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + speed * (total - built)
                     print(f"🏁 ETA {when(eta)}.")
         else:
             if latest:
@@ -505,6 +507,10 @@ class Version0_6(Version):
     @property
     def variables(self):
         return self.metadata["variables"]
+
+    @property
+    def variables_metadata(self):
+        return self.metadata.get("variables_metadata", {})
 
 
 class Version0_12(Version0_6):

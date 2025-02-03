@@ -1,11 +1,12 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import datetime
 import logging
@@ -30,6 +31,8 @@ def extract_single_value(variable):
     if np.issubdtype(variable.values.dtype, np.datetime64):
         if len(shape) == 0:
             return to_datetime(variable.values)  # Convert to python datetime
+        if shape == (1,):
+            return to_datetime(variable.values[0])
         assert False, (shape, variable.values[:2])
 
     if np.issubdtype(variable.values.dtype, np.timedelta64):
@@ -56,6 +59,8 @@ class Coordinate:
     is_step = False
     is_date = False
     is_member = False
+    is_x = False
+    is_y = False
 
     def __init__(self, variable):
         self.variable = variable
@@ -66,10 +71,11 @@ class Coordinate:
         return 1 if self.scalar else len(self.variable)
 
     def __repr__(self):
-        return "%s[name=%s,values=%s]" % (
+        return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
             self.variable.name,
             self.variable.values if self.scalar else len(self),
+            self.variable.shape,
         )
 
     def reduced(self, i):
@@ -225,17 +231,25 @@ class LatitudeCoordinate(Coordinate):
 
 class XCoordinate(Coordinate):
     is_grid = True
+    is_x = True
     mars_names = ("x",)
 
 
 class YCoordinate(Coordinate):
     is_grid = True
+    is_y = True
     mars_names = ("y",)
 
 
 class ScalarCoordinate(Coordinate):
     is_grid = False
 
+    @property
+    def mars_names(self):
+        return (self.variable.name,)
+
+
+class UnsupportedCoordinate(Coordinate):
     @property
     def mars_names(self):
         return (self.variable.name,)

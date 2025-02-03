@@ -1,11 +1,11 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
 import logging
 
@@ -29,7 +29,7 @@ def check(what, ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
-def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs):
+def load_one(emoji, context, dates, dataset, *, options={}, flavour=None, patch=None, **kwargs):
     import xarray as xr
 
     """
@@ -41,15 +41,25 @@ def load_one(emoji, context, dates, dataset, options={}, flavour=None, **kwargs)
     We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
     """
 
-    context.trace(emoji, dataset, options)
+    context.trace(emoji, dataset, options, kwargs)
 
     if isinstance(dataset, str) and ".zarr" in dataset:
         data = xr.open_zarr(name_to_zarr_store(dataset), **options)
+    elif "planetarycomputer" in dataset:
+        store = name_to_zarr_store(dataset)
+        if "store" in store:
+            data = xr.open_zarr(**store)
+        if "filename_or_obj" in store:
+            data = xr.open_dataset(**store)
     else:
         data = xr.open_dataset(dataset, **options)
 
-    fs = XarrayFieldList.from_xarray(data, flavour)
-    result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
+    fs = XarrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
+
+    if len(dates) == 0:
+        result = fs.sel(**kwargs)
+    else:
+        result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")

@@ -1,16 +1,19 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
 
 import datetime
+import logging
 
 from anemoi.utils.dates import as_datetime
+
+LOG = logging.getLogger(__name__)
 
 
 class Time:
@@ -36,17 +39,40 @@ class Time:
         if len(date_coordinate) == 1 and len(time_coordinate) == 0 and len(step_coordinate) == 1:
             return ForecastFromBaseTimeAndDate(date_coordinate[0], step_coordinate[0])
 
-        raise NotImplementedError(f"{date_coordinate=} {time_coordinate=} {step_coordinate=}")
+        if len(date_coordinate) == 1 and len(time_coordinate) == 1 and len(step_coordinate) == 1:
+            return ForecastFromValidTimeAndStep(time_coordinate[0], step_coordinate[0], date_coordinate[0])
+
+        LOG.error("")
+        LOG.error(f"{len(date_coordinate)} date_coordinate")
+        for c in date_coordinate:
+            LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
+            # LOG.error('    %s', c.variable)
+
+        LOG.error("")
+        LOG.error(f"{len(time_coordinate)} time_coordinate")
+        for c in time_coordinate:
+            LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
+            # LOG.error('    %s', c.variable)
+
+        LOG.error("")
+        LOG.error(f"{len(step_coordinate)} step_coordinate")
+        for c in step_coordinate:
+            LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
+            # LOG.error('    %s', c.variable)
+
+        raise NotImplementedError(f"{len(date_coordinate)=} {len(time_coordinate)=} {len(step_coordinate)=}")
+
+    def select_valid_datetime(self, variable):
+        raise NotImplementedError(f"{self.__class__.__name__}.select_valid_datetime()")
 
 
 class Constant(Time):
 
     def fill_time_metadata(self, coords_values, metadata):
-        raise NotImplementedError("Constant time not implemented")
-        # print("Constant", coords_values, metadata)
-        # metadata["date"] = time.strftime("%Y%m%d")
-        # metadata["time"] = time.strftime("%H%M")
-        # metadata["step"] = 0
+        return None
+
+    def select_valid_datetime(self, variable):
+        return None
 
 
 class Analysis(Time):
@@ -63,12 +89,16 @@ class Analysis(Time):
 
         return valid_datetime
 
+    def select_valid_datetime(self, variable):
+        return self.time_coordinate_name
+
 
 class ForecastFromValidTimeAndStep(Time):
 
-    def __init__(self, time_coordinate, step_coordinate):
+    def __init__(self, time_coordinate, step_coordinate, date_coordinate=None):
         self.time_coordinate_name = time_coordinate.variable.name
         self.step_coordinate_name = step_coordinate.variable.name
+        self.date_coordinate_name = date_coordinate.variable.name if date_coordinate else None
 
     def fill_time_metadata(self, coords_values, metadata):
         valid_datetime = coords_values[self.time_coordinate_name]
@@ -83,7 +113,20 @@ class ForecastFromValidTimeAndStep(Time):
         metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
         metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
         metadata["step"] = int(hours)
+
+        # When date is present, it should be compatible with time and step
+
+        if self.date_coordinate_name is not None:
+            # Not sure that this is the correct assumption
+            assert coords_values[self.date_coordinate_name] == base_datetime, (
+                coords_values[self.date_coordinate_name],
+                base_datetime,
+            )
+
         return valid_datetime
+
+    def select_valid_datetime(self, variable):
+        return self.time_coordinate_name
 
 
 class ForecastFromValidTimeAndBaseTime(Time):
@@ -106,6 +149,9 @@ class ForecastFromValidTimeAndBaseTime(Time):
         metadata["step"] = int(hours)
 
         return valid_datetime
+
+    def select_valid_datetime(self, variable):
+        return self.time_coordinate_name
 
 
 class ForecastFromBaseTimeAndDate(Time):

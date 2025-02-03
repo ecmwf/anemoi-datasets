@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+# (C) Copyright 2024 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
 
 # (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
 # This software is licensed under the terms of the Apache Licence Version 2.0
@@ -11,7 +20,7 @@ import argparse
 import logging
 import os
 
-from anemoi.utils.s3 import upload
+from anemoi.utils.remote import transfer
 
 LOG = logging.getLogger(__name__)
 
@@ -29,6 +38,8 @@ source = args.source
 target = args.target
 bucket = args.bucket
 
+assert os.path.exists(source), f"Source {source} does not exist"
+
 if not target.startswith("s3://"):
     if target.startswith("/"):
         target = target[1:]
@@ -37,5 +48,5 @@ if not target.startswith("s3://"):
     target = os.path.join(bucket, target)
 
 LOG.info(f"Uploading {source} to {target}")
-upload(source, target, overwrite=args.overwrite)
+transfer(source, target, overwrite=args.overwrite)
 LOG.info("Upload complete")

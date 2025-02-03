@@ -1,12 +1,14 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
 
+
+import logging
 
 from .coordinates import DateCoordinate
 from .coordinates import EnsembleCoordinate
@@ -16,10 +18,16 @@ from .coordinates import LongitudeCoordinate
 from .coordinates import ScalarCoordinate
 from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
+from .coordinates import UnsupportedCoordinate
 from .coordinates import XCoordinate
 from .coordinates import YCoordinate
+from .coordinates import is_scalar
 from .grid import MeshedGrid
+from .grid import MeshProjectionGrid
 from .grid import UnstructuredGrid
+from .grid import UnstructuredProjectionGrid
+
+LOG = logging.getLogger(__name__)
 
 
 class CoordinateGuesser:
@@ -150,35 +158,147 @@ class CoordinateGuesser:
         if c.shape in ((1,), tuple()):
             return ScalarCoordinate(c)
 
-        raise NotImplementedError(
+        LOG.warning(
             f"Coordinate {coord} not supported\n{axis=}, {name=},"
             f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
         )
 
-    def grid(self, coordinates):
+        return UnsupportedCoordinate(c)
+
+    def grid(self, coordinates, variable):
         lat = [c for c in coordinates if c.is_lat]
         lon = [c for c in coordinates if c.is_lon]
 
-        if len(lat) != 1:
-            raise NotImplementedError(f"Expected 1 latitude coordinate, got {len(lat)}")
+        if len(lat) == 1 and len(lon) == 1:
+            return self._lat_lon_provided(lat, lon, variable)
 
-        if len(lon) != 1:
-            raise NotImplementedError(f"Expected 1 longitude coordinate, got {len(lon)}")
+        x = [c for c in coordinates if c.is_x]
+        y = [c for c in coordinates if c.is_y]
 
+        if len(x) == 1 and len(y) == 1:
+            return self._x_y_provided(x, y, variable)
+
+        raise NotImplementedError(f"Cannot establish grid {coordinates}")
+
+    def _check_dims(self, variable, x_or_lon, y_or_lat):
+
+        x_dims = set(x_or_lon.variable.dims)
+        y_dims = set(y_or_lat.variable.dims)
+        variable_dims = set(variable.dims)
+
+        if not (x_dims <= variable_dims) or not (y_dims <= variable_dims):
+            raise ValueError(
+                f"Dimensions do not match {variable.name}{variable.dims} !="
+                f" {x_or_lon.name}{x_or_lon.variable.dims} and {y_or_lat.name}{y_or_lat.variable.dims}"
+            )
+
+        variable_dims = tuple(v for v in variable.dims if v in (x_dims | y_dims))
+        if x_dims == y_dims:
+            # It's unstructured
+            return variable_dims, True
+
+        if len(x_dims) == 1 and len(y_dims) == 1:
+            # It's a mesh
+            return variable_dims, False
+
+        raise ValueError(
+            f"Cannot establish grid for {variable.name}{variable.dims},"
+            f" {x_or_lon.name}{x_or_lon.variable.dims},"
+            f" {y_or_lat.name}{y_or_lat.variable.dims}"
+        )
+
+    def _lat_lon_provided(self, lat, lon, variable):
         lat = lat[0]
         lon = lon[0]
 
-        if (lat.name, lon.name) in self._cache:
-            return self._cache[(lat.name, lon.name)]
+        dim_vars, unstructured = self._check_dims(variable, lon, lat)
 
-        assert len(lat.variable.shape) == len(lon.variable.shape), (lat.variable.shape, lon.variable.shape)
-        if len(lat.variable.shape) == 1:
-            grid = MeshedGrid(lat, lon)
+        if (lat.name, lon.name, dim_vars) in self._cache:
+            return self._cache[(lat.name, lon.name, dim_vars)]
+
+        if unstructured:
+            grid = UnstructuredGrid(lat, lon, dim_vars)
         else:
-            grid = UnstructuredGrid(lat, lon)
+            grid = MeshedGrid(lat, lon, dim_vars)
 
-        self._cache[(lat.name, lon.name)] = grid
+        self._cache[(lat.name, lon.name, dim_vars)] = grid
         return grid
+
+    def _x_y_provided(self, x, y, variable):
+        x = x[0]
+        y = y[0]
+
+        dim_vars, unstructured = self._check_dims(variable, x, y)
+
+        if (x.name, y.name, dim_vars) in self._cache:
+            return self._cache[(x.name, y.name, dim_vars)]
+
+        grid_mapping = variable.attrs.get("grid_mapping", None)
+        if grid_mapping is not None:
+            print(f"grid_mapping: {grid_mapping}")
+            print(self.ds[grid_mapping])
+
+        if grid_mapping is None:
+            LOG.warning(f"No 'grid_mapping' attribute provided for '{variable.name}'")
+            LOG.warning("Trying to guess...")
+
+            PROBE = {
+                "prime_meridian_name",
+                "reference_ellipsoid_name",
+                "crs_wkt",
+                "horizontal_datum_name",
+                "semi_major_axis",
+                "spatial_ref",
+                "inverse_flattening",
+                "semi_minor_axis",
+                "geographic_crs_name",
+                "GeoTransform",
+                "grid_mapping_name",
+                "longitude_of_prime_meridian",
+            }
+            candidate = None
+            for v in self.ds.variables:
+                var = self.ds[v]
+                if not is_scalar(var):
+                    continue
+
+                if PROBE.intersection(var.attrs.keys()):
+                    if candidate:
+                        raise ValueError(f"Multiple candidates for 'grid_mapping': {candidate} and {v}")
+                    candidate = v
+
+            if candidate:
+                LOG.warning(f"Using '{candidate}' as 'grid_mapping'")
+                grid_mapping = candidate
+            else:
+                LOG.warning("Could not fine a candidate for 'grid_mapping'")
+
+        if grid_mapping is None:
+            if "crs" in self.ds[variable].attrs:
+                grid_mapping = self.ds[variable].attrs["crs"]
+                LOG.warning(f"Using CRS {grid_mapping} from variable '{variable.name}' attributes")
+
+        if grid_mapping is None:
+            if "crs" in self.ds.attrs:
+                grid_mapping = self.ds.attrs["crs"]
+                LOG.warning(f"Using CRS {grid_mapping} from global attributes")
+
+        grid = None
+        if grid_mapping is not None:
+
+            grid_mapping = dict(self.ds[grid_mapping].attrs)
+
+            if unstructured:
+                grid = UnstructuredProjectionGrid(x, y, grid_mapping)
+            else:
+                grid = MeshProjectionGrid(x, y, grid_mapping)
+
+        if grid is not None:
+            self._cache[(x.name, y.name, dim_vars)] = grid
+            return grid
+
+        LOG.error("Could not fine a candidate for 'grid_mapping'")
+        raise NotImplementedError(f"Unstructured grid {x.name} {y.name}")
 
 
 class DefaultCoordinateGuesser(CoordinateGuesser):
@@ -223,12 +343,14 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if standard_name == "time":
             return TimeCoordinate(c)
 
-        if name == "time":
+        # That is the output of `cfgrib` for forecasts
+        if name == "time" and standard_name != "forecast_reference_time":
             return TimeCoordinate(c)
 
     def _is_date(self, c, *, axis, name, long_name, standard_name, units):
         if standard_name == "forecast_reference_time":
             return DateCoordinate(c)
+
         if name == "forecast_reference_time":
             return DateCoordinate(c)
 

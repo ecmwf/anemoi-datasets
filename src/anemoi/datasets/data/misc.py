@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import calendar
 import datetime
@@ -100,6 +103,30 @@ def _as_date(d, dates, last):
 
     if isinstance(d, str):
 
+        def isfloat(s):
+            try:
+                float(s)
+                return True
+            except ValueError:
+                return False
+
+        if d.endswith("%") and isfloat(d[:-1]):
+            x = float(d[:-1])
+            if not 0 <= x <= 100:
+                raise ValueError(f"Invalid date: {d}")
+            i_float = x * len(dates) / 100
+
+            epsilon = 2 ** (-30)
+            if len(dates) > 1 / epsilon:
+                LOG.warning("Too many dates to use percentage, one date may be lost in rounding")
+
+            if last:
+                index = int(i_float + epsilon) - 1
+            else:
+                index = int(i_float - epsilon)
+            index = max(0, min(len(dates) - 1, index))
+            return dates[index]
+
         if "-" in d and ":" in d:
             date, time = d.replace(" ", "T").split("T")
             year, month, day = [int(_) for _ in date.split("-")]
@@ -191,7 +218,7 @@ def _open(a):
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
 
-def _auto_adjust(datasets, kwargs):
+def _auto_adjust(datasets, kwargs, exclude=None):
 
     if "adjust" not in kwargs:
         return datasets, kwargs
@@ -210,6 +237,9 @@ def _auto_adjust(datasets, kwargs):
 
     for a in adjust_list:
         adjust_set.update(ALIASES.get(a, [a]))
+
+    if exclude is not None:
+        adjust_set -= set(exclude)
 
     extra = set(adjust_set) - set(ALIASES["all"])
     if extra:
@@ -235,16 +265,21 @@ def _auto_adjust(datasets, kwargs):
             if set(d.variables) != variables:
                 subset_kwargs[i]["select"] = sorted(variables)
 
+    if "start" or "end" in adjust_set:
+        common = datasets[0].dates
+        for d in datasets[0:]:
+            common = np.intersect1d(common, d.dates)
+
     if "start" in adjust_set:
         assert "start" not in kwargs, "Cannot use 'start' in adjust and kwargs"
-        start = max(d.dates[0] for d in datasets).astype(object)
+        start = min(common).astype(object)
         for i, d in enumerate(datasets):
             if start != d.dates[0]:
                 subset_kwargs[i]["start"] = start
 
     if "end" in adjust_set:
         assert "end" not in kwargs, "Cannot use 'end' in adjust and kwargs"
-        end = min(d.dates[-1] for d in datasets).astype(object)
+        end = max(common).astype(object)
         for i, d in enumerate(datasets):
             if end != d.dates[-1]:
                 subset_kwargs[i]["end"] = end
@@ -263,14 +298,14 @@ def _auto_adjust(datasets, kwargs):
 
 def _open_dataset(*args, **kwargs):
 
-    if not args and len(kwargs) == 1 and "observations" in kwargs:
-        # TODO remove this: and integrate observation better in anemoi-datasets
-        from .observations import observations_factory
+    # if not args and len(kwargs) == 1 and "observations" in kwargs:
+    #    # TODO remove this: and integrate observation better in anemoi-datasets
+    #    from .observations import observations_factory
 
-        return observations_factory(args, kwargs).mutate()
-    if not kwargs and len(args) == 1 and isinstance(args[0], Dataset):
-        return _open_dataset(**args[0])
-        # TODO remove this: and integrate observation better in anemoi-datasets
+    #    return observations_factory(args, kwargs).mutate()
+    # if not kwargs and len(args) == 1 and isinstance(args[0], Dataset):
+    #    return _open_dataset(**args[0])
+    #    # TODO remove this: and integrate observation better in anemoi-datasets
 
     sets = []
     for a in args:
@@ -319,6 +354,12 @@ def _open_dataset(*args, **kwargs):
         assert not sets, sets
         return concat_factory(args, kwargs).mutate()
 
+    if "merge" in kwargs:
+        from .merge import merge_factory
+
+        assert not sets, sets
+        return merge_factory(args, kwargs).mutate()
+
     if "ensemble" in kwargs:
         from .ensemble import ensemble_factory
 
@@ -336,6 +377,12 @@ def _open_dataset(*args, **kwargs):
 
         assert not sets, sets
         return cutout_factory(args, kwargs).mutate()
+
+    if "complement" in kwargs:
+        from .complement import complement_factory
+
+        assert not sets, sets
+        return complement_factory(args, kwargs).mutate()
 
     for name in ("datasets", "dataset"):
         if name in kwargs:

@@ -1,11 +1,12 @@
-# (C) Copyright 2023 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import logging
 import re
@@ -57,7 +58,7 @@ class DatasetName:
             raise ValueError(self.error_message)
 
     def _parse(self, name):
-        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h)-v(\d+)-?([a-zA-Z0-9-]+)?$"
+        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
         match = re.match(pattern, name)
 
         if not match:
@@ -88,7 +89,7 @@ class DatasetName:
             self.messages.append(
                 f"the dataset name {self} does not follow naming convention. "
                 "See here for details: "
-                "https://confluence.ecmwf.int/display/DWF/Datasets+available+as+zarr"
+                "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
             )
 
     def check_resolution(self, resolution):
@@ -140,8 +141,14 @@ class StatisticsValueError(ValueError):
 
 def check_data_values(arr, *, name: str, log=[], allow_nans=False):
 
+    shape = arr.shape
+
     if (isinstance(allow_nans, (set, list, tuple, dict)) and name in allow_nans) or allow_nans:
         arr = arr[~np.isnan(arr)]
+
+    if arr.size == 0:
+        warnings.warn(f"Empty array for {name} ({shape})")
+        return
 
     assert arr.size > 0, (name, *log)
 

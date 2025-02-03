@@ -1,11 +1,12 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import re
 
@@ -24,7 +25,9 @@ class RenamedFieldMapping:
     def __init__(self, field, what, renaming):
         self.field = field
         self.what = what
-        self.renaming = renaming
+        self.renaming = {}
+        for k, v in renaming.items():
+            self.renaming[k] = {str(a): str(b) for a, b in v.items()}
 
     def metadata(self, key=None, **kwargs):
         if key is None:
@@ -32,7 +35,7 @@ class RenamedFieldMapping:
 
         value = self.field.metadata(key, **kwargs)
         if key == self.what:
-            return self.renaming.get(value, value)
+            return self.renaming.get(self.what, {}).get(value, value)
 
         return value
 
@@ -41,7 +44,6 @@ class RenamedFieldMapping:
 
     def __repr__(self) -> str:
         return repr(self.field)
-        return f"{self.field} -> {self.what} -> {self.renaming}"
 
 
 class RenamedFieldFormat:
@@ -51,16 +53,19 @@ class RenamedFieldFormat:
         format (str): A string that defines the new name of the field.
     """
 
-    def __init__(self, field, format):
+    def __init__(self, field, what, format):
         self.field = field
+        self.what = what
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
 
-    def metadata(self, key, **kwargs):
-        value = self.field.metadata(key, **kwargs)
-        if "{" + key + "}" in self.format:
-            bits = {b: self.field.metadata(b, **kwargs) for b in self.bits}
-            return self.format.format(**bits)
+    def metadata(self, *args, **kwargs):
+        value = self.field.metadata(*args, **kwargs)
+        if args:
+            assert len(args) == 1
+            if args[0] == self.what:
+                bits = {b: self.field.metadata(b, **kwargs) for b in self.bits}
+                return self.format.format(**bits)
         return value
 
     def __getattr__(self, name):
@@ -68,8 +73,7 @@ class RenamedFieldFormat:
 
 
 def execute(context, input, what="param", **kwargs):
-    # print('🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍 ==========', kwargs)
-    if what in kwargs:
-        return FieldArray([RenamedFieldFormat(fs, kwargs[what]) for fs in input])
+    if what in kwargs and isinstance(kwargs[what], str):
+        return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
 
     return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])

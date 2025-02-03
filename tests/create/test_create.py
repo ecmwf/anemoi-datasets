@@ -1,10 +1,12 @@
-#!/usr/bin/env python3
-# (C) Copyright 2023 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 import glob
 import hashlib
 import json
@@ -23,6 +25,8 @@ from anemoi.datasets.create import creator_factory
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
+
+UPLOAD_EXE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
 
 
 HERE = os.path.dirname(__file__)
@@ -54,11 +58,9 @@ class LoadSource:
         ds = original_from_source("mars", *args, **kwargs)
         ds.save(upload_path)
         print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
-        exe = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
         print()
         print("⚠️ To upload the test data, run this:")
-        print()
-        print(f"{exe} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
+        print(f"python3 {UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
         print()
         exit(1)
         raise ValueError("Test data is missing")
@@ -98,43 +100,47 @@ def compare_dot_zattrs(a, b, path, errors):
     if isinstance(a, dict):
         a_keys = list(a.keys())
         b_keys = list(b.keys())
-        for k in set(a_keys) & set(b_keys):
-            if k in [
-                "licence",
-                "total_number_of_files",
-            ]:
+        for k in set(a_keys) | set(b_keys):
+            if k not in a_keys:
+                errors.append(f"❌ {path}.{k} : missing key (only in reference)")
+                continue
+            if k not in b_keys:
+                errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
                 continue
             if k in [
                 "timestamp",
                 "uuid",
                 "latest_write_timestamp",
-                "_create_yaml_config",
                 "history",
                 "provenance",
                 "provenance_load",
                 "description",
                 "config_path",
-                "dataset_status",
                 "total_size",
             ]:
-                if type(a[k]) != type(b[k]):  # noqa : E721
+                if type(a[k]) is not type(b[k]):
                     errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
                 continue
+
             compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
+
         return
 
     if isinstance(a, list):
         if len(a) != len(b):
             errors.append(f"❌ {path} : lengths are different {len(a)} != {len(b)}")
             return
+
         for i, (v, w) in enumerate(zip(a, b)):
             compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+
         return
 
-    if type(a) != type(b):  # noqa : E721
+    if type(a) is not type(b):
         msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
         errors.append(msg)
         return
+
     if a != b:
         msg = f"❌ {path} actual != expected : {a} != {b}"
         errors.append(msg)
@@ -190,15 +196,15 @@ def compare_statistics(ds1, ds2):
 class Comparer:
     def __init__(self, name, output_path=None, reference_path=None):
         self.name = name
-        self.output = output_path or os.path.join(name + ".zarr")
+        self.output_path = output_path or os.path.join(name + ".zarr")
         self.reference_path = reference_path
-        print(f"Comparing {self.output} and {self.reference_path}")
+        print(f"Comparing {self.output_path} and {self.reference_path}")
 
-        self.z_output = open_zarr(self.output)
+        self.z_output = open_zarr(self.output_path)
         self.z_reference = open_zarr(self.reference_path)
 
         self.z_reference["data"]
-        self.ds_output = open_dataset(self.output)
+        self.ds_output = open_dataset(self.output_path)
         self.ds_reference = open_dataset(self.reference_path)
 
     def compare(self):
@@ -209,20 +215,34 @@ class Comparer:
             print("\n".join(errors))
 
         if errors:
+            print()
+            print("⚠️ To update the test reference metadata, run this:")
+            print(
+                f"python3 {UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
+            )
+            print()
+            print()
+            print("⚠️ To update the reference data, run this:")
+            print(f"anemoi-datasets copy {self.output_path} {self.reference_path} --overwrite")
+            print()
             raise AssertionError("Comparison failed")
 
         compare_datasets(self.ds_output, self.ds_reference)
-
         compare_statistics(self.ds_output, self.ds_reference)
+        # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
+# it would be nice to use a @pytest.mark.slow and configure this globally
+# this could be done when refactoring the tests, and setting up canary/nightly builds
+@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name):
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
+    is_test = False
 
-    creator_factory("init", config=config, path=output, overwrite=True).run()
+    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
     creator_factory("load", path=output).run()
     creator_factory("finalise", path=output).run()
     creator_factory("patch", path=output).run()
@@ -236,8 +256,8 @@ def test_run(name):
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
     s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
     # if not os.path.exists(reference_path):
-    #    from anemoi.utils.s3 import download as s3_download
-    #    s3_download(s3_uri + '/', reference_path, overwrite=True)
+    #    from anemoi.utils.remote import transfer
+    #    transfer(s3_uri + '/', reference_path, overwrite=True)
 
     Comparer(name, output_path=output, reference_path=s3_uri).compare()
     # Comparer(name, output_path=output, reference_path=reference_path).compare()

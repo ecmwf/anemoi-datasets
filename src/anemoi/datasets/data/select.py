@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import logging
 from functools import cached_property
@@ -77,6 +80,10 @@ class Select(Forwards):
         return [self.dataset.variables[i] for i in self.indices]
 
     @cached_property
+    def variables_metadata(self):
+        return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}
+
+    @cached_property
     def name_to_index(self):
         return {k: i for i, k in enumerate(self.variables)}
 
@@ -108,15 +115,19 @@ class Rename(Forwards):
         super().__init__(dataset)
         for n in rename:
             assert n in dataset.variables, n
-            # make sure n only contain alphanumeric lowercase and _
-            if not n.replace("_", "").isalnum() or not n.islower():
-                raise ValueError(f"Invalid variable name {n}")
+
         self._variables = [rename.get(v, v) for v in dataset.variables]
+        self._variables_metadata = {rename.get(k, k): v for k, v in dataset.variables_metadata.items()}
+
         self.rename = rename
 
     @property
     def variables(self):
         return self._variables
+
+    @property
+    def variables_metadata(self):
+        return self._variables_metadata
 
     @cached_property
     def name_to_index(self):

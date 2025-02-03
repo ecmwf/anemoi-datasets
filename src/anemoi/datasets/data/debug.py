@@ -1,9 +1,12 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2024 Anemoi contributors.
+#
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 
 import logging
 import os
@@ -209,10 +212,14 @@ def _debug_indexing(method):
     return wrapper
 
 
+def _identity(x):
+    return x
+
+
 if DEBUG_ZARR_INDEXING:
     debug_indexing = _debug_indexing
 else:
-    debug_indexing = lambda x: x  # noqa
+    debug_indexing = _identity
 
 
 def debug_zarr_loading(on_off):

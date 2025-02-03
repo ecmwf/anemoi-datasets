@@ -1,11 +1,12 @@
-# (C) Copyright 2023 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import glob
 import hashlib
@@ -56,8 +57,11 @@ class PersistentDict:
                 yield pickle.load(f)
 
     def add_provenance(self, **kwargs):
+        path = os.path.join(self.dirname, "provenance.json")
+        if os.path.exists(path):
+            return
         out = dict(provenance=gather_provenance_info(), **kwargs)
-        with open(os.path.join(self.dirname, "provenance.json"), "w") as f:
+        with open(path, "w") as f:
             json.dump(out, f)
 
     def add(self, elt, *, key):
@@ -68,7 +72,7 @@ class PersistentDict:
         path = os.path.join(self.dirname, f"{h}.pickle")
 
         if os.path.exists(path):
-            LOG.warn(f"{path} already exists")
+            LOG.warning(f"{path} already exists")
 
         tmp_path = path + f".tmp-{os.getpid()}-on-{socket.gethostname()}"
         with open(tmp_path, "wb") as f:

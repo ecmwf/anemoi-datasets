@@ -1,18 +1,18 @@
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-#
+
 
 import logging
 import math
 from functools import cached_property
 
 import numpy as np
-from earthkit.data.utils.array import ensure_backend
 
 from .field import XArrayField
 
@@ -24,21 +24,20 @@ class Variable:
         self,
         *,
         ds,
-        var,
+        variable,
         coordinates,
         grid,
         time,
         metadata,
-        array_backend=None,
     ):
         self.ds = ds
-        self.var = var
+        self.variable = variable
 
         self.grid = grid
         self.coordinates = coordinates
 
         self._metadata = metadata.copy()
-        self._metadata.update({"variable": var.name})
+        self._metadata.update({"variable": variable.name, "param": variable.name})
 
         self.time = time
 
@@ -46,25 +45,27 @@ class Variable:
         self.names = {c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid}
         self.by_name = {c.variable.name: c for c in coordinates}
 
+        # We need that alias for the time dimension
+        self._aliases = dict(valid_datetime="time")
+
         self.length = math.prod(self.shape)
-        self.array_backend = ensure_backend(array_backend)
 
     @property
     def name(self):
-        return self.var.name
+        return self.variable.name
 
     def __len__(self):
         return self.length
 
     @property
     def grid_mapping(self):
-        grid_mapping = self.var.attrs.get("grid_mapping", None)
+        grid_mapping = self.variable.attrs.get("grid_mapping", None)
         if grid_mapping is None:
             return None
         return self.ds[grid_mapping].attrs
 
     def grid_points(self):
-        return self.grid.grid_points()
+        return self.grid.grid_points
 
     @property
     def latitudes(self):
@@ -76,21 +77,20 @@ class Variable:
 
     def __repr__(self):
         return "Variable[name=%s,coordinates=%s,metadata=%s]" % (
-            self.var.name,
+            self.variable.name,
             self.coordinates,
             self._metadata,
         )
 
     def __getitem__(self, i):
-        """
-        Get a 2D field from the variable
-        """
+        """Get a 2D field from the variable"""
+
         if i >= self.length:
             raise IndexError(i)
 
         coords = np.unravel_index(i, self.shape)
         kwargs = {k: v for k, v in zip(self.names, coords)}
-        return XArrayField(self, self.var.isel(kwargs))
+        return XArrayField(self, self.variable.isel(kwargs))
 
     def sel(self, missing, **kwargs):
 
@@ -99,7 +99,17 @@ class Variable:
 
         k, v = kwargs.popitem()
 
+        user_provided_k = k
+
+        if k == "valid_datetime":
+            # Ask the Time object to select the valid datetime
+            k = self.time.select_valid_datetime(self)
+            if k is None:
+                return None
+
         c = self.by_name.get(k)
+
+        # assert c is not None, f"Could not find coordinate {k} in {self.variable.name} {self.coordinates} {list(self.by_name)}"
 
         if c is None:
             missing[k] = v
@@ -107,7 +117,10 @@ class Variable:
 
         i = c.index(v)
         if i is None:
-            LOG.warning(f"Could not find {k}={v} in {c}")
+            if k != user_provided_k:
+                LOG.warning(f"Could not find {user_provided_k}={v} in {c} (alias of {k})")
+            else:
+                LOG.warning(f"Could not find {k}={v} in {c}")
             return None
 
         coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]
@@ -117,7 +130,7 @@ class Variable:
 
         variable = Variable(
             ds=self.ds,
-            var=self.var.isel({k: i}),
+            variable=self.variable.isel({k: i}),
             coordinates=coordinates,
             grid=self.grid,
             time=self.time,
@@ -136,7 +149,7 @@ class Variable:
             name = kwargs.pop("variable")
             if not isinstance(name, (list, tuple)):
                 name = [name]
-            if self.var.name not in name:
+            if self.variable.name not in name:
                 return False, None
             return True, kwargs
         return True, kwargs

@@ -1,13 +1,11 @@
-#!/usr/bin/env python
-# (C) Copyright 2024 ECMWF.
+# (C) Copyright 2024 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
-# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 
 [build-system]
 requires = [
@@ -42,6 +40,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
@@ -50,84 +49,56 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-utils[provenance]>=0.3.15",
+  "anemoi-transform>=0.1.1",
+  "anemoi-utils[provenance]>=0.4.11",
+  "cfunits",
   "numpy",
   "pyyaml",
   "semantic-version",
   "tqdm",
-  "zarr",
+  "zarr<=2.17",
 ]
 
 optional-dependencies.all = [
-  "aiohttp",
-  "boto3",
-  "earthkit-data[mars]>=0.9",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.37",
-  "entrypoints",
-  "gcsfs",
-  "kerchunk",
-  "pyproj",
-  "requests",
-  "s3fs",
+  "anemoi-datasets[create,remote,xarray]",
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.9",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.37",
+  "earthkit-data[mars]>=0.12",
+  "earthkit-geo>=0.3",
+  "earthkit-meteo>=0.3",
+  "eccodes>=2.39.1",
   "entrypoints",
-  "pyproj",
+  "pyproj>=3",
 ]
 
 optional-dependencies.dev = [
-  "aiohttp",
-  "boto3",
-  "earthkit-data[mars]>=0.9",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.37",
-  "entrypoints",
-  "gcsfs",
-  "kerchunk",
-  "nbsphinx",
-  "pandoc",
-  "pyproj",
-  "pytest",
-  "requests",
-  "rstfmt",
-  "s3fs",
-  "sphinx",
-  "sphinx-argparse<0.5",
-  "sphinx-rtd-theme",
+  "anemoi-datasets[all,docs,tests]",
 ]
 
 optional-dependencies.docs = [
   "nbsphinx",
   "pandoc",
-  "rstfmt",
   "sphinx",
-  "sphinx-argparse<0.5",
+  "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
 
-optional-dependencies.kerchunk = [
-  "gcsfs",
-  "kerchunk",
-  "s3fs",
-]
-
 optional-dependencies.remote = [
-  "aiohttp",
   "boto3",
   "requests",
-  "s3fs",
 ]
 
 optional-dependencies.tests = [
   "pytest",
+]
+
+optional-dependencies.xarray = [
+  "gcsfs",
+  "kerchunk",
+  "pandas",
+  "planetary-computer",
+  "pystac-client",
 ]
 
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
@@ -145,3 +116,6 @@ scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools_scm]
 version_file = "src/anemoi/datasets/_version.py"
+
+[tool.isort]
+profile = "black"
