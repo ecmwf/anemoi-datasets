@@ -326,14 +326,14 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
             return LatitudeCoordinate(c)
 
     def _is_x(self, c, *, axis, name, long_name, standard_name, units):
-        if standard_name == "projection_x_coordinate":
+        if standard_name in ["projection_x_coordinate", "grid_longitude"]:
             return XCoordinate(c)
 
         if name == "x":
             return XCoordinate(c)
 
     def _is_y(self, c, *, axis, name, long_name, standard_name, units):
-        if standard_name == "projection_y_coordinate":
+        if standard_name in ["projection_y_coordinate", "grid_latitude"]:
             return YCoordinate(c)
 
         if name == "y":
