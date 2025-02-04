@@ -617,7 +617,7 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         Optional[XCoordinate]
             The XCoordinate if matched, else None.
         """
-        if attributes.standard_name == "projection_x_coordinate":
+        if attributes.standard_name in ["projection_x_coordinate", "grid_longitude"]:
             return XCoordinate(c)
 
         if attributes.name == "x":
@@ -640,7 +640,7 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         Optional[YCoordinate]
             The YCoordinate if matched, else None.
         """
-        if attributes.standard_name == "projection_y_coordinate":
+        if attributes.standard_name in ["projection_y_coordinate", "grid_latitude"]:
             return YCoordinate(c)
 
         if attributes.name == "y":
