@@ -1,9 +1,10 @@
+# This workflow pushes changes from a public repository to a private repository.
 name: Push to private repository
 
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
   push_changes:
@@ -30,4 +31,4 @@ jobs:
     - name: Push changes to private repository
       run: |
         git remote add private git@github.com:${{ github.repository }}-private.git
-        git push --set-upstream private develop
+        git push --set-upstream private main
