@@ -538,11 +538,8 @@ class Observations(ObservationsBase):
         var = np.array(var, dtype=np.float32)
         stdev = np.sqrt(var)
 
-        minimum = np.full_like(mean, np.nan)
-        print("✅Cannot find minimum using np.nan")
-
-        maximum = np.full_like(mean, np.nan)
-        print("✅Cannot find maximum using np.nan")
+        minimum = np.array(self.forward.z.data.attrs["mins"], dtype=np.float32)
+        maximum = np.array(self.forward.z.data.attrs["maxs"], dtype=np.float32)
 
         assert isinstance(mean, np.ndarray), f"Expected np.ndarray, got {type(mean)}"
         assert isinstance(stdev, np.ndarray), f"Expected np.ndarray, got {type(stdev)}"
