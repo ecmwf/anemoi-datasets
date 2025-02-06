@@ -201,9 +201,26 @@ def _open(a):
         return a.mutate()
 
     if isinstance(a, zarr.hierarchy.Group):
-        return Zarr(a).mutate()
+        try:
+            if a.data.attrs.get("is_observations"):
+                from .observations import ObservationsZarr
+
+                return ObservationsZarr(a).mutate()
+        except AttributeError:
+            pass
+        return Zarr(zarr_lookup(a)).mutate()
 
     if isinstance(a, str):
+        try:
+            path = zarr_lookup(a)
+            z = zarr.open(path)
+            if z.data.attrs.get("is_observations"):
+                from .observations import ObservationsZarr
+
+                return ObservationsZarr(z).mutate()
+        except AttributeError:
+            pass
+
         return Zarr(zarr_lookup(a)).mutate()
 
     if isinstance(a, PurePath):
@@ -298,20 +315,12 @@ def _auto_adjust(datasets, kwargs, exclude=None):
 
 def _open_dataset(*args, **kwargs):
 
-    # if not args and len(kwargs) == 1 and "observations" in kwargs:
-    #    # TODO remove this: and integrate observation better in anemoi-datasets
-    #    from .observations import observations_factory
-
-    #    return observations_factory(args, kwargs).mutate()
-    # if not kwargs and len(args) == 1 and isinstance(args[0], Dataset):
-    #    return _open_dataset(**args[0])
-    #    # TODO remove this: and integrate observation better in anemoi-datasets
-
     sets = []
     for a in args:
         sets.append(_open(a))
 
     if "observations" in kwargs:
+        # TODO: remove this temporary code
         from .observations import observations_factory
 
         assert not sets, sets

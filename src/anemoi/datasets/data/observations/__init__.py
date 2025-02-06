@@ -1,4 +1,4 @@
-# (C) Copyright 2024 European Centre for Medium-Range Weather Forecasts.
+# (C) Copyright 2025 European Centre for Medium-Range Weather Forecasts.
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 # In applying this licence, ECMWF does not waive the privileges and immunities
@@ -16,13 +16,8 @@ from anemoi.utils.dates import frequency_to_string as frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from ..debug import Node
-from ..stores import zarr_lookup
 
 LOG = logging.getLogger(__name__)
-
-
-def _resolve_path(path):
-    return zarr_lookup(path)
 
 
 def make_dates(start, end, frequency):
@@ -39,18 +34,6 @@ def make_dates(start, end, frequency):
 
     dates = [np.datetime64(d, "s") for d in dates]
     return dates
-
-
-def merge_dates(datasets):
-    start_date = None
-    end_date = None
-    for d in datasets:
-        s, e = min(d.dates), max(d.dates)
-        if start_date is None or s < start_date:
-            start_date = s
-        if end_date is None or e > end_date:
-            end_date = e
-    return start_date, end_date
 
 
 class ObservationsBase:
@@ -95,6 +78,145 @@ class ObservationsBase:
         raise NotImplementedError()
 
 
+class ObservationsZarr(ObservationsBase):
+    def __init__(self, dataset, frequency=None, window=None):
+        print(f"TRACE: ObservationsZarr({dataset}, {frequency}, {window})")
+        import zarr
+
+        if isinstance(dataset, zarr.hierarchy.Group):
+            dataset = dataset._store.path
+
+        from ..stores import zarr_lookup
+
+        dataset = zarr_lookup(dataset)
+        self.path = dataset
+        assert self._probe_attributes["is_observations"], f"Expected observations dataset, got {self.path}"
+
+        if frequency is None:
+            frequency = self._probe_attributes.get("frequency")
+            LOG.warning(f"Frequency not provided, using the one from the dataset: {frequency}")
+        if frequency is None:
+            frequency = "6h"
+            LOG.warning(f"Frequency not provided in the dataset, using the default : {frequency}")
+        self.frequency = frequency_to_timedelta(frequency)
+        assert self.frequency.total_seconds() % 3600 == 0, f"Expected multiple of 3600, got {self.frequency}"
+
+        frequency_hours = int(self.frequency.total_seconds() // 3600)
+        assert isinstance(frequency_hours, int), f"Expected int, got {type(frequency_hours)}"
+
+        if window is None:
+            window = (-frequency_hours, 0)
+        if window != (-frequency_hours, 0):
+            raise ValueError("For now, only window = (- frequency, 0) are supported")
+
+        self.window = window
+
+        start, end = self._probe_attributes["start_date"], self._probe_attributes["end_date"]
+        start, end = datetime.datetime.fromisoformat(start), datetime.datetime.fromisoformat(end)
+        start, end = round_datetime(start, frequency_hours), round_datetime(end, frequency_hours)
+
+        self.dates = make_dates(start + self.frequency, end, self.frequency)
+
+        first_window_begin = start.strftime("%Y%m%d%H%M%S")
+        first_window_begin = int(first_window_begin)
+        # last_window_end must be the end of the time window of the last item
+        last_window_end = int(end.strftime("%Y%m%d%H%M%S"))
+
+        from .legacy_obs_dataset import ObsDataset
+
+        args = [self.path, first_window_begin, last_window_end]
+        kwargs = dict(
+            len_hrs=frequency_hours,  # length the time windows, i.e. the time span of one item
+            step_hrs=frequency_hours,  # frequency of the dataset, i.e. the time shift between two items
+        )
+        self.forward = ObsDataset(*args, **kwargs)
+        print(f"TRACE: Using experimental dataset ObsDataset({args}, {kwargs})")
+
+        assert frequency_hours == self.forward.step_hrs, f"Expected {frequency_hours}, got {self.forward.len_hrs}"
+        assert frequency_hours == self.forward.len_hrs, f"Expected {frequency_hours}, got {self.forward.step_hrs}"
+
+        if len(self.forward) != len(self.dates):
+            raise ValueError(
+                (
+                    f"Dates are not consistent with the number of items in the dataset. "
+                    f"The dataset contains {len(self.forward)} time windows. "
+                    f"This is not compatible with the "
+                    f"{len(self.dates)} requested dates with frequency={frequency_hours}"
+                    f"{self.dates[0]}, {self.dates[1]}, ..., {self.dates[-2]}, {self.dates[-1]} "
+                )
+            )
+
+    @cached_property
+    def _probe_attributes(self):
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        return dict(z.data.attrs)
+
+    def getitem(self, i):
+        ##########################
+        # TODO when the forward is ready
+        #    end = self.dates[i]
+        #    start = end - datetime.timedelta(hours=self.frequency)
+        #    # this should get directly the numpy array
+        #    data = self.forward.get_data_from_dates_interval(start, end)
+        data = self.forward[i]
+        # print(f"      reading from {self.path} {i} {self.dates[i]}")
+        ##########################
+
+        data = data.numpy().astype(np.float32)
+        assert len(data.shape) == 2, f"Expected 2D array, got {data.shape}"
+        data = data.T
+
+        if not data.size:
+            data = self.empty_item()
+        assert data.shape[0] == self.shape[1], f"Data shape {data.shape} does not match {self.shape}"
+        return data
+
+    @cached_property
+    def variables(self):
+        colnames = self.forward.colnames
+        variables = []
+        for n in colnames:
+            if n.startswith("obsvalue_"):
+                n = n.replace("obsvalue_", "")
+            variables.append(n)
+        return variables
+
+    @property
+    def name_to_index(self):
+        return {n: i for i, n in enumerate(self.variables)}
+
+    @property
+    def statistics(self):
+        mean = self.forward.properties["means"]
+        mean = np.array(mean, dtype=np.float32)
+
+        var = self.forward.properties["vars"]
+        var = np.array(var, dtype=np.float32)
+        stdev = np.sqrt(var)
+
+        minimum = np.array(self.forward.z.data.attrs["mins"], dtype=np.float32)
+        maximum = np.array(self.forward.z.data.attrs["maxs"], dtype=np.float32)
+
+        assert isinstance(mean, np.ndarray), f"Expected np.ndarray, got {type(mean)}"
+        assert isinstance(stdev, np.ndarray), f"Expected np.ndarray, got {type(stdev)}"
+        assert isinstance(minimum, np.ndarray), f"Expected np.ndarray, got {type(minimum)}"
+        assert isinstance(maximum, np.ndarray), f"Expected np.ndarray, got {type(maximum)}"
+        return dict(mean=mean, stdev=stdev, minimum=minimum, maximum=maximum)
+
+    def tree(self):
+        return Node(
+            self,
+            [],
+            path=self.path,
+            frequency=self.frequency,
+        )
+
+    def __repr__(self):
+        return f"Observations({os.path.basename(self.path)}, {self.dates[0]};{self.dates[-1]}, {len(self)})"
+
+
 class Multiple(ObservationsBase):
     @property
     def names(self):
@@ -125,8 +247,28 @@ class Multiple(ObservationsBase):
         return variables
 
 
+####################################################################################################
+# All what is below is experimental code that is not tested, it will change completely and should not be used yet
+####################################################################################################
+WARNING = "Using experimental code. Unsafe and untested. Use it only if you know what you are doing."
+
+
+def merge_dates(datasets):
+    LOG.warning(WARNING)
+    start_date = None
+    end_date = None
+    for d in datasets:
+        s, e = min(d.dates), max(d.dates)
+        if start_date is None or s < start_date:
+            start_date = s
+        if end_date is None or e > end_date:
+            end_date = e
+    return start_date, end_date
+
+
 class MultipleDict(Multiple):
     def __init__(self, datasets, names=None):
+        LOG.warning(WARNING)
         self._names = names
         self.frequency = list(datasets.values())[0].frequency
         for k, d in datasets.items():
@@ -182,6 +324,7 @@ class MultipleDict(Multiple):
 
 class MultipleList(Multiple):
     def __init__(self, datasets, names=None):
+        LOG.warning(WARNING)
         self._names = names
         self.frequency = datasets[0].frequency
         for d in datasets[1:]:
@@ -232,6 +375,7 @@ class MultipleList(Multiple):
 
 class Forward(ObservationsBase):
     def __init__(self, dataset):
+        LOG.warning(WARNING)
         self.forward = dataset.mutate()
         self.dates = self.forward.dates
 
@@ -267,6 +411,7 @@ class Forward(ObservationsBase):
 
 class RenamePrefix(Forward):
     def __init__(self, dataset, prefix):
+        LOG.warning(WARNING)
         super().__init__(dataset)
         self.prefix = prefix
         self._variables = [f"{prefix}{n}" for n in self.forward.variables]
@@ -289,6 +434,7 @@ class RenamePrefix(Forward):
 class Subset(Forward):
     # TODO : delete this class
     def __init__(self, dataset, start, end):
+        LOG.warning(WARNING)
         super().__init__(dataset)
 
         from ..misc import as_first_date
@@ -327,6 +473,7 @@ class Subset(Forward):
 
 class Select(Forward):
     def __init__(self, dataset, select):
+        LOG.warning(WARNING)
         super().__init__(dataset)
         self._select = select
         if len(select) != len(set(select)):
@@ -363,6 +510,7 @@ class Select(Forward):
 
 class Padded(Forward):
     def __init__(self, dataset, start, end):
+        LOG.warning(WARNING)
         super().__init__(dataset)
         self._frequency = self.forward.frequency
         assert isinstance(self._frequency, datetime.timedelta), f"Expected timedelta, got {type(self._frequency)}"
@@ -409,16 +557,6 @@ class Padded(Forward):
         )
 
 
-def is_observations_dataset(path):
-    import zarr
-
-    z = zarr.open(path, mode="r")
-    try:
-        return z.data.attrs["is_observations"] is True
-    except:  # noqa
-        return False
-
-
 def round_datetime(dt, frequency, up=True):
     dt = dt.replace(minute=0, second=0, microsecond=0)
     hour = dt.hour
@@ -426,137 +564,6 @@ def round_datetime(dt, frequency, up=True):
         dt = dt.replace(hour=(hour // frequency) * frequency)
         dt = dt + datetime.timedelta(hours=frequency)
     return dt
-
-
-class Observations(ObservationsBase):
-    def __init__(self, dataset, frequency, window=None):
-        assert not dataset.endswith(".zarr"), f"Expected dataset name, got {dataset}"
-        self.frequency = frequency_to_timedelta(frequency)
-        assert self.frequency.total_seconds() % 3600 == 0, f"Expected multiple of 3600, got {self.frequency}"
-
-        frequency_hours = int(self.frequency.total_seconds() // 3600)
-        assert isinstance(frequency_hours, int), f"Expected int, got {type(frequency_hours)}"
-
-        if window is None:
-            window = (-frequency_hours, 0)
-        if window != (-frequency_hours, 0):
-            raise ValueError("For now, only window = (- frequency, 0) are supported")
-
-        self.window = window
-        self.path = _resolve_path(dataset)
-        assert is_observations_dataset(self.path), f"Expected observations dataset, got {self.path}"
-
-        start, end = self._probe_attributes["start_date"], self._probe_attributes["end_date"]
-        # print(f"✅ from attribute start={start}, end={end}")
-        start, end = datetime.datetime.fromisoformat(start), datetime.datetime.fromisoformat(end)
-        start, end = round_datetime(start, frequency_hours), round_datetime(end, frequency_hours)
-        # print(f"       rounded to start={start}, end={end}")
-
-        self.dates = make_dates(start + self.frequency, end, self.frequency)
-        # print(f"              -> dates: {self.dates[0]}, {self.dates[-1]}")
-        # print(f"                   nb of dates: {len(self.dates)}")
-
-        first_window_begin = start.strftime("%Y%m%d%H%M%S")
-        first_window_begin = int(first_window_begin)
-        # last_window_end must be the end of the time window of the last item
-        last_window_end = int(end.strftime("%Y%m%d%H%M%S"))
-
-        from .legacy_obs_dataset import ObsDataset
-
-        args = [self.path, first_window_begin, last_window_end]
-        kwargs = dict(
-            len_hrs=frequency_hours,  # length the time windows, i.e. the time span of one item
-            step_hrs=frequency_hours,  # frequency of the dataset, i.e. the time shift between two items
-        )
-        self.forward = ObsDataset(*args, **kwargs)
-        print(f"TRACE: ObsDataset({args}, {kwargs})")
-
-        # print(f"len(obs)={len(self.forward)}")
-
-        assert frequency_hours == self.forward.step_hrs, f"Expected {frequency_hours}, got {self.forward.len_hrs}"
-        assert frequency_hours == self.forward.len_hrs, f"Expected {frequency_hours}, got {self.forward.step_hrs}"
-
-        if len(self.forward) != len(self.dates):
-            raise ValueError(
-                (
-                    f"Dates are not consistent with the number of items in the dataset. "
-                    f"The dataset contains {len(self.forward)} time windows. "
-                    f"This is not compatible with the "
-                    f"{len(self.dates)} requested dates with frequency={frequency_hours}"
-                    f"{self.dates[0]}, {self.dates[1]}, ..., {self.dates[-2]}, {self.dates[-1]} "
-                )
-            )
-
-    @cached_property
-    def _probe_attributes(self):
-        import zarr
-
-        z = zarr.open(self.path, mode="r")
-        return dict(z.data.attrs)
-
-    def getitem(self, i):
-        ##########################
-        # TODO when the forward is ready
-        #    end = self.dates[i]
-        #    start = end - datetime.timedelta(hours=self.frequency)
-        #    # this should get directly the numpy array
-        #    data = self.forward.get_data_from_dates_interval(start, end)
-        data = self.forward[i]
-        # print(f"      reading from {self.path} {i} {self.dates[i]}")
-
-        ##########################
-        data = data.numpy().astype(np.float32)
-        assert len(data.shape) == 2, f"Expected 2D array, got {data.shape}"
-        data = data.T
-
-        if not data.size:
-            # print(f"❌❌ No data for {self} {i} {self.dates[i]}")
-            data = self.empty_item()
-        assert data.shape[0] == self.shape[1], f"Data shape {data.shape} does not match {self.shape}"
-        return data
-
-    @cached_property
-    def variables(self):
-        colnames = self.forward.colnames
-        variables = []
-        for n in colnames:
-            if n.startswith("obsvalue_"):
-                n = n.replace("obsvalue_", "")
-            variables.append(n)
-        return variables
-
-    @property
-    def name_to_index(self):
-        return {n: i for i, n in enumerate(self.variables)}
-
-    @property
-    def statistics(self):
-        mean = self.forward.properties["means"]
-        mean = np.array(mean, dtype=np.float32)
-
-        var = self.forward.properties["vars"]
-        var = np.array(var, dtype=np.float32)
-        stdev = np.sqrt(var)
-
-        minimum = np.array(self.forward.z.data.attrs["mins"], dtype=np.float32)
-        maximum = np.array(self.forward.z.data.attrs["maxs"], dtype=np.float32)
-
-        assert isinstance(mean, np.ndarray), f"Expected np.ndarray, got {type(mean)}"
-        assert isinstance(stdev, np.ndarray), f"Expected np.ndarray, got {type(stdev)}"
-        assert isinstance(minimum, np.ndarray), f"Expected np.ndarray, got {type(minimum)}"
-        assert isinstance(maximum, np.ndarray), f"Expected np.ndarray, got {type(maximum)}"
-        return dict(mean=mean, stdev=stdev, minimum=minimum, maximum=maximum)
-
-    def tree(self):
-        return Node(
-            self,
-            [],
-            path=self.path,
-            frequency=self.frequency,
-        )
-
-    def __repr__(self):
-        return f"Observations({os.path.basename(self.path)}, {self.dates[0]};{self.dates[-1]}, {len(self)})"
 
 
 def _open(a):
@@ -615,7 +622,7 @@ def _open_observations(*args, **kwargs):
     if "is_observations" in kwargs:
         kwargs.pop("is_observations")
         assert len(args) == 0, args
-        return Observations(*args, **kwargs).mutate()
+        return ObservationsZarr(*args, **kwargs).mutate()
 
     from ..misc import _open_dataset as _open_fields
 
