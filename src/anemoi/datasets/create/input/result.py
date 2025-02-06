@@ -15,6 +15,7 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
@@ -97,10 +98,12 @@ def _fields_metatata(variables, cube):
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
         startStep = f.metadata("startStep", default=None)
-        assert startStep is None or isinstance(startStep, int), (startStep, type(f))
+        if startStep is not None:
+            startStep = as_timedelta(startStep)
 
         endStep = f.metadata("endStep", default=None)
-        assert endStep is None or isinstance(endStep, int), endStep
+        if endStep is not None:
+            endStep = as_timedelta(endStep)
 
         stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
         typeOfStatisticalProcessing = f.metadata("typeOfStatisticalProcessing", default=None)

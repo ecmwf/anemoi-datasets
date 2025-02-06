@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## 0.5.16 (2025-02-04)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+### Other Changes 🔗
+* chore: synced file(s) with ecmwf-actions/reusable-workflows by @DeployDuck in https://github.com/ecmwf/anemoi-datasets/pull/186
+
+## New Contributors
+* @DeployDuck made their first contribution in https://github.com/ecmwf/anemoi-datasets/pull/186
+
+**Full Changelog**: https://github.com/ecmwf/anemoi-datasets/compare/0.5.15...0.5.16
+
 ## [Unreleased](https://github.com/ecmwf/anemoi-datasets/compare/0.5.8...HEAD)
 
 ## Changed
