@@ -65,13 +65,21 @@ class ObservationsBase:
         return self
 
     def __getitem__(self, i):
-        # if isinstance(i, slice):
-        #    return [self.getitem(j) for j in range(int(slice.start), int(slice.stop))]
         if isinstance(i, int):
             return self.getitem(i)
+
+        # The following may would work but is likely to change in the future
+        # if isinstance(i, slice):
+        #    return [self.getitem(j) for j in range(int(slice.start), int(slice.stop))]
         # if isinstance(i, list):
         #    return [self.getitem(j) for j in i]
-        raise TypeError(f"Expected int, got {type(i)}")
+
+        raise ValueError(
+            (
+                f"Expected int, got {i} of type {type(i)}. For now, only int is supported to index "
+                "observations datasets. Please use a second [] to select part of the data [i][a,b,c]"
+            )
+        )
 
     @property
     def variables(self):
@@ -100,6 +108,8 @@ class ObservationsZarr(ObservationsBase):
             LOG.warning(f"Frequency not provided in the dataset, using the default : {frequency}")
         self.frequency = frequency_to_timedelta(frequency)
         assert self.frequency.total_seconds() % 3600 == 0, f"Expected multiple of 3600, got {self.frequency}"
+        if self.frequency.total_seconds() != 6 * 3600:
+            LOG.warning("Frequency is not 6h, this has not been tested, behaviour is unknown")
 
         frequency_hours = int(self.frequency.total_seconds() // 3600)
         assert isinstance(frequency_hours, int), f"Expected int, got {type(frequency_hours)}"
