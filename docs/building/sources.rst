@@ -21,6 +21,7 @@ The following `sources` are currently available:
    :maxdepth: 1
 
    sources/accumulations
+   sources/eccc_fstd
    sources/forcings
    sources/grib
    sources/hindcasts
