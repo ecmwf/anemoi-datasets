@@ -10,7 +10,9 @@
 
 import calendar
 import datetime
+import json
 import logging
+import os
 from pathlib import PurePath
 
 import numpy as np
@@ -195,7 +197,6 @@ def _concat_or_join(datasets, kwargs):
 
 def _open(a):
     from .stores import Zarr
-    from .stores import zarr_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
@@ -204,7 +205,34 @@ def _open(a):
         return Zarr(a).mutate()
 
     if isinstance(a, str):
-        return Zarr(zarr_lookup(a)).mutate()
+        from .stores import DATASET_FINDER
+
+        tried = []
+        for name in DATASET_FINDER.ls(a):
+            tried.append(name)
+
+            if name.endswith(".json"):
+                DATASET_FINDER.log_open(a, name)
+                if not os.path.exists(name):
+                    continue
+
+                obj = json.load(open(name))
+                if isinstance(obj, dict):
+                    return _open_dataset(**obj).mutate()
+                elif isinstance(obj, (list, tuple)):
+                    return _open_dataset(*obj).mutate()
+                raise ValueError(f"Invalid content: {type(obj)} in {name}")
+
+            if name.endswith(".zarr") or name.endswith(".zip"):
+                try:
+                    DATASET_FINDER.log_open(a, name)
+                    return Zarr(name).mutate()
+                except zarr.errors.PathNotFoundError:
+                    pass
+
+            raise ValueError(f"Unsupported file: {name}")
+
+        raise ValueError(f"Cannot find a dataset that matched '{a}'. Tried: {tried}")
 
     if isinstance(a, PurePath):
         return _open(str(a)).mutate()

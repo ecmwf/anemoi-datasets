@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from . import MissingDateError
@@ -289,8 +290,6 @@ class Zarr(Dataset):
             delta = self.frequency
         if isinstance(delta, int):
             delta = f"{delta}h"
-        from anemoi.utils.dates import frequency_to_string
-        from anemoi.utils.dates import frequency_to_timedelta
 
         delta = frequency_to_timedelta(delta)
         delta = frequency_to_string(delta)
@@ -450,36 +449,47 @@ class ZarrWithMissingDates(Zarr):
         return "zarr*"
 
 
-QUIET = set()
+class DatasetFinder:
+    QUIET = set()
+
+    @cached_property
+    def _config(self):
+        return load_config()["datasets"]
+
+    def ls(self, name):
+        if name in self._config["named"]:
+            yield self._config["named"][name]
+            return
+
+        if name.endswith(".zip") or name.endswith(".zarr") or name.endswith(".json"):
+            yield name
+            return
+
+        for location in self._config["path"]:
+            if not location.endswith("/"):
+                location += "/"
+
+            yield location + name + ".json"
+            yield location + name + ".zarr"
+
+    def log_open(self, name, full):
+        if name not in self.QUIET:
+            LOG.info("Opening `%s` as `%s`", name, full)
+            self.QUIET.add(name)
+
+
+DATASET_FINDER = DatasetFinder()
 
 
 def zarr_lookup(name, fail=True):
 
-    if name.endswith(".zarr") or name.endswith(".zip"):
-        return name
-
-    config = load_config()["datasets"]
-
-    if name in config["named"]:
-        if name not in QUIET:
-            LOG.info("Opening `%s` as `%s`", name, config["named"][name])
-            QUIET.add(name)
-        return config["named"][name]
-
     tried = []
-    for location in config["path"]:
-        if not location.endswith("/"):
-            location += "/"
-        full = location + name + ".zarr"
+    for full in DATASET_FINDER.ls(name):
         tried.append(full)
         try:
+            DATASET_FINDER.log_open(name, full)
             z = open_zarr(full, dont_fail=True)
             if z is not None:
-                # Cache for next time
-                config["named"][name] = full
-                if name not in QUIET:
-                    LOG.info("Opening `%s` as `%s`", name, full)
-                    QUIET.add(name)
                 return full
         except zarr.errors.PathNotFoundError:
             pass
