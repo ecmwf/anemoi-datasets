@@ -319,13 +319,13 @@ def _open_dataset(*args, **kwargs):
     for a in args:
         sets.append(_open(a))
 
-    # if "observations" in kwargs:
-    #    # TODO: remove this temporary code
-    #    from .observations import observations_factory
+    if "observations" in kwargs:
+        # TODO: remove this temporary code
+        from .observations.unstablgge import observations_factory
 
-    #    assert not sets, sets
+        assert not sets, sets
 
-    #    return observations_factory(args, kwargs).mutate()
+        return observations_factory(args, kwargs).mutate()
 
     if "xy" in kwargs:
         from .xy import xy_factory
