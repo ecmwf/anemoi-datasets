@@ -213,7 +213,9 @@ def _open(a):
     if isinstance(a, str):
         try:
             path = zarr_lookup(a)
-            z = zarr.open(path)
+            from .stores import open_zarr
+
+            z = open_zarr(path)
             if z.data.attrs.get("is_observations"):
                 from .observations import ObservationsZarr
 
