@@ -9,10 +9,10 @@ Example use cases:
 - **Stretched Grid**
 - **Boundary LAM**
 
-In both cases, it is necessary to check the alignment between the variables of the local dataset and those of the global dataset.  
+In both cases, it is necessary to check the alignment between the variables of the local dataset and those of the global dataset.
 Both datasets will coexist on the same grid, and statistical coherence is essential for training stability.
 
-The `compareLAM` command outputs a table comparing dataset statistics in **HTML format**.  
+The `compareLAM` command outputs a table comparing dataset statistics in **HTML format**.
 Additionally, a plot of the dataset grids can be displayed and saved if requested.
 
 Usage:
@@ -39,7 +39,7 @@ Example:
 
    $ anemoi-datasets compareLAM aifs-ea-an-oper-0001-mars-n320-1979-2022-6h-v6.zarr \
      mch-co2-an-archive-0p02-2015-2020-6h-v3-pl13.zarr \
-     -nd 10 -o "./" -rd 4 --selected_vars tp 10u 2t msl --save_plots
+     -nd 10 -o "./" -rd 4 --selected_vars 2t msl --save_plots
 
 Argparse integration:
 ---------------------

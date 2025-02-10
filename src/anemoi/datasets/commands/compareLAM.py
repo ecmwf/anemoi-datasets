@@ -247,94 +247,7 @@ class CompareLAM(Command):
         date_idx = 10  # "all" or specific index to stop at
         name = f"{global_name}-{lam_name}_{date_idx}"
         save_path = os.path.join(args.outpath, f"comparison_table_{name}.html")
-        selected_vars = [
-            "10u",
-            "10v",
-            "2d",
-            "2t",
-            "msl",
-            "q_50",
-            "q_100",
-            "q_150",
-            "q_200",
-            "q_250",
-            "q_300",
-            "q_400",
-            "q_500",
-            "q_600",
-            "q_700",
-            "q_850",
-            "q_925",
-            "q_1000",
-            "sp",
-            "tp",
-            "t_50",
-            "t_100",
-            "t_150",
-            "t_200",
-            "t_250",
-            "t_300",
-            "t_400",
-            "t_500",
-            "t_600",
-            "t_700",
-            "t_850",
-            "t_925",
-            "t_1000",
-            "u_50",
-            "u_100",
-            "u_150",
-            "u_200",
-            "u_250",
-            "u_300",
-            "u_400",
-            "u_500",
-            "u_600",
-            "u_700",
-            "u_850",
-            "u_925",
-            "u_1000",
-            "v_50",
-            "v_100",
-            "v_150",
-            "v_200",
-            "v_250",
-            "v_300",
-            "v_400",
-            "v_500",
-            "v_600",
-            "v_700",
-            "v_850",
-            "v_925",
-            "v_1000",
-            "w_100",
-            "w_1000",
-            "w_150",
-            "w_200",
-            "w_250",
-            "w_300",
-            "w_400",
-            "w_50",
-            "w_500",
-            "w_600",
-            "w_700",
-            "w_850",
-            "w_925",
-            "z",
-            "z_100",
-            "z_1000",
-            "z_150",
-            "z_200",
-            "z_250",
-            "z_300",
-            "z_400",
-            "z_50",
-            "z_500",
-            "z_600",
-            "z_700",
-            "z_850",
-            "z_925",
-        ]
+        selected_vars = args.selected_vars
 
         # Open LAM dataset
         lam_dataset = open_dataset(lam_name, select=selected_vars)
@@ -354,12 +267,11 @@ class CompareLAM(Command):
         )
 
         if args.save_plots:
-            _ = plot_coordinates_on_map(lam_dataset.latitudes, lam_dataset.longitudes, random_gaussian=False)
+            _ = plot_coordinates_on_map(lam_dataset.latitudes, lam_dataset.longitudes)
             plt.savefig(os.path.join(args.outpath, "lam_dataset.png"))
 
         print(f"Dataset {lam_name}, has {lam_num_grid_points} grid points. \n", color="yellow")
         print("LAM (north, west, south, east): ", l_coords)
-        print(f"Area of lam region: {lam_area}")
         print(f"Point every: {math.sqrt(lam_area / lam_num_grid_points)} km")
 
         # Open global dataset and cut it
@@ -382,12 +294,11 @@ class CompareLAM(Command):
         )
 
         if args.save_plots:
-            _ = plot_coordinates_on_map(global_dataset.latitudes, global_dataset.longitudes, random_gaussian=False)
+            _ = plot_coordinates_on_map(global_dataset.latitudes, global_dataset.longitudes)
             plt.savefig(os.path.join(args.outpath, "global_dataset.png"))
 
         print(f"Dataset {global_name}, has {global_num_grid_points} grid points. \n", color="yellow")
         print("Global-lam cut (north, west, south, east): ", g_coords)
-        print(f"Area of global-lam region: {global_area}")
         print(f"Point every: {math.sqrt(global_area / global_num_grid_points)} km")
 
         # Check variable ordering
