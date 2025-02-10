@@ -16,6 +16,7 @@ The commands are:
     :maxdepth: 1
 
     compare
+    compareLAM
     copy
     create
     inspect
