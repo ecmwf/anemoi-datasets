@@ -27,7 +27,7 @@ from .summary import Summary
 LOG = logging.getLogger(__name__)
 
 
-def default_statistics_dates(dates):
+def default_statistics_dates(dates) -> tuple:
     """Calculate default statistics dates based on the given list of dates.
 
     Args:

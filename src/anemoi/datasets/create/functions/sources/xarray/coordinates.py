@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
+from __future__ import annotations
+
 import datetime
 import logging
 
@@ -78,7 +80,7 @@ class Coordinate:
             self.variable.shape,
         )
 
-    def reduced(self, i):
+    def reduced(self, i) -> Coordinate:
         """Create a new coordinate with a single value
 
         Parameters
@@ -96,7 +98,7 @@ class Coordinate:
             **self.kwargs,
         )
 
-    def index(self, value):
+    def index(self, value) -> Coordinate:
         """Return the index of the value in the coordinate
 
         Parameters

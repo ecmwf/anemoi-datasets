@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Union
+
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import constants
@@ -43,7 +45,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def model_level_pressure(A, B, surface_pressure):
+def model_level_pressure(A, B, surface_pressure) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Calculates:
      - pressure at the model full- and half-levels
      - delta: depth of log(pressure) at full levels
@@ -114,7 +116,7 @@ def model_level_pressure(A, B, surface_pressure):
     return p_full_level, p_half_level, delta, alpha
 
 
-def calc_specific_gas_constant(q):
+def calc_specific_gas_constant(q) -> Union[float, np.ndarray]:
     """Calculates the specific gas constant of moist air
     (specific content of cloud particles and hydrometeors are neglected)
 
@@ -133,7 +135,7 @@ def calc_specific_gas_constant(q):
     return R
 
 
-def relative_geopotential_thickness(alpha, q, T):
+def relative_geopotential_thickness(alpha, q, T) -> np.ndarray:
     """Calculates the geopotential thickness w.r.t the surface on model full-levels
 
     Parameters
@@ -158,7 +160,7 @@ def relative_geopotential_thickness(alpha, q, T):
     return dphi
 
 
-def pressure_at_height_level(height, q, T, sp, A, B):
+def pressure_at_height_level(height, q, T, sp, A, B) -> Union[float, np.ndarray]:
     """Calculates the pressure at a height level given in meters above surface.
     This is done by finding the model level above and below the specified height
     and interpolating the pressure

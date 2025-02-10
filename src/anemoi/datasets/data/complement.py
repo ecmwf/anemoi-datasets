@@ -70,7 +70,7 @@ class Complement(Combined):
         missing = missing | self.target.missing
         return set(missing)
 
-    def tree(self):
+    def tree(self) -> Node:
         """Generates a hierarchical tree structure for the `Cutout` instance and
         its associated datasets.
 

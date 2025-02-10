@@ -14,11 +14,15 @@ import logging
 import pprint
 import warnings
 from functools import cached_property
+from typing import TYPE_CHECKING
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_seconds
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
+
+if TYPE_CHECKING:
+    import matplotlib
 
 LOG = logging.getLogger(__name__)
 
@@ -519,7 +523,7 @@ class Dataset:
 
         return result
 
-    def plot(self, date, variable, member=0, **kwargs):
+    def plot(self, date, variable, member=0, **kwargs) -> "matplotlib.pyplot.Axes":
         """For debugging purposes, plot a field.
 
         Parameters
@@ -537,7 +541,7 @@ class Dataset:
 
         Returns
         -------
-            matplotlib.pyplot.Axes
+        axes : matplotlib.pyplot.Axes
         """
 
         from anemoi.utils.devtools import plot_values
