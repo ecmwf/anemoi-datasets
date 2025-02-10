@@ -236,7 +236,7 @@ class Cutout(GridsBase):
                         lam_current_mask[~lam_overlap_mask] = False
             self.masks.append(lam_current_mask)
 
-    def has_overlap(self, lats1, lons1, lats2, lons2, distance_threshold=1.0):
+    def has_overlap(self, lats1, lons1, lats2, lons2, distance_threshold=1.0) -> bool:
         """Checks for overlapping points between two sets of latitudes and
         longitudes within a specified distance threshold.
 
@@ -261,7 +261,7 @@ class Cutout(GridsBase):
         # Check if any distance is less than the specified threshold
         return np.any(distances < distance_threshold)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> np.ndarray:
         """Retrieves data from the masked LAMs and global dataset based on the
         given index.
 
@@ -276,7 +276,7 @@ class Cutout(GridsBase):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
-    def _get_tuple(self, index):
+    def _get_tuple(self, index) -> np.ndarray:
         """Helper method that applies masks and retrieves data from each dataset
         according to the specified index.
 
@@ -300,7 +300,7 @@ class Cutout(GridsBase):
 
         return apply_index_to_slices_changes(result, changes)
 
-    def collect_supporting_arrays(self, collected, *path):
+    def collect_supporting_arrays(self, collected, *path) -> None:
         """Collects supporting arrays, including masks for each LAM and the global
         dataset.
 
@@ -316,12 +316,9 @@ class Cutout(GridsBase):
         collected.append((path + ("global",), "cutout_mask", self.global_mask))
 
     @cached_property
-    def shape(self):
+    def shape(self) -> tuple:
         """Returns the shape of the Cutout, accounting for retained grid points
         across all LAMs and the global dataset.
-
-        Returns:
-            tuple: Shape of the concatenated masked datasets.
         """
         shapes = [np.sum(mask) for mask in self.masks]
         global_shape = np.sum(self.global_mask)
@@ -333,24 +330,18 @@ class Cutout(GridsBase):
         pass
 
     @property
-    def grids(self):
+    def grids(self) -> tuple:
         """Returns the number of grid points for each LAM and the global dataset
         after applying masks.
-
-        Returns:
-            tuple: Count of retained grid points for each dataset.
         """
         grids = [np.sum(mask) for mask in self.masks]
         grids.append(np.sum(self.global_mask))
         return tuple(grids)
 
     @property
-    def latitudes(self):
+    def latitudes(self) -> np.ndarray:
         """Returns the concatenated latitudes of each LAM and the global dataset
         after applying masks.
-
-        Returns:
-            np.ndarray: Concatenated latitude array for the masked datasets.
         """
         lam_latitudes = np.concatenate([lam.latitudes[mask] for lam, mask in zip(self.lams, self.masks)])
 
@@ -362,12 +353,9 @@ class Cutout(GridsBase):
         return latitudes
 
     @property
-    def longitudes(self):
+    def longitudes(self) -> np.ndarray:
         """Returns the concatenated longitudes of each LAM and the global dataset
         after applying masks.
-
-        Returns:
-            np.ndarray: Concatenated longitude array for the masked datasets.
         """
         lam_longitudes = np.concatenate([lam.longitudes[mask] for lam, mask in zip(self.lams, self.masks)])
 
@@ -378,7 +366,7 @@ class Cutout(GridsBase):
         longitudes = np.concatenate([lam_longitudes, self.globe.longitudes[self.global_mask]])
         return longitudes
 
-    def tree(self):
+    def tree(self) -> Node:
         """Generates a hierarchical tree structure for the `Cutout` instance and
         its associated datasets.
 

@@ -162,13 +162,7 @@ class FilteredVariable:
 
     @cached_property
     def fields(self):
-        """Filter the fields of a variable based on metadata.
-
-        Returns
-        -------
-        list
-            A list of fields that match the metadata.
-        """
+        """Filter the fields of a variable based on metadata."""
         return [
             field
             for field in self.variable

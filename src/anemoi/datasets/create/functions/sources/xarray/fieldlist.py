@@ -128,8 +128,13 @@ class XarrayFieldList(FieldList):
 
         return cls(ds, variables)
 
-    def sel(self, **kwargs):
+    def sel(self, **kwargs) -> FieldList:
         """Override the FieldList's sel method
+
+        Parameters
+        ----------
+        kwargs : dict
+            The selection criteria
 
         Returns
         -------

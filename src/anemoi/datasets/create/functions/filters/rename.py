@@ -47,11 +47,7 @@ class RenamedFieldMapping:
 
 
 class RenamedFieldFormat:
-    """Rename a field based on a format string.
-
-    Args:
-        format (str): A string that defines the new name of the field.
-    """
+    """Rename a field based on a format string."""
 
     def __init__(self, field, what, format):
         self.field = field
