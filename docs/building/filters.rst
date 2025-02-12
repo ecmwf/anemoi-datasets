@@ -16,6 +16,7 @@ Filters are used to modify the data or metadata in a dataset.
 
    filters/select
    filters/orog_to_z
+   filters/regrid
    filters/rename
    filters/rotate_winds
    filters/sum
