@@ -19,6 +19,8 @@ LOG = logging.getLogger(__name__)
 
 
 class Action:
+    supports_fake_dates = False
+
     def __init__(self, context, action_path, /, *args, **kwargs):
         if "args" in kwargs and "kwargs" in kwargs:
             """We have:

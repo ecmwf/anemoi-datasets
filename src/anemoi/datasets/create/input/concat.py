@@ -20,6 +20,7 @@ from .misc import _tidy
 from .misc import assert_fieldlist
 from .result import Result
 from .template import notify_result
+from .trace import check_fake_support
 from .trace import trace_datasource
 from .trace import trace_select
 
@@ -79,6 +80,7 @@ class ConcatAction(Action):
         return super().__repr__(content)
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -87,6 +89,7 @@ class ConcatAction(Action):
             newdates = GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
             if newdates:
                 results.append(action.select(newdates))
+
         if not results:
             return EmptyResult(self.context, self.action_path, group_of_dates)
 

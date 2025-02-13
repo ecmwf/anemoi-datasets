@@ -7,10 +7,10 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from earthkit.data import from_source
+from .forcings import forcings
 
 
-def constants(context, dates, template, param):
+def constants(context, *args, **kwargs):
     from warnings import warn
 
     warn(
@@ -18,11 +18,8 @@ def constants(context, dates, template, param):
         DeprecationWarning,
         stacklevel=2,
     )
-    context.trace("✅", f"from_source(constants, {template}, {param}")
-    if len(template) == 0:
-        raise ValueError("Forcings template is empty.")
 
-    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
+    return forcings(context, *args, **kwargs)
 
 
 execute = constants

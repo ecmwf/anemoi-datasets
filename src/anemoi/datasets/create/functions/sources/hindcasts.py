@@ -11,7 +11,9 @@ import logging
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.create.functions.sources.mars import mars
+from anemoi.datasets.create.input.trace import support_fake_dates
+
+from .mars import mars
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ def _to_list(x):
     return [x]
 
 
+@support_fake_dates(True)
 def hindcasts(context, dates, **request):
 
     from anemoi.datasets.dates import FakeHindcastsDates

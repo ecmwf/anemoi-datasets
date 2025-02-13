@@ -180,7 +180,14 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode="r")
-        return loader_config(z.attrs.get("_create_yaml_config"))
+        config = loader_config(z.attrs.get("_create_yaml_config"))
+
+        if "env" in config:
+            for k, v in config["env"].items():
+                LOG.info(f"Setting env variable {k}={v}")
+                os.environ[k] = str(v)
+
+        return config
 
 
 class WritableDataset(Dataset):
@@ -577,6 +584,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
+            LOG.info("Selecting group %s", group)
             result = self.input.select(group_of_dates=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 

@@ -15,6 +15,7 @@ from .context import Context
 from .misc import is_function
 from .result import Result
 from .template import notify_result
+from .trace import check_fake_support
 from .trace import trace_datasource
 from .trace import trace_select
 
@@ -43,6 +44,7 @@ class StepAction(Action):
         self.previous_step = previous_step
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         return self.result_class(
             self.context,

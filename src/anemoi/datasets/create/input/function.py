@@ -18,6 +18,7 @@ from .result import Result
 from .template import notify_result
 from .template import resolve
 from .template import substitute
+from .trace import check_fake_support
 from .trace import trace
 from .trace import trace_datasource
 from .trace import trace_select
@@ -55,23 +56,28 @@ class FunctionAction(Action):
         self.name = _name
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         return FunctionResult(self.context, self.action_path, group_of_dates, action=self)
 
-    @property
+    @cached_property
     def function(self):
         # name, delta = parse_function_name(self.name)
         return import_function(self.name, "sources")
 
     def __repr__(self):
-        content = ""
+        content = self.name + "("
         content += ",".join([self._short_str(a) for a in self.args])
         content += " ".join([self._short_str(f"{k}={v}") for k, v in self.kwargs.items()])
-        content = self._short_str(content)
+        content = self._short_str(content) + ")"
         return super().__repr__(_inline_=content, _indent_=" ")
 
     def _trace_select(self, group_of_dates):
         return f"{self.name}({group_of_dates})"
+
+    @property
+    def supports_fake_dates(self):
+        return getattr(self.function, "__support_fake_dates__", False)
 
 
 class FunctionResult(Result):
@@ -92,9 +98,15 @@ class FunctionResult(Result):
     def datasource(self):
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
+        # A different function can be used if the dates are fake
+        function = self.group_of_dates.provider.check_fake_support_function(
+            self.action.function,
+            self.action.supports_fake_dates,
+        )
+
         try:
             return _tidy(
-                self.action.function(
+                function(
                     FunctionContext(self),
                     list(self.group_of_dates),  # Will provide a list of datetime objects
                     *args,

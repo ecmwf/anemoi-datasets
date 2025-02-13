@@ -10,6 +10,9 @@
 
 import earthkit.data as ekd
 
+from anemoi.datasets.create.input.trace import support_fake_dates
 
+
+@support_fake_dates(True)
 def execute(context, dates, **kwargs):
     return ekd.from_source("empty")

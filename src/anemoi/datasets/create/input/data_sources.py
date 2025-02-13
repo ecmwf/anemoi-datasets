@@ -14,6 +14,7 @@ from .action import Action
 from .action import action_factory
 from .misc import _tidy
 from .result import Result
+from .trace import check_fake_support
 
 LOG = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class DataSourcesAction(Action):
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
 
+    @check_fake_support
     def select(self, group_of_dates):
         sources_results = [a.select(group_of_dates) for a in self.sources]
         return DataSourcesResult(

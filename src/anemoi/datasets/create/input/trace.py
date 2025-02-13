@@ -90,3 +90,22 @@ def trace_select(method):
         return result
 
     return wrapper
+
+
+def check_fake_support(method):
+    @wraps(method)
+    def wrapper(self, group_of_dates):
+        group_of_dates.provider.check_fake_support(self)
+        return method(self, group_of_dates)
+
+    return wrapper
+
+
+class support_fake_dates:
+
+    def __init__(self, fake_func):
+        self.fake_func = fake_func
+
+    def __call__(self, func):
+        func.__support_fake_dates__ = self.fake_func
+        return func
