@@ -31,7 +31,6 @@ def _fake_forcings(context, fake_dates, template, param):
         assert date.year != 1900
         hindcasts = real_dates[date]
         for real_date in hindcasts:
-            print(real_date.metadata)
             yield new_field_with_metadata(f, **real_date.metadata)
 
 

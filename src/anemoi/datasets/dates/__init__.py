@@ -184,6 +184,9 @@ class Forecast:
             date=int(self.date.strftime("%Y%m%d")), step=self.step, time=int(self.date.strftime("%H%M"))
         )
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.metadata})"
+
 
 class Hindcast:
 
@@ -199,6 +202,9 @@ class Hindcast:
             step=self.step,
             time=0,
         )
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.metadata})"
 
 
 class HindcastsDates(DatesProvider):

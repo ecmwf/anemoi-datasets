@@ -10,6 +10,7 @@
 import datetime
 import logging
 import warnings
+from collections import defaultdict
 from copy import deepcopy
 
 import earthkit.data as ekd
@@ -17,6 +18,7 @@ import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
+from anemoi.datasets.create.input.trace import support_fake_dates
 from anemoi.datasets.create.utils import to_datetime_list
 
 from .mars import mars
@@ -366,6 +368,32 @@ def _scda(request):
     return request
 
 
+def fake_accumulations(context, fake_dates, **request):
+    user_accumulation_period = request.pop("accumulation_period", 6)
+    assert isinstance(user_accumulation_period, int), user_accumulation_period
+
+    provider = context.dates_provider
+    real_dates = defaultdict(lambda: defaultdict(list))
+    for date in fake_dates:
+        real_date = provider.mapping[date]
+        period = (real_date.step - user_accumulation_period, real_date.step)
+        real_dates[period][real_date.valid_datetime].append(real_date)
+
+    ds = ekd.from_source("empty")
+
+    for period, dates in real_dates.items():
+
+        ds = ds + _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=period,
+        )
+
+    return ds
+
+
+@support_fake_dates(fake_accumulations)
 def accumulations(context, dates, **request):
     _to_list(request["param"])
     class_ = request.get("class", "od")
