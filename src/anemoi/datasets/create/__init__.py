@@ -249,7 +249,7 @@ class Actor:  # TODO: rename to Creator
         self.dataset_shape = ds.shape
         self.variables_names = ds.variables
         assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
+        self.dates = ds.encoded_dates()
 
         self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
 
@@ -1012,7 +1012,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
             self.dataset.zarr_metadata["statistics_end_date"],
         )
         start, end = np.datetime64(start), np.datetime64(end)
-        dates = self.dataset.anemoi_dataset.dates
+        dates = self.dataset.anemoi_dataset.encoded_dates()
 
         assert type(dates[0]) is type(start), (type(dates[0]), type(start))
 

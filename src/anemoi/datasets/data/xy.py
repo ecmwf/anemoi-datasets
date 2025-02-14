@@ -50,6 +50,12 @@ class ZipBase(Combined):
     def check_same_variables(self, d1, d2):
         pass
 
+    def check_same_frequency(self, d1, d2):
+        pass
+
+    def check_same_dates(self, d1, d2):
+        pass
+
     @cached_property
     def missing(self):
         result = set()

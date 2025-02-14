@@ -206,6 +206,7 @@ class Zarr(Dataset):
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
         self.missing = set()
+        self._fake_dates = ("fake_hindcasts" in self.z.attrs) or ("fake_forecasts" in self.z.attrs)
 
     @classmethod
     def from_name(cls, name):
@@ -257,7 +258,14 @@ class Zarr(Dataset):
 
     @cached_property
     def dates(self):
+
+        if self._fake_dates:
+            raise NotImplementedError("Cannot read dates from a dataset with fake dates")
+
         return self.z.dates[:]  # Convert to numpy
+
+    def encoded_dates(self):
+        return self.z.dates[:]
 
     @property
     def latitudes(self):

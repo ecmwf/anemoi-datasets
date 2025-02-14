@@ -549,7 +549,7 @@ class Dataset:
         import numpy as np
 
         # Otherwise, we need to compute them
-        dates = self.dates
+        dates = self.encoded_dates()
         indices = set(range(len(dates)))
         indices -= self.missing
 
