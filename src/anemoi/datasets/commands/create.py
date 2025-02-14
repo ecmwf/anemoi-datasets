@@ -83,11 +83,12 @@ class Create(Command):
         task("load", options)
         task("finalise", options)
 
-        task("patch", options)
-
         task("init_additions", options)
         task("run_additions", options)
         task("finalise_additions", options)
+
+        task("patch", options)
+
         task("cleanup", options)
         task("verify", options)
 
@@ -153,6 +154,7 @@ class Create(Command):
 
         with ExecutorClass(max_workers=1) as executor:
             executor.submit(task, "finalise-additions", options).result()
+            executor.submit(task, "patch", options).result()
             executor.submit(task, "cleanup", options).result()
             executor.submit(task, "verify", options).result()
 

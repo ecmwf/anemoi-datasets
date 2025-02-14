@@ -49,8 +49,8 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1",
-  "anemoi-utils[provenance]>=0.4.9",
+  "anemoi-transform>=0.1.1",
+  "anemoi-utils[provenance]>=0.4.11",
   "cfunits",
   "numpy",
   "pyyaml",
@@ -64,12 +64,12 @@ optional-dependencies.all = [
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.10.7",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.38.1",
+  "earthkit-data[mars]>=0.12",
+  "earthkit-geo>=0.3",
+  "earthkit-meteo>=0.3",
+  "eccodes>=2.39.1",
   "entrypoints",
-  "pyproj",
+  "pyproj>=3",
 ]
 
 optional-dependencies.dev = [

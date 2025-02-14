@@ -179,7 +179,7 @@ class Dataset:
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
-        if "number" in kwargs or "numbers" or "member" in kwargs or "members" in kwargs:
+        if "number" in kwargs or "numbers" in kwargs or "member" in kwargs or "members" in kwargs:
             from .ensemble import Number
 
             members = {}

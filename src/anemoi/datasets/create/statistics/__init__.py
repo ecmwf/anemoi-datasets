@@ -18,6 +18,7 @@ import shutil
 import socket
 
 import numpy as np
+import tqdm
 from anemoi.utils.provenance import gather_provenance_info
 
 from ..check import check_data_values
@@ -134,7 +135,7 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
 
 def compute_statistics(array, check_variables_names=None, allow_nans=False):
     """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
-
+    LOG.info(f"Computing statistics for {array.shape} array")
     nvars = array.shape[1]
 
     LOG.debug(f"Stats {nvars}, {array.shape}, {check_variables_names}")
@@ -149,7 +150,7 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
     maximum = np.zeros(stats_shape, dtype=np.float64)
     has_nans = np.zeros(stats_shape, dtype=np.bool_)
 
-    for i, chunk in enumerate(array):
+    for i, chunk in tqdm.tqdm(enumerate(array), delay=1, total=array.shape[0], desc="Computing statistics"):
         values = chunk.reshape((nvars, -1))
 
         for j, name in enumerate(check_variables_names):
@@ -165,6 +166,8 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
         squares[i] = np.nansum(values * values, axis=1)
         count[i] = np.sum(~np.isnan(values), axis=1)
         has_nans[i] = np.isnan(values).any()
+
+    LOG.info(f"Statistics computed for {nvars} variables.")
 
     return {
         "minimum": minimum,
