@@ -137,6 +137,9 @@ class Grouper:
         if group_by == "reference_date":
             return ReferenceDateGroup(**kwargs)
 
+        if group_by == "forecast":
+            return ReferenceDateGroup(**kwargs)
+
         key = {
             "monthly": lambda dt: (dt.year, dt.month),
             "daily": lambda dt: (dt.year, dt.month, dt.day),
@@ -156,7 +159,7 @@ class ReferenceDateGroup(Grouper):
         mapping = provider.mapping
 
         def same_refdate(dt):
-            return mapping[dt].refdate
+            return mapping[dt].group_by
 
         for _, g in itertools.groupby(sorted(dates, key=same_refdate), key=same_refdate):
             yield GroupOfDates(list(g), provider)

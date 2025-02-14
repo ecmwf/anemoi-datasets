@@ -19,7 +19,6 @@ from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.input.trace import support_fake_dates
-from anemoi.datasets.create.utils import to_datetime_list
 
 from .mars import mars
 
@@ -428,24 +427,3 @@ def accumulations(context, dates, **request):
 
 
 execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
-        """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    for f in accumulations(None, dates, **config):
-        print(f, f.to_numpy().mean())

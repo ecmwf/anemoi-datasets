@@ -184,6 +184,9 @@ class Forecast:
             date=int(self.date.strftime("%Y%m%d")), step=self.step, time=int(self.date.strftime("%H%M"))
         )
 
+        # For best group_by, we use the  date
+        self.group_by = self.date
+
     def __repr__(self):
         return f"{self.__class__.__name__}({self.metadata})"
 
@@ -202,6 +205,9 @@ class Hindcast:
             step=self.step,
             time=0,
         )
+
+        # For best group_by, we use the reference date
+        self.group_by = self.refdate
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.metadata})"
