@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## 0.5.17 (2025-02-16)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+### Other Changes 🔗
+* feat: support sub-hourly steps by @b8raoult in https://github.com/ecmwf/anemoi-datasets/pull/188
+* chore: synced file(s) with ecmwf-actions/reusable-workflows by @DeployDuck in https://github.com/ecmwf/anemoi-datasets/pull/196
+* chore: synced file(s) with ecmwf-actions/reusable-workflows by @DeployDuck in https://github.com/ecmwf/anemoi-datasets/pull/198
+* feat: update test breaking due to noaa external data change by @floriankrb in https://github.com/ecmwf/anemoi-datasets/pull/204
+* chore(qa): Fix docstrings by @gmertes in https://github.com/ecmwf/anemoi-datasets/pull/205
+* chore: synced file(s) with ecmwf-actions/reusable-workflows by @DeployDuck in https://github.com/ecmwf/anemoi-datasets/pull/199
+* docs: add animation by @b8raoult in https://github.com/ecmwf/anemoi-datasets/pull/208
+
+## New Contributors
+* @gmertes made their first contribution in https://github.com/ecmwf/anemoi-datasets/pull/205
+
+**Full Changelog**: https://github.com/ecmwf/anemoi-datasets/compare/0.5.16...0.5.17
+
 ## 0.5.16 (2025-02-04)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
