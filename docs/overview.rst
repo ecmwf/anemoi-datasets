@@ -41,4 +41,12 @@ array.
 .. literalinclude:: overview_.py
    :language: python
 
+This is illustrated in the following video:
+
+.. raw:: html
+
+   <video width="100%" controls>
+     <source src="https://anemoi.ecmwf.int/static/images/datasets.mp4" type="video/mp4">
+   </video>
+
 .. _zarr: https://zarr.readthedocs.io/
