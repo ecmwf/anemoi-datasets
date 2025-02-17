@@ -56,7 +56,7 @@ dependencies = [
   "pyyaml",
   "semantic-version",
   "tqdm",
-  "zarr<=2.17",
+  "zarr<=3.0.3",
 ]
 
 optional-dependencies.all = [
