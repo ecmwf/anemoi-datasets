@@ -10,6 +10,9 @@
 
 import logging
 from collections import defaultdict
+from typing import Any
+from typing import Generator
+from typing import Tuple
 
 import numpy as np
 from anemoi.transform.fields import new_field_with_valid_datetime
@@ -29,7 +32,7 @@ LOG = logging.getLogger(__name__)
 class DateMapper:
 
     @staticmethod
-    def from_mode(mode, source, config):
+    def from_mode(mode: str, source: Any, config: dict) -> "DateMapper":
 
         MODES = dict(
             closest=DateMapperClosest,
@@ -44,7 +47,7 @@ class DateMapper:
 
 
 class DateMapperClosest(DateMapper):
-    def __init__(self, source, frequency="1h", maximum="30d", skip_all_nans=False):
+    def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
         self.source = source
         self.maximum = frequency_to_timedelta(maximum)
         self.frequency = frequency_to_timedelta(frequency)
@@ -52,12 +55,12 @@ class DateMapperClosest(DateMapper):
         self.tried = set()
         self.found = set()
 
-    def transform(self, group_of_dates):
+    def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         from anemoi.datasets.dates.groups import GroupOfDates
 
         asked_dates = list(group_of_dates)
         if not asked_dates:
-            return []
+            return
 
         to_try = set()
         for date in asked_dates:
@@ -76,7 +79,6 @@ class DateMapperClosest(DateMapper):
 
         if not to_try:
             LOG.warning(f"No new dates to try for {group_of_dates} in {self.source}")
-            # return []
 
         if to_try:
             result = self.source.select(
@@ -90,7 +92,6 @@ class DateMapperClosest(DateMapper):
             cnt = 0
             for f in result.datasource:
                 cnt += 1
-                # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
                 date = as_datetime(f.metadata("valid_datetime"))
 
                 if self.skip_all_nans:
@@ -119,8 +120,6 @@ class DateMapperClosest(DateMapper):
             best = None
             for found_date in sorted(self.found):
                 delta = abs(date - found_date)
-                # With < we prefer the first date
-                # With <= we prefer the last date
                 if best is None or delta <= best[0]:
                     best = delta, found_date
             new_dates[best[1]].append(date)
@@ -133,17 +132,17 @@ class DateMapperClosest(DateMapper):
 
 
 class DateMapperClimatology(DateMapper):
-    def __init__(self, source, year, day, hour=None):
+    def __init__(self, source: Any, year: int, day: int, hour: int = None) -> None:
         self.year = year
         self.day = day
         self.hour = hour
 
-    def transform(self, group_of_dates):
+    def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         from anemoi.datasets.dates.groups import GroupOfDates
 
         dates = list(group_of_dates)
         if not dates:
-            return []
+            return
 
         new_dates = defaultdict(list)
         for date in dates:
@@ -160,39 +159,36 @@ class DateMapperClimatology(DateMapper):
 
 
 class DateMapperConstant(DateMapper):
-    def __init__(self, source, date=None):
+    def __init__(self, source: Any, date: Any = None) -> None:
         self.source = source
         self.date = date
 
-    def transform(self, group_of_dates):
+    def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         from anemoi.datasets.dates.groups import GroupOfDates
 
         if self.date is None:
-            return [
-                (
-                    GroupOfDates([], group_of_dates.provider),
-                    group_of_dates,
-                )
-            ]
-
-        return [
-            (
-                GroupOfDates([self.date], group_of_dates.provider),
+            yield (
+                GroupOfDates([], group_of_dates.provider),
                 group_of_dates,
             )
-        ]
+            return
+
+        yield (
+            GroupOfDates([self.date], group_of_dates.provider),
+            group_of_dates,
+        )
 
 
 class DateMapperResult(Result):
     def __init__(
         self,
-        context,
-        action_path,
-        group_of_dates,
-        source_result,
-        mapper,
-        original_group_of_dates,
-    ):
+        context: Any,
+        action_path: list,
+        group_of_dates: Any,
+        source_result: Any,
+        mapper: DateMapper,
+        original_group_of_dates: Any,
+    ) -> None:
         super().__init__(context, action_path, group_of_dates)
 
         self.source_results = source_result
@@ -200,7 +196,7 @@ class DateMapperResult(Result):
         self.original_group_of_dates = original_group_of_dates
 
     @property
-    def datasource(self):
+    def datasource(self) -> Any:
         result = []
 
         for field in self.source_results.datasource:
@@ -214,14 +210,14 @@ class DateMapperResult(Result):
 
 
 class RepeatedDatesAction(Action):
-    def __init__(self, context, action_path, source, mode, **kwargs):
+    def __init__(self, context: Any, action_path: list, source: Any, mode: str, **kwargs: Any) -> None:
         super().__init__(context, action_path, source, mode, **kwargs)
 
         self.source = action_factory(source, context, action_path + ["source"])
         self.mapper = DateMapper.from_mode(mode, self.source, kwargs)
 
     @trace_select
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: Any) -> JoinResult:
         results = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
             results.append(
@@ -237,5 +233,5 @@ class RepeatedDatesAction(Action):
 
         return JoinResult(self.context, self.action_path, group_of_dates, results)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"MultiDateMatchAction({self.source}, {self.mapper})"

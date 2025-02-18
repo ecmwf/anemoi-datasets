@@ -9,6 +9,7 @@
 
 import logging
 import time
+from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
@@ -25,7 +26,7 @@ class InitAdditions(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
         command_parser.add_argument(
             "--delta",
             help="Compute statistics tendencies on a given time delta, if possible. Must be a multiple of the frequency.",
@@ -35,7 +36,7 @@ class InitAdditions(Command):
         command_parser.add_argument("path", help="Path to store the created data.")
         command_parser.add_argument("--trace", action="store_true")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
         options = vars(args)
         options.pop("command")
         step = "init-additions"

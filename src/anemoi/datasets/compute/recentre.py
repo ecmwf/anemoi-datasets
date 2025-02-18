@@ -9,6 +9,10 @@
 
 
 import logging
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from earthkit.data.core.temporary import temp_file
@@ -33,7 +37,9 @@ CLIP_VARIABLES = (
 SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset", "time", "date", "step")
 
 
-def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
+def check_compatible(
+    f1: Any, f2: Any, centre_field_as_mars: Dict[str, Any], ensemble_field_as_mars: Dict[str, Any]
+) -> None:
     assert f1.mars_grid == f2.mars_grid, (f1.mars_grid, f2.mars_grid)
     assert f1.mars_area == f2.mars_area, (f1.mars_area, f2.mars_area)
     assert f1.shape == f2.shape, (f1.shape, f2.shape)
@@ -56,12 +62,12 @@ def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
 
 def recentre(
     *,
-    members,
-    centre,
-    clip_variables=CLIP_VARIABLES,
-    alpha=1.0,
-    output=None,
-):
+    members: Any,
+    centre: Any,
+    clip_variables: Tuple[str, ...] = CLIP_VARIABLES,
+    alpha: float = 1.0,
+    output: Optional[str] = None,
+) -> Any:
 
     keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
 

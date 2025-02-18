@@ -8,8 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 from anemoi.utils.dates import as_datetime
 from earthkit.data.core.geography import Geography
@@ -21,7 +25,7 @@ LOG = logging.getLogger(__name__)
 
 class _MDMapping:
 
-    def __init__(self, variable):
+    def __init__(self, variable: Any) -> None:
         self.variable = variable
         self.time = variable.time
         # Aliases
@@ -31,16 +35,16 @@ class _MDMapping:
                 assert v not in self.mapping, f"Duplicate key '{v}' in {c}"
                 self.mapping[v] = c.variable.name
 
-    def _from_user(self, key):
+    def _from_user(self, key: str) -> str:
         return self.mapping.get(key, key)
 
-    def from_user(self, kwargs):
+    def from_user(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         return {self._from_user(k): v for k, v in kwargs.items()}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"MDMapping({self.mapping})"
 
-    def fill_time_metadata(self, field, md):
+    def fill_time_metadata(self, field: Any, md: Dict[str, Any]) -> None:
         valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
         if valid_datetime is not None:
             md["valid_datetime"] = as_datetime(valid_datetime).isoformat()
@@ -51,7 +55,7 @@ class XArrayMetadata(RawMetadata):
     NAMESPACES = ["default", "mars"]
     MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
 
-    def __init__(self, field):
+    def __init__(self, field: Any) -> None:
         self._field = field
         md = field._md.copy()
         self._mapping = _MDMapping(field.owner)
@@ -59,10 +63,10 @@ class XArrayMetadata(RawMetadata):
         super().__init__(md)
 
     @cached_property
-    def geography(self):
+    def geography(self) -> "XArrayFieldGeography":
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
-    def as_namespace(self, namespace=None):
+    def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
         if not isinstance(namespace, str) and namespace is not None:
             raise TypeError("namespace must be a str or None")
 
@@ -72,16 +76,16 @@ class XArrayMetadata(RawMetadata):
         elif namespace == "mars":
             return self._as_mars()
 
-    def _as_mars(self):
+    def _as_mars(self) -> Dict[str, Any]:
         return {}
 
-    def _base_datetime(self):
+    def _base_datetime(self) -> Optional[datetime.datetime]:
         return self._field.forecast_reference_time
 
-    def _valid_datetime(self):
+    def _valid_datetime(self) -> Optional[datetime.datetime]:
         return self._get("valid_datetime")
 
-    def get(self, key, astype=None, **kwargs):
+    def get(self, key: str, astype: Optional[type] = None, **kwargs: Any) -> Any:
 
         if key in self._d:
             if astype is not None:
@@ -94,55 +98,55 @@ class XArrayMetadata(RawMetadata):
 
 
 class XArrayFieldGeography(Geography):
-    def __init__(self, field, grid):
+    def __init__(self, field: Any, grid: Any) -> None:
         self._field = field
         self._grid = grid
 
-    def _unique_grid_id(self):
+    def _unique_grid_id(self) -> None:
         raise NotImplementedError()
 
-    def bounding_box(self):
+    def bounding_box(self) -> None:
         raise NotImplementedError()
         # return BoundingBox(north=self.north, south=self.south, east=self.east, west=self.west)
 
-    def gridspec(self):
+    def gridspec(self) -> None:
         raise NotImplementedError()
 
-    def latitudes(self, dtype=None):
+    def latitudes(self, dtype: Optional[type] = None) -> Any:
         result = self._grid.latitudes
         if dtype is not None:
             return result.astype(dtype)
         return result
 
-    def longitudes(self, dtype=None):
+    def longitudes(self, dtype: Optional[type] = None) -> Any:
         result = self._grid.longitudes
         if dtype is not None:
             return result.astype(dtype)
         return result
 
-    def resolution(self):
+    def resolution(self) -> Optional[Any]:
         # TODO: implement resolution
         return None
 
     # @property
-    def mars_grid(self):
+    def mars_grid(self) -> Optional[Any]:
         # TODO: implement mars_grid
         return None
 
     # @property
-    def mars_area(self):
+    def mars_area(self) -> Optional[Any]:
         # TODO: code me
         # return [self.north, self.west, self.south, self.east]
         return None
 
-    def x(self, dtype=None):
+    def x(self, dtype: Optional[type] = None) -> None:
         raise NotImplementedError()
 
-    def y(self, dtype=None):
+    def y(self, dtype: Optional[type] = None) -> None:
         raise NotImplementedError()
 
-    def shape(self):
+    def shape(self) -> Any:
         return self._field.shape
 
-    def projection(self):
+    def projection(self) -> Projection:
         return Projection.from_cf_grid_mapping(**self._field.grid_mapping)

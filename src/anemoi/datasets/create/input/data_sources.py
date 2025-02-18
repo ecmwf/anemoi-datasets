@@ -9,6 +9,10 @@
 
 import logging
 from functools import cached_property
+from typing import List
+from typing import Union
+
+from earthkit.data import FieldList
 
 from .action import Action
 from .action import action_factory
@@ -19,7 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DataSourcesAction(Action):
-    def __init__(self, context, action_path, sources, input):
+    def __init__(self, context: object, action_path: list, sources: Union[dict, list], input: dict) -> None:
         super().__init__(context, ["data_sources"], *sources)
         if isinstance(sources, dict):
             configs = [(str(k), c) for k, c in sources.items()]
@@ -31,7 +35,7 @@ class DataSourcesAction(Action):
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
 
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: object) -> "DataSourcesResult":
         sources_results = [a.select(group_of_dates) for a in self.sources]
         return DataSourcesResult(
             self.context,
@@ -41,13 +45,15 @@ class DataSourcesAction(Action):
             sources_results,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         content = "\n".join([str(i) for i in self.sources])
         return super().__repr__(content)
 
 
 class DataSourcesResult(Result):
-    def __init__(self, context, action_path, dates, input_result, sources_results):
+    def __init__(
+        self, context: object, action_path: list, dates: object, input_result: Result, sources_results: List[Result]
+    ) -> None:
         super().__init__(context, action_path, dates)
         # result is the main input result
         self.input_result = input_result
@@ -55,7 +61,7 @@ class DataSourcesResult(Result):
         self.sources_results = sources_results
 
     @cached_property
-    def datasource(self):
+    def datasource(self) -> FieldList:
         for i in self.sources_results:
             # for each result trigger the datasource to be computed
             # and saved in context

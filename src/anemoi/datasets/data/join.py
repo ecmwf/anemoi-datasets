@@ -8,11 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
+from typing import Dict
+from typing import List
+from typing import Set
 
 import numpy as np
 
+from .dataset import Dataset
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -30,20 +35,20 @@ LOG = logging.getLogger(__name__)
 class Join(Combined):
     """Join the datasets along the variables axis."""
 
-    def check_compatibility(self, d1, d2):
+    def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         super().check_compatibility(d1, d2)
         self.check_same_sub_shapes(d1, d2, drop_axis=1)
 
-    def check_same_variables(self, d1, d2):
+    def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
         # Turned off because we are joining along the variables axis
         pass
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.datasets[0])
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: tuple) -> np.ndarray:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
 
@@ -54,11 +59,11 @@ class Join(Combined):
         return apply_index_to_slices_changes(result[:, previous], changes)
 
     @debug_indexing
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> np.ndarray:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: int | slice | tuple) -> np.ndarray:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -68,11 +73,11 @@ class Join(Combined):
         return np.concatenate([d[n] for d in self.datasets])
 
     @cached_property
-    def shape(self):
+    def shape(self) -> tuple:
         cols = sum(d.shape[1] for d in self.datasets)
         return (len(self), cols) + self.datasets[0].shape[2:]
 
-    def _overlay(self):
+    def _overlay(self) -> "Join":
         indices = {}
         i = 0
         for d in self.datasets:
@@ -102,9 +107,9 @@ class Join(Combined):
         return Select(self, indices, {"overlay": variables})
 
     @cached_property
-    def variables(self):
+    def variables(self) -> List[str]:
         seen = set()
-        result = []
+        result: List[str] = []
         for d in reversed(self.datasets):
             for v in reversed(d.variables):
                 while v in seen:
@@ -115,7 +120,7 @@ class Join(Combined):
         return result
 
     @property
-    def variables_metadata(self):
+    def variables_metadata(self) -> dict:
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
 
@@ -134,16 +139,16 @@ class Join(Combined):
         return result
 
     @cached_property
-    def name_to_index(self):
+    def name_to_index(self) -> dict:
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
-    def statistics(self):
+    def statistics(self) -> Dict[str, np.ndarray]:
         return {
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
 
-    def statistics_tendencies(self, delta=None):
+    def statistics_tendencies(self, delta: datetime.timedelta = None) -> dict:
         if delta is None:
             delta = self.frequency
         return {
@@ -151,7 +156,7 @@ class Join(Combined):
             for k in self.datasets[0].statistics_tendencies(delta)
         }
 
-    def source(self, index):
+    def source(self, index: int) -> Source:
         i = index
         for dataset in self.datasets:
             if i < dataset.shape[1]:
@@ -160,17 +165,17 @@ class Join(Combined):
         assert False
 
     @cached_property
-    def missing(self):
-        result = set()
+    def missing(self) -> Set[int]:
+        result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing
         return result
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [d.tree() for d in self.datasets])
 
 
-def join_factory(args, kwargs):
+def join_factory(args: tuple, kwargs: dict) -> Dataset:
 
     datasets = kwargs.pop("join")
     assert isinstance(datasets, (list, tuple))

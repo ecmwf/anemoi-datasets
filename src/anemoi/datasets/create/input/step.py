@@ -9,6 +9,8 @@
 
 import logging
 from copy import deepcopy
+from typing import Any
+from typing import Type
 
 from .action import Action
 from .context import Context
@@ -22,7 +24,9 @@ LOG = logging.getLogger(__name__)
 
 
 class StepResult(Result):
-    def __init__(self, context, action_path, group_of_dates, action, upstream_result):
+    def __init__(
+        self, context: Context, action_path: list[str], group_of_dates: Any, action: Action, upstream_result: Result
+    ) -> None:
         super().__init__(context, action_path, group_of_dates)
         assert isinstance(upstream_result, Result), type(upstream_result)
         self.upstream_result = upstream_result
@@ -31,19 +35,19 @@ class StepResult(Result):
     @property
     @notify_result
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> Any:
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
 
 class StepAction(Action):
-    result_class = None
+    result_class: Type[StepResult] = None
 
-    def __init__(self, context, action_path, previous_step, *args, **kwargs):
+    def __init__(self, context: Context, action_path: list[str], previous_step: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, action_path, *args, **kwargs)
         self.previous_step = previous_step
 
     @trace_select
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: Any) -> StepResult:
         return self.result_class(
             self.context,
             self.action_path,
@@ -52,12 +56,11 @@ class StepAction(Action):
             self.previous_step.select(group_of_dates),
         )
 
-    def __repr__(self):
-        # raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
+    def __repr__(self) -> str:
         return super().__repr__(self.previous_step, _inline_=str(self.kwargs))
 
 
-def step_factory(config, context, action_path, previous_step):
+def step_factory(config: dict, context: Context, action_path: list[str], previous_step: Any) -> Any:
 
     from .filter import FilterStepAction
     from .filter import FunctionStepAction

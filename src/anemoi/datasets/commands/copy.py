@@ -13,6 +13,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+from typing import Any
 
 import tqdm
 from anemoi.utils.remote import Transfer
@@ -29,7 +30,19 @@ except AttributeError:
 
 
 class ZarrCopier:
-    def __init__(self, source, target, transfers, block_size, overwrite, resume, verbosity, nested, rechunk, **kwargs):
+    def __init__(
+        self,
+        source: str,
+        target: str,
+        transfers: int,
+        block_size: int,
+        overwrite: bool,
+        resume: bool,
+        verbosity: int,
+        nested: bool,
+        rechunk: str,
+        **kwargs: Any,
+    ) -> None:
         self.source = source
         self.target = target
         self.transfers = transfers
@@ -50,14 +63,14 @@ class ZarrCopier:
                 raise NotImplementedError("Rechunking with SSH not implemented.")
             assert NotImplementedError("SSH not implemented.")
 
-    def _store(self, path, nested=False):
+    def _store(self, path: str, nested: bool = False) -> Any:
         if nested:
             import zarr
 
             return zarr.storage.NestedDirectoryStore(path)
         return path
 
-    def copy_chunk(self, n, m, source, target, _copy, verbosity):
+    def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         if _copy[n:m].all():
             LOG.info(f"Skipping {n} to {m}")
             return None
@@ -83,7 +96,7 @@ class ZarrCopier:
 
         return slice(n, m)
 
-    def parse_rechunking(self, rechunking, source_data):
+    def parse_rechunking(self, rechunking: list[str], source_data: Any) -> tuple:
         shape = source_data.shape
         chunks = list(source_data.chunks)
         for i, c in enumerate(rechunking):
@@ -102,7 +115,7 @@ class ZarrCopier:
             #    raise NotImplementedError("Rechunking with multiple transfers is not implemented")
         return chunks
 
-    def copy_data(self, source, target, _copy, verbosity):
+    def copy_data(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         LOG.info("Copying data")
         source_data = source["data"]
 
@@ -147,7 +160,7 @@ class ZarrCopier:
 
         LOG.info("Copied data")
 
-    def copy_array(self, name, source, target, _copy, verbosity):
+    def copy_array(self, name: str, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         for k, v in source.attrs.items():
             target.attrs[k] = v
 
@@ -162,7 +175,7 @@ class ZarrCopier:
         target[name] = source[name]
         LOG.info(f"Copied {name}")
 
-    def copy_group(self, source, target, _copy, verbosity):
+    def copy_group(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         import zarr
 
         for k, v in source.attrs.items():
@@ -186,7 +199,7 @@ class ZarrCopier:
                     verbosity,
                 )
 
-    def copy(self, source, target, verbosity):
+    def copy(self, source: Any, target: Any, verbosity: int) -> None:
         import zarr
 
         if "_copy" not in target:
@@ -200,7 +213,7 @@ class ZarrCopier:
         self.copy_group(source, target, _copy_np, verbosity)
         del target["_copy"]
 
-    def run(self):
+    def run(self) -> None:
         import zarr
 
         # base, ext = os.path.splitext(os.path.basename(args.source))
@@ -208,14 +221,14 @@ class ZarrCopier:
         # assert "." not in base, base
         LOG.info(f"Copying {self.source} to {self.target}")
 
-        def target_exists():
+        def target_exists() -> bool:
             try:
                 zarr.open(self._store(self.target), mode="r")
                 return True
             except ValueError:
                 return False
 
-        def target_finished():
+        def target_finished() -> bool:
             target = zarr.open(self._store(self.target), mode="r")
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
@@ -231,7 +244,7 @@ class ZarrCopier:
                 return True
             return False
 
-        def open_target():
+        def open_target() -> Any:
 
             if not target_exists():
                 return zarr.open(self._store(self.target, self.nested), mode="w")
@@ -263,7 +276,7 @@ class CopyMixin:
     internal = True
     timestamp = True
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
         group = command_parser.add_mutually_exclusive_group()
         group.add_argument(
             "--overwrite",
@@ -293,7 +306,7 @@ class CopyMixin:
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
         if args.source == args.target:
             raise ValueError("Source and target are the same.")
 

@@ -9,6 +9,7 @@
 
 import logging
 import time
+from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
@@ -25,7 +26,7 @@ class Init(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, subparser):
+    def add_arguments(self, subparser: Any) -> None:
 
         subparser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         subparser.add_argument("path", help="Path to store the created data.")
@@ -57,7 +58,7 @@ class Init(Command):
 
         subparser.add_argument("--trace", action="store_true")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
         options = vars(args)
         options.pop("command")
         now = time.time()

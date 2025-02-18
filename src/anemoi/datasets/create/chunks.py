@@ -16,7 +16,7 @@ ALL = object()
 
 
 class ChunkFilter:
-    def __init__(self, *, parts, total):
+    def __init__(self, *, parts: str | list, total: int):
         self.total = total
 
         if isinstance(parts, list):
@@ -62,7 +62,7 @@ class ChunkFilter:
 
         self.allowed = parts
 
-    def __call__(self, i):
+    def __call__(self, i: int) -> bool:
         if i < 0 or i >= self.total:
             raise AssertionError(f"Invalid chunk number {i}. Must be between 0 and {self.total - 1}.")
 
@@ -70,10 +70,10 @@ class ChunkFilter:
             return True
         return i in self.allowed
 
-    def __iter__(self):
+    def __iter__(self) -> iter:
         for i in range(self.total):
             if self(i):
                 yield i
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len([_ for _ in self])

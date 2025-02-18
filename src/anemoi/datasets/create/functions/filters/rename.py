@@ -9,6 +9,8 @@
 
 
 import re
+from typing import Any
+from typing import List
 
 from earthkit.data.indexing.fieldlist import FieldArray
 
@@ -68,7 +70,7 @@ class RenamedFieldFormat:
         return getattr(self.field, name)
 
 
-def execute(context, input, what="param", **kwargs):
+def execute(context: Any, input: List[Any], what: str = "param", **kwargs: Any) -> FieldArray:
     if what in kwargs and isinstance(kwargs[what], str):
         return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
 

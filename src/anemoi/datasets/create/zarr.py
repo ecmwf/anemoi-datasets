@@ -10,24 +10,26 @@
 import datetime
 import logging
 import shutil
+from typing import Optional
 
 import numpy as np
+import zarr
 
 LOG = logging.getLogger(__name__)
 
 
 def add_zarr_dataset(
     *,
-    name,
-    dtype=None,
-    fill_value=None,
-    zarr_root,
-    shape=None,
-    array=None,
-    overwrite=True,
-    dimensions=None,
+    name: str,
+    dtype: np.dtype = None,
+    fill_value: np.generic = None,
+    zarr_root: zarr.Group,
+    shape: tuple[int, ...] = None,
+    array: np.ndarray = None,
+    overwrite: bool = True,
+    dimensions: tuple[str, ...] = None,
     **kwargs,
-):
+) -> zarr.Array:
     assert dimensions is not None, "Please pass dimensions to add_zarr_dataset."
     assert isinstance(dimensions, (tuple, list))
 
@@ -86,7 +88,7 @@ class ZarrBuiltRegistry:
     flags = None
     z = None
 
-    def __init__(self, path, synchronizer_path=None, use_threads=False):
+    def __init__(self, path: str, synchronizer_path: Optional[str] = None, use_threads: bool = False):
         import zarr
 
         assert isinstance(path, str), path
@@ -101,19 +103,19 @@ class ZarrBuiltRegistry:
             self.synchronizer_path = synchronizer_path
             self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
 
-    def clean(self):
+    def clean(self) -> None:
         if self.synchronizer_path is not None:
             try:
                 shutil.rmtree(self.synchronizer_path)
             except FileNotFoundError:
                 pass
 
-    def _open_write(self):
+    def _open_write(self) -> zarr.Group:
         import zarr
 
         return zarr.open(self.zarr_path, mode="r+", synchronizer=self.synchronizer)
 
-    def _open_read(self, sync=True):
+    def _open_read(self, sync: bool = True) -> zarr.Group:
         import zarr
 
         if sync:
@@ -121,12 +123,12 @@ class ZarrBuiltRegistry:
         else:
             return zarr.open(self.zarr_path, mode="r")
 
-    def new_dataset(self, *args, **kwargs):
+    def new_dataset(self, *args, **kwargs) -> None:
         z = self._open_write()
         zarr_root = z["_build"]
         add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
 
-    def add_to_history(self, action, **kwargs):
+    def add_to_history(self, action: str, **kwargs) -> None:
         new = dict(
             action=action,
             timestamp=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
@@ -138,37 +140,37 @@ class ZarrBuiltRegistry:
         history.append(new)
         z.attrs["history"] = history
 
-    def get_lengths(self):
+    def get_lengths(self) -> list[int]:
         z = self._open_read()
         return list(z["_build"][self.name_lengths][:])
 
-    def get_flags(self, **kwargs):
+    def get_flags(self, **kwargs) -> list[bool]:
         z = self._open_read(**kwargs)
         return list(z["_build"][self.name_flags][:])
 
-    def get_flag(self, i):
+    def get_flag(self, i: int) -> bool:
         z = self._open_read()
         return z["_build"][self.name_flags][i]
 
-    def set_flag(self, i, value=True):
+    def set_flag(self, i: int, value: bool = True) -> None:
         z = self._open_write()
         z.attrs["latest_write_timestamp"] = (
             datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
         )
         z["_build"][self.name_flags][i] = value
 
-    def ready(self):
+    def ready(self) -> bool:
         return all(self.get_flags())
 
-    def create(self, lengths, overwrite=False):
+    def create(self, lengths: list[int], overwrite: bool = False) -> None:
         self.new_dataset(name=self.name_lengths, array=np.array(lengths, dtype="i4"))
         self.new_dataset(name=self.name_flags, array=np.array([False] * len(lengths), dtype=bool))
         self.add_to_history("initialised")
 
-    def reset(self, lengths):
+    def reset(self, lengths: list[int]) -> None:
         return self.create(lengths, overwrite=True)
 
-    def add_provenance(self, name):
+    def add_provenance(self, name: str) -> None:
         z = self._open_write()
 
         if name in z.attrs:

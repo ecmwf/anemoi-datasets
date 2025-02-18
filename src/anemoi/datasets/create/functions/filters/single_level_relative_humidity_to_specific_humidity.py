@@ -8,6 +8,10 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import Dict
+from typing import List
+
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
@@ -17,7 +21,16 @@ from .single_level_specific_humidity_to_relative_humidity import NewDataField
 from .single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
 
 
-def execute(context, input, height, t, rh, sp, new_name="2q", **kwargs):
+def execute(
+    context: Any,
+    input: List[Any],
+    height: float,
+    t: str,
+    rh: str,
+    sp: str,
+    new_name: str = "2q",
+    **kwargs: Dict[str, Any],
+) -> FieldArray:
     """Convert the single (height) level relative humidity to specific humidity"""
     result = FieldArray()
 

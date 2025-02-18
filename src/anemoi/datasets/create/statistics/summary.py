@@ -9,6 +9,7 @@
 
 import json
 from collections import defaultdict
+from typing import Any
 
 import numpy as np
 
@@ -28,15 +29,15 @@ class Summary(dict):
         "has_nans",
     ]  # order matter for __str__.
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.check()
 
     @property
-    def size(self):
+    def size(self) -> int:
         return len(self["variables_names"])
 
-    def check(self):
+    def check(self) -> None:
         for k, v in self.items():
             if k == "variables_names":
                 assert len(v) == self.size
@@ -63,7 +64,7 @@ class Summary(dict):
                 e.args += (i, name)
                 raise
 
-    def __str__(self):
+    def __str__(self) -> str:
         header = ["Variables"] + self.STATS_NAMES
         out = [" ".join(header)]
 
@@ -73,7 +74,7 @@ class Summary(dict):
         ]
         return "\n".join(out)
 
-    def save(self, filename, **metadata):
+    def save(self, filename: str, **metadata: Any) -> None:
         assert filename.endswith(".json"), filename
         dic = {}
         for k in self.STATS_NAMES:
@@ -89,7 +90,7 @@ class Summary(dict):
         with open(filename, "w") as f:
             json.dump(out, f, indent=2)
 
-    def load(self, filename):
+    def load(self, filename: str) -> "Summary":
         assert filename.endswith(".json"), filename
         with open(filename) as f:
             dic = json.load(f)

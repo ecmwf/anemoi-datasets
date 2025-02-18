@@ -12,6 +12,9 @@ import logging
 import os
 import textwrap
 from functools import wraps
+from typing import Any
+from typing import List
+from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
@@ -24,19 +27,19 @@ DEPTH = 0
 # a.flags.writeable = False
 
 
-def css(name):
+def css(name: str) -> str:
     path = os.path.join(os.path.dirname(__file__), f"{name}.css")
     with open(path) as f:
         return f"<style>{f.read()}</style>"
 
 
 class Node:
-    def __init__(self, dataset, kids, **kwargs):
+    def __init__(self, dataset: Any, kids: List[Any], **kwargs: Any) -> None:
         self.dataset = dataset
         self.kids = kids
         self.kwargs = kwargs
 
-    def _put(self, indent, result):
+    def _put(self, indent: int, result: List[str]) -> None:
         def _spaces(indent):
             return " " * indent if indent else ""
 
@@ -49,12 +52,12 @@ class Node:
         for kid in self.kids:
             kid._put(indent + 2, result)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = []
         self._put(0, result)
         return "\n".join(result)
 
-    def graph(self, digraph, nodes):
+    def graph(self, digraph: List[str], nodes: dict) -> None:
         label = self.dataset.label  # dataset.__class__.__name__.lower()
         if self.kwargs:
             param = []
@@ -88,7 +91,7 @@ class Node:
             digraph.append(f"N{id(self)} -> N{id(kid)}")
             kid.graph(digraph, nodes)
 
-    def digraph(self):
+    def digraph(self) -> str:
         digraph = ["digraph {"]
         digraph.append("node [shape=box];")
         nodes = {}
@@ -101,7 +104,7 @@ class Node:
         digraph.append("}")
         return "\n".join(digraph)
 
-    def _html(self, indent, rows):
+    def _html(self, indent: str, rows: List[List[str]]) -> None:
 
         kwargs = {}
 
@@ -130,7 +133,7 @@ class Node:
         for kid in self.kids:
             kid._html(indent + "&nbsp;&nbsp;&nbsp;", rows)
 
-    def html(self):
+    def html(self) -> str:
         result = [css("debug")]
 
         result.append('<table class="dataset">')
@@ -145,13 +148,13 @@ class Node:
         result.append("</table>")
         return "\n".join(result)
 
-    def _as_tree(self, tree):
+    def _as_tree(self, tree: Any) -> None:
 
         for kid in self.kids:
             n = tree.node(kid)
             kid._as_tree(n)
 
-    def as_tree(self):
+    def as_tree(self) -> Any:
         from anemoi.utils.text import Tree
 
         tree = Tree(self)
@@ -159,23 +162,23 @@ class Node:
         return tree
 
     @property
-    def summary(self):
+    def summary(self) -> str:
         return self.dataset.label
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         return {}
 
 
 class Source:
     """Class used to follow the provenance of a data point."""
 
-    def __init__(self, dataset, index, source=None, info=None):
+    def __init__(self, dataset: Any, index: int, source: Optional[Any] = None, info: Optional[Any] = None) -> None:
         self.dataset = dataset
         self.index = index
         self.source = source
         self.info = info
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         p = s = self.source
         while s is not None:
             p = s
@@ -183,20 +186,20 @@ class Source:
 
         return f"{self.dataset}[{self.index}, {self.dataset.variables[self.index]}] ({p})"
 
-    def target(self):
+    def target(self) -> Any:
         p = s = self.source
         while s is not None:
             p = s
             s = s.source
         return p
 
-    def dump(self, depth=0):
+    def dump(self, depth: int = 0) -> None:
         print(" " * depth, self)
         if self.source is not None:
             self.source.dump(depth + 1)
 
 
-def _debug_indexing(method):
+def _debug_indexing(method: Any) -> Any:
     @wraps(method)
     def wrapper(self, index):
         global DEPTH
@@ -212,7 +215,7 @@ def _debug_indexing(method):
     return wrapper
 
 
-def _identity(x):
+def _identity(x: Any) -> Any:
     return x
 
 
@@ -222,6 +225,6 @@ else:
     debug_indexing = _identity
 
 
-def debug_zarr_loading(on_off):
+def debug_zarr_loading(on_off: int) -> None:
     global DEBUG_ZARR_LOADING
     DEBUG_ZARR_LOADING = on_off

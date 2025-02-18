@@ -9,6 +9,8 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
 
 # import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -16,18 +18,18 @@ from earthkit.geo.rotate import unrotate_vector
 
 
 class NewDataField:
-    def __init__(self, field, data):
+    def __init__(self, field: Any, data: Any) -> None:
         self.field = field
         self.data = data
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
         return self.data
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.field, name)
 
 
-def execute(context, input, u, v):
+def execute(context: Any, input: List[Any], u: str, v: str) -> FieldArray:
     """Unrotate the wind components of a GRIB file."""
     result = FieldArray()
 

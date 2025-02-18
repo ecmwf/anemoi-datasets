@@ -9,16 +9,19 @@
 
 import logging
 from functools import wraps
+from typing import Callable
+from typing import Tuple
+from typing import Union
 
+from earthkit.data import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
-from earthkit.data.indexing.fieldlist import FieldList
 
 from ..functions import import_function
 
 LOG = logging.getLogger(__name__)
 
 
-def parse_function_name(name):
+def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
 
     if name.endswith("h") and name[:-1].isdigit():
 
@@ -40,7 +43,7 @@ def parse_function_name(name):
     return name, None
 
 
-def is_function(name, kind):
+def is_function(name: str, kind: str) -> bool:
     name, _ = parse_function_name(name)
     try:
         import_function(name, kind)
@@ -50,7 +53,7 @@ def is_function(name, kind):
         return False
 
 
-def assert_fieldlist(method):
+def assert_fieldlist(method: Callable) -> Callable:
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         result = method(self, *args, **kwargs)
@@ -60,17 +63,17 @@ def assert_fieldlist(method):
     return wrapper
 
 
-def assert_is_fieldlist(obj):
+def assert_is_fieldlist(obj: object) -> None:
     assert isinstance(obj, FieldList), type(obj)
 
 
-def _flatten(ds):
+def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
     if isinstance(ds, MultiFieldList):
         return [_tidy(f) for s in ds._indexes for f in _flatten(s)]
     return [ds]
 
 
-def _tidy(ds, indent=0):
+def _tidy(ds: Union[MultiFieldList, FieldList], indent: int = 0) -> Union[MultiFieldList, FieldList]:
     if isinstance(ds, MultiFieldList):
 
         sources = [s for s in _flatten(ds) if len(s) > 0]

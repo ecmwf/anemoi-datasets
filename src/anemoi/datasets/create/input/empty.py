@@ -9,6 +9,9 @@
 
 import logging
 from functools import cached_property
+from typing import List
+
+from earthkit.data import FieldList
 
 from .misc import assert_fieldlist
 from .result import Result
@@ -20,17 +23,17 @@ LOG = logging.getLogger(__name__)
 class EmptyResult(Result):
     empty = True
 
-    def __init__(self, context, action_path, dates):
+    def __init__(self, context: object, action_path: list, dates: object) -> None:
         super().__init__(context, action_path + ["empty"], dates)
 
     @cached_property
     @assert_fieldlist
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> FieldList:
         from earthkit.data import from_source
 
         return from_source("empty")
 
     @property
-    def variables(self):
+    def variables(self) -> List[str]:
         return []

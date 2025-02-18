@@ -9,7 +9,9 @@
 
 
 from collections import defaultdict
+from typing import Any
 
+from earthkit.data import FieldList
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
@@ -35,7 +37,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context, input, orog, z="z"):
+def execute(context: Any, input: FieldList, orog: str, z: str = "z") -> FieldList:
     """Convert orography [m] to z (geopotential height)"""
     result = FieldArray()
 

@@ -8,7 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import Any
 
+from .dataset import Dataset
 from .misc import _open_dataset
 from .misc import add_dataset_path
 from .misc import add_named_dataset
@@ -27,7 +29,7 @@ class MissingDateError(Exception):
     pass
 
 
-def _convert(x):
+def _convert(x: Any) -> Any:
 
     if isinstance(x, list):
         return [_convert(a) for a in x]
@@ -46,7 +48,7 @@ def _convert(x):
     return x
 
 
-def open_dataset(*args, **kwargs):
+def open_dataset(*args: Any, **kwargs: Any) -> Dataset:
 
     # That will get rid of OmegaConf objects
 
@@ -59,8 +61,8 @@ def open_dataset(*args, **kwargs):
     return ds
 
 
-def list_dataset_names(*args, **kwargs):
+def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
     ds = _open_dataset(*args, **kwargs)
-    names = set()
+    names: set[str] = set()
     ds.get_dataset_names(names)
     return sorted(names)

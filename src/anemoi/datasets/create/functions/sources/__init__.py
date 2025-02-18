@@ -7,15 +7,20 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import glob
 import logging
+from typing import Any
+from typing import Generator
+from typing import List
+from typing import Tuple
 
 from earthkit.data.utils.patterns import Pattern
 
 LOG = logging.getLogger(__name__)
 
 
-def _expand(paths):
+def _expand(paths: List[str]) -> Generator[str]:
 
     if not isinstance(paths, list):
         paths = [paths]
@@ -40,14 +45,14 @@ def _expand(paths):
             yield path
 
 
-def iterate_patterns(path, dates, **kwargs):
+def iterate_patterns(path: str, dates: List[datetime.datetime], **kwargs: Any) -> Generator[Tuple[str, List[str]]]:
     given_paths = path if isinstance(path, list) else [path]
 
-    dates = [d.isoformat() for d in dates]
-    if len(dates) > 0:
-        kwargs["date"] = dates
+    iso_dates = [d.isoformat() for d in dates]
+    if len(iso_dates) > 0:
+        kwargs["date"] = iso_dates
 
     for path in given_paths:
         paths = Pattern(path, ignore_missing_keys=True).substitute(**kwargs)
         for path in _expand(paths):
-            yield path, dates
+            yield path, iso_dates

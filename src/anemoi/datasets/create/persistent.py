@@ -16,6 +16,7 @@ import os
 import pickle
 import shutil
 import socket
+from typing import Any
 
 import numpy as np
 from anemoi.utils.provenance import gather_provenance_info
@@ -28,26 +29,26 @@ class PersistentDict:
 
     # Used in parrallel, during data loading,
     # to write data in pickle files.
-    def __init__(self, directory, create=True):
+    def __init__(self, directory: str, create: bool = True):
         """dirname: str The directory where the data will be stored."""
         self.dirname = directory
         self.name, self.ext = os.path.splitext(os.path.basename(self.dirname))
         if create:
             self.create()
 
-    def create(self):
+    def create(self) -> None:
         os.makedirs(self.dirname, exist_ok=True)
 
-    def delete(self):
+    def delete(self) -> None:
         try:
             shutil.rmtree(self.dirname)
         except FileNotFoundError:
             pass
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.dirname})"
 
-    def items(self):
+    def items(self) -> iter:
         # use glob to read all pickles
         files = glob.glob(self.dirname + "/*.pickle")
         LOG.debug(f"Reading {self.name} data, found {len(files)} files in {self.dirname}")
@@ -56,7 +57,7 @@ class PersistentDict:
             with open(f, "rb") as f:
                 yield pickle.load(f)
 
-    def add_provenance(self, **kwargs):
+    def add_provenance(self, **kwargs) -> None:
         path = os.path.join(self.dirname, "provenance.json")
         if os.path.exists(path):
             return
@@ -64,10 +65,10 @@ class PersistentDict:
         with open(path, "w") as f:
             json.dump(out, f)
 
-    def add(self, elt, *, key):
+    def add(self, elt: Any, *, key: Any) -> None:
         self[key] = elt
 
-    def __setitem__(self, key, elt):
+    def __setitem__(self, key: Any, elt: Any) -> None:
         h = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
         path = os.path.join(self.dirname, f"{h}.pickle")
 
@@ -81,42 +82,42 @@ class PersistentDict:
 
         LOG.debug(f"Written {self.name} data for len {key} in {path}")
 
-    def flush(self):
+    def flush(self) -> None:
         pass
 
 
 class BufferedPersistentDict(PersistentDict):
-    def __init__(self, buffer_size=1000, **kwargs):
+    def __init__(self, buffer_size: int = 1000, **kwargs):
         self.buffer_size = buffer_size
         self.elements = []
         self.keys = []
         self.storage = PersistentDict(**kwargs)
 
-    def add(self, elt, *, key):
+    def add(self, elt: Any, *, key: Any) -> None:
         self.elements.append(elt)
         self.keys.append(key)
         if len(self.keys) > self.buffer_size:
             self.flush()
 
-    def flush(self):
+    def flush(self) -> None:
         k = sorted(self.keys)
         self.storage.add(self.elements, key=k)
         self.elements = []
         self.keys = []
 
-    def items(self):
+    def items(self) -> iter:
         for keys, elements in self.storage.items():
             for key, elt in zip(keys, elements):
                 yield key, elt
 
-    def delete(self):
+    def delete(self) -> None:
         self.storage.delete()
 
-    def create(self):
+    def create(self) -> None:
         self.storage.create()
 
 
-def build_storage(directory, create=True):
+def build_storage(directory: str, create: bool = True) -> BufferedPersistentDict:
     return BufferedPersistentDict(directory=directory, create=create)
 
 

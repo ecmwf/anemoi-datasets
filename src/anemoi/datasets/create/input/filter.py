@@ -9,6 +9,9 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+
+from earthkit.data import FieldList
 
 from ..functions import import_function
 from .function import FunctionContext
@@ -27,7 +30,7 @@ class FilterStepResult(StepResult):
     @notify_result
     @assert_fieldlist
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> FieldList:
         ds = self.upstream_result.datasource
         ds = ds.sel(**self.action.kwargs)
         return _tidy(ds)
@@ -42,7 +45,7 @@ class StepFunctionResult(StepResult):
     @assert_fieldlist
     @notify_result
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> FieldList:
         try:
             return _tidy(
                 self.action.function(
@@ -57,14 +60,16 @@ class StepFunctionResult(StepResult):
             LOG.error(f"Error in {self.action.name}", exc_info=True)
             raise
 
-    def _trace_datasource(self, *args, **kwargs):
+    def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
         return f"{self.action.name}({self.group_of_dates})"
 
 
 class FunctionStepAction(StepAction):
     result_class = StepFunctionResult
 
-    def __init__(self, context, action_path, previous_step, *args, **kwargs):
+    def __init__(
+        self, context: object, action_path: list, previous_step: StepAction, *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(context, action_path, previous_step, *args, **kwargs)
         self.name = args[0]
         self.function = import_function(self.name, "filters")

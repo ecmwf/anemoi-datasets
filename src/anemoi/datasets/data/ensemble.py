@@ -9,6 +9,9 @@
 
 
 import logging
+from typing import Any
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 
@@ -27,7 +30,7 @@ OFFSETS = dict(number=1, numbers=1, member=0, members=0)
 
 
 class Number(Forwards):
-    def __init__(self, forward, **kwargs):
+    def __init__(self, forward: Any, **kwargs: Any) -> None:
         super().__init__(forward)
 
         self.members = []
@@ -45,10 +48,10 @@ class Number(Forwards):
         self._shape, _ = update_tuple(forward.shape, 2, len(self.members))
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, ...]:
         return self._shape
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
         if isinstance(index, int):
             result = self.forward[index]
             result = result[:, self.mask, :]
@@ -64,21 +67,21 @@ class Number(Forwards):
         result = result[:, :, self.mask, :]
         return apply_index_to_slices_changes(result, changes)
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], numbers=[n + 1 for n in self.members])
 
-    def metadata_specific(self):
+    def metadata_specific(self) -> dict:
         return {
             "numbers": [n + 1 for n in self.members],
         }
 
 
 class Ensemble(GivenAxis):
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [d.tree() for d in self.datasets])
 
 
-def ensemble_factory(args, kwargs):
+def ensemble_factory(args: Tuple[Any, ...], kwargs: dict) -> Ensemble:
     if "grids" in kwargs:
         raise NotImplementedError("Cannot use both 'ensemble' and 'grids'")
 

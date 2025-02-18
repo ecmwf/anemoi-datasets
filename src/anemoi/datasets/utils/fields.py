@@ -7,12 +7,15 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import Any
+from typing import Optional
+
 
 class WrappedField:
-    def __init__(self, field):
+    def __init__(self, field: Any) -> None:
         self._field = field
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._field, name)
 
     def __repr__(self) -> str:
@@ -20,12 +23,12 @@ class WrappedField:
 
 
 class NewDataField(WrappedField):
-    def __init__(self, field, data):
+    def __init__(self, field: Any, data: Any) -> None:
         super().__init__(field)
         self._data = data
         self.shape = data.shape
 
-    def to_numpy(self, flatten=False, dtype=None, index=None):
+    def to_numpy(self, flatten: bool = False, dtype: Optional[Any] = None, index: Optional[Any] = None) -> Any:
         data = self._data
         if dtype is not None:
             data = data.astype(dtype)
@@ -37,11 +40,11 @@ class NewDataField(WrappedField):
 
 
 class NewMetadataField(WrappedField):
-    def __init__(self, field, **kwargs):
+    def __init__(self, field: Any, **kwargs: Any) -> None:
         super().__init__(field)
         self._metadata = kwargs
 
-    def metadata(self, *args, **kwargs):
+    def metadata(self, *args: Any, **kwargs: Any) -> Any:
         if len(args) == 1 and args[0] in self._metadata:
             return self._metadata[args[0]]
         return self._field.metadata(*args, **kwargs)

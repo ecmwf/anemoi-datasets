@@ -17,7 +17,7 @@ from anemoi.utils.humanize import bytes_to_human
 LOG = logging.getLogger(__name__)
 
 
-def compute_directory_sizes(path):
+def compute_directory_sizes(path: str) -> dict[str, int] | None:
     if not os.path.isdir(path):
         return None
 

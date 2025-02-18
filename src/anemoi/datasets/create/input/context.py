@@ -9,6 +9,10 @@
 
 import logging
 import textwrap
+from typing import Any
+from typing import List
+from typing import Tuple
+from typing import Union
 
 from anemoi.utils.humanize import plural
 
@@ -19,18 +23,18 @@ LOG = logging.getLogger(__name__)
 
 
 class Context:
-    def __init__(self):
+    def __init__(self) -> None:
         # used_references is a set of reference paths that will be needed
         self.used_references = set()
         # results is a dictionary of reference path -> obj
         self.results = {}
 
-    def will_need_reference(self, key):
+    def will_need_reference(self, key: Union[List, Tuple]) -> None:
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         self.used_references.add(key)
 
-    def notify_result(self, key, result):
+    def notify_result(self, key: Union[List, Tuple], result: Any) -> None:
         trace(
             "🎯",
             step(key),
@@ -45,7 +49,7 @@ class Context:
                 raise ValueError(f"Duplicate result {key}")
             self.results[key] = result
 
-    def get_result(self, key):
+    def get_result(self, key: Union[List, Tuple]) -> Any:
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         if key in self.results:

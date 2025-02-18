@@ -10,10 +10,16 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import Set
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 
+from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -27,7 +33,7 @@ LOG = logging.getLogger(__name__)
 
 class InterpolateFrequency(Forwards):
 
-    def __init__(self, dataset, frequency):
+    def __init__(self, dataset: Dataset, frequency: str) -> None:
         super().__init__(dataset)
         self._frequency = frequency_to_timedelta(frequency)
 
@@ -56,17 +62,17 @@ class InterpolateFrequency(Forwards):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: Tuple) -> Any:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
         result = self._get_slice(previous)
         return apply_index_to_slices_changes(result[index], changes)
 
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> np.ndarray:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -92,15 +98,15 @@ class InterpolateFrequency(Forwards):
         assert 0 < alpha < 1, alpha
         return self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
 
-    def __len__(self):
+    def __len__(self) -> int:
         return (self.other_len - 1) * self.ratio + 1
 
     @property
-    def frequency(self):
+    def frequency(self) -> np.timedelta64:
         return self._frequency
 
     @cached_property
-    def dates(self):
+    def dates(self) -> np.ndarray:
         result = []
         deltas = [np.timedelta64(self.seconds * i, "s") for i in range(self.ratio)]
         for d in self.forward.dates[:-1]:
@@ -110,14 +116,14 @@ class InterpolateFrequency(Forwards):
         return np.array(result)
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, ...]:
         return (self._len,) + self.forward.shape[1:]
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], frequency=self.frequency)
 
     @cached_property
-    def missing(self):
+    def missing(self) -> Set[int]:
         result = []
         j = 0
         for i in range(self.other_len):
@@ -130,7 +136,7 @@ class InterpolateFrequency(Forwards):
         result = set(x for x in result if x < self._len)
         return result
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         return {
             # "frequency": frequency_to_string(self._frequency),
         }

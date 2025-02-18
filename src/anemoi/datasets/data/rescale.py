@@ -10,9 +10,16 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 
+from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -24,7 +31,9 @@ from .indexing import update_tuple
 LOG = logging.getLogger(__name__)
 
 
-def make_rescale(variable, rescale):
+def make_rescale(
+    variable: str, rescale: Union[Tuple[float, float], List[str], Dict[str, float]]
+) -> Tuple[float, float]:
 
     if isinstance(rescale, (tuple, list)):
 
@@ -57,7 +66,9 @@ def make_rescale(variable, rescale):
 
 
 class Rescale(Forwards):
-    def __init__(self, dataset, rescale):
+    def __init__(
+        self, dataset: Dataset, rescale: Dict[str, Union[Tuple[float, float], List[str], Dict[str, float]]]
+    ) -> None:
         super().__init__(dataset)
         for n in rescale:
             assert n in dataset.variables, n
@@ -80,15 +91,15 @@ class Rescale(Forwards):
         self._a = self._a.astype(self.forward.dtype)
         self._b = self._b.astype(self.forward.dtype)
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], rescale=self.rescale)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(rescale=self.rescale)
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: Tuple) -> Any:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
         result = self.forward[index]
@@ -98,12 +109,12 @@ class Rescale(Forwards):
         return result
 
     @debug_indexing
-    def __get_slice_(self, n):
+    def __get_slice_(self, n: slice) -> np.ndarray:
         data = self.forward[n]
         return data * self._a + self._b
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
 
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -116,7 +127,7 @@ class Rescale(Forwards):
         return data * self._a[0] + self._b[0]
 
     @cached_property
-    def statistics(self):
+    def statistics(self) -> Dict[str, np.ndarray]:
         result = {}
         a = self._a.squeeze()
         assert np.all(a >= 0)
@@ -135,7 +146,7 @@ class Rescale(Forwards):
 
         return result
 
-    def statistics_tendencies(self, delta=None):
+    def statistics_tendencies(self, delta: Optional[int] = None) -> Dict[str, Any]:
         result = {}
         a = self._a.squeeze()
         assert np.all(a >= 0)

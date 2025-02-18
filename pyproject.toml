@@ -119,3 +119,9 @@ version_file = "src/anemoi/datasets/_version.py"
 
 [tool.isort]
 profile = "black"
+
+# Temporary until we can fix the mypy issues
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true

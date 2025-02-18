@@ -9,6 +9,8 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
 
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
@@ -18,7 +20,7 @@ from .single_level_specific_humidity_to_relative_humidity import NewDataField
 EPS = 1.0e-4
 
 
-def execute(context, input, t, rh, td="d"):
+def execute(context: Any, input: List[Any], t: str, rh: str, td: str = "d") -> FieldArray:
     """Convert relative humidity on single levels to dewpoint"""
     result = FieldArray()
 

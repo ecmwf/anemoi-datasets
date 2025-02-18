@@ -9,6 +9,7 @@
 
 import logging
 import time
+from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
@@ -25,10 +26,10 @@ class Patch(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: Any) -> None:
         parser.add_argument("path", help="Path to store the created data.")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
         options = vars(args)
         options.pop("command")
         now = time.time()

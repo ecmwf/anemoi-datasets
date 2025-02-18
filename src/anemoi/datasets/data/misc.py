@@ -12,6 +12,12 @@ import calendar
 import datetime
 import logging
 from pathlib import PurePath
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import zarr
@@ -22,11 +28,11 @@ from .dataset import Dataset
 LOG = logging.getLogger(__name__)
 
 
-def load_config():
+def load_config() -> Dict[str, Any]:
     return load_settings(defaults={"datasets": {"named": {}, "path": []}})
 
 
-def add_named_dataset(name, path, **kwargs):
+def add_named_dataset(name: str, path: str, **kwargs: Any) -> None:
     config = load_config()
     if name["datasets"]["named"]:
         raise ValueError(f"Dataset {name} already exists")
@@ -34,14 +40,14 @@ def add_named_dataset(name, path, **kwargs):
     config["datasets"]["named"][name] = path
 
 
-def add_dataset_path(path):
+def add_dataset_path(path: str) -> None:
     config = load_config()
 
     if path not in config["datasets"]["path"]:
         config["datasets"]["path"].append(path)
 
 
-def round_datetime(d, dates, up):
+def round_datetime(d: np.datetime64, dates: List[np.datetime64], up: bool) -> np.datetime64:
     """Round up (or down) a datetime to the nearest date in a list of dates"""
     if dates is None or len(dates) == 0:
         return d
@@ -58,7 +64,7 @@ def round_datetime(d, dates, up):
     return dates[-1]
 
 
-def _as_date(d, dates, last):
+def _as_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.datetime64], last: bool) -> np.datetime64:
 
     # WARNING,  datetime.datetime is a subclass of datetime.date
     # so we need to check for datetime.datetime first
@@ -164,15 +170,15 @@ def _as_date(d, dates, last):
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
 
-def as_first_date(d, dates):
+def as_first_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.datetime64]) -> np.datetime64:
     return _as_date(d, dates, last=False)
 
 
-def as_last_date(d, dates):
+def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.datetime64]) -> np.datetime64:
     return _as_date(d, dates, last=True)
 
 
-def _concat_or_join(datasets, kwargs):
+def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Dataset, Dict[str, Any]]:
 
     if "adjust" in kwargs:
         raise ValueError("Cannot use 'adjust' without specifying 'concat' or 'join'")
@@ -193,7 +199,7 @@ def _concat_or_join(datasets, kwargs):
     return Concat(datasets), kwargs
 
 
-def _open(a):
+def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -> Dataset:
     from .stores import Zarr
     from .stores import zarr_lookup
 
@@ -218,7 +224,9 @@ def _open(a):
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
 
-def _auto_adjust(datasets, kwargs, exclude=None):
+def _auto_adjust(
+    datasets: List[Dataset], kwargs: Dict[str, Any], exclude: Optional[List[str]] = None
+) -> Tuple[List[Dataset], Dict[str, Any]]:
 
     if "adjust" not in kwargs:
         return datasets, kwargs
@@ -296,7 +304,7 @@ def _auto_adjust(datasets, kwargs, exclude=None):
     return datasets, kwargs
 
 
-def _open_dataset(*args, **kwargs):
+def _open_dataset(*args: Any, **kwargs: Any) -> Dataset:
 
     sets = []
     for a in args:

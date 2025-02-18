@@ -8,12 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
+from typing import Set
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 
+from .dataset import Dataset
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -68,7 +71,7 @@ def _combine_reasons(reason1, reason2, dates):
 class Subset(Forwards):
     """Select a subset of the dates."""
 
-    def __init__(self, dataset, indices, reason):
+    def __init__(self, dataset: Dataset, indices: list[int], reason: dict) -> None:
         while isinstance(dataset, Subset):
             indices = [dataset.indices[i] for i in indices]
             reason = _combine_reasons(reason, dataset.reason, dataset.dates)
@@ -81,14 +84,14 @@ class Subset(Forwards):
         # Forward other properties to the super dataset
         super().__init__(dataset)
 
-    def clone(self, dataset):
+    def clone(self, dataset: Dataset) -> "Subset":
         return self.__class__(dataset, self.indices, self.reason).mutate()
 
-    def mutate(self):
+    def mutate(self) -> Dataset:
         return self.forward.swap_with_parent(parent=self)
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: int | slice | tuple) -> np.ndarray:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -100,7 +103,7 @@ class Subset(Forwards):
         return self.dataset[n]
 
     @debug_indexing
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> np.ndarray:
         # TODO: check if the indices can be simplified to a slice
         # the time checking maybe be longer than the time saved
         # using a slice
@@ -112,7 +115,7 @@ class Subset(Forwards):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, n):
+    def _get_tuple(self, n: tuple) -> np.ndarray:
         index, changes = index_to_slices(n, self.shape)
         indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
         indices = make_slice_or_index_from_list_or_tuple(indices)
@@ -121,43 +124,43 @@ class Subset(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.indices)
 
     @cached_property
-    def shape(self):
+    def shape(self) -> tuple:
         return (len(self),) + self.dataset.shape[1:]
 
     @cached_property
-    def dates(self):
+    def dates(self) -> np.ndarray:
         return self.dataset.dates[self.indices]
 
     @cached_property
-    def frequency(self):
+    def frequency(self) -> datetime.timedelta:
         dates = self.dates
         if len(dates) < 2:
             raise ValueError(f"Cannot determine frequency of a subset with less than two dates ({self.dates}).")
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
-    def source(self, index):
+    def source(self, index: int) -> Source:
         return Source(self, index, self.forward.source(index))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Subset({self.dataset},{self.dates[0]}...{self.dates[-1]}/{self.frequency})"
 
     @cached_property
-    def missing(self):
+    def missing(self) -> Set[int]:
         missing = self.dataset.missing
-        result = set()
+        result: Set[int] = set()
         for j, i in enumerate(self.indices):
             if i in missing:
                 result.add(j)
         return result
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.dataset.tree()], **self.reason)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> dict:
         return {
             # "indices": self.indices,
             "reason": self.reason,

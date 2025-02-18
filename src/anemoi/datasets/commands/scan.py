@@ -11,6 +11,7 @@ import fnmatch
 import os
 import sys
 from collections import defaultdict
+from typing import Any
 
 import earthkit.data as ekd
 import tqdm
@@ -25,7 +26,7 @@ class Scan(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
         command_parser.add_argument(
             "--match",
             help="Give a glob pattern to match files (default: *.grib)",
@@ -37,8 +38,8 @@ class Scan(Command):
         )
         command_parser.add_argument("paths", nargs="+", help="Paths to scan")
 
-    def run(self, args):
-        def match(path):
+    def run(self, args: Any) -> None:
+        def match(path: str) -> bool:
             return fnmatch.fnmatch(path, args.match)
 
         paths = []

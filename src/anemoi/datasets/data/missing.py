@@ -10,12 +10,19 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 
 from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.data import MissingDateError
 
+from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -28,7 +35,7 @@ LOG = logging.getLogger(__name__)
 class MissingDates(Forwards):
     # TODO: Use that class instead of ZarrMissing
 
-    def __init__(self, dataset, missing_dates):
+    def __init__(self, dataset: Dataset, missing_dates: List[Union[int, str]]) -> None:
         super().__init__(dataset)
         self.missing_dates = []
 
@@ -56,12 +63,12 @@ class MissingDates(Forwards):
         assert len(self._missing), "No dates to force missing"
 
     @cached_property
-    def missing(self):
+    def missing(self) -> Set[int]:
         return self._missing.union(self.forward.missing)
 
     @debug_indexing
     @expand_list_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
         if isinstance(n, int):
             if n in self.missing:
                 self._report_missing(n)
@@ -94,23 +101,23 @@ class MissingDates(Forwards):
 
         raise TypeError(f"Unsupported index {n} {type(n)}")
 
-    def _report_missing(self, n):
+    def _report_missing(self, n: int) -> None:
         raise MissingDateError(f"Date {self.forward.dates[n]} is missing (index={n})")
 
     @property
-    def reason(self):
+    def reason(self) -> Dict[str, Any]:
         return {"missing_dates": self.missing_dates}
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], **self.reason)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         return {"missing_dates": self.missing_dates}
 
 
 class SkipMissingDates(Forwards):
 
-    def __init__(self, dataset, expected_access):
+    def __init__(self, dataset: Dataset, expected_access: Union[int, slice]) -> None:
         super().__init__(dataset)
 
         # if isinstance(expected_access, (tuple, list)):
@@ -141,24 +148,24 @@ class SkipMissingDates(Forwards):
         self.expected_access = expected_access
         self.indices = indices
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.indices)
 
     @property
-    def start_date(self):
+    def start_date(self) -> np.datetime64:
         return self.forward.start_date
 
     @property
-    def end_date(self):
+    def end_date(self) -> np.datetime64:
         return self.forward.end_date
 
     @property
-    def dates(self):
+    def dates(self) -> np.ndarray:
         raise NotImplementedError("SkipMissingDates.dates")
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: Tuple) -> Tuple[np.ndarray, ...]:
 
         def _get_one(n):
             result = []
@@ -180,13 +187,13 @@ class SkipMissingDates(Forwards):
         return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> Tuple[np.ndarray, ...]:
         values = [self[i] for i in range(*s.indices(self._len))]
         result = [_ for _ in zip(*values)]
         return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple]) -> Tuple[np.ndarray, ...]:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -196,19 +203,19 @@ class SkipMissingDates(Forwards):
         return tuple(self.forward[i] for i in self.indices[n])
 
     @property
-    def frequency(self):
+    def frequency(self) -> np.timedelta64:
         return self.forward.frequency
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], expected_access=self.expected_access)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         return {"expected_access": self.expected_access}
 
 
 class MissingDataset(Forwards):
 
-    def __init__(self, dataset, start, end):
+    def __init__(self, dataset: Dataset, start: np.datetime64, end: np.datetime64) -> None:
         super().__init__(dataset)
         self.start = start
         self.end = end
@@ -222,22 +229,22 @@ class MissingDataset(Forwards):
         self._dates = np.array(dates, dtype="datetime64")
         self._missing = set(range(len(dates)))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._dates)
 
     @property
-    def dates(self):
+    def dates(self) -> np.ndarray:
         return self._dates
 
     @property
-    def missing(self):
+    def missing(self) -> Set[int]:
         return self._missing
 
-    def __getitem__(self, n):
+    def __getitem__(self, n: int) -> np.ndarray:
         raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], start=self.start, end=self.end)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         return {"start": self.start, "end": self.end}

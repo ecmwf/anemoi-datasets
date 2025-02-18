@@ -9,6 +9,8 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
 
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -17,7 +19,15 @@ from earthkit.meteo.wind.array import xy_to_polar
 from anemoi.datasets.create.functions.filters.speeddir_to_uv import NewDataField
 
 
-def execute(context, input, u_component, v_component, wind_speed, wind_dir, in_radians=False):
+def execute(
+    context: Any,
+    input: List[Any],
+    u_component: str,
+    v_component: str,
+    wind_speed: str,
+    wind_dir: str,
+    in_radians: bool = False,
+) -> FieldArray:
     result = FieldArray()
 
     wind_params = (u_component, v_component)

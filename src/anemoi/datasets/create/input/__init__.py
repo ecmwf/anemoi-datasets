@@ -9,6 +9,8 @@
 
 import logging
 from copy import deepcopy
+from typing import Any
+from typing import Union
 
 from .trace import trace_select
 
@@ -16,7 +18,7 @@ LOG = logging.getLogger(__name__)
 
 
 class InputBuilder:
-    def __init__(self, config, data_sources, **kwargs):
+    def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
         self.kwargs = kwargs
 
         config = deepcopy(config)
@@ -31,7 +33,7 @@ class InputBuilder:
         self.action_path = ["input"]
 
     @trace_select
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: object) -> Any:
         from .action import ActionContext
         from .action import action_factory
 
@@ -40,7 +42,7 @@ class InputBuilder:
         action = action_factory(self.config, context, self.action_path)
         return action.select(group_of_dates)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         from .action import ActionContext
         from .action import action_factory
 
@@ -48,8 +50,9 @@ class InputBuilder:
         a = action_factory(self.config, context, self.action_path)
         return repr(a)
 
-    def _trace_select(self, group_of_dates):
+    def _trace_select(self, group_of_dates: object) -> str:
         return f"InputBuilder({group_of_dates})"
 
 
-build_input = InputBuilder
+def build_input(config: dict, data_sources: Union[dict, list], **kwargs: Any) -> InputBuilder:
+    return InputBuilder(config, data_sources, **kwargs)

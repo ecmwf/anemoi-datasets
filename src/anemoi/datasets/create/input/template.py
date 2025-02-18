@@ -11,13 +11,15 @@
 import logging
 import re
 from functools import wraps
+from typing import Any
+from typing import Callable
 
 LOG = logging.getLogger(__name__)
 
 
-def notify_result(method):
+def notify_result(method: Callable) -> Callable:
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
         result = method(self, *args, **kwargs)
         self.context.notify_result(self.action_path, result)
         return result
@@ -30,15 +32,15 @@ class Substitution:
 
 
 class Reference(Substitution):
-    def __init__(self, context, action_path):
+    def __init__(self, context: Any, action_path: Any) -> None:
         self.context = context
         self.action_path = action_path
 
-    def resolve(self, context):
+    def resolve(self, context: Any) -> Any:
         return context.get_result(self.action_path)
 
 
-def resolve(context, x):
+def resolve(context: Any, x: Any) -> Any:
     if isinstance(x, tuple):
         return tuple([resolve(context, y) for y in x])
 
@@ -54,7 +56,7 @@ def resolve(context, x):
     return x
 
 
-def substitute(context, x):
+def substitute(context: Any, x: Any) -> Any:
     if isinstance(x, tuple):
         return tuple([substitute(context, y) for y in x])
 

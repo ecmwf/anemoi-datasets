@@ -12,6 +12,13 @@ import datetime
 import warnings
 from functools import reduce
 from math import gcd
+from typing import Any
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 # from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import DateTimes
@@ -22,7 +29,7 @@ from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
 
 
-def extend(x):
+def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datetime]:
 
     if isinstance(x, (list, tuple)):
         for y in x:
@@ -69,7 +76,7 @@ class DatesProvider:
     3
     """
 
-    def __init__(self, missing=None):
+    def __init__(self, missing: Optional[List[Union[str, datetime.datetime]]] = None) -> None:
         if not missing:
             missing = []
         self.missing = list(extend(missing))
@@ -78,7 +85,7 @@ class DatesProvider:
             warnings.warn(f"Missing dates {len(diff)=} not in list.")
 
     @classmethod
-    def from_config(cls, **kwargs):
+    def from_config(cls, **kwargs: Any) -> "DatesProvider":
 
         if kwargs.pop("hindcasts", False):
             return HindcastsDates(**kwargs)
@@ -88,34 +95,40 @@ class DatesProvider:
 
         return StartEndDates(**kwargs)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[datetime.datetime]:
         yield from self.values
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> datetime.datetime:
         return self.values[i]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.values)
 
     @property
-    def summary(self):
+    def summary(self) -> str:
         return f"📅 {self.values[0]} ... {self.values[-1]}"
 
 
 class ValuesDates(DatesProvider):
-    def __init__(self, values, **kwargs):
+    def __init__(self, values: List[Union[str, datetime.datetime]], **kwargs: Any) -> None:
         self.values = sorted([as_datetime(_) for _ in values])
         super().__init__(**kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
-    def as_dict(self):
+    def as_dict(self) -> Dict[str, Any]:
         return {"values": self.values[0]}
 
 
 class StartEndDates(DatesProvider):
-    def __init__(self, start, end, frequency=1, **kwargs):
+    def __init__(
+        self,
+        start: Union[str, datetime.datetime],
+        end: Union[str, datetime.datetime],
+        frequency: Union[int, str] = 1,
+        **kwargs: Any,
+    ) -> None:
 
         frequency = frequency_to_timedelta(frequency)
         assert isinstance(frequency, datetime.timedelta), frequency
@@ -148,7 +161,7 @@ class StartEndDates(DatesProvider):
 
         super().__init__(missing=missing)
 
-    def as_dict(self):
+    def as_dict(self) -> Dict[str, Any]:
         return {
             "start": self.start.isoformat(),
             "end": self.end.isoformat(),
@@ -158,7 +171,9 @@ class StartEndDates(DatesProvider):
 
 class Hindcast:
 
-    def __init__(self, date, refdate, hdate, step):
+    def __init__(
+        self, date: datetime.datetime, refdate: datetime.datetime, hdate: datetime.datetime, step: int
+    ) -> None:
         self.date = date
         self.refdate = refdate
         self.hdate = hdate
@@ -166,7 +181,14 @@ class Hindcast:
 
 
 class HindcastsDates(DatesProvider):
-    def __init__(self, start, end, steps=[0], years=20, **kwargs):
+    def __init__(
+        self,
+        start: Union[str, List[str]],
+        end: Union[str, List[str]],
+        steps: List[int] = [0],
+        years: int = 20,
+        **kwargs: Any,
+    ) -> None:
 
         if not isinstance(start, list):
             start = [start]
@@ -232,10 +254,10 @@ class HindcastsDates(DatesProvider):
 
         super().__init__(missing=missing)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
-    def as_dict(self):
+    def as_dict(self) -> Dict[str, Any]:
         return {"hindcasts": self.hindcasts}
 
 

@@ -9,6 +9,10 @@
 
 
 import logging
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 from .coordinates import DateCoordinate
 from .coordinates import EnsembleCoordinate
@@ -32,23 +36,23 @@ LOG = logging.getLogger(__name__)
 
 class CoordinateGuesser:
 
-    def __init__(self, ds):
+    def __init__(self, ds: Any) -> None:
         self.ds = ds
         self._cache = {}
 
     @classmethod
-    def from_flavour(cls, ds, flavour):
+    def from_flavour(cls, ds: Any, flavour: Optional[Dict[str, Any]]) -> "CoordinateGuesser":
         if flavour is None:
             return DefaultCoordinateGuesser(ds)
         else:
             return FlavourCoordinateGuesser(ds, flavour)
 
-    def guess(self, c, coord):
+    def guess(self, c: Any, coord: str) -> Any:
         if coord not in self._cache:
             self._cache[coord] = self._guess(c, coord)
         return self._cache[coord]
 
-    def _guess(self, c, coord):
+    def _guess(self, c: Any, coord: str) -> Any:
 
         name = c.name
         standard_name = getattr(c, "standard_name", "").lower()
@@ -165,7 +169,7 @@ class CoordinateGuesser:
 
         return UnsupportedCoordinate(c)
 
-    def grid(self, coordinates, variable):
+    def grid(self, coordinates: Any, variable: Any) -> Any:
         lat = [c for c in coordinates if c.is_lat]
         lon = [c for c in coordinates if c.is_lon]
 
@@ -180,7 +184,7 @@ class CoordinateGuesser:
 
         raise NotImplementedError(f"Cannot establish grid {coordinates}")
 
-    def _check_dims(self, variable, x_or_lon, y_or_lat):
+    def _check_dims(self, variable: Any, x_or_lon: Any, y_or_lat: Any) -> Tuple[Any, bool]:
 
         x_dims = set(x_or_lon.variable.dims)
         y_dims = set(y_or_lat.variable.dims)
@@ -207,7 +211,7 @@ class CoordinateGuesser:
             f" {y_or_lat.name}{y_or_lat.variable.dims}"
         )
 
-    def _lat_lon_provided(self, lat, lon, variable):
+    def _lat_lon_provided(self, lat: Any, lon: Any, variable: Any) -> Any:
         lat = lat[0]
         lon = lon[0]
 
@@ -224,7 +228,7 @@ class CoordinateGuesser:
         self._cache[(lat.name, lon.name, dim_vars)] = grid
         return grid
 
-    def _x_y_provided(self, x, y, variable):
+    def _x_y_provided(self, x: Any, y: Any, variable: Any) -> Any:
         x = x[0]
         y = y[0]
 
@@ -302,10 +306,12 @@ class CoordinateGuesser:
 
 
 class DefaultCoordinateGuesser(CoordinateGuesser):
-    def __init__(self, ds):
+    def __init__(self, ds: Any) -> None:
         super().__init__(ds)
 
-    def _is_longitude(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_longitude(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[LongitudeCoordinate]:
         if standard_name == "longitude":
             return LongitudeCoordinate(c)
 
@@ -315,7 +321,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if name == "longitude":  # WeatherBench
             return LongitudeCoordinate(c)
 
-    def _is_latitude(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_latitude(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[LatitudeCoordinate]:
         if standard_name == "latitude":
             return LatitudeCoordinate(c)
 
@@ -325,36 +333,45 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if name == "latitude":  # WeatherBench
             return LatitudeCoordinate(c)
 
-    def _is_x(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_x(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[XCoordinate]:
         if standard_name == "projection_x_coordinate":
             return XCoordinate(c)
 
         if name == "x":
             return XCoordinate(c)
 
-    def _is_y(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_y(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[YCoordinate]:
         if standard_name == "projection_y_coordinate":
             return YCoordinate(c)
 
         if name == "y":
             return YCoordinate(c)
 
-    def _is_time(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_time(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[TimeCoordinate]:
         if standard_name == "time":
             return TimeCoordinate(c)
 
-        # That is the output of `cfgrib` for forecasts
         if name == "time" and standard_name != "forecast_reference_time":
             return TimeCoordinate(c)
 
-    def _is_date(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_date(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[DateCoordinate]:
         if standard_name == "forecast_reference_time":
             return DateCoordinate(c)
 
         if name == "forecast_reference_time":
             return DateCoordinate(c)
 
-    def _is_step(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_step(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[StepCoordinate]:
         if standard_name == "forecast_period":
             return StepCoordinate(c)
 
@@ -364,7 +381,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if name == "prediction_timedelta":  # WeatherBench
             return StepCoordinate(c)
 
-    def _is_level(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_level(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[LevelCoordinate]:
         if standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
             return LevelCoordinate(c, "ml")
 
@@ -386,17 +405,19 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if name == "vertical" and units == "hPa":
             return LevelCoordinate(c, "pl")
 
-    def _is_number(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_number(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[EnsembleCoordinate]:
         if name in ("realization", "number"):
             return EnsembleCoordinate(c)
 
 
 class FlavourCoordinateGuesser(CoordinateGuesser):
-    def __init__(self, ds, flavour):
+    def __init__(self, ds: Any, flavour: Dict[str, Any]) -> None:
         super().__init__(ds)
         self.flavour = flavour
 
-    def _match(self, c, key, values):
+    def _match(self, c: Any, key: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
         if key not in self.flavour["rules"]:
             return None
@@ -416,35 +437,51 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
 
         return None
 
-    def _is_longitude(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_longitude(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[LongitudeCoordinate]:
         if self._match(c, "longitude", locals()):
             return LongitudeCoordinate(c)
 
-    def _is_latitude(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_latitude(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[LatitudeCoordinate]:
         if self._match(c, "latitude", locals()):
             return LatitudeCoordinate(c)
 
-    def _is_x(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_x(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[XCoordinate]:
         if self._match(c, "x", locals()):
             return XCoordinate(c)
 
-    def _is_y(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_y(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[YCoordinate]:
         if self._match(c, "y", locals()):
             return YCoordinate(c)
 
-    def _is_time(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_time(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[TimeCoordinate]:
         if self._match(c, "time", locals()):
             return TimeCoordinate(c)
 
-    def _is_step(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_step(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[StepCoordinate]:
         if self._match(c, "step", locals()):
             return StepCoordinate(c)
 
-    def _is_date(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_date(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[DateCoordinate]:
         if self._match(c, "date", locals()):
             return DateCoordinate(c)
 
-    def _is_level(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_level(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[LevelCoordinate]:
 
         rule = self._match(c, "level", locals())
         if rule:
@@ -461,12 +498,14 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
                 ),
             )
 
-    def _levtype(self, c, *, axis, name, long_name, standard_name, units):
+    def _levtype(self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str) -> str:
         if "levtype" in self.flavour:
             return self.flavour["levtype"]
 
         raise NotImplementedError(f"levtype for {c=}")
 
-    def _is_number(self, c, *, axis, name, long_name, standard_name, units):
+    def _is_number(
+        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
+    ) -> Optional[EnsembleCoordinate]:
         if self._match(c, "number", locals()):
             return DateCoordinate(c)

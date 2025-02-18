@@ -12,6 +12,9 @@ from __future__ import annotations
 
 import datetime
 import logging
+from typing import Any
+from typing import Optional
+from typing import Union
 
 import numpy as np
 from earthkit.data.utils.dates import to_datetime
@@ -19,7 +22,7 @@ from earthkit.data.utils.dates import to_datetime
 LOG = logging.getLogger(__name__)
 
 
-def is_scalar(variable):
+def is_scalar(variable: Any) -> bool:
     shape = variable.shape
     if shape == (1,):
         return True
@@ -28,7 +31,7 @@ def is_scalar(variable):
     return False
 
 
-def extract_single_value(variable):
+def extract_single_value(variable: Any) -> Any:
     shape = variable.shape
     if np.issubdtype(variable.values.dtype, np.datetime64):
         if len(shape) == 0:
@@ -64,15 +67,15 @@ class Coordinate:
     is_x = False
     is_y = False
 
-    def __init__(self, variable):
+    def __init__(self, variable: Any) -> None:
         self.variable = variable
         self.scalar = is_scalar(variable)
         self.kwargs = {}  # Used when creating a new coordinate (reduced method)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return 1 if self.scalar else len(self.variable)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
             self.variable.name,
@@ -80,13 +83,13 @@ class Coordinate:
             self.variable.shape,
         )
 
-    def reduced(self, i) -> Coordinate:
+    def reduced(self, i: int) -> Coordinate:
         """Create a new coordinate with a single value
 
         Parameters
         ----------
-        i : int
-            the index of the value to select
+            i: int
+                the index of the value to select
 
         Returns
         -------
@@ -98,7 +101,7 @@ class Coordinate:
             **self.kwargs,
         )
 
-    def index(self, value) -> Coordinate:
+    def index(self, value: Union[Any, list, tuple]) -> Optional[Union[int, list]]:
         """Return the index of the value in the coordinate
 
         Parameters
@@ -119,7 +122,7 @@ class Coordinate:
                 return self._index_multiple(value)
         return self._index_single(value)
 
-    def _index_single(self, value):
+    def _index_single(self, value: Any) -> Optional[int]:
 
         values = self.variable.values
 
@@ -137,7 +140,7 @@ class Coordinate:
 
         return None
 
-    def _index_multiple(self, value):
+    def _index_multiple(self, value: list) -> Optional[list]:
 
         values = self.variable.values
 
@@ -160,15 +163,15 @@ class Coordinate:
         return None
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.variable.name
 
-    def normalise(self, value):
+    def normalise(self, value: Any) -> Any:
         # Subclasses to format values that will be added to the field metadata
         return value
 
     @property
-    def single_value(self):
+    def single_value(self) -> Any:
         return extract_single_value(self.variable)
 
 
@@ -176,7 +179,7 @@ class TimeCoordinate(Coordinate):
     is_time = True
     mars_names = ("valid_datetime",)
 
-    def index(self, time):
+    def index(self, time: datetime.datetime) -> Optional[int]:
         return super().index(np.datetime64(time))
 
 
@@ -184,7 +187,7 @@ class DateCoordinate(Coordinate):
     is_date = True
     mars_names = ("date",)
 
-    def index(self, date):
+    def index(self, date: datetime.datetime) -> Optional[int]:
         return super().index(np.datetime64(date))
 
 
@@ -196,13 +199,13 @@ class StepCoordinate(Coordinate):
 class LevelCoordinate(Coordinate):
     mars_names = ("level", "levelist")
 
-    def __init__(self, variable, levtype):
+    def __init__(self, variable: Any, levtype: str) -> None:
         super().__init__(variable)
         self.levtype = levtype
         # kwargs is used when creating a new coordinate (reduced method)
         self.kwargs = {"levtype": levtype}
 
-    def normalise(self, value):
+    def normalise(self, value: Any) -> Any:
         # Some netcdf have pressue levels in float
         if int(value) == value:
             return int(value)
@@ -213,7 +216,7 @@ class EnsembleCoordinate(Coordinate):
     is_member = True
     mars_names = ("number",)
 
-    def normalise(self, value):
+    def normalise(self, value: Any) -> Any:
         if int(value) == value:
             return int(value)
         return value
@@ -247,11 +250,11 @@ class ScalarCoordinate(Coordinate):
     is_grid = False
 
     @property
-    def mars_names(self):
+    def mars_names(self) -> tuple:
         return (self.variable.name,)
 
 
 class UnsupportedCoordinate(Coordinate):
     @property
-    def mars_names(self):
+    def mars_names(self) -> tuple:
         return (self.variable.name,)

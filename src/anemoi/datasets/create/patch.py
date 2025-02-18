@@ -16,7 +16,7 @@ import zarr
 LOG = logging.getLogger(__name__)
 
 
-def fix_order_by(order_by):
+def fix_order_by(order_by: dict | list) -> list[dict]:
     if isinstance(order_by, list):
         return order_by
 
@@ -29,14 +29,14 @@ def fix_order_by(order_by):
     return lst
 
 
-def fix_history(history):
+def fix_history(history: list[dict]) -> list[dict]:
     new = history
     new = [d for d in new if d.get("action") != "loading_data_start"]
     new = [d for d in new if d.get("action") != "loading_data_end"]
     return new
 
 
-def fix_provenance(provenance):
+def fix_provenance(provenance: dict) -> dict:
     if "python" not in provenance:
         provenance["python"] = provenance["platform"]["python_version"]
 
@@ -79,7 +79,7 @@ def fix_provenance(provenance):
     return provenance
 
 
-def apply_patch(path, verbose=True, dry_run=False):
+def apply_patch(path: str, verbose: bool = True, dry_run: bool = False) -> None:
     LOG.debug("====================")
     LOG.debug(f"Patching {path}")
     LOG.debug("====================")

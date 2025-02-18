@@ -8,7 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
+import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.data.stores import name_to_zarr_store
@@ -19,7 +25,7 @@ from .fieldlist import XarrayFieldList
 LOG = logging.getLogger(__name__)
 
 
-def check(what, ds, paths, **kwargs):
+def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
     count = 1
     for k, v in kwargs.items():
         if isinstance(v, (tuple, list)):
@@ -29,9 +35,17 @@ def check(what, ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
-def load_one(emoji, context, dates, dataset, *, options={}, flavour=None, patch=None, **kwargs):
-    import xarray as xr
-
+def load_one(
+    emoji: str,
+    context: Any,
+    dates: List[str],
+    dataset: Union[str, xr.Dataset],
+    *,
+    options: Dict[str, Any] = {},
+    flavour: Optional[str] = None,
+    patch: Optional[Any] = None,
+    **kwargs: Any,
+) -> MultiFieldList:
     """
     We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
     zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
@@ -79,7 +93,7 @@ def load_one(emoji, context, dates, dataset, *, options={}, flavour=None, patch=
     return result
 
 
-def load_many(emoji, context, dates, pattern, **kwargs):
+def load_many(emoji: str, context: Any, dates: List[str], pattern: str, **kwargs: Any) -> MultiFieldList:
 
     result = []
 
@@ -89,5 +103,5 @@ def load_many(emoji, context, dates, pattern, **kwargs):
     return MultiFieldList(result)
 
 
-def execute(context, dates, url, *args, **kwargs):
+def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> MultiFieldList:
     return load_many("🌐", context, dates, url, *args, **kwargs)

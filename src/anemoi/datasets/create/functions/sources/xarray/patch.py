@@ -9,11 +9,14 @@
 
 
 import logging
+from typing import Any
+from typing import Dict
+from typing import List
 
 LOG = logging.getLogger(__name__)
 
 
-def patch_attributes(ds, attributes):
+def patch_attributes(ds: Any, attributes: Dict[str, Dict[str, Any]]) -> Any:
     for name, value in attributes.items():
         variable = ds[name]
         variable.attrs.update(value)
@@ -21,7 +24,7 @@ def patch_attributes(ds, attributes):
     return ds
 
 
-def patch_coordinates(ds, coordinates):
+def patch_coordinates(ds: Any, coordinates: List[str]) -> Any:
     for name in coordinates:
         ds = ds.assign_coords({name: ds[name]})
 
@@ -34,7 +37,7 @@ PATCHES = {
 }
 
 
-def patch_dataset(ds, patch):
+def patch_dataset(ds: Any, patch: Dict[str, Dict[str, Any]]) -> Any:
     for what, values in patch.items():
         if what not in PATCHES:
             raise ValueError(f"Unknown patch type {what!r}")

@@ -10,9 +10,14 @@
 
 import json
 import logging
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 import yaml
-from earthkit.data.core.fieldlist import FieldList
+from earthkit.data import FieldList
 
 from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
@@ -25,19 +30,19 @@ LOG = logging.getLogger(__name__)
 
 
 class XarrayFieldList(FieldList):
-    def __init__(self, ds, variables):
-        self.ds = ds
-        self.variables = variables.copy()
-        self.total_length = sum(v.length for v in variables)
+    def __init__(self, ds: Any, variables: List[Variable]) -> None:
+        self.ds: Any = ds
+        self.variables: List[Variable] = variables.copy()
+        self.total_length: int = sum(v.length for v in variables)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"XarrayFieldList({self.total_length})"
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.total_length
 
-    def __getitem__(self, i):
-        k = i
+    def __getitem__(self, i: int) -> Any:
+        k: int = i
 
         if i < 0:
             i = self.total_length + i
@@ -50,12 +55,14 @@ class XarrayFieldList(FieldList):
         raise IndexError(k)
 
     @classmethod
-    def from_xarray(cls, ds, *, flavour=None, patch=None):
+    def from_xarray(
+        cls, ds: Any, *, flavour: Optional[Union[str, Dict[str, Any]]] = None, patch: Optional[Dict[str, Any]] = None
+    ) -> "XarrayFieldList":
 
         if patch is not None:
             ds = patch_dataset(ds, patch)
 
-        variables = []
+        variables: List[Variable] = []
 
         if isinstance(flavour, str):
             with open(flavour) as f:
@@ -64,9 +71,9 @@ class XarrayFieldList(FieldList):
                 else:
                     flavour = json.load(f)
 
-        if isinstance(flavour, dict):
-            flavour_coords = [coords["name"] for coords in flavour["rules"].values()]
-            ds_dims = [dim for dim in ds._dims]
+        if isinstance(flavour, Dict):
+            flavour_coords: List[str] = [coords["name"] for coords in flavour["rules"].values()]
+            ds_dims: List[str] = [dim for dim in ds._dims]
             for dim in ds_dims:
                 if dim in flavour_coords and dim not in ds._coord_names:
                     ds = ds.assign_coords({dim: ds[dim]})
@@ -75,10 +82,10 @@ class XarrayFieldList(FieldList):
 
         guess = CoordinateGuesser.from_flavour(ds, flavour)
 
-        skip = set()
+        skip: set = set()
 
-        def _skip_attr(v, attr_name):
-            attr_val = getattr(v, attr_name, "")
+        def _skip_attr(v: Any, attr_name: str) -> None:
+            attr_val: str = getattr(v, attr_name, "")
             if isinstance(attr_val, str):
                 skip.update(attr_val.split(" "))
 
@@ -97,7 +104,7 @@ class XarrayFieldList(FieldList):
                 continue
 
             variable = ds[name]
-            coordinates = []
+            coordinates: List[Any] = []
 
             for coord in variable.coords:
 
@@ -108,7 +115,7 @@ class XarrayFieldList(FieldList):
                     c.is_dim = False
                 coordinates.append(c)
 
-            grid_coords = sum(1 for c in coordinates if c.is_grid and c.is_dim)
+            grid_coords: int = sum(1 for c in coordinates if c.is_grid and c.is_dim)
             assert grid_coords <= 2
 
             if grid_coords < 2:
@@ -128,7 +135,7 @@ class XarrayFieldList(FieldList):
 
         return cls(ds, variables)
 
-    def sel(self, **kwargs) -> FieldList:
+    def sel(self, **kwargs: Any) -> FieldList:
         """Override the FieldList's sel method
 
         Parameters
@@ -151,8 +158,8 @@ class XarrayFieldList(FieldList):
             So we get an extra chance to filter the fields by the metadata.
         """
 
-        variables = []
-        count = 0
+        variables: List[Variable] = []
+        count: int = 0
 
         for v in self.variables:
 
@@ -163,7 +170,7 @@ class XarrayFieldList(FieldList):
 
             if match:
                 count += 1
-                missing = {}
+                missing: Dict[str, Any] = {}
 
                 # Select from the variable's coordinates (time, level, number, ....)
                 # This may return a new variable with a isel() slice of the selection

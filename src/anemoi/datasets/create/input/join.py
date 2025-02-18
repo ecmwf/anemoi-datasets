@@ -9,6 +9,9 @@
 
 import logging
 from functools import cached_property
+from typing import List
+
+from earthkit.data import FieldList
 
 from .action import Action
 from .action import action_factory
@@ -24,7 +27,9 @@ LOG = logging.getLogger(__name__)
 
 
 class JoinResult(Result):
-    def __init__(self, context, action_path, group_of_dates, results, **kwargs):
+    def __init__(
+        self, context: object, action_path: list, group_of_dates: object, results: List[Result], **kwargs
+    ) -> None:
         super().__init__(context, action_path, group_of_dates)
         self.results = [r for r in results if not r.empty]
 
@@ -32,27 +37,27 @@ class JoinResult(Result):
     @assert_fieldlist
     @notify_result
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> FieldList:
         ds = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
         return _tidy(ds)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         content = "\n".join([str(i) for i in self.results])
         return super().__repr__(content)
 
 
 class JoinAction(Action):
-    def __init__(self, context, action_path, *configs):
+    def __init__(self, context: object, action_path: list, *configs: dict) -> None:
         super().__init__(context, action_path, *configs)
         self.actions = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         content = "\n".join([str(i) for i in self.actions])
         return super().__repr__(content)
 
     @trace_select
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: object) -> JoinResult:
         results = [a.select(group_of_dates) for a in self.actions]
         return JoinResult(self.context, self.action_path, group_of_dates, results)

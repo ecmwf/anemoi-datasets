@@ -11,11 +11,21 @@
 # A collection of functions to support pytest testing
 
 import logging
+from typing import Any
+from typing import List
+from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
 
-def assert_field_list(fs, size=None, start=None, end=None, constant=False, skip=None):
+def assert_field_list(
+    fs: List[Any],
+    size: Optional[int] = None,
+    start: Optional[Any] = None,
+    end: Optional[Any] = None,
+    constant: bool = False,
+    skip: Optional[Any] = None,
+) -> None:
     import numpy as np
 
     if size is None:

@@ -13,6 +13,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+from typing import Any
 
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
@@ -22,7 +23,7 @@ from . import Command
 LOG = logging.getLogger(__name__)
 
 
-def task(what, options, *args, **kwargs):
+def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
     """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
 
     now = datetime.datetime.now()
@@ -45,7 +46,7 @@ class Create(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
         command_parser.add_argument(
             "--overwrite",
             action="store_true",
@@ -63,7 +64,7 @@ class Create(Command):
         group.add_argument("--processes", help="Use `n` parallel process workers.", type=int, default=0)
         command_parser.add_argument("--trace", action="store_true")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
 
         now = time.time()
         if args.threads + args.processes:
@@ -72,7 +73,7 @@ class Create(Command):
             self.serial_create(args)
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
-    def serial_create(self, args):
+    def serial_create(self, args: Any) -> None:
 
         options = vars(args)
         options.pop("command")
@@ -92,7 +93,7 @@ class Create(Command):
         task("cleanup", options)
         task("verify", options)
 
-    def parallel_create(self, args):
+    def parallel_create(self, args: Any) -> None:
         """Some modules, like fsspec do not work well with fork()
         Other modules may not be thread safe. So we implement
         parallel loadining using multiprocessing before any

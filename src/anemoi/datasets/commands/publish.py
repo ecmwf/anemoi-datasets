@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import Any
 
 from . import Command
 
@@ -23,10 +24,10 @@ class Publish(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: Any) -> None:
         parser.add_argument("path", help="Path of the dataset to publish.")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
         try:
             from anemoi.registry import publish_dataset
         except ImportError:

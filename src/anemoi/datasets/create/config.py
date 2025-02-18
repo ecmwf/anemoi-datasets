@@ -11,6 +11,7 @@ import datetime
 import logging
 import os
 from copy import deepcopy
+from typing import Any
 
 import yaml
 from anemoi.utils.config import DotDict
@@ -22,13 +23,13 @@ from anemoi.datasets.dates.groups import Groups
 LOG = logging.getLogger(__name__)
 
 
-def _get_first_key_if_dict(x):
+def _get_first_key_if_dict(x: str | dict) -> str:
     if isinstance(x, str):
         return x
     return list(x.keys())[0]
 
 
-def ensure_element_in_list(lst, elt, index):
+def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
     if elt in lst:
         assert lst[index] == elt
         return lst
@@ -41,7 +42,7 @@ def ensure_element_in_list(lst, elt, index):
     return lst[:index] + [elt] + lst[index:]
 
 
-def check_dict_value_and_set(dic, key, value):
+def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
     if key in dic:
         if dic[key] == value:
             return
@@ -50,7 +51,7 @@ def check_dict_value_and_set(dic, key, value):
     dic[key] = value
 
 
-def resolve_includes(config):
+def resolve_includes(config: dict | list) -> dict | list:
     if isinstance(config, list):
         return [resolve_includes(c) for c in config]
     if isinstance(config, dict):
@@ -62,7 +63,7 @@ def resolve_includes(config):
 
 
 class Config(DotDict):
-    def __init__(self, config=None, **kwargs):
+    def __init__(self, config: str | dict = None, **kwargs):
         if isinstance(config, str):
             self.config_path = os.path.realpath(config)
             config = load_any_dict_format(config)
@@ -74,7 +75,7 @@ class Config(DotDict):
 
 
 class OutputSpecs:
-    def __init__(self, config, parent):
+    def __init__(self, config: Config, parent: Any):
         self.config = config
         if "order_by" in config:
             assert isinstance(config.order_by, dict), config.order_by
@@ -82,15 +83,15 @@ class OutputSpecs:
         self.parent = parent
 
     @property
-    def dtype(self):
+    def dtype(self) -> str:
         return self.config.dtype
 
     @property
-    def order_by_as_list(self):
+    def order_by_as_list(self) -> list[dict]:
         # this is used when an ordered dict is not supported (e.g. zarr attributes)
         return [{k: v} for k, v in self.config.order_by.items()]
 
-    def get_chunking(self, coords):
+    def get_chunking(self, coords: dict) -> tuple:
         user = deepcopy(self.config.chunking)
         chunks = []
         for k, v in coords.items():
@@ -105,24 +106,24 @@ class OutputSpecs:
         return tuple(chunks)
 
     @property
-    def order_by(self):
+    def order_by(self) -> dict:
         return self.config.order_by
 
     @property
-    def remapping(self):
+    def remapping(self) -> dict:
         return self.config.remapping
 
     @property
-    def flatten_grid(self):
+    def flatten_grid(self) -> bool:
         return self.config.flatten_grid
 
     @property
-    def statistics(self):
+    def statistics(self) -> str:
         return self.config.statistics
 
 
 class LoadersConfig(Config):
-    def __init__(self, config, *args, **kwargs):
+    def __init__(self, config: dict, *args, **kwargs):
 
         super().__init__(config, *args, **kwargs)
 
@@ -178,11 +179,11 @@ class LoadersConfig(Config):
 
         self.reading_chunks = self.get("reading_chunks")
 
-    def get_serialisable_dict(self):
+    def get_serialisable_dict(self) -> dict:
         return _prepare_serialisation(self)
 
 
-def _prepare_serialisation(o):
+def _prepare_serialisation(o: Any) -> Any:
     if isinstance(o, dict):
         dic = {}
         for k, v in o.items():
@@ -212,7 +213,7 @@ def _prepare_serialisation(o):
     return str(o)
 
 
-def set_to_test_mode(cfg):
+def set_to_test_mode(cfg: dict) -> None:
     NUMBER_OF_DATES = 4
 
     LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
@@ -251,7 +252,7 @@ def set_to_test_mode(cfg):
     set_element_to_test(cfg)
 
 
-def loader_config(config, is_test=False):
+def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     config = Config(config)
     if is_test:
         set_to_test_mode(config)
@@ -273,5 +274,5 @@ def loader_config(config, is_test=False):
     return copy
 
 
-def build_output(*args, **kwargs):
+def build_output(*args, **kwargs) -> OutputSpecs:
     return OutputSpecs(*args, **kwargs)

@@ -9,6 +9,9 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
+from typing import Optional
 
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -16,15 +19,15 @@ from earthkit.meteo.wind.array import polar_to_xy
 
 
 class NewDataField:
-    def __init__(self, field, data, new_name):
+    def __init__(self, field: Any, data: Any, new_name: str) -> None:
         self.field = field
         self.data = data
         self.new_name = new_name
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -33,11 +36,19 @@ class NewDataField:
             return self.new_name
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.field, name)
 
 
-def execute(context, input, wind_speed, wind_dir, u_component="u", v_component="v", in_radians=False):
+def execute(
+    context: Any,
+    input: List[Any],
+    wind_speed: str,
+    wind_dir: str,
+    u_component: str = "u",
+    v_component: str = "v",
+    in_radians: bool = False,
+) -> FieldArray:
 
     result = FieldArray()
 

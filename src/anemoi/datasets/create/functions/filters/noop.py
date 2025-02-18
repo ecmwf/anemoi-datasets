@@ -7,6 +7,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import Any
+from typing import List
 
-def execute(context, input, *args, **kwargs):
+
+def execute(context: Any, input: List[Any], *args: Any, **kwargs: Any) -> List[Any]:
     return input

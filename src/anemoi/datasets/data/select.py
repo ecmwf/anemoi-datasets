@@ -10,7 +10,16 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
+import numpy as np
+
+from .dataset import Dataset
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -26,7 +35,7 @@ LOG = logging.getLogger(__name__)
 class Select(Forwards):
     """Select a subset of the variables."""
 
-    def __init__(self, dataset, indices, reason):
+    def __init__(self, dataset: Dataset, indices: List[int], reason: Dict[str, Any]) -> None:
 
         reason = reason.copy()
 
@@ -35,7 +44,7 @@ class Select(Forwards):
             reason.update(dataset.reason)
             dataset = dataset.dataset
 
-        self.dataset = dataset
+        self.dataset: Dataset = dataset
         self.indices = list(indices)
         assert len(self.indices) > 0
         self.reason = reason or {"indices": self.indices}
@@ -43,15 +52,15 @@ class Select(Forwards):
         # Forward other properties to the main dataset
         super().__init__(dataset)
 
-    def clone(self, dataset):
+    def clone(self, dataset: Dataset) -> "Select":
         return self.__class__(dataset, self.indices, self.reason).mutate()
 
-    def mutate(self):
+    def mutate(self) -> Dataset:
         return self.forward.swap_with_parent(parent=self)
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: Tuple) -> np.ndarray:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
         result = self.dataset[index]
@@ -61,7 +70,7 @@ class Select(Forwards):
         return result
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -72,46 +81,46 @@ class Select(Forwards):
         return row[self.indices]
 
     @cached_property
-    def shape(self):
+    def shape(self) -> Tuple[int, ...]:
         return (len(self), len(self.indices)) + self.dataset.shape[2:]
 
     @cached_property
-    def variables(self):
+    def variables(self) -> List[str]:
         return [self.dataset.variables[i] for i in self.indices]
 
     @cached_property
-    def variables_metadata(self):
+    def variables_metadata(self) -> Dict[str, Any]:
         return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}
 
     @cached_property
-    def name_to_index(self):
+    def name_to_index(self) -> Dict[str, int]:
         return {k: i for i, k in enumerate(self.variables)}
 
     @cached_property
-    def statistics(self):
+    def statistics(self) -> Dict[str, np.ndarray]:
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
-    def statistics_tendencies(self, delta=None):
+    def statistics_tendencies(self, delta: Optional[int] = None) -> Dict[str, Any]:
         if delta is None:
             delta = self.frequency
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
-    def metadata_specific(self, **kwargs):
+    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
         return super().metadata_specific(indices=self.indices, **kwargs)
 
-    def source(self, index):
+    def source(self, index: int) -> Source:
         return Source(self, index, self.dataset.source(self.indices[index]))
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.dataset.tree()], **self.reason)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         # return dict(indices=self.indices)
         return dict(reason=self.reason)
 
 
 class Rename(Forwards):
-    def __init__(self, dataset, rename):
+    def __init__(self, dataset: Dataset, rename: Dict[str, str]) -> None:
         super().__init__(dataset)
         for n in rename:
             assert n in dataset.variables, n
@@ -122,19 +131,19 @@ class Rename(Forwards):
         self.rename = rename
 
     @property
-    def variables(self):
+    def variables(self) -> List[str]:
         return self._variables
 
     @property
-    def variables_metadata(self):
+    def variables_metadata(self) -> Dict[str, Any]:
         return self._variables_metadata
 
     @cached_property
-    def name_to_index(self):
+    def name_to_index(self) -> Dict[str, int]:
         return {k: i for i, k in enumerate(self.variables)}
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], rename=self.rename)
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(rename=self.rename)

@@ -15,10 +15,13 @@ import time
 import uuid
 import warnings
 from functools import cached_property
+from typing import Any
+from typing import Optional
 
 import cftime
 import numpy as np
 import tqdm
+import zarr
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -55,7 +58,7 @@ LOG = logging.getLogger(__name__)
 VERSION = "0.30"
 
 
-def json_tidy(o):
+def json_tidy(o: Any) -> Any:
 
     if isinstance(o, datetime.datetime):
         return o.isoformat()
@@ -85,7 +88,9 @@ def json_tidy(o):
     raise TypeError(f"{repr(o)} is not JSON serializable {type(o)}")
 
 
-def build_statistics_dates(dates, start, end):
+def build_statistics_dates(
+    dates: list[datetime.datetime], start: datetime.datetime, end: datetime.datetime
+) -> tuple[str, str]:
     """Compute the start and end dates for the statistics, based on :
     - The start and end dates in the config
     - The default statistics dates convention
@@ -109,7 +114,7 @@ def build_statistics_dates(dates, start, end):
     return (start.isoformat(), end.isoformat())
 
 
-def _path_readable(path):
+def _path_readable(path: str) -> bool:
     import zarr
 
     try:
@@ -120,14 +125,14 @@ def _path_readable(path):
 
 
 class Dataset:
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
 
         _, ext = os.path.splitext(self.path)
         if ext != ".zarr":
             raise ValueError(f"Unsupported extension={ext} for path={self.path}")
 
-    def add_dataset(self, mode="r+", **kwargs):
+    def add_dataset(self, mode: str = "r+", **kwargs) -> zarr.Array:
         import zarr
 
         z = zarr.open(self.path, mode=mode)
@@ -135,7 +140,7 @@ class Dataset:
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
-    def update_metadata(self, **kwargs):
+    def update_metadata(self, **kwargs) -> None:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
@@ -148,16 +153,16 @@ class Dataset:
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
     @cached_property
-    def anemoi_dataset(self):
+    def anemoi_dataset(self) -> Any:
         return open_dataset(self.path)
 
     @cached_property
-    def zarr_metadata(self):
+    def zarr_metadata(self) -> dict:
         import zarr
 
         return dict(zarr.open(self.path, mode="r").attrs)
 
-    def print_info(self):
+    def print_info(self) -> None:
         import zarr
 
         z = zarr.open(self.path, mode="r")
@@ -166,13 +171,20 @@ class Dataset:
         except Exception as e:
             LOG.info(e)
 
-    def get_zarr_chunks(self):
+    def get_zarr_chunks(self) -> tuple:
         import zarr
 
         z = zarr.open(self.path, mode="r")
         return z["data"].chunks
 
-    def check_name(self, resolution, dates, frequency, raise_exception=True, is_test=False):
+    def check_name(
+        self,
+        resolution: str,
+        dates: list[datetime.datetime],
+        frequency: datetime.timedelta,
+        raise_exception: bool = True,
+        is_test: bool = False,
+    ) -> None:
         basename, _ = os.path.splitext(os.path.basename(self.path))
         try:
             DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
@@ -182,7 +194,7 @@ class Dataset:
             else:
                 LOG.warning(f"Dataset name error: {e}")
 
-    def get_main_config(self):
+    def get_main_config(self) -> Any:
         """Returns None if the config is not found."""
         import zarr
 
@@ -191,7 +203,7 @@ class Dataset:
 
 
 class WritableDataset(Dataset):
-    def __init__(self, path):
+    def __init__(self, path: str):
         super().__init__(path)
         self.path = path
 
@@ -200,14 +212,14 @@ class WritableDataset(Dataset):
         self.z = zarr.open(self.path, mode="r+")
 
     @cached_property
-    def data_array(self):
+    def data_array(self) -> zarr.Array:
         import zarr
 
         return zarr.open(self.path, mode="r+")["data"]
 
 
 class NewDataset(Dataset):
-    def __init__(self, path, overwrite=False):
+    def __init__(self, path: str, overwrite: bool = False):
         super().__init__(path)
         self.path = path
 
@@ -220,7 +232,7 @@ class NewDataset(Dataset):
 class Actor:  # TODO: rename to Creator
     dataset_class = WritableDataset
 
-    def __init__(self, path, cache=None):
+    def __init__(self, path: str, cache: Optional[str] = None):
         # Catch all floating point errors, including overflow, sqrt(<0), etc
         np.seterr(all="raise", under="warn")
 
@@ -228,23 +240,23 @@ class Actor:  # TODO: rename to Creator
         self.cache = cache
         self.dataset = self.dataset_class(self.path)
 
-    def run(self):
+    def run(self) -> None:
         # to be implemented in the sub-classes
         raise NotImplementedError()
 
-    def update_metadata(self, **kwargs):
+    def update_metadata(self, **kwargs) -> None:
         self.dataset.update_metadata(**kwargs)
 
-    def _cache_context(self):
+    def _cache_context(self) -> Any:
         from .utils import cache_context
 
         return cache_context(self.cache)
 
-    def check_unkown_kwargs(self, kwargs):
+    def check_unkown_kwargs(self, kwargs: dict) -> None:
         # remove this latter
         LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
 
-    def read_dataset_metadata(self, path):
+    def read_dataset_metadata(self, path: str) -> None:
         ds = open_dataset(path)
         self.dataset_shape = ds.shape
         self.variables_names = ds.variables
@@ -269,21 +281,21 @@ class Actor:  # TODO: rename to Creator
 
 
 class Patch(Actor):
-    def __init__(self, path, options=None, **kwargs):
+    def __init__(self, path: str, options: dict = None, **kwargs):
         self.path = path
         self.options = options or {}
 
-    def run(self):
+    def run(self) -> None:
         from .patch import apply_patch
 
         apply_patch(self.path, **self.options)
 
 
 class Size(Actor):
-    def __init__(self, path, **kwargs):
+    def __init__(self, path: str, **kwargs):
         super().__init__(path)
 
-    def run(self):
+    def run(self) -> None:
         from .size import compute_directory_sizes
 
         metadata = compute_directory_sizes(self.path)
@@ -302,7 +314,7 @@ class Size(Actor):
 
 class HasRegistryMixin:
     @cached_property
-    def registry(self):
+    def registry(self) -> Any:
         from .zarr import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
@@ -310,13 +322,13 @@ class HasRegistryMixin:
 
 class HasStatisticTempMixin:
     @cached_property
-    def tmp_statistics(self):
+    def tmp_statistics(self) -> TmpStatistics:
         directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
         return TmpStatistics(directory)
 
 
 class HasElementForDataMixin:
-    def create_elements(self, config):
+    def create_elements(self, config: Any) -> None:
 
         assert self.registry
         assert self.tmp_statistics
@@ -332,7 +344,7 @@ class HasElementForDataMixin:
         LOG.info("%s", self.input)
 
 
-def build_input_(main_config, output_config):
+def build_input_(main_config: Any, output_config: Any) -> Any:
 
     builder = build_input(
         main_config.input,
@@ -352,15 +364,15 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
     def __init__(
         self,
-        path,
-        config,
-        check_name=False,
-        overwrite=False,
-        use_threads=False,
-        statistics_temp_dir=None,
-        progress=None,
-        test=False,
-        cache=None,
+        path: str,
+        config: dict,
+        check_name: bool = False,
+        overwrite: bool = False,
+        use_threads: bool = False,
+        statistics_temp_dir: Optional[str] = None,
+        progress: Any = None,
+        test: bool = False,
+        cache: Optional[str] = None,
         **kwargs,
     ):
         if _path_readable(path) and not overwrite:
@@ -390,11 +402,11 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
-    def run(self):
+    def run(self) -> int:
         with self._cache_context():
             return self._run()
 
-    def _run(self):
+    def _run(self) -> int:
         """Create an empty dataset of the right final shape
 
         Read a small part of the data to get the shape of the data and the resolution and more metadata.
@@ -443,9 +455,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata = {}
         metadata["uuid"] = str(uuid.uuid4())
 
-        metadata.update(self.main_config.get("add_metadata", {}))
-
-        metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
+        metadata.update(self.main_config.get_serialisable_dict())
 
         recipe = sanitise(self.main_config.get_serialisable_dict())
 
@@ -548,7 +558,14 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     def __init__(
-        self, path, parts=None, use_threads=False, statistics_temp_dir=None, progress=None, cache=None, **kwargs
+        self,
+        path: str,
+        parts: Optional[str] = None,
+        use_threads: bool = False,
+        statistics_temp_dir: Optional[str] = None,
+        progress: Any = None,
+        cache: Optional[str] = None,
+        **kwargs,
     ):
         super().__init__(path, cache=cache)
         self.use_threads = use_threads
@@ -567,11 +584,11 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
 
-    def run(self):
+    def run(self) -> None:
         with self._cache_context():
             self._run()
 
-    def _run(self):
+    def _run(self) -> None:
         for igroup, group in enumerate(self.groups):
             if not self.chunk_filter(igroup):
                 continue
@@ -582,7 +599,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(group_of_dates=group)
+            result = self.input.select(group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -595,7 +612,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         self.dataset.print_info()
 
-    def load_result(self, result):
+    def load_result(self, result: Any) -> None:
         # There is one cube to load for each result.
         dates = list(result.group_of_dates)
 
@@ -656,14 +673,14 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         array.flush()
         LOG.info("Flushed data array")
 
-    def _get_allow_nans(self):
+    def _get_allow_nans(self) -> bool | list:
         config = self.main_config
         if "allow_nans" in config.build:
             return config.build.allow_nans
 
         return config.statistics.get("allow_nans", [])
 
-    def load_cube(self, cube, array):
+    def load_cube(self, cube: Any, array: ViewCacheArray) -> None:
         # There are several cubelets for each cube
         start = time.time()
         load = 0
@@ -715,17 +732,23 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 
 class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
-    def __init__(self, path, statistics_temp_dir=None, delta=[], use_threads=False, **kwargs):
+    def __init__(
+        self,
+        path: str,
+        statistics_temp_dir: Optional[str] = None,
+        delta: list = [],
+        use_threads: bool = False,
+        **kwargs,
+    ):
         super().__init__(path)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
-        self.additinon_temp_dir = statistics_temp_dir
         self.actors = [
             _InitAdditions(path, delta=d, use_threads=use_threads, statistics_temp_dir=statistics_temp_dir)
             for d in delta
         ]
 
-    def run(self):
+    def run(self) -> None:
         self.tmp_statistics.delete()
         self.registry.clean()
         for actor in self.actors:
@@ -733,16 +756,16 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
 
 
 class Verify(Actor):
-    def __init__(self, path, **kwargs):
+    def __init__(self, path: str, **kwargs):
         super().__init__(path)
 
-    def run(self):
+    def run(self) -> None:
         LOG.info(f"Verifying dataset at {self.path}")
         LOG.info(str(self.dataset.anemoi_dataset))
 
 
 class AdditionsMixin:
-    def skip(self):
+    def skip(self) -> bool:
         frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
         if not self.delta.total_seconds() % frequency.total_seconds() == 0:
             LOG.debug(f"Delta {self.delta} is not a multiple of frequency {frequency}. Skipping.")
@@ -755,13 +778,13 @@ class AdditionsMixin:
         return False
 
     @cached_property
-    def tmp_storage_path(self):
+    def tmp_storage_path(self) -> str:
         name = "storage_for_additions"
         if self.delta:
             name += frequency_to_string(self.delta)
         return os.path.join(f"{self.path}.{name}.tmp")
 
-    def read_from_dataset(self):
+    def read_from_dataset(self) -> None:
         self.variables = self.dataset.anemoi_dataset.variables
         self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
         start = self.dataset.zarr_metadata["statistics_start_date"]
@@ -780,11 +803,11 @@ class AdditionsMixin:
 
 
 class DeltaDataset:
-    def __init__(self, ds, idelta):
+    def __init__(self, ds: Any, idelta: int):
         self.ds = ds
         self.idelta = idelta
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> Any:
         j = i - self.idelta
         if j < 0:
             raise MissingDateError(f"Missing date {j}")
@@ -792,13 +815,13 @@ class DeltaDataset:
 
 
 class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
-    def __init__(self, path, delta, use_threads=False, progress=None, **kwargs):
+    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
         self.use_threads = use_threads
         self.progress = progress
 
-    def run(self):
+    def run(self) -> None:
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
             return
@@ -808,14 +831,22 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage.create()
         LOG.info(f"Dataset {self.tmp_storage_path} additions initialized.")
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         self.tmp_storage.delete()
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
 class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
-    def __init__(self, path, delta, parts=None, use_threads=False, progress=None, **kwargs):
+    def __init__(
+        self,
+        path: str,
+        delta: str,
+        parts: Optional[str] = None,
+        use_threads: bool = False,
+        progress: Any = None,
+        **kwargs,
+    ):
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
         self.use_threads = use_threads
@@ -825,7 +856,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         LOG.info(f"Writing in {self.tmp_storage_path}")
 
-    def run(self):
+    def run(self) -> None:
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
             return
@@ -846,7 +877,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage.flush()
         LOG.debug(f"Dataset {self.path} additions run.")
 
-    def allow_nans(self):
+    def allow_nans(self) -> bool:
         if self.dataset.anemoi_dataset.metadata.get("allow_nans", False):
             return True
 
@@ -858,7 +889,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
 
 
 class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
-    def __init__(self, path, delta, use_threads=False, progress=None, **kwargs):
+    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
         self.use_threads = use_threads
@@ -867,7 +898,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         LOG.info(f"Reading from {self.tmp_storage_path}.")
 
-    def run(self):
+    def run(self) -> None:
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}.")
             return
@@ -969,7 +1000,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self._write(self.summary)
         self.tmp_storage.delete()
 
-    def _write(self, summary):
+    def _write(self, summary: Summary) -> None:
         for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             name = f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
             self.dataset.add_dataset(name=name, array=summary[k], dimensions=("variable",))
@@ -977,7 +1008,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.debug(f"Wrote additions in {self.path}")
 
 
-def multi_addition(cls):
+def multi_addition(cls: type) -> type:
     class MultiAdditions:
         def __init__(self, *args, **kwargs):
             self.actors = []
@@ -988,7 +1019,7 @@ def multi_addition(cls):
             if not self.actors:
                 LOG.warning("No delta found in kwargs, no additions will be computed.")
 
-        def run(self):
+        def run(self) -> None:
             for actor in self.actors:
                 actor.run()
 
@@ -1001,13 +1032,20 @@ FinaliseAdditions = multi_addition(_FinaliseAdditions)
 
 
 class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
-    def __init__(self, path, use_threads=False, statistics_temp_dir=None, progress=None, **kwargs):
+    def __init__(
+        self,
+        path: str,
+        use_threads: bool = False,
+        statistics_temp_dir: Optional[str] = None,
+        progress: Any = None,
+        **kwargs,
+    ):
         super().__init__(path)
         self.use_threads = use_threads
         self.progress = progress
         self.statistics_temp_dir = statistics_temp_dir
 
-    def run(self):
+    def run(self) -> None:
         start, end = (
             self.dataset.zarr_metadata["statistics_start_date"],
             self.dataset.zarr_metadata["statistics_end_date"],
@@ -1034,7 +1072,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(f"Wrote statistics in {self.path}")
 
     @cached_property
-    def allow_nans(self):
+    def allow_nans(self) -> bool:
         import zarr
 
         z = zarr.open(self.path, mode="r")
@@ -1048,12 +1086,12 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         return True
 
 
-def chain(tasks):
+def chain(tasks: list) -> type:
     class Chain(Actor):
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
-        def run(self):
+        def run(self) -> None:
             for cls in tasks:
                 t = cls(**self.kwargs)
                 t.run()
@@ -1061,7 +1099,7 @@ def chain(tasks):
     return Chain
 
 
-def creator_factory(name, trace=None, **kwargs):
+def creator_factory(name: str, trace: Optional[str] = None, **kwargs) -> Any:
     if trace:
 
         enable_trace(trace)

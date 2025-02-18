@@ -10,10 +10,17 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 
 from . import MissingDateError
+from .dataset import Dataset
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
@@ -35,7 +42,7 @@ class Merge(Combined):
     # gives
     # d0 d1 d2 d3 ...
 
-    def __init__(self, datasets, allow_gaps_in_dates=False):
+    def __init__(self, datasets: List[Dataset], allow_gaps_in_dates: bool = False) -> None:
         super().__init__(datasets)
 
         self.allow_gaps_in_dates = allow_gaps_in_dates
@@ -93,21 +100,21 @@ class Merge(Combined):
         self._indices = np.array(indices)
         self._frequency = frequency  # .astype(object)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._dates)
 
     @property
-    def dates(self):
+    def dates(self) -> np.ndarray:
         return self._dates
 
     @property
-    def frequency(self):
+    def frequency(self) -> np.timedelta64:
         return self._frequency
 
     @cached_property
-    def missing(self):
+    def missing(self) -> Set[int]:
         # TODO: optimize
-        result = set()
+        result: Set[int] = set()
 
         for i, (dataset, row) in enumerate(self._indices):
             if dataset == self._missing_index:
@@ -119,26 +126,26 @@ class Merge(Combined):
 
         return result
 
-    def check_same_lengths(self, d1, d2):
+    def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         # Turned off because we are concatenating along the first axis
         pass
 
-    def check_same_dates(self, d1, d2):
+    def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         # Turned off because we are concatenating along the dates axis
         pass
 
-    def check_compatibility(self, d1, d2):
+    def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         super().check_compatibility(d1, d2)
         self.check_same_sub_shapes(d1, d2, drop_axis=0)
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
 
-    def metadata_specific(self):
+    def metadata_specific(self) -> Dict[str, Any]:
         return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -154,17 +161,17 @@ class Merge(Combined):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: Tuple) -> Any:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
         result = self._get_slice(previous)
         return apply_index_to_slices_changes(result[index], changes)
 
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> np.ndarray:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
 
-def merge_factory(args, kwargs):
+def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
 
     datasets = kwargs.pop("merge")
 

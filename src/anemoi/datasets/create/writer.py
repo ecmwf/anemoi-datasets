@@ -26,17 +26,17 @@ class ViewCacheArray:
 
     """
 
-    def __init__(self, array, *, shape, indexes):
+    def __init__(self, array: np.ndarray, *, shape: tuple[int, ...], indexes: list[int]):
         assert len(indexes) == shape[0], (len(indexes), shape[0])
         self.array = array
         self.dtype = array.dtype
         self.cache = np.full(shape, np.nan, dtype=self.dtype)
         self.indexes = indexes
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: tuple[int, ...], value: np.ndarray) -> None:
         self.cache[key] = value
 
-    def flush(self):
+    def flush(self) -> None:
         for i in range(self.cache.shape[0]):
             global_i = self.indexes[i]
             self.array[global_i] = self.cache[i]

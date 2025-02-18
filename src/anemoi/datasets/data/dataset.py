@@ -13,8 +13,16 @@ import json
 import logging
 import pprint
 import warnings
+from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
 from typing import TYPE_CHECKING
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Sized
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_seconds
@@ -27,7 +35,7 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
-def _tidy(v):
+def _tidy(v: Any) -> Any:
     if isinstance(v, (list, tuple, set)):
         return [_tidy(i) for i in v]
     if isinstance(v, dict):
@@ -53,9 +61,9 @@ def _tidy(v):
     return v
 
 
-class Dataset:
-    arguments = {}
-    _name = None
+class Dataset(ABC, Sized):
+    arguments: Dict[str, Any] = {}
+    _name: Union[str, None] = None
 
     def mutate(self) -> "Dataset":
         """Give an opportunity to a subclass to return a new Dataset
@@ -64,14 +72,14 @@ class Dataset:
 
         return self
 
-    def swap_with_parent(self, parent):
+    def swap_with_parent(self, parent: "Dataset") -> "Dataset":
         return parent
 
     @cached_property
-    def _len(self):
+    def _len(self) -> int:
         return len(self)
 
-    def _subset(self, **kwargs):
+    def _subset(self, **kwargs: Any) -> "Dataset":
 
         if not kwargs:
             return self.mutate()
@@ -83,10 +91,10 @@ class Dataset:
         return result
 
     @property
-    def name(self):
+    def name(self) -> Union[str, None]:
         return self._name
 
-    def __subset(self, **kwargs):
+    def __subset(self, **kwargs: Any) -> "Dataset":
         if not kwargs:
             return self.mutate()
 
@@ -217,7 +225,7 @@ class Dataset:
 
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
-    def _frequency_to_indices(self, frequency):
+    def _frequency_to_indices(self, frequency: str) -> range:
 
         requested_frequency = frequency_to_seconds(frequency)
         dataset_frequency = frequency_to_seconds(self.frequency)
@@ -227,12 +235,14 @@ class Dataset:
 
         return range(0, len(self), step)
 
-    def _shuffle_indices(self):
+    def _shuffle_indices(self) -> np.ndarray:
         import numpy as np
 
         return np.random.permutation(len(self))
 
-    def _dates_to_indices(self, start, end):
+    def _dates_to_indices(
+        self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
+    ) -> List[int]:
         from .misc import as_first_date
         from .misc import as_last_date
 
@@ -243,7 +253,7 @@ class Dataset:
 
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
-    def _select_to_columns(self, vars):
+    def _select_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
         if isinstance(vars, set):
             # We keep the order of the variables as they are in the zarr file
             nvars = [v for v in self.name_to_index if v in vars]
@@ -255,7 +265,7 @@ class Dataset:
 
         return [self.name_to_index[v] for v in vars]
 
-    def _drop_to_columns(self, vars):
+    def _drop_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
         if not isinstance(vars, (list, tuple, set)):
             vars = [vars]
 
@@ -264,7 +274,7 @@ class Dataset:
 
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
-    def _reorder_to_columns(self, vars):
+    def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str]]) -> List[int]:
         if isinstance(vars, str) and vars == "sort":
             # Sorting the variables alphabetically.
             # This is cruical for pre-training then transfer learning in combination with
@@ -284,20 +294,22 @@ class Dataset:
 
         return indices
 
-    def dates_interval_to_indices(self, start, end):
+    def dates_interval_to_indices(
+        self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
+    ) -> List[int]:
         return self._dates_to_indices(start, end)
 
-    def provenance(self):
+    def provenance(self) -> Dict[str, Any]:
         return {}
 
-    def sub_shape(self, drop_axis):
+    def sub_shape(self, drop_axis: int) -> Tuple[int, ...]:
         shape = self.shape
         shape = list(shape)
         shape.pop(drop_axis)
         return tuple(shape)
 
     @property
-    def typed_variables(self):
+    def typed_variables(self) -> Dict[str, Any]:
         from anemoi.transform.variables import Variable
 
         constants = self.constant_fields
@@ -317,12 +329,12 @@ class Dataset:
 
         return result
 
-    def _input_sources(self):
+    def _input_sources(self) -> List[Any]:
         sources = []
         self.collect_input_sources(sources)
         return sources
 
-    def metadata(self):
+    def metadata(self) -> Dict[str, Any]:
         import anemoi
 
         _, source_to_arrays = self._supporting_arrays_and_sources()
@@ -350,14 +362,14 @@ class Dataset:
             raise
 
     @property
-    def start_date(self):
+    def start_date(self) -> np.datetime64:
         return self.dates[0]
 
     @property
-    def end_date(self):
+    def end_date(self) -> np.datetime64:
         return self.dates[-1]
 
-    def dataset_metadata(self):
+    def dataset_metadata(self) -> Dict[str, Any]:
         return dict(
             specific=self.metadata_specific(),
             frequency=self.frequency,
@@ -370,7 +382,7 @@ class Dataset:
             name=self.name,
         )
 
-    def _supporting_arrays(self, *path):
+    def _supporting_arrays(self, *path: str) -> Dict[str, np.ndarray]:
 
         import numpy as np
 
@@ -398,12 +410,12 @@ class Dataset:
 
         return result
 
-    def supporting_arrays(self):
+    def supporting_arrays(self) -> Dict[str, np.ndarray]:
         """Arrays to be saved in the checkpoints"""
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays
 
-    def _supporting_arrays_and_sources(self):
+    def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, np.ndarray], Dict[int, List[str]]]:
 
         source_to_arrays = {}
 
@@ -424,11 +436,11 @@ class Dataset:
 
         return result, source_to_arrays
 
-    def collect_supporting_arrays(self, collected, *path):
+    def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, np.ndarray]], *path: str) -> None:
         # Override this method to add more arrays
         pass
 
-    def metadata_specific(self, **kwargs):
+    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
         action = self.__class__.__name__.lower()
         # assert isinstance(self.frequency, datetime.timedelta), (self.frequency, self, action)
         return dict(
@@ -441,14 +453,14 @@ class Dataset:
             **kwargs,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__class__.__name__ + "()"
 
     @property
-    def grids(self):
+    def grids(self) -> Tuple[int, ...]:
         return (self.shape[-1],)
 
-    def _check(ds):
+    def _check(ds: "Dataset") -> None:
         common = Dataset.__dict__.keys() & ds.__class__.__dict__.keys()
         overriden = [m for m in common if Dataset.__dict__[m] is not ds.__class__.__dict__[m]]
 
@@ -456,17 +468,17 @@ class Dataset:
             if n.startswith("_") and not n.startswith("__"):
                 warnings.warn(f"Private method {n} is overriden in {ds.__class__.__name__}")
 
-    def _repr_html_(self):
+    def _repr_html_(self) -> str:
         return self.tree().html()
 
     @property
-    def label(self):
+    def label(self) -> str:
         return self.__class__.__name__.lower()
 
-    def get_dataset_names(self, names):
+    def get_dataset_names(self, names: set[str]) -> None:
         raise NotImplementedError(self)
 
-    def computed_constant_fields(self):
+    def computed_constant_fields(self) -> List[str]:
         # Call `constant_fields` instead of `computed_constant_fields`
         try:
             # If the tendencies are computed, we can use them
@@ -477,7 +489,7 @@ class Dataset:
 
         return sorted(self._compute_constant_fields_from_a_few_samples())
 
-    def _compute_constant_fields_from_a_few_samples(self):
+    def _compute_constant_fields_from_a_few_samples(self) -> List[str]:
 
         import numpy as np
 
@@ -512,7 +524,7 @@ class Dataset:
 
         return [v for i, v in enumerate(self.variables) if constants[i]]
 
-    def _compute_constant_fields_from_statistics(self):
+    def _compute_constant_fields_from_statistics(self) -> List[str]:
         result = []
 
         t = self.statistics_tendencies()
@@ -523,7 +535,13 @@ class Dataset:
 
         return result
 
-    def plot(self, date, variable, member=0, **kwargs) -> "matplotlib.pyplot.Axes":
+    def plot(
+        self,
+        date: Union[int, datetime.datetime, np.datetime64, str],
+        variable: Union[int, str],
+        member: int = 0,
+        **kwargs: Any,
+    ) -> "matplotlib.pyplot.Axes":
         """For debugging purposes, plot a field.
 
         Parameters
@@ -550,7 +568,9 @@ class Dataset:
 
         return plot_values(values, self.latitudes, self.longitudes, **kwargs)
 
-    def to_index(self, date, variable, member=0):
+    def to_index(
+        self, date: Union[int, datetime.datetime, np.datetime64, str], variable: Union[int, str], member: int = 0
+    ) -> Tuple[int, int, int]:
 
         from earthkit.data.utils.dates import to_datetime
 
@@ -574,3 +594,7 @@ class Dataset:
             variable_index = self.name_to_index[variable]
 
         return (date_index, variable_index, member)
+
+    @abstractmethod
+    def variables(self) -> List[str]:
+        pass

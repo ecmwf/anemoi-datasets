@@ -8,14 +8,21 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import itertools
 from functools import cached_property
+from typing import Any
+from typing import Callable
+from typing import Iterator
+from typing import List
+from typing import Tuple
+from typing import Union
 
 from anemoi.datasets.dates import DatesProvider
 from anemoi.datasets.dates import as_datetime
 
 
-def _shorten(dates):
+def _shorten(dates: Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]) -> Union[str, List[str]]:
     if isinstance(dates, (list, tuple)):
         dates = [d.isoformat() for d in dates]
         if len(dates) > 5:
@@ -24,7 +31,7 @@ def _shorten(dates):
 
 
 class GroupOfDates:
-    def __init__(self, dates, provider, partial_ok=False):
+    def __init__(self, dates: List[datetime.datetime], provider: DatesProvider, partial_ok: bool = False) -> None:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
@@ -32,10 +39,10 @@ class GroupOfDates:
         self.provider = provider
         self.partial_ok = partial_ok
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dates)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[datetime.datetime]:
         return iter(self.dates)
 
     def __repr__(self) -> str:
@@ -72,28 +79,28 @@ class Groups:
     2
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         group_by = kwargs.pop("group_by")
         self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 
     @property
-    def provider(self):
+    def provider(self) -> DatesProvider:
         return self._dates
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[GroupOfDates]:
         for go in self._grouper(self._dates):
             dates = self._filter(go.dates)
             if not dates:
                 continue
             yield GroupOfDates(dates, go.provider)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._len
 
     @cached_property
-    def _len(self):
+    def _len(self) -> int:
         n = 0
         for go in self._grouper(self._dates):
             dates = self._filter(go.dates)
@@ -105,25 +112,25 @@ class Groups:
     def __repr__(self):
         return f"{self.__class__.__name__}(dates={len(self)},{_shorten(self._dates)})"
 
-    def describe(self):
+    def describe(self) -> str:
         return self.dates.summary
 
-    def one_date(self):
+    def one_date(self) -> GroupOfDates:
         go = next(iter(self))
         return GroupOfDates([go.dates[0]], go.provider)
 
 
 class Filter:
-    def __init__(self, missing):
+    def __init__(self, missing: List[datetime.datetime]) -> None:
         self.missing = set(as_datetime(m) for m in missing)
 
-    def __call__(self, dates):
+    def __call__(self, dates: List[datetime.datetime]) -> List[datetime.datetime]:
         return [d for d in dates if d not in self.missing]
 
 
 class Grouper:
     @classmethod
-    def from_config(cls, group_by):
+    def from_config(cls, group_by: Any) -> "Grouper":
 
         if isinstance(group_by, int) and group_by > 0:
             return GrouperByFixedSize(group_by)
@@ -144,7 +151,7 @@ class Grouper:
 
 
 class ReferenceDateGroup(Grouper):
-    def __call__(self, dates):
+    def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         assert isinstance(dates, DatesProvider), type(dates)
 
         mapping = dates.mapping
@@ -157,7 +164,7 @@ class ReferenceDateGroup(Grouper):
 
 
 class GrouperOneGroup(Grouper):
-    def __call__(self, dates):
+    def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         assert isinstance(dates, DatesProvider), type(dates)
 
         yield GroupOfDates(dates.values, dates)
@@ -166,10 +173,10 @@ class GrouperOneGroup(Grouper):
 class GrouperByKey(Grouper):
     """Group dates by a key."""
 
-    def __init__(self, key):
+    def __init__(self, key: Callable[[datetime.datetime], Any]) -> None:
         self.key = key
 
-    def __call__(self, dates):
+    def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
             yield GroupOfDates(list(g), dates)
 
@@ -177,10 +184,10 @@ class GrouperByKey(Grouper):
 class GrouperByFixedSize(Grouper):
     """Group dates by a fixed size."""
 
-    def __init__(self, size):
+    def __init__(self, size: int) -> None:
         self.size = size
 
-    def __call__(self, dates):
+    def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         batch = []
 
         for d in dates:

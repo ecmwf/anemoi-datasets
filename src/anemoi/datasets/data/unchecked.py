@@ -8,11 +8,19 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
 from functools import wraps
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
+
+import numpy as np
 
 from .concat import ConcatMixin
+from .dataset import Dataset
 from .debug import Node
 from .forwards import Combined
 from .misc import _auto_adjust
@@ -22,16 +30,15 @@ LOG = logging.getLogger(__name__)
 
 
 class check:
-
-    def __init__(self, check):
+    def __init__(self, check: str) -> None:
         self.check = check
 
-    def __call__(self, method):
+    def __call__(self, method: callable) -> callable:
         name = method.__name__
         check = self.check
 
         @wraps(method)
-        def wrapper(obj):
+        def wrapper(obj: "Unchecked") -> callable:
             """This is a decorator that checks the compatibility of the datasets before calling the method. If the datasets are compatible, it will return the result of the method, otherwise it will raise an exception."""
 
             for d in obj.datasets[1:]:
@@ -43,102 +50,77 @@ class check:
 
 
 class Unchecked(Combined):
-
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [d.tree() for d in self.datasets])
 
-    def _subset(self, **kwargs):
+    def _subset(self, **kwargs: dict) -> "Unchecked":
         assert not kwargs
         return self
 
-    def check_compatibility(self, d1, d2):
+    def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         pass
 
     ###########################################
     @property
     @check("check_same_dates")
-    def dates(self):
+    def dates(self) -> np.ndarray:
         pass
 
     @property
     @check("check_same_resolution")
-    def resolution(self):
+    def resolution(self) -> Any:
         pass
 
     @property
-    def field_shape(self):
+    def field_shape(self) -> tuple:
         raise NotImplementedError()
 
     @property
     @check("check_same_frequency")
-    def frequency(self):
+    def frequency(self) -> datetime.timedelta:
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
-    def latitudes(self):
+    def latitudes(self) -> np.ndarray:
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
-    def longitudes(self):
+    def longitudes(self) -> np.ndarray:
         raise NotImplementedError()
 
     @property
     @check("check_same_variables")
-    def name_to_index(self):
+    def name_to_index(self) -> dict:
         raise NotImplementedError()
 
     @property
     @check("check_same_variables")
-    def variables(self):
+    def variables(self) -> List[str]:
         raise NotImplementedError()
 
     @property
     @check("check_same_variables")
-    def variables_metadata(self):
+    def variables_metadata(self) -> dict:
         raise NotImplementedError()
 
     @property
     @check("check_same_variables")
-    def statistics(self):
+    def statistics(self) -> Dict[str, np.ndarray]:
         raise NotImplementedError()
 
     @check("check_same_variables")
-    def statistics_tendencies(self, delta=None):
+    def statistics_tendencies(self, delta: datetime.timedelta = None) -> dict:
         raise NotImplementedError()
 
     @property
-    def shape(self):
+    def shape(self) -> tuple:
         raise NotImplementedError()
-
-    # @property
-    # def field_shape(self):
-    #     return tuple(d.shape for d in self.datasets)
-
-    # @property
-    # def latitudes(self):
-    #     return tuple(d.latitudes for d in self.datasets)
-
-    # @property
-    # def longitudes(self):
-    #     return tuple(d.longitudes for d in self.datasets)
-
-    # @property
-    # def statistics(self):
-    #     return tuple(d.statistics for d in self.datasets)
-
-    # @property
-    # def resolution(self):
-    #     return tuple(d.resolution for d in self.datasets)
-
-    # @property
-    # def name_to_index(self):
-    #     return tuple(d.name_to_index for d in self.datasets)
 
     @cached_property
-    def missing(self):
-        result = set()
+    def missing(self) -> Set[int]:
+        result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing
         return result
@@ -147,22 +129,21 @@ class Unchecked(Combined):
 class Chain(ConcatMixin, Unchecked):
     """Same as Concat, but with no checks"""
 
-    def __len__(self):
+    def __len__(self) -> int:
         return sum(len(d) for d in self.datasets)
 
-    def __getitem__(self, n):
+    def __getitem__(self, n: int) -> tuple:
         return tuple(d[n] for d in self.datasets)
 
     @property
-    def dates(self):
+    def dates(self) -> np.ndarray:
         raise NotImplementedError()
 
-    def dataset_metadata(self):
+    def dataset_metadata(self) -> dict:
         return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
-def chain_factory(args, kwargs):
-
+def chain_factory(args: tuple, kwargs: dict) -> Chain:
     chain = kwargs.pop("chain")
     assert len(args) == 0
     assert isinstance(chain, (list, tuple))

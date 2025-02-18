@@ -9,20 +9,23 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
+from typing import Optional
 
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class NewDataField:
-    def __init__(self, field, data, new_name):
+    def __init__(self, field: Any, data: Any, new_name: str) -> None:
         self.field = field
         self.data = data
         self.new_name = new_name
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -31,11 +34,11 @@ class NewDataField:
             return self.new_name
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.field, name)
 
 
-def execute(context, input, params, output):
+def execute(context: Any, input: List[Any], params: List[str], output: str) -> FieldArray:
     """Computes the sum over a set of variables"""
     result = FieldArray()
 

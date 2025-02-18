@@ -9,6 +9,10 @@
 
 import logging
 from copy import deepcopy
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Type
 
 from earthkit.data.core.order import build_remapping
 
@@ -19,7 +23,9 @@ LOG = logging.getLogger(__name__)
 
 
 class Action:
-    def __init__(self, context, action_path, /, *args, **kwargs):
+    def __init__(
+        self, context: "ActionContext", action_path: List[str], /, *args: Any, **kwargs: Dict[str, Any]
+    ) -> None:
         if "args" in kwargs and "kwargs" in kwargs:
             """We have:
                args = []
@@ -38,34 +44,27 @@ class Action:
         self.action_path = action_path
 
     @classmethod
-    def _short_str(cls, x):
+    def _short_str(cls, x: str) -> str:
         x = str(x)
         if len(x) < 1000:
             return x
         return x[:1000] + "..."
 
-    def __repr__(self, *args, _indent_="\n", _inline_="", **kwargs):
-        more = ",".join([str(a)[:5000] for a in args])
-        more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
 
-        more = more[:5000]
-        txt = f"{self.__class__.__name__}: {_inline_}{_indent_}{more}"
-        if _indent_:
-            txt = txt.replace("\n", "\n  ")
-        return txt
-
-    def select(self, dates, **kwargs):
+    def select(self, dates: object, **kwargs: Any) -> None:
         self._raise_not_implemented()
 
-    def _raise_not_implemented(self):
+    def _raise_not_implemented(self) -> None:
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
-    def _trace_select(self, group_of_dates):
+    def _trace_select(self, group_of_dates: object) -> str:
         return f"{self.__class__.__name__}({group_of_dates})"
 
 
 class ActionContext(Context):
-    def __init__(self, /, order_by, flatten_grid, remapping, use_grib_paramid):
+    def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
         super().__init__()
         self.order_by = order_by
         self.flatten_grid = flatten_grid
@@ -73,7 +72,7 @@ class ActionContext(Context):
         self.use_grib_paramid = use_grib_paramid
 
 
-def action_factory(config, context, action_path):
+def action_factory(config: Dict[str, Any], context: Context, action_path: List[str]) -> Action:
 
     from .concat import ConcatAction
     from .data_sources import DataSourcesAction
@@ -115,4 +114,6 @@ def action_factory(config, context, action_path):
         cls = FunctionAction
         args = [key] + args
 
-    return cls(context, action_path + [key], *args, **kwargs)
+    klass: Type[Action] = cls
+
+    return klass(context, action_path + [key], *args, **kwargs)

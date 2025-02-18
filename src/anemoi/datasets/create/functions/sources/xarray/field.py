@@ -11,8 +11,12 @@
 import datetime
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
-from earthkit.data.core.fieldlist import Field
+from earthkit.data import Field
 from earthkit.data.core.fieldlist import math
 
 from .coordinates import extract_single_value
@@ -23,10 +27,10 @@ LOG = logging.getLogger(__name__)
 
 
 class EmptyFieldList:
-    def __len__(self):
+    def __len__(self) -> int:
         return 0
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> Any:
         raise IndexError(i)
 
     def __repr__(self) -> str:
@@ -35,7 +39,7 @@ class EmptyFieldList:
 
 class XArrayField(Field):
 
-    def __init__(self, owner, selection):
+    def __init__(self, owner: Any, selection: Any) -> None:
         """Create a new XArrayField object.
 
         Parameters
@@ -69,10 +73,10 @@ class XArrayField(Field):
             raise ValueError("Invalid shape for selection")
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int]:
         return self._shape
 
-    def to_numpy(self, flatten=False, dtype=None, index=None):
+    def to_numpy(self, flatten: bool = False, dtype: Optional[type] = None, index: Optional[int] = None) -> Any:
         if index is not None:
             values = self.selection[index]
         else:
@@ -86,34 +90,34 @@ class XArrayField(Field):
         return values  # .reshape(self.shape)
 
     @cached_property
-    def _metadata(self):
+    def _metadata(self) -> XArrayMetadata:
         return XArrayMetadata(self)
 
-    def grid_points(self):
+    def grid_points(self) -> Any:
         return self.owner.grid_points()
 
-    def to_latlon(self, flatten=True):
+    def to_latlon(self, flatten: bool = True) -> Dict[str, Any]:
         assert flatten
         return dict(lat=self.latitudes, lon=self.longitudes)
 
     @property
-    def resolution(self):
+    def resolution(self) -> Optional[Any]:
         return None
 
     @property
-    def grid_mapping(self):
+    def grid_mapping(self) -> Any:
         return self.owner.grid_mapping
 
     @property
-    def latitudes(self):
+    def latitudes(self) -> Any:
         return self.owner.latitudes
 
     @property
-    def longitudes(self):
+    def longitudes(self) -> Any:
         return self.owner.longitudes
 
     @property
-    def forecast_reference_time(self):
+    def forecast_reference_time(self) -> datetime.datetime:
         date, time = self.metadata("date", "time")
         assert len(time) == 4, time
         assert len(date) == 8, date
@@ -121,9 +125,9 @@ class XArrayField(Field):
         time = int(time) // 100
         return datetime.datetime(yyyymmdd // 10000, yyyymmdd // 100 % 100, yyyymmdd % 100, time)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._metadata)
 
-    def _values(self, dtype=None):
+    def _values(self, dtype: Optional[type] = None) -> Any:
         # we don't use .values as this will download the data
         return self.selection

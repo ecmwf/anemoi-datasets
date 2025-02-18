@@ -9,6 +9,11 @@
 
 
 import logging
+from typing import Any
+from typing import Optional
+from typing import Set
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 
@@ -26,28 +31,28 @@ LOG = logging.getLogger(__name__)
 
 
 class MissingDatesFill(Forwards):
-    def __init__(self, dataset):
+    def __init__(self, dataset: Any) -> None:
         super().__init__(dataset)
         self._missing = set(dataset.missing)
         self._warnings = set()
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
         result = self._get_slice(previous)
         return apply_index_to_slices_changes(result[index], changes)
 
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> np.ndarray:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @property
-    def missing(self):
+    def missing(self) -> Set[int]:
         return set()
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
 
         try:
             return self.forward[n]
@@ -85,12 +90,12 @@ class MissingDatesFill(Forwards):
 
 class MissingDatesClosest(MissingDatesFill):
 
-    def __init__(self, dataset, closest):
+    def __init__(self, dataset: Any, closest: str) -> None:
         super().__init__(dataset)
         self.closest = closest
         self._closest = {}
 
-    def _fill_missing(self, n, a, b):
+    def _fill_missing(self, n: int, a: Optional[int], b: Optional[int]) -> np.ndarray:
 
         if n not in self._warnings:
             LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
@@ -111,19 +116,19 @@ class MissingDatesClosest(MissingDatesFill):
 
         return self.forward[self._closest[n]]
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> dict:
         return {"closest": self.closest}
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()], closest=self.closest)
 
 
 class MissingDatesInterpolate(MissingDatesFill):
-    def __init__(self, dataset):
+    def __init__(self, dataset: Any) -> None:
         super().__init__(dataset)
         self._alpha = {}
 
-    def _fill_missing(self, n, a, b):
+    def _fill_missing(self, n: int, a: Optional[int], b: Optional[int]) -> np.ndarray:
         if n not in self._warnings:
             LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
 
@@ -147,14 +152,14 @@ class MissingDatesInterpolate(MissingDatesFill):
         alpha = self._alpha[n]
         return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
 
-    def subclass_metadata_specific(self):
+    def subclass_metadata_specific(self) -> dict:
         return {}
 
-    def tree(self):
+    def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
 
 
-def fill_missing_dates_factory(dataset, method, kwargs):
+def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict) -> MissingDatesFill:
     if method == "closest":
         closest = kwargs.get("closest", "up")
         return MissingDatesClosest(dataset, closest=closest)

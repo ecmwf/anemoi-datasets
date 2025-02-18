@@ -10,6 +10,8 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Tuple
 
 import numpy as np
 
@@ -18,27 +20,27 @@ LOG = logging.getLogger(__name__)
 
 class Grid:
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @property
-    def latitudes(self):
+    def latitudes(self) -> Any:
         return self.grid_points[0]
 
     @property
-    def longitudes(self):
+    def longitudes(self) -> Any:
         return self.grid_points[1]
 
 
 class LatLonGrid(Grid):
-    def __init__(self, lat, lon, variable_dims):
+    def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
         super().__init__()
         self.lat = lat
         self.lon = lon
 
 
 class XYGrid(Grid):
-    def __init__(self, x, y):
+    def __init__(self, x: Any, y: Any) -> None:
         self.x = x
         self.y = y
 
@@ -46,7 +48,7 @@ class XYGrid(Grid):
 class MeshedGrid(LatLonGrid):
 
     @cached_property
-    def grid_points(self):
+    def grid_points(self) -> Tuple[Any, Any]:
 
         lat, lon = np.meshgrid(
             self.lat.variable.values,
@@ -58,7 +60,7 @@ class MeshedGrid(LatLonGrid):
 
 class UnstructuredGrid(LatLonGrid):
 
-    def __init__(self, lat, lon, variable_dims):
+    def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
         super().__init__(lat, lon, variable_dims)
         assert len(lat) == len(lon), (len(lat), len(lon))
         self.variable_dims = variable_dims
@@ -67,7 +69,7 @@ class UnstructuredGrid(LatLonGrid):
         assert set(self.variable_dims) == set(self.grid_dims), (self.variable_dims, self.grid_dims)
 
     @cached_property
-    def grid_points(self):
+    def grid_points(self) -> Tuple[Any, Any]:
 
         assert 1 <= len(self.variable_dims) <= 2
 
@@ -88,11 +90,11 @@ class UnstructuredGrid(LatLonGrid):
 
 
 class ProjectionGrid(XYGrid):
-    def __init__(self, x, y, projection):
+    def __init__(self, x: Any, y: Any, projection: Any) -> None:
         super().__init__(x, y)
         self.projection = projection
 
-    def transformer(self):
+    def transformer(self) -> Any:
         from pyproj import CRS
         from pyproj import Transformer
 
@@ -109,7 +111,7 @@ class ProjectionGrid(XYGrid):
 class MeshProjectionGrid(ProjectionGrid):
 
     @cached_property
-    def grid_points(self):
+    def grid_points(self) -> Tuple[Any, Any]:
 
         transformer = self.transformer()
         xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
@@ -119,7 +121,7 @@ class MeshProjectionGrid(ProjectionGrid):
 
 class UnstructuredProjectionGrid(XYGrid):
     @cached_property
-    def grid_points(self):
+    def grid_points(self) -> Tuple[Any, Any]:
         assert False, "Not implemented"
 
         # lat, lon = transformer.transform(

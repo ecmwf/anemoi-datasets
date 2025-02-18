@@ -12,6 +12,8 @@ import logging
 import textwrap
 import threading
 from functools import wraps
+from typing import Any
+from typing import Callable
 
 LOG = logging.getLogger(__name__)
 
@@ -20,16 +22,16 @@ thread_local = threading.local()
 TRACE = 0
 
 
-def enable_trace(on_off):
+def enable_trace(on_off: int) -> None:
     global TRACE
     TRACE = on_off
 
 
-def step(action_path):
+def step(action_path: list[str]) -> str:
     return f"[{'.'.join(action_path)}]"
 
 
-def trace(emoji, *args):
+def trace(emoji: str, *args: Any) -> None:
 
     if not TRACE:
         return
@@ -40,9 +42,9 @@ def trace(emoji, *args):
     print(emoji, " " * thread_local.TRACE_INDENT, *args)
 
 
-def trace_datasource(method):
+def trace_datasource(method: Callable) -> Callable:
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
 
         if not hasattr(thread_local, "TRACE_INDENT"):
             thread_local.TRACE_INDENT = 0
@@ -67,9 +69,9 @@ def trace_datasource(method):
     return wrapper
 
 
-def trace_select(method):
+def trace_select(method: Callable) -> Callable:
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
         if not hasattr(thread_local, "TRACE_INDENT"):
             thread_local.TRACE_INDENT = 0
         trace(

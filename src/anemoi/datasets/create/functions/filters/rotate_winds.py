@@ -9,6 +9,9 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
+from typing import Optional
 
 import tqdm
 from anemoi.utils.humanize import plural
@@ -32,13 +35,13 @@ class NewDataField:
 
 
 def execute(
-    context,
-    input,
-    x_wind,
-    y_wind,
-    source_projection=None,
-    target_projection="+proj=longlat",
-):
+    context: Any,
+    input: List[Any],
+    x_wind: str,
+    y_wind: str,
+    source_projection: Optional[str] = None,
+    target_projection: str = "+proj=longlat",
+) -> FieldArray:
     from pyproj import CRS
 
     context.trace("🔄", "Rotating winds (extracting winds from ", plural(len(input), "field"))

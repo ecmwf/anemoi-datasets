@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+
 import numpy as np
 import tqdm
 import zarr
@@ -20,13 +22,13 @@ from . import Command
 class Compare(Command):
     """Compare two datasets. This command compares the variables in two datasets and prints the mean of the common variables. It does not compare the data itself (yet)."""
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
         command_parser.add_argument("dataset1")
         command_parser.add_argument("dataset2")
         command_parser.add_argument("--data", action="store_true", help="Compare the data.")
         command_parser.add_argument("--statistics", action="store_true", help="Compare the statistics.")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
         ds1 = open_dataset(args.dataset1)
         ds2 = open_dataset(args.dataset2)
 
