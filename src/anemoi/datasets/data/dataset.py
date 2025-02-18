@@ -225,7 +225,7 @@ class Dataset(ABC, Sized):
 
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
-    def _frequency_to_indices(self, frequency: str) -> range:
+    def _frequency_to_indices(self, frequency: str) -> list[int]:
 
         requested_frequency = frequency_to_seconds(frequency)
         dataset_frequency = frequency_to_seconds(self.frequency)
@@ -233,7 +233,7 @@ class Dataset(ABC, Sized):
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
         step = requested_frequency // dataset_frequency
 
-        return range(0, len(self), step)
+        return list(range(0, len(self), step))
 
     def _shuffle_indices(self) -> np.ndarray:
         import numpy as np
@@ -597,4 +597,8 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def variables(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    def frequency(self) -> datetime.timedelta:
         pass
