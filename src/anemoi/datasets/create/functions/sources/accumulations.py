@@ -150,6 +150,12 @@ class RangeParameter:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.key})"
 
+    def check_values(self, field, values):
+        pass
+
+    def check_results(self):
+        pass
+
 
 class Accumulation(RangeParameter):
     def check_values(self, field, values):
