@@ -22,6 +22,7 @@ from typing import Union
 import numpy as np
 import zarr
 from anemoi.utils.config import load_config as load_settings
+from numpy.typing import NDArray
 
 from .dataset import Dataset
 
@@ -47,7 +48,7 @@ def add_dataset_path(path: str) -> None:
         config["datasets"]["path"].append(path)
 
 
-def round_datetime(d: np.datetime64, dates: List[np.datetime64], up: bool) -> np.datetime64:
+def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) -> np.datetime64:
     """Round up (or down) a datetime to the nearest date in a list of dates"""
     if dates is None or len(dates) == 0:
         return d
@@ -64,14 +65,15 @@ def round_datetime(d: np.datetime64, dates: List[np.datetime64], up: bool) -> np
     return dates[-1]
 
 
-def _as_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.datetime64], last: bool) -> np.datetime64:
+def _as_date(
+    d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64], last: bool
+) -> np.datetime64:
 
     # WARNING,  datetime.datetime is a subclass of datetime.date
     # so we need to check for datetime.datetime first
 
     if isinstance(d, (np.datetime64, datetime.datetime)):
-        d = round_datetime(d, dates, up=not last)
-        return np.datetime64(d)
+        return round_datetime(np.datetime64(d), dates, up=not last)
 
     if isinstance(d, datetime.date):
         d = d.year * 10_000 + d.month * 100 + d.day
@@ -170,11 +172,13 @@ def _as_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.da
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
 
-def as_first_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.datetime64]) -> np.datetime64:
+def as_first_date(
+    d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]
+) -> np.datetime64:
     return _as_date(d, dates, last=False)
 
 
-def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: List[np.datetime64]) -> np.datetime64:
+def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]) -> np.datetime64:
     return _as_date(d, dates, last=True)
 
 
@@ -225,7 +229,9 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
 
 
 def _auto_adjust(
-    datasets: List[Dataset], kwargs: Dict[str, Any], exclude: Optional[List[str]] = None
+    datasets: List[Dataset],
+    kwargs: Dict[str, Any],
+    exclude: Optional[List[str]] = None,
 ) -> Tuple[List[Dataset], Dict[str, Any]]:
 
     if "adjust" not in kwargs:

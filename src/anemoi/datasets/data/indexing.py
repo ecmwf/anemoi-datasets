@@ -16,9 +16,14 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
+
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 
 
-def _tuple_with_slices(t: Tuple, shape: Tuple[int, ...]) -> Tuple[Tuple[slice, ...], Tuple[int, ...]]:
+def _tuple_with_slices(t: TupleIndex, shape: Shape) -> Tuple[TupleIndex, Tuple[int, ...]]:
     """Replace all integers in a tuple with slices, so we preserve the dimensionality."""
 
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
@@ -28,16 +33,16 @@ def _tuple_with_slices(t: Tuple, shape: Tuple[int, ...]) -> Tuple[Tuple[slice, .
     return result, changes
 
 
-def _extend_shape(index: Tuple, shape: Tuple[int, ...]) -> Tuple:
+def _extend_shape(index: TupleIndex, shape: Shape) -> TupleIndex:
     if Ellipsis in index:
         if index.count(Ellipsis) > 1:
             raise IndexError("Only one Ellipsis is allowed")
         ellipsis_index = index.index(Ellipsis)
-        index = list(index)
-        index[ellipsis_index] = slice(None)
-        while len(index) < len(shape):
-            index.insert(ellipsis_index, slice(None))
-        index = tuple(index)
+        index_list = list(index)
+        index_list[ellipsis_index] = slice(None)
+        while len(index_list) < len(shape):
+            index_list.insert(ellipsis_index, slice(None))
+        index = tuple(index_list)
 
     while len(index) < len(shape):
         index = index + (slice(None),)
@@ -45,7 +50,7 @@ def _extend_shape(index: Tuple, shape: Tuple[int, ...]) -> Tuple:
     return index
 
 
-def _index_to_tuple(index: Union[int, slice, Tuple], shape: Tuple[int, ...]) -> Tuple:
+def _index_to_tuple(index: FullIndex, shape: Shape) -> TupleIndex:
     if isinstance(index, int):
         return _extend_shape((index,), shape)
     if isinstance(index, slice):
@@ -57,14 +62,12 @@ def _index_to_tuple(index: Union[int, slice, Tuple], shape: Tuple[int, ...]) -> 
     raise ValueError(f"Invalid index: {index}")
 
 
-def index_to_slices(
-    index: Union[int, slice, Tuple], shape: Tuple[int, ...]
-) -> Tuple[Tuple[slice, ...], Tuple[int, ...]]:
+def index_to_slices(index: Union[int, slice, Tuple], shape: Shape) -> Tuple[TupleIndex, Tuple[int, ...]]:
     """Convert an index to a tuple of slices, with the same dimensionality as the shape."""
     return _tuple_with_slices(_index_to_tuple(index, shape), shape)
 
 
-def apply_index_to_slices_changes(result: np.ndarray, changes: Tuple[int, ...]) -> np.ndarray:
+def apply_index_to_slices_changes(result: NDArray[Any], changes: Tuple[int, ...]) -> NDArray[Any]:
     if changes:
         shape = result.shape
         for i in changes:
@@ -73,9 +76,9 @@ def apply_index_to_slices_changes(result: np.ndarray, changes: Tuple[int, ...]) 
     return result
 
 
-def update_tuple(t: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
+def update_tuple(tp: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
     """Replace the elements of a tuple at the given index with a new value."""
-    t = list(t)
+    t = list(tp)
     prev = t[index]
     t[index] = value
     return tuple(t), prev
@@ -113,7 +116,7 @@ def length_to_slices(index: slice, lengths: List[int]) -> List[Union[slice, None
 
 
 def _as_tuples(index: Tuple) -> Tuple:
-    def _(i):
+    def _(i: Any) -> Any:
         if hasattr(i, "tolist"):
             # NumPy arrays, TensorFlow tensors, etc.
             i = i.tolist()
@@ -128,18 +131,20 @@ def _as_tuples(index: Tuple) -> Tuple:
     return tuple(_(i) for i in index)
 
 
-def expand_list_indexing(method: Callable) -> Callable:
-    """Allows to use slices, lists, and tuples to select data from the dataset. Zarr does not support indexing with lists/arrays directly, so we need to implement it ourselves."""
+def expand_list_indexing(method: Callable[[Any, FullIndex], NDArray[Any]]) -> Callable[[Any, FullIndex], NDArray[Any]]:
+    """Allows to use slices, lists, and tuples to select data from the dataset.
+    Zarr does not support indexing with lists/arrays directly,
+    so we need to implement it ourselves."""
 
     @wraps(method)
-    def wrapper(self, index):
+    def wrapper(self: Any, index: FullIndex) -> NDArray[Any]:
         if not isinstance(index, tuple):
             return method(self, index)
 
         if not any(isinstance(i, (list, tuple)) for i in index):
             return method(self, index)
 
-        which = []
+        which: List[int] = []
         for i, idx in enumerate(index):
             if isinstance(idx, (list, tuple)):
                 which.append(i)
@@ -149,14 +154,14 @@ def expand_list_indexing(method: Callable) -> Callable:
         if len(which) > 1:
             raise IndexError("Only one list index is allowed")
 
-        which = which[0]
+        axis = which[0]
         index = _as_tuples(index)
-        result = []
-        for i in index[which]:
-            index, _ = update_tuple(index, which, slice(i, i + 1))
+        result: List[int] = []
+        for i in index[axis]:
+            index, _ = update_tuple(index, axis, slice(i, i + 1))
             result.append(method(self, index))
 
-        return np.concatenate(result, axis=which)
+        return np.concatenate(result, axis=axis)
 
     return wrapper
 

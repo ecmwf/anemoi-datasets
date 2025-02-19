@@ -16,10 +16,13 @@ import warnings
 from abc import ABC
 from abc import abstractmethod
 from functools import cached_property
+from types import EllipsisType
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
+from typing import Set
 from typing import Sized
 from typing import Tuple
 from typing import Union
@@ -28,11 +31,20 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_seconds
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
+from numpy.typing import NDArray
+
+from .debug import Node
+from .debug import Source
 
 if TYPE_CHECKING:
     import matplotlib
 
 LOG = logging.getLogger(__name__)
+
+
+Shape = Tuple[int, ...]
+TupleIndex = Tuple[Union[int, slice, EllipsisType], ...]
+FullIndex = Union[int, slice, TupleIndex]
 
 
 def _tidy(v: Any) -> Any:
@@ -235,13 +247,14 @@ class Dataset(ABC, Sized):
 
         return list(range(0, len(self), step))
 
-    def _shuffle_indices(self) -> np.ndarray:
-        import numpy as np
+    def _shuffle_indices(self) -> NDArray[np.int]:
 
         return np.random.permutation(len(self))
 
     def _dates_to_indices(
-        self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
+        self,
+        start: Union[None, str, datetime.datetime],
+        end: Union[None, str, datetime.datetime],
     ) -> List[int]:
         from .misc import as_first_date
         from .misc import as_last_date
@@ -274,7 +287,7 @@ class Dataset(ABC, Sized):
 
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
-    def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str]]) -> List[int]:
+    def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str], Dict[str, int]]) -> List[int]:
         if isinstance(vars, str) and vars == "sort":
             # Sorting the variables alphabetically.
             # This is cruical for pre-training then transfer learning in combination with
@@ -302,7 +315,7 @@ class Dataset(ABC, Sized):
     def provenance(self) -> Dict[str, Any]:
         return {}
 
-    def sub_shape(self, drop_axis: int) -> Tuple[int, ...]:
+    def sub_shape(self, drop_axis: int) -> TupleIndex:
         shape = self.shape
         shape = list(shape)
         shape.pop(drop_axis)
@@ -354,7 +367,7 @@ class Dataset(ABC, Sized):
         )
 
         try:
-            return json.loads(json.dumps(_tidy(md)))
+            return dict(json.loads(json.dumps(_tidy(md))))
         except Exception:
             LOG.exception("Failed to serialize metadata")
             pprint.pprint(md)
@@ -382,11 +395,9 @@ class Dataset(ABC, Sized):
             name=self.name,
         )
 
-    def _supporting_arrays(self, *path: str) -> Dict[str, np.ndarray]:
+    def _supporting_arrays(self, *path: str) -> Dict[str, NDArray[Any]]:
 
-        import numpy as np
-
-        def _path(path, name):
+        def _path(path, name: str) -> str:
             return "/".join(str(_) for _ in [*path, name])
 
         result = {
@@ -399,7 +410,7 @@ class Dataset(ABC, Sized):
 
         for path, name, array in collected:
             assert isinstance(path, tuple) and isinstance(name, str)
-            assert isinstance(array, np.ndarray)
+            assert isinstance(array, NDArray[Any])
 
             name = _path(path, name)
 
@@ -410,12 +421,12 @@ class Dataset(ABC, Sized):
 
         return result
 
-    def supporting_arrays(self) -> Dict[str, np.ndarray]:
+    def supporting_arrays(self) -> Dict[str, NDArray[Any]]:
         """Arrays to be saved in the checkpoints"""
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays
 
-    def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, np.ndarray], Dict[int, List[str]]]:
+    def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, NDArray], Dict[int, List[str]]]:
 
         source_to_arrays = {}
 
@@ -436,7 +447,7 @@ class Dataset(ABC, Sized):
 
         return result, source_to_arrays
 
-    def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, np.ndarray]], *path: str) -> None:
+    def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
         # Override this method to add more arrays
         pass
 
@@ -457,7 +468,7 @@ class Dataset(ABC, Sized):
         return self.__class__.__name__ + "()"
 
     @property
-    def grids(self) -> Tuple[int, ...]:
+    def grids(self) -> TupleIndex:
         return (self.shape[-1],)
 
     def _check(ds: "Dataset") -> None:
@@ -474,9 +485,6 @@ class Dataset(ABC, Sized):
     @property
     def label(self) -> str:
         return self.__class__.__name__.lower()
-
-    def get_dataset_names(self, names: set[str]) -> None:
-        raise NotImplementedError(self)
 
     def computed_constant_fields(self) -> List[str]:
         # Call `constant_fields` instead of `computed_constant_fields`
@@ -569,7 +577,10 @@ class Dataset(ABC, Sized):
         return plot_values(values, self.latitudes, self.longitudes, **kwargs)
 
     def to_index(
-        self, date: Union[int, datetime.datetime, np.datetime64, str], variable: Union[int, str], member: int = 0
+        self,
+        date: Union[int, datetime.datetime, np.datetime64, str],
+        variable: Union[int, str],
+        member: int = 0,
     ) -> Tuple[int, int, int]:
 
         from earthkit.data.utils.dates import to_datetime
@@ -596,9 +607,95 @@ class Dataset(ABC, Sized):
         return (date_index, variable_index, member)
 
     @abstractmethod
+    @property
     def variables(self) -> List[str]:
         pass
 
     @abstractmethod
+    @property
     def frequency(self) -> datetime.timedelta:
+        pass
+
+    @abstractmethod
+    @property
+    def dates(self) -> NDArray[np.datetime64]:
+        pass
+
+    @abstractmethod
+    @property
+    def resolution(self) -> str:
+        pass
+
+    @abstractmethod
+    @property
+    def name_to_index(self) -> Dict[str, int]:
+        pass
+
+    @abstractmethod
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        pass
+
+    @abstractmethod
+    @property
+    def shape(self) -> Shape:
+        pass
+
+    @abstractmethod
+    @property
+    def field_shape(self) -> Shape:
+        pass
+
+    @abstractmethod
+    @property
+    def dtype(self) -> np.dtype:
+        pass
+
+    @abstractmethod
+    @property
+    def latitudes(self) -> NDArray[Any]:
+        pass
+
+    @abstractmethod
+    @property
+    def longitudes(self) -> NDArray[Any]:
+        pass
+
+    @abstractmethod
+    @property
+    def variables_metadata(self) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    @cached_property
+    def missing(self) -> Set[int]:
+        pass
+
+    @abstractmethod
+    @cached_property
+    def constant_fields(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    @cached_property
+    def statistics(self) -> Dict[str, NDArray[Any]]:
+        pass
+
+    @abstractmethod
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        pass
+
+    @abstractmethod
+    def source(self, index: int) -> Source:
+        pass
+
+    @abstractmethod
+    def tree(self) -> Node:
+        pass
+
+    @abstractmethod
+    def collect_input_sources(self, sources: List[Any]) -> None:
+        pass
+
+    @abstractmethod
+    def get_dataset_names(self, names: Set[str]) -> None:
         pass

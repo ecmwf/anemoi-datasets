@@ -11,13 +11,19 @@
 import datetime
 import logging
 from functools import cached_property
+from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Set
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -48,7 +54,7 @@ class Join(Combined):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: tuple) -> np.ndarray:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
 
@@ -59,11 +65,11 @@ class Join(Combined):
         return apply_index_to_slices_changes(result[:, previous], changes)
 
     @debug_indexing
-    def _get_slice(self, s: slice) -> np.ndarray:
+    def _get_slice(self, s: slice) -> NDArray[Any]:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
-    def __getitem__(self, n: int | slice | tuple) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -73,11 +79,11 @@ class Join(Combined):
         return np.concatenate([d[n] for d in self.datasets])
 
     @cached_property
-    def shape(self) -> tuple:
+    def shape(self) -> Shape:
         cols = sum(d.shape[1] for d in self.datasets)
         return (len(self), cols) + self.datasets[0].shape[2:]
 
-    def _overlay(self) -> "Join":
+    def _overlay(self) -> Dataset:
         indices = {}
         i = 0
         for d in self.datasets:
@@ -120,7 +126,7 @@ class Join(Combined):
         return result
 
     @property
-    def variables_metadata(self) -> dict:
+    def variables_metadata(self) -> Dict[str, Any]:
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
 
@@ -139,16 +145,16 @@ class Join(Combined):
         return result
 
     @cached_property
-    def name_to_index(self) -> dict:
+    def name_to_index(self) -> Dict[str, int]:
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
-    def statistics(self) -> Dict[str, np.ndarray]:
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         return {
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
 
-    def statistics_tendencies(self, delta: datetime.timedelta = None) -> dict:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         if delta is None:
             delta = self.frequency
         return {
@@ -177,17 +183,17 @@ class Join(Combined):
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
 
-    datasets = kwargs.pop("join")
-    assert isinstance(datasets, (list, tuple))
+    xdatasets = kwargs.pop("join")
+    assert isinstance(xdatasets, (list, tuple))
     assert len(args) == 0
 
-    assert isinstance(datasets, (list, tuple))
+    assert isinstance(xdatasets, (list, tuple))
 
-    datasets = [_open(e) for e in datasets]
+    open_datasets: List[Dataset] = [_open(e) for e in xdatasets]
 
-    if len(datasets) == 1:
-        return datasets[0]._subset(**kwargs)
+    if len(open_datasets) == 1:
+        return open_datasets[0]._subset(**kwargs)
 
-    datasets, kwargs = _auto_adjust(datasets, kwargs)
+    open_datasets, kwargs = _auto_adjust(open_datasets, kwargs)
 
-    return Join(datasets)._overlay()._subset(**kwargs)
+    return Join(open_datasets)._overlay()._subset(**kwargs)

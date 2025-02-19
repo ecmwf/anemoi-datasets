@@ -18,9 +18,13 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ..grids import cropping_mask
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -33,7 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Masked(Forwards):
-    def __init__(self, forward: Dataset, mask: np.ndarray) -> None:
+    def __init__(self, forward: Dataset, mask: NDArray[np.bool]) -> None:
         super().__init__(forward)
         assert len(forward.shape) == 4, "Grids must be 1D for now"
         self.mask = mask
@@ -42,19 +46,19 @@ class Masked(Forwards):
         self.mask_name = f"{self.__class__.__name__.lower()}_mask"
 
     @cached_property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> Shape:
         return self.forward.shape[:-1] + (np.count_nonzero(self.mask),)
 
     @cached_property
-    def latitudes(self) -> np.ndarray:
+    def latitudes(self) -> NDArray[Any]:
         return self.forward.latitudes[self.mask]
 
     @cached_property
-    def longitudes(self) -> np.ndarray:
+    def longitudes(self) -> NDArray[Any]:
         return self.forward.longitudes[self.mask]
 
     @debug_indexing
-    def __getitem__(self, index: Union[int, slice, Tuple]) -> np.ndarray:
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
         if isinstance(index, tuple):
             return self._get_tuple(index)
 
@@ -66,7 +70,7 @@ class Masked(Forwards):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Tuple) -> Any:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, self.axis, slice(None))
         result = self.forward[index]
@@ -117,7 +121,7 @@ class Thinning(Masked):
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(thinning=self.thinning, method=self.method)
 
 
@@ -142,5 +146,5 @@ class Cropping(Masked):
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()], area=self.area)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(area=self.area)

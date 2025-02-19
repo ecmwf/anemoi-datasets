@@ -8,18 +8,21 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
 from typing import Any
 from typing import Dict
 from typing import Set
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
+from numpy.typing import NDArray
 
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -62,17 +65,17 @@ class InterpolateFrequency(Forwards):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Tuple) -> Any:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
         result = self._get_slice(previous)
         return apply_index_to_slices_changes(result[index], changes)
 
-    def _get_slice(self, s: slice) -> np.ndarray:
+    def _get_slice(self, s: slice) -> NDArray[Any]:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
-    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -102,11 +105,11 @@ class InterpolateFrequency(Forwards):
         return (self.other_len - 1) * self.ratio + 1
 
     @property
-    def frequency(self) -> np.timedelta64:
+    def frequency(self) -> datetime.timedelta:
         return self._frequency
 
     @cached_property
-    def dates(self) -> np.ndarray:
+    def dates(self) -> NDArray[np.datetime64]:
         result = []
         deltas = [np.timedelta64(self.seconds * i, "s") for i in range(self.ratio)]
         for d in self.forward.dates[:-1]:
@@ -116,7 +119,7 @@ class InterpolateFrequency(Forwards):
         return np.array(result)
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> Shape:
         return (self._len,) + self.forward.shape[1:]
 
     def tree(self) -> Node:
@@ -133,10 +136,9 @@ class InterpolateFrequency(Forwards):
                     result.append(j)
                 j += 1
 
-        result = set(x for x in result if x < self._len)
-        return result
+        return set(x for x in result if x < self._len)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         return {
             # "frequency": frequency_to_string(self._frequency),
         }

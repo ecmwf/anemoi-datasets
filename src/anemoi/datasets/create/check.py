@@ -12,10 +12,12 @@ import datetime
 import logging
 import re
 import warnings
+from typing import Any
 from typing import Optional
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_string
+from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
@@ -25,9 +27,9 @@ class DatasetName:
         self,
         name: str,
         resolution: Optional[str] = None,
-        start_date: datetime.date = None,
-        end_date: datetime.date = None,
-        frequency: datetime.timedelta = None,
+        start_date: Optional[datetime.date] = None,
+        end_date: Optional[datetime.date] = None,
+        frequency: Optional[datetime.timedelta] = None,
     ):
         self.name = name
         self.parsed = self._parse(name)
@@ -94,7 +96,7 @@ class DatasetName:
                 "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
             )
 
-    def check_resolution(self, resolution: str) -> None:
+    def check_resolution(self, resolution: str | None) -> None:
         if self.parsed.get("resolution") and self.parsed["resolution"][0] not in "0123456789on":
             self.messages.append(
                 f"the resolution {self.parsed['resolution'] } should start "
@@ -107,21 +109,21 @@ class DatasetName:
         self._check_missing("resolution", resolution_str)
         self._check_mismatch("resolution", resolution_str)
 
-    def check_frequency(self, frequency: datetime.timedelta) -> None:
+    def check_frequency(self, frequency: datetime.timedelta | None) -> None:
         if frequency is None:
             return
         frequency_str = frequency_to_string(frequency)
         self._check_missing("frequency", frequency_str)
         self._check_mismatch("frequency", frequency_str)
 
-    def check_start_date(self, start_date: datetime.date) -> None:
+    def check_start_date(self, start_date: datetime.date | None) -> None:
         if start_date is None:
             return
         start_date_str = str(start_date.year)
         self._check_missing("start_date", start_date_str)
         self._check_mismatch("start_date", start_date_str)
 
-    def check_end_date(self, end_date: datetime.date) -> None:
+    def check_end_date(self, end_date: datetime.date | None) -> None:
         if end_date is None:
             return
         end_date_str = str(end_date.year)
@@ -142,7 +144,7 @@ class StatisticsValueError(ValueError):
 
 
 def check_data_values(
-    arr: np.ndarray, *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
+    arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
 ) -> None:
 
     shape = arr.shape
@@ -186,7 +188,7 @@ def check_data_values(
             )
 
 
-def check_stats(minimum: float, maximum: float, mean: float, msg: str, **kwargs) -> None:
+def check_stats(minimum: float, maximum: float, mean: float, msg: str, **kwargs: Any) -> None:
     tolerance = (abs(minimum) + abs(maximum)) * 0.01
     if (mean - minimum < -tolerance) or (mean - minimum < -tolerance):
         raise StatisticsValueError(

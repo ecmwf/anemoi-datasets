@@ -14,6 +14,7 @@ import os
 from copy import deepcopy
 from functools import cached_property
 from typing import Any
+from typing import Dict
 from typing import List
 
 import numpy as np
@@ -25,6 +26,7 @@ from anemoi.utils.humanize import when
 from anemoi.utils.text import dotted_line
 from anemoi.utils.text import progress
 from anemoi.utils.text import table
+from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
@@ -92,11 +94,11 @@ class Version:
         print(f"🔢 Format version: {self.version}")
 
     @property
-    def name_to_index(self) -> dict:
+    def name_to_index(self) -> Dict[str, int]:
         return find(self.metadata, "name_to_index")
 
     @property
-    def longitudes(self) -> np.ndarray:
+    def longitudes(self) -> NDArray[Any]:
         try:
             return self.zarr.longitudes[:]
         except (KeyError, AttributeError):
@@ -247,11 +249,11 @@ class Version:
         return None
 
     @property
-    def build_flags(self) -> np.ndarray | None:
+    def build_flags(self) -> NDArray | None:
         return self.zarr.get("_build_flags")
 
     @cached_property
-    def copy_flags(self) -> np.ndarray | None:
+    def copy_flags(self) -> NDArray | None:
         if "_copy" not in self.zarr:
             return None
         return self.zarr["_copy"][:]
@@ -269,7 +271,7 @@ class Version:
         return not all(self.copy_flags)
 
     @property
-    def build_lengths(self) -> np.ndarray | None:
+    def build_lengths(self) -> NDArray | None:
         return self.zarr.get("_build_lengths")
 
     def progress(self) -> None:
@@ -503,7 +505,7 @@ class Version0_6(Version):
         return all(build_flags)
 
     @property
-    def name_to_index(self) -> dict:
+    def name_to_index(self) -> Dict[str, int]:
         return {n: i for i, n in enumerate(self.metadata["variables"])}
 
     @property
@@ -540,14 +542,14 @@ class Version0_12(Version0_6):
 
 class Version0_13(Version0_12):
     @property
-    def build_flags(self) -> np.ndarray | None:
+    def build_flags(self) -> NDArray | None:
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
         return build.get("flags")
 
     @property
-    def build_lengths(self) -> np.ndarray | None:
+    def build_lengths(self) -> NDArray | None:
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]

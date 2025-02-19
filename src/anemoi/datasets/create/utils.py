@@ -12,9 +12,11 @@ import datetime
 import os
 import warnings
 from contextlib import contextmanager
+from typing import Any
 
 import numpy as np
 from earthkit.data import settings
+from numpy.typing import NDArray
 
 
 def cache_context(dirname: str):
@@ -84,7 +86,7 @@ def normalize_and_check_dates(
     end: datetime.datetime,
     frequency: datetime.timedelta,
     dtype: str = "datetime64[s]",
-) -> np.ndarray:
+) -> NDArray[Any]:
 
     dates = [d.hdate if hasattr(d, "hdate") else d for d in dates]
 

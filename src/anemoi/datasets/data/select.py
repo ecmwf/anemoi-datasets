@@ -8,18 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Tuple
-from typing import Union
 
-import numpy as np
+from numpy.typing import NDArray
 
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
@@ -60,7 +62,7 @@ class Select(Forwards):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Tuple) -> np.ndarray:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
         result = self.dataset[index]
@@ -70,7 +72,7 @@ class Select(Forwards):
         return result
 
     @debug_indexing
-    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -81,7 +83,7 @@ class Select(Forwards):
         return row[self.indices]
 
     @cached_property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> Shape:
         return (len(self), len(self.indices)) + self.dataset.shape[2:]
 
     @cached_property
@@ -97,10 +99,10 @@ class Select(Forwards):
         return {k: i for i, k in enumerate(self.variables)}
 
     @cached_property
-    def statistics(self) -> Dict[str, np.ndarray]:
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
-    def statistics_tendencies(self, delta: Optional[int] = None) -> Dict[str, Any]:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         if delta is None:
             delta = self.frequency
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
@@ -114,7 +116,7 @@ class Select(Forwards):
     def tree(self) -> Node:
         return Node(self, [self.dataset.tree()], **self.reason)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         # return dict(indices=self.indices)
         return dict(reason=self.reason)
 
@@ -145,5 +147,5 @@ class Rename(Forwards):
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()], rename=self.rename)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(rename=self.rename)

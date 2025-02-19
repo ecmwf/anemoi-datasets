@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
 from typing import Any
@@ -18,8 +19,11 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -94,12 +98,12 @@ class Rescale(Forwards):
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()], rescale=self.rescale)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(rescale=self.rescale)
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Tuple) -> Any:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
         result = self.forward[index]
@@ -109,12 +113,12 @@ class Rescale(Forwards):
         return result
 
     @debug_indexing
-    def __get_slice_(self, n: slice) -> np.ndarray:
+    def __get_slice_(self, n: slice) -> NDArray[Any]:
         data = self.forward[n]
         return data * self._a + self._b
 
     @debug_indexing
-    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
 
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -127,7 +131,7 @@ class Rescale(Forwards):
         return data * self._a[0] + self._b[0]
 
     @cached_property
-    def statistics(self) -> Dict[str, np.ndarray]:
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         result = {}
         a = self._a.squeeze()
         assert np.all(a >= 0)
@@ -146,7 +150,7 @@ class Rescale(Forwards):
 
         return result
 
-    def statistics_tendencies(self, delta: Optional[int] = None) -> Dict[str, Any]:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         result = {}
         a = self._a.squeeze()
         assert np.all(a >= 0)

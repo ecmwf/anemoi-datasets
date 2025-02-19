@@ -11,18 +11,21 @@
 import datetime
 import logging
 import warnings
+from abc import abstractmethod
 from functools import cached_property
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
-from typing import Tuple
-from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import debug_indexing
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
@@ -56,13 +59,13 @@ class Forwards(Dataset):
         """
         return len(self.forward)
 
-    def __getitem__(self, n: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """
         Retrieves data from the forward dataset based on the given index.
 
         Parameters
         ----------
-        n : Union[int, slice, Tuple[Union[int, slice], ...]]
+        n : Index
             Index specifying the data to retrieve.
 
         Returns
@@ -73,7 +76,7 @@ class Forwards(Dataset):
         return self.forward[n]
 
     @property
-    def name(self) -> str:
+    def name(self) -> str | None:
         """
         Returns the name of the forward dataset.
         """
@@ -82,21 +85,21 @@ class Forwards(Dataset):
         return self.forward.name
 
     @property
-    def dates(self) -> np.ndarray:
+    def dates(self) -> NDArray[np.datetime64]:
         """
         Returns the dates of the forward dataset.
         """
         return self.forward.dates
 
     @property
-    def resolution(self) -> Any:
+    def resolution(self) -> str:
         """
         Returns the resolution of the forward dataset.
         """
         return self.forward.resolution
 
     @property
-    def field_shape(self) -> Tuple[int, ...]:
+    def field_shape(self) -> Shape:
         """
         Returns the field shape of the forward dataset.
         """
@@ -110,21 +113,21 @@ class Forwards(Dataset):
         return self.forward.frequency
 
     @property
-    def latitudes(self) -> np.ndarray:
+    def latitudes(self) -> NDArray[Any]:
         """
         Returns the latitudes of the forward dataset.
         """
         return self.forward.latitudes
 
     @property
-    def longitudes(self) -> np.ndarray:
+    def longitudes(self) -> NDArray[Any]:
         """
         Returns the longitudes of the forward dataset.
         """
         return self.forward.longitudes
 
     @property
-    def name_to_index(self) -> dict:
+    def name_to_index(self) -> Dict[str, int]:
         """
         Returns a dictionary mapping variable names to their indices.
 
@@ -146,13 +149,13 @@ class Forwards(Dataset):
         return self.forward.variables_metadata
 
     @property
-    def statistics(self) -> Dict[str, np.ndarray]:
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         """
         Returns the statistics of the forward dataset.
         """
         return self.forward.statistics
 
-    def statistics_tendencies(self, delta: Optional[Any] = None) -> Any:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         """
         Returns the statistics tendencies of the forward dataset.
 
@@ -171,11 +174,9 @@ class Forwards(Dataset):
         return self.forward.statistics_tendencies(delta)
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> Shape:
         """
         Returns the shape of the forward dataset.
-
-
         """
         return self.forward.shape
 
@@ -183,7 +184,6 @@ class Forwards(Dataset):
     def dtype(self) -> Any:
         """
         Returns the data type of the forward dataset.
-
         """
         return self.forward.dtype
 
@@ -217,7 +217,7 @@ class Forwards(Dataset):
         """
         return super().metadata_specific(
             forward=self.forward.metadata_specific(),
-            **self.subclass_metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
             **kwargs,
         )
 
@@ -261,20 +261,14 @@ class Forwards(Dataset):
         """
         return self.forward.source(index)
 
-    def subclass_metadata_specific(self) -> dict:
+    @abstractmethod
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """
         Returns metadata specific to the subclass.
-
-        Returns
-        -------
-        dict
-            Metadata specific to the subclass.
         """
-        raise NotImplementedError(
-            f"subclass_metadata_specific() must be implemented in derived class {self.__class__.__name__}"
-        )
+        pass
 
-    def get_dataset_names(self, names: set) -> None:
+    def get_dataset_names(self, names: Set[str]) -> None:
         """
         Collects the names of the datasets.
 
@@ -285,15 +279,22 @@ class Forwards(Dataset):
         """
         self.forward.get_dataset_names(names)
 
+    @property
+    def constant_fields(self) -> List[str]:
+        """
+        Returns the constant fields of the forward dataset.
+        """
+        return self.forward.constant_fields
+
 
 class Combined(Forwards):
-    def __init__(self, datasets: List[Any]) -> None:
+    def __init__(self, datasets: List[Dataset]) -> None:
         """
         Initializes a Combined object.
 
         Parameters
         ----------
-        datasets : List[Any]
+        datasets : List[Dataset]
             List of datasets to be combined.
         """
         self.datasets = datasets
@@ -529,7 +530,7 @@ class Combined(Forwards):
         lst = ", ".join(repr(d) for d in self.datasets)
         return f"{self.__class__.__name__}({lst})"
 
-    def metadata_specific(self, **kwargs: Any) -> Any:
+    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Returns metadata specific to the combined datasets.
 
@@ -579,7 +580,7 @@ class Combined(Forwards):
         """
         raise NotImplementedError("missing() not implemented for Combined")
 
-    def get_dataset_names(self, names: set) -> None:
+    def get_dataset_names(self, names: Set[str]) -> None:
         """
         Collects the names of the combined datasets.
 
@@ -634,7 +635,7 @@ class GivenAxis(Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=self.axis)
 
     @cached_property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> Shape:
         """
         Returns the shape of the combined dataset along the given axis.
         """
@@ -647,7 +648,7 @@ class GivenAxis(Combined):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """
         Retrieves data from the combined dataset based on the given index.
 
@@ -658,7 +659,7 @@ class GivenAxis(Combined):
 
         Returns
         -------
-        np.ndarray
+        NDArray[Any]
             Data from the combined dataset based on the index.
         """
         index, changes = index_to_slices(index, self.shape)
@@ -669,7 +670,7 @@ class GivenAxis(Combined):
         return apply_index_to_slices_changes(result, changes)
 
     @debug_indexing
-    def _get_slice(self, s: slice) -> np.ndarray:
+    def _get_slice(self, s: slice) -> NDArray[Any]:
         """
         Retrieves a slice of data from the combined dataset.
 
@@ -680,13 +681,13 @@ class GivenAxis(Combined):
 
         Returns
         -------
-        np.ndarray
+        NDArray[Any]
             Slice of data from the combined dataset.
         """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
-    def __getitem__(self, n: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """
         Retrieves data from the combined dataset based on the given index.
 
@@ -697,7 +698,7 @@ class GivenAxis(Combined):
 
         Returns
         -------
-        np.ndarray
+        NDArray[Any]
             Data from the combined dataset based on the index.
         """
         if isinstance(n, tuple):

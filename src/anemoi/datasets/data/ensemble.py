@@ -10,11 +10,14 @@
 
 import logging
 from typing import Any
+from typing import Dict
 from typing import Tuple
-from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
+from .dataset import FullIndex
+from .dataset import Shape
 from .debug import Node
 from .forwards import Forwards
 from .forwards import GivenAxis
@@ -31,6 +34,16 @@ OFFSETS = dict(number=1, numbers=1, member=0, members=0)
 
 class Number(Forwards):
     def __init__(self, forward: Any, **kwargs: Any) -> None:
+        """
+        Initializes a Number object.
+
+        Parameters
+        ----------
+        forward : Any
+            The dataset to forward.
+        kwargs : Any
+            Additional keyword arguments specifying the members.
+        """
         super().__init__(forward)
 
         self.members = []
@@ -48,10 +61,26 @@ class Number(Forwards):
         self._shape, _ = update_tuple(forward.shape, 2, len(self.members))
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> Shape:
+        """
+        Returns the shape of the dataset.
+        """
         return self._shape
 
-    def __getitem__(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
+        """
+        Retrieves data from the dataset based on the given index.
+
+        Parameters
+        ----------
+        index : FullIndex
+            Index specifying the data to retrieve.
+
+        Returns
+        -------
+        NDArray[Any]
+            Data array from the dataset based on the index.
+        """
         if isinstance(index, int):
             result = self.forward[index]
             result = result[:, self.mask, :]
@@ -68,9 +97,30 @@ class Number(Forwards):
         return apply_index_to_slices_changes(result, changes)
 
     def tree(self) -> Node:
+        """
+        Generates a hierarchical tree structure for the dataset.
+
+        Returns
+        -------
+        Node
+            A Node object representing the dataset.
+        """
         return Node(self, [self.forward.tree()], numbers=[n + 1 for n in self.members])
 
-    def metadata_specific(self) -> dict:
+    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Returns metadata specific to the Number object.
+
+        Parameters
+        ----------
+        kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Metadata specific to the Number object.
+        """
         return {
             "numbers": [n + 1 for n in self.members],
         }
@@ -78,10 +128,33 @@ class Number(Forwards):
 
 class Ensemble(GivenAxis):
     def tree(self) -> Node:
+        """
+        Generates a hierarchical tree structure for the ensemble datasets.
+
+        Returns
+        -------
+        Node
+            A Node object representing the ensemble datasets.
+        """
         return Node(self, [d.tree() for d in self.datasets])
 
 
 def ensemble_factory(args: Tuple[Any, ...], kwargs: dict) -> Ensemble:
+    """
+    Factory function to create an Ensemble object.
+
+    Parameters
+    ----------
+    args : Tuple[Any, ...]
+        Positional arguments.
+    kwargs : dict
+        Keyword arguments.
+
+    Returns
+    -------
+    Ensemble
+        An Ensemble object.
+    """
     if "grids" in kwargs:
         raise NotImplementedError("Cannot use both 'ensemble' and 'grids'")
 

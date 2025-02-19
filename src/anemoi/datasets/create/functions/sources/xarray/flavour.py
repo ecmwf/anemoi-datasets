@@ -9,11 +9,18 @@
 
 
 import logging
+from abc import ABC
+from abc import abstractmethod
+from collections import namedtuple
 from typing import Any
 from typing import Dict
+from typing import Hashable
 from typing import Optional
 from typing import Tuple
 
+import xarray as xr
+
+from .coordinates import Coordinate
 from .coordinates import DateCoordinate
 from .coordinates import EnsembleCoordinate
 from .coordinates import LatitudeCoordinate
@@ -26,6 +33,7 @@ from .coordinates import UnsupportedCoordinate
 from .coordinates import XCoordinate
 from .coordinates import YCoordinate
 from .coordinates import is_scalar
+from .grid import Grid
 from .grid import MeshedGrid
 from .grid import MeshProjectionGrid
 from .grid import UnstructuredGrid
@@ -33,143 +41,141 @@ from .grid import UnstructuredProjectionGrid
 
 LOG = logging.getLogger(__name__)
 
+CoordinateAttributes = namedtuple("CoordinateAttributes", ["axis", "name", "long_name", "standard_name", "units"])
 
-class CoordinateGuesser:
 
-    def __init__(self, ds: Any) -> None:
+class CoordinateGuesser(ABC):
+    """
+    Class to guess the type of coordinates in a dataset.
+    """
+
+    def __init__(self, ds: xr.Dataset) -> None:
+        """
+        Initializes the CoordinateGuesser.
+
+        Args:
+            ds (Any): The dataset to guess coordinates from.
+        """
         self.ds = ds
-        self._cache = {}
+        self._coordinate_cache: Dict[Hashable, Coordinate] = {}
+        self._grid_cache: Dict[Hashable, Grid] = {}
 
     @classmethod
-    def from_flavour(cls, ds: Any, flavour: Optional[Dict[str, Any]]) -> "CoordinateGuesser":
+    def from_flavour(cls, ds: xr.Dataset, flavour: Optional[Dict[str, Any]]) -> "CoordinateGuesser":
+        """
+        Creates a CoordinateGuesser from a flavour.
+
+        Args:
+            ds (Any): The dataset to guess coordinates from.
+            flavour (Optional[Dict[str, Any]]): The flavour to use for guessing.
+
+        Returns:
+            CoordinateGuesser: The created CoordinateGuesser.
+        """
         if flavour is None:
             return DefaultCoordinateGuesser(ds)
         else:
             return FlavourCoordinateGuesser(ds, flavour)
 
-    def guess(self, c: Any, coord: str) -> Any:
-        if coord not in self._cache:
-            self._cache[coord] = self._guess(c, coord)
-        return self._cache[coord]
+    def guess(self, c: xr.DataArray, coord: Hashable) -> Coordinate:
+        """
+        Guesses the type of a coordinate.
 
-    def _guess(self, c: Any, coord: str) -> Any:
+        Args:
+            c (Any): The coordinate to guess.
+            coord (str): The name of the coordinate.
 
-        name = c.name
-        standard_name = getattr(c, "standard_name", "").lower()
-        axis = getattr(c, "axis", "")
-        long_name = getattr(c, "long_name", "").lower()
-        units = getattr(c, "units", "")
+        Returns:
+            Any: The guessed coordinate type.
+        """
+        if coord not in self._coordinate_cache:
+            self._coordinate_cache[coord] = self._guess(c, coord)
+        return self._coordinate_cache[coord]
 
-        d = self._is_longitude(
-            c,
+    def _guess(self, coordinate: xr.DataArray, coord: Hashable) -> Coordinate:
+        """
+        Internal method to guess the type of a coordinate.
+
+        Args:
+            c (Any): The coordinate to guess.
+            coord (str): The name of the coordinate.
+
+        Returns:
+            Any: The guessed coordinate type.
+        """
+        name = coordinate.name
+        standard_name = getattr(coordinate, "standard_name", "").lower()
+        axis = getattr(coordinate, "axis", "")
+        long_name = getattr(coordinate, "long_name", "").lower()
+        units = getattr(coordinate, "units", "")
+
+        attributes = CoordinateAttributes(
             axis=axis,
             name=name,
             long_name=long_name,
             standard_name=standard_name,
             units=units,
         )
+
+        d: Optional[Coordinate] = None
+
+        d = self._is_longitude(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_latitude(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_latitude(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_x(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_x(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_y(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_y(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_time(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_time(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_step(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_step(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_date(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_date(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_level(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_level(coordinate, attributes)
         if d is not None:
             return d
 
-        d = self._is_number(
-            c,
-            axis=axis,
-            name=name,
-            long_name=long_name,
-            standard_name=standard_name,
-            units=units,
-        )
+        d = self._is_number(coordinate, attributes)
         if d is not None:
             return d
 
-        if c.shape in ((1,), tuple()):
-            return ScalarCoordinate(c)
+        if coordinate.shape in ((1,), tuple()):
+            return ScalarCoordinate(coordinate)
 
         LOG.warning(
             f"Coordinate {coord} not supported\n{axis=}, {name=},"
-            f" {long_name=}, {standard_name=}, units\n\n{c}\n\n{type(c.values)} {c.shape}"
+            f" {long_name=}, {standard_name=}, units\n\n{coordinate}\n\n{type(coordinate.values)} {coordinate.shape}"
         )
 
-        return UnsupportedCoordinate(c)
+        return UnsupportedCoordinate(coordinate)
 
     def grid(self, coordinates: Any, variable: Any) -> Any:
+        """
+        Determines the grid type for the given coordinates and variable.
+
+        Args:
+            coordinates (Any): The coordinates to determine the grid from.
+            variable (Any): The variable to determine the grid from.
+
+        Returns:
+            Any: The determined grid type.
+        """
         lat = [c for c in coordinates if c.is_lat]
         lon = [c for c in coordinates if c.is_lon]
 
@@ -185,7 +191,17 @@ class CoordinateGuesser:
         raise NotImplementedError(f"Cannot establish grid {coordinates}")
 
     def _check_dims(self, variable: Any, x_or_lon: Any, y_or_lat: Any) -> Tuple[Any, bool]:
+        """
+        Checks the dimensions of the variable against the coordinates.
 
+        Args:
+            variable (Any): The variable to check.
+            x_or_lon (Any): The x or longitude coordinate.
+            y_or_lat (Any): The y or latitude coordinate.
+
+        Returns:
+            Tuple[Any, bool]: The checked dimensions and a flag indicating if the grid is unstructured.
+        """
         x_dims = set(x_or_lon.variable.dims)
         y_dims = set(y_or_lat.variable.dims)
         variable_dims = set(variable.dims)
@@ -212,30 +228,50 @@ class CoordinateGuesser:
         )
 
     def _lat_lon_provided(self, lat: Any, lon: Any, variable: Any) -> Any:
+        """
+        Determines the grid type when latitude and longitude are provided.
+
+        Args:
+            lat (Any): The latitude coordinate.
+            lon (Any): The longitude coordinate.
+            variable (Any): The variable to determine the grid from.
+
+        Returns:
+            Any: The determined grid type.
+        """
         lat = lat[0]
         lon = lon[0]
 
         dim_vars, unstructured = self._check_dims(variable, lon, lat)
 
-        if (lat.name, lon.name, dim_vars) in self._cache:
-            return self._cache[(lat.name, lon.name, dim_vars)]
+        if (lat.name, lon.name, dim_vars) in self._grid_cache:
+            return self._grid_cache[(lat.name, lon.name, dim_vars)]
 
-        if unstructured:
-            grid = UnstructuredGrid(lat, lon, dim_vars)
-        else:
-            grid = MeshedGrid(lat, lon, dim_vars)
+        grid: Grid = UnstructuredGrid(lat, lon, dim_vars) if unstructured else MeshedGrid(lat, lon, dim_vars)
 
-        self._cache[(lat.name, lon.name, dim_vars)] = grid
+        self._grid_cache[(lat.name, lon.name, dim_vars)] = grid
+
         return grid
 
     def _x_y_provided(self, x: Any, y: Any, variable: Any) -> Any:
+        """
+        Determines the grid type when x and y coordinates are provided.
+
+        Args:
+            x (Any): The x coordinate.
+            y (Any): The y coordinate.
+            variable (Any): The variable to determine the grid from.
+
+        Returns:
+            Any: The determined grid type.
+        """
         x = x[0]
         y = y[0]
 
         dim_vars, unstructured = self._check_dims(variable, x, y)
 
-        if (x.name, y.name, dim_vars) in self._cache:
-            return self._cache[(x.name, y.name, dim_vars)]
+        if (x.name, y.name, dim_vars) in self._grid_cache:
+            return self._grid_cache[(x.name, y.name, dim_vars)]
 
         grid_mapping = variable.attrs.get("grid_mapping", None)
         if grid_mapping is not None:
@@ -287,7 +323,7 @@ class CoordinateGuesser:
                 grid_mapping = self.ds.attrs["crs"]
                 LOG.warning(f"Using CRS {grid_mapping} from global attributes")
 
-        grid = None
+        grid: Optional[Grid] = None
         if grid_mapping is not None:
 
             grid_mapping = dict(self.ds[grid_mapping].attrs)
@@ -298,127 +334,320 @@ class CoordinateGuesser:
                 grid = MeshProjectionGrid(x, y, grid_mapping)
 
         if grid is not None:
-            self._cache[(x.name, y.name, dim_vars)] = grid
+            self._grid_cache[(x.name, y.name, dim_vars)] = grid
             return grid
 
         LOG.error("Could not fine a candidate for 'grid_mapping'")
         raise NotImplementedError(f"Unstructured grid {x.name} {y.name}")
 
+    @abstractmethod
+    def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_x(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[XCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_y(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[YCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_time(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[TimeCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_date(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[DateCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_step(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[StepCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_level(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LevelCoordinate]:
+        pass
+
+    @abstractmethod
+    def _is_number(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[EnsembleCoordinate]:
+        pass
+
 
 class DefaultCoordinateGuesser(CoordinateGuesser):
-    def __init__(self, ds: Any) -> None:
+    """
+    Default implementation of CoordinateGuesser.
+    """
+
+    def __init__(self, ds: xr.Dataset) -> None:
+        """
+        Initializes the DefaultCoordinateGuesser.
+
+        Args:
+            ds (Any): The dataset to guess coordinates from.
+        """
         super().__init__(ds)
 
-    def _is_longitude(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[LongitudeCoordinate]:
-        if standard_name == "longitude":
+    def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
+        """
+        Checks if the coordinate is a longitude.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[LongitudeCoordinate]: The LongitudeCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "longitude":
             return LongitudeCoordinate(c)
 
-        if long_name == "longitude" and units == "degrees_east":
+        if attributes.long_name == "longitude" and attributes.units == "degrees_east":
             return LongitudeCoordinate(c)
 
-        if name == "longitude":  # WeatherBench
+        if attributes.name == "longitude":  # WeatherBench
             return LongitudeCoordinate(c)
 
-    def _is_latitude(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[LatitudeCoordinate]:
-        if standard_name == "latitude":
+        return None
+
+    def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
+        """
+        Checks if the coordinate is a latitude.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[LatitudeCoordinate]: The LatitudeCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "latitude":
             return LatitudeCoordinate(c)
 
-        if long_name == "latitude" and units == "degrees_north":
+        if attributes.long_name == "latitude" and attributes.units == "degrees_north":
             return LatitudeCoordinate(c)
 
-        if name == "latitude":  # WeatherBench
+        if attributes.name == "latitude":  # WeatherBench
             return LatitudeCoordinate(c)
 
-    def _is_x(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[XCoordinate]:
-        if standard_name == "projection_x_coordinate":
+        return None
+
+    def _is_x(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[XCoordinate]:
+        """
+        Checks if the coordinate is an x coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[XCoordinate]: The XCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "projection_x_coordinate":
             return XCoordinate(c)
 
-        if name == "x":
+        if attributes.name == "x":
             return XCoordinate(c)
 
-    def _is_y(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[YCoordinate]:
-        if standard_name == "projection_y_coordinate":
+        return None
+
+    def _is_y(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[YCoordinate]:
+        """
+        Checks if the coordinate is a y coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[YCoordinate]: The YCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "projection_y_coordinate":
             return YCoordinate(c)
 
-        if name == "y":
+        if attributes.name == "y":
             return YCoordinate(c)
 
-    def _is_time(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[TimeCoordinate]:
-        if standard_name == "time":
+        return None
+
+    def _is_time(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[TimeCoordinate]:
+        """
+        Checks if the coordinate is a time coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[TimeCoordinate]: The TimeCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "time":
             return TimeCoordinate(c)
 
-        if name == "time" and standard_name != "forecast_reference_time":
+        if attributes.name == "time" and attributes.standard_name != "forecast_reference_time":
             return TimeCoordinate(c)
 
-    def _is_date(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[DateCoordinate]:
-        if standard_name == "forecast_reference_time":
+        return None
+
+    def _is_date(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[DateCoordinate]:
+        """
+        Checks if the coordinate is a date coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[DateCoordinate]: The DateCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "forecast_reference_time":
             return DateCoordinate(c)
 
-        if name == "forecast_reference_time":
+        if attributes.name == "forecast_reference_time":
             return DateCoordinate(c)
 
-    def _is_step(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[StepCoordinate]:
-        if standard_name == "forecast_period":
+        return None
+
+    def _is_step(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[StepCoordinate]:
+        """
+        Checks if the coordinate is a step coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[StepCoordinate]: The StepCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "forecast_period":
             return StepCoordinate(c)
 
-        if long_name == "time elapsed since the start of the forecast":
+        if attributes.long_name == "time elapsed since the start of the forecast":
             return StepCoordinate(c)
 
-        if name == "prediction_timedelta":  # WeatherBench
+        if attributes.name == "prediction_timedelta":  # WeatherBench
             return StepCoordinate(c)
 
-    def _is_level(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[LevelCoordinate]:
-        if standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
+        return None
+
+    def _is_level(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LevelCoordinate]:
+        """
+        Checks if the coordinate is a level coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[LevelCoordinate]: The LevelCoordinate if matched, else None.
+        """
+        if attributes.standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
             return LevelCoordinate(c, "ml")
 
-        if long_name == "height" and units == "m":
+        if attributes.long_name == "height" and attributes.units == "m":
             return LevelCoordinate(c, "height")
 
-        if standard_name == "air_pressure" and units == "hPa":
+        if attributes.standard_name == "air_pressure" and attributes.units == "hPa":
             return LevelCoordinate(c, "pl")
 
-        if name == "level":
+        if attributes.name == "level":
             return LevelCoordinate(c, "pl")
 
-        if name == "vertical" and units == "hPa":
+        if attributes.name == "vertical" and attributes.units == "hPa":
             return LevelCoordinate(c, "pl")
 
-        if standard_name == "depth":
+        if attributes.standard_name == "depth":
             return LevelCoordinate(c, "depth")
 
-        if name == "vertical" and units == "hPa":
+        if attributes.name == "vertical" and attributes.units == "hPa":
             return LevelCoordinate(c, "pl")
 
-    def _is_number(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[EnsembleCoordinate]:
-        if name in ("realization", "number"):
+        return None
+
+    def _is_number(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[EnsembleCoordinate]:
+        """
+        Checks if the coordinate is an ensemble coordinate.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[EnsembleCoordinate]: The EnsembleCoordinate if matched, else None.
+        """
+        if attributes.name in ("realization", "number"):
             return EnsembleCoordinate(c)
+
+        return None
 
 
 class FlavourCoordinateGuesser(CoordinateGuesser):
-    def __init__(self, ds: Any, flavour: Dict[str, Any]) -> None:
+    """
+    Implementation of CoordinateGuesser that uses a flavour for guessing.
+    """
+
+    def __init__(self, ds: xr.Dataset, flavour: Dict[str, Any]) -> None:
+        """
+        Initializes the FlavourCoordinateGuesser.
+
+        Args:
+            ds (Any): The dataset to guess coordinates from.
+            flavour (Dict[str, Any]): The flavour to use for guessing.
+        """
         super().__init__(ds)
         self.flavour = flavour
 
-    def _match(self, c: Any, key: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _match(self, c: xr.DataArray, key: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Matches the coordinate against the flavour rules.
 
+        Args:
+            c (Any): The coordinate to match.
+            key (str): The key to match in the flavour rules.
+            values (Dict[str, Any]): The values to match against.
+
+        Returns:
+            Optional[Dict[str, Any]]: The matched rule if any, else None.
+        """
         if key not in self.flavour["rules"]:
             return None
 
@@ -437,75 +666,193 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
 
         return None
 
-    def _is_longitude(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[LongitudeCoordinate]:
+    def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
+        """
+        Checks if the coordinate is a longitude using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[LongitudeCoordinate]: The LongitudeCoordinate if matched, else None.
+        """
         if self._match(c, "longitude", locals()):
             return LongitudeCoordinate(c)
 
-    def _is_latitude(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[LatitudeCoordinate]:
+        return None
+
+    def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
+        """
+        Checks if the coordinate is a latitude using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[LatitudeCoordinate]: The LatitudeCoordinate if matched, else None.
+        """
         if self._match(c, "latitude", locals()):
             return LatitudeCoordinate(c)
 
-    def _is_x(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[XCoordinate]:
+        return None
+
+    def _is_x(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[XCoordinate]:
+        """
+        Checks if the coordinate is an x coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[XCoordinate]: The XCoordinate if matched, else None.
+        """
         if self._match(c, "x", locals()):
             return XCoordinate(c)
 
-    def _is_y(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[YCoordinate]:
+        return None
+
+    def _is_y(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[YCoordinate]:
+        """
+        Checks if the coordinate is a y coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[YCoordinate]: The YCoordinate if matched, else None.
+        """
         if self._match(c, "y", locals()):
             return YCoordinate(c)
 
-    def _is_time(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[TimeCoordinate]:
+        return None
+
+    def _is_time(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[TimeCoordinate]:
+        """
+        Checks if the coordinate is a time coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[TimeCoordinate]: The TimeCoordinate if matched, else None.
+        """
         if self._match(c, "time", locals()):
             return TimeCoordinate(c)
 
-    def _is_step(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[StepCoordinate]:
+        return None
+
+    def _is_step(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[StepCoordinate]:
+        """
+        Checks if the coordinate is a step coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[StepCoordinate]: The StepCoordinate if matched, else None.
+        """
         if self._match(c, "step", locals()):
             return StepCoordinate(c)
 
-    def _is_date(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[DateCoordinate]:
+        return None
+
+    def _is_date(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[DateCoordinate]:
+        """
+        Checks if the coordinate is a date coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[DateCoordinate]: The DateCoordinate if matched, else None.
+        """
         if self._match(c, "date", locals()):
             return DateCoordinate(c)
 
-    def _is_level(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[LevelCoordinate]:
+        return None
 
+    def _is_level(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LevelCoordinate]:
+        """
+        Checks if the coordinate is a level coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[LevelCoordinate]: The LevelCoordinate if matched, else None.
+        """
         rule = self._match(c, "level", locals())
         if rule:
             # assert False, rule
             return LevelCoordinate(
                 c,
-                self._levtype(
-                    c,
-                    axis=axis,
-                    name=name,
-                    long_name=long_name,
-                    standard_name=standard_name,
-                    units=units,
-                ),
+                self._levtype(c, attributes),
             )
 
-    def _levtype(self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str) -> str:
+        return None
+
+    def _levtype(self, c: xr.DataArray, attributes: CoordinateAttributes) -> str:
         if "levtype" in self.flavour:
-            return self.flavour["levtype"]
+            return str(self.flavour["levtype"])
 
         raise NotImplementedError(f"levtype for {c=}")
 
-    def _is_number(
-        self, c: Any, *, axis: str, name: str, long_name: str, standard_name: str, units: str
-    ) -> Optional[EnsembleCoordinate]:
+    def _is_number(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[EnsembleCoordinate]:
+        """
+        Checks if the coordinate is an ensemble coordinate using the flavour rules.
+
+        Args:
+            c (Any): The coordinate to check.
+            axis (str): The axis of the coordinate.
+            name (str): The name of the coordinate.
+            long_name (str): The long name of the coordinate.
+            standard_name (str): The standard name of the coordinate.
+            units (str): The units of the coordinate.
+
+        Returns:
+            Optional[EnsembleCoordinate]: The EnsembleCoordinate if matched, else None.
+        """
         if self._match(c, "number", locals()):
-            return DateCoordinate(c)
+            return EnsembleCoordinate(c)
+
+        return None

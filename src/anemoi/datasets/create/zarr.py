@@ -10,10 +10,12 @@
 import datetime
 import logging
 import shutil
+from typing import Any
 from typing import Optional
 
 import numpy as np
 import zarr
+from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ def add_zarr_dataset(
     fill_value: np.generic = None,
     zarr_root: zarr.Group,
     shape: tuple[int, ...] = None,
-    array: np.ndarray = None,
+    array: NDArray[Any] = None,
     overwrite: bool = True,
     dimensions: tuple[str, ...] = None,
     **kwargs,

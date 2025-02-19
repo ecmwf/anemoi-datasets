@@ -9,8 +9,10 @@
 
 
 import logging
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
@@ -26,14 +28,14 @@ class ViewCacheArray:
 
     """
 
-    def __init__(self, array: np.ndarray, *, shape: tuple[int, ...], indexes: list[int]):
+    def __init__(self, array: NDArray[Any], *, shape: tuple[int, ...], indexes: list[int]):
         assert len(indexes) == shape[0], (len(indexes), shape[0])
         self.array = array
         self.dtype = array.dtype
         self.cache = np.full(shape, np.nan, dtype=self.dtype)
         self.indexes = indexes
 
-    def __setitem__(self, key: tuple[int, ...], value: np.ndarray) -> None:
+    def __setitem__(self, key: tuple[int, ...], value: NDArray[Any]) -> None:
         self.cache[key] = value
 
     def flush(self) -> None:

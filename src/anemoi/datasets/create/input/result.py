@@ -14,8 +14,10 @@ import time
 from collections import defaultdict
 from functools import cached_property
 from typing import Any
+from typing import DefaultDict
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 import numpy as np
@@ -33,7 +35,7 @@ LOG = logging.getLogger(__name__)
 def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
     assert isinstance(variables, tuple), variables
 
-    KNOWN = {
+    KNOWN: Dict[str, Dict[str, bool]] = {
         "cos_julian_day": dict(computed_forcing=True, constant_in_time=False),
         "cos_latitude": dict(computed_forcing=True, constant_in_time=True),
         "cos_local_time": dict(computed_forcing=True, constant_in_time=False),
@@ -48,9 +50,9 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
         "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
     }
 
-    def _merge(md1, md2):
+    def _merge(md1: Dict[str, Any], md2: Dict[str, Any]) -> Dict[str, Any]:
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
-        result = {}
+        result: Dict[str, Any] = {}
         for k in md1.keys():
             v1 = md1[k]
             v2 = md2[k]
@@ -73,10 +75,10 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
         return result
 
-    mars = {}
-    other = defaultdict(dict)
-    i = -1
-    date = None
+    mars: Dict[str, Any] = {}
+    other: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
+    i: int = -1
+    date: Optional[str] = None
     for c in cube.iterate_cubelets():
 
         if date is None:
@@ -119,7 +121,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
-            TYPE_OF_STATISTICAL_PROCESSING = {
+            TYPE_OF_STATISTICAL_PROCESSING: Dict[Optional[int], Optional[str]] = {
                 None: None,
                 0: "average",
                 1: "accumulation",
@@ -139,12 +141,12 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
             # https://codes.ecmwf.int/grib/format/grib1/ctable/5/
 
-            TIME_RANGE_INDICATOR = {
+            TIME_RANGE_INDICATOR: Dict[int, str] = {
                 4: "accumulation",
                 3: "average",
             }
 
-            STEP_TYPE_FOR_CONVERSION = {
+            STEP_TYPE_FOR_CONVERSION: Dict[str, str] = {
                 "min": "minimum",
                 "max": "maximum",
                 "accum": "accumulation",
@@ -154,7 +156,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
             # A few patches
             #
 
-            PATCHES = {
+            PATCHES: Dict[str, str] = {
                 "10fg6": "maximum",
                 "mntpr3": "minimum",  # Not in param db
                 "mntpr6": "minimum",  # Not in param db
@@ -193,7 +195,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
         else:
             mars[variables[i]] = md
 
-    result = {}
+    result: Dict[str, Dict[str, Any]] = {}
     for k, v in mars.items():
         result[k] = dict(mars=v) if v else {}
         result[k].update(other[k])
@@ -205,11 +207,12 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
 
 def _data_request(data: Any) -> Dict[str, Any]:
-    date = None
-    params_levels = defaultdict(set)
-    params_steps = defaultdict(set)
+    date: Optional[Any] = None
+    params_levels: DefaultDict[str, set] = defaultdict(set)
+    params_steps: DefaultDict[str, set] = defaultdict(set)
 
-    area = grid = None
+    area: Optional[Any] = None
+    grid: Optional[Any] = None
 
     for field in data:
         try:
@@ -239,8 +242,8 @@ def _data_request(data: Any) -> Dict[str, Any]:
         except Exception:
             LOG.error(f"Error in retrieving metadata (cannot build data request info) for {field}", exc_info=True)
 
-    def sort(old_dic):
-        new_dic = {}
+    def sort(old_dic: DefaultDict[str, set]) -> Dict[str, List[Any]]:
+        new_dic: Dict[str, List[Any]] = {}
         for k, v in old_dic.items():
             new_dic[k] = sorted(list(v))
         return new_dic
@@ -252,8 +255,8 @@ def _data_request(data: Any) -> Dict[str, Any]:
 
 
 class Result:
-    empty = False
-    _coords_already_built = False
+    empty: bool = False
+    _coords_already_built: bool = False
 
     def __init__(self, context: Any, action_path: List[str], dates: Any) -> None:
         from anemoi.datasets.dates.groups import GroupOfDates
@@ -265,9 +268,9 @@ class Result:
         assert isinstance(context, ActionContext), type(context)
         assert isinstance(action_path, list), action_path
 
-        self.context = context
-        self.group_of_dates = dates
-        self.action_path = action_path
+        self.context: Any = context
+        self.group_of_dates: Any = dates
+        self.action_path: List[str] = action_path
 
     @property
     @trace_datasource
@@ -281,19 +284,19 @@ class Result:
 
     def get_cube(self) -> Any:
         trace("🧊", f"getting cube from {self.__class__.__name__}")
-        ds = self.datasource
+        ds: Any = self.datasource
 
-        remapping = self.context.remapping
-        order_by = self.context.order_by
-        flatten_grid = self.context.flatten_grid
-        start = time.time()
+        remapping: Any = self.context.remapping
+        order_by: Any = self.context.order_by
+        flatten_grid: Any = self.context.flatten_grid
+        start: float = time.time()
         LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
         assert order_by, order_by
 
-        patches = {"number": {None: 0}}
+        patches: Dict[str, Dict[Optional[Any], int]] = {"number": {None: 0}}
 
         try:
-            cube = ds.cube(
+            cube: Any = ds.cube(
                 order_by,
                 remapping=remapping,
                 flatten_values=flatten_grid,
@@ -315,7 +318,7 @@ class Result:
 
     def explain(self, ds: Any, *args: Any, remapping: Any, patches: Any) -> None:
 
-        METADATA = (
+        METADATA: Tuple[str, ...] = (
             "date",
             "time",
             "step",
@@ -340,7 +343,7 @@ class Result:
         # print("Executing", self.action_path)
         # print("Dates:", compress_dates(self.dates))
 
-        names = []
+        names: List[str] = []
         for a in args:
             if isinstance(a, str):
                 names.append(a)
@@ -356,7 +359,7 @@ class Result:
         for k, v in user_coords.items():
             print(f"  {k:20}:", len(v), shorten_list(v, max_length=10))
         print()
-        user_shape = tuple(len(v) for k, v in user_coords.items())
+        user_shape: Tuple[int, ...] = tuple(len(v) for k, v in user_coords.items())
         print("Shape of the hypercube           :", user_shape)
         print(
             "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
@@ -459,10 +462,10 @@ class Result:
         exit(1)
 
     def __repr__(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
-        more = ",".join([str(a)[:5000] for a in args])
+        more: str = ",".join([str(a)[:5000] for a in args])
         more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
 
-        dates = " no-dates"
+        dates: str = " no-dates"
         if self.group_of_dates is not None:
             dates = f" {len(self.group_of_dates)} dates"
             dates += " ("
@@ -472,7 +475,7 @@ class Result:
             dates += ")"
 
         more = more[:5000]
-        txt = f"{self.__class__.__name__}:{dates}{_indent_}{more}"
+        txt: str = f"{self.__class__.__name__}:{dates}{_indent_}{more}"
         if _indent_:
             txt = txt.replace("\n", "\n  ")
         return txt
@@ -487,17 +490,17 @@ class Result:
         if self._coords_already_built:
             return
 
-        cube = self.get_cube()
+        cube: Any = self.get_cube()
 
-        from_data = cube.user_coords
-        from_config = self.context.order_by
+        from_data: Any = cube.user_coords
+        from_config: Any = self.context.order_by
 
-        keys_from_config = list(from_config.keys())
-        keys_from_data = list(from_data.keys())
+        keys_from_config: list = list(from_config.keys())
+        keys_from_data: list = list(from_data.keys())
         assert keys_from_data == keys_from_config, f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
 
-        variables_key = list(from_config.keys())[1]
-        ensembles_key = list(from_config.keys())[2]
+        variables_key: str = list(from_config.keys())[1]
+        ensembles_key: str = list(from_config.keys())[2]
 
         if isinstance(from_config[variables_key], (list, tuple)):
             assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
@@ -505,21 +508,22 @@ class Result:
                 from_config[variables_key],
             )
 
-        self._variables = from_data[variables_key]  # "param_level"
-        self._ensembles = from_data[ensembles_key]  # "number"
+        self._variables: Any = from_data[variables_key]  # "param_level"
+        self._ensembles: Any = from_data[ensembles_key]  # "number"
 
-        first_field = self.datasource[0]
-        grid_points = first_field.grid_points()
+        first_field: Any = self.datasource[0]
+        grid_points: Any = first_field.grid_points()
 
-        lats, lons = grid_points
+        lats: Any = grid_points[0]
+        lons: Any = grid_points[1]
 
         assert len(lats) == len(lons), (len(lats), len(lons), first_field)
         assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
 
-        north = np.amax(lats)
-        south = np.amin(lats)
-        east = np.amax(lons)
-        west = np.amin(lons)
+        north: float = np.amax(lats)
+        south: float = np.amin(lats)
+        east: float = np.amax(lons)
+        west: float = np.amin(lons)
 
         assert -90 <= south <= north <= 90, (south, north, first_field)
         assert (-180 <= west <= east <= 180) or (0 <= west <= east <= 360), (
@@ -528,17 +532,17 @@ class Result:
             first_field,
         )
 
-        grid_values = list(range(len(grid_points[0])))
+        grid_values: list = list(range(len(grid_points[0])))
 
-        self._grid_points = grid_points
-        self._resolution = first_field.resolution
-        self._grid_values = grid_values
-        self._field_shape = first_field.shape
-        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
+        self._grid_points: Any = grid_points
+        self._resolution: Any = first_field.resolution
+        self._grid_values: Any = grid_values
+        self._field_shape: Any = first_field.shape
+        self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
-        self._cube = cube
+        self._cube: Any = cube
 
-        self._coords_already_built = True
+        self._coords_already_built: bool = True
 
     @property
     def variables(self) -> List[str]:

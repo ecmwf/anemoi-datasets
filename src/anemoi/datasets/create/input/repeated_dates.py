@@ -12,6 +12,7 @@ import logging
 from collections import defaultdict
 from typing import Any
 from typing import Generator
+from typing import Optional
 from typing import Tuple
 
 import numpy as np
@@ -34,7 +35,7 @@ class DateMapper:
     @staticmethod
     def from_mode(mode: str, source: Any, config: dict) -> "DateMapper":
 
-        MODES = dict(
+        MODES: dict = dict(
             closest=DateMapperClosest,
             climatology=DateMapperClimatology,
             constant=DateMapperConstant,
@@ -48,40 +49,40 @@ class DateMapper:
 
 class DateMapperClosest(DateMapper):
     def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
-        self.source = source
-        self.maximum = frequency_to_timedelta(maximum)
-        self.frequency = frequency_to_timedelta(frequency)
-        self.skip_all_nans = skip_all_nans
-        self.tried = set()
-        self.found = set()
+        self.source: Any = source
+        self.maximum: Any = frequency_to_timedelta(maximum)
+        self.frequency: Any = frequency_to_timedelta(frequency)
+        self.skip_all_nans: bool = skip_all_nans
+        self.tried: set = set()
+        self.found: set = set()
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         from anemoi.datasets.dates.groups import GroupOfDates
 
-        asked_dates = list(group_of_dates)
+        asked_dates: list = list(group_of_dates)
         if not asked_dates:
             return
 
-        to_try = set()
+        to_try: set = set()
         for date in asked_dates:
-            start = date
+            start: Any = date
             while start >= date - self.maximum:
                 to_try.add(start)
                 start -= self.frequency
 
-            end = date
+            end: Any = date
             while end <= date + self.maximum:
                 to_try.add(end)
                 end += self.frequency
 
         to_try = sorted(to_try - self.tried)
-        info = {k: "no-data" for k in to_try}
+        info: dict = {k: "no-data" for k in to_try}
 
         if not to_try:
             LOG.warning(f"No new dates to try for {group_of_dates} in {self.source}")
 
         if to_try:
-            result = self.source.select(
+            result: Any = self.source.select(
                 GroupOfDates(
                     sorted(to_try),
                     group_of_dates.provider,
@@ -89,10 +90,10 @@ class DateMapperClosest(DateMapper):
                 )
             )
 
-            cnt = 0
+            cnt: int = 0
             for f in result.datasource:
                 cnt += 1
-                date = as_datetime(f.metadata("valid_datetime"))
+                date: Any = as_datetime(f.metadata("valid_datetime"))
 
                 if self.skip_all_nans:
                     if np.isnan(f.to_numpy()).all():
@@ -114,12 +115,12 @@ class DateMapperClosest(DateMapper):
 
             raise ValueError(f"No matching data found for {asked_dates} in {self.source}")
 
-        new_dates = defaultdict(list)
+        new_dates: defaultdict = defaultdict(list)
 
         for date in asked_dates:
-            best = None
+            best: Any = None
             for found_date in sorted(self.found):
-                delta = abs(date - found_date)
+                delta: Any = abs(date - found_date)
                 if best is None or delta <= best[0]:
                     best = delta, found_date
             new_dates[best[1]].append(date)
@@ -132,21 +133,21 @@ class DateMapperClosest(DateMapper):
 
 
 class DateMapperClimatology(DateMapper):
-    def __init__(self, source: Any, year: int, day: int, hour: int = None) -> None:
-        self.year = year
-        self.day = day
-        self.hour = hour
+    def __init__(self, source: Any, year: int, day: int, hour: Optional[int] = None) -> None:
+        self.year: int = year
+        self.day: int = day
+        self.hour: Optional[int] = hour
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         from anemoi.datasets.dates.groups import GroupOfDates
 
-        dates = list(group_of_dates)
+        dates: list = list(group_of_dates)
         if not dates:
             return
 
-        new_dates = defaultdict(list)
+        new_dates: defaultdict = defaultdict(list)
         for date in dates:
-            new_date = date.replace(year=self.year, day=self.day)
+            new_date: Any = date.replace(year=self.year, day=self.day)
             if self.hour is not None:
                 new_date = new_date.replace(hour=self.hour, minute=0, second=0)
             new_dates[new_date].append(date)
@@ -159,9 +160,9 @@ class DateMapperClimatology(DateMapper):
 
 
 class DateMapperConstant(DateMapper):
-    def __init__(self, source: Any, date: Any = None) -> None:
-        self.source = source
-        self.date = date
+    def __init__(self, source: Any, date: Optional[Any] = None) -> None:
+        self.source: Any = source
+        self.date: Optional[Any] = date
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         from anemoi.datasets.dates.groups import GroupOfDates
@@ -191,13 +192,13 @@ class DateMapperResult(Result):
     ) -> None:
         super().__init__(context, action_path, group_of_dates)
 
-        self.source_results = source_result
-        self.mapper = mapper
-        self.original_group_of_dates = original_group_of_dates
+        self.source_results: Any = source_result
+        self.mapper: DateMapper = mapper
+        self.original_group_of_dates: Any = original_group_of_dates
 
     @property
     def datasource(self) -> Any:
-        result = []
+        result: list = []
 
         for field in self.source_results.datasource:
             for date in self.original_group_of_dates:
@@ -213,12 +214,12 @@ class RepeatedDatesAction(Action):
     def __init__(self, context: Any, action_path: list, source: Any, mode: str, **kwargs: Any) -> None:
         super().__init__(context, action_path, source, mode, **kwargs)
 
-        self.source = action_factory(source, context, action_path + ["source"])
-        self.mapper = DateMapper.from_mode(mode, self.source, kwargs)
+        self.source: Any = action_factory(source, context, action_path + ["source"])
+        self.mapper: DateMapper = DateMapper.from_mode(mode, self.source, kwargs)
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:
-        results = []
+        results: list = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
             results.append(
                 DateMapperResult(

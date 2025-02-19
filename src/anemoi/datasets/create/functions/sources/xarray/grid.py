@@ -9,6 +9,8 @@
 
 
 import logging
+from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
 from typing import Any
 from typing import Tuple
@@ -18,7 +20,7 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
-class Grid:
+class Grid(ABC):
 
     def __init__(self) -> None:
         pass
@@ -30,6 +32,11 @@ class Grid:
     @property
     def longitudes(self) -> Any:
         return self.grid_points[1]
+
+    @abstractmethod
+    @property
+    def grid_points(self) -> Tuple[Any, Any]:
+        pass
 
 
 class LatLonGrid(Grid):
@@ -122,17 +129,4 @@ class MeshProjectionGrid(ProjectionGrid):
 class UnstructuredProjectionGrid(XYGrid):
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
-        assert False, "Not implemented"
-
-        # lat, lon = transformer.transform(
-        #      self.y.variable.values.flatten(),
-        #     self.x.variable.values.flatten(),
-
-        # )
-
-        # lat = lat[::len(lat)//100]
-        # lon = lon[::len(lon)//100]
-
-        # print(len(lat), len(lon))
-
-        # return np.meshgrid(lat, lon)
+        raise NotImplementedError("UnstructuredProjectionGrid")

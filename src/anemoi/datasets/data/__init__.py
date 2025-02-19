@@ -11,6 +11,9 @@ import logging
 from typing import Any
 
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .misc import _open_dataset
 from .misc import add_dataset_path
 from .misc import add_named_dataset
@@ -22,6 +25,9 @@ __all__ = [
     "MissingDateError",
     "add_dataset_path",
     "add_named_dataset",
+    "FullIndex",
+    "TupleIndex",
+    "Shape",
 ]
 
 

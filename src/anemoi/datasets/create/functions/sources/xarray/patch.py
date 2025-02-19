@@ -13,10 +13,12 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+import xarray as xr
+
 LOG = logging.getLogger(__name__)
 
 
-def patch_attributes(ds: Any, attributes: Dict[str, Dict[str, Any]]) -> Any:
+def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> Any:
     for name, value in attributes.items():
         variable = ds[name]
         variable.attrs.update(value)
@@ -24,7 +26,7 @@ def patch_attributes(ds: Any, attributes: Dict[str, Dict[str, Any]]) -> Any:
     return ds
 
 
-def patch_coordinates(ds: Any, coordinates: List[str]) -> Any:
+def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
     for name in coordinates:
         ds = ds.assign_coords({name: ds[name]})
 
@@ -37,7 +39,7 @@ PATCHES = {
 }
 
 
-def patch_dataset(ds: Any, patch: Dict[str, Dict[str, Any]]) -> Any:
+def patch_dataset(ds: xr.Dataset, patch: Dict[str, Dict[str, Any]]) -> Any:
     for what, values in patch.items():
         if what not in PATCHES:
             raise ValueError(f"Unknown patch type {what!r}")

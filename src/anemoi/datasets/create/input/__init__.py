@@ -12,6 +12,7 @@ from copy import deepcopy
 from typing import Any
 from typing import Union
 
+from ..dates import GroupOfDates
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class InputBuilder:
         self.action_path = ["input"]
 
     @trace_select
-    def select(self, group_of_dates: object) -> Any:
+    def select(self, group_of_dates: GroupOfDates) -> Any:
         from .action import ActionContext
         from .action import action_factory
 
@@ -50,7 +51,7 @@ class InputBuilder:
         a = action_factory(self.config, context, self.action_path)
         return repr(a)
 
-    def _trace_select(self, group_of_dates: object) -> str:
+    def _trace_select(self, group_of_dates: GroupOfDates) -> str:
         return f"InputBuilder({group_of_dates})"
 
 

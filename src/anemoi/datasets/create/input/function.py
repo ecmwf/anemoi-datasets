@@ -15,6 +15,7 @@ from typing import Dict
 
 from earthkit.data import FieldList
 
+from ..dates import GroupOfDates
 from ..functions import import_function
 from .action import Action
 from .misc import _tidy
@@ -36,8 +37,8 @@ class FunctionContext:
     """
 
     def __init__(self, owner: object) -> None:
-        self.owner = owner
-        self.use_grib_paramid = owner.context.use_grib_paramid
+        self.owner: object = owner
+        self.use_grib_paramid: bool = owner.context.use_grib_paramid
 
     def trace(self, emoji: str, *args: Any) -> None:
         trace(emoji, *args)
@@ -57,32 +58,32 @@ class FunctionContext:
 class FunctionAction(Action):
     def __init__(self, context: object, action_path: list, _name: str, **kwargs: Dict[str, Any]) -> None:
         super().__init__(context, action_path, **kwargs)
-        self.name = _name
+        self.name: str = _name
 
     @trace_select
-    def select(self, group_of_dates: object) -> "FunctionResult":
+    def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":
         return FunctionResult(self.context, self.action_path, group_of_dates, action=self)
 
     @property
-    def function(self) -> Callable:
+    def function(self) -> Callable[..., Any]:
         return import_function(self.name, "sources")
 
     def __repr__(self) -> str:
-        content = ""
+        content: str = ""
         content += ",".join([self._short_str(a) for a in self.args])
         content += " ".join([self._short_str(f"{k}={v}") for k, v in self.kwargs.items()])
         content = self._short_str(content)
         return super().__repr__(_inline_=content, _indent_=" ")
 
-    def _trace_select(self, group_of_dates: object) -> str:
+    def _trace_select(self, group_of_dates: GroupOfDates) -> str:
         return f"{self.name}({group_of_dates})"
 
 
 class FunctionResult(Result):
-    def __init__(self, context: object, action_path: list, group_of_dates: object, action: Action) -> None:
+    def __init__(self, context: object, action_path: list, group_of_dates: GroupOfDates, action: Action) -> None:
         super().__init__(context, action_path, group_of_dates)
         assert isinstance(action, Action), type(action)
-        self.action = action
+        self.action: Action = action
 
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
 

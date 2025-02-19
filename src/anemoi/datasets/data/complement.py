@@ -9,17 +9,21 @@
 
 
 import logging
+from abc import abstractmethod
 from functools import cached_property
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Set
 from typing import Tuple
-from typing import Union
 
-import numpy as np
+from numpy.typing import NDArray
 
 from ..grids import nearest_grid_points
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import Node
 from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
@@ -63,11 +67,11 @@ class Complement(Combined):
         return self._variables
 
     @property
-    def name_to_index(self) -> dict:
+    def name_to_index(self) -> Dict[str, int]:
         return {v: i for i, v in enumerate(self.variables)}
 
     @property
-    def shape(self) -> Tuple[int, int, int, int]:
+    def shape(self) -> Shape:
         shape = self._target.shape
         return (shape[0], len(self._variables)) + shape[2:]
 
@@ -95,10 +99,14 @@ class Complement(Combined):
         """
         return Node(self, [d.tree() for d in (self._target, self._source)])
 
-    def __getitem__(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> np.ndarray:
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
+
+    @abstractmethod
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        pass
 
 
 class ComplementNone(Complement):
@@ -106,7 +114,7 @@ class ComplementNone(Complement):
     def __init__(self, target: Any, source: Any) -> None:
         super().__init__(target, source)
 
-    def _get_tuple(self, index: Tuple[Union[int, slice], ...]) -> Any:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         result = self._source[index]
         return apply_index_to_slices_changes(result, changes)
@@ -127,7 +135,7 @@ class ComplementNearest(Complement):
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         pass
 
-    def _get_tuple(self, index: Tuple[Union[int, slice], ...]) -> Any:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         variable_index = 1
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, variable_index, slice(None))
@@ -140,7 +148,7 @@ class ComplementNearest(Complement):
         return apply_index_to_slices_changes(result, changes)
 
 
-def complement_factory(args: Tuple, kwargs: dict) -> Any:
+def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     from .select import Select
 
     assert len(args) == 0, args
@@ -173,6 +181,6 @@ def complement_factory(args: Tuple, kwargs: dict) -> Any:
     reorder = source.variables
     complemented = _open([target, complement])
     ordered = (
-        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate(),
     )
     return ordered

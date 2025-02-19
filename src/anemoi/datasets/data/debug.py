@@ -35,11 +35,34 @@ def css(name: str) -> str:
 
 class Node:
     def __init__(self, dataset: Any, kids: List[Any], **kwargs: Any) -> None:
+        """
+        Initializes a Node object.
+
+        Parameters
+        ----------
+        dataset : Any
+            The dataset associated with the node.
+        kids : List[Any]
+            List of child nodes.
+        kwargs : Any
+            Additional keyword arguments.
+        """
         self.dataset = dataset
         self.kids = kids
         self.kwargs = kwargs
 
     def _put(self, indent: int, result: List[str]) -> None:
+        """
+        Helper method to add the node representation to the result list.
+
+        Parameters
+        ----------
+        indent : int
+            Indentation level.
+        result : List[str]
+            List to store the node representation.
+        """
+
         def _spaces(indent):
             return " " * indent if indent else ""
 
@@ -53,11 +76,29 @@ class Node:
             kid._put(indent + 2, result)
 
     def __repr__(self) -> str:
+        """
+        Returns the string representation of the node.
+
+        Returns
+        -------
+        str
+            String representation of the node.
+        """
         result = []
         self._put(0, result)
         return "\n".join(result)
 
     def graph(self, digraph: List[str], nodes: dict) -> None:
+        """
+        Generates a graph representation of the node.
+
+        Parameters
+        ----------
+        digraph : List[str]
+            List to store the graph representation.
+        nodes : dict
+            Dictionary to store the node labels.
+        """
         label = self.dataset.label  # dataset.__class__.__name__.lower()
         if self.kwargs:
             param = []
@@ -92,6 +133,14 @@ class Node:
             kid.graph(digraph, nodes)
 
     def digraph(self) -> str:
+        """
+        Returns the graph representation of the node.
+
+        Returns
+        -------
+        str
+            Graph representation of the node.
+        """
         digraph = ["digraph {"]
         digraph.append("node [shape=box];")
         nodes = {}
@@ -105,7 +154,16 @@ class Node:
         return "\n".join(digraph)
 
     def _html(self, indent: str, rows: List[List[str]]) -> None:
+        """
+        Helper method to add the node representation to the HTML rows.
 
+        Parameters
+        ----------
+        indent : str
+            Indentation level.
+        rows : List[List[str]]
+            List to store the HTML rows.
+        """
         kwargs = {}
 
         for k, v in self.kwargs.items():
@@ -134,6 +192,14 @@ class Node:
             kid._html(indent + "&nbsp;&nbsp;&nbsp;", rows)
 
     def html(self) -> str:
+        """
+        Returns the HTML representation of the node.
+
+        Returns
+        -------
+        str
+            HTML representation of the node.
+        """
         result = [css("debug")]
 
         result.append('<table class="dataset">')
@@ -149,12 +215,27 @@ class Node:
         return "\n".join(result)
 
     def _as_tree(self, tree: Any) -> None:
+        """
+        Helper method to add the node representation to the tree.
 
+        Parameters
+        ----------
+        tree : Any
+            Tree object to store the node representation.
+        """
         for kid in self.kids:
             n = tree.node(kid)
             kid._as_tree(n)
 
     def as_tree(self) -> Any:
+        """
+        Returns the tree representation of the node.
+
+        Returns
+        -------
+        Any
+            Tree representation of the node.
+        """
         from anemoi.utils.text import Tree
 
         tree = Tree(self)
@@ -163,9 +244,20 @@ class Node:
 
     @property
     def summary(self) -> str:
+        """
+        Returns the summary of the node.
+        """
         return self.dataset.label
 
     def as_dict(self) -> dict:
+        """
+        Returns the dictionary representation of the node.
+
+        Returns
+        -------
+        dict
+            Dictionary representation of the node.
+        """
         return {}
 
 
@@ -173,12 +265,35 @@ class Source:
     """Class used to follow the provenance of a data point."""
 
     def __init__(self, dataset: Any, index: int, source: Optional[Any] = None, info: Optional[Any] = None) -> None:
+        """
+        Initializes a Source object.
+
+        Parameters
+        ----------
+        dataset : Any
+            The dataset associated with the source.
+        index : int
+            Index of the data point.
+        source : Optional[Any], optional
+            Source of the data point, by default None.
+        info : Optional[Any], optional
+            Additional information, by default None.
+        """
         self.dataset = dataset
+
         self.index = index
         self.source = source
         self.info = info
 
     def __repr__(self) -> str:
+        """
+        Returns the string representation of the source.
+
+        Returns
+        -------
+        str
+            String representation of the source.
+        """
         p = s = self.source
         while s is not None:
             p = s
@@ -187,6 +302,14 @@ class Source:
         return f"{self.dataset}[{self.index}, {self.dataset.variables[self.index]}] ({p})"
 
     def target(self) -> Any:
+        """
+        Returns the target source.
+
+        Returns
+        -------
+        Any
+            Target source.
+        """
         p = s = self.source
         while s is not None:
             p = s
@@ -194,14 +317,36 @@ class Source:
         return p
 
     def dump(self, depth: int = 0) -> None:
+        """
+        Dumps the source information.
+
+        Parameters
+        ----------
+        depth : int, optional
+            Indentation level, by default 0.
+        """
         print(" " * depth, self)
         if self.source is not None:
             self.source.dump(depth + 1)
 
 
 def _debug_indexing(method: Any) -> Any:
+    """
+    Decorator to debug indexing methods.
+
+    Parameters
+    ----------
+    method : Any
+        The method to be decorated.
+
+    Returns
+    -------
+    Any
+        The decorated method.
+    """
+
     @wraps(method)
-    def wrapper(self, index):
+    def wrapper(self: Any, index: Any) -> Any:
         global DEPTH
         # if isinstance(index, tuple):
         print("  " * DEPTH, "->", self, method.__name__, index)
@@ -216,6 +361,19 @@ def _debug_indexing(method: Any) -> Any:
 
 
 def _identity(x: Any) -> Any:
+    """
+    Identity function.
+
+    Parameters
+    ----------
+    x : Any
+        Input value.
+
+    Returns
+    -------
+    Any
+        The input value.
+    """
     return x
 
 
@@ -226,5 +384,13 @@ else:
 
 
 def debug_zarr_loading(on_off: int) -> None:
+    """
+    Enables or disables Zarr loading debugging.
+
+    Parameters
+    ----------
+    on_off : int
+        1 to enable debugging, 0 to disable.
+    """
     global DEBUG_ZARR_LOADING
     DEBUG_ZARR_LOADING = on_off

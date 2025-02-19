@@ -8,15 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Optional
-from typing import Union
+from typing import Set
 
-import numpy as np
+from numpy import ndarray as NDArray
 
 from . import open_dataset
 from .dataset import Dataset
@@ -37,20 +37,20 @@ class Statistics(Forwards):
             )
 
     @cached_property
-    def statistics(self) -> Dict[str, np.ndarray]:
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         return self._statistic.statistics
 
-    def statistics_tendencies(self, delta: Optional[int] = None) -> Dict[str, Union[int, float]]:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         if delta is None:
             delta = self.frequency
         return self._statistic.statistics_tendencies(delta)
 
-    def subclass_metadata_specific(self) -> Dict[str, Union[int, float]]:
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         return dict(statistics=self._statistic.metadata_specific())
 
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
 
-    def get_dataset_names(self, names: List[str]) -> None:
+    def get_dataset_names(self, names: Set[str]) -> None:
         super().get_dataset_names(names)
         self._statistic.get_dataset_names(names)

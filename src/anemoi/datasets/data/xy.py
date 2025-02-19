@@ -17,6 +17,7 @@ from typing import Set
 from typing import Tuple
 
 from .dataset import Dataset
+from .dataset import FullIndex
 from .debug import Node
 from .forwards import Combined
 from .misc import _auto_adjust
@@ -44,7 +45,7 @@ class ZipBase(Combined):
     def __len__(self) -> int:
         return min(len(d) for d in self.datasets)
 
-    def __getitem__(self, n: int) -> Tuple[Any, ...]:
+    def __getitem__(self, n: FullIndex) -> Tuple[Any, ...]:
         return tuple(d[n] for d in self.datasets)
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:

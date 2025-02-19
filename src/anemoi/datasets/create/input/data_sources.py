@@ -9,11 +9,14 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Union
 
 from earthkit.data import FieldList
 
+from ..dates import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .misc import _tidy
@@ -23,7 +26,13 @@ LOG = logging.getLogger(__name__)
 
 
 class DataSourcesAction(Action):
-    def __init__(self, context: object, action_path: list, sources: Union[dict, list], input: dict) -> None:
+    def __init__(
+        self,
+        context: object,
+        action_path: List[str],
+        sources: Union[Dict[str, Any], List[Dict[str, Any]]],
+        input: Dict[str, Any],
+    ) -> None:
         super().__init__(context, ["data_sources"], *sources)
         if isinstance(sources, dict):
             configs = [(str(k), c) for k, c in sources.items()]
@@ -35,7 +44,7 @@ class DataSourcesAction(Action):
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
 
-    def select(self, group_of_dates: object) -> "DataSourcesResult":
+    def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
         sources_results = [a.select(group_of_dates) for a in self.sources]
         return DataSourcesResult(
             self.context,
@@ -52,7 +61,12 @@ class DataSourcesAction(Action):
 
 class DataSourcesResult(Result):
     def __init__(
-        self, context: object, action_path: list, dates: object, input_result: Result, sources_results: List[Result]
+        self,
+        context: object,
+        action_path: List[str],
+        dates: object,
+        input_result: Result,
+        sources_results: List[Result],
     ) -> None:
         super().__init__(context, action_path, dates)
         # result is the main input result

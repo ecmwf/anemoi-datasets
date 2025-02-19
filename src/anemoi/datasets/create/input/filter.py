@@ -10,6 +10,7 @@
 import logging
 from functools import cached_property
 from typing import Any
+from typing import Type
 
 from earthkit.data import FieldList
 
@@ -31,13 +32,13 @@ class FilterStepResult(StepResult):
     @assert_fieldlist
     @trace_datasource
     def datasource(self) -> FieldList:
-        ds = self.upstream_result.datasource
+        ds: FieldList = self.upstream_result.datasource
         ds = ds.sel(**self.action.kwargs)
         return _tidy(ds)
 
 
 class FilterStepAction(StepAction):
-    result_class = FilterStepResult
+    result_class: Type[FilterStepResult] = FilterStepResult
 
 
 class StepFunctionResult(StepResult):
@@ -65,7 +66,7 @@ class StepFunctionResult(StepResult):
 
 
 class FunctionStepAction(StepAction):
-    result_class = StepFunctionResult
+    result_class: Type[StepFunctionResult] = StepFunctionResult
 
     def __init__(
         self, context: object, action_path: list, previous_step: StepAction, *args: Any, **kwargs: Any

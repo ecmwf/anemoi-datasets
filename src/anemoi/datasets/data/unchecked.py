@@ -15,12 +15,16 @@ from functools import wraps
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Set
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .concat import ConcatMixin
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
 from .debug import Node
 from .forwards import Combined
 from .misc import _auto_adjust
@@ -38,8 +42,10 @@ class check:
         check = self.check
 
         @wraps(method)
-        def wrapper(obj: "Unchecked") -> callable:
-            """This is a decorator that checks the compatibility of the datasets before calling the method. If the datasets are compatible, it will return the result of the method, otherwise it will raise an exception."""
+        def wrapper(obj: "Unchecked") -> Any:
+            """This is a decorator that checks the compatibility of the datasets before calling the method.
+            If the datasets are compatible, it will return the result of the method,
+            otherwise it will raise an exception."""
 
             for d in obj.datasets[1:]:
                 getattr(obj, check)(obj.datasets[0], d)
@@ -63,7 +69,7 @@ class Unchecked(Combined):
     ###########################################
     @property
     @check("check_same_dates")
-    def dates(self) -> np.ndarray:
+    def dates(self) -> NDArray[np.datetime64]:
         pass
 
     @property
@@ -82,40 +88,40 @@ class Unchecked(Combined):
 
     @property
     @check("check_same_grid")
-    def latitudes(self) -> np.ndarray:
+    def latitudes(self) -> NDArray[Any]:
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
-    def longitudes(self) -> np.ndarray:
+    def longitudes(self) -> NDArray[Any]:
         raise NotImplementedError()
 
-    @property
     @check("check_same_variables")
-    def name_to_index(self) -> dict:
+    @property
+    def name_to_index(self) -> Dict[str, int]:
         raise NotImplementedError()
 
-    @property
     @check("check_same_variables")
+    @property
     def variables(self) -> List[str]:
         raise NotImplementedError()
 
-    @property
     @check("check_same_variables")
+    @property
     def variables_metadata(self) -> dict:
         raise NotImplementedError()
 
-    @property
     @check("check_same_variables")
-    def statistics(self) -> Dict[str, np.ndarray]:
+    @property
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         raise NotImplementedError()
 
     @check("check_same_variables")
-    def statistics_tendencies(self, delta: datetime.timedelta = None) -> dict:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         raise NotImplementedError()
 
     @property
-    def shape(self) -> tuple:
+    def shape(self) -> Shape:
         raise NotImplementedError()
 
     @cached_property
@@ -132,11 +138,11 @@ class Chain(ConcatMixin, Unchecked):
     def __len__(self) -> int:
         return sum(len(d) for d in self.datasets)
 
-    def __getitem__(self, n: int) -> tuple:
+    def __getitem__(self, n: FullIndex) -> tuple:
         return tuple(d[n] for d in self.datasets)
 
     @property
-    def dates(self) -> np.ndarray:
+    def dates(self) -> NDArray[np.datetime64]:
         raise NotImplementedError()
 
     def dataset_metadata(self) -> dict:

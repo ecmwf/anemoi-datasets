@@ -10,37 +10,43 @@
 
 import logging
 import re
+from abc import ABC
+from abc import abstractmethod
 from functools import wraps
 from typing import Any
 from typing import Callable
+from typing import List
+from typing import Union
 
 LOG = logging.getLogger(__name__)
 
 
-def notify_result(method: Callable) -> Callable:
+def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(method)
-    def wrapper(self, *args: Any, **kwargs: Any) -> Any:
-        result = method(self, *args, **kwargs)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        result: Any = method(self, *args, **kwargs)
         self.context.notify_result(self.action_path, result)
         return result
 
     return wrapper
 
 
-class Substitution:
-    pass
+class Substitution(ABC):
+    @abstractmethod
+    def resolve(self, context: Any) -> Any:
+        pass
 
 
 class Reference(Substitution):
-    def __init__(self, context: Any, action_path: Any) -> None:
-        self.context = context
-        self.action_path = action_path
+    def __init__(self, context: Any, action_path: List[str]) -> None:
+        self.context: Any = context
+        self.action_path: List[str] = action_path
 
     def resolve(self, context: Any) -> Any:
         return context.get_result(self.action_path)
 
 
-def resolve(context: Any, x: Any) -> Any:
+def resolve(context: Any, x: Union[tuple, list, dict, Substitution, Any]) -> Any:
     if isinstance(x, tuple):
         return tuple([resolve(context, y) for y in x])
 
@@ -56,7 +62,7 @@ def resolve(context: Any, x: Any) -> Any:
     return x
 
 
-def substitute(context: Any, x: Any) -> Any:
+def substitute(context: Any, x: Union[tuple, list, dict, str, Any]) -> Any:
     if isinstance(x, tuple):
         return tuple([substitute(context, y) for y in x])
 
@@ -70,7 +76,7 @@ def substitute(context: Any, x: Any) -> Any:
         return x
 
     if re.match(r"^\${[\.\w]+}$", x):
-        path = x[2:-1].split(".")
+        path: List[str] = x[2:-1].split(".")
         context.will_need_reference(path)
         return Reference(context, path)
 

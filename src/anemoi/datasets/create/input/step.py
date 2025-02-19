@@ -10,6 +10,9 @@
 import logging
 from copy import deepcopy
 from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Type
 
 from .action import Action
@@ -25,12 +28,12 @@ LOG = logging.getLogger(__name__)
 
 class StepResult(Result):
     def __init__(
-        self, context: Context, action_path: list[str], group_of_dates: Any, action: Action, upstream_result: Result
+        self, context: Context, action_path: List[str], group_of_dates: Any, action: Action, upstream_result: Result
     ) -> None:
         super().__init__(context, action_path, group_of_dates)
         assert isinstance(upstream_result, Result), type(upstream_result)
-        self.upstream_result = upstream_result
-        self.action = action
+        self.upstream_result: Result = upstream_result
+        self.action: Action = action
 
     @property
     @notify_result
@@ -40,11 +43,11 @@ class StepResult(Result):
 
 
 class StepAction(Action):
-    result_class: Type[StepResult] = None
+    result_class: Optional[Type[StepResult]] = None
 
-    def __init__(self, context: Context, action_path: list[str], previous_step: Any, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, context: Context, action_path: List[str], previous_step: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, action_path, *args, **kwargs)
-        self.previous_step = previous_step
+        self.previous_step: Any = previous_step
 
     @trace_select
     def select(self, group_of_dates: Any) -> StepResult:
@@ -60,7 +63,7 @@ class StepAction(Action):
         return super().__repr__(self.previous_step, _inline_=str(self.kwargs))
 
 
-def step_factory(config: dict, context: Context, action_path: list[str], previous_step: Any) -> Any:
+def step_factory(config: Dict[str, Any], context: Context, action_path: List[str], previous_step: Any) -> Any:
 
     from .filter import FilterStepAction
     from .filter import FunctionStepAction

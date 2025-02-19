@@ -16,6 +16,7 @@ from typing import Type
 
 from earthkit.data.core.order import build_remapping
 
+from ..dates import GroupOfDates
 from .context import Context
 from .misc import is_function
 
@@ -59,7 +60,7 @@ class Action:
     def _raise_not_implemented(self) -> None:
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
-    def _trace_select(self, group_of_dates: object) -> str:
+    def _trace_select(self, group_of_dates: GroupOfDates) -> str:
         return f"{self.__class__.__name__}({group_of_dates})"
 
 

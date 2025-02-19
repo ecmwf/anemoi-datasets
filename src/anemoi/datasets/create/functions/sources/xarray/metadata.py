@@ -24,8 +24,22 @@ LOG = logging.getLogger(__name__)
 
 
 class _MDMapping:
+    """
+    A class to handle metadata mapping for variables.
+
+    Attributes:
+        variable (Any): The variable to map.
+        time (Any): The time associated with the variable.
+        mapping (Dict[str, str]): A dictionary mapping keys to variable names.
+    """
 
     def __init__(self, variable: Any) -> None:
+        """
+        Initialize the _MDMapping class.
+
+        Args:
+            variable (Any): The variable to map.
+        """
         self.variable = variable
         self.time = variable.time
         # Aliases
@@ -36,26 +50,72 @@ class _MDMapping:
                 self.mapping[v] = c.variable.name
 
     def _from_user(self, key: str) -> str:
+        """
+        Get the internal key corresponding to a user-provided key.
+
+        Args:
+            key (str): The user-provided key.
+
+        Returns:
+            str: The internal key.
+        """
         return self.mapping.get(key, key)
 
     def from_user(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert user-provided keys to internal keys.
+
+        Args:
+            kwargs (Dict[str, Any]): A dictionary of user-provided keys and values.
+
+        Returns:
+            Dict[str, Any]: A dictionary with internal keys and original values.
+        """
         return {self._from_user(k): v for k, v in kwargs.items()}
 
     def __repr__(self) -> str:
+        """
+        Return a string representation of the _MDMapping object.
+
+        Returns:
+            str: String representation of the object.
+        """
         return f"MDMapping({self.mapping})"
 
     def fill_time_metadata(self, field: Any, md: Dict[str, Any]) -> None:
+        """
+        Fill the time metadata for a field.
+
+        Args:
+            field (Any): The field to fill metadata for.
+            md (Dict[str, Any]): The metadata dictionary to update.
+        """
         valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
         if valid_datetime is not None:
             md["valid_datetime"] = as_datetime(valid_datetime).isoformat()
 
 
 class XArrayMetadata(RawMetadata):
+    """
+    A class to handle metadata for XArray fields.
+
+    Attributes:
+        LS_KEYS (List[str]): List of keys for the metadata.
+        NAMESPACES (List[str]): List of namespaces for the metadata.
+        MARS_KEYS (List[str]): List of MARS keys for the metadata.
+    """
+
     LS_KEYS = ["variable", "level", "valid_datetime", "units"]
     NAMESPACES = ["default", "mars"]
     MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
 
     def __init__(self, field: Any) -> None:
+        """
+        Initialize the XArrayMetadata class.
+
+        Args:
+            field (Any): The field to extract metadata from.
+        """
         self._field = field
         md = field._md.copy()
         self._mapping = _MDMapping(field.owner)
@@ -64,9 +124,24 @@ class XArrayMetadata(RawMetadata):
 
     @cached_property
     def geography(self) -> "XArrayFieldGeography":
+        """
+        Get the geography information for the field.
+
+        Returns:
+            XArrayFieldGeography: The geography information.
+        """
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
     def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get the metadata as a specific namespace.
+
+        Args:
+            namespace (Optional[str]): The namespace to use.
+
+        Returns:
+            Dict[str, Any]: The metadata in the specified namespace.
+        """
         if not isinstance(namespace, str) and namespace is not None:
             raise TypeError("namespace must be a str or None")
 
@@ -77,16 +152,43 @@ class XArrayMetadata(RawMetadata):
             return self._as_mars()
 
     def _as_mars(self) -> Dict[str, Any]:
+        """
+        Get the metadata as MARS namespace.
+
+        Returns:
+            Dict[str, Any]: The metadata in the MARS namespace.
+        """
         return {}
 
     def _base_datetime(self) -> Optional[datetime.datetime]:
+        """
+        Get the base datetime for the field.
+
+        Returns:
+            Optional[datetime.datetime]: The base datetime.
+        """
         return self._field.forecast_reference_time
 
     def _valid_datetime(self) -> Optional[datetime.datetime]:
+        """
+        Get the valid datetime for the field.
+
+        Returns:
+            Optional[datetime.datetime]: The valid datetime.
+        """
         return self._get("valid_datetime")
 
     def get(self, key: str, astype: Optional[type] = None, **kwargs: Any) -> Any:
+        """
+        Get a metadata value by key.
 
+        Args:
+            key (str): The key to get the value for.
+            astype (Optional[type]): The type to cast the value to.
+
+        Returns:
+            Any: The value for the specified key.
+        """
         if key in self._d:
             if astype is not None:
                 return astype(self._d[key])
@@ -98,55 +200,152 @@ class XArrayMetadata(RawMetadata):
 
 
 class XArrayFieldGeography(Geography):
+    """
+    A class to handle geography information for XArray fields.
+
+    Attributes:
+        _field (Any): The field to extract geography information from.
+        _grid (Any): The grid associated with the field.
+    """
+
     def __init__(self, field: Any, grid: Any) -> None:
+        """
+        Initialize the XArrayFieldGeography class.
+
+        Args:
+            field (Any): The field to extract geography information from.
+            grid (Any): The grid associated with the field.
+        """
         self._field = field
         self._grid = grid
 
     def _unique_grid_id(self) -> None:
+        """
+        Get the unique grid ID.
+
+        Raises:
+            NotImplementedError: This method is not implemented.
+        """
         raise NotImplementedError()
 
     def bounding_box(self) -> None:
+        """
+        Get the bounding box for the field.
+
+        Raises:
+            NotImplementedError: This method is not implemented.
+        """
         raise NotImplementedError()
         # return BoundingBox(north=self.north, south=self.south, east=self.east, west=self.west)
 
     def gridspec(self) -> None:
+        """
+        Get the grid specification for the field.
+
+        Raises:
+            NotImplementedError: This method is not implemented.
+        """
         raise NotImplementedError()
 
     def latitudes(self, dtype: Optional[type] = None) -> Any:
+        """
+        Get the latitudes for the field.
+
+        Args:
+            dtype (Optional[type]): The type to cast the latitudes to.
+
+        Returns:
+            Any: The latitudes.
+        """
         result = self._grid.latitudes
         if dtype is not None:
             return result.astype(dtype)
         return result
 
     def longitudes(self, dtype: Optional[type] = None) -> Any:
+        """
+        Get the longitudes for the field.
+
+        Args:
+            dtype (Optional[type]): The type to cast the longitudes to.
+
+        Returns:
+            Any: The longitudes.
+        """
         result = self._grid.longitudes
         if dtype is not None:
             return result.astype(dtype)
         return result
 
     def resolution(self) -> Optional[Any]:
+        """
+        Get the resolution for the field.
+
+        Returns:
+            Optional[Any]: The resolution.
+        """
         # TODO: implement resolution
         return None
 
-    # @property
     def mars_grid(self) -> Optional[Any]:
+        """
+        Get the MARS grid for the field.
+
+        Returns:
+            Optional[Any]: The MARS grid.
+        """
         # TODO: implement mars_grid
         return None
 
-    # @property
     def mars_area(self) -> Optional[Any]:
+        """
+        Get the MARS area for the field.
+
+        Returns:
+            Optional[Any]: The MARS area.
+        """
         # TODO: code me
         # return [self.north, self.west, self.south, self.east]
         return None
 
     def x(self, dtype: Optional[type] = None) -> None:
+        """
+        Get the x-coordinates for the field.
+
+        Args:
+            dtype (Optional[type]): The type to cast the x-coordinates to.
+
+        Raises:
+            NotImplementedError: This method is not implemented.
+        """
         raise NotImplementedError()
 
     def y(self, dtype: Optional[type] = None) -> None:
+        """
+        Get the y-coordinates for the field.
+
+        Args:
+            dtype (Optional[type]): The type to cast the y-coordinates to.
+
+        Raises:
+            NotImplementedError: This method is not implemented.
+        """
         raise NotImplementedError()
 
     def shape(self) -> Any:
+        """
+        Get the shape of the field.
+
+        Returns:
+            Any: The shape of the field.
+        """
         return self._field.shape
 
     def projection(self) -> Projection:
+        """
+        Get the projection for the field.
+
+        Returns:
+            Projection: The projection of the field.
+        """
         return Projection.from_cf_grid_mapping(**self._field.grid_mapping)

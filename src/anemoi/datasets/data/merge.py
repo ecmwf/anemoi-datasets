@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
 from typing import Any
@@ -15,12 +16,14 @@ from typing import Dict
 from typing import List
 from typing import Set
 from typing import Tuple
-from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from . import MissingDateError
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
@@ -98,17 +101,17 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency  # .astype(object)
+        self._frequency = frequency.astype(object)
 
     def __len__(self) -> int:
         return len(self._dates)
 
     @property
-    def dates(self) -> np.ndarray:
+    def dates(self) -> NDArray[np.datetime64]:
         return self._dates
 
     @property
-    def frequency(self) -> np.timedelta64:
+    def frequency(self) -> datetime.timedelta:
         return self._frequency
 
     @cached_property
@@ -145,7 +148,7 @@ class Merge(Combined):
         return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
 
     @debug_indexing
-    def __getitem__(self, n: Union[int, slice, Tuple]) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -161,13 +164,13 @@ class Merge(Combined):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Tuple) -> Any:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
         result = self._get_slice(previous)
         return apply_index_to_slices_changes(result[index], changes)
 
-    def _get_slice(self, s: slice) -> np.ndarray:
+    def _get_slice(self, s: slice) -> NDArray[Any]:
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
 
@@ -178,13 +181,13 @@ def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
     assert isinstance(datasets, (list, tuple))
     assert len(args) == 0
 
-    datasets = [_open(e) for e in datasets]
+    open_datasets = [_open(e) for e in datasets]
 
-    if len(datasets) == 1:
-        return datasets[0]._subset(**kwargs)
+    if len(open_datasets) == 1:
+        return open_datasets[0]._subset(**kwargs)
 
-    datasets, kwargs = _auto_adjust(datasets, kwargs)
+    datasets, kwargs = _auto_adjust(open_datasets, kwargs)
 
     allow_gaps_in_dates = kwargs.pop("allow_gaps_in_dates", False)
 
-    return Merge(datasets, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)
+    return Merge(open_datasets, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)

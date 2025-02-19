@@ -16,6 +16,7 @@ from typing import List
 from typing import Optional
 from typing import Union
 
+import xarray as xr
 import yaml
 from earthkit.data import FieldList
 
@@ -30,8 +31,8 @@ LOG = logging.getLogger(__name__)
 
 
 class XarrayFieldList(FieldList):
-    def __init__(self, ds: Any, variables: List[Variable]) -> None:
-        self.ds: Any = ds
+    def __init__(self, ds: xr.Dataset, variables: List[Variable]) -> None:
+        self.ds: xr.Dataset = ds
         self.variables: List[Variable] = variables.copy()
         self.total_length: int = sum(v.length for v in variables)
 
@@ -56,7 +57,11 @@ class XarrayFieldList(FieldList):
 
     @classmethod
     def from_xarray(
-        cls, ds: Any, *, flavour: Optional[Union[str, Dict[str, Any]]] = None, patch: Optional[Dict[str, Any]] = None
+        cls,
+        ds: xr.Dataset,
+        *,
+        flavour: Optional[Union[str, Dict[str, Any]]] = None,
+        patch: Optional[Dict[str, Any]] = None,
     ) -> "XarrayFieldList":
 
         if patch is not None:

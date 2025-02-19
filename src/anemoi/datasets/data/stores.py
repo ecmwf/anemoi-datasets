@@ -13,17 +13,23 @@ import logging
 import os
 import warnings
 from functools import cached_property
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Set
 from urllib.parse import urlparse
 
 import numpy as np
 import zarr
 from anemoi.utils.dates import frequency_to_timedelta
+from numpy.typing import NDArray
 
 from . import MissingDateError
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import DEBUG_ZARR_LOADING
 from .debug import Node
 from .debug import Source
@@ -184,7 +190,7 @@ class Zarr(Dataset):
 
     @debug_indexing
     @expand_list_indexing
-    def __getitem__(self, n: int | slice | tuple) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         return self.data[n]
 
     def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:
@@ -210,11 +216,11 @@ class Zarr(Dataset):
             yield (index,) + n
 
     @cached_property
-    def chunks(self) -> tuple:
+    def chunks(self) -> TupleIndex:
         return self.z.data.chunks
 
     @cached_property
-    def shape(self) -> tuple:
+    def shape(self) -> Shape:
         return self.data.shape
 
     @cached_property
@@ -222,11 +228,11 @@ class Zarr(Dataset):
         return self.z.data.dtype
 
     @cached_property
-    def dates(self) -> np.ndarray:
+    def dates(self) -> NDArray[np.datetime64]:
         return self.z.dates[:]  # Convert to numpy
 
     @property
-    def latitudes(self) -> np.ndarray:
+    def latitudes(self) -> NDArray[Any]:
         try:
             return self.z.latitudes[:]
         except AttributeError:
@@ -234,7 +240,7 @@ class Zarr(Dataset):
             return self.z.latitude[:]
 
     @property
-    def longitudes(self) -> np.ndarray:
+    def longitudes(self) -> NDArray[Any]:
         try:
             return self.z.longitudes[:]
         except AttributeError:
@@ -242,7 +248,7 @@ class Zarr(Dataset):
             return self.z.longitude[:]
 
     @property
-    def statistics(self) -> Dict[str, np.ndarray]:
+    def statistics(self) -> Dict[str, NDArray[Any]]:
         return dict(
             mean=self.z.mean[:],
             stdev=self.z.stdev[:],
@@ -250,7 +256,7 @@ class Zarr(Dataset):
             minimum=self.z.minimum[:],
         )
 
-    def statistics_tendencies(self, delta: datetime.timedelta = None) -> dict:
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         if delta is None:
             delta = self.frequency
         if isinstance(delta, int):
@@ -273,7 +279,7 @@ class Zarr(Dataset):
 
     @property
     def resolution(self) -> str:
-        return self.z.attrs["resolution"]
+        return str(self.z.attrs["resolution"])
 
     @property
     def field_shape(self) -> tuple:
@@ -293,7 +299,7 @@ class Zarr(Dataset):
         return dates[1].astype(object) - dates[0].astype(object)
 
     @property
-    def name_to_index(self) -> dict:
+    def name_to_index(self) -> Dict[str, int]:
         if "variables" in self.z.attrs:
             return {n: i for i, n in enumerate(self.z.attrs["variables"])}
         return self.z.attrs["name_to_index"]
@@ -309,14 +315,14 @@ class Zarr(Dataset):
         ]
 
     @cached_property
-    def constant_fields(self) -> list:
+    def constant_fields(self) -> List[str]:
         result = self.z.attrs.get("constant_fields")
         if result is None:
             LOG.warning("No 'constant_fields' attribute in %r, computing them", self)
         return self.computed_constant_fields()
 
     @property
-    def variables_metadata(self) -> dict:
+    def variables_metadata(self) -> Dict[str, Any]:
         return self.z.attrs.get("variables_metadata", {})
 
     def __repr__(self) -> str:
@@ -325,7 +331,7 @@ class Zarr(Dataset):
     def end_of_statistics_date(self) -> np.datetime64:
         return self.dates[-1]
 
-    def metadata_specific(self) -> dict:
+    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
         return super().metadata_specific(
             attrs=dict(self.z.attrs),
             chunks=self.chunks,
@@ -345,7 +351,7 @@ class Zarr(Dataset):
     def tree(self) -> Node:
         return Node(self, [], path=self.path)
 
-    def get_dataset_names(self, names: set) -> None:
+    def get_dataset_names(self, names: Set[str]) -> None:
         name, _ = os.path.splitext(os.path.basename(self.path))
         names.add(name)
 
@@ -372,7 +378,7 @@ class ZarrWithMissingDates(Zarr):
 
     @debug_indexing
     @expand_list_indexing
-    def __getitem__(self, n: int | slice | tuple) -> np.ndarray:
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         if isinstance(n, int):
             if n in self.missing:
                 self._report_missing(n)
@@ -419,7 +425,7 @@ class ZarrWithMissingDates(Zarr):
 QUIET = set()
 
 
-def zarr_lookup(name: str, fail: bool = True) -> str:
+def zarr_lookup(name: str, fail: bool = True) -> str | None:
 
     if name.endswith(".zarr") or name.endswith(".zip"):
         return name

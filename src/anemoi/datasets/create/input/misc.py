@@ -9,6 +9,7 @@
 
 import logging
 from functools import wraps
+from typing import Any
 from typing import Callable
 from typing import Tuple
 from typing import Union
@@ -53,9 +54,9 @@ def is_function(name: str, kind: str) -> bool:
         return False
 
 
-def assert_fieldlist(method: Callable) -> Callable:
+def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         result = method(self, *args, **kwargs)
         assert isinstance(result, FieldList), type(result)
         return result

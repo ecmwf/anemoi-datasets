@@ -10,6 +10,8 @@
 import logging
 from copy import deepcopy
 from functools import cached_property
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Union
 
@@ -17,6 +19,7 @@ from earthkit.data import FieldList
 
 from anemoi.datasets.dates import DatesProvider
 
+from ..dates import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .empty import EmptyResult
@@ -34,10 +37,10 @@ class ConcatResult(Result):
     def __init__(
         self,
         context: object,
-        action_path: list,
-        group_of_dates: object,
+        action_path: List[str],
+        group_of_dates: GroupOfDates,
         results: List[Result],
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(context, action_path, group_of_dates)
         self.results = [r for r in results if not r.empty]
@@ -70,7 +73,7 @@ class ConcatResult(Result):
 
 
 class ConcatAction(Action):
-    def __init__(self, context: object, action_path: list, *configs: dict) -> None:
+    def __init__(self, context: object, action_path: List[str], *configs: Dict[str, Any]) -> None:
         super().__init__(context, action_path, *configs)
         parts = []
         for i, cfg in enumerate(configs):
@@ -89,7 +92,7 @@ class ConcatAction(Action):
         return super().__repr__(content)
 
     @trace_select
-    def select(self, group_of_dates: object) -> Union[ConcatResult, EmptyResult]:
+    def select(self, group_of_dates: GroupOfDates) -> Union[ConcatResult, EmptyResult]:
         from anemoi.datasets.dates.groups import GroupOfDates
 
         results = []
