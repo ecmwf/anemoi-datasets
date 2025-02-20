@@ -13,6 +13,7 @@ import logging
 from functools import cached_property
 from functools import wraps
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -37,7 +38,7 @@ class check:
     def __init__(self, check: str) -> None:
         self.check = check
 
-    def __call__(self, method: callable) -> callable:
+    def __call__(self, method: Callable) -> Callable:
         name = method.__name__
         check = self.check
 
@@ -149,7 +150,7 @@ class Chain(ConcatMixin, Unchecked):
         return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
-def chain_factory(args: tuple, kwargs: dict) -> Chain:
+def chain_factory(args: tuple, kwargs: dict) -> Dataset:
     chain = kwargs.pop("chain")
     assert len(args) == 0
     assert isinstance(chain, (list, tuple))

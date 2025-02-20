@@ -27,37 +27,42 @@ class _MDMapping:
     """
     A class to handle metadata mapping for variables.
 
-    Attributes:
-        variable (Any): The variable to map.
-        time (Any): The time associated with the variable.
-        mapping (Dict[str, str]): A dictionary mapping keys to variable names.
+    Attributes
+    ----------
+    variable : Any
+        The variable to map.
+    time : Any
+        The time associated with the variable.
+    mapping : Dict[str, str]
+        A dictionary mapping keys to variable names.
     """
 
     def __init__(self, variable: Any) -> None:
         """
         Initialize the _MDMapping class.
 
-        Args:
-            variable (Any): The variable to map.
+        Args
+        ----
+        variable : Any
+            The variable to map.
         """
         self.variable = variable
         self.time = variable.time
         # Aliases
-        self.mapping = dict(param="variable")
-        for c in variable.coordinates:
-            for v in c.mars_names:
-                assert v not in self.mapping, f"Duplicate key '{v}' in {c}"
-                self.mapping[v] = c.variable.name
 
     def _from_user(self, key: str) -> str:
         """
         Get the internal key corresponding to a user-provided key.
 
-        Args:
-            key (str): The user-provided key.
+        Args
+        ----
+        key : str
+            The user-provided key.
 
-        Returns:
-            str: The internal key.
+        Returns
+        -------
+        str
+            The internal key corresponding to the user-provided key.
         """
         return self.mapping.get(key, key)
 
@@ -65,11 +70,15 @@ class _MDMapping:
         """
         Convert user-provided keys to internal keys.
 
-        Args:
-            kwargs (Dict[str, Any]): A dictionary of user-provided keys and values.
+        Args
+        ----
+        kwargs : Dict[str, Any]
+            A dictionary of user-provided keys and values.
 
-        Returns:
-            Dict[str, Any]: A dictionary with internal keys and original values.
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary with internal keys and original values.
         """
         return {self._from_user(k): v for k, v in kwargs.items()}
 
@@ -77,8 +86,10 @@ class _MDMapping:
         """
         Return a string representation of the _MDMapping object.
 
-        Returns:
-            str: String representation of the object.
+        Returns
+        -------
+        str
+            String representation of the _MDMapping object.
         """
         return f"MDMapping({self.mapping})"
 
@@ -86,9 +97,12 @@ class _MDMapping:
         """
         Fill the time metadata for a field.
 
-        Args:
-            field (Any): The field to fill metadata for.
-            md (Dict[str, Any]): The metadata dictionary to update.
+        Args
+        ----
+        field : Any
+            The field to fill metadata for.
+        md : Dict[str, Any]
+            The metadata dictionary to update.
         """
         valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
         if valid_datetime is not None:
@@ -113,8 +127,10 @@ class XArrayMetadata(RawMetadata):
         """
         Initialize the XArrayMetadata class.
 
-        Args:
-            field (Any): The field to extract metadata from.
+        Args
+        ----
+        field : Any
+            The field to extract metadata from.
         """
         self._field = field
         md = field._md.copy()
@@ -127,8 +143,10 @@ class XArrayMetadata(RawMetadata):
         """
         Get the geography information for the field.
 
-        Returns:
-            XArrayFieldGeography: The geography information.
+        Returns
+        -------
+        XArrayFieldGeography
+            The geography information.
         """
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
@@ -136,11 +154,15 @@ class XArrayMetadata(RawMetadata):
         """
         Get the metadata as a specific namespace.
 
-        Args:
-            namespace (Optional[str]): The namespace to use.
+        Args
+        ----
+        namespace : Optional[str]
+            The namespace to use.
 
-        Returns:
-            Dict[str, Any]: The metadata in the specified namespace.
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata in the specified namespace.
         """
         if not isinstance(namespace, str) and namespace is not None:
             raise TypeError("namespace must be a str or None")
@@ -155,8 +177,10 @@ class XArrayMetadata(RawMetadata):
         """
         Get the metadata as MARS namespace.
 
-        Returns:
-            Dict[str, Any]: The metadata in the MARS namespace.
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata in the MARS namespace.
         """
         return {}
 
@@ -164,8 +188,10 @@ class XArrayMetadata(RawMetadata):
         """
         Get the base datetime for the field.
 
-        Returns:
-            Optional[datetime.datetime]: The base datetime.
+        Returns
+        -------
+        Optional[datetime.datetime]
+            The base datetime if available, otherwise None.
         """
         return self._field.forecast_reference_time
 
@@ -173,8 +199,10 @@ class XArrayMetadata(RawMetadata):
         """
         Get the valid datetime for the field.
 
-        Returns:
-            Optional[datetime.datetime]: The valid datetime.
+        Returns
+        -------
+        Optional[datetime.datetime]
+            The valid datetime if available, otherwise None.
         """
         return self._get("valid_datetime")
 
@@ -182,12 +210,17 @@ class XArrayMetadata(RawMetadata):
         """
         Get a metadata value by key.
 
-        Args:
-            key (str): The key to get the value for.
-            astype (Optional[type]): The type to cast the value to.
+        Args
+        ----
+        key : str
+            The key to get the value for.
+        astype : Optional[type]
+            The type to cast the value to.
 
-        Returns:
-            Any: The value for the specified key.
+        Returns
+        -------
+        Any
+            The value for the specified key, optionally cast to the specified type.
         """
         if key in self._d:
             if astype is not None:
@@ -212,9 +245,12 @@ class XArrayFieldGeography(Geography):
         """
         Initialize the XArrayFieldGeography class.
 
-        Args:
-            field (Any): The field to extract geography information from.
-            grid (Any): The grid associated with the field.
+        Args
+        ----
+        field : Any
+            The field to extract geography information from.
+        grid : Any
+            The grid associated with the field.
         """
         self._field = field
         self._grid = grid
@@ -223,8 +259,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the unique grid ID.
 
-        Raises:
-            NotImplementedError: This method is not implemented.
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented.
         """
         raise NotImplementedError()
 
@@ -232,8 +270,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the bounding box for the field.
 
-        Raises:
-            NotImplementedError: This method is not implemented.
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented.
         """
         raise NotImplementedError()
         # return BoundingBox(north=self.north, south=self.south, east=self.east, west=self.west)
@@ -242,8 +282,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the grid specification for the field.
 
-        Raises:
-            NotImplementedError: This method is not implemented.
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented.
         """
         raise NotImplementedError()
 
@@ -251,11 +293,15 @@ class XArrayFieldGeography(Geography):
         """
         Get the latitudes for the field.
 
-        Args:
-            dtype (Optional[type]): The type to cast the latitudes to.
+        Args
+        ----
+        dtype : Optional[type]
+            The type to cast the latitudes to.
 
-        Returns:
-            Any: The latitudes.
+        Returns
+        -------
+        Any
+            The latitudes.
         """
         result = self._grid.latitudes
         if dtype is not None:
@@ -266,11 +312,15 @@ class XArrayFieldGeography(Geography):
         """
         Get the longitudes for the field.
 
-        Args:
-            dtype (Optional[type]): The type to cast the longitudes to.
+        Args
+        ----
+        dtype : Optional[type]
+            The type to cast the longitudes to.
 
-        Returns:
-            Any: The longitudes.
+        Returns
+        -------
+        Any
+            The longitudes.
         """
         result = self._grid.longitudes
         if dtype is not None:
@@ -281,8 +331,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the resolution for the field.
 
-        Returns:
-            Optional[Any]: The resolution.
+        Returns
+        -------
+        Optional[Any]
+            The resolution.
         """
         # TODO: implement resolution
         return None
@@ -291,8 +343,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the MARS grid for the field.
 
-        Returns:
-            Optional[Any]: The MARS grid.
+        Returns
+        -------
+        Optional[Any]
+            The MARS grid.
         """
         # TODO: implement mars_grid
         return None
@@ -301,8 +355,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the MARS area for the field.
 
-        Returns:
-            Optional[Any]: The MARS area.
+        Returns
+        -------
+        Optional[Any]
+            The MARS area.
         """
         # TODO: code me
         # return [self.north, self.west, self.south, self.east]
@@ -312,11 +368,15 @@ class XArrayFieldGeography(Geography):
         """
         Get the x-coordinates for the field.
 
-        Args:
-            dtype (Optional[type]): The type to cast the x-coordinates to.
+        Args
+        ----
+        dtype : Optional[type]
+            The type to cast the x-coordinates to.
 
-        Raises:
-            NotImplementedError: This method is not implemented.
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented.
         """
         raise NotImplementedError()
 
@@ -324,11 +384,15 @@ class XArrayFieldGeography(Geography):
         """
         Get the y-coordinates for the field.
 
-        Args:
-            dtype (Optional[type]): The type to cast the y-coordinates to.
+        Args
+        ----
+        dtype : Optional[type]
+            The type to cast the y-coordinates to.
 
-        Raises:
-            NotImplementedError: This method is not implemented.
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented.
         """
         raise NotImplementedError()
 
@@ -336,8 +400,10 @@ class XArrayFieldGeography(Geography):
         """
         Get the shape of the field.
 
-        Returns:
-            Any: The shape of the field.
+        Returns
+        -------
+        Any
+            The shape of the field.
         """
         return self._field.shape
 
@@ -345,7 +411,9 @@ class XArrayFieldGeography(Geography):
         """
         Get the projection for the field.
 
-        Returns:
-            Projection: The projection of the field.
+        Returns
+        -------
+        Projection
+            The projection of the field.
         """
         return Projection.from_cf_grid_mapping(**self._field.grid_mapping)

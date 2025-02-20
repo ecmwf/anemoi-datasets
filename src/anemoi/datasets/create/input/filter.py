@@ -69,7 +69,12 @@ class FunctionStepAction(StepAction):
     result_class: Type[StepFunctionResult] = StepFunctionResult
 
     def __init__(
-        self, context: object, action_path: list, previous_step: StepAction, *args: Any, **kwargs: Any
+        self,
+        context: object,
+        action_path: list,
+        previous_step: StepAction,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(context, action_path, previous_step, *args, **kwargs)
         self.name = args[0]

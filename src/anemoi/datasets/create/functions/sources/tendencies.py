@@ -9,6 +9,10 @@
 
 import datetime
 from collections import defaultdict
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Tuple
 
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
@@ -17,13 +21,31 @@ from anemoi.datasets.create.functions import assert_is_fieldlist
 from anemoi.datasets.create.utils import to_datetime_list
 
 
-def _date_to_datetime(d):
+def _date_to_datetime(d: Any) -> Any:
+    """
+    Converts a date string or a list/tuple of date strings to datetime objects.
+
+    Args:
+        d: A date string or a list/tuple of date strings.
+
+    Returns:
+        A datetime object or a list/tuple of datetime objects.
+    """
     if isinstance(d, (list, tuple)):
         return [_date_to_datetime(x) for x in d]
     return datetime.datetime.fromisoformat(d)
 
 
-def normalise_time_delta(t):
+def normalise_time_delta(t: Any) -> datetime.timedelta:
+    """
+    Normalizes a time delta string to a datetime.timedelta object.
+
+    Args:
+        t: A time delta string ending with 'h' or a datetime.timedelta object.
+
+    Returns:
+        A normalized datetime.timedelta object.
+    """
     if isinstance(t, datetime.timedelta):
         assert t == datetime.timedelta(hours=t.hours), t
 
@@ -34,7 +56,16 @@ def normalise_time_delta(t):
     return t
 
 
-def group_by_field(ds):
+def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
+    """
+    Groups fields by their metadata excluding 'date', 'time', and 'step'.
+
+    Args:
+        ds: A dataset object.
+
+    Returns:
+        A dictionary where keys are tuples of metadata items and values are lists of fields.
+    """
     d = defaultdict(list)
     for field in ds.order_by("valid_datetime"):
         m = field.metadata(namespace="mars")
@@ -45,7 +76,18 @@ def group_by_field(ds):
     return d
 
 
-def tendencies(dates, time_increment, **kwargs):
+def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
+    """
+    Computes tendencies for the given dates and time increment.
+
+    Args:
+        dates: A list of datetime objects.
+        time_increment: A time increment string ending with 'h' or a datetime.timedelta object.
+        **kwargs: Additional keyword arguments.
+
+    Returns:
+        A dataset object with computed tendencies.
+    """
     print("✅", kwargs)
     time_increment = normalise_time_delta(time_increment)
 
@@ -122,7 +164,6 @@ if __name__ == "__main__":
 
     config = yaml.safe_load(
         """
-
     config:
       time_increment: 12h
       database: marser

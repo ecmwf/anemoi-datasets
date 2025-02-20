@@ -23,6 +23,7 @@ import earthkit.data as ekd
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
+from numpy import ndarray as NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -37,9 +38,6 @@ def _member(field: Any) -> int:
 
     Args:
         field (Any): The field from which to retrieve the member number.
-
-    Returns:
-        int: The member number.
     """
     # Bug in eccodes has number=0 randomly
     number = field.metadata("number", default=0)
@@ -49,8 +47,19 @@ def _member(field: Any) -> int:
 
 
 class Accumulation:
+    buggy_steps: bool = False
+
     def __init__(
-        self, out: Any, /, param: str, date: int, time: int, number: int, step: List[int], frequency: int, **kwargs: Any
+        self,
+        out: Any,
+        /,
+        param: str,
+        date: int,
+        time: int,
+        number: int,
+        step: List[int],
+        frequency: int,
+        **kwargs: Any,
     ) -> None:
         """
         Initializes an Accumulation instance.
@@ -71,10 +80,10 @@ class Accumulation:
         self.time = time
         self.steps = step
         self.number = number
-        self.values = None
+        self.values: Optional[NDArray[None]] = None
         self.seen = set()
-        self.startStep = None
-        self.endStep = None
+        self.startStep: Optional[int] = None
+        self.endStep: Optional[int] = None
         self.done = False
         self.frequency = frequency
         self._check = None
@@ -83,9 +92,6 @@ class Accumulation:
     def key(self) -> Tuple[str, int, int, List[int], int]:
         """
         Returns the key for the accumulation.
-
-        Returns:
-            Tuple[str, int, int, List[int], int]: The key for the accumulation.
         """
         return (self.param, self.date, self.time, self.steps, self.number)
 
@@ -204,9 +210,6 @@ class Accumulation:
             frequency (Optional[int]): Frequency of accumulation.
             base_times (List[int]): List of base times.
             adjust_step (bool): Whether to adjust the step.
-
-        Yields:
-            Generator[Tuple[int, int, Tuple[int, ...]], None, None]: MARS date-time steps.
         """
         # assert step1 > 0, (step1, step2, frequency)
 
@@ -229,9 +232,6 @@ class Accumulation:
     def __repr__(self) -> str:
         """
         Returns a string representation of the Accumulation instance.
-
-        Returns:
-            str: String representation of the Accumulation instance.
         """
         return f"{self.__class__.__name__}({self.key})"
 
@@ -286,9 +286,6 @@ class AccumulationFromStart(Accumulation):
             step2 (int): Second step.
             add_step (int): Additional step.
             frequency (Optional[int]): Frequency of accumulation.
-
-        Returns:
-            Tuple[int, int, Tuple[int, ...]]: MARS date-time step.
         """
         assert not frequency, frequency
 
@@ -349,9 +346,6 @@ class AccumulationFromLastStep(Accumulation):
             step2 (int): Second step.
             add_step (int): Additional step.
             frequency (int): Frequency of accumulation.
-
-        Returns:
-            Tuple[int, int, Tuple[int, ...]]: MARS date-time step.
         """
         assert frequency > 0, frequency
         # assert step1 > 0, (step1, step2, frequency, add_step, base_date)
@@ -372,9 +366,6 @@ def _identity(x: Any) -> Any:
 
     Args:
         x (Any): Input value.
-
-    Returns:
-        Any: The same input value.
     """
     return x
 
@@ -508,9 +499,6 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
 
     Args:
         x (Union[List[Any], Tuple[Any], Any]): Input value.
-
-    Returns:
-        List[Any]: List containing the input value(s).
     """
     if isinstance(x, (list, tuple)):
         return x
@@ -523,9 +511,6 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
 
     Args:
         request (Dict[str, Any]): Request parameters.
-
-    Returns:
-        Dict[str, Any]: Modified request parameters.
     """
     if request["time"] in (6, 18, 600, 1800):
         request["stream"] = "scda"

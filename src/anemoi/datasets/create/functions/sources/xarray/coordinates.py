@@ -33,11 +33,6 @@ def is_scalar(variable: Any) -> bool:
     ----------
     variable : Any
         The variable to check.
-
-    Returns
-    -------
-    bool
-        True if the variable is scalar, False otherwise.
     """
     shape = variable.shape
     if shape == (1,):
@@ -55,11 +50,6 @@ def extract_single_value(variable: Any) -> Any:
     ----------
     variable : Any
         The variable to extract the value from.
-
-    Returns
-    -------
-    Any
-        The extracted value.
     """
     shape = variable.shape
     if np.issubdtype(variable.values.dtype, np.datetime64):
@@ -116,22 +106,12 @@ class Coordinate:
     def __len__(self) -> int:
         """
         Get the length of the coordinate.
-
-        Returns
-        -------
-        int
-            The length of the coordinate.
         """
         return 1 if self.scalar else len(self.variable)
 
     def __repr__(self) -> str:
         """
         Get the string representation of the coordinate.
-
-        Returns
-        -------
-        str
-            The string representation of the coordinate.
         """
         return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
@@ -148,11 +128,6 @@ class Coordinate:
         ----------
         i : int
             The index of the value to select.
-
-        Returns
-        -------
-        Coordinate
-            The new coordinate.
         """
         return self.__class__(
             self.variable.isel({self.variable.dims[0]: i}),
@@ -167,13 +142,7 @@ class Coordinate:
         ----------
         value : Union[Any, list, tuple]
             The value to search for.
-
-        Returns
-        -------
-        Optional[Union[int, list]]
-            The index of the value in the coordinate or None if not found.
         """
-
         if isinstance(value, (list, tuple)):
             if len(value) == 1:
                 return self._index_single(value)
@@ -189,13 +158,7 @@ class Coordinate:
         ----------
         value : Any
             The value to search for.
-
-        Returns
-        -------
-        Optional[int]
-            The index of the value in the coordinate or None if not found.
         """
-
         values = self.variable.values
 
         # Assume the array is sorted
@@ -220,13 +183,7 @@ class Coordinate:
         ----------
         value : list
             The values to search for.
-
-        Returns
-        -------
-        Optional[list]
-            The indices of the values in the coordinate or None if not found.
         """
-
         values = self.variable.values
 
         # Assume the array is sorted
@@ -251,11 +208,6 @@ class Coordinate:
     def name(self) -> str:
         """
         Get the name of the coordinate.
-
-        Returns
-        -------
-        str
-            The name of the coordinate.
         """
         return self.variable.name
 
@@ -275,11 +227,6 @@ class Coordinate:
     def single_value(self) -> Any:
         """
         Get the single value of the coordinate.
-
-        Returns
-        -------
-        Any
-            The single value of the coordinate.
         """
         return extract_single_value(self.variable)
 
@@ -300,11 +247,6 @@ class TimeCoordinate(Coordinate):
         ----------
         time : datetime.datetime
             The time to search for.
-
-        Returns
-        -------
-        Optional[int]
-            The index of the time in the coordinate or None if not found.
         """
         return super().index(np.datetime64(time))
 
@@ -325,11 +267,6 @@ class DateCoordinate(Coordinate):
         ----------
         date : datetime.datetime
             The date to search for.
-
-        Returns
-        -------
-        Optional[int]
-            The index of the date in the coordinate or None if not found.
         """
         return super().index(np.datetime64(date))
 
@@ -338,9 +275,6 @@ class StepCoordinate(Coordinate):
     """
     Coordinate class for step.
     """
-
-    is_step = True
-    mars_names = ("step",)
 
 
 class LevelCoordinate(Coordinate):
@@ -461,11 +395,6 @@ class ScalarCoordinate(Coordinate):
     def mars_names(self) -> Tuple[str, ...]:
         """
         Get the MARS names for the coordinate.
-
-        Returns
-        -------
-        tuple
-            The MARS names for the coordinate.
         """
         return (self.variable.name,)
 
@@ -479,10 +408,5 @@ class UnsupportedCoordinate(Coordinate):
     def mars_names(self) -> tuple:
         """
         Get the MARS names for the coordinate.
-
-        Returns
-        -------
-        tuple
-            The MARS names for the coordinate.
         """
         return (self.variable.name,)

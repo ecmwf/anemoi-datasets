@@ -37,12 +37,36 @@ class XarrayFieldList(FieldList):
         self.total_length: int = sum(v.length for v in variables)
 
     def __repr__(self) -> str:
+        """
+        Return a string representation of the XarrayFieldList.
+        """
         return f"XarrayFieldList({self.total_length})"
 
     def __len__(self) -> int:
+        """
+        Return the length of the XarrayFieldList.
+        """
         return self.total_length
 
     def __getitem__(self, i: int) -> Any:
+        """
+        Get an item from the XarrayFieldList by index.
+
+        Args
+        ----
+        i : int
+            The index of the item to get.
+
+        Returns
+        -------
+        Any
+            The item at the specified index.
+
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
+        """
         k: int = i
 
         if i < 0:
@@ -63,7 +87,23 @@ class XarrayFieldList(FieldList):
         flavour: Optional[Union[str, Dict[str, Any]]] = None,
         patch: Optional[Dict[str, Any]] = None,
     ) -> "XarrayFieldList":
+        """
+        Create an XarrayFieldList from an xarray Dataset.
 
+        Args
+        ----
+        ds : xr.Dataset
+            The xarray Dataset to create the field list from.
+        flavour : Optional[Union[str, Dict[str, Any]]]
+            The flavour to use for guessing coordinates.
+        patch : Optional[Dict[str, Any]]
+            The patch to apply to the dataset.
+
+        Returns
+        -------
+        XarrayFieldList
+            The created XarrayFieldList.
+        """
         if patch is not None:
             ds = patch_dataset(ds, patch)
 
@@ -141,34 +181,26 @@ class XarrayFieldList(FieldList):
         return cls(ds, variables)
 
     def sel(self, **kwargs: Any) -> FieldList:
-        """Override the FieldList's sel method
+        """
+        Select fields from the XarrayFieldList based on criteria.
 
-        Parameters
-        ----------
+        Args
+        ----
         kwargs : dict
-            The selection criteria
+            The selection criteria.
 
         Returns
         -------
         FieldList
-            The new FieldList
-
-        The algorithm is as follows:
-        1 - Use the kwargs to select the variables that match the selection (`param` or `variable`)
-        2 - For each variable, use the remaining kwargs to select the coordinates (`level`, `number`, ...)
-        3 - Some mars like keys, like `date`, `time`, `step` are not found in the coordinates,
-            but added to the metadata of the selected fields. A example is `step` that is added to the
-            metadata of the field. Step 2 may return a variable that contain all the fields that
-            verify at the same `valid_datetime`, with different base `date` and `time` and a different `step`.
-            So we get an extra chance to filter the fields by the metadata.
+            The new FieldList with selected fields.
         """
-
         variables: List[Variable] = []
         count: int = 0
 
         for v in self.variables:
 
             # First, select matching variables
+
             # This will consume 'param' or 'variable' from kwargs
             # and return the rest
             match, rest = v.match(**kwargs)

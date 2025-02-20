@@ -27,15 +27,39 @@ class Grid(ABC):
 
     @property
     def latitudes(self) -> Any:
+        """
+        Get the latitudes of the grid.
+
+        Returns
+        -------
+        Any
+            The latitudes of the grid.
+        """
         return self.grid_points[0]
 
     @property
     def longitudes(self) -> Any:
+        """
+        Get the longitudes of the grid.
+
+        Returns
+        -------
+        Any
+            The longitudes of the grid.
+        """
         return self.grid_points[1]
 
     @abstractmethod
     @property
     def grid_points(self) -> Tuple[Any, Any]:
+        """
+        Get the grid points.
+
+        Returns
+        -------
+        Tuple[Any, Any]
+            A tuple containing the latitudes and longitudes of the grid points.
+        """
         pass
 
 
@@ -56,7 +80,14 @@ class MeshedGrid(LatLonGrid):
 
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
+        """
+        Get the grid points for the meshed grid.
 
+        Returns
+        -------
+        Tuple[Any, Any]
+            A tuple containing the latitudes and longitudes of the grid points.
+        """
         lat, lon = np.meshgrid(
             self.lat.variable.values,
             self.lon.variable.values,
@@ -77,7 +108,14 @@ class UnstructuredGrid(LatLonGrid):
 
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
+        """
+        Get the grid points for the unstructured grid.
 
+        Returns
+        -------
+        Tuple[Any, Any]
+            A tuple containing the latitudes and longitudes of the grid points.
+        """
         assert 1 <= len(self.variable_dims) <= 2
 
         if len(self.variable_dims) == 1:
@@ -119,7 +157,14 @@ class MeshProjectionGrid(ProjectionGrid):
 
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
+        """
+        Get the grid points for the mesh projection grid.
 
+        Returns
+        -------
+        Tuple[Any, Any]
+            A tuple containing the latitudes and longitudes of the grid points.
+        """
         transformer = self.transformer()
         xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
         lon, lat = transformer.transform(xv, yv)

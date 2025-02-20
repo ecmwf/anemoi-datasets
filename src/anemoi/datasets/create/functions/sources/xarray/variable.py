@@ -81,37 +81,86 @@ class Variable:
 
     @property
     def name(self) -> str:
-        """Return the name of the variable."""
+        """
+        Return the name of the variable.
+
+        Returns
+        -------
+        str
+            The name of the variable.
+        """
         return str(self.variable.name)
 
     def __len__(self) -> int:
-        """Return the length of the variable."""
+        """
+        Return the length of the variable.
+
+        Returns
+        -------
+        int
+            The length of the variable.
+        """
         return self.length
 
     @property
     def grid_mapping(self) -> Optional[Dict[str, Any]]:
-        """Return the grid mapping of the variable."""
+        """
+        Return the grid mapping of the variable.
+
+        Returns
+        -------
+        Optional[Dict[str, Any]]
+            The grid mapping of the variable.
+        """
         grid_mapping = self.variable.attrs.get("grid_mapping", None)
         if grid_mapping is None:
             return None
         return self.ds[grid_mapping].attrs
 
     def grid_points(self) -> Any:
-        """Return the grid points of the variable."""
+        """
+        Return the grid points of the variable.
+
+        Returns
+        -------
+        Any
+            The grid points of the variable.
+        """
         return self.grid.grid_points
 
     @property
     def latitudes(self) -> Any:
-        """Return the latitudes of the variable."""
+        """
+        Return the latitudes of the variable.
+
+        Returns
+        -------
+        Any
+            The latitudes of the variable.
+        """
         return self.grid.latitudes
 
     @property
     def longitudes(self) -> Any:
-        """Return the longitudes of the variable."""
+        """
+        Return the longitudes of the variable.
+
+        Returns
+        -------
+        Any
+            The longitudes of the variable.
+        """
         return self.grid.longitudes
 
     def __repr__(self) -> str:
-        """Return a string representation of the variable."""
+        """
+        Return a string representation of the variable.
+
+        Returns
+        -------
+        str
+            A string representation of the variable.
+        """
         return "Variable[name=%s,coordinates=%s,metadata=%s]" % (
             self.variable.name,
             self.coordinates,
@@ -122,11 +171,20 @@ class Variable:
         """
         Get a 2D field from the variable.
 
-        Parameters:
-            i (int): Index of the field.
+        Parameters
+        ----------
+        i : int
+            Index of the field.
 
-        Raises:
-            IndexError: If the index is out of range.
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
+
+        Returns
+        -------
+        XArrayField
+            The 2D field at the specified index.
         """
         if i >= self.length:
             raise IndexError(i)
@@ -139,12 +197,17 @@ class Variable:
         """
         Select a subset of the variable based on the given coordinates.
 
-        Parameters:
-            missing (Dict[str, Any]): Dictionary to store missing coordinates.
-            **kwargs (Any): Coordinates to select.
+        Parameters
+        ----------
+        missing : Dict[str, Any]
+            Dictionary to store missing coordinates.
+        **kwargs : Any
+            Coordinates to select.
 
-        Returns:
-            Optional[Variable]: The selected subset of the variable.
+        Returns
+        -------
+        Optional[Variable]
+            The selected subset of the variable.
         """
         if not kwargs:
             return self
@@ -195,11 +258,15 @@ class Variable:
         """
         Match the variable based on the given metadata.
 
-        Parameters:
-            **kwargs (Any): Metadata to match.
+        Parameters
+        ----------
+        **kwargs : Any
+            Metadata to match.
 
-        Returns:
-            Tuple[bool, Optional[Dict[str, Any]]]: A tuple containing a boolean indicating if the match was successful and the remaining metadata.
+        Returns
+        -------
+        Tuple[bool, Optional[Dict[str, Any]]]
+            A tuple containing a boolean indicating if the match was successful and the remaining metadata.
         """
         if "param" in kwargs:
             assert "variable" not in kwargs
@@ -221,7 +288,6 @@ class FilteredVariable:
 
     Attributes:
         variable (Variable): The variable to filter.
-
         kwargs (Any): Metadata to filter the variable.
     """
 
@@ -229,16 +295,26 @@ class FilteredVariable:
         """
         Initialize the FilteredVariable object.
 
-        Parameters:
-            variable (Variable): The variable to filter.
-            **kwargs (Any): Metadata to filter the variable.
+        Parameters
+        ----------
+        variable : Variable
+            The variable to filter.
+        **kwargs : Any
+            Metadata to filter the variable.
         """
         self.variable = variable
         self.kwargs = kwargs
 
     @cached_property
     def fields(self) -> List["XArrayField"]:
-        """Filter the fields of a variable based on metadata."""
+        """
+        Filter the fields of a variable based on metadata.
+
+        Returns
+        -------
+        List[XArrayField]
+            The filtered fields.
+        """
         return [
             field
             for field in self.variable
@@ -247,25 +323,45 @@ class FilteredVariable:
 
     @property
     def length(self) -> int:
-        """Return the length of the filtered variable."""
+        """
+        Return the length of the filtered variable.
+
+        Returns
+        -------
+        int
+            The length of the filtered variable.
+        """
         return len(self.fields)
 
     def __len__(self) -> int:
-        """Return the length of the filtered variable."""
+        """
+        Return the length of the filtered variable.
+
+        Returns
+        -------
+        int
+            The length of the filtered variable.
+        """
         return self.length
 
     def __getitem__(self, i: int) -> "XArrayField":
         """
         Get a field from the filtered variable.
 
-        Parameters:
-            i (int): Index of the field.
+        Parameters
+        ----------
+        i : int
+            Index of the field.
 
-        Raises:
-            IndexError: If the index is out of range.
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
 
-        Returns:
-            XArrayField: The field at the specified index.
+        Returns
+        -------
+        XArrayField
+            The field at the specified index.
         """
         if i >= self.length:
             raise IndexError(i)

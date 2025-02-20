@@ -19,6 +19,21 @@ LOG = logging.getLogger(__name__)
 
 
 def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> Any:
+    """
+    Patch the attributes of the dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    attributes : Dict[str, Dict[str, Any]]
+        The attributes to patch.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
     for name, value in attributes.items():
         variable = ds[name]
         variable.attrs.update(value)
@@ -27,6 +42,21 @@ def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> A
 
 
 def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
+    """
+    Patch the coordinates of the dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    coordinates : List[str]
+        The coordinates to patch.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
     for name in coordinates:
         ds = ds.assign_coords({name: ds[name]})
 
@@ -40,6 +70,21 @@ PATCHES = {
 
 
 def patch_dataset(ds: xr.Dataset, patch: Dict[str, Dict[str, Any]]) -> Any:
+    """
+    Patch the dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    patch : Dict[str, Dict[str, Any]]
+        The patch to apply.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
     for what, values in patch.items():
         if what not in PATCHES:
             raise ValueError(f"Unknown patch type {what!r}")
