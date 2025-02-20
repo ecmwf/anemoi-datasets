@@ -28,12 +28,25 @@ DEPTH = 0
 
 
 def css(name: str) -> str:
+    """
+    Get the CSS content from a file.
+
+    Args:
+        name (str): The name of the CSS file.
+
+    Returns:
+        str: The CSS content.
+    """
     path = os.path.join(os.path.dirname(__file__), f"{name}.css")
     with open(path) as f:
         return f"<style>{f.read()}</style>"
 
 
 class Node:
+    """
+    A class to represent a node in a dataset tree.
+    """
+
     def __init__(self, dataset: Any, kids: List[Any], **kwargs: Any) -> None:
         """
         Initializes a Node object.
@@ -262,7 +275,9 @@ class Node:
 
 
 class Source:
-    """Class used to follow the provenance of a data point."""
+    """
+    A class used to follow the provenance of a data point.
+    """
 
     def __init__(self, dataset: Any, index: int, source: Optional[Any] = None, info: Optional[Any] = None) -> None:
         """

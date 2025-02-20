@@ -23,7 +23,15 @@ LOG = logging.getLogger(__name__)
 
 
 def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
+    """
+    Parses a function name to extract the base name and an optional time delta.
 
+    Args:
+        name (str): The function name to parse.
+
+    Returns:
+        Tuple[str, Union[int, None]]: The base name and an optional time delta.
+    """
     if name.endswith("h") and name[:-1].isdigit():
 
         if "-" in name:
@@ -38,13 +46,23 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
             return name, None
 
         assert delta[-1] == "h", (name, delta)
-        delta = sign * int(delta[:-1])
-        return name, delta
+
+        return name, sign * int(delta[:-1])
 
     return name, None
 
 
 def is_function(name: str, kind: str) -> bool:
+    """
+    Checks if a function with the given name and kind exists.
+
+    Args:
+        name (str): The name of the function.
+        kind (str): The kind of the function.
+
+    Returns:
+        bool: True if the function exists, False otherwise.
+    """
     name, _ = parse_function_name(name)
     try:
         import_function(name, kind)
@@ -55,8 +73,19 @@ def is_function(name: str, kind: str) -> bool:
 
 
 def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator to assert that the result of a method is an instance of FieldList.
+
+    Args:
+        method (Callable[..., Any]): The method to decorate.
+
+    Returns:
+        Callable[..., Any]: The decorated method.
+    """
+
     @wraps(method)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+
         result = method(self, *args, **kwargs)
         assert isinstance(result, FieldList), type(result)
         return result
@@ -65,16 +94,41 @@ def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def assert_is_fieldlist(obj: object) -> None:
+    """
+    Asserts that the given object is an instance of FieldList.
+
+    Args:
+        obj (object): The object to check.
+    """
     assert isinstance(obj, FieldList), type(obj)
 
 
 def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
+    """
+    Flattens a MultiFieldList or FieldList into a list of FieldList objects.
+
+    Args:
+        ds (Union[MultiFieldList, FieldList]): The dataset to flatten.
+
+    Returns:
+        list: A list of FieldList objects.
+    """
     if isinstance(ds, MultiFieldList):
         return [_tidy(f) for s in ds._indexes for f in _flatten(s)]
     return [ds]
 
 
 def _tidy(ds: Union[MultiFieldList, FieldList], indent: int = 0) -> Union[MultiFieldList, FieldList]:
+    """
+    Tidies up a MultiFieldList or FieldList by removing empty sources.
+
+    Args:
+        ds (Union[MultiFieldList, FieldList]): The dataset to tidy.
+        indent (int, optional): The indentation level. Defaults to 0.
+
+    Returns:
+        Union[MultiFieldList, FieldList]: The tidied dataset.
+    """
     if isinstance(ds, MultiFieldList):
 
         sources = [s for s in _flatten(ds) if len(s) > 0]

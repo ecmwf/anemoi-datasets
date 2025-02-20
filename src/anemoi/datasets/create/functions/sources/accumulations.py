@@ -23,7 +23,7 @@ import earthkit.data as ekd
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
-from numpy import ndarray as NDArray
+from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 

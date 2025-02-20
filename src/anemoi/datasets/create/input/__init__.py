@@ -18,6 +18,10 @@ from .trace import trace_select
 LOG = logging.getLogger(__name__)
 
 
+class BuildContext:
+    pass
+
+
 class InputBuilder:
     def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
         self.kwargs = kwargs

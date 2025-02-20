@@ -20,14 +20,38 @@ from earthkit.meteo.wind.array import polar_to_xy
 
 class NewDataField:
     def __init__(self, field: Any, data: Any, new_name: str) -> None:
+        """
+        Initialize a NewDataField instance.
+
+        Args:
+            field (Any): The original field.
+            data (Any): The converted wind component data.
+            new_name (str): The new name for the field.
+        """
         self.field = field
         self.data = data
         self.new_name = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
+        """
+        Convert the data to a numpy array.
+
+        Returns:
+            Any: The data as a numpy array.
+        """
         return self.data
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
+        """
+        Get metadata from the original field, with the option to rename the parameter.
+
+        Args:
+            key (Optional[str]): The metadata key.
+            **kwargs (Any): Additional keyword arguments.
+
+        Returns:
+            Any: The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -37,6 +61,15 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
+        """
+        Get an attribute from the original field.
+
+        Args:
+            name (str): The name of the attribute.
+
+        Returns:
+            Any: The attribute value.
+        """
         return getattr(self.field, name)
 
 

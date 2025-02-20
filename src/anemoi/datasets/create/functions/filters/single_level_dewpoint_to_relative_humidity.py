@@ -10,6 +10,7 @@
 
 from collections import defaultdict
 from typing import Any
+from typing import Dict
 from typing import List
 
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -19,11 +20,21 @@ from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
 def execute(context: Any, input: List[Any], t: str, td: str, rh: str = "d") -> FieldArray:
-    """Convert relative humidity on single levels to dewpoint"""
-    result = FieldArray()
+    """Convert dewpoint on single levels to relative humidity.
 
-    params = (t, td)
-    pairs = defaultdict(dict)
+    Args:
+        context (Any): The context in which the function is executed.
+        input (List[Any]): List of input fields.
+        t (str): Temperature parameter.
+        td (str): Dewpoint parameter.
+        rh (str, optional): Relative humidity parameter. Defaults to "d".
+
+    Returns:
+        FieldArray: Array of fields with relative humidity.
+    """
+    result = FieldArray()
+    params: tuple[str, str] = (t, td)
+    pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
     # Gather all necessary fields
     for f in input:
@@ -55,3 +66,59 @@ def execute(context: Any, input: List[Any], t: str, td: str, rh: str = "d") -> F
         result.append(NewDataField(values[td], rh_values, rh))
 
     return result
+
+
+# class NewDataField:
+#     def __init__(self, field: Any, data: NDArray[Any], new_name: str) -> None:
+#         """
+#         Initialize a NewDataField instance.
+
+#         Args:
+#             field (Any): The original field.
+#             data (NDArray[Any]): The converted relative humidity data.
+#             new_name (str): The new name for the field.
+#         """
+#         self.field = field
+#         self.data = data
+#         self.new_name = new_name
+
+#     def to_numpy(self, *args: Any, **kwargs: Any) -> NDArray[Any]:
+#         """
+#         Convert the data to a numpy array.
+
+#         Returns:
+#             NDArray[Any]: The data as a numpy array.
+#         """
+#         return self.data
+
+#     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
+#         """
+#         Get metadata from the original field, with the option to rename the parameter.
+
+#         Args:
+#             key (Optional[str]): The metadata key.
+#             **kwargs (Any): Additional keyword arguments.
+
+#         Returns:
+#             Any: The metadata value.
+#         """
+#         if key is None:
+#             return self.field.metadata(**kwargs)
+
+#         value = self.field.metadata(key, **kwargs)
+#         if key == "param":
+#             return self.new_name
+#         return value
+
+#     def __getattr__(self, name: str) -> Any:
+#         """
+#         Get an attribute from the original field.
+
+#         Args:
+#             name (str): The name of the attribute.
+
+#         Returns:
+
+#             Any: The attribute value.
+#         """
+#         return getattr(self.field, name)

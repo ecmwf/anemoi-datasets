@@ -37,4 +37,4 @@ class PipeAction(Action):
         return self.last_step.select(group_of_dates)
 
     def __repr__(self) -> str:
-        return super().__repr__(self.last_step)
+        return f"PipeAction({self.last_step})"

@@ -11,8 +11,11 @@
 import logging
 from collections import defaultdict
 from typing import Any
+from typing import Dict
 from typing import Generator
+from typing import List
 from typing import Optional
+from typing import Set
 from typing import Tuple
 
 import numpy as np
@@ -31,10 +34,23 @@ LOG = logging.getLogger(__name__)
 
 
 class DateMapper:
+    """
+    A factory class to create DateMapper instances based on the given mode.
+    """
 
     @staticmethod
-    def from_mode(mode: str, source: Any, config: dict) -> "DateMapper":
+    def from_mode(mode: str, source: Any, config: Dict[str, Any]) -> "DateMapper":
+        """
+        Create a DateMapper instance based on the given mode.
 
+        Args:
+            mode (str): The mode to use for the DateMapper.
+            source (Any): The data source.
+            config (Dict[str, Any]): Configuration parameters.
+
+        Returns:
+            DateMapper: An instance of DateMapper.
+        """
         MODES: dict = dict(
             closest=DateMapperClosest,
             climatology=DateMapperClimatology,
@@ -48,22 +64,44 @@ class DateMapper:
 
 
 class DateMapperClosest(DateMapper):
+    """
+    A DateMapper implementation that maps dates to the closest available dates.
+    """
+
     def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
+        """
+        Initialize DateMapperClosest.
+
+        Args:
+            source (Any): The data source.
+            frequency (str): Frequency of the dates.
+            maximum (str): Maximum time delta.
+            skip_all_nans (bool): Whether to skip all NaN values.
+        """
         self.source: Any = source
         self.maximum: Any = frequency_to_timedelta(maximum)
         self.frequency: Any = frequency_to_timedelta(frequency)
         self.skip_all_nans: bool = skip_all_nans
-        self.tried: set = set()
-        self.found: set = set()
+        self.tried: Set[Any] = set()
+        self.found: Set[Any] = set()
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
+        """
+        Transform the group of dates to the closest available dates.
+
+        Args:
+            group_of_dates (Any): The group of dates to transform.
+
+        Yields:
+            Generator[Tuple[Any, Any], None, None]: Transformed dates.
+        """
         from anemoi.datasets.dates.groups import GroupOfDates
 
         asked_dates: list = list(group_of_dates)
         if not asked_dates:
             return
 
-        to_try: set = set()
+        to_try: Set[Any] = set()
         for date in asked_dates:
             start: Any = date
             while start >= date - self.maximum:
@@ -76,7 +114,7 @@ class DateMapperClosest(DateMapper):
                 end += self.frequency
 
         to_try = sorted(to_try - self.tried)
-        info: dict = {k: "no-data" for k in to_try}
+        info: Dict[Any, str] = {k: "no-data" for k in to_try}
 
         if not to_try:
             LOG.warning(f"No new dates to try for {group_of_dates} in {self.source}")
@@ -133,12 +171,34 @@ class DateMapperClosest(DateMapper):
 
 
 class DateMapperClimatology(DateMapper):
+    """
+    A DateMapper implementation that maps dates to specified climatology dates.
+    """
+
     def __init__(self, source: Any, year: int, day: int, hour: Optional[int] = None) -> None:
+        """
+        Initialize DateMapperClimatology.
+
+        Args:
+            source (Any): The data source.
+            year (int): The year to map to.
+            day (int): The day to map to.
+            hour (Optional[int]): The hour to map to.
+        """
         self.year: int = year
         self.day: int = day
         self.hour: Optional[int] = hour
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
+        """
+        Transform the group of dates to the specified climatology dates.
+
+        Args:
+            group_of_dates (Any): The group of dates to transform.
+
+        Yields:
+            Generator[Tuple[Any, Any], None, None]: Transformed dates.
+        """
         from anemoi.datasets.dates.groups import GroupOfDates
 
         dates: list = list(group_of_dates)
@@ -160,11 +220,31 @@ class DateMapperClimatology(DateMapper):
 
 
 class DateMapperConstant(DateMapper):
+    """
+    A DateMapper implementation that maps dates to a constant date.
+    """
+
     def __init__(self, source: Any, date: Optional[Any] = None) -> None:
+        """
+        Initialize DateMapperConstant.
+
+        Args:
+            source (Any): The data source.
+            date (Optional[Any]): The constant date to map to.
+        """
         self.source: Any = source
         self.date: Optional[Any] = date
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
+        """
+        Transform the group of dates to a constant date.
+
+        Args:
+            group_of_dates (Any): The group of dates to transform.
+
+        Yields:
+            Generator[Tuple[Any, Any], None, None]: Transformed dates.
+        """
         from anemoi.datasets.dates.groups import GroupOfDates
 
         if self.date is None:
@@ -181,15 +261,30 @@ class DateMapperConstant(DateMapper):
 
 
 class DateMapperResult(Result):
+    """
+    A Result implementation that updates the valid datetime of the datasource.
+    """
+
     def __init__(
         self,
         context: Any,
-        action_path: list,
+        action_path: List[str],
         group_of_dates: Any,
         source_result: Any,
         mapper: DateMapper,
         original_group_of_dates: Any,
     ) -> None:
+        """
+        Initialize DateMapperResult.
+
+        Args:
+            context (Any): The context.
+            action_path (List[str]): The action path.
+            group_of_dates (Any): The group of dates.
+            source_result (Any): The source result.
+            mapper (DateMapper): The date mapper.
+            original_group_of_dates (Any): The original group of dates.
+        """
         super().__init__(context, action_path, group_of_dates)
 
         self.source_results: Any = source_result
@@ -198,6 +293,12 @@ class DateMapperResult(Result):
 
     @property
     def datasource(self) -> Any:
+        """
+        Get the datasource with updated valid datetime.
+
+        Returns:
+            Any: The updated datasource.
+        """
         result: list = []
 
         for field in self.source_results.datasource:
@@ -211,7 +312,21 @@ class DateMapperResult(Result):
 
 
 class RepeatedDatesAction(Action):
-    def __init__(self, context: Any, action_path: list, source: Any, mode: str, **kwargs: Any) -> None:
+    """
+    An Action implementation that selects and transforms a group of dates.
+    """
+
+    def __init__(self, context: Any, action_path: List[str], source: Any, mode: str, **kwargs: Any) -> None:
+        """
+        Initialize RepeatedDatesAction.
+
+        Args:
+            context (Any): The context.
+            action_path (List[str]): The action path.
+            source (Any): The data source.
+            mode (str): The mode for date mapping.
+            **kwargs (Any): Additional arguments.
+        """
         super().__init__(context, action_path, source, mode, **kwargs)
 
         self.source: Any = action_factory(source, context, action_path + ["source"])
@@ -219,6 +334,15 @@ class RepeatedDatesAction(Action):
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:
+        """
+        Select and transform the group of dates.
+
+        Args:
+            group_of_dates (Any): The group of dates to select.
+
+        Returns:
+            JoinResult: The result of the join operation.
+        """
         results: list = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
             results.append(
@@ -235,4 +359,10 @@ class RepeatedDatesAction(Action):
         return JoinResult(self.context, self.action_path, group_of_dates, results)
 
     def __repr__(self) -> str:
+        """
+        Get the string representation of the action.
+
+        Returns:
+            str: The string representation.
+        """
         return f"MultiDateMatchAction({self.source}, {self.mapper})"

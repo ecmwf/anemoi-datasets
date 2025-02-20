@@ -16,7 +16,7 @@ from typing import Dict
 from typing import Optional
 from typing import Set
 
-from numpy import ndarray as NDArray
+from numpy.typing import NDArray
 
 from . import open_dataset
 from .dataset import Dataset
@@ -41,6 +41,15 @@ class Statistics(Forwards):
         return self._statistic.statistics
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        """
+        Get the statistics tendencies.
+
+        Args:
+            delta (Optional[datetime.timedelta]): The time delta.
+
+        Returns:
+            Dict[str, NDArray[Any]]: The statistics tendencies.
+        """
         if delta is None:
             delta = self.frequency
         return self._statistic.statistics_tendencies(delta)

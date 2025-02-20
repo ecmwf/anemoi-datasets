@@ -42,19 +42,48 @@ class Join(Combined):
     """Join the datasets along the variables axis."""
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Check the compatibility of two datasets.
+
+        Args:
+            d1 (Dataset): The first dataset.
+            d2 (Dataset): The second dataset.
+        """
         super().check_compatibility(d1, d2)
         self.check_same_sub_shapes(d1, d2, drop_axis=1)
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Check if the datasets have the same variables.
+
+        Args:
+            d1 (Dataset): The first dataset.
+            d2 (Dataset): The second dataset.
+        """
         # Turned off because we are joining along the variables axis
         pass
 
     def __len__(self) -> int:
+        """
+        Get the length of the joined dataset.
+
+        Returns:
+            int: The length of the joined dataset.
+        """
         return len(self.datasets[0])
 
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """
+        Get the data for a tuple index.
+
+        Args:
+            index (TupleIndex): The tuple index to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data for the tuple index.
+        """
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
 
@@ -66,10 +95,28 @@ class Join(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
+        """
+        Get the data for a slice.
+
+        Args:
+            s (slice): The slice to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data for the slice.
+        """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """
+        Get the data at the specified index.
+
+        Args:
+            n (FullIndex): The index to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data at the specified index.
+        """
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -80,10 +127,22 @@ class Join(Combined):
 
     @cached_property
     def shape(self) -> Shape:
+        """
+        Get the shape of the joined dataset.
+
+        Returns:
+            Shape: The shape of the joined dataset.
+        """
         cols = sum(d.shape[1] for d in self.datasets)
         return (len(self), cols) + self.datasets[0].shape[2:]
 
     def _overlay(self) -> Dataset:
+        """
+        Overlay the datasets.
+
+        Returns:
+            Dataset: The overlaid dataset.
+        """
         indices = {}
         i = 0
         for d in self.datasets:
@@ -114,6 +173,12 @@ class Join(Combined):
 
     @cached_property
     def variables(self) -> List[str]:
+        """
+        Get the variables of the joined dataset.
+
+        Returns:
+            List[str]: The variables of the joined dataset.
+        """
         seen = set()
         result: List[str] = []
         for d in reversed(self.datasets):
@@ -127,6 +192,12 @@ class Join(Combined):
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
+        """
+        Get the metadata of the variables.
+
+        Returns:
+            Dict[str, Any]: The metadata of the variables.
+        """
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
 
@@ -146,15 +217,36 @@ class Join(Combined):
 
     @cached_property
     def name_to_index(self) -> Dict[str, int]:
+        """
+        Get the mapping of variable names to indices.
+
+        Returns:
+            Dict[str, int]: The mapping of variable names to indices.
+        """
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
+        """
+        Get the statistics of the joined dataset.
+
+        Returns:
+            Dict[str, NDArray[Any]]: The statistics of the joined dataset.
+        """
         return {
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        """
+        Get the statistics tendencies of the joined dataset.
+
+        Args:
+            delta (Optional[datetime.timedelta]): The time delta for the tendencies.
+
+        Returns:
+            Dict[str, NDArray[Any]]: The statistics tendencies of the joined dataset.
+        """
         if delta is None:
             delta = self.frequency
         return {
@@ -163,6 +255,15 @@ class Join(Combined):
         }
 
     def source(self, index: int) -> Source:
+        """
+        Get the source of the data at the specified index.
+
+        Args:
+            index (int): The index to retrieve the source from.
+
+        Returns:
+            Source: The source of the data at the specified index.
+        """
         i = index
         for dataset in self.datasets:
             if i < dataset.shape[1]:
@@ -172,18 +273,40 @@ class Join(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
+        """
+        Get the missing data indices.
+
+        Returns:
+            Set[int]: The missing data indices.
+        """
         result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing
         return result
 
     def tree(self) -> Node:
+        """
+        Get the tree representation of the dataset.
+
+        Returns:
+            Node: The tree representation of the dataset.
+        """
         return Node(self, [d.tree() for d in self.datasets])
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
+    """
+    Create a joined dataset.
 
+    Args:
+        args (tuple): The positional arguments.
+        kwargs (dict): The keyword arguments.
+
+    Returns:
+        Dataset: The joined dataset.
+    """
     xdatasets = kwargs.pop("join")
+
     assert isinstance(xdatasets, (list, tuple))
     assert len(args) == 0
 

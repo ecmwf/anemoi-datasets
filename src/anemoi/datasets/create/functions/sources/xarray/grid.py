@@ -21,6 +21,9 @@ LOG = logging.getLogger(__name__)
 
 
 class Grid(ABC):
+    """
+    Abstract base class for grid structures.
+    """
 
     def __init__(self) -> None:
         pass
@@ -29,11 +32,6 @@ class Grid(ABC):
     def latitudes(self) -> Any:
         """
         Get the latitudes of the grid.
-
-        Returns
-        -------
-        Any
-            The latitudes of the grid.
         """
         return self.grid_points[0]
 
@@ -41,11 +39,6 @@ class Grid(ABC):
     def longitudes(self) -> Any:
         """
         Get the longitudes of the grid.
-
-        Returns
-        -------
-        Any
-            The longitudes of the grid.
         """
         return self.grid_points[1]
 
@@ -64,29 +57,50 @@ class Grid(ABC):
 
 
 class LatLonGrid(Grid):
+    """
+    Grid class for latitude and longitude coordinates.
+    """
+
     def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
+        """
+        Initialize the LatLonGrid class.
+
+        Args:
+            lat (Any): The latitudes.
+            lon (Any): The longitudes.
+            variable_dims (Any): The variable dimensions.
+        """
         super().__init__()
         self.lat = lat
         self.lon = lon
 
 
 class XYGrid(Grid):
+    """
+    Grid class for x and y coordinates.
+    """
+
     def __init__(self, x: Any, y: Any) -> None:
+        """
+        Initialize the XYGrid class.
+
+        Args:
+            x (Any): The x-coordinates.
+            y (Any): The y-coordinates.
+        """
         self.x = x
         self.y = y
 
 
 class MeshedGrid(LatLonGrid):
+    """
+    Grid class for meshed latitude and longitude coordinates.
+    """
 
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
         """
         Get the grid points for the meshed grid.
-
-        Returns
-        -------
-        Tuple[Any, Any]
-            A tuple containing the latitudes and longitudes of the grid points.
         """
         lat, lon = np.meshgrid(
             self.lat.variable.values,
@@ -97,8 +111,19 @@ class MeshedGrid(LatLonGrid):
 
 
 class UnstructuredGrid(LatLonGrid):
+    """
+    Grid class for unstructured latitude and longitude coordinates.
+    """
 
     def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
+        """
+        Initialize the UnstructuredGrid class.
+
+        Args:
+            lat (Any): The latitudes.
+            lon (Any): The longitudes.
+            variable_dims (Any): The variable dimensions.
+        """
         super().__init__(lat, lon, variable_dims)
         assert len(lat) == len(lon), (len(lat), len(lon))
         self.variable_dims = variable_dims
@@ -110,11 +135,6 @@ class UnstructuredGrid(LatLonGrid):
     def grid_points(self) -> Tuple[Any, Any]:
         """
         Get the grid points for the unstructured grid.
-
-        Returns
-        -------
-        Tuple[Any, Any]
-            A tuple containing the latitudes and longitudes of the grid points.
         """
         assert 1 <= len(self.variable_dims) <= 2
 
@@ -135,11 +155,31 @@ class UnstructuredGrid(LatLonGrid):
 
 
 class ProjectionGrid(XYGrid):
+    """
+    Grid class for projected x and y coordinates.
+    """
+
     def __init__(self, x: Any, y: Any, projection: Any) -> None:
+        """
+        Initialize the ProjectionGrid class.
+
+        Args:
+            x (Any): The x-coordinates.
+            y (Any): The y-coordinates.
+            projection (Any): The projection information.
+        """
         super().__init__(x, y)
         self.projection = projection
 
     def transformer(self) -> Any:
+        """
+        Get the transformer for the projection.
+
+        Returns
+        -------
+        Any
+            The transformer.
+        """
         from pyproj import CRS
         from pyproj import Transformer
 
@@ -154,16 +194,14 @@ class ProjectionGrid(XYGrid):
 
 
 class MeshProjectionGrid(ProjectionGrid):
+    """
+    Grid class for meshed projected coordinates.
+    """
 
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
         """
         Get the grid points for the mesh projection grid.
-
-        Returns
-        -------
-        Tuple[Any, Any]
-            A tuple containing the latitudes and longitudes of the grid points.
         """
         transformer = self.transformer()
         xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
@@ -172,6 +210,17 @@ class MeshProjectionGrid(ProjectionGrid):
 
 
 class UnstructuredProjectionGrid(XYGrid):
+    """
+    Grid class for unstructured projected coordinates.
+    """
+
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
+        """
+        Get the grid points for the unstructured projection grid.
+
+        Raises
+        ------
+        NotImplementedError
+        """
         raise NotImplementedError("UnstructuredProjectionGrid")

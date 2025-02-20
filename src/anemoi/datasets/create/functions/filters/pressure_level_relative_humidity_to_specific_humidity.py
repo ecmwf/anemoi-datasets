@@ -10,6 +10,7 @@
 
 from collections import defaultdict
 from typing import Any
+from typing import Dict
 from typing import List
 
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -19,11 +20,21 @@ from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
 def execute(context: Any, input: List[Any], t: str, rh: str, q: str = "q") -> FieldArray:
-    """Convert relative humidity on pressure levels to specific humidity"""
-    result = FieldArray()
+    """Convert relative humidity on pressure levels to specific humidity.
 
-    params = (t, rh)
-    pairs = defaultdict(dict)
+    Args:
+        context (Any): The context in which the function is executed.
+        input (List[Any]): List of input fields.
+        t (str): Temperature parameter.
+        rh (str): Relative humidity parameter.
+        q (str, optional): Specific humidity parameter. Defaults to "q".
+
+    Returns:
+        FieldArray: Array of fields with specific humidity.
+    """
+    result = FieldArray()
+    params: tuple[str, str] = (t, rh)
+    pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
     # Gather all necessary fields
     for f in input:

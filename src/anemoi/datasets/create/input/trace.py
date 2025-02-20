@@ -23,16 +23,34 @@ TRACE = 0
 
 
 def enable_trace(on_off: int) -> None:
+    """
+    Enables or disables tracing.
+
+    Args:
+        on_off (int): 1 to enable tracing, 0 to disable.
+    """
     global TRACE
     TRACE = on_off
 
 
 def step(action_path: list[str]) -> str:
+    """
+    Returns a formatted string representing the action path.
+
+    Args:
+        action_path (list[str]): The action path.
+    """
     return f"[{'.'.join(action_path)}]"
 
 
 def trace(emoji: str, *args: Any) -> None:
+    """
+    Logs a trace message with an emoji.
 
+    Args:
+        emoji (str): The emoji to use.
+        *args (Any): The arguments to log.
+    """
     if not TRACE:
         return
 
@@ -43,6 +61,13 @@ def trace(emoji: str, *args: Any) -> None:
 
 
 def trace_datasource(method: Callable) -> Callable:
+    """
+    Decorator to trace the datasource method.
+
+    Args:
+        method (Callable): The method to decorate.
+    """
+
     @wraps(method)
     def wrapper(self, *args: Any, **kwargs: Any) -> Any:
 
@@ -70,6 +95,13 @@ def trace_datasource(method: Callable) -> Callable:
 
 
 def trace_select(method: Callable) -> Callable:
+    """
+    Decorator to trace the select method.
+
+    Args:
+        method (Callable): The method to decorate.
+    """
+
     @wraps(method)
     def wrapper(self, *args: Any, **kwargs: Any) -> Any:
         if not hasattr(thread_local, "TRACE_INDENT"):

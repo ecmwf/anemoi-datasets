@@ -10,6 +10,11 @@
 
 import glob
 import logging
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -18,7 +23,18 @@ from earthkit.data.utils.patterns import Pattern
 LOG = logging.getLogger(__name__)
 
 
-def _load(context, name, record):
+def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
+    """
+    Load data from a given source.
+
+    Args:
+        context (Any): The context in which the function is executed.
+        name (str): The name of the data source.
+        record (Dict[str, Any]): The record containing source information.
+
+    Returns:
+        tuple: A tuple containing the data as a numpy array and the UUID of the HGrid.
+    """
     ds = None
 
     param = record["param"]
@@ -40,12 +56,19 @@ def _load(context, name, record):
 
 
 class Geography:
-    """This class retrieve the latitudes and longitudes of unstructured grids,
+    """This class retrieves the latitudes and longitudes of unstructured grids,
     and checks if the fields are compatible with the grid.
     """
 
-    def __init__(self, context, latitudes, longitudes):
+    def __init__(self, context: Any, latitudes: Dict[str, Any], longitudes: Dict[str, Any]) -> None:
+        """
+        Initialize the Geography class.
 
+        Args:
+            context (Any): The context in which the function is executed.
+            latitudes (Dict[str, Any]): Latitude information.
+            longitudes (Dict[str, Any]): Longitude information.
+        """
         latitudes, uuidOfHGrid_lat = _load(context, "latitudes", latitudes)
         longitudes, uuidOfHGrid_lon = _load(context, "longitudes", longitudes)
 
@@ -61,7 +84,13 @@ class Geography:
         self.longitudes = longitudes
         self.first = True
 
-    def check(self, field):
+    def check(self, field: Any) -> None:
+        """
+        Check if the field is compatible with the grid.
+
+        Args:
+            field (Any): The field to check.
+        """
         if self.first:
             # We only check the first field, for performance reasons
             assert (
@@ -73,7 +102,14 @@ class Geography:
 class AddGrid:
     """An earth-kit.data.Field wrapper that adds grid information."""
 
-    def __init__(self, field, geography):
+    def __init__(self, field: Any, geography: Geography) -> None:
+        """
+        Initialize the AddGrid class.
+
+        Args:
+            field (Any): The field to wrap.
+            geography (Geography): The geography information.
+        """
         self._field = field
 
         geography.check(field)
@@ -81,21 +117,38 @@ class AddGrid:
         self._latitudes = geography.latitudes
         self._longitudes = geography.longitudes
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._field, name)
 
     def __repr__(self) -> str:
         return repr(self._field)
 
-    def grid_points(self):
+    def grid_points(self) -> tuple:
+        """
+        Get the grid points (latitudes and longitudes).
+
+        Returns:
+            tuple: The latitudes and longitudes.
+        """
         return self._latitudes, self._longitudes
 
     @property
-    def resolution(self):
+    def resolution(self) -> str:
         return "unknown"
 
 
-def check(ds, paths, **kwargs):
+def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
+    """
+    Check if the dataset matches the expected number of fields.
+
+    Args:
+        ds (Any): The dataset to check.
+        paths (List[str]): List of paths to the GRIB files.
+        **kwargs (Any): Additional keyword arguments.
+
+    Raises:
+        ValueError: If the number of fields does not match the expected count.
+    """
     count = 1
     for k, v in kwargs.items():
         if isinstance(v, (tuple, list)):
@@ -105,7 +158,16 @@ def check(ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
 
 
-def _expand(paths):
+def _expand(paths: List[str]) -> Any:
+    """
+    Expand the given paths using glob.
+
+    Args:
+        paths (List[str]): List of paths to expand.
+
+    Yields:
+        Any: The expanded paths.
+    """
     for path in paths:
         cnt = 0
         for p in glob.glob(path):
@@ -115,7 +177,30 @@ def _expand(paths):
             yield path
 
 
-def execute(context, dates, path, latitudes=None, longitudes=None, *args, **kwargs):
+def execute(
+    context: Any,
+    dates: List[Any],
+    path: Union[str, List[str]],
+    latitudes: Optional[Dict[str, Any]] = None,
+    longitudes: Optional[Dict[str, Any]] = None,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    """
+    Execute the function to load data from GRIB files.
+
+    Args:
+        context (Any): The context in which the function is executed.
+        dates (List[Any]): List of dates.
+        path (Union[str, List[str]]): Path or list of paths to the GRIB files.
+        latitudes (Optional[Dict[str, Any]], optional): Latitude information. Defaults to None.
+        longitudes (Optional[Dict[str, Any]], optional): Longitude information. Defaults to None.
+        *args (Any): Additional arguments.
+        **kwargs (Any): Additional keyword arguments.
+
+    Returns:
+        Any: The loaded dataset.
+    """
     given_paths = path if isinstance(path, list) else [path]
 
     geography = None

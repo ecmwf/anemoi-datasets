@@ -22,19 +22,39 @@ from .trace import trace
 LOG = logging.getLogger(__name__)
 
 
-class Context:
+class ContextBase:
+    pass
+
+
+class BuildContext(ContextBase):
     def __init__(self) -> None:
+        """
+        Initializes a BuildContext instance.
+        """
         # used_references is a set of reference paths that will be needed
         self.used_references = set()
         # results is a dictionary of reference path -> obj
         self.results = {}
 
     def will_need_reference(self, key: Union[List, Tuple]) -> None:
+        """
+        Marks a reference as needed.
+
+        Args:
+            key (Union[List, Tuple]): The reference key.
+        """
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         self.used_references.add(key)
 
     def notify_result(self, key: Union[List, Tuple], result: Any) -> None:
+        """
+        Notifies that a result is available for a reference.
+
+        Args:
+            key (Union[List, Tuple]): The reference key.
+            result (Any): The result object.
+        """
         trace(
             "🎯",
             step(key),
@@ -50,6 +70,15 @@ class Context:
             self.results[key] = result
 
     def get_result(self, key: Union[List, Tuple]) -> Any:
+        """
+        Retrieves the result for a given reference.
+
+        Args:
+            key (Union[List, Tuple]): The reference key.
+
+        Returns:
+            Any: The result for the given reference.
+        """
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         if key in self.results:

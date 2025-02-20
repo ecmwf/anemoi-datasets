@@ -58,7 +58,7 @@ def local_time_bug(lon: float, date: datetime.datetime) -> float:
 
 def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
     radians = local_time_bug(lon, date) / 24 * np.pi * 2
-    return np.cos(radians)
+    return float(np.cos(radians))
 
 
 def find(config: dict | list, name: str) -> Any:
@@ -249,7 +249,7 @@ class Version:
         return None
 
     @property
-    def build_flags(self) -> NDArray | None:
+    def build_flags(self) -> NDArray[Any] | None:
         return self.zarr.get("_build_flags")
 
     @cached_property

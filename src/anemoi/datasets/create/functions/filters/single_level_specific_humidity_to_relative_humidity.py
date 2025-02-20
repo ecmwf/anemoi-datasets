@@ -20,21 +20,51 @@ from numpy.typing import NDArray
 
 # Alternative proposed by Baudouin Raoult
 class AutoDict(dict):
+    """A dictionary that automatically creates nested dictionaries for missing keys."""
+
     def __missing__(self, key):
         value = self[key] = type(self)()
         return value
 
 
 class NewDataField:
+    """A class to represent a new data field with modified metadata."""
+
     def __init__(self, field, data, new_name):
+        """
+        Initialize the NewDataField.
+
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The data for the new field.
+        new_name : str
+            The new name for the parameter.
+        """
         self.field = field
         self.data = data
         self.new_name = new_name
 
     def to_numpy(self, *args, **kwargs):
+        """Convert the data to a numpy array."""
         return self.data
 
     def metadata(self, key=None, **kwargs):
+        """
+        Get the metadata for the field.
+
+        Parameters
+        ----------
+        key : str, optional
+            The metadata key to retrieve. If None, all metadata is returned.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -44,6 +74,7 @@ class NewDataField:
         return value
 
     def __getattr__(self, name):
+        """Delegate attribute access to the original field."""
         return getattr(self.field, name)
 
 
@@ -230,7 +261,33 @@ def pressure_at_height_level(height, q, T, sp, A, B) -> Union[float, NDArray[Any
 
 
 def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
-    """Convert the single (height) level specific humidity to relative humidity"""
+    """
+    Convert the single (height) level specific humidity to relative humidity.
+
+    Parameters
+    ----------
+    context : Any
+        The context for the execution.
+    input : Any
+        The input data.
+    height : float
+        The height level in meters.
+    t : str
+        The temperature parameter name.
+    q : str
+        The specific humidity parameter name.
+    sp : str
+        The surface pressure parameter name.
+    new_name : str, optional
+        The new name for the relative humidity parameter, by default "2r".
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    FieldArray
+        The resulting field array with relative humidity.
+    """
     result = FieldArray()
 
     MANDATORY_KEYS = ["A", "B"]

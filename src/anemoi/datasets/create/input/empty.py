@@ -24,16 +24,30 @@ class EmptyResult(Result):
     empty = True
 
     def __init__(self, context: object, action_path: list, dates: object) -> None:
+        """
+        Initializes an EmptyResult instance.
+
+        Args:
+            context (object): The context object.
+            action_path (list): The action path.
+            dates (object): The dates object.
+        """
         super().__init__(context, action_path + ["empty"], dates)
 
     @cached_property
     @assert_fieldlist
     @trace_datasource
     def datasource(self) -> FieldList:
+        """
+        Returns an empty datasource.
+        """
         from earthkit.data import from_source
 
         return from_source("empty")
 
     @property
     def variables(self) -> List[str]:
+        """
+        Returns an empty list of variables.
+        """
         return []

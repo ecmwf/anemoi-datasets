@@ -86,7 +86,9 @@ def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> Tuple[ND
 
 # TODO: Use the one from anemoi.utils.grids instead
 # from anemoi.utils.grids import ...
-def latlon_to_xyz(lat: NDArray[Any], lon: NDArray[Any], radius: float = 1.0) -> Tuple[NDArray[Any], NDArray[Any]]:
+def latlon_to_xyz(
+    lat: NDArray[Any], lon: NDArray[Any], radius: float = 1.0
+) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
     # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
     # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
     # We assume h = 0
@@ -252,15 +254,15 @@ def cutout_mask(
         inside_lam.append(inside or close)
 
     j = 0
-    inside_lam = np.array(inside_lam)
+    inside_lam_array = np.array(inside_lam)
     for i, m in enumerate(mask):
         if not m:
             continue
 
-        mask[i] = inside_lam[j]
+        mask[i] = inside_lam_array[j]
         j += 1
 
-    assert j == len(inside_lam)
+    assert j == len(inside_lam_array)
 
     # Invert the mask, so we have only the points outside the cutout
     mask = ~mask
@@ -420,7 +422,7 @@ def nearest_grid_points(
     target_points = np.array(target_xyz).transpose()
 
     _, indices = cKDTree(source_points).query(target_points, k=1)
-    return indices
+    return indices  # type: ignore
 
 
 if __name__ == "__main__":

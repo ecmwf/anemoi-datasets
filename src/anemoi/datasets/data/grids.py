@@ -41,6 +41,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Concat(Combined):
+    """
+    A class to represent concatenated datasets.
+    """
+
     def __len__(self) -> int:
         """
         Returns the total length of the concatenated datasets.
@@ -198,6 +202,10 @@ class Concat(Combined):
 
 
 class GridsBase(GivenAxis):
+    """
+    A base class for handling grids in datasets.
+    """
+
     def __init__(self, datasets: List[Any], axis: int) -> None:
         """
         Initializes a GridsBase object.
@@ -275,6 +283,10 @@ class GridsBase(GivenAxis):
 
 
 class Grids(GridsBase):
+    """
+    A class to represent combined grids from multiple datasets.
+    """
+
     # TODO: select the statistics of the most global grid?
     @property
     def latitudes(self) -> NDArray[Any]:
@@ -314,6 +326,10 @@ class Grids(GridsBase):
 
 
 class Cutout(GridsBase):
+    """
+    A class to handle hierarchical management of Limited Area Models (LAMs) and a global dataset.
+    """
+
     def __init__(
         self,
         datasets: List[Any],

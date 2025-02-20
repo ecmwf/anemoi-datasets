@@ -18,7 +18,7 @@ from typing import Tuple
 
 from earthkit.data import Field
 from earthkit.data.core.fieldlist import math
-from numpy import ndarray as NDArray
+from numpy.typing import NDArray
 
 from .coordinates import extract_single_value
 from .coordinates import is_scalar

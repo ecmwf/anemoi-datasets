@@ -16,6 +16,7 @@ from typing import Optional
 from typing import Type
 
 from .action import Action
+from .action import ActionContext
 from .context import Context
 from .misc import is_function
 from .result import Result
@@ -45,7 +46,9 @@ class StepResult(Result):
 class StepAction(Action):
     result_class: Optional[Type[StepResult]] = None
 
-    def __init__(self, context: Context, action_path: List[str], previous_step: Any, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self, context: ActionContext, action_path: List[str], previous_step: Any, *args: Any, **kwargs: Any
+    ) -> None:
         super().__init__(context, action_path, *args, **kwargs)
         self.previous_step: Any = previous_step
 
@@ -63,7 +66,7 @@ class StepAction(Action):
         return super().__repr__(self.previous_step, _inline_=str(self.kwargs))
 
 
-def step_factory(config: Dict[str, Any], context: Context, action_path: List[str], previous_step: Any) -> Any:
+def step_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str], previous_step: Any) -> Any:
 
     from .filter import FilterStepAction
     from .filter import FunctionStepAction
@@ -76,7 +79,7 @@ def step_factory(config: Dict[str, Any], context: Context, action_path: List[str
     assert len(config) == 1, config
 
     key = list(config.keys())[0]
-    cls = dict(
+    cls: Optional[Type[Action]] = dict(
         filter=FilterStepAction,
         # rename=RenameAction,
         # remapping=RemappingAction,

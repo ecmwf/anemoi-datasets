@@ -12,4 +12,15 @@ from typing import List
 
 
 def execute(context: Any, input: List[Any], *args: Any, **kwargs: Any) -> List[Any]:
+    """No operation filter that returns the input as is.
+
+    Args:
+        context (Any): The context in which the function is executed.
+        input (List[Any]): List of input fields.
+        *args (Any): Additional arguments.
+        **kwargs (Any): Additional keyword arguments.
+
+    Returns:
+        List[Any]: The input list of fields.
+    """
     return input

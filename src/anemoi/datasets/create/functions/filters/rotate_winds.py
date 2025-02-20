@@ -10,6 +10,7 @@
 
 from collections import defaultdict
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -20,17 +21,49 @@ from earthkit.geo.rotate import rotate_vector
 
 
 class NewDataField:
-    def __init__(self, field, data):
+    """
+    A class to represent a new data field with rotated wind components.
+    """
+
+    def __init__(self, field: Any, data: Any) -> None:
+        """
+        Initialize a NewDataField instance.
+
+        Args:
+            field (Any): The original field.
+            data (Any): The rotated wind component data.
+        """
         self.field = field
         self.data = data
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
+        """
+        Convert the data to a numpy array.
+
+        Returns:
+            Any: The data as a numpy array.
+        """
         return self.data
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """
+        Get an attribute from the original field.
+
+        Args:
+            name (str): The name of the attribute.
+
+        Returns:
+            Any: The attribute value.
+        """
         return getattr(self.field, name)
 
     def __repr__(self) -> str:
+        """
+        Get the string representation of the original field.
+
+        Returns:
+            str: The string representation of the original field.
+        """
         return repr(self.field)
 
 
@@ -42,14 +75,27 @@ def execute(
     source_projection: Optional[str] = None,
     target_projection: str = "+proj=longlat",
 ) -> FieldArray:
+    """Rotate wind components from one projection to another.
+
+    Args:
+        context (Any): The context in which the function is executed.
+        input (List[Any]): List of input fields.
+        x_wind (str): X wind component parameter.
+        y_wind (str): Y wind component parameter.
+        source_projection (Optional[str], optional): Source projection. Defaults to None.
+        target_projection (str, optional): Target projection. Defaults to "+proj=longlat".
+
+    Returns:
+        FieldArray: Array of fields with rotated wind components.
+    """
     from pyproj import CRS
 
     context.trace("🔄", "Rotating winds (extracting winds from ", plural(len(input), "field"))
 
     result = FieldArray()
 
-    wind_params = (x_wind, y_wind)
-    wind_pairs = defaultdict(dict)
+    wind_params: tuple[str, str] = (x_wind, y_wind)
+    wind_pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
     for f in input:
         key = f.metadata(namespace="mars")

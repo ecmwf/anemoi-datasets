@@ -13,6 +13,7 @@ import logging
 import re
 import warnings
 from typing import Any
+from typing import Callable
 from typing import Optional
 
 import numpy as np
@@ -31,6 +32,16 @@ class DatasetName:
         end_date: Optional[datetime.date] = None,
         frequency: Optional[datetime.timedelta] = None,
     ):
+        """
+        Initialize a DatasetName instance.
+
+        Args:
+            name (str): The name of the dataset.
+            resolution (Optional[str]): The resolution of the dataset.
+            start_date (Optional[datetime.date]): The start date of the dataset.
+            end_date (Optional[datetime.date]): The end date of the dataset.
+            frequency (Optional[datetime.timedelta]): The frequency of the dataset.
+        """
         self.name = name
         self.parsed = self._parse(name)
         print("---------------")
@@ -50,18 +61,39 @@ class DatasetName:
 
     @property
     def error_message(self) -> str:
+        """
+        Generate an error message based on the collected messages.
+
+        Returns:
+            str: The error message.
+        """
         out = " And ".join(self.messages)
         if out:
             out = out[0].upper() + out[1:]
         return out
 
-    def raise_if_not_valid(self, print: callable = print) -> None:
+    def raise_if_not_valid(self, print: Callable = print) -> None:
+        """
+        Raise a ValueError if the dataset name is not valid.
+
+        Args:
+            print (Callable): The function to use for printing messages.
+        """
         if self.messages:
             for m in self.messages:
                 print(m)
             raise ValueError(self.error_message)
 
     def _parse(self, name: str) -> dict:
+        """
+        Parse the dataset name into its components.
+
+        Args:
+            name (str): The name of the dataset.
+
+        Returns:
+            dict: The parsed components of the dataset name.
+        """
         pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
         match = re.match(pattern, name)
 
@@ -86,9 +118,18 @@ class DatasetName:
         return parsed
 
     def __str__(self) -> str:
+        """
+        Return the string representation of the dataset name.
+
+        Returns:
+            str: The dataset name.
+        """
         return self.name
 
     def check_parsed(self) -> None:
+        """
+        Check if the dataset name was parsed correctly.
+        """
         if not self.parsed:
             self.messages.append(
                 f"the dataset name {self} does not follow naming convention. "
@@ -97,6 +138,12 @@ class DatasetName:
             )
 
     def check_resolution(self, resolution: str | None) -> None:
+        """
+        Check if the resolution matches the expected format.
+
+        Args:
+            resolution (str | None): The expected resolution.
+        """
         if self.parsed.get("resolution") and self.parsed["resolution"][0] not in "0123456789on":
             self.messages.append(
                 f"the resolution {self.parsed['resolution'] } should start "
@@ -110,6 +157,12 @@ class DatasetName:
         self._check_mismatch("resolution", resolution_str)
 
     def check_frequency(self, frequency: datetime.timedelta | None) -> None:
+        """
+        Check if the frequency matches the expected format.
+
+        Args:
+            frequency (datetime.timedelta | None): The expected frequency.
+        """
         if frequency is None:
             return
         frequency_str = frequency_to_string(frequency)
@@ -117,6 +170,12 @@ class DatasetName:
         self._check_mismatch("frequency", frequency_str)
 
     def check_start_date(self, start_date: datetime.date | None) -> None:
+        """
+        Check if the start date matches the expected format.
+
+        Args:
+            start_date (datetime.date | None): The expected start date.
+        """
         if start_date is None:
             return
         start_date_str = str(start_date.year)
@@ -124,6 +183,12 @@ class DatasetName:
         self._check_mismatch("start_date", start_date_str)
 
     def check_end_date(self, end_date: datetime.date | None) -> None:
+        """
+        Check if the end date matches the expected format.
+
+        Args:
+            end_date (datetime.date | None): The expected end date.
+        """
         if end_date is None:
             return
         end_date_str = str(end_date.year)
@@ -131,22 +196,48 @@ class DatasetName:
         self._check_mismatch("end_date", end_date_str)
 
     def _check_missing(self, key: str, value: str) -> None:
+        """
+        Check if a component is missing from the dataset name.
+
+        Args:
+            key (str): The component key.
+            value (str): The expected value.
+        """
         if value not in self.name:
             self.messages.append(f"the {key} is {value}, but is missing in {self.name}.")
 
     def _check_mismatch(self, key: str, value: str) -> None:
+        """
+        Check if a component value mismatches the expected value.
+
+        Args:
+            key (str): The component key.
+            value (str): The expected value.
+        """
         if self.parsed.get(key) and self.parsed[key] != value:
             self.messages.append(f"the {key} is {value}, but is {self.parsed[key]} in {self.name}.")
 
 
 class StatisticsValueError(ValueError):
+    """
+    Custom error for statistics value issues.
+    """
+
     pass
 
 
 def check_data_values(
     arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
 ) -> None:
+    """
+    Check the values in the data array for validity.
 
+    Args:
+        arr (NDArray[Any]): The data array to check.
+        name (str): The name of the data array.
+        log (list): A list to log messages.
+        allow_nans (bool | list | set | tuple | dict): Whether to allow NaNs in the data array.
+    """
     shape = arr.shape
 
     if (isinstance(allow_nans, (set, list, tuple, dict)) and name in allow_nans) or allow_nans:
@@ -186,11 +277,3 @@ def check_data_values(
                 f"For {name}: maximum value in the data is {max}. "
                 "Not in acceptable range [{limits[name]['minimum']} ; {limits[name]['maximum']}]"
             )
-
-
-def check_stats(minimum: float, maximum: float, mean: float, msg: str, **kwargs: Any) -> None:
-    tolerance = (abs(minimum) + abs(maximum)) * 0.01
-    if (mean - minimum < -tolerance) or (mean - minimum < -tolerance):
-        raise StatisticsValueError(
-            f"Mean is not in min/max interval{msg} : we should have {minimum} <= {mean} <= {maximum}"
-        )

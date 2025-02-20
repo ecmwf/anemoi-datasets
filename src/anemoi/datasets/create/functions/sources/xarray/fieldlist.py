@@ -52,20 +52,14 @@ class XarrayFieldList(FieldList):
         """
         Get an item from the XarrayFieldList by index.
 
-        Args
-        ----
-        i : int
-            The index of the item to get.
+        Args:
+            i (int): The index of the item to get.
 
-        Returns
-        -------
-        Any
-            The item at the specified index.
+        Returns:
+            Any: The item at the specified index.
 
-        Raises
-        ------
-        IndexError
-            If the index is out of range.
+        Raises:
+            IndexError: If the index is out of range.
         """
         k: int = i
 
@@ -90,19 +84,13 @@ class XarrayFieldList(FieldList):
         """
         Create an XarrayFieldList from an xarray Dataset.
 
-        Args
-        ----
-        ds : xr.Dataset
-            The xarray Dataset to create the field list from.
-        flavour : Optional[Union[str, Dict[str, Any]]]
-            The flavour to use for guessing coordinates.
-        patch : Optional[Dict[str, Any]]
-            The patch to apply to the dataset.
+        Args:
+            ds (xr.Dataset): The xarray Dataset to create the field list from.
+            flavour (Optional[Union[str, Dict[str, Any]]]): The flavour to use for guessing coordinates.
+            patch (Optional[Dict[str, Any]]): The patch to apply to the dataset.
 
-        Returns
-        -------
-        XarrayFieldList
-            The created XarrayFieldList.
+        Returns:
+            XarrayFieldList: The created XarrayFieldList.
         """
         if patch is not None:
             ds = patch_dataset(ds, patch)
@@ -184,15 +172,11 @@ class XarrayFieldList(FieldList):
         """
         Select fields from the XarrayFieldList based on criteria.
 
-        Args
-        ----
-        kwargs : dict
-            The selection criteria.
+        Args:
+            kwargs (dict): The selection criteria.
 
-        Returns
-        -------
-        FieldList
-            The new FieldList with selected fields.
+        Returns:
+            FieldList: The new FieldList with selected fields.
         """
         variables: List[Variable] = []
         count: int = 0

@@ -27,6 +27,15 @@ class Action:
     def __init__(
         self, context: "ActionContext", action_path: List[str], /, *args: Any, **kwargs: Dict[str, Any]
     ) -> None:
+        """
+        Initialize an Action instance.
+
+        Args:
+            context (ActionContext): The context in which the action exists.
+            action_path (List[str]): The action path.
+            args (Any): Additional positional arguments.
+            kwargs (Dict[str, Any]): Additional keyword arguments.
+        """
         if "args" in kwargs and "kwargs" in kwargs:
             """We have:
                args = []
@@ -46,26 +55,69 @@ class Action:
 
     @classmethod
     def _short_str(cls, x: str) -> str:
+        """
+        Shorten the string representation if it exceeds 1000 characters.
+
+        Args:
+            x (str): The string to shorten.
+
+        Returns:
+            str: The shortened string.
+        """
         x = str(x)
         if len(x) < 1000:
             return x
         return x[:1000] + "..."
 
     def __repr__(self) -> str:
+        """
+        Return the string representation of the Action instance.
+
+        Returns:
+            str: The string representation.
+        """
         return f"{self.__class__.__name__}()"
 
     def select(self, dates: object, **kwargs: Any) -> None:
+        """
+        Select dates for the action.
+
+        Args:
+            dates (object): The dates to select.
+            kwargs (Any): Additional keyword arguments.
+        """
         self._raise_not_implemented()
 
     def _raise_not_implemented(self) -> None:
+        """
+        Raise a NotImplementedError indicating the method is not implemented.
+        """
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
+        """
+        Trace the selection of a group of dates.
+
+        Args:
+            group_of_dates (GroupOfDates): The group of dates to trace.
+
+        Returns:
+            str: The trace string.
+        """
         return f"{self.__class__.__name__}({group_of_dates})"
 
 
 class ActionContext(Context):
     def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
+        """
+        Initialize an ActionContext instance.
+
+        Args:
+            order_by (str): The order by criteria.
+            flatten_grid (bool): Whether to flatten the grid.
+            remapping (Dict[str, Any]): The remapping configuration.
+            use_grib_paramid (bool): Whether to use GRIB parameter ID.
+        """
         super().__init__()
         self.order_by = order_by
         self.flatten_grid = flatten_grid
@@ -73,8 +125,18 @@ class ActionContext(Context):
         self.use_grib_paramid = use_grib_paramid
 
 
-def action_factory(config: Dict[str, Any], context: Context, action_path: List[str]) -> Action:
+def action_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str]) -> Action:
+    """
+    Factory function to create an Action instance based on the configuration.
 
+    Args:
+        config (Dict[str, Any]): The action configuration.
+        context (ActionContext): The context in which the action exists.
+        action_path (List[str]): The action path.
+
+    Returns:
+        Action: The created Action instance.
+    """
     from .concat import ConcatAction
     from .data_sources import DataSourcesAction
     from .function import FunctionAction

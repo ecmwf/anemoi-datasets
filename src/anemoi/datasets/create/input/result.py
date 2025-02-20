@@ -26,6 +26,7 @@ from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
+from .action import ActionContext
 from .trace import trace
 from .trace import trace_datasource
 
@@ -33,6 +34,16 @@ LOG = logging.getLogger(__name__)
 
 
 def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
+    """
+    Retrieve metadata for the given variables and cube.
+
+    Args:
+        variables (Tuple[str, ...]): The variables to retrieve metadata for.
+        cube (Any): The data cube.
+
+    Returns:
+        Dict[str, Any]: The metadata dictionary.
+    """
     assert isinstance(variables, tuple), variables
 
     KNOWN: Dict[str, Dict[str, bool]] = {
@@ -207,6 +218,15 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
 
 def _data_request(data: Any) -> Dict[str, Any]:
+    """
+    Build a data request dictionary from the given data.
+
+    Args:
+        data (Any): The data to build the request from.
+
+    Returns:
+        Dict[str, Any]: The data request dictionary.
+    """
     date: Optional[Any] = None
     params_levels: DefaultDict[str, set] = defaultdict(set)
     params_steps: DefaultDict[str, set] = defaultdict(set)
@@ -258,10 +278,16 @@ class Result:
     empty: bool = False
     _coords_already_built: bool = False
 
-    def __init__(self, context: Any, action_path: List[str], dates: Any) -> None:
-        from anemoi.datasets.dates.groups import GroupOfDates
+    def __init__(self, context: ActionContext, action_path: List[str], dates: Any) -> None:
+        """
+        Initialize a Result instance.
 
-        from .action import ActionContext
+        Args:
+            context (ActionContext): The context in which the result exists.
+            action_path (List[str]): The action path.
+            dates (Any): The dates associated with the result.
+        """
+        from anemoi.datasets.dates.groups import GroupOfDates
 
         assert isinstance(dates, GroupOfDates), dates
 
@@ -275,14 +301,25 @@ class Result:
     @property
     @trace_datasource
     def datasource(self) -> Any:
+        """
+        Retrieve the data source for the result.
+        """
         self._raise_not_implemented()
 
     @property
     def data_request(self) -> Dict[str, Any]:
-        """Returns a dictionary with the parameters needed to retrieve the data."""
+        """
+        Returns a dictionary with the parameters needed to retrieve the data.
+        """
         return _data_request(self.datasource)
 
     def get_cube(self) -> Any:
+        """
+        Retrieve the data cube for the result.
+
+        Returns:
+            Any: The data cube.
+        """
         trace("🧊", f"getting cube from {self.__class__.__name__}")
         ds: Any = self.datasource
 
@@ -317,7 +354,15 @@ class Result:
         return cube
 
     def explain(self, ds: Any, *args: Any, remapping: Any, patches: Any) -> None:
+        """
+        Explain the data cube creation process.
 
+        Args:
+            ds (Any): The data source.
+            args (Any): Additional arguments.
+            remapping (Any): The remapping configuration.
+            patches (Any): The patches configuration.
+        """
         METADATA: Tuple[str, ...] = (
             "date",
             "time",
@@ -462,6 +507,17 @@ class Result:
         exit(1)
 
     def __repr__(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
+        """
+        Return the string representation of the Result instance.
+
+        Args:
+            args (Any): Additional positional arguments.
+            _indent_ (str): Indentation string.
+            kwargs (Any): Additional keyword arguments.
+
+        Returns:
+            str: The string representation.
+        """
         more: str = ",".join([str(a)[:5000] for a in args])
         more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
 
@@ -481,12 +537,28 @@ class Result:
         return txt
 
     def _raise_not_implemented(self) -> None:
+        """
+        Raise a NotImplementedError indicating the method is not implemented.
+        """
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
+        """
+        Trace the data source for the result.
+
+        Args:
+            args (Any): Additional positional arguments.
+            kwargs (Any): Additional keyword arguments.
+
+        Returns:
+            str: The trace string.
+        """
         return f"{self.__class__.__name__}({self.group_of_dates})"
 
     def build_coords(self) -> None:
+        """
+        Build the coordinates for the result.
+        """
         if self._coords_already_built:
             return
 
@@ -546,45 +618,78 @@ class Result:
 
     @property
     def variables(self) -> List[str]:
+        """
+        Retrieve the variables for the result.
+        """
         self.build_coords()
         return self._variables
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
+        """
+        Retrieve the metadata for the variables.
+
+        Returns:
+            Dict[str, Any]: The metadata dictionary.
+        """
         return _fields_metatata(self.variables, self._cube)
 
     @property
     def ensembles(self) -> Any:
+        """
+        Retrieve the ensembles for the result.
+        """
         self.build_coords()
         return self._ensembles
 
     @property
     def resolution(self) -> Any:
+        """
+        Retrieve the resolution for the result.
+        """
         self.build_coords()
         return self._resolution
 
     @property
     def grid_values(self) -> Any:
+        """
+        Retrieve the grid values for the result.
+        """
         self.build_coords()
         return self._grid_values
 
     @property
     def grid_points(self) -> Any:
+        """
+        Retrieve the grid points for the result.
+        """
         self.build_coords()
         return self._grid_points
 
     @property
     def field_shape(self) -> Any:
+        """
+        Retrieve the field shape for the result.
+        """
         self.build_coords()
         return self._field_shape
 
     @property
     def proj_string(self) -> Any:
+        """
+        Retrieve the projection string for the result.
+        """
         self.build_coords()
         return self._proj_string
 
     @cached_property
     def shape(self) -> List[int]:
+        """
+        Retrieve the shape of the result.
+
+        Returns:
+            List[int]: The shape of the result.
+        """
         return [
             len(self.group_of_dates),
             len(self.variables),
@@ -594,6 +699,12 @@ class Result:
 
     @cached_property
     def coords(self) -> Dict[str, Any]:
+        """
+        Retrieve the coordinates of the result.
+
+        Returns:
+            Dict[str, Any]: The coordinates of the result.
+        """
         return {
             "dates": list(self.group_of_dates),
             "variables": self.variables,

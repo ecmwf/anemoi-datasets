@@ -11,6 +11,11 @@
 import datetime
 from functools import cache
 from functools import wraps
+from typing import Any
+from typing import Callable
+from typing import Optional
+from typing import Type
+from typing import Union
 from unittest.mock import patch
 
 import numpy as np
@@ -34,7 +39,17 @@ from anemoi.datasets.data.subset import Subset
 VALUES = 10
 
 
-def mockup_open_zarr(func):
+def mockup_open_zarr(func: Callable) -> Callable:
+    """
+    Decorator to mock the open_zarr function.
+
+    Args:
+        func (Callable): Function to wrap.
+
+    Returns:
+        Callable: Wrapped function.
+    """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.convenience.open", zarr_from_str):
@@ -45,8 +60,20 @@ def mockup_open_zarr(func):
 
 
 @cache
-def _(date, var, k=0, e=0, values=VALUES):
-    """Create a simple array of values based on the date and variable name, ensemble, grid and a few other parameters."""
+def _(date: datetime.datetime, var: str, k: int = 0, e: int = 0, values: int = VALUES) -> np.ndarray:
+    """
+    Create a simple array of values based on the date and variable name, ensemble, grid, and other parameters.
+
+    Args:
+        date (datetime.datetime): Date.
+        var (str): Variable name.
+        k (int): Grid index.
+        e (int): Ensemble index.
+        values (int): Number of values.
+
+    Returns:
+        np.ndarray: Array of values.
+    """
     d = date.year * 10000 + date.month * 100 + date.day
     v = ord(var) - ord("a") + 1
     assert 0 <= k <= 9
@@ -56,16 +83,33 @@ def _(date, var, k=0, e=0, values=VALUES):
 
 
 def create_zarr(
-    vars="abcd",
-    start=2021,
-    end=2021,
-    frequency=6,
-    resolution="o96",
-    k=0,
-    ensemble=None,
-    grids=None,
-    missing=False,
-):
+    vars: str = "abcd",
+    start: int = 2021,
+    end: int = 2021,
+    frequency: datetime.timedelta = datetime.timedelta(hours=6),
+    resolution: str = "o96",
+    k: int = 0,
+    ensemble: Optional[int] = None,
+    grids: Optional[int] = None,
+    missing: bool = False,
+) -> zarr.Group:
+    """
+    Create a Zarr dataset.
+
+    Args:
+        vars (str): Variable names.
+        start (int): Start year.
+        end (int): End year.
+        frequency (datetime.timedelta): Frequency.
+        resolution (str): Resolution.
+        k (int): Grid index.
+        ensemble (Optional[int]): Number of ensembles.
+        grids (Optional[int]): Number of grids.
+        missing (bool): Whether to include missing dates.
+
+    Returns:
+        zarr.Group: Zarr dataset.
+    """
     root = zarr.group()
     assert isinstance(frequency, datetime.timedelta)
 
@@ -153,7 +197,17 @@ def create_zarr(
     return root
 
 
-def zarr_from_str(name, mode):
+def zarr_from_str(name: str, mode: str) -> zarr.Group:
+    """
+    Create a Zarr dataset from a string.
+
+    Args:
+        name (str): Dataset name.
+        mode (str): Mode.
+
+    Returns:
+        zarr.Group: Zarr dataset.
+    """
     # Format: test-2021-2021-6h-o96-abcd-0
 
     args = dict(
@@ -187,14 +241,26 @@ def zarr_from_str(name, mode):
 
 
 class IndexTester:
-    def __init__(self, ds):
+    def __init__(self, ds: Any) -> None:
+        """
+        Initialize the IndexTester.
+
+        Args:
+            ds (Any): Dataset.
+        """
         self.ds = ds
         self.np = ds[:]  # Numpy array
 
         assert self.ds.shape == self.np.shape
         assert (self.ds == self.np).all()
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> None:
+        """
+        Test indexing.
+
+        Args:
+            index (Any): Index.
+        """
         print("INDEX", type(self.ds), index)
         if self.ds[index] is None:
             assert False, (self.ds, index)
@@ -205,7 +271,17 @@ class IndexTester:
             assert (self.ds[index] == self.np[index]).all()
 
 
-def make_row(*args, ensemble=False, grid=False):
+def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
+    """
+    Create a row of data.
+
+    Args:
+        ensemble (bool): Whether to include ensemble dimension.
+        grid (bool): Whether to include grid dimension.
+
+    Returns:
+        np.ndarray: Row of data.
+    """
     # assert not isinstance(args[0], (list, tuple))
     if grid:
 
@@ -221,7 +297,16 @@ def make_row(*args, ensemble=False, grid=False):
     return np.array(args)
 
 
-def make_missing(x):
+def make_missing(x: Any) -> Any:
+    """
+    Mark data as missing.
+
+    Args:
+        x (Any): Data.
+
+    Returns:
+        Any: Data with missing values.
+    """
     if isinstance(x, tuple):
         return (make_missing(a) for a in x)
     if isinstance(x, list):
@@ -234,7 +319,14 @@ def make_missing(x):
 
 
 class DatasetTester:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Initialize the DatasetTester.
+
+        Args:
+            *args (Any): Arguments.
+            **kwargs (Any): Keyword arguments.
+        """
         self.ds = open_dataset(*args, **kwargs)
 
         args, kwargs = make_missing((args, kwargs))
@@ -244,17 +336,32 @@ class DatasetTester:
     def run(
         self,
         *,
-        expected_class,
-        expected_length,
-        expected_shape,
-        expected_variables,
-        expected_name_to_index,
-        date_to_row,
-        start_date,
-        time_increment,
-        statistics_reference_dataset,
-        statistics_reference_variables,
-    ):
+        expected_class: Type,
+        expected_length: int,
+        expected_shape: tuple,
+        expected_variables: Union[str, list],
+        expected_name_to_index: Union[str, dict],
+        date_to_row: Callable,
+        start_date: datetime.datetime,
+        time_increment: datetime.timedelta,
+        statistics_reference_dataset: Optional[Union[str, list]],
+        statistics_reference_variables: Optional[Union[str, list]],
+    ) -> None:
+        """
+        Run the dataset tests.
+
+        Args:
+            expected_class (Type): Expected class.
+            expected_length (int): Expected length.
+            expected_shape (tuple): Expected shape.
+            expected_variables (Union[str, list]): Expected variables.
+            expected_name_to_index (Union[str, dict]): Expected name to index mapping.
+            date_to_row (Callable): Function to generate row data.
+            start_date (datetime.datetime): Start date.
+            time_increment (datetime.timedelta): Time increment.
+            statistics_reference_dataset (Optional[Union[str, list]]): Reference dataset for statistics.
+            statistics_reference_variables (Optional[Union[str, list]]): Reference variables for statistics.
+        """
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
 
@@ -297,11 +404,26 @@ class DatasetTester:
 
         self.ds.tree()
 
-    def metadata(self, ds):
+    def metadata(self, ds: Any) -> None:
+        """
+        Test metadata.
+
+        Args:
+            ds (Any): Dataset.
+        """
         metadata = ds.metadata()
         assert isinstance(metadata, dict)
 
-    def same_stats(self, ds1, ds2, vars1, vars2=None):
+    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: Optional[list] = None) -> None:
+        """
+        Compare statistics between two datasets.
+
+        Args:
+            ds1 (Any): First dataset.
+            ds2 (Any): Second dataset.
+            vars1 (list): Variables in the first dataset.
+            vars2 (Optional[list]): Variables in the second dataset.
+        """
         if vars2 is None:
             vars2 = vars1
 
@@ -315,7 +437,13 @@ class DatasetTester:
             assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
-    def indexing(self, ds):
+    def indexing(self, ds: Any) -> None:
+        """
+        Test indexing.
+
+        Args:
+            ds (Any): Dataset.
+        """
         t = IndexTester(ds)
 
         print("INDEXING", ds.shape)
@@ -351,13 +479,26 @@ class DatasetTester:
             t[::step]
 
 
-def simple_row(date, vars):
+def simple_row(date: datetime.datetime, vars: str) -> np.ndarray:
+    """
+    Create a simple row of data.
+
+    Args:
+        date (datetime.datetime): Date.
+        vars (str): Variables.
+
+    Returns:
+        np.ndarray: Row of data.
+    """
     values = [_(date, v) for v in vars]
     return make_row(*values)
 
 
 @mockup_open_zarr
-def test_simple():
+def test_simple() -> None:
+    """
+    Test a simple dataset.
+    """
     test = DatasetTester("test-2021-2022-6h-o96-abcd")
     test.run(
         expected_class=Zarr,
@@ -374,7 +515,10 @@ def test_simple():
 
 
 @mockup_open_zarr
-def test_concat():
+def test_concat() -> None:
+    """
+    Test concatenating datasets.
+    """
     test = DatasetTester(
         "test-2021-2022-6h-o96-abcd",
         "test-2023-2023-6h-o96-abcd",
@@ -394,7 +538,10 @@ def test_concat():
 
 
 @mockup_open_zarr
-def test_join_1():
+def test_join_1() -> None:
+    """
+    Test joining datasets (case 1).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", "test-2021-2021-6h-o96-efgh")
     test.run(
         expected_class=Join,
@@ -412,7 +559,10 @@ def test_join_1():
 
 
 @mockup_open_zarr
-def test_join_2():
+def test_join_2() -> None:
+    """
+    Test joining datasets (case 2).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd-1", "test-2021-2021-6h-o96-bdef-2")
     test.run(
         expected_class=Select,
@@ -439,7 +589,10 @@ def test_join_2():
 
 
 @mockup_open_zarr
-def test_join_3():
+def test_join_3() -> None:
+    """
+    Test joining datasets (case 3).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd-1", "test-2021-2021-6h-o96-abcd-2")
 
     # TODO: This should trigger a warning about occulted dataset
@@ -464,7 +617,10 @@ def test_join_3():
 
 
 @mockup_open_zarr
-def test_subset_1():
+def test_subset_1() -> None:
+    """
+    Test subsetting a dataset (case 1).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", frequency=12)
     test.run(
         expected_class=Subset,
@@ -481,7 +637,10 @@ def test_subset_1():
 
 
 @mockup_open_zarr
-def test_subset_2():
+def test_subset_2() -> None:
+    """
+    Test subsetting a dataset (case 2).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", start=2022, end=2022)
     test.run(
         expected_class=Subset,
@@ -498,7 +657,10 @@ def test_subset_2():
 
 
 @mockup_open_zarr
-def test_subset_3():
+def test_subset_3() -> None:
+    """
+    Test subsetting a dataset (case 3).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", start=2022, end=2022, frequency=12)
     test.run(
         expected_class=Subset,
@@ -515,7 +677,10 @@ def test_subset_3():
 
 
 @mockup_open_zarr
-def test_subset_4():
+def test_subset_4() -> None:
+    """
+    Test subsetting a dataset (case 4).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", start=202206, end=202208)
     test.run(
         expected_class=Subset,
@@ -532,7 +697,10 @@ def test_subset_4():
 
 
 @mockup_open_zarr
-def test_subset_5():
+def test_subset_5() -> None:
+    """
+    Test subsetting a dataset (case 5).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", start=20220601, end=20220831)
     test.run(
         expected_class=Subset,
@@ -549,7 +717,10 @@ def test_subset_5():
 
 
 @mockup_open_zarr
-def test_subset_6():
+def test_subset_6() -> None:
+    """
+    Test subsetting a dataset (case 6).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", start="2022-06-01", end="2022-08-31")
     test.run(
         expected_class=Subset,
@@ -566,7 +737,10 @@ def test_subset_6():
 
 
 @mockup_open_zarr
-def test_subset_7():
+def test_subset_7() -> None:
+    """
+    Test subsetting a dataset (case 7).
+    """
     test = DatasetTester("test-2021-2023-1h-o96-abcd", start="2022-06", end="2022-08")
     test.run(
         expected_class=Subset,
@@ -583,7 +757,10 @@ def test_subset_7():
 
 
 @mockup_open_zarr
-def test_subset_8():
+def test_subset_8() -> None:
+    """
+    Test subsetting a dataset (case 8).
+    """
     test = DatasetTester(
         "test-2021-2021-1h-o96-abcd",
         start="03:00",
@@ -604,7 +781,10 @@ def test_subset_8():
 
 
 @mockup_open_zarr
-def test_select_1():
+def test_select_1() -> None:
+    """
+    Test selecting variables from a dataset (case 1).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", select=["b", "d"])
     test.run(
         expected_class=Select,
@@ -621,7 +801,10 @@ def test_select_1():
 
 
 @mockup_open_zarr
-def test_select_2():
+def test_select_2() -> None:
+    """
+    Test selecting variables from a dataset (case 2).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", select=["c", "a"])
     test.run(
         expected_class=Select,
@@ -638,7 +821,10 @@ def test_select_2():
 
 
 @mockup_open_zarr
-def test_select_3():
+def test_select_3() -> None:
+    """
+    Test selecting variables from a dataset (case 3).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", select={"c", "a"})
     test.run(
         expected_class=Select,
@@ -655,7 +841,10 @@ def test_select_3():
 
 
 @mockup_open_zarr
-def test_rename():
+def test_rename() -> None:
+    """
+    Test renaming variables in a dataset.
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", rename={"a": "x", "c": "y"})
     test.run(
         expected_class=Rename,
@@ -674,7 +863,10 @@ def test_rename():
 
 
 @mockup_open_zarr
-def test_drop():
+def test_drop() -> None:
+    """
+    Test dropping variables from a dataset.
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", drop="a")
     test.run(
         expected_class=Select,
@@ -691,7 +883,10 @@ def test_drop():
 
 
 @mockup_open_zarr
-def test_reorder_1():
+def test_reorder_1() -> None:
+    """
+    Test reordering variables in a dataset (case 1).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", reorder=["d", "c", "b", "a"])
     test.run(
         expected_class=Select,
@@ -708,7 +903,10 @@ def test_reorder_1():
 
 
 @mockup_open_zarr
-def test_reorder_2():
+def test_reorder_2() -> None:
+    """
+    Test reordering variables in a dataset (case 2).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd", reorder=dict(a=3, b=2, c=1, d=0))
     test.run(
         expected_class=Select,
@@ -725,7 +923,10 @@ def test_reorder_2():
 
 
 @mockup_open_zarr
-def test_constructor_1():
+def test_constructor_1() -> None:
+    """
+    Test dataset constructor (case 1).
+    """
     ds1 = open_dataset("test-2021-2021-6h-o96-abcd")
 
     ds2 = open_dataset("test-2022-2022-6h-o96-abcd")
@@ -746,7 +947,10 @@ def test_constructor_1():
 
 
 @mockup_open_zarr
-def test_constructor_2():
+def test_constructor_2() -> None:
+    """
+    Test dataset constructor (case 2).
+    """
     test = DatasetTester(
         datasets=[
             "test-2021-2021-6h-o96-abcd",
@@ -768,7 +972,10 @@ def test_constructor_2():
 
 
 @mockup_open_zarr
-def test_constructor_3():
+def test_constructor_3() -> None:
+    """
+    Test dataset constructor (case 3).
+    """
     test = DatasetTester(
         {
             "datasets": [
@@ -792,7 +999,10 @@ def test_constructor_3():
 
 
 @mockup_open_zarr
-def test_constructor_4():
+def test_constructor_4() -> None:
+    """
+    Test dataset constructor (case 4).
+    """
     test = DatasetTester(
         "test-2021-2021-6h-o96-abcd",
         {
@@ -815,7 +1025,10 @@ def test_constructor_4():
 
 
 @mockup_open_zarr
-def test_constructor_5():
+def test_constructor_5() -> None:
+    """
+    Test dataset constructor (case 5).
+    """
     test = DatasetTester(
         {"dataset": "test-2021-2021-6h-o96-abcd-1", "rename": {"a": "x", "c": "y"}},
         {"dataset": "test-2021-2021-6h-o96-abcd-2", "rename": {"c": "z", "d": "t"}},
@@ -846,7 +1059,10 @@ def test_constructor_5():
 
 
 @mockup_open_zarr
-def test_dates():
+def test_dates() -> None:
+    """
+    Test date handling functions.
+    """
     dates = None
     assert as_first_date(2021, dates) == np.datetime64("2021-01-01T00:00:00")
     assert as_last_date(2021, dates) == np.datetime64("2021-12-31T23:59:59")
@@ -869,7 +1085,10 @@ def test_dates():
 
 
 @mockup_open_zarr
-def test_dates_using_list():
+def test_dates_using_list() -> None:
+    """
+    Test date handling functions using a list of dates.
+    """
     dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(6, "h") for i in range(3, 365 * 4 - 2)]
     assert dates[0] == np.datetime64("2021-01-01T18:00:00")
     assert dates[-1] == np.datetime64("2021-12-31T06:00:00")
@@ -881,7 +1100,10 @@ def test_dates_using_list():
 
 
 @mockup_open_zarr
-def test_dates_using_list_2():
+def test_dates_using_list_2() -> None:
+    """
+    Test date handling functions using a list of dates (case 2).
+    """
     dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(24, "h") for i in range(0, 10)]
     assert len(dates) == 10
 
@@ -926,7 +1148,10 @@ def test_dates_using_list_2():
 
 
 @mockup_open_zarr
-def test_slice_1():
+def test_slice_1() -> None:
+    """
+    Test slicing a dataset (case 1).
+    """
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(
         expected_class=Zarr,
@@ -943,7 +1168,10 @@ def test_slice_1():
 
 
 @mockup_open_zarr
-def test_slice_2():
+def test_slice_2() -> None:
+    """
+    Test slicing a dataset (case 2).
+    """
     test = DatasetTester([f"test-{year}-{year}-12h-o96-abcd" for year in range(1940, 2023)])
     test.run(
         expected_class=Concat,
@@ -960,7 +1188,10 @@ def test_slice_2():
 
 
 @mockup_open_zarr
-def test_slice_3():
+def test_slice_3() -> None:
+    """
+    Test slicing a dataset (case 3).
+    """
     test = DatasetTester(
         [f"test-2020-2020-6h-o96-{vars}" for vars in ("abcd", "efgh", "ijkl", "mnop", "qrst", "uvwx", "yz")]
     )
@@ -979,7 +1210,10 @@ def test_slice_3():
 
 
 @mockup_open_zarr
-def test_slice_4():
+def test_slice_4() -> None:
+    """
+    Test slicing a dataset (case 4).
+    """
     test = DatasetTester([f"test-2020-2020-1h-o96-{vars}" for vars in ("abcd", "cd", "a", "c")])
     test.run(
         expected_class=Select,
@@ -996,7 +1230,10 @@ def test_slice_4():
 
 
 @mockup_open_zarr
-def test_slice_5():
+def test_slice_5() -> None:
+    """
+    Test slicing a dataset (case 5).
+    """
     test = DatasetTester(
         [f"test-{year}-{year}-6h-o96-abcd" for year in range(2010, 2020)],
         frequency=18,
@@ -1016,7 +1253,10 @@ def test_slice_5():
 
 
 @mockup_open_zarr
-def test_ensemble_1():
+def test_ensemble_1() -> None:
+    """
+    Test ensemble datasets (case 1).
+    """
     test = DatasetTester(
         ensemble=[
             "test-2021-2021-6h-o96-abcd-1-10",
@@ -1044,7 +1284,10 @@ def test_ensemble_1():
 
 
 @mockup_open_zarr
-def test_ensemble_2():
+def test_ensemble_2() -> None:
+    """
+    Test ensemble datasets (case 2).
+    """
     test = DatasetTester(
         ensemble=[
             "test-2021-2021-6h-o96-abcd-1-10",
@@ -1073,7 +1316,10 @@ def test_ensemble_2():
 
 
 @mockup_open_zarr
-def test_ensemble_3():
+def test_ensemble_3() -> None:
+    """
+    Test ensemble datasets (case 3).
+    """
     test = DatasetTester(
         ensemble=[
             {"dataset": "test-2021-2021-6h-o96-abcd-1-10", "frequency": 12},
@@ -1102,7 +1348,10 @@ def test_ensemble_3():
 
 
 @mockup_open_zarr
-def test_grids():
+def test_grids() -> None:
+    """
+    Test datasets with different grids.
+    """
     test = DatasetTester(
         grids=[
             "test-2021-2021-6h-o96-abcd-1-1",  # Default is 10 gridpoints
@@ -1148,7 +1397,10 @@ def test_grids():
 
 
 @mockup_open_zarr
-def test_statistics():
+def test_statistics() -> None:
+    """
+    Test datasets with statistics.
+    """
     test = DatasetTester(
         "test-2021-2021-6h-o96-abcd",
         statistics="test-2000-2010-6h-o96-abcd",
@@ -1168,7 +1420,10 @@ def test_statistics():
 
 
 @mockup_open_zarr
-def test_cropping():
+def test_cropping() -> None:
+    """
+    Test cropping a dataset.
+    """
     test = DatasetTester(
         "test-2021-2021-6h-o96-abcd",
         area=(18, 11, 11, 18),

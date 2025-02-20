@@ -254,7 +254,7 @@ class Variable:
 
         return variable.sel(missing, **kwargs)
 
-    def match(self, **kwargs: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    def match(self, **kwargs: Any) -> Tuple[bool, Dict[str, Any]]:
         """
         Match the variable based on the given metadata.
 
@@ -277,7 +277,7 @@ class Variable:
             if not isinstance(name, (list, tuple)):
                 name = [name]
             if self.variable.name not in name:
-                return False, None
+                return False, {}
             return True, kwargs
         return True, kwargs
 

@@ -32,6 +32,15 @@ class JoinResult(Result):
     def __init__(
         self, context: object, action_path: list, group_of_dates: GroupOfDates, results: List[Result], **kwargs: Any
     ) -> None:
+        """
+        Initializes a JoinResult instance.
+
+        Args:
+            context (object): The context object.
+            action_path (list): The action path.
+            group_of_dates (GroupOfDates): The group of dates.
+            results (List[Result]): The list of results.
+        """
         super().__init__(context, action_path, group_of_dates)
         self.results: List[Result] = [r for r in results if not r.empty]
 
@@ -40,26 +49,49 @@ class JoinResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
+        """
+        Returns the combined datasource from all results.
+        """
         ds: FieldList = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
         return _tidy(ds)
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the JoinResult instance.
+        """
         content: str = "\n".join([str(i) for i in self.results])
         return super().__repr__(content)
 
 
 class JoinAction(Action):
     def __init__(self, context: object, action_path: list, *configs: dict) -> None:
+        """
+        Initializes a JoinAction instance.
+
+        Args:
+            context (object): The context object.
+            action_path (list): The action path.
+            *configs (dict): The configuration dictionaries.
+        """
         super().__init__(context, action_path, *configs)
         self.actions: List[Action] = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the JoinAction instance.
+        """
         content: str = "\n".join([str(i) for i in self.actions])
         return super().__repr__(content)
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> JoinResult:
+        """
+        Selects the results for the given group of dates.
+
+        Args:
+            group_of_dates (GroupOfDates): The group of dates.
+        """
         results: List[Result] = [a.select(group_of_dates) for a in self.actions]
         return JoinResult(self.context, self.action_path, group_of_dates, results)

@@ -33,6 +33,15 @@ class DataSourcesAction(Action):
         sources: Union[Dict[str, Any], List[Dict[str, Any]]],
         input: Dict[str, Any],
     ) -> None:
+        """
+        Initializes a DataSourcesAction instance.
+
+        Args:
+            context (object): The context object.
+            action_path (List[str]): The action path.
+            sources (Union[Dict[str, Any], List[Dict[str, Any]]]): The sources configuration.
+            input (Dict[str, Any]): The input configuration.
+        """
         super().__init__(context, ["data_sources"], *sources)
         if isinstance(sources, dict):
             configs = [(str(k), c) for k, c in sources.items()]
@@ -45,6 +54,15 @@ class DataSourcesAction(Action):
         self.input = action_factory(input, context, ["input"])
 
     def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
+        """
+        Selects the data sources result for the given group of dates.
+
+        Args:
+            group_of_dates (GroupOfDates): The group of dates.
+
+        Returns:
+            DataSourcesResult: The data sources result.
+        """
         sources_results = [a.select(group_of_dates) for a in self.sources]
         return DataSourcesResult(
             self.context,
@@ -55,6 +73,12 @@ class DataSourcesAction(Action):
         )
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the DataSourcesAction instance.
+
+        Returns:
+            str: A string representation of the DataSourcesAction instance.
+        """
         content = "\n".join([str(i) for i in self.sources])
         return super().__repr__(content)
 
@@ -68,6 +92,16 @@ class DataSourcesResult(Result):
         input_result: Result,
         sources_results: List[Result],
     ) -> None:
+        """
+        Initializes a DataSourcesResult instance.
+
+        Args:
+            context (object): The context object.
+            action_path (List[str]): The action path.
+            dates (object): The dates object.
+            input_result (Result): The input result.
+            sources_results (List[Result]): The list of sources results.
+        """
         super().__init__(context, action_path, dates)
         # result is the main input result
         self.input_result = input_result
@@ -76,6 +110,12 @@ class DataSourcesResult(Result):
 
     @cached_property
     def datasource(self) -> FieldList:
+        """
+        Returns the combined datasource from all sources.
+
+        Returns:
+            FieldList: The combined datasource from all sources.
+        """
         for i in self.sources_results:
             # for each result trigger the datasource to be computed
             # and saved in context

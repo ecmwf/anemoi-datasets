@@ -83,6 +83,9 @@ class MissingDates(Forwards):
     def missing(self) -> Set[int]:
         """
         Returns the set of missing indices.
+
+        Returns:
+            Set[int]: The set of missing indices.
         """
         return self._missing.union(self.forward.missing)
 
@@ -94,6 +97,9 @@ class MissingDates(Forwards):
 
         Args:
             n (FullIndex): The index to retrieve.
+
+        Returns:
+            NDArray[Any]: The item at the given index.
         """
         if isinstance(n, int):
             if n in self.missing:
@@ -140,18 +146,27 @@ class MissingDates(Forwards):
     def reason(self) -> Dict[str, Any]:
         """
         Provides the reason for missing dates.
+
+        Returns:
+            Dict[str, Any]: The reason for missing dates.
         """
         return {"missing_dates": self.missing_dates}
 
     def tree(self) -> Node:
         """
         Builds a tree representation of the missing dates.
+
+        Returns:
+            Node: The tree representation of the missing dates.
         """
         return Node(self, [self.forward.tree()], **self.reason)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """
         Provides metadata specific to the subclass.
+
+        Returns:
+            Dict[str, Any]: Metadata specific to the subclass.
         """
         return {"missing_dates": self.missing_dates}
 
@@ -206,6 +221,9 @@ class SkipMissingDates(Forwards):
     def __len__(self) -> int:
         """
         Returns the length of the indices.
+
+        Returns:
+            int: The length of the indices.
         """
         return len(self.indices)
 
@@ -213,6 +231,9 @@ class SkipMissingDates(Forwards):
     def start_date(self) -> np.datetime64:
         """
         Returns the start date.
+
+        Returns:
+            np.datetime64: The start date.
         """
         return self.forward.start_date
 
@@ -220,6 +241,9 @@ class SkipMissingDates(Forwards):
     def end_date(self) -> np.datetime64:
         """
         Returns the end date.
+
+        Returns:
+            np.datetime64: The end date.
         """
         return self.forward.end_date
 
@@ -227,6 +251,9 @@ class SkipMissingDates(Forwards):
     def dates(self) -> NDArray[np.datetime64]:
         """
         Not implemented. Raises an error.
+
+        Raises:
+            NotImplementedError: SkipMissingDates.dates
         """
         raise NotImplementedError("SkipMissingDates.dates")
 
@@ -238,6 +265,9 @@ class SkipMissingDates(Forwards):
 
         Args:
             index (TupleIndex): The index to retrieve.
+
+        Returns:
+            NDArray[Any]: The tuple of items at the given index.
         """
 
         def _get_one(n):
@@ -266,6 +296,9 @@ class SkipMissingDates(Forwards):
 
         Args:
             s (slice): The slice to retrieve.
+
+        Returns:
+            Tuple[NDArray[Any], ...]: The slice of items.
         """
         values = [self[i] for i in range(*s.indices(self._len))]
         result = [_ for _ in zip(*values)]
@@ -278,6 +311,9 @@ class SkipMissingDates(Forwards):
 
         Args:
             n (FullIndex): The index to retrieve.
+
+        Returns:
+            Tuple[NDArray[Any], ...]: The item at the given index.
         """
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -291,18 +327,27 @@ class SkipMissingDates(Forwards):
     def frequency(self) -> datetime.timedelta:
         """
         Returns the frequency of the dataset.
+
+        Returns:
+            datetime.timedelta: The frequency of the dataset.
         """
         return self.forward.frequency
 
     def tree(self) -> Node:
         """
         Builds a tree representation of the skipped missing dates.
+
+        Returns:
+            Node: The tree representation of the skipped missing dates.
         """
         return Node(self, [self.forward.tree()], expected_access=self.expected_access)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """
         Provides metadata specific to the subclass.
+
+        Returns:
+            Dict[str, Any]: Metadata specific to the subclass.
         """
         return {"expected_access": self.expected_access}
 
@@ -342,6 +387,9 @@ class MissingDataset(Forwards):
     def __len__(self) -> int:
         """
         Returns the length of the dates.
+
+        Returns:
+            int: The length of the dates.
         """
         return len(self._dates)
 
@@ -349,6 +397,9 @@ class MissingDataset(Forwards):
     def dates(self) -> NDArray[np.datetime64]:
         """
         Returns the dates of the dataset.
+
+        Returns:
+            NDArray[np.datetime64]: The dates of the dataset.
         """
         return self._dates
 
@@ -356,6 +407,9 @@ class MissingDataset(Forwards):
     def missing(self) -> Set[int]:
         """
         Returns the set of missing indices.
+
+        Returns:
+            Set[int]: The set of missing indices.
         """
         return self._missing
 
@@ -365,17 +419,26 @@ class MissingDataset(Forwards):
 
         Args:
             n (FullIndex): The index to retrieve.
+
+        Raises:
+            MissingDateError: If the date is missing.
         """
         raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
     def tree(self) -> Node:
         """
         Builds a tree representation of the missing dataset.
+
+        Returns:
+            Node: The tree representation of the missing dataset.
         """
         return Node(self, [self.forward.tree()], start=self.start, end=self.end)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """
         Provides metadata specific to the subclass.
+
+        Returns:
+            Dict[str, Any]: Metadata specific to the subclass.
         """
         return {"start": self.start, "end": self.end}
