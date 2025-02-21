@@ -7,12 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
 from typing import Any
-from typing import List
 from typing import Optional
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
@@ -79,7 +78,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: List[Any], wz: str, t: str, w: str = "w") -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> FieldArray:
     """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
 
     Args:

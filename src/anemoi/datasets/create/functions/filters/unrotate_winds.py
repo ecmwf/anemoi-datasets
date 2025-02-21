@@ -7,10 +7,10 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
 from typing import Any
-from typing import List
+
+import earthkit.data as ekd
 
 # import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -54,7 +54,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: List[Any], u: str, v: str) -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> FieldArray:
     """Unrotate the wind components of a GRIB file.
 
     Args:

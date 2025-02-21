@@ -7,11 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
 from typing import Any
 from typing import Dict
 
+import earthkit.data as ekd
 from earthkit.data import FieldList
 from earthkit.data.indexing.fieldlist import FieldArray
 
@@ -78,7 +78,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: FieldList, orog: str, z: str = "z") -> FieldList:
+def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> FieldList:
     """Convert orography [m] to z (geopotential height).
 
     Args:

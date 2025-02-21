@@ -9,12 +9,11 @@
 
 
 from typing import Any
-from typing import List
 
 import earthkit.data as ekd
 
 
-def execute(context: Any, input: List[Any], **kwargs: Any) -> Any:
+def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> Any:
     """Create a pipeline that returns an empty result.
 
     Args:

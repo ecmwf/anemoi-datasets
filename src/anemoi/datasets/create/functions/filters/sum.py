@@ -7,12 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
 from typing import Any
 from typing import List
 from typing import Optional
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
@@ -79,7 +79,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: List[Any], params: List[str], output: str) -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) -> FieldArray:
     """Computes the sum over a set of variables.
 
     Args:

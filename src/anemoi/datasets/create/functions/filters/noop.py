@@ -10,8 +10,10 @@
 from typing import Any
 from typing import List
 
+import earthkit.data as ekd
 
-def execute(context: Any, input: List[Any], *args: Any, **kwargs: Any) -> List[Any]:
+
+def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> List[Any]:
     """No operation filter that returns the input as is.
 
     Args:

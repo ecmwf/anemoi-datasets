@@ -7,13 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 import re
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Optional
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
@@ -133,7 +132,7 @@ class RenamedFieldFormat:
         return repr(self.field)
 
 
-def execute(context: Any, input: List[Any], what: str = "param", **kwargs: Any) -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: Any) -> FieldArray:
     """Rename fields based on the value of another field or a format string.
 
     Args:

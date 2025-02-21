@@ -22,6 +22,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Set
 from typing import Sized
 from typing import Tuple
@@ -373,7 +374,7 @@ class Dataset(ABC, Sized):
 
         return [self.name_to_index[v] for v in vars]
 
-    def _drop_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
+    def _drop_to_columns(self, vars: Union[str, Sequence[str]]) -> List[int]:
         """Convert variable names to a list of column indices to drop.
 
         Parameters
@@ -468,8 +469,7 @@ class Dataset(ABC, Sized):
         tuple
             The shape with one axis dropped.
         """
-        shape = self.shape
-        shape = list(shape)
+        shape = list(self.shape)
         shape.pop(drop_axis)
         return tuple(shape)
 
