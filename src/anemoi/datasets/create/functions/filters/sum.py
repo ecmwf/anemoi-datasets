@@ -9,8 +9,11 @@
 
 from collections import defaultdict
 from typing import Any
+from typing import Dict
+from typing import Hashable
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -93,7 +96,7 @@ def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) 
     """
     result = FieldArray()
 
-    needed_fields = defaultdict(dict)
+    needed_fields: Dict[Tuple[Hashable, ...], Dict[str, ekd.Field]] = defaultdict(dict)
 
     for f in input:
         key = f.metadata(namespace="mars")

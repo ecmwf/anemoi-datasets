@@ -10,6 +10,7 @@
 from collections import defaultdict
 from typing import Any
 from typing import Dict
+from typing import Tuple
 
 import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -34,8 +35,8 @@ def execute(context: Any, input: ekd.FieldList, t: str, rh: str, td: str = "d") 
         FieldArray: Array of fields with dewpoint.
     """
     result = FieldArray()
-    params: tuple[str, str] = (t, rh)
-    pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
+    params: Tuple[str, str] = (t, rh)
+    pairs: Dict[Tuple[Any, ...], Dict[str, Any]] = defaultdict(dict)
 
     # Gather all necessary fields
     for f in input:
