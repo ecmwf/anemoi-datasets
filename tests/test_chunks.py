@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+"""Test suite for the ChunkFilter class in the anemoi.datasets.create.chunks module."""
 
 import pytest
 
@@ -14,6 +15,14 @@ from anemoi.datasets.create.chunks import ChunkFilter
 
 
 def test_chunk_filter():
+    """Test the ChunkFilter class with various inputs and scenarios.
+
+    Test cases:
+    1. No filter applied.
+    2. Invalid input for parts.
+    3. Parts as a string representation of a fraction.
+    4. Iteration over the filtered chunks.
+    """
     # Test case 1: no filter
     cf = ChunkFilter(parts=None, total=10)
     assert cf(5) is True
@@ -88,6 +97,9 @@ def test_chunk_filter():
 
 
 if __name__ == "__main__":
+    """
+    Run all test functions in the module.
+    """
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

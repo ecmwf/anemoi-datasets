@@ -48,6 +48,18 @@ FullIndex = Union[int, slice, TupleIndex]
 
 
 def _tidy(v: Any) -> Any:
+    """Tidy up the input value.
+
+    Parameters
+    ----------
+    v : Any
+        The input value to tidy up.
+
+    Returns
+    -------
+    Any
+        The tidied value.
+    """
     if isinstance(v, (list, tuple, set)):
         return [_tidy(i) for i in v]
     if isinstance(v, dict):
@@ -78,21 +90,54 @@ class Dataset(ABC, Sized):
     _name: Union[str, None] = None
 
     def mutate(self) -> "Dataset":
-        """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed."""
+        """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed.
+
+        Returns
+        -------
+        Dataset
+            The mutated dataset.
+        """
         return self
 
     def swap_with_parent(self, parent: "Dataset") -> "Dataset":
-        """Swap the current dataset with its parent dataset."""
+        """Swap the current dataset with its parent dataset.
+
+        Parameters
+        ----------
+        parent : Dataset
+            The parent dataset.
+
+        Returns
+        -------
+        Dataset
+            The parent dataset.
+        """
         return parent
 
     @cached_property
     def _len(self) -> int:
-        """Return the length of the dataset."""
+        """Return the length of the dataset.
+
+        Returns
+        -------
+        int
+            The length of the dataset.
+        """
         return len(self)
 
     def _subset(self, **kwargs: Any) -> "Dataset":
-        """Create a subset of the dataset based on the provided keyword arguments."""
+        """Create a subset of the dataset based on the provided keyword arguments.
 
+        Parameters
+        ----------
+        **kwargs : Any
+            Keyword arguments for creating the subset.
+
+        Returns
+        -------
+        Dataset
+            The subset of the dataset.
+        """
         if not kwargs:
             return self.mutate()
 
@@ -104,11 +149,28 @@ class Dataset(ABC, Sized):
 
     @property
     def name(self) -> Union[str, None]:
-        """Return the name of the dataset."""
+        """Return the name of the dataset.
+
+        Returns
+        -------
+        str or None
+            The name of the dataset.
+        """
         return self._name
 
     def __subset(self, **kwargs: Any) -> "Dataset":
-        """Internal method to create a subset of the dataset based on the provided keyword arguments."""
+        """Internal method to create a subset of the dataset based on the provided keyword arguments.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Keyword arguments for creating the subset.
+
+        Returns
+        -------
+        Dataset
+            The subset of the dataset.
+        """
         if not kwargs:
             return self.mutate()
 
@@ -240,7 +302,18 @@ class Dataset(ABC, Sized):
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
-        """Convert a frequency string to a list of indices."""
+        """Convert a frequency string to a list of indices.
+
+        Parameters
+        ----------
+        frequency : str
+            The frequency string.
+
+        Returns
+        -------
+        list of int
+            The list of indices.
+        """
         requested_frequency = frequency_to_seconds(frequency)
         dataset_frequency = frequency_to_seconds(self.frequency)
         assert requested_frequency % dataset_frequency == 0
@@ -250,7 +323,13 @@ class Dataset(ABC, Sized):
         return list(range(0, len(self), step))
 
     def _shuffle_indices(self) -> NDArray[np.int]:
-        """Return a shuffled array of indices."""
+        """Return a shuffled array of indices.
+
+        Returns
+        -------
+        numpy.ndarray
+            The shuffled array of indices.
+        """
         return np.random.permutation(len(self))
 
     def _dates_to_indices(
@@ -258,7 +337,20 @@ class Dataset(ABC, Sized):
         start: Union[None, str, datetime.datetime],
         end: Union[None, str, datetime.datetime],
     ) -> List[int]:
-        """Convert date range to a list of indices."""
+        """Convert date range to a list of indices.
+
+        Parameters
+        ----------
+        start : None, str, or datetime.datetime
+            The start date.
+        end : None, str, or datetime.datetime
+            The end date.
+
+        Returns
+        -------
+        list of int
+            The list of indices.
+        """
         from .misc import as_first_date
         from .misc import as_last_date
 
@@ -270,7 +362,18 @@ class Dataset(ABC, Sized):
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
     def _select_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
-        """Convert variable names to a list of column indices."""
+        """Convert variable names to a list of column indices.
+
+        Parameters
+        ----------
+        vars : str, list of str, tuple of str, or set
+            The variable names.
+
+        Returns
+        -------
+        list of int
+            The list of column indices.
+        """
         if isinstance(vars, set):
             # We keep the order of the variables as they are in the zarr file
             nvars = [v for v in self.name_to_index if v in vars]
@@ -283,7 +386,18 @@ class Dataset(ABC, Sized):
         return [self.name_to_index[v] for v in vars]
 
     def _drop_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
-        """Convert variable names to a list of column indices to drop."""
+        """Convert variable names to a list of column indices to drop.
+
+        Parameters
+        ----------
+        vars : str, list of str, tuple of str, or set
+            The variable names.
+
+        Returns
+        -------
+        list of int
+            The list of column indices to drop.
+        """
         if not isinstance(vars, (list, tuple, set)):
             vars = [vars]
 
@@ -293,7 +407,18 @@ class Dataset(ABC, Sized):
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
     def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str], Dict[str, int]]) -> List[int]:
-        """Convert variable names to a list of reordered column indices."""
+        """Convert variable names to a list of reordered column indices.
+
+        Parameters
+        ----------
+        vars : str, list of str, tuple of str, or dict of str to int
+            The variable names.
+
+        Returns
+        -------
+        list of int
+            The list of reordered column indices.
+        """
         if isinstance(vars, str) and vars == "sort":
             # Sorting the variables alphabetically.
             # This is cruical for pre-training then transfer learning in combination with
@@ -316,15 +441,45 @@ class Dataset(ABC, Sized):
     def dates_interval_to_indices(
         self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
     ) -> List[int]:
-        """Convert date interval to a list of indices."""
+        """Convert date interval to a list of indices.
+
+        Parameters
+        ----------
+        start : None, str, or datetime.datetime
+            The start date.
+        end : None, str, or datetime.datetime
+            The end date.
+
+        Returns
+        -------
+        list of int
+            The list of indices.
+        """
         return self._dates_to_indices(start, end)
 
     def provenance(self) -> Dict[str, Any]:
-        """Return the provenance information of the dataset."""
+        """Return the provenance information of the dataset.
+
+        Returns
+        -------
+        dict
+            The provenance information.
+        """
         return {}
 
     def sub_shape(self, drop_axis: int) -> TupleIndex:
-        """Return the shape of the dataset with one axis dropped."""
+        """Return the shape of the dataset with one axis dropped.
+
+        Parameters
+        ----------
+        drop_axis : int
+            The axis to drop.
+
+        Returns
+        -------
+        tuple
+            The shape with one axis dropped.
+        """
         shape = self.shape
         shape = list(shape)
         shape.pop(drop_axis)
@@ -332,7 +487,13 @@ class Dataset(ABC, Sized):
 
     @property
     def typed_variables(self) -> Dict[str, Any]:
-        """Return the variables with their types."""
+        """Return the variables with their types.
+
+        Returns
+        -------
+        dict
+            The variables with their types.
+        """
         from anemoi.transform.variables import Variable
 
         constants = self.constant_fields
@@ -353,13 +514,25 @@ class Dataset(ABC, Sized):
         return result
 
     def _input_sources(self) -> List[Any]:
-        """Return the input sources of the dataset."""
+        """Return the input sources of the dataset.
+
+        Returns
+        -------
+        list
+            The input sources.
+        """
         sources = []
         self.collect_input_sources(sources)
         return sources
 
     def metadata(self) -> Dict[str, Any]:
-        """Return the metadata of the dataset."""
+        """Return the metadata of the dataset.
+
+        Returns
+        -------
+        dict
+            The metadata.
+        """
         import anemoi
 
         _, source_to_arrays = self._supporting_arrays_and_sources()
@@ -388,16 +561,34 @@ class Dataset(ABC, Sized):
 
     @property
     def start_date(self) -> np.datetime64:
-        """Return the start date of the dataset."""
+        """Return the start date of the dataset.
+
+        Returns
+        -------
+        numpy.datetime64
+            The start date.
+        """
         return self.dates[0]
 
     @property
     def end_date(self) -> np.datetime64:
-        """Return the end date of the dataset."""
+        """Return the end date of the dataset.
+
+        Returns
+        -------
+        numpy.datetime64
+            The end date.
+        """
         return self.dates[-1]
 
     def dataset_metadata(self) -> Dict[str, Any]:
-        """Return the metadata of the dataset."""
+        """Return the metadata of the dataset.
+
+        Returns
+        -------
+        dict
+            The metadata.
+        """
         return dict(
             specific=self.metadata_specific(),
             frequency=self.frequency,
@@ -411,7 +602,18 @@ class Dataset(ABC, Sized):
         )
 
     def _supporting_arrays(self, *path: str) -> Dict[str, NDArray[Any]]:
-        """Return the supporting arrays of the dataset."""
+        """Return the supporting arrays of the dataset.
+
+        Parameters
+        ----------
+        *path : str
+            The path components.
+
+        Returns
+        -------
+        dict
+            The supporting arrays.
+        """
 
         def _path(path, name: str) -> str:
             return "/".join(str(_) for _ in [*path, name])
@@ -438,12 +640,24 @@ class Dataset(ABC, Sized):
         return result
 
     def supporting_arrays(self) -> Dict[str, NDArray[Any]]:
-        """Return the supporting arrays to be saved in the checkpoints"""
+        """Return the supporting arrays to be saved in the checkpoints.
+
+        Returns
+        -------
+        dict
+            The supporting arrays.
+        """
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays
 
     def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, NDArray], Dict[int, List[str]]]:
-        """Return the supporting arrays and their sources."""
+        """Return the supporting arrays and their sources.
+
+        Returns
+        -------
+        tuple
+            The supporting arrays and their sources.
+        """
         source_to_arrays = {}
 
         # Top levels arrays
@@ -464,12 +678,31 @@ class Dataset(ABC, Sized):
         return result, source_to_arrays
 
     def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
-        """Collect supporting arrays."""
+        """Collect supporting arrays.
+
+        Parameters
+        ----------
+        collected : list of tuple
+            The collected supporting arrays.
+        *path : str
+            The path components.
+        """
         # Override this method to add more arrays
         pass
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """Return specific metadata of the dataset."""
+        """Return specific metadata of the dataset.
+
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        dict
+            The specific metadata.
+        """
         action = self.__class__.__name__.lower()
         # assert isinstance(self.frequency, datetime.timedelta), (self.frequency, self, action)
         return dict(
@@ -483,16 +716,34 @@ class Dataset(ABC, Sized):
         )
 
     def __repr__(self) -> str:
-        """Return the string representation of the dataset."""
+        """Return the string representation of the dataset.
+
+        Returns
+        -------
+        str
+            The string representation.
+        """
         return self.__class__.__name__ + "()"
 
     @property
     def grids(self) -> TupleIndex:
-        """Return the grid shape of the dataset."""
+        """Return the grid shape of the dataset.
+
+        Returns
+        -------
+        tuple
+            The grid shape.
+        """
         return (self.shape[-1],)
 
     def _check(ds: "Dataset") -> None:
-        """Check for overridden private methods in the dataset."""
+        """Check for overridden private methods in the dataset.
+
+        Parameters
+        ----------
+        ds : Dataset
+            The dataset to check.
+        """
         common = Dataset.__dict__.keys() & ds.__class__.__dict__.keys()
         overriden = [m for m in common if Dataset.__dict__[m] is not ds.__class__.__dict__[m]]
 
@@ -501,16 +752,34 @@ class Dataset(ABC, Sized):
                 warnings.warn(f"Private method {n} is overriden in {ds.__class__.__name__}")
 
     def _repr_html_(self) -> str:
-        """Return the HTML representation of the dataset."""
+        """Return the HTML representation of the dataset.
+
+        Returns
+        -------
+        str
+            The HTML representation.
+        """
         return self.tree().html()
 
     @property
     def label(self) -> str:
-        """Return the label of the dataset."""
+        """Return the label of the dataset.
+
+        Returns
+        -------
+        str
+            The label.
+        """
         return self.__class__.__name__.lower()
 
     def computed_constant_fields(self) -> List[str]:
-        """Return the computed constant fields of the dataset."""
+        """Return the computed constant fields of the dataset.
+
+        Returns
+        -------
+        list of str
+            The computed constant fields.
+        """
         try:
             # If the tendencies are computed, we can use them
             return sorted(self._compute_constant_fields_from_statistics())
@@ -521,8 +790,13 @@ class Dataset(ABC, Sized):
         return sorted(self._compute_constant_fields_from_a_few_samples())
 
     def _compute_constant_fields_from_a_few_samples(self) -> List[str]:
-        """Compute constant fields from a few samples."""
+        """Compute constant fields from a few samples.
 
+        Returns
+        -------
+        list of str
+            The computed constant fields.
+        """
         import numpy as np
 
         # Otherwise, we need to compute them
@@ -557,7 +831,13 @@ class Dataset(ABC, Sized):
         return [v for i, v in enumerate(self.variables) if constants[i]]
 
     def _compute_constant_fields_from_statistics(self) -> List[str]:
-        """Compute constant fields from statistics."""
+        """Compute constant fields from statistics.
+
+        Returns
+        -------
+        list of str
+            The computed constant fields.
+        """
         result = []
 
         t = self.statistics_tendencies()
@@ -585,13 +865,13 @@ class Dataset(ABC, Sized):
             The variable to plot.
         member : int, optional
             The ensemble member to plot.
-
-        **kwargs:
-            Additional arguments to pass to matplotlib.pyplot.tricontourf
+        **kwargs : Any
+            Additional arguments to pass to matplotlib.pyplot.tricontourf.
 
         Returns
         -------
-        axes : matplotlib.pyplot.Axes
+        matplotlib.pyplot.Axes
+            The plot axes.
         """
         from anemoi.utils.devtools import plot_values
 
@@ -605,7 +885,22 @@ class Dataset(ABC, Sized):
         variable: Union[int, str],
         member: int = 0,
     ) -> Tuple[int, int, int]:
-        """Convert date, variable, and member to indices."""
+        """Convert date, variable, and member to indices.
+
+        Parameters
+        ----------
+        date : int or datetime.datetime or numpy.datetime64 or str
+            The date.
+        variable : int or str
+            The variable.
+        member : int, optional
+            The ensemble member.
+
+        Returns
+        -------
+        tuple of int
+            The indices.
+        """
         from earthkit.data.utils.dates import to_datetime
 
         if not isinstance(date, int):
@@ -632,113 +927,248 @@ class Dataset(ABC, Sized):
     @abstractmethod
     @property
     def variables(self) -> List[str]:
-        """Return the list of variables in the dataset."""
+        """Return the list of variables in the dataset.
+
+        Returns
+        -------
+        list of str
+            The list of variables.
+        """
         pass
 
     @abstractmethod
     @property
     def frequency(self) -> datetime.timedelta:
-        """Return the frequency of the dataset."""
+        """Return the frequency of the dataset.
+
+        Returns
+        -------
+        datetime.timedelta
+            The frequency.
+        """
         pass
 
     @abstractmethod
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """Return the dates in the dataset."""
+        """Return the dates in the dataset.
+
+        Returns
+        -------
+        numpy.ndarray
+            The dates.
+        """
         pass
 
     @abstractmethod
     @property
     def resolution(self) -> str:
-        """Return the resolution of the dataset."""
+        """Return the resolution of the dataset.
+
+        Returns
+        -------
+        str
+            The resolution.
+        """
         pass
 
     @abstractmethod
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """Return the mapping of variable names to indices."""
+        """Return the mapping of variable names to indices.
+
+        Returns
+        -------
+        dict
+            The mapping of variable names to indices.
+        """
         pass
 
     @abstractmethod
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """Return the data at the specified index."""
+        """Return the data at the specified index.
+
+        Parameters
+        ----------
+        n : int, slice, or tuple of int, slice, or Ellipsis
+            The index.
+
+        Returns
+        -------
+        numpy.ndarray
+            The data.
+        """
         pass
 
     @abstractmethod
     @property
     def shape(self) -> Shape:
-        """Return the shape of the dataset."""
+        """Return the shape of the dataset.
+
+        Returns
+        -------
+        tuple
+            The shape.
+        """
         pass
 
     @abstractmethod
     @property
     def field_shape(self) -> Shape:
-        """Return the shape of the fields in the dataset."""
+        """Return the shape of the fields in the dataset.
+
+        Returns
+        -------
+        tuple
+            The field shape.
+        """
         pass
 
     @abstractmethod
     @property
     def dtype(self) -> np.dtype:
-        """Return the data type of the dataset."""
+        """Return the data type of the dataset.
+
+        Returns
+        -------
+        numpy.dtype
+            The data type.
+        """
         pass
 
     @abstractmethod
     @property
     def latitudes(self) -> NDArray[Any]:
-        """Return the latitudes in the dataset."""
+        """Return the latitudes in the dataset.
+
+        Returns
+        -------
+        numpy.ndarray
+            The latitudes.
+        """
         pass
 
     @abstractmethod
     @property
     def longitudes(self) -> NDArray[Any]:
-        """Return the longitudes in the dataset."""
+        """Return the longitudes in the dataset.
+
+        Returns
+        -------
+        numpy.ndarray
+            The longitudes.
+        """
         pass
 
     @abstractmethod
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """Return the metadata of the variables in the dataset."""
+        """Return the metadata of the variables in the dataset.
+
+        Returns
+        -------
+        dict
+            The variables metadata.
+        """
         pass
 
     @abstractmethod
     @cached_property
     def missing(self) -> Set[int]:
-        """Return the set of missing indices in the dataset."""
+        """Return the set of missing indices in the dataset.
+
+        Returns
+        -------
+        set of int
+            The set of missing indices.
+        """
         pass
 
     @abstractmethod
     @cached_property
     def constant_fields(self) -> List[str]:
-        """Return the list of constant fields in the dataset."""
+        """Return the list of constant fields in the dataset.
+
+        Returns
+        -------
+        list of str
+            The constant fields.
+        """
         pass
 
     @abstractmethod
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Return the statistics of the dataset."""
+        """Return the statistics of the dataset.
+
+        Returns
+        -------
+        dict
+            The statistics.
+        """
         pass
 
     @abstractmethod
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """Return the tendencies of the statistics in the dataset."""
+        """Return the tendencies of the statistics in the dataset.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta, optional
+            The time delta for computing tendencies.
+
+        Returns
+        -------
+        dict
+            The tendencies.
+        """
         pass
 
     @abstractmethod
     def source(self, index: int) -> Source:
-        """Return the source of the dataset at the specified index."""
+        """Return the source of the dataset at the specified index.
+
+        Parameters
+        ----------
+        index : int
+            The index.
+
+        Returns
+        -------
+        Source
+            The source.
+        """
         pass
 
     @abstractmethod
     def tree(self) -> Node:
-        """Return the tree representation of the dataset."""
+        """Return the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation.
+        """
         pass
 
     @abstractmethod
     def collect_input_sources(self, sources: List[Any]) -> None:
-        """Collect the input sources of the dataset."""
+        """Collect the input sources of the dataset.
+
+        Parameters
+        ----------
+        sources : list
+            The input sources.
+        """
         pass
 
     @abstractmethod
     def get_dataset_names(self, names: Set[str]) -> None:
-        """Get the names of the datasets."""
+        """Get the names of the datasets.
+
+        Parameters
+        ----------
+        names : set of str
+            The dataset names.
+        """
         pass

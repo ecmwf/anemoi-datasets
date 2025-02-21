@@ -10,6 +10,7 @@
 
 from typing import Any
 from typing import Dict
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
@@ -24,7 +25,19 @@ from numpy.typing import NDArray
 class AutoDict(dict):
     """A dictionary that automatically creates nested dictionaries for missing keys."""
 
-    def __missing__(self, key):
+    def __missing__(self, key: Any) -> Any:
+        """Handle missing keys by creating nested dictionaries.
+
+        Parameters
+        ----------
+        key : Any
+            The missing key.
+
+        Returns
+        -------
+        Any
+            A new nested dictionary.
+        """
         value = self[key] = type(self)()
         return value
 
@@ -32,7 +45,7 @@ class AutoDict(dict):
 class NewDataField:
     """A class to represent a new data field with modified metadata."""
 
-    def __init__(self, field, data, new_name):
+    def __init__(self, field: Any, data: Any, new_name: str) -> None:
         """Initialize the NewDataField.
 
         Parameters
@@ -48,11 +61,24 @@ class NewDataField:
         self.data = data
         self.new_name = new_name
 
-    def to_numpy(self, *args, **kwargs):
-        """Convert the data to a numpy array."""
+    def to_numpy(self, *args: Any, **kwargs: Any) -> np.ndarray:
+        """Convert the data to a numpy array.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        np.ndarray
+            The data as a numpy array.
+        """
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
         """Get the metadata for the field.
 
         Parameters
@@ -73,8 +99,19 @@ class NewDataField:
             return self.new_name
         return value
 
-    def __getattr__(self, name):
-        """Delegate attribute access to the original field."""
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the original field.
+
+        Parameters
+        ----------
+        name : str
+            The attribute name.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
 
@@ -395,6 +432,15 @@ def execute(
 
 
 def test() -> None:
+    """Test the conversion from specific humidity to relative humidity.
+
+    This function fetches data from a source, performs the conversion, and prints
+    the mean, median, and maximum differences in dewpoint temperature.
+
+    Returns
+    -------
+    None
+    """
     from earthkit.data import from_source
     from earthkit.data.readers.grib.index import GribFieldList
 
