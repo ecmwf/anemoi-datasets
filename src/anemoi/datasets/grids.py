@@ -109,6 +109,10 @@ def latlon_to_xyz(
 
 
 class Triangle3D:
+    """
+    A class to represent a 3D triangle and perform intersection tests with rays.
+    """
+
     def __init__(self, v0: NDArray[Any], v1: NDArray[Any], v2: NDArray[Any]) -> None:
         self.v0 = v0
         self.v1 = v1

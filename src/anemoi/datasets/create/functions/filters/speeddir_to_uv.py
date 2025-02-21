@@ -19,6 +19,15 @@ from earthkit.meteo.wind.array import polar_to_xy
 
 
 class NewDataField:
+    """
+    A class to represent a new data field with converted wind component data.
+
+    Attributes:
+        field (Any): The original field.
+        data (Any): The converted wind component data.
+        new_name (str): The new name for the field.
+    """
+
     def __init__(self, field: Any, data: Any, new_name: str) -> None:
         """
         Initialize a NewDataField instance.

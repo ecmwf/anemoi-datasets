@@ -17,6 +17,15 @@ from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class NewDataField:
+    """
+    A class to represent a new data field with modified data and metadata.
+
+    Attributes:
+        field (Any): The original field.
+        data (Any): The data for the new field.
+        new_name (str): The new name for the parameter.
+    """
+
     def __init__(self, field: Any, data: Any, new_name: str):
         """
         Initialize a new data field.

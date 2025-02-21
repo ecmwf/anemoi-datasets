@@ -24,6 +24,10 @@ LOG = logging.getLogger(__name__)
 
 
 class DatasetName:
+    """
+    Class to validate and parse dataset names according to naming conventions.
+    """
+
     def __init__(
         self,
         name: str,

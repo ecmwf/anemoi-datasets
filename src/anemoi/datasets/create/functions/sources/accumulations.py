@@ -47,6 +47,10 @@ def _member(field: Any) -> int:
 
 
 class Accumulation:
+    """
+    Class to handle data accumulation for a specific parameter, date, time, and member.
+    """
+
     buggy_steps: bool = False
 
     def __init__(
@@ -237,6 +241,10 @@ class Accumulation:
 
 
 class AccumulationFromStart(Accumulation):
+    """
+    Class to handle data accumulation from the start of the forecast.
+    """
+
     buggy_steps = True
 
     def compute(self, values: np.ndarray, startStep: int, endStep: int) -> None:
@@ -301,6 +309,10 @@ class AccumulationFromStart(Accumulation):
 
 
 class AccumulationFromLastStep(Accumulation):
+    """
+    Class to handle data accumulation from the last step of the forecast.
+    """
+
     buggy_steps = False
 
     def compute(self, values: np.ndarray, startStep: int, endStep: int) -> None:

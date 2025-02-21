@@ -21,6 +21,10 @@ LOG = logging.getLogger(__name__)
 
 
 class EmptyResult(Result):
+    """
+    Class to represent an empty result in the dataset creation process.
+    """
+
     empty = True
 
     def __init__(self, context: object, action_path: list, dates: object) -> None:

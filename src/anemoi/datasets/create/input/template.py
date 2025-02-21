@@ -43,6 +43,10 @@ def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class Substitution(ABC):
+    """
+    Abstract base class for substitutions in templates.
+    """
+
     @abstractmethod
     def resolve(self, context: BuildContext) -> Any:
         """
@@ -58,6 +62,10 @@ class Substitution(ABC):
 
 
 class Reference(Substitution):
+    """
+    A class to represent a reference to another value in the context.
+    """
+
     def __init__(self, context: Any, action_path: List[str]) -> None:
         """
         Initialize a Reference instance.

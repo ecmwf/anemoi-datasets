@@ -35,7 +35,9 @@ LOG = logging.getLogger(__name__)
 
 
 class Select(Forwards):
-    """Select a subset of the variables."""
+    """
+    Class to select a subset of variables from a dataset.
+    """
 
     def __init__(self, dataset: Dataset, indices: List[int], reason: Dict[str, Any]) -> None:
         """
@@ -215,6 +217,10 @@ class Select(Forwards):
 
 
 class Rename(Forwards):
+    """
+    Class to rename variables in a dataset.
+    """
+
     def __init__(self, dataset: Dataset, rename: Dict[str, str]) -> None:
         """
         Initialize the Rename class.

@@ -275,6 +275,10 @@ def _data_request(data: Any) -> Dict[str, Any]:
 
 
 class Result:
+    """
+    Class to represent the result of an action in the dataset creation process.
+    """
+
     empty: bool = False
     _coords_already_built: bool = False
 

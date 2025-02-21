@@ -33,6 +33,10 @@ OFFSETS = dict(number=1, numbers=1, member=0, members=0)
 
 
 class Number(Forwards):
+    """
+    A class to represent a subset of ensemble members from a dataset.
+    """
+
     def __init__(self, forward: Any, **kwargs: Any) -> None:
         """
         Initializes a Number object.
@@ -127,6 +131,10 @@ class Number(Forwards):
 
 
 class Ensemble(GivenAxis):
+    """
+    A class to represent an ensemble of datasets combined along a given axis.
+    """
+
     def tree(self) -> Node:
         """
         Generates a hierarchical tree structure for the ensemble datasets.

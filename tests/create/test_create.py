@@ -47,6 +47,9 @@ def mockup_from_source(func):
 
 
 class LoadSource:
+    """
+    Class to load data sources and handle mockup data.
+    """
 
     def filename(self, args, kwargs):
         string = json.dumps([args, kwargs], sort_keys=True, default=str)
@@ -194,6 +197,10 @@ def compare_statistics(ds1, ds2):
 
 
 class Comparer:
+    """
+    Class to compare datasets and their metadata.
+    """
+
     def __init__(self, name, output_path=None, reference_path=None):
         self.name = name
         self.output_path = output_path or os.path.join(name + ".zarr")

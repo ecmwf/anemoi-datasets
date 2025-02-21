@@ -35,6 +35,10 @@ LOG = logging.getLogger(__name__)
 
 
 class check:
+    """
+    A decorator class to perform checks before calling a method.
+    """
+
     def __init__(self, check: str) -> None:
         """
         Initialize the check decorator.
@@ -77,6 +81,10 @@ class check:
 
 
 class Unchecked(Combined):
+    """
+    A class representing a dataset without compatibility checks.
+    """
+
     def tree(self) -> Node:
         """
         Get the tree representation of the dataset.
@@ -256,7 +264,9 @@ class Unchecked(Combined):
 
 
 class Chain(ConcatMixin, Unchecked):
-    """Same as Concat, but with no checks"""
+    """
+    A class representing a chain of datasets without compatibility checks.
+    """
 
     def __len__(self) -> int:
         """

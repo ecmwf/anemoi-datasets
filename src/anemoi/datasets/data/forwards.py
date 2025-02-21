@@ -37,6 +37,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Forwards(Dataset):
+    """
+    A class to represent a dataset that forwards its properties and methods to another dataset.
+    """
+
     def __init__(self, forward: Dataset) -> None:
         """
         Initializes a Forwards object.

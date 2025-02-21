@@ -26,6 +26,10 @@ LOG = logging.getLogger(__name__)
 
 
 class DataSourcesAction(Action):
+    """
+    Class to handle data sources actions in the dataset creation process.
+    """
+
     def __init__(
         self,
         context: object,
@@ -84,6 +88,10 @@ class DataSourcesAction(Action):
 
 
 class DataSourcesResult(Result):
+    """
+    Class to represent the result of data sources actions in the dataset creation process.
+    """
+
     def __init__(
         self,
         context: object,

@@ -28,6 +28,10 @@ LOG = logging.getLogger(__name__)
 
 
 class EmptyFieldList:
+    """
+    A class to represent an empty list of fields.
+    """
+
     def __len__(self) -> int:
         """
         Return the length of the field list.
@@ -63,6 +67,9 @@ class EmptyFieldList:
 
 
 class XArrayField(Field):
+    """
+    A class to represent a field in an XArray dataset.
+    """
 
     def __init__(self, owner: Any, selection: Any) -> None:
         """Create a new XArrayField object.

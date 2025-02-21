@@ -84,6 +84,10 @@ def add_zarr_dataset(
 
 
 class ZarrBuiltRegistry:
+    """
+    A class to manage the creation and access of Zarr datasets.
+    """
+
     name_lengths = "lengths"
     name_flags = "flags"
     lengths = None

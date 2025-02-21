@@ -27,6 +27,9 @@ LOG = logging.getLogger(__name__)
 
 
 class ZipBase(Combined):
+    """
+    Base class for handling zipped datasets.
+    """
 
     def __init__(self, datasets: List[Any], check_compatibility: bool = True) -> None:
         """
@@ -213,10 +216,18 @@ class ZipBase(Combined):
 
 
 class Zip(ZipBase):
+    """
+    Class for handling zipped datasets.
+    """
+
     pass
 
 
 class XY(ZipBase):
+    """
+    Class for handling XY datasets.
+    """
+
     pass
 
 
