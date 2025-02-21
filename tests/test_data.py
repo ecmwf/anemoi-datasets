@@ -42,11 +42,15 @@ VALUES = 10
 def mockup_open_zarr(func: Callable) -> Callable:
     """Decorator to mock the open_zarr function.
 
-    Args:
-        func (Callable): Function to wrap.
+    Parameters
+    ----------
+    func : Callable
+        Function to wrap.
 
-    Returns:
-        Callable: Wrapped function.
+    Returns
+    -------
+    Callable
+        Wrapped function.
     """
 
     @wraps(func)
@@ -62,15 +66,23 @@ def mockup_open_zarr(func: Callable) -> Callable:
 def _(date: datetime.datetime, var: str, k: int = 0, e: int = 0, values: int = VALUES) -> np.ndarray:
     """Create a simple array of values based on the date and variable name, ensemble, grid, and other parameters.
 
-    Args:
-        date (datetime.datetime): Date.
-        var (str): Variable name.
-        k (int): Grid index.
-        e (int): Ensemble index.
-        values (int): Number of values.
+    Parameters
+    ----------
+    date : datetime.datetime
+        Date.
+    var : str
+        Variable name.
+    k : int, optional
+        Grid index, by default 0.
+    e : int, optional
+        Ensemble index, by default 0.
+    values : int, optional
+        Number of values, by default VALUES.
 
-    Returns:
-        np.ndarray: Array of values.
+    Returns
+    -------
+    np.ndarray
+        Array of values.
     """
     d = date.year * 10000 + date.month * 100 + date.day
     v = ord(var) - ord("a") + 1
@@ -93,19 +105,31 @@ def create_zarr(
 ) -> zarr.Group:
     """Create a Zarr dataset.
 
-    Args:
-        vars (str): Variable names.
-        start (int): Start year.
-        end (int): End year.
-        frequency (datetime.timedelta): Frequency.
-        resolution (str): Resolution.
-        k (int): Grid index.
-        ensemble (Optional[int]): Number of ensembles.
-        grids (Optional[int]): Number of grids.
-        missing (bool): Whether to include missing dates.
+    Parameters
+    ----------
+    vars : str, optional
+        Variable names, by default "abcd".
+    start : int, optional
+        Start year, by default 2021.
+    end : int, optional
+        End year, by default 2021.
+    frequency : datetime.timedelta, optional
+        Frequency, by default datetime.timedelta(hours=6).
+    resolution : str, optional
+        Resolution, by default "o96".
+    k : int, optional
+        Grid index, by default 0.
+    ensemble : Optional[int], optional
+        Number of ensembles, by default None.
+    grids : Optional[int], optional
+        Number of grids, by default None.
+    missing : bool, optional
+        Whether to include missing dates, by default False.
 
-    Returns:
-        zarr.Group: Zarr dataset.
+    Returns
+    -------
+    zarr.Group
+        Zarr dataset.
     """
     root = zarr.group()
     assert isinstance(frequency, datetime.timedelta)
@@ -197,12 +221,17 @@ def create_zarr(
 def zarr_from_str(name: str, mode: str) -> zarr.Group:
     """Create a Zarr dataset from a string.
 
-    Args:
-        name (str): Dataset name.
-        mode (str): Mode.
+    Parameters
+    ----------
+    name : str
+        Dataset name.
+    mode : str
+        Mode.
 
-    Returns:
-        zarr.Group: Zarr dataset.
+    Returns
+    -------
+    zarr.Group
+        Zarr dataset.
     """
     # Format: test-2021-2021-6h-o96-abcd-0
 
@@ -242,8 +271,10 @@ class IndexTester:
     def __init__(self, ds: Any) -> None:
         """Initialize the IndexTester.
 
-        Args:
-            ds (Any): Dataset.
+        Parameters
+        ----------
+        ds : Any
+            Dataset.
         """
         self.ds = ds
         self.np = ds[:]  # Numpy array
@@ -254,8 +285,10 @@ class IndexTester:
     def __getitem__(self, index: Any) -> None:
         """Test indexing.
 
-        Args:
-            index (Any): Index.
+        Parameters
+        ----------
+        index : Any
+            Index.
         """
         print("INDEX", type(self.ds), index)
         if self.ds[index] is None:
@@ -267,15 +300,22 @@ class IndexTester:
             assert (self.ds[index] == self.np[index]).all()
 
 
-def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
+def make_row(ensemble: bool = False, grid: bool = False, *args: Any) -> np.ndarray:
     """Create a row of data.
 
-    Args:
-        ensemble (bool): Whether to include ensemble dimension.
-        grid (bool): Whether to include grid dimension.
+    Parameters
+    ----------
+    ensemble : bool, optional
+        Whether to include ensemble dimension, by default False.
+    grid : bool, optional
+        Whether to include grid dimension, by default False.
+    *args : Any
+        Additional arguments.
 
-    Returns:
-        np.ndarray: Row of data.
+    Returns
+    -------
+    np.ndarray
+        Row of data.
     """
     # assert not isinstance(args[0], (list, tuple))
     if grid:
@@ -295,11 +335,15 @@ def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarr
 def make_missing(x: Any) -> Any:
     """Mark data as missing.
 
-    Args:
-        x (Any): Data.
+    Parameters
+    ----------
+    x : Any
+        Data.
 
-    Returns:
-        Any: Data with missing values.
+    Returns
+    -------
+    Any
+        Data with missing values.
     """
     if isinstance(x, tuple):
         return (make_missing(a) for a in x)
@@ -318,9 +362,12 @@ class DatasetTester:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the DatasetTester.
 
-        Args:
-            *args (Any): Arguments.
-            **kwargs (Any): Keyword arguments.
+        Parameters
+        ----------
+        *args : Any
+            Arguments.
+        **kwargs : Any
+            Keyword arguments.
         """
         self.ds = open_dataset(*args, **kwargs)
 
@@ -344,17 +391,28 @@ class DatasetTester:
     ) -> None:
         """Run the dataset tests.
 
-        Args:
-            expected_class (Type): Expected class.
-            expected_length (int): Expected length.
-            expected_shape (tuple): Expected shape.
-            expected_variables (Union[str, list]): Expected variables.
-            expected_name_to_index (Union[str, dict]): Expected name to index mapping.
-            date_to_row (Callable): Function to generate row data.
-            start_date (datetime.datetime): Start date.
-            time_increment (datetime.timedelta): Time increment.
-            statistics_reference_dataset (Optional[Union[str, list]]): Reference dataset for statistics.
-            statistics_reference_variables (Optional[Union[str, list]]): Reference variables for statistics.
+        Parameters
+        ----------
+        expected_class : Type
+            Expected class.
+        expected_length : int
+            Expected length.
+        expected_shape : tuple
+            Expected shape.
+        expected_variables : Union[str, list]
+            Expected variables.
+        expected_name_to_index : Union[str, dict]
+            Expected name to index mapping.
+        date_to_row : Callable
+            Function to generate row data.
+        start_date : datetime.datetime
+            Start date.
+        time_increment : datetime.timedelta
+            Time increment.
+        statistics_reference_dataset : Optional[Union[str, list]]
+            Reference dataset for statistics.
+        statistics_reference_variables : Optional[Union[str, list]]
+            Reference variables for statistics.
         """
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
@@ -401,8 +459,10 @@ class DatasetTester:
     def metadata(self, ds: Any) -> None:
         """Test metadata.
 
-        Args:
-            ds (Any): Dataset.
+        Parameters
+        ----------
+        ds : Any
+            Dataset.
         """
         metadata = ds.metadata()
         assert isinstance(metadata, dict)
@@ -410,11 +470,16 @@ class DatasetTester:
     def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: Optional[list] = None) -> None:
         """Compare statistics between two datasets.
 
-        Args:
-            ds1 (Any): First dataset.
-            ds2 (Any): Second dataset.
-            vars1 (list): Variables in the first dataset.
-            vars2 (Optional[list]): Variables in the second dataset.
+        Parameters
+        ----------
+        ds1 : Any
+            First dataset.
+        ds2 : Any
+            Second dataset.
+        vars1 : list
+            Variables in the first dataset.
+        vars2 : Optional[list], optional
+            Variables in the second dataset, by default None.
         """
         if vars2 is None:
             vars2 = vars1
@@ -432,8 +497,10 @@ class DatasetTester:
     def indexing(self, ds: Any) -> None:
         """Test indexing.
 
-        Args:
-            ds (Any): Dataset.
+        Parameters
+        ----------
+        ds : Any
+            Dataset.
         """
         t = IndexTester(ds)
 
@@ -473,12 +540,17 @@ class DatasetTester:
 def simple_row(date: datetime.datetime, vars: str) -> np.ndarray:
     """Create a simple row of data.
 
-    Args:
-        date (datetime.datetime): Date.
-        vars (str): Variables.
+    Parameters
+    ----------
+    date : datetime.datetime
+        Date.
+    vars : str
+        Variables.
 
-    Returns:
-        np.ndarray: Row of data.
+    Returns
+    -------
+    np.ndarray
+        Row of data.
     """
     values = [_(date, v) for v in vars]
     return make_row(*values)

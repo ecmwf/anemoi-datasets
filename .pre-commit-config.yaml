@@ -73,7 +73,7 @@ repos:
     - --check-overridden # Check overridden methods
     - --check-protected # Check protected methods
     - --check-class # Check class docstrings
-    - --disable=SIG503    # Disable empty docstrings
+    # - --disable=SIG503    # Disable empty docstrings
 - repo: https://github.com/b8raoult/pre-commit-docconvert
   rev: "0.1.4"
   hooks:

@@ -42,6 +42,10 @@ class NewDataField:
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
         """Convert the data to a numpy array.
 
+        Args:
+            *args (Any): Additional positional arguments.
+            **kwargs (Any): Additional keyword arguments.
+
         Returns:
             Any: The data as a numpy array.
         """

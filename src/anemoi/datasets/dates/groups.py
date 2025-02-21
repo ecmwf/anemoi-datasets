@@ -90,10 +90,6 @@ class GroupOfDates:
 class Groups:
     """A collection of groups of dates.
 
-    Args:
-        group_by (Any): The criteria to group dates by.
-        **kwargs (Any): Additional arguments for date configuration.
-
     Examples:
         >>> list(Groups(group_by="daily", start="2023-01-01 00:00", end="2023-01-05 00:00", frequency=12))[0]
         [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 1, 12, 0)]
@@ -122,6 +118,14 @@ class Groups:
     """
 
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize the class with the provided keyword arguments.
+        Parameters
+        ----------
+            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
+                - group_by: Configuration for the Grouper.
+                - Other keys for DatesProvider configuration.
+        """
+
         group_by = kwargs.pop("group_by")
         self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)

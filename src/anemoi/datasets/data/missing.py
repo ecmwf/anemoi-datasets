@@ -39,17 +39,23 @@ LOG = logging.getLogger(__name__)
 class MissingDates(Forwards):
     """Handles missing dates in a dataset.
 
-    Attributes:
-        dataset (Dataset): The dataset object.
-        missing_dates (List[Union[int, str]]): List of missing dates.
+    Attributes
+    ----------
+    dataset : Dataset
+        The dataset object.
+    missing_dates : List[Union[int, str]]
+        List of missing dates.
     """
 
     def __init__(self, dataset: Dataset, missing_dates: List[Union[int, str]]) -> None:
         """Initializes the MissingDates class.
 
-        Args:
-            dataset (Dataset): The dataset object.
-            missing_dates (List[Union[int, str]]): List of missing dates.
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset object.
+        missing_dates : List[Union[int, str]]
+            List of missing dates.
         """
         super().__init__(dataset)
         self.missing_dates = []
@@ -87,11 +93,15 @@ class MissingDates(Forwards):
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Retrieves the item at the given index.
 
-        Args:
-            n (FullIndex): The index to retrieve.
+        Parameters
+        ----------
+        n : FullIndex
+            The index to retrieve.
 
         Returns
-            NDArray[Any]: The item at the given index.
+        -------
+        NDArray[Any]
+            The item at the given index.
         """
         if isinstance(n, int):
             if n in self.missing:
@@ -128,8 +138,10 @@ class MissingDates(Forwards):
     def _report_missing(self, n: int) -> None:
         """Reports a missing date.
 
-        Args:
-            n (int): The index of the missing date.
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
         """
         raise MissingDateError(f"Date {self.forward.dates[n]} is missing (index={n})")
 
@@ -162,17 +174,23 @@ class MissingDates(Forwards):
 class SkipMissingDates(Forwards):
     """Skips missing dates in a dataset.
 
-    Attributes:
-        dataset (Dataset): The dataset object.
-        expected_access (Union[int, slice]): The expected access pattern.
+    Attributes
+    ----------
+    dataset : Dataset
+        The dataset object.
+    expected_access : Union[int, slice]
+        The expected access pattern.
     """
 
     def __init__(self, dataset: Dataset, expected_access: Union[int, slice]) -> None:
         """Initializes the SkipMissingDates class.
 
-        Args:
-            dataset (Dataset): The dataset object.
-            expected_access (Union[int, slice]): The expected access pattern.
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset object.
+        expected_access : Union[int, slice]
+            The expected access pattern.
         """
         super().__init__(dataset)
 
@@ -234,11 +252,15 @@ class SkipMissingDates(Forwards):
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Retrieves a tuple of items at the given index.
 
-        Args:
-            index (TupleIndex): The index to retrieve.
+        Parameters
+        ----------
+        index : TupleIndex
+            The index to retrieve.
 
         Returns
-            NDArray[Any]: The tuple of items at the given index.
+        -------
+        NDArray[Any]
+            The tuple of items at the given index.
         """
 
         def _get_one(n):
@@ -264,11 +286,15 @@ class SkipMissingDates(Forwards):
     def _get_slice(self, s: slice) -> Tuple[NDArray[Any], ...]:
         """Retrieves a slice of items.
 
-        Args:
-            s (slice): The slice to retrieve.
+        Parameters
+        ----------
+        s : slice
+            The slice to retrieve.
 
         Returns
-            Tuple[NDArray[Any], ...]: The slice of items.
+        -------
+        Tuple[NDArray[Any], ...]
+            The slice of items.
         """
         values = [self[i] for i in range(*s.indices(self._len))]
         result = [_ for _ in zip(*values)]
@@ -278,12 +304,15 @@ class SkipMissingDates(Forwards):
     def __getitem__(self, n: FullIndex) -> Tuple[NDArray[Any], ...]:
         """Retrieves the item at the given index.
 
-        Args:
-            n (FullIndex): The index to retrieve.
+        Parameters
+        ----------
+        n : FullIndex
+            The index to retrieve.
 
         Returns
         -------
-        Tuple[NDArray[Any], ...]: The item at the given index.
+        Tuple[NDArray[Any], ...]
+            The item at the given index.
         """
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -322,19 +351,27 @@ class SkipMissingDates(Forwards):
 class MissingDataset(Forwards):
     """Represents a dataset with missing dates.
 
-    Attributes:
-        dataset (Dataset): The dataset object.
-        start (np.datetime64): The start date.
-        end (np.datetime64): The end date.
+    Attributes
+    ----------
+    dataset : Dataset
+        The dataset object.
+    start : np.datetime64
+        The start date.
+    end : np.datetime64
+        The end date.
     """
 
     def __init__(self, dataset: Dataset, start: np.datetime64, end: np.datetime64) -> None:
         """Initializes the MissingDataset class.
 
-        Args:
-            dataset (Dataset): The dataset object.
-            start (np.datetime64): The start date.
-            end (np.datetime64): The end date.
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset object.
+        start : np.datetime64
+            The start date.
+        end : np.datetime64
+            The end date.
         """
         super().__init__(dataset)
         self.start = start
@@ -372,13 +409,19 @@ class MissingDataset(Forwards):
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Raises an error for missing dates.
 
-        Args:
-            n (FullIndex): The index to retrieve.
+        Parameters
+        ----------
+        n : FullIndex
+            The index to retrieve.
 
         Raises
-        -------
+        ------
         MissingDateError
             If the date is missing.
+
+        Returns:
+            NDArray[Any]: The data at the specified index.
+
         """
         raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 

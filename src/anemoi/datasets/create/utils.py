@@ -22,11 +22,15 @@ from numpy.typing import NDArray
 def cache_context(dirname: str) -> contextmanager:
     """Context manager for setting a temporary cache directory.
 
-    Args:
-        dirname (str): The directory name for the cache.
+    Parameters
+    ----------
+    dirname : str
+        The directory name for the cache.
 
-    Returns:
-        contextmanager: A context manager that sets the cache directory.
+    Returns
+    -------
+    contextmanager
+        A context manager that sets the cache directory.
     """
 
     @contextmanager
@@ -52,7 +56,9 @@ def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
         Keyword arguments for date conversion.
 
     Returns
-        list[datetime.datetime]: A list of datetime objects.
+    -------
+    list[datetime.datetime]
+        A list of datetime objects.
     """
     from earthkit.data.utils.dates import to_datetime_list as to_datetime_list_
 
@@ -75,7 +81,9 @@ def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
         Keyword arguments for date conversion.
 
     Returns
-        datetime.datetime: A datetime object.
+    -------
+    datetime.datetime
+        A datetime object.
     """
     from earthkit.data.utils.dates import to_datetime as to_datetime_
 
@@ -91,14 +99,20 @@ def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
 def make_list_int(value: str | list | tuple | int) -> list[int]:
     """Convert a string, list, tuple, or integer to a list of integers.
 
-    Args:
-        value (str | list | tuple | int): The value to convert.
+    Parameters
+    ----------
+    value : str | list | tuple | int
+        The value to convert.
 
-    Returns:
-        list[int]: A list of integers.
+    Returns
+    -------
+    list[int]
+        A list of integers.
 
-    Raises:
-        ValueError: If the value cannot be converted to a list of integers.
+    Raises
+    ------
+    ValueError
+        If the value cannot be converted to a list of integers.
     """
     # Convert a string like "1/2/3" or "1/to/3" or "1/to/10/by/2" to a list of integers.
     # Moved to anemoi.utils.humanize
@@ -133,18 +147,28 @@ def normalize_and_check_dates(
 ) -> NDArray[Any]:
     """Normalize and check a list of dates against a specified frequency.
 
-    Args:
-        dates (list[datetime.datetime]): The list of dates to check.
-        start (datetime.datetime): The start date.
-        end (datetime.datetime): The end date.
-        frequency (datetime.timedelta): The frequency of the dates.
-        dtype (str, optional): The data type of the dates. Defaults to "datetime64[s]".
+    Parameters
+    ----------
+    dates : list[datetime.datetime]
+        The list of dates to check.
+    start : datetime.datetime
+        The start date.
+    end : datetime.datetime
+        The end date.
+    frequency : datetime.timedelta
+        The frequency of the dates.
+    dtype : str, optional
+        The data type of the dates, by default "datetime64[s]".
 
-    Returns:
-        NDArray[Any]: An array of normalized dates.
+    Returns
+    -------
+    NDArray[Any]
+        An array of normalized dates.
 
-    Raises:
-        ValueError: If the final date size does not match the data shape.
+    Raises
+    ------
+    ValueError
+        If the final date size does not match the data shape.
     """
     dates = [d.hdate if hasattr(d, "hdate") else d for d in dates]
 

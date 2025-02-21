@@ -97,10 +97,6 @@ class _MDMapping:
             The field to fill metadata for.
         md : Dict[str, Any]
             The metadata dictionary to update.
-
-        Returns
-        -------
-        None
         """
         valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
         if valid_datetime is not None:
@@ -110,10 +106,14 @@ class _MDMapping:
 class XArrayMetadata(RawMetadata):
     """A class to handle metadata for XArray fields.
 
-    Attributes:
-        LS_KEYS (List[str]): List of keys for the metadata.
-        NAMESPACES (List[str]): List of namespaces for the metadata.
-        MARS_KEYS (List[str]): List of MARS keys for the metadata.
+    Attributes
+    ----------
+    LS_KEYS : List[str]
+        List of keys for the metadata.
+    NAMESPACES : List[str]
+        List of namespaces for the metadata.
+    MARS_KEYS : List[str]
+        List of MARS keys for the metadata.
     """
 
     LS_KEYS = ["variable", "level", "valid_datetime", "units"]
@@ -200,6 +200,8 @@ class XArrayMetadata(RawMetadata):
             The key to get the value for.
         astype : Optional[type]
             The type to cast the value to.
+        **kwargs : Any
+            Additional keyword arguments.
 
         Returns
         -------
@@ -219,9 +221,12 @@ class XArrayMetadata(RawMetadata):
 class XArrayFieldGeography(Geography):
     """A class to handle geography information for XArray fields.
 
-    Attributes:
-        _field (Any): The field to extract geography information from.
-        _grid (Any): The grid associated with the field.
+    Attributes
+    ----------
+    _field : Any
+        The field to extract geography information from.
+    _grid : Any
+        The grid associated with the field.
     """
 
     def __init__(self, field: Any, grid: Any) -> None:

@@ -580,7 +580,7 @@ class Version0_4(Version):
 
         return all(build_flags)
 
-    def _info(self, verbose: bool, history: bool, statistics: bool, **kwargs) -> None:
+    def _info(self, verbose: bool, history: bool, statistics: bool, **kwargs: Any) -> None:
         """Print information about the dataset.
 
         Parameters
@@ -591,6 +591,8 @@ class Version0_4(Version):
             Whether to print the history of the dataset.
         statistics : bool
             Whether to print statistics of the dataset.
+        **kwargs : Any
+            Additional keyword arguments.
         """
         z = self.zarr
 
@@ -752,7 +754,7 @@ class InspectZarr(Command):
         statistics: bool = False,
         detailed: bool = False,
         size: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Inspect a zarr dataset.
 
@@ -768,6 +770,8 @@ class InspectZarr(Command):
             Whether to print detailed information, by default False.
         size : bool, optional
             Whether to print the size of the dataset, by default False.
+        **kwargs : Any
+            Additional keyword arguments.
         """
         version = self._info(path)
 

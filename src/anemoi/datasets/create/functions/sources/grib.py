@@ -59,6 +59,11 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
 class Geography:
     """This class retrieves the latitudes and longitudes of unstructured grids,
     and checks if the fields are compatible with the grid.
+
+    Args:
+        context (Any): The context in which the function is executed.
+        latitudes (Dict[str, Any]): Latitude information.
+        longitudes (Dict[str, Any]): Longitude information.
     """
 
     def __init__(self, context: Any, latitudes: Dict[str, Any], longitudes: Dict[str, Any]) -> None:
@@ -99,7 +104,12 @@ class Geography:
 
 
 class AddGrid:
-    """An earth-kit.data.Field wrapper that adds grid information."""
+    """An earth-kit.data.Field wrapper that adds grid information.
+
+    Args:
+        field (Any): The field to wrap.
+        geography (Geography): The geography information.
+    """
 
     def __init__(self, field: Any, geography: Geography) -> None:
         """Initialize the AddGrid class.
@@ -182,7 +192,7 @@ def _expand(paths: List[str]) -> Any:
     Args:
         paths (List[str]): List of paths to expand.
 
-    Yields
+    Returns
     ------
     Any
         The expanded paths.

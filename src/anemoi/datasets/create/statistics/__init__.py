@@ -16,6 +16,7 @@ import os
 import pickle
 import shutil
 import socket
+from typing import Any
 
 import numpy as np
 import tqdm
@@ -325,10 +326,20 @@ class TmpStatistics:
             with open(f, "rb") as f:
                 yield pickle.load(f)
 
-    def get_aggregated(self, *args: any, **kwargs: any) -> Summary:
+    def get_aggregated(self, *args: Any, **kwargs: Any) -> Summary:
         """Get aggregated statistics.
 
-        Returns:
+        Parameters
+        ----------
+
+        *args : Any
+            Additional arguments.
+
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
             Summary: The aggregated statistics summary.
         """
         aggregator = StatAggregator(self, *args, **kwargs)

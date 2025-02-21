@@ -35,8 +35,8 @@ def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datet
     Args:
         x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
 
-    Yields
-    ------
+    Returns
+    -------
     Iterator[datetime.datetime]
         An iterator of datetime objects.
     """

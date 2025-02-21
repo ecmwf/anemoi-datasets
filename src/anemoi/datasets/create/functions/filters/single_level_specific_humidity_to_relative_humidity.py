@@ -10,6 +10,7 @@
 
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -85,6 +86,9 @@ class NewDataField:
         ----------
         key : str, optional
             The metadata key to retrieve. If None, all metadata is returned.
+
+        **kwargs : Any
+            Additional keyword arguments.
 
         Returns
         -------
@@ -302,7 +306,14 @@ def pressure_at_height_level(
 
 
 def execute(
-    context: Any, input: Any, height: float, t: str, q: str, sp: str, new_name: str = "2r", **kwargs: Dict[str, Any]
+    context: Any,
+    input: List[Any],
+    height: float,
+    t: str,
+    q: str,
+    sp: str,
+    new_name: str = "2r",
+    **kwargs: Dict[str, Any],
 ) -> FieldArray:
     """Convert the single (height) level specific humidity to relative humidity.
 
@@ -310,7 +321,7 @@ def execute(
     ----------
     context : Any
         The context for the execution.
-    input : Any
+    input : list of Any
         The input data.
     height : float
         The height level in meters.
@@ -324,6 +335,16 @@ def execute(
         The new name for the relative humidity parameter, by default "2r".
     **kwargs : dict
         Additional keyword arguments.
+        t_ml : str, optional
+            The temperature parameter name for model levels, by default "t".
+        q_ml : str, optional
+            The specific humidity parameter name for model levels, by default "q".
+        A : list of float
+            A-coefficients defining the model levels.
+        B : list of float
+            B-coefficients defining the model levels.
+        keep_q : bool, optional
+            Whether to keep the specific humidity field in the result, by default False.
 
     Returns
     -------

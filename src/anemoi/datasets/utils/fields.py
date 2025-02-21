@@ -15,7 +15,9 @@ class WrappedField:
     """Wrapper class for a field to provide additional functionality."""
 
     def __init__(self, field: Any) -> None:
-        """Parameters
+        """Initialize the WrappedField.
+
+        Parameters
         ----------
         field : Any
             The field to be wrapped.
@@ -23,7 +25,9 @@ class WrappedField:
         self._field = field
 
     def __getattr__(self, name: str) -> Any:
-        """Parameters
+        """Get an attribute from the wrapped field.
+
+        Parameters
         ----------
         name : str
             The name of the attribute to get.
@@ -36,7 +40,9 @@ class WrappedField:
         return getattr(self._field, name)
 
     def __repr__(self) -> str:
-        """Returns
+        """Get the string representation of the wrapped field.
+
+        Returns
         -------
         str
             The string representation of the wrapped field.
@@ -48,7 +54,9 @@ class NewDataField(WrappedField):
     """Class to represent a new data field with additional data."""
 
     def __init__(self, field: Any, data: Any) -> None:
-        """Parameters
+        """Initialize the NewDataField.
+
+        Parameters
         ----------
         field : Any
             The field to be wrapped.
@@ -90,7 +98,9 @@ class NewMetadataField(WrappedField):
     """Class to represent a new metadata field with additional metadata."""
 
     def __init__(self, field: Any, **kwargs: Any) -> None:
-        """Parameters
+        """Initialize the NewMetadataField.
+
+        Parameters
         ----------
         field : Any
             The field to be wrapped.
