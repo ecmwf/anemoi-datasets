@@ -538,7 +538,6 @@ class Dataset:
         **kwargs:
             Additional arguments to pass to matplotlib.pyplot.tricontourf
 
-
         Returns
         -------
         axes : matplotlib.pyplot.Axes
