@@ -33,16 +33,26 @@ except AttributeError:
 class ZarrCopier:
     """Class to handle copying of Zarr datasets.
 
-    Attributes:
-        source (str): Source location of the dataset.
-        target (str): Target location of the dataset.
-        transfers (int): Number of parallel transfers.
-        block_size (int): Size of data blocks to transfer.
-        overwrite (bool): Flag to overwrite existing dataset.
-        resume (bool): Flag to resume copying an existing dataset.
-        verbosity (int): Verbosity level of logging.
-        nested (bool): Flag to use ZARR's nested directory backend.
-        rechunk (str): Rechunk size for the target data array.
+    Attributes
+    ----------
+    source : str
+        Source location of the dataset.
+    target : str
+        Target location of the dataset.
+    transfers : int
+        Number of parallel transfers.
+    block_size : int
+        Size of data blocks to transfer.
+    overwrite : bool
+        Flag to overwrite existing dataset.
+    resume : bool
+        Flag to resume copying an existing dataset.
+    verbosity : int
+        Verbosity level of logging.
+    nested : bool
+        Flag to use ZARR's nested directory backend.
+    rechunk : str
+        Rechunk size for the target data array.
     """
 
     def __init__(
@@ -60,17 +70,28 @@ class ZarrCopier:
     ) -> None:
         """Initialize the ZarrCopier.
 
-        Args:
-            source (str): Source location of the dataset.
-            target (str): Target location of the dataset.
-            transfers (int): Number of parallel transfers.
-            block_size (int): Size of data blocks to transfer.
-            overwrite (bool): Flag to overwrite existing dataset.
-            resume (bool): Flag to resume copying an existing dataset.
-            verbosity (int): Verbosity level of logging.
-            nested (bool): Flag to use ZARR's nested directory backend.
-            rechunk (str): Rechunk size for the target data array.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        source : str
+            Source location of the dataset.
+        target : str
+            Target location of the dataset.
+        transfers : int
+            Number of parallel transfers.
+        block_size : int
+            Size of data blocks to transfer.
+        overwrite : bool
+            Flag to overwrite existing dataset.
+        resume : bool
+            Flag to resume copying an existing dataset.
+        verbosity : int
+            Verbosity level of logging.
+        nested : bool
+            Flag to use ZARR's nested directory backend.
+        rechunk : str
+            Rechunk size for the target data array.
+        **kwargs : Any
+            Additional keyword arguments.
         """
         self.source = source
         self.target = target
@@ -95,12 +116,17 @@ class ZarrCopier:
     def _store(self, path: str, nested: bool = False) -> Any:
         """Get the storage path.
 
-        Args:
-            path (str): Path to the storage.
-            nested (bool): Flag to use nested directory storage.
+        Parameters
+        ----------
+        path : str
+            Path to the storage.
+        nested : bool, optional
+            Flag to use nested directory storage.
 
-        Returns:
-            Any: Storage path.
+        Returns
+        -------
+        Any
+            Storage path.
         """
         if nested:
             import zarr
@@ -111,16 +137,25 @@ class ZarrCopier:
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> Optional[slice]:
         """Copy a chunk of data from source to target.
 
-        Args:
-            n (int): Start index of the chunk.
-            m (int): End index of the chunk.
-            source (Any): Source data.
-            target (Any): Target data.
-            _copy (Any): Copy status array.
-            verbosity (int): Verbosity level of logging.
+        Parameters
+        ----------
+        n : int
+            Start index of the chunk.
+        m : int
+            End index of the chunk.
+        source : Any
+            Source data.
+        target : Any
+            Target data.
+        _copy : Any
+            Copy status array.
+        verbosity : int
+            Verbosity level of logging.
 
-        Returns:
-            slice | None: Slice of copied data or None if skipped.
+        Returns
+        -------
+        slice or None
+            Slice of copied data or None if skipped.
         """
         if _copy[n:m].all():
             LOG.info(f"Skipping {n} to {m}")
@@ -150,12 +185,17 @@ class ZarrCopier:
     def parse_rechunking(self, rechunking: list[str], source_data: Any) -> tuple:
         """Parse the rechunking configuration.
 
-        Args:
-            rechunking (list[str]): List of rechunk sizes.
-            source_data (Any): Source data.
+        Parameters
+        ----------
+        rechunking : list of str
+            List of rechunk sizes.
+        source_data : Any
+            Source data.
 
-        Returns:
-            tuple: Parsed chunk sizes.
+        Returns
+        -------
+        tuple
+            Parsed chunk sizes.
         """
         shape = source_data.shape
         chunks = list(source_data.chunks)
@@ -178,11 +218,16 @@ class ZarrCopier:
     def copy_data(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy data from source to target.
 
-        Args:
-            source (Any): Source data.
-            target (Any): Target data.
-            _copy (Any): Copy status array.
-            verbosity (int): Verbosity level of logging.
+        Parameters
+        ----------
+        source : Any
+            Source data.
+        target : Any
+            Target data.
+        _copy : Any
+            Copy status array.
+        verbosity : int
+            Verbosity level of logging.
         """
         LOG.info("Copying data")
         source_data = source["data"]
@@ -231,12 +276,18 @@ class ZarrCopier:
     def copy_array(self, name: str, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy an array from source to target.
 
-        Args:
-            name (str): Name of the array.
-            source (Any): Source data.
-            target (Any): Target data.
-            _copy (Any): Copy status array.
-            verbosity (int): Verbosity level of logging.
+        Parameters
+        ----------
+        name : str
+            Name of the array.
+        source : Any
+            Source data.
+        target : Any
+            Target data.
+        _copy : Any
+            Copy status array.
+        verbosity : int
+            Verbosity level of logging.
         """
         for k, v in source.attrs.items():
             target.attrs[k] = v
@@ -255,11 +306,16 @@ class ZarrCopier:
     def copy_group(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy a group from source to target.
 
-        Args:
-            source (Any): Source data.
-            target (Any): Target data.
-            _copy (Any): Copy status array.
-            verbosity (int): Verbosity level of logging.
+        Parameters
+        ----------
+        source : Any
+            Source data.
+        target : Any
+            Target data.
+        _copy : Any
+            Copy status array.
+        verbosity : int
+            Verbosity level of logging.
         """
         import zarr
 
@@ -287,10 +343,14 @@ class ZarrCopier:
     def copy(self, source: Any, target: Any, verbosity: int) -> None:
         """Copy the entire dataset from source to target.
 
-        Args:
-            source (Any): Source data.
-            target (Any): Target data.
-            verbosity (int): Verbosity level of logging.
+        Parameters
+        ----------
+        source : Any
+            Source data.
+        target : Any
+            Target data.
+        verbosity : int
+            Verbosity level of logging.
         """
         import zarr
 
@@ -374,8 +434,10 @@ class CopyMixin:
     def add_arguments(self, command_parser: Any) -> None:
         """Add arguments to the command parser.
 
-        Args:
-            command_parser (Any): Command parser object.
+        Parameters
+        ----------
+        command_parser : Any
+            Command parser object.
         """
         group = command_parser.add_mutually_exclusive_group()
         group.add_argument(
@@ -409,8 +471,10 @@ class CopyMixin:
     def run(self, args: Any) -> None:
         """Run the copy command with the provided arguments.
 
-        Args:
-            args (Any): Command arguments.
+        Parameters
+        ----------
+        args : Any
+            Command arguments.
         """
         if args.source == args.target:
             raise ValueError("Source and target are the same.")
