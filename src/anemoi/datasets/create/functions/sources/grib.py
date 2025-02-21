@@ -31,8 +31,10 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
         name (str): The name of the data source.
         record (Dict[str, Any]): The record containing source information.
 
-    Returns:
-        tuple: A tuple containing the data as a numpy array and the UUID of the HGrid.
+    Returns
+    -------
+    tuple
+        A tuple containing the data as a numpy array and the UUID of the HGrid.
     """
     ds = None
 
@@ -119,24 +121,30 @@ class AddGrid:
         Args:
             name (str): The name of the attribute.
 
-        Returns:
-            Any: The attribute value.
+        Returns
+        -------
+        Any
+            The attribute value.
         """
         return getattr(self._field, name)
 
     def __repr__(self) -> str:
         """Get the string representation of the wrapped field.
 
-        Returns:
-            str: The string representation.
+        Returns
+        -------
+        str
+            The string representation.
         """
         return repr(self._field)
 
     def grid_points(self) -> tuple:
         """Get the grid points (latitudes and longitudes).
 
-        Returns:
-            tuple: The latitudes and longitudes.
+        Returns
+        -------
+        tuple
+            The latitudes and longitudes.
         """
         return self._latitudes, self._longitudes
 
@@ -154,13 +162,10 @@ def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
         paths (List[str]): List of paths to the GRIB files.
         **kwargs (Any): Additional keyword arguments.
 
-    Returns
-    -------
-    None
-
     Raises
     ------
-    ValueError: If the number of fields does not match the expected count.
+    ValueError
+        If the number of fields does not match the expected count.
     """
     count = 1
     for k, v in kwargs.items():
@@ -177,8 +182,10 @@ def _expand(paths: List[str]) -> Any:
     Args:
         paths (List[str]): List of paths to expand.
 
-    Yields:
-        Any: The expanded paths.
+    Yields
+    ------
+    Any
+        The expanded paths.
     """
     for path in paths:
         cnt = 0
@@ -209,8 +216,10 @@ def execute(
         *args (Any): Additional arguments.
         **kwargs (Any): Additional keyword arguments.
 
-    Returns:
-        Any: The loaded dataset.
+    Returns
+    -------
+    Any
+        The loaded dataset.
     """
     given_paths = path if isinstance(path, list) else [path]
 

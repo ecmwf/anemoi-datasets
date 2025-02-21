@@ -39,8 +39,8 @@ class _MDMapping:
     def __init__(self, variable: Any) -> None:
         """Initialize the _MDMapping class.
 
-        Args
-        ----
+        Parameters
+        ----------
         variable : Any
             The variable to map.
         """
@@ -51,8 +51,8 @@ class _MDMapping:
     def _from_user(self, key: str) -> str:
         """Get the internal key corresponding to a user-provided key.
 
-        Args
-        ----
+        Parameters
+        ----------
         key : str
             The user-provided key.
 
@@ -66,8 +66,8 @@ class _MDMapping:
     def from_user(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """Convert user-provided keys to internal keys.
 
-        Args
-        ----
+        Parameters
+        ----------
         kwargs : Dict[str, Any]
             A dictionary of user-provided keys and values.
 
@@ -91,8 +91,8 @@ class _MDMapping:
     def fill_time_metadata(self, field: Any, md: Dict[str, Any]) -> None:
         """Fill the time metadata for a field.
 
-        Args
-        ----
+        Parameters
+        ----------
         field : Any
             The field to fill metadata for.
         md : Dict[str, Any]
@@ -123,8 +123,8 @@ class XArrayMetadata(RawMetadata):
     def __init__(self, field: Any) -> None:
         """Initialize the XArrayMetadata class.
 
-        Args
-        ----
+        Parameters
+        ----------
         field : Any
             The field to extract metadata from.
         """
@@ -142,8 +142,8 @@ class XArrayMetadata(RawMetadata):
     def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
         """Get the metadata as a specific namespace.
 
-        Args
-        ----
+        Parameters
+        ----------
         namespace : Optional[str]
             The namespace to use.
 
@@ -194,8 +194,8 @@ class XArrayMetadata(RawMetadata):
     def get(self, key: str, astype: Optional[type] = None, **kwargs: Any) -> Any:
         """Get a metadata value by key.
 
-        Args
-        ----
+        Parameters
+        ----------
         key : str
             The key to get the value for.
         astype : Optional[type]
@@ -227,8 +227,8 @@ class XArrayFieldGeography(Geography):
     def __init__(self, field: Any, grid: Any) -> None:
         """Initialize the XArrayFieldGeography class.
 
-        Args
-        ----
+        Parameters
+        ----------
         field : Any
             The field to extract geography information from.
         grid : Any
@@ -271,8 +271,8 @@ class XArrayFieldGeography(Geography):
     def latitudes(self, dtype: Optional[type] = None) -> Any:
         """Get the latitudes for the field.
 
-        Args
-        ----
+        Parameters
+        ----------
         dtype : Optional[type]
             The type to cast the latitudes to.
 
@@ -289,8 +289,8 @@ class XArrayFieldGeography(Geography):
     def longitudes(self, dtype: Optional[type] = None) -> Any:
         """Get the longitudes for the field.
 
-        Args
-        ----
+        Parameters
+        ----------
         dtype : Optional[type]
             The type to cast the longitudes to.
 
@@ -341,8 +341,8 @@ class XArrayFieldGeography(Geography):
     def x(self, dtype: Optional[type] = None) -> None:
         """Get the x-coordinates for the field.
 
-        Args
-        ----
+        Parameters
+        ----------
         dtype : Optional[type]
             The type to cast the x-coordinates to.
 
@@ -356,8 +356,8 @@ class XArrayFieldGeography(Geography):
     def y(self, dtype: Optional[type] = None) -> None:
         """Get the y-coordinates for the field.
 
-        Args
-        ----
+        Parameters
+        ----------
         dtype : Optional[type]
             The type to cast the y-coordinates to.
 

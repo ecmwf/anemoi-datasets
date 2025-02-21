@@ -33,6 +33,10 @@ class NewDataField:
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
         """Convert the data to a numpy array.
 
+        Args:
+            *args (Any): Additional arguments.
+            **kwargs (Any): Additional keyword arguments.
+
         Returns:
             Any: The data as a numpy array.
         """
@@ -51,7 +55,17 @@ class NewDataField:
 
 
 def execute(context: Any, input: List[Any], u: str, v: str) -> FieldArray:
-    """Unrotate the wind components of a GRIB file."""
+    """Unrotate the wind components of a GRIB file.
+
+    Args:
+        context (Any): The execution context.
+        input (List[Any]): The list of input fields.
+        u (str): The parameter name for the u-component of the wind.
+        v (str): The parameter name for the v-component of the wind.
+
+    Returns:
+        FieldArray: The resulting field array with unrotated wind components.
+    """
     result = FieldArray()
 
     wind_params = (u, v)

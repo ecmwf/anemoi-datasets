@@ -44,7 +44,14 @@ def cache_context(dirname: str) -> contextmanager:
 def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
     """Convert various date formats to a list of datetime objects.
 
-    Returns:
+    Parameters
+    ----------
+    *args : Any
+        Positional arguments for date conversion.
+    **kwargs : Any
+        Keyword arguments for date conversion.
+
+    Returns
         list[datetime.datetime]: A list of datetime objects.
     """
     from earthkit.data.utils.dates import to_datetime_list as to_datetime_list_
@@ -60,7 +67,14 @@ def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
 def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
     """Convert various date formats to a single datetime object.
 
-    Returns:
+    Parameters
+    ----------
+    *args : Any
+        Positional arguments for date conversion.
+    **kwargs : Any
+        Keyword arguments for date conversion.
+
+    Returns
         datetime.datetime: A datetime object.
     """
     from earthkit.data.utils.dates import to_datetime as to_datetime_

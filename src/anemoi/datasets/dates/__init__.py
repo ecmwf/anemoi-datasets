@@ -35,8 +35,10 @@ def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datet
     Args:
         x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
 
-    Yields:
-        Iterator[datetime.datetime]: An iterator of datetime objects.
+    Yields
+    ------
+    Iterator[datetime.datetime]
+        An iterator of datetime objects.
     """
 
     if isinstance(x, (list, tuple)):
@@ -104,8 +106,10 @@ class DatesProvider:
         Args:
             **kwargs (Any): Configuration parameters.
 
-        Returns:
-            DatesProvider: An instance of DatesProvider.
+        Returns
+        -------
+        DatesProvider
+            An instance of DatesProvider.
         """
         if kwargs.pop("hindcasts", False):
             return HindcastsDates(**kwargs)
@@ -118,8 +122,10 @@ class DatesProvider:
     def __iter__(self) -> Iterator[datetime.datetime]:
         """Iterate over the dates.
 
-        Yields:
-            Iterator[datetime.datetime]: An iterator of datetime objects.
+        Yields
+        ------
+        Iterator[datetime.datetime]
+            An iterator of datetime objects.
         """
         yield from self.values
 
@@ -129,16 +135,20 @@ class DatesProvider:
         Args:
             i (int): Index of the date.
 
-        Returns:
-            datetime.datetime: The date at the specified index.
+        Returns
+        -------
+        datetime.datetime
+            The date at the specified index.
         """
         return self.values[i]
 
     def __len__(self) -> int:
         """Get the number of dates.
 
-        Returns:
-            int: The number of dates.
+        Returns
+        -------
+        int
+            The number of dates.
         """
         return len(self.values)
 
@@ -169,8 +179,10 @@ class ValuesDates(DatesProvider):
     def __repr__(self) -> str:
         """Get a string representation of the ValuesDates instance.
 
-        Returns:
-            str: String representation of the instance.
+        Returns
+        -------
+        str
+            String representation of the instance.
         """
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
@@ -378,8 +390,10 @@ class HindcastsDates(DatesProvider):
     def __repr__(self) -> str:
         """Get a string representation of the HindcastsDates instance.
 
-        Returns:
-            str: String representation of the instance.
+        Returns
+        -------
+        str
+            String representation of the instance.
         """
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 

@@ -40,12 +40,16 @@ LOG = logging.getLogger(__name__)
 def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
     """Compute the total size and number of files in a directory.
 
-    Args:
-        path (str): The path to the directory.
+    Parameters
+    ----------
+    path : str
+        The path to the directory.
 
-    Returns:
-        tuple[int, int] | tuple[None, None]: The total size in bytes and the number of files,
-                                             or (None, None) if the path is not a directory.
+    Returns
+    -------
+    tuple[int, int] | tuple[None, None]
+        The total size in bytes and the number of files,
+        or (None, None) if the path is not a directory.
     """
     if not os.path.isdir(path):
         return None, None
@@ -62,12 +66,17 @@ def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
 def local_time_bug(lon: float, date: datetime.datetime) -> float:
     """Calculate the local time bug based on longitude and date.
 
-    Args:
-        lon (float): Longitude.
-        date (datetime.datetime): Date and time.
+    Parameters
+    ----------
+    lon : float
+        Longitude.
+    date : datetime.datetime
+        Date and time.
 
-    Returns:
-        float: Local time bug in hours.
+    Returns
+    -------
+    float
+        Local time bug in hours.
     """
     delta = date - datetime.datetime(date.year, date.month, date.day)
     hours_since_midnight = delta.days + delta.seconds / 86400.0  # * 24 is missing
@@ -77,12 +86,17 @@ def local_time_bug(lon: float, date: datetime.datetime) -> float:
 def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
     """Calculate the cosine of the local time bug.
 
-    Args:
-        lon (float): Longitude.
-        date (datetime.datetime): Date and time.
+    Parameters
+    ----------
+    lon : float
+        Longitude.
+    date : datetime.datetime
+        Date and time.
 
-    Returns:
-        float: Cosine of the local time bug.
+    Returns
+    -------
+    float
+        Cosine of the local time bug.
     """
     radians = local_time_bug(lon, date) / 24 * np.pi * 2
     return float(np.cos(radians))
@@ -91,12 +105,17 @@ def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
 def find(config: dict | list, name: str) -> Any:
     """Recursively search for a key in a nested dictionary or list.
 
-    Args:
-        config (dict | list): The configuration to search.
-        name (str): The key to search for.
+    Parameters
+    ----------
+    config : dict | list
+        The configuration to search.
+    name : str
+        The key to search for.
 
-    Returns:
-        Any: The value associated with the key, or None if not found.
+    Returns
+    -------
+    Any
+        The value associated with the key, or None if not found.
     """
     if isinstance(config, dict):
         if name in config:
@@ -122,11 +141,16 @@ class Version:
     def __init__(self, path: str, zarr: Any, metadata: dict, version: semantic_version.Version) -> None:
         """Initialize the Version object.
 
-        Args:
-            path (str): Path to the dataset.
-            zarr (Any): Zarr object.
-            metadata (dict): Metadata of the dataset.
-            version (semantic_version.Version): Version of the dataset.
+        Parameters
+        ----------
+        path : str
+            Path to the dataset.
+        zarr : Any
+            Zarr object.
+        metadata : dict
+            Metadata of the dataset.
+        version : semantic_version.Version
+            Version of the dataset.
         """
         self.path = path
         self.zarr = zarr
@@ -213,9 +237,12 @@ class Version:
     def info(self, detailed: bool, size: bool) -> None:
         """Print detailed information about the dataset.
 
-        Args:
-            detailed (bool): Whether to print detailed information.
-            size (bool): Whether to print the size of the dataset.
+        Parameters
+        ----------
+        detailed : bool
+            Whether to print detailed information.
+        size : bool
+            Whether to print the size of the dataset.
         """
         print()
         print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M")}')
@@ -281,8 +308,10 @@ class Version:
     def print_sizes(self, size: bool) -> None:
         """Print the size and number of files in the dataset.
 
-        Args:
-            size (bool): Whether to compute and print the size.
+        Parameters
+        ----------
+        size : bool
+            Whether to compute and print the size.
         """
         total_size = self.total_size
         n = self.total_number_of_files
@@ -513,8 +542,10 @@ class NoVersion(Version):
     def ready(self) -> bool:
         """Check if the dataset is ready.
 
-        Returns:
-            bool: True if the dataset is ready, False otherwise.
+        Returns
+        -------
+        bool
+            True if the dataset is ready, False otherwise.
         """
         return True
 
@@ -552,10 +583,14 @@ class Version0_4(Version):
     def _info(self, verbose: bool, history: bool, statistics: bool, **kwargs) -> None:
         """Print information about the dataset.
 
-        Args:
-            verbose (bool): Whether to print verbose information.
-            history (bool): Whether to print the history of the dataset.
-            statistics (bool): Whether to print statistics of the dataset.
+        Parameters
+        ----------
+        verbose : bool
+            Whether to print verbose information.
+        history : bool
+            Whether to print the history of the dataset.
+        statistics : bool
+            Whether to print statistics of the dataset.
         """
         z = self.zarr
 
@@ -688,8 +723,10 @@ class InspectZarr(Command):
     def add_arguments(self, command_parser: Any) -> None:
         """Add arguments to the command parser.
 
-        Args:
-            command_parser (Any): The command parser.
+        Parameters
+        ----------
+        command_parser : Any
+            The command parser.
         """
         command_parser.add_argument("path", metavar="DATASET")
         command_parser.add_argument("--detailed", action="store_true")
@@ -701,8 +738,10 @@ class InspectZarr(Command):
     def run(self, args: Any) -> None:
         """Run the command.
 
-        Args:
-            args (Any): The command arguments.
+        Parameters
+        ----------
+        args : Any
+            The command arguments.
         """
         self.inspect_zarr(**vars(args))
 
@@ -717,12 +756,18 @@ class InspectZarr(Command):
     ) -> None:
         """Inspect a zarr dataset.
 
-        Args:
-            path (str): Path to the dataset.
-            progress (bool): Whether to print progress.
-            statistics (bool): Whether to compute and print statistics.
-            detailed (bool): Whether to print detailed information.
-            size (bool): Whether to print the size of the dataset.
+        Parameters
+        ----------
+        path : str
+            Path to the dataset.
+        progress : bool, optional
+            Whether to print progress, by default False.
+        statistics : bool, optional
+            Whether to compute and print statistics, by default False.
+        detailed : bool, optional
+            Whether to print detailed information, by default False.
+        size : bool, optional
+            Whether to print the size of the dataset, by default False.
         """
         version = self._info(path)
 
@@ -747,11 +792,15 @@ class InspectZarr(Command):
     def _info(self, path: str) -> Version:
         """Get version information of the dataset.
 
-        Args:
-            path (str): Path to the dataset.
+        Parameters
+        ----------
+        path : str
+            Path to the dataset.
 
-        Returns:
-            Version: The version object of the dataset.
+        Returns
+        -------
+        Version
+            The version object of the dataset.
         """
         z = open_zarr(zarr_lookup(path))
 

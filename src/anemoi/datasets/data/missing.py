@@ -295,13 +295,7 @@ class SkipMissingDates(Forwards):
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """Returns the frequency of the dataset.
-
-        Returns
-        -------
-        datetime.timedelta
-            The frequency of the dataset.
-        """
+        """Returns the frequency of the dataset."""
         return self.forward.frequency
 
     def tree(self) -> Node:
@@ -367,13 +361,7 @@ class MissingDataset(Forwards):
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """Returns the dates of the dataset.
-
-        Returns
-        -------
-        NDArray[np.datetime64]
-            The dates of the dataset.
-        """
+        """Returns the dates of the dataset."""
         return self._dates
 
     @property

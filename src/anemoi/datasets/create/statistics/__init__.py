@@ -188,7 +188,16 @@ def check_variance(
 def compute_statistics(
     array: np.ndarray, check_variables_names: list[str] | None = None, allow_nans: bool = False
 ) -> dict[str, np.ndarray]:
-    """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
+    """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary.
+
+    Args:
+        array (numpy.ndarray): The array to compute statistics for.
+        check_variables_names (list, optional): List of variable names to check. Defaults to None.
+        allow_nans (bool, optional): Whether to allow NaN values. Defaults to False.
+
+    Returns:
+        dict: A dictionary containing the computed statistics.
+    """
     LOG.info(f"Computing statistics for {array.shape} array")
     nvars = array.shape[1]
 

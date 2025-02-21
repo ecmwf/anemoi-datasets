@@ -40,6 +40,10 @@ class NewDataField:
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
         """Convert the data to a numpy array.
 
+        Args:
+            *args (Any): Additional positional arguments.
+            **kwargs (Any): Additional keyword arguments.
+
         Returns:
             Any: The data as a numpy array.
         """
@@ -76,7 +80,17 @@ class NewDataField:
 
 
 def execute(context: Any, input: List[Any], params: List[str], output: str) -> FieldArray:
-    """Computes the sum over a set of variables"""
+    """Computes the sum over a set of variables.
+
+    Args:
+        context (Any): The execution context.
+        input (List[Any]): The list of input fields.
+        params (List[str]): The list of parameters to sum over.
+        output (str): The name for the output field.
+
+    Returns:
+        FieldArray: The resulting FieldArray with summed fields.
+    """
     result = FieldArray()
 
     needed_fields = defaultdict(dict)
