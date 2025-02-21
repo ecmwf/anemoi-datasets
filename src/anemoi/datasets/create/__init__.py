@@ -115,7 +115,7 @@ def _path_readable(path):
     try:
         zarr.open(path, "r")
         return True
-    except zarr.errors.PathNotFoundError:
+    except FileNotFoundError:
         return False
 
 
@@ -139,7 +139,7 @@ class Dataset:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="w+")
+        z = zarr.open(self.path, mode="a")
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
                 v = v.astype(datetime.datetime)
@@ -1024,7 +1024,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
 
         LOG.info(stats)
 
-        if not all(self.registry.get_flags(sync=False)):
+        if not all(self.registry.get_flags()):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
         for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:

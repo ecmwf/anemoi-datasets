@@ -86,7 +86,7 @@ def apply_patch(path, verbose=True, dry_run=False):
 
     try:
         attrs = zarr.open(path, mode="r").attrs.asdict()
-    except zarr.errors.PathNotFoundError as e:
+    except FileNotFoundError as e:
         LOG.error(f"Failed to open {path}")
         LOG.error(e)
         exit(0)

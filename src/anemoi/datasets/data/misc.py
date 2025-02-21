@@ -200,7 +200,7 @@ def _open(a):
     if isinstance(a, Dataset):
         return a.mutate()
 
-    if isinstance(a, zarr.hierarchy.Group):
+    if isinstance(a, zarr.Group):
         return Zarr(a).mutate()
 
     if isinstance(a, str):
