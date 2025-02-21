@@ -116,13 +116,7 @@ class Dataset(ABC, Sized):
 
     @cached_property
     def _len(self) -> int:
-        """Return the length of the dataset.
-
-        Returns
-        -------
-        int
-            The length of the dataset.
-        """
+        """Cache and return the length of the dataset."""
         return len(self)
 
     def _subset(self, **kwargs: Any) -> "Dataset":
@@ -149,13 +143,7 @@ class Dataset(ABC, Sized):
 
     @property
     def name(self) -> Union[str, None]:
-        """Return the name of the dataset.
-
-        Returns
-        -------
-        str or None
-            The name of the dataset.
-        """
+        """Return the name of the dataset."""
         return self._name
 
     def __subset(self, **kwargs: Any) -> "Dataset":
@@ -487,13 +475,7 @@ class Dataset(ABC, Sized):
 
     @property
     def typed_variables(self) -> Dict[str, Any]:
-        """Return the variables with their types.
-
-        Returns
-        -------
-        dict
-            The variables with their types.
-        """
+        """Return the variables with their types."""
         from anemoi.transform.variables import Variable
 
         constants = self.constant_fields
@@ -561,24 +543,12 @@ class Dataset(ABC, Sized):
 
     @property
     def start_date(self) -> np.datetime64:
-        """Return the start date of the dataset.
-
-        Returns
-        -------
-        numpy.datetime64
-            The start date.
-        """
+        """Return the start date of the dataset."""
         return self.dates[0]
 
     @property
     def end_date(self) -> np.datetime64:
-        """Return the end date of the dataset.
-
-        Returns
-        -------
-        numpy.datetime64
-            The end date.
-        """
+        """Return the end date of the dataset."""
         return self.dates[-1]
 
     def dataset_metadata(self) -> Dict[str, Any]:
@@ -727,13 +697,7 @@ class Dataset(ABC, Sized):
 
     @property
     def grids(self) -> TupleIndex:
-        """Return the grid shape of the dataset.
-
-        Returns
-        -------
-        tuple
-            The grid shape.
-        """
+        """Return the grid shape of the dataset."""
         return (self.shape[-1],)
 
     def _check(ds: "Dataset") -> None:
@@ -763,13 +727,7 @@ class Dataset(ABC, Sized):
 
     @property
     def label(self) -> str:
-        """Return the label of the dataset.
-
-        Returns
-        -------
-        str
-            The label.
-        """
+        """Return the label of the dataset."""
         return self.__class__.__name__.lower()
 
     def computed_constant_fields(self) -> List[str]:
@@ -927,185 +885,85 @@ class Dataset(ABC, Sized):
     @abstractmethod
     @property
     def variables(self) -> List[str]:
-        """Return the list of variables in the dataset.
-
-        Returns
-        -------
-        list of str
-            The list of variables.
-        """
+        """Return the list of variables in the dataset."""
         pass
 
     @abstractmethod
     @property
     def frequency(self) -> datetime.timedelta:
-        """Return the frequency of the dataset.
-
-        Returns
-        -------
-        datetime.timedelta
-            The frequency.
-        """
+        """Return the frequency of the dataset."""
         pass
 
     @abstractmethod
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """Return the dates in the dataset.
-
-        Returns
-        -------
-        numpy.ndarray
-            The dates.
-        """
+        """Return the dates in the dataset."""
         pass
 
     @abstractmethod
     @property
     def resolution(self) -> str:
-        """Return the resolution of the dataset.
-
-        Returns
-        -------
-        str
-            The resolution.
-        """
+        """Return the resolution of the dataset."""
         pass
 
     @abstractmethod
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """Return the mapping of variable names to indices.
-
-        Returns
-        -------
-        dict
-            The mapping of variable names to indices.
-        """
-        pass
-
-    @abstractmethod
-    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """Return the data at the specified index.
-
-        Parameters
-        ----------
-        n : int, slice, or tuple of int, slice, or Ellipsis
-            The index.
-
-        Returns
-        -------
-        numpy.ndarray
-            The data.
-        """
+        """Return the mapping of variable names to indices."""
         pass
 
     @abstractmethod
     @property
     def shape(self) -> Shape:
-        """Return the shape of the dataset.
-
-        Returns
-        -------
-        tuple
-            The shape.
-        """
+        """Return the shape of the dataset."""
         pass
 
     @abstractmethod
     @property
     def field_shape(self) -> Shape:
-        """Return the shape of the fields in the dataset.
-
-        Returns
-        -------
-        tuple
-            The field shape.
-        """
+        """Return the shape of the fields in the dataset."""
         pass
 
     @abstractmethod
     @property
     def dtype(self) -> np.dtype:
-        """Return the data type of the dataset.
-
-        Returns
-        -------
-        numpy.dtype
-            The data type.
-        """
+        """Return the data type of the dataset."""
         pass
 
     @abstractmethod
     @property
     def latitudes(self) -> NDArray[Any]:
-        """Return the latitudes in the dataset.
-
-        Returns
-        -------
-        numpy.ndarray
-            The latitudes.
-        """
+        """Return the latitudes in the dataset."""
         pass
 
     @abstractmethod
     @property
     def longitudes(self) -> NDArray[Any]:
-        """Return the longitudes in the dataset.
-
-        Returns
-        -------
-        numpy.ndarray
-            The longitudes.
-        """
+        """Return the longitudes in the dataset."""
         pass
 
     @abstractmethod
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """Return the metadata of the variables in the dataset.
-
-        Returns
-        -------
-        dict
-            The variables metadata.
-        """
+        """Return the metadata of the variables in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
     def missing(self) -> Set[int]:
-        """Return the set of missing indices in the dataset.
-
-        Returns
-        -------
-        set of int
-            The set of missing indices.
-        """
+        """Return the set of missing indices in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
     def constant_fields(self) -> List[str]:
-        """Return the list of constant fields in the dataset.
-
-        Returns
-        -------
-        list of str
-            The constant fields.
-        """
+        """Return the list of constant fields in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Return the statistics of the dataset.
-
-        Returns
-        -------
-        dict
-            The statistics.
-        """
+        """Return the statistics of the dataset."""
         pass
 
     @abstractmethod

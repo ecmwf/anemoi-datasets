@@ -28,9 +28,9 @@ def _expand(paths: List[str]) -> Generator[str]:
     paths : List[str]
         List of paths to expand.
 
-    Yields
-    ------
-    str
+    Returns
+    -------
+    Generator[str]
         Expanded file paths.
     """
     if not isinstance(paths, list):
@@ -68,9 +68,9 @@ def iterate_patterns(path: str, dates: List[datetime.datetime], **kwargs: Any) -
     **kwargs : Any
         Additional keyword arguments to substitute in the pattern.
 
-    Yields
-    ------
-    Tuple[str, List[str]]
+    Returns
+    -------
+    Generator[Tuple[str, List[str]]]
         The expanded path and list of ISO formatted dates.
     """
     given_paths = path if isinstance(path, list) else [path]

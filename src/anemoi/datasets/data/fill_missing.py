@@ -75,11 +75,7 @@ class MissingDatesFill(Forwards):
 
     @property
     def missing(self) -> Set[int]:
-        """Get the set of missing dates.
-
-        Returns:
-            Set[int]: The set of missing dates.
-        """
+        """Get the set of missing dates."""
         return set()
 
     @debug_indexing

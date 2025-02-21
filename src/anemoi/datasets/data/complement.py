@@ -80,39 +80,23 @@ class Complement(Combined):
 
     @property
     def variables(self) -> List[str]:
-        """Returns the list of variables to be added to the target dataset.
-
-        Returns:
-            List[str]: List of variables.
-        """
+        """Returns the list of variables to be added to the target dataset."""
         return self._variables
 
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """Returns a dictionary mapping variable names to their indices.
-
-        Returns:
-            Dict[str, int]: Dictionary of variable names and indices.
-        """
+        """Returns a dictionary mapping variable names to their indices."""
         return {v: i for i, v in enumerate(self.variables)}
 
     @property
     def shape(self) -> Shape:
-        """Returns the shape of the complemented dataset.
-
-        Returns:
-            Shape: Shape of the dataset.
-        """
+        """Returns the shape of the complemented dataset."""
         shape = self._target.shape
         return (shape[0], len(self._variables)) + shape[2:]
 
     @property
     def variables_metadata(self) -> dict:
-        """Returns the metadata of the variables to be added to the target dataset.
-
-        Returns:
-            dict: Metadata of the variables.
-        """
+        """Returns the metadata of the variables to be added to the target dataset."""
         return {k: v for k, v in self._source.variables_metadata.items() if k in self._variables}
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
@@ -126,11 +110,7 @@ class Complement(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """Returns the set of missing indices in the source and target datasets.
-
-        Returns:
-            Set[int]: Set of missing indices.
-        """
+        """Returns the set of missing indices in the source and target datasets."""
         missing = self._source.missing.copy()
         missing = missing | self._target.missing
         return set(missing)

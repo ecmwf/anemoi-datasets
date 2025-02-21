@@ -36,8 +36,6 @@ def assert_field_list(
         constant (bool): If True, checks that all fields are constant.
         skip (Optional[Any]): Placeholder for future use.
 
-    Returns:
-        None
     """
     import numpy as np
 

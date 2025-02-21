@@ -107,11 +107,7 @@ class FunctionAction(Action):
 
     @property
     def function(self) -> Callable[..., Any]:
-        """Returns the function to be executed.
-
-        Returns:
-            Callable[..., Any]: The function to be executed.
-        """
+        """Returns the function to be executed."""
         return import_function(self.name, "sources")
 
     def __repr__(self) -> str:
@@ -179,11 +175,7 @@ class FunctionResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """Returns the datasource for the function result.
-
-        Returns:
-            FieldList: The datasource field list.
-        """
+        """Returns the datasource for the function result."""
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
         try:

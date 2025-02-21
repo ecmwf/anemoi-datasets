@@ -110,100 +110,60 @@ class Unchecked(Combined):
     @property
     @check("check_same_dates")
     def dates(self) -> NDArray[np.datetime64]:
-        """Get the dates of the dataset.
-
-        Returns:
-            NDArray[np.datetime64]: The dates of the dataset.
-        """
+        """Get the dates of the dataset."""
         pass
 
     @property
     @check("check_same_resolution")
     def resolution(self) -> Any:
-        """Get the resolution of the dataset.
-
-        Returns:
-            Any: The resolution of the dataset.
-        """
+        """Get the resolution of the dataset."""
         pass
 
     @property
     def field_shape(self) -> tuple:
-        """Get the field shape of the dataset.
-
-        Returns:
-            tuple: The field shape of the dataset.
-        """
+        """Get the field shape of the dataset."""
         raise NotImplementedError()
 
     @property
     @check("check_same_frequency")
     def frequency(self) -> datetime.timedelta:
-        """Get the frequency of the dataset.
-
-        Returns:
-            datetime.timedelta: The frequency of the dataset.
-        """
+        """Get the frequency of the dataset."""
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
     def latitudes(self) -> NDArray[Any]:
-        """Get the latitudes of the dataset.
-
-        Returns:
-            NDArray[Any]: The latitudes of the dataset.
-        """
+        """Get the latitudes of the dataset."""
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
     def longitudes(self) -> NDArray[Any]:
-        """Get the longitudes of the dataset.
-
-        Returns:
-            NDArray[Any]: The longitudes of the dataset.
-        """
+        """Get the longitudes of the dataset."""
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """Get the mapping of variable names to their indices.
-
-        Returns:
-            Dict[str, int]: The mapping of variable names to indices.
-        """
+        """Get the mapping of variable names to their indices."""
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def variables(self) -> List[str]:
-        """Get the list of variables in the dataset.
-
-        Returns:
-            List[str]: The list of variables.
-        """
+        """Get the list of variables in the dataset."""
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def variables_metadata(self) -> dict:
-        """Get the metadata for the variables.
-
-        Returns:
-            dict: The metadata for the variables.
-        """
+        """Get the metadata for the variables."""
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Get the statistics of the dataset.
-
-        Returns:
-            Dict[str, NDArray[Any]]: The statistics of the dataset.
-        """
+        """Get the statistics of the dataset."""
         raise NotImplementedError()
 
     @check("check_same_variables")
@@ -220,20 +180,12 @@ class Unchecked(Combined):
 
     @property
     def shape(self) -> Shape:
-        """Get the shape of the dataset.
-
-        Returns:
-            Shape: The shape of the dataset.
-        """
+        """Get the shape of the dataset."""
         raise NotImplementedError()
 
     @cached_property
     def missing(self) -> Set[int]:
-        """Get the missing data indices.
-
-        Returns:
-            Set[int]: The missing data indices.
-        """
+        """Get the missing data indices."""
         result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing
@@ -264,11 +216,7 @@ class Chain(ConcatMixin, Unchecked):
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """Get the dates of the dataset.
-
-        Returns:
-            NDArray[np.datetime64]: The dates of the dataset.
-        """
+        """Get the dates of the dataset."""
         raise NotImplementedError()
 
     def dataset_metadata(self) -> dict:

@@ -37,6 +37,9 @@ def step(action_path: list[str]) -> str:
 
     Args:
         action_path (list[str]): The action path.
+
+    Returns:
+        str: The formatted action path.
     """
     return f"[{'.'.join(action_path)}]"
 
@@ -62,6 +65,9 @@ def trace_datasource(method: Callable) -> Callable:
 
     Args:
         method (Callable): The method to decorate.
+
+    Returns:
+        Callable: The wrapped method.
     """
 
     @wraps(method)
@@ -95,6 +101,9 @@ def trace_select(method: Callable) -> Callable:
 
     Args:
         method (Callable): The method to decorate.
+
+    Returns:
+        Callable: The wrapped method.
     """
 
     @wraps(method)

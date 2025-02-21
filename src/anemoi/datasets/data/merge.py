@@ -114,29 +114,17 @@ class Merge(Combined):
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """Get the dates of the merged dataset.
-
-        Returns:
-            NDArray[np.datetime64]: Array of dates.
-        """
+        """Get the dates of the merged dataset."""
         return self._dates
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """Get the frequency of the dates in the merged dataset.
-
-        Returns:
-            datetime.timedelta: Frequency of the dates.
-        """
+        """Get the frequency of the dates in the merged dataset."""
         return self._frequency
 
     @cached_property
     def missing(self) -> Set[int]:
-        """Get the indices of missing dates in the merged dataset.
-
-        Returns:
-            Set[int]: Set of indices of missing dates.
-        """
+        """Get the indices of missing dates in the merged dataset."""
         # TODO: optimize
         result: Set[int] = set()
 

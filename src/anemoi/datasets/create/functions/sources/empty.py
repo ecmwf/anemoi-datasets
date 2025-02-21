@@ -8,10 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import List
+
 import earthkit.data as ekd
 
 
-def execute(context, dates, **kwargs):
+def execute(context: Any, dates: List[str], **kwargs: Any) -> Any:
     """Executes the loading of an empty data source.
 
     Parameters

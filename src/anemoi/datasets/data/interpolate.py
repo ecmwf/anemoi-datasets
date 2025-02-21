@@ -147,11 +147,7 @@ class InterpolateFrequency(Forwards):
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
-        """Get the interpolated dates.
-
-        Returns:
-            NDArray[np.datetime64]: The interpolated dates.
-        """
+        """Get the interpolated dates."""
         result = []
         deltas = [np.timedelta64(self.seconds * i, "s") for i in range(self.ratio)]
         for d in self.forward.dates[:-1]:
@@ -175,11 +171,7 @@ class InterpolateFrequency(Forwards):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """Get the missing data indices.
-
-        Returns:
-            Set[int]: The missing data indices.
-        """
+        """Get the missing data indices."""
         result = []
         j = 0
         for i in range(self.other_len):

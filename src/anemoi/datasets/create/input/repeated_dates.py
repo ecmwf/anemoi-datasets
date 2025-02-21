@@ -45,8 +45,10 @@ class DateMapper:
             source (Any): The data source.
             config (Dict[str, Any]): Configuration parameters.
 
-        Returns:
-            DateMapper: An instance of DateMapper.
+        Returns
+        -------
+        DateMapper
+            An instance of DateMapper.
         """
         MODES: dict = dict(
             closest=DateMapperClosest,
@@ -85,8 +87,10 @@ class DateMapperClosest(DateMapper):
         Args:
             group_of_dates (Any): The group of dates to transform.
 
-        Yields:
-            Generator[Tuple[Any, Any], None, None]: Transformed dates.
+        Returns
+        -------
+        Generator[Tuple[Any, Any], None, None]
+            Transformed dates.
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -185,8 +189,10 @@ class DateMapperClimatology(DateMapper):
         Args:
             group_of_dates (Any): The group of dates to transform.
 
-        Yields:
-            Generator[Tuple[Any, Any], None, None]: Transformed dates.
+        Returns
+        -------
+        Generator[Tuple[Any, Any], None, None]
+            Transformed dates.
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -227,8 +233,10 @@ class DateMapperConstant(DateMapper):
         Args:
             group_of_dates (Any): The group of dates to transform.
 
-        Yields:
-            Generator[Tuple[Any, Any], None, None]: Transformed dates.
+        Returns
+        -------
+        Generator[Tuple[Any, Any], None, None]
+            Transformed dates.
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -275,11 +283,7 @@ class DateMapperResult(Result):
 
     @property
     def datasource(self) -> Any:
-        """Get the datasource with updated valid datetime.
-
-        Returns:
-            Any: The updated datasource.
-        """
+        """Get the datasource with updated valid datetime."""
         result: list = []
 
         for field in self.source_results.datasource:
@@ -317,8 +321,10 @@ class RepeatedDatesAction(Action):
         Args:
             group_of_dates (Any): The group of dates to select.
 
-        Returns:
-            JoinResult: The result of the join operation.
+        Returns
+        -------
+        JoinResult
+            The result of the join operation.
         """
         results: list = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
@@ -338,7 +344,9 @@ class RepeatedDatesAction(Action):
     def __repr__(self) -> str:
         """Get the string representation of the action.
 
-        Returns:
-            str: The string representation.
+        Returns
+        -------
+        str
+            The string representation.
         """
         return f"MultiDateMatchAction({self.source}, {self.mapper})"

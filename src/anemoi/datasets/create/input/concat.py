@@ -61,11 +61,7 @@ class ConcatResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """Returns the concatenated datasource from all results.
-
-        Returns:
-            FieldList: The concatenated datasource from all results.
-        """
+        """Returns the concatenated datasource from all results."""
         ds = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
@@ -73,11 +69,7 @@ class ConcatResult(Result):
 
     @property
     def variables(self) -> List[str]:
-        """Returns the list of variables, ensuring all results have the same variables.
-
-        Returns:
-            List[str]: The list of variables.
-        """
+        """Returns the list of variables, ensuring all results have the same variables."""
         variables = None
         for f in self.results:
             if f.empty:

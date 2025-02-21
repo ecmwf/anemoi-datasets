@@ -142,11 +142,7 @@ class AddGrid:
 
     @property
     def resolution(self) -> str:
-        """Get the resolution of the grid.
-
-        Returns:
-            str: The resolution.
-        """
+        """Get the resolution of the grid."""
         return "unknown"
 
 
@@ -158,8 +154,13 @@ def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
         paths (List[str]): List of paths to the GRIB files.
         **kwargs (Any): Additional keyword arguments.
 
-    Raises:
-        ValueError: If the number of fields does not match the expected count.
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError: If the number of fields does not match the expected count.
     """
     count = 1
     for k, v in kwargs.items():

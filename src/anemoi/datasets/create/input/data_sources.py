@@ -110,11 +110,7 @@ class DataSourcesResult(Result):
 
     @cached_property
     def datasource(self) -> FieldList:
-        """Returns the combined datasource from all sources.
-
-        Returns:
-            FieldList: The combined datasource from all sources.
-        """
+        """Returns the combined datasource from all sources."""
         for i in self.sources_results:
             # for each result trigger the datasource to be computed
             # and saved in context

@@ -8,10 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import List
+
+import xarray as xr
+
 from .xarray import load_many
 
 
-def execute(context, dates, path, *args, **kwargs):
+def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> xr.Dataset:
     """Execute the loading of data using the specified context, dates, and path.
 
     Parameters

@@ -206,7 +206,9 @@ def factorise_requests(
         request_already_using_valid_datetime: Flag indicating if the requests already use valid datetime.
         date_key: The key for the date in the requests.
 
-    Yields:
+    Returns
+    -------
+    Generator[Dict[str, Any], None, None]
         Factorized requests.
     """
     updates = []

@@ -27,7 +27,7 @@ from .summary import Summary
 LOG = logging.getLogger(__name__)
 
 
-def default_statistics_dates(dates) -> tuple:
+def default_statistics_dates(dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
     """Calculate default statistics dates based on the given list of dates.
 
     Args:
@@ -69,7 +69,7 @@ def default_statistics_dates(dates) -> tuple:
     return dates[0], end
 
 
-def to_datetime(date):
+def to_datetime(date: str | datetime.datetime) -> np.datetime64:
     """Convert a date to numpy datetime64 format.
 
     Args:
@@ -85,7 +85,7 @@ def to_datetime(date):
     return date
 
 
-def to_datetimes(dates):
+def to_datetimes(dates: list[str | datetime.datetime]) -> list[np.datetime64]:
     """Convert a list of dates to numpy datetime64 format.
 
     Args:
@@ -97,7 +97,7 @@ def to_datetimes(dates):
     return [to_datetime(d) for d in dates]
 
 
-def fix_variance(x, name, count, sums, squares):
+def fix_variance(x: float, name: str, count: np.ndarray, sums: np.ndarray, squares: np.ndarray) -> float:
     """Fix negative variance values due to numerical errors.
 
     Args:
@@ -140,7 +140,16 @@ def fix_variance(x, name, count, sums, squares):
     return 0
 
 
-def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squares):
+def check_variance(
+    x: np.ndarray,
+    variables_names: list[str],
+    minimum: np.ndarray,
+    maximum: np.ndarray,
+    mean: np.ndarray,
+    count: np.ndarray,
+    sums: np.ndarray,
+    squares: np.ndarray,
+) -> None:
     """Check for negative variance values and raise an error if found.
 
     Args:
@@ -176,7 +185,9 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
     raise ValueError("Negative variance")
 
 
-def compute_statistics(array, check_variables_names=None, allow_nans=False):
+def compute_statistics(
+    array: np.ndarray, check_variables_names: list[str] | None = None, allow_nans: bool = False
+) -> dict[str, np.ndarray]:
     """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
     LOG.info(f"Computing statistics for {array.shape} array")
     nvars = array.shape[1]
@@ -230,7 +241,7 @@ class TmpStatistics:
     # to write statistics in pickled npz files.
     # can provide statistics for a subset of dates.
 
-    def __init__(self, dirname, overwrite=False):
+    def __init__(self, dirname: str, overwrite: bool = False) -> None:
         """Initialize TmpStatistics.
 
         Args:
@@ -240,7 +251,7 @@ class TmpStatistics:
         self.dirname = dirname
         self.overwrite = overwrite
 
-    def add_provenance(self, **kwargs):
+    def add_provenance(self, **kwargs: dict) -> None:
         """Add provenance information.
 
         Args:
@@ -254,7 +265,7 @@ class TmpStatistics:
         with open(path, "w") as f:
             json.dump(out, f)
 
-    def create(self, exist_ok):
+    def create(self, exist_ok: bool) -> None:
         """Create the directory for storing statistics.
 
         Args:
@@ -262,14 +273,14 @@ class TmpStatistics:
         """
         os.makedirs(self.dirname, exist_ok=exist_ok)
 
-    def delete(self):
+    def delete(self) -> None:
         """Delete the directory for storing statistics."""
         try:
             shutil.rmtree(self.dirname)
         except FileNotFoundError:
             pass
 
-    def write(self, key, data, dates):
+    def write(self, key: str, data: any, dates: list[datetime.datetime]) -> None:
         """Write statistics data to a file.
 
         Args:
@@ -291,7 +302,7 @@ class TmpStatistics:
 
         LOG.debug(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
 
-    def _gather_data(self):
+    def _gather_data(self) -> tuple[str, list[datetime.datetime], dict]:
         """Gather data from stored files.
 
         Yields:
@@ -305,7 +316,7 @@ class TmpStatistics:
             with open(f, "rb") as f:
                 yield pickle.load(f)
 
-    def get_aggregated(self, *args, **kwargs):
+    def get_aggregated(self, *args: any, **kwargs: any) -> Summary:
         """Get aggregated statistics.
 
         Returns:
@@ -314,7 +325,7 @@ class TmpStatistics:
         aggregator = StatAggregator(self, *args, **kwargs)
         return aggregator.aggregate()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """String representation of TmpStatistics.
 
         Returns:
@@ -328,7 +339,9 @@ class StatAggregator:
 
     NAMES = ["minimum", "maximum", "sums", "squares", "count", "has_nans"]
 
-    def __init__(self, owner, dates, variables_names, allow_nans):
+    def __init__(
+        self, owner: TmpStatistics, dates: list[datetime.datetime], variables_names: list[str], allow_nans: bool
+    ) -> None:
         """Initialize StatAggregator.
 
         Args:
@@ -359,7 +372,7 @@ class StatAggregator:
 
         self._read()
 
-    def _read(self):
+    def _read(self) -> None:
         """Read and aggregate statistics data from files."""
 
         def check_type(a, b):
@@ -417,7 +430,7 @@ class StatAggregator:
         assert self._number_of_dates == offset, "Not all dates found in precomputed statistics."
         LOG.debug(f"Statistics for {len(found)} dates found.")
 
-    def aggregate(self):
+    def aggregate(self) -> Summary:
         """Aggregate the statistics data.
 
         Returns:

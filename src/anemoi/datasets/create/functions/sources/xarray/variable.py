@@ -79,13 +79,7 @@ class Variable:
 
     @property
     def name(self) -> str:
-        """Return the name of the variable.
-
-        Returns
-        -------
-        str
-            The name of the variable.
-        """
+        """Return the name of the variable."""
         return str(self.variable.name)
 
     def __len__(self) -> int:
@@ -100,13 +94,7 @@ class Variable:
 
     @property
     def grid_mapping(self) -> Optional[Dict[str, Any]]:
-        """Return the grid mapping of the variable.
-
-        Returns
-        -------
-        Optional[Dict[str, Any]]
-            The grid mapping of the variable.
-        """
+        """Return the grid mapping of the variable."""
         grid_mapping = self.variable.attrs.get("grid_mapping", None)
         if grid_mapping is None:
             return None
@@ -124,24 +112,12 @@ class Variable:
 
     @property
     def latitudes(self) -> Any:
-        """Return the latitudes of the variable.
-
-        Returns
-        -------
-        Any
-            The latitudes of the variable.
-        """
+        """Return the latitudes of the variable."""
         return self.grid.latitudes
 
     @property
     def longitudes(self) -> Any:
-        """Return the longitudes of the variable.
-
-        Returns
-        -------
-        Any
-            The longitudes of the variable.
-        """
+        """Return the longitudes of the variable."""
         return self.grid.longitudes
 
     def __repr__(self) -> str:
@@ -293,13 +269,7 @@ class FilteredVariable:
 
     @cached_property
     def fields(self) -> List["XArrayField"]:
-        """Filter the fields of a variable based on metadata.
-
-        Returns
-        -------
-        List[XArrayField]
-            The filtered fields.
-        """
+        """Filter the fields of a variable based on metadata."""
         return [
             field
             for field in self.variable
@@ -308,13 +278,7 @@ class FilteredVariable:
 
     @property
     def length(self) -> int:
-        """Return the length of the filtered variable.
-
-        Returns
-        -------
-        int
-            The length of the filtered variable.
-        """
+        """Return the length of the filtered variable."""
         return len(self.fields)
 
     def __len__(self) -> int:

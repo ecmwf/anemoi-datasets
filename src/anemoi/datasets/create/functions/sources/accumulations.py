@@ -37,6 +37,9 @@ def _member(field: Any) -> int:
 
     Args:
         field (Any): The field from which to retrieve the member number.
+
+    Returns:
+        int: The member number.
     """
     # Bug in eccodes has number=0 randomly
     number = field.metadata("number", default=0)
@@ -204,6 +207,9 @@ class Accumulation:
             frequency (Optional[int]): Frequency of accumulation.
             base_times (List[int]): List of base times.
             adjust_step (bool): Whether to adjust the step.
+
+        Returns:
+            Generator[Tuple[int, int, Tuple[int, ...]], None, None]: A generator of MARS date-time steps.
         """
         # assert step1 > 0, (step1, step2, frequency)
 
@@ -224,7 +230,11 @@ class Accumulation:
             yield cls._mars_date_time_step(base_date, step1, step2, add_step, frequency)
 
     def __repr__(self) -> str:
-        """Returns a string representation of the Accumulation instance."""
+        """Returns a string representation of the Accumulation instance.
+
+        Returns:
+            str: String representation of the Accumulation instance.
+        """
         return f"{self.__class__.__name__}({self.key})"
 
 
@@ -278,6 +288,9 @@ class AccumulationFromStart(Accumulation):
             step2 (int): Second step.
             add_step (int): Additional step.
             frequency (Optional[int]): Frequency of accumulation.
+
+        Returns:
+            Tuple[int, int, Tuple[int, ...]]: A tuple representing the MARS date-time step.
         """
         assert not frequency, frequency
 
@@ -338,6 +351,9 @@ class AccumulationFromLastStep(Accumulation):
             step2 (int): Second step.
             add_step (int): Additional step.
             frequency (int): Frequency of accumulation.
+
+        Returns:
+            Tuple[int, int, Tuple[int, ...]]: A tuple representing the MARS date-time step.
         """
         assert frequency > 0, frequency
         # assert step1 > 0, (step1, step2, frequency, add_step, base_date)
@@ -357,6 +373,9 @@ def _identity(x: Any) -> Any:
 
     Args:
         x (Any): Input value.
+
+    Returns:
+        Any: The input value.
     """
     return x
 
@@ -382,6 +401,9 @@ def _compute_accumulations(
         patch (Any, optional): Patch function. Defaults to _identity.
         base_times (Optional[List[int]], optional): List of base times. Defaults to None.
         use_cdsapi_dataset (Optional[str], optional): CDSAPI dataset to use. Defaults to None.
+
+    Returns:
+        Any: The computed accumulations.
     """
     adjust_step = isinstance(user_accumulation_period, int)
 
@@ -488,6 +510,9 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
 
     Args:
         x (Union[List[Any], Tuple[Any], Any]): Input value.
+
+    Returns:
+        List[Any]: The input value as a list.
     """
     if isinstance(x, (list, tuple)):
         return x
@@ -499,6 +524,9 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
 
     Args:
         request (Dict[str, Any]): Request parameters.
+
+    Returns:
+        Dict[str, Any]: The modified request parameters.
     """
     if request["time"] in (6, 18, 600, 1800):
         request["stream"] = "scda"
@@ -517,6 +545,9 @@ def accumulations(
         dates (List[datetime.datetime]): List of dates.
         use_cdsapi_dataset (Optional[str], optional): CDSAPI dataset to use. Defaults to None.
         **request (Any): Additional request parameters.
+
+    Returns:
+        Any: The computed accumulations.
     """
     _to_list(request["param"])
     class_ = request.get("class", "od")

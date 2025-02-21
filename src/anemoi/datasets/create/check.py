@@ -62,14 +62,10 @@ class DatasetName:
 
     @property
     def error_message(self) -> str:
-        """Generate an error message based on the collected messages.
-
-        Returns:
-            str: The error message.
-        """
+        """Generate an error message based on the collected messages."""
         out = " And ".join(self.messages)
         if out:
-            out = out[0].upper() + out[1:]
+            out[0].upper() + out[1:]
         return out
 
     def raise_if_not_valid(self, print: Callable = print) -> None:
@@ -116,11 +112,7 @@ class DatasetName:
         return parsed
 
     def __str__(self) -> str:
-        """Return the string representation of the dataset name.
-
-        Returns:
-            str: The dataset name.
-        """
+        """Return the string representation of the dataset name."""
         return self.name
 
     def check_parsed(self) -> None:

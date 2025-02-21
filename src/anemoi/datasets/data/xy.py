@@ -118,11 +118,7 @@ class ZipBase(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """Get the set of missing indices from all datasets.
-
-        Returns:
-            Set[int]: Set of missing indices.
-        """
+        """Get the set of missing indices from all datasets."""
         result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing

@@ -142,20 +142,12 @@ class Version:
 
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """Get a mapping of variable names to their indices.
-
-        Returns:
-            Dict[str, int]: A dictionary mapping variable names to indices.
-        """
+        """Get a mapping of variable names to their indices."""
         return find(self.metadata, "name_to_index")
 
     @property
     def longitudes(self) -> NDArray[Any]:
-        """Get the longitudes of the dataset.
-
-        Returns:
-            NDArray[Any]: An array of longitudes.
-        """
+        """Get the longitudes of the dataset."""
         try:
             return self.zarr.longitudes[:]
         except (KeyError, AttributeError):
@@ -163,11 +155,7 @@ class Version:
 
     @property
     def data(self) -> Any:
-        """Get the data of the dataset.
-
-        Returns:
-            Any: The data of the dataset.
-        """
+        """Get the data of the dataset."""
         try:
             return self.zarr.data
         except AttributeError:
@@ -175,86 +163,50 @@ class Version:
 
     @property
     def first_date(self) -> datetime.datetime:
-        """Get the first date of the dataset.
-
-        Returns:
-            datetime.datetime: The first date of the dataset.
-        """
+        """Get the first date of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["first_date"])
 
     @property
     def last_date(self) -> datetime.datetime:
-        """Get the last date of the dataset.
-
-        Returns:
-            datetime.datetime: The last date of the dataset.
-        """
+        """Get the last date of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["last_date"])
 
     @property
     def frequency(self) -> str:
-        """Get the frequency of the dataset.
-
-        Returns:
-            str: The frequency of the dataset.
-        """
+        """Get the frequency of the dataset."""
         return self.metadata["frequency"]
 
     @property
     def resolution(self) -> str:
-        """Get the resolution of the dataset.
-
-        Returns:
-            str: The resolution of the dataset.
-        """
+        """Get the resolution of the dataset."""
         return self.metadata["resolution"]
 
     @property
     def field_shape(self) -> tuple | None:
-        """Get the field shape of the dataset.
-
-        Returns:
-            tuple | None: The field shape of the dataset, or None if not available.
-        """
+        """Get the field shape of the dataset."""
         return self.metadata.get("field_shape")
 
     @property
     def proj_string(self) -> str | None:
-        """Get the projection string of the dataset.
-
-        Returns:
-            str | None: The projection string of the dataset, or None if not available.
-        """
+        """Get the projection string of the dataset."""
         return self.metadata.get("proj_string")
 
     @property
     def shape(self) -> tuple | None:
-        """Get the shape of the dataset.
-
-        Returns:
-            tuple | None: The shape of the dataset, or None if not available.
-        """
+        """Get the shape of the dataset."""
         if self.data and hasattr(self.data, "shape"):
             return self.data.shape
 
     @property
     def n_missing_dates(self) -> int | None:
-        """Get the number of missing dates in the dataset.
-
-        Returns:
-            int | None: The number of missing dates, or None if not available.
-        """
+        """Get the number of missing dates in the dataset."""
         if "missing_dates" in self.metadata:
             return len(self.metadata["missing_dates"])
         return None
 
     @property
     def uncompressed_data_size(self) -> int | None:
-        """Get the uncompressed data size of the dataset.
-
-        Returns:
-            int | None: The uncompressed data size in bytes, or None if not available.
-        """
+        """Get the uncompressed data size of the dataset."""
         if self.data and hasattr(self.data, "dtype") and hasattr(self.data, "size"):
             return self.data.dtype.itemsize * self.data.size
 
@@ -313,29 +265,17 @@ class Version:
 
     @property
     def variables(self) -> List[str]:
-        """Get the list of variables in the dataset.
-
-        Returns:
-            List[str]: A list of variable names.
-        """
+        """Get the list of variables in the dataset."""
         return [v[0] for v in sorted(self.name_to_index.items(), key=lambda x: x[1])]
 
     @property
     def total_size(self) -> int | None:
-        """Get the total size of the dataset.
-
-        Returns:
-            int | None: The total size in bytes, or None if not available.
-        """
+        """Get the total size of the dataset."""
         return self.zarr.attrs.get("total_size")
 
     @property
     def total_number_of_files(self) -> int | None:
-        """Get the total number of files in the dataset.
-
-        Returns:
-            int | None: The total number of files, or None if not available.
-        """
+        """Get the total number of files in the dataset."""
         return self.zarr.attrs.get("total_number_of_files")
 
     def print_sizes(self, size: bool) -> None:
@@ -360,11 +300,7 @@ class Version:
 
     @property
     def statistics(self) -> tuple[list, list, list, list]:
-        """Get the statistics of the dataset.
-
-        Returns:
-            tuple[list, list, list, list]: A tuple containing lists of minimum, maximum, mean, and standard deviation values.
-        """
+        """Get the statistics of the dataset."""
         try:
             if self.dataset is not None:
                 stats = self.dataset.statistics
@@ -374,11 +310,7 @@ class Version:
 
     @property
     def statistics_ready(self) -> bool:
-        """Check if the statistics are ready.
-
-        Returns:
-            bool: True if the statistics are ready, False otherwise.
-        """
+        """Check if the statistics are ready."""
         for d in reversed(self.metadata.get("history", [])):
             if d["action"] == "compute_statistics_end":
                 return True
@@ -386,11 +318,7 @@ class Version:
 
     @property
     def statistics_started(self) -> datetime.datetime | None:
-        """Get the timestamp when statistics computation started.
-
-        Returns:
-            datetime.datetime | None: The timestamp, or None if not available.
-        """
+        """Get the timestamp when statistics computation started."""
         for d in reversed(self.metadata.get("history", [])):
             if d["action"] == "compute_statistics_start":
                 return datetime.datetime.fromisoformat(d["timestamp"])
@@ -398,31 +326,19 @@ class Version:
 
     @property
     def build_flags(self) -> NDArray[Any] | None:
-        """Get the build flags of the dataset.
-
-        Returns:
-            NDArray[Any] | None: An array of build flags, or None if not available.
-        """
+        """Get the build flags of the dataset."""
         return self.zarr.get("_build_flags")
 
     @cached_property
     def copy_flags(self) -> NDArray | None:
-        """Get the copy flags of the dataset.
-
-        Returns:
-            NDArray | None: An array of copy flags, or None if not available.
-        """
+        """Get the copy flags of the dataset."""
         if "_copy" not in self.zarr:
             return None
         return self.zarr["_copy"][:]
 
     @property
     def copy_in_progress(self) -> bool:
-        """Check if a copy operation is in progress.
-
-        Returns:
-            bool: True if a copy operation is in progress, False otherwise.
-        """
+        """Check if a copy operation is in progress."""
         if "_copy" not in self.zarr:
             return False
 
@@ -435,11 +351,7 @@ class Version:
 
     @property
     def build_lengths(self) -> NDArray | None:
-        """Get the build lengths of the dataset.
-
-        Returns:
-            NDArray | None: An array of build lengths, or None if not available.
-        """
+        """Get the build lengths of the dataset."""
         return self.zarr.get("_build_lengths")
 
     def progress(self) -> None:
@@ -554,21 +466,13 @@ class NoVersion(Version):
 
     @property
     def first_date(self) -> datetime.datetime:
-        """Get the first date of the dataset.
-
-        Returns:
-            datetime.datetime: The first date of the dataset.
-        """
+        """Get the first date of the dataset."""
         monthly = find(self.metadata, "monthly")
         return datetime.datetime.fromisoformat(monthly["start"])
 
     @property
     def last_date(self) -> datetime.datetime:
-        """Get the last date of the dataset.
-
-        Returns:
-            datetime.datetime: The last date of the dataset.
-        """
+        """Get the last date of the dataset."""
         monthly = find(self.metadata, "monthly")
         time = max([int(t) for t in find(self.metadata["earthkit-data"], "time")])
         assert isinstance(time, int), (time, type(time))
@@ -578,40 +482,24 @@ class NoVersion(Version):
 
     @property
     def frequency(self) -> int:
-        """Get the frequency of the dataset.
-
-        Returns:
-            int: The frequency of the dataset.
-        """
+        """Get the frequency of the dataset."""
         time = find(self.metadata["earthkit-data"], "time")
         return 24 // len(time)
 
     @property
     def statistics(self) -> tuple[list, list, list, list]:
-        """Get the statistics of the dataset.
-
-        Returns:
-            tuple[list, list, list, list]: A tuple containing lists of minimum, maximum, mean, and standard deviation values.
-        """
+        """Get the statistics of the dataset."""
         stats = find(self.metadata, "statistics_by_index")
         return stats["minimum"], stats["maximum"], stats["mean"], stats["stdev"]
 
     @property
     def statistics_ready(self) -> bool:
-        """Check if the statistics are ready.
-
-        Returns:
-            bool: True if the statistics are ready, False otherwise.
-        """
+        """Check if the statistics are ready."""
         return find(self.metadata, "statistics_by_index") is not None
 
     @property
     def resolution(self) -> str:
-        """Get the resolution of the dataset.
-
-        Returns:
-            str: The resolution of the dataset.
-        """
+        """Get the resolution of the dataset."""
         return find(self.metadata, "grid")
 
     def details(self) -> None:
@@ -640,30 +528,18 @@ class Version0_4(Version):
 
     @property
     def initialised(self) -> datetime.datetime:
-        """Get the initialization timestamp of the dataset.
-
-        Returns:
-            datetime.datetime: The initialization timestamp.
-        """
+        """Get the initialization timestamp of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["creation_timestamp"])
 
     def statistics_ready(self) -> bool:
-        """Check if the statistics are ready.
-
-        Returns:
-            bool: True if the statistics are ready, False otherwise.
-        """
+        """Check if the statistics are ready."""
         if not self.ready():
             return False
         build_flags = self.zarr["_build_flags"]
         return build_flags.attrs.get("_statistics_computed")
 
     def ready(self) -> bool:
-        """Check if the dataset is ready.
-
-        Returns:
-            bool: True if the dataset is ready, False otherwise.
-        """
+        """Check if the dataset is ready."""
         if "_build_flags" not in self.zarr:
             return False
 
@@ -713,11 +589,7 @@ class Version0_6(Version):
 
     @property
     def initialised(self) -> datetime.datetime | None:
-        """Get the initialization timestamp of the dataset.
-
-        Returns:
-            datetime.datetime | None: The initialization timestamp, or None if not found.
-        """
+        """Get the initialization timestamp of the dataset."""
         for record in self.metadata.get("history", []):
             if record["action"] == "initialised":
                 return datetime.datetime.fromisoformat(record["timestamp"])
@@ -730,11 +602,7 @@ class Version0_6(Version):
         return None
 
     def ready(self) -> bool:
-        """Check if the dataset is ready.
-
-        Returns:
-            bool: True if the dataset is ready, False otherwise.
-        """
+        """Check if the dataset is ready."""
         if "_build_flags" not in self.zarr:
             return False
 
@@ -743,29 +611,17 @@ class Version0_6(Version):
 
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """Get a mapping of variable names to their indices.
-
-        Returns:
-            Dict[str, int]: A dictionary mapping variable names to indices.
-        """
+        """Get a mapping of variable names to their indices."""
         return {n: i for i, n in enumerate(self.metadata["variables"])}
 
     @property
     def variables(self) -> List[str]:
-        """Get the list of variables in the dataset.
-
-        Returns:
-            List[str]: A list of variable names.
-        """
+        """Get the list of variables in the dataset."""
         return self.metadata["variables"]
 
     @property
     def variables_metadata(self) -> dict:
-        """Get the metadata for the variables.
-
-        Returns:
-            dict: A dictionary containing metadata for the variables.
-        """
+        """Get the metadata for the variables."""
         return self.metadata.get("variables_metadata", {})
 
 
@@ -788,20 +644,12 @@ class Version0_12(Version0_6):
 
     @property
     def first_date(self) -> datetime.datetime:
-        """Get the first date of the dataset.
-
-        Returns:
-            datetime.datetime: The first date of the dataset.
-        """
+        """Get the first date of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["start_date"])
 
     @property
     def last_date(self) -> datetime.datetime:
-        """Get the last date of the dataset.
-
-        Returns:
-            datetime.datetime: The last date of the dataset.
-        """
+        """Get the last date of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["end_date"])
 
 
@@ -810,11 +658,7 @@ class Version0_13(Version0_12):
 
     @property
     def build_flags(self) -> NDArray | None:
-        """Get the build flags for the dataset.
-
-        Returns:
-            NDArray | None: An array of build flags, or None if not found.
-        """
+        """Get the build flags for the dataset."""
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
@@ -822,11 +666,7 @@ class Version0_13(Version0_12):
 
     @property
     def build_lengths(self) -> NDArray | None:
-        """Get the build lengths for the dataset.
-
-        Returns:
-            NDArray | None: An array of build lengths, or None if not found.
-        """
+        """Get the build lengths for the dataset."""
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]

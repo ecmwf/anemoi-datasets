@@ -121,11 +121,7 @@ class Join(Combined):
 
     @cached_property
     def shape(self) -> Shape:
-        """Get the shape of the joined dataset.
-
-        Returns:
-            Shape: The shape of the joined dataset.
-        """
+        """Get the shape of the joined dataset."""
         cols = sum(d.shape[1] for d in self.datasets)
         return (len(self), cols) + self.datasets[0].shape[2:]
 
@@ -165,11 +161,7 @@ class Join(Combined):
 
     @cached_property
     def variables(self) -> List[str]:
-        """Get the variables of the joined dataset.
-
-        Returns:
-            List[str]: The variables of the joined dataset.
-        """
+        """Get the variables of the joined dataset."""
         seen = set()
         result: List[str] = []
         for d in reversed(self.datasets):
@@ -183,11 +175,7 @@ class Join(Combined):
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """Get the metadata of the variables.
-
-        Returns:
-            Dict[str, Any]: The metadata of the variables.
-        """
+        """Get the metadata of the variables."""
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
 
@@ -207,20 +195,12 @@ class Join(Combined):
 
     @cached_property
     def name_to_index(self) -> Dict[str, int]:
-        """Get the mapping of variable names to indices.
-
-        Returns:
-            Dict[str, int]: The mapping of variable names to indices.
-        """
+        """Get the mapping of variable names to indices."""
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Get the statistics of the joined dataset.
-
-        Returns:
-            Dict[str, NDArray[Any]]: The statistics of the joined dataset.
-        """
+        """Get the statistics of the joined dataset."""
         return {
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
@@ -259,11 +239,7 @@ class Join(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """Get the missing data indices.
-
-        Returns:
-            Set[int]: The missing data indices.
-        """
+        """Get the missing data indices."""
         result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing

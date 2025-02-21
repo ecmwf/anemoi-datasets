@@ -7,10 +7,13 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import Any
+from typing import List
+
 from earthkit.data import from_source
 
 
-def forcings(context, dates, template, param):
+def forcings(context: Any, dates: List[str], template: str, param: str) -> Any:
     """Loads forcing data from a specified source.
 
     Parameters

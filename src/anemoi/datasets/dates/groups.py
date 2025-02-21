@@ -129,11 +129,7 @@ class Groups:
 
     @property
     def provider(self) -> DatesProvider:
-        """Return the dates provider.
-
-        Returns:
-            DatesProvider: The dates provider.
-        """
+        """Return the dates provider."""
         return self._dates
 
     def __iter__(self) -> Iterator[GroupOfDates]:
@@ -158,11 +154,7 @@ class Groups:
 
     @cached_property
     def _len(self) -> int:
-        """Calculate the number of groups of dates.
-
-        Returns:
-            int: The number of groups.
-        """
+        """Calculate the number of groups of dates."""
         n = 0
         for go in self._grouper(self._dates):
             dates = self._filter(go.dates)

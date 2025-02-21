@@ -136,21 +136,12 @@ class OutputSpecs:
 
     @property
     def dtype(self) -> str:
-        """Returns the data type for the output.
-
-        Returns:
-            str: The data type.
-        """
+        """Returns the data type for the output."""
         return self.config.dtype
 
     @property
     def order_by_as_list(self) -> list[dict]:
-        """Returns the order_by configuration as a list of dictionaries.
-
-        Returns:
-            list[dict]: The order_by configuration.
-        """
-        # this is used when an ordered dict is not supported (e.g. zarr attributes)
+        """Returns the order_by configuration as a list of dictionaries."""
         return [{k: v} for k, v in self.config.order_by.items()]
 
     def get_chunking(self, coords: dict) -> tuple:
@@ -177,38 +168,22 @@ class OutputSpecs:
 
     @property
     def order_by(self) -> dict:
-        """Returns the order_by configuration.
-
-        Returns:
-            dict: The order_by configuration.
-        """
+        """Returns the order_by configuration."""
         return self.config.order_by
 
     @property
     def remapping(self) -> dict:
-        """Returns the remapping configuration.
-
-        Returns:
-            dict: The remapping configuration.
-        """
+        """Returns the remapping configuration."""
         return self.config.remapping
 
     @property
     def flatten_grid(self) -> bool:
-        """Returns whether the grid should be flattened.
-
-        Returns:
-            bool: True if the grid should be flattened, False otherwise.
-        """
+        """Returns whether the grid should be flattened."""
         return self.config.flatten_grid
 
     @property
     def statistics(self) -> str:
-        """Returns the statistics configuration.
-
-        Returns:
-            str: The statistics configuration.
-        """
+        """Returns the statistics configuration."""
         return self.config.statistics
 
 

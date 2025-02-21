@@ -97,6 +97,10 @@ class _MDMapping:
             The field to fill metadata for.
         md : Dict[str, Any]
             The metadata dictionary to update.
+
+        Returns
+        -------
+        None
         """
         valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
         if valid_datetime is not None:
@@ -132,13 +136,7 @@ class XArrayMetadata(RawMetadata):
 
     @cached_property
     def geography(self) -> "XArrayFieldGeography":
-        """Get the geography information for the field.
-
-        Returns
-        -------
-        XArrayFieldGeography
-            The geography information.
-        """
+        """Get the geography information for the field."""
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
     def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
@@ -179,7 +177,7 @@ class XArrayMetadata(RawMetadata):
         Returns
         -------
         Optional[datetime.datetime]
-            The base datetime if available, otherwise None.
+            The base datetime for the field.
         """
         return self._field.forecast_reference_time
 
@@ -189,7 +187,7 @@ class XArrayMetadata(RawMetadata):
         Returns
         -------
         Optional[datetime.datetime]
-            The valid datetime if available, otherwise None.
+            The valid datetime for the field.
         """
         return self._get("valid_datetime")
 
@@ -281,7 +279,7 @@ class XArrayFieldGeography(Geography):
         Returns
         -------
         Any
-            The latitudes.
+            The latitudes for the field.
         """
         result = self._grid.latitudes
         if dtype is not None:
@@ -299,7 +297,7 @@ class XArrayFieldGeography(Geography):
         Returns
         -------
         Any
-            The longitudes.
+            The longitudes for the field.
         """
         result = self._grid.longitudes
         if dtype is not None:
@@ -312,7 +310,7 @@ class XArrayFieldGeography(Geography):
         Returns
         -------
         Optional[Any]
-            The resolution.
+            The resolution for the field.
         """
         # TODO: implement resolution
         return None
@@ -323,7 +321,7 @@ class XArrayFieldGeography(Geography):
         Returns
         -------
         Optional[Any]
-            The MARS grid.
+            The MARS grid for the field.
         """
         # TODO: implement mars_grid
         return None
@@ -334,7 +332,7 @@ class XArrayFieldGeography(Geography):
         Returns
         -------
         Optional[Any]
-            The MARS area.
+            The MARS area for the field.
         """
         # TODO: code me
         # return [self.north, self.west, self.south, self.east]
@@ -386,6 +384,6 @@ class XArrayFieldGeography(Geography):
         Returns
         -------
         Projection
-            The projection of the field.
+            The projection for the field.
         """
         return Projection.from_cf_grid_mapping(**self._field.grid_mapping)

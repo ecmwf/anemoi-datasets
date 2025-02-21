@@ -32,11 +32,7 @@ class FilterStepResult(StepResult):
     @assert_fieldlist
     @trace_datasource
     def datasource(self) -> FieldList:
-        """Returns the filtered datasource.
-
-        Returns:
-            FieldList: The filtered datasource.
-        """
+        """Returns the filtered datasource."""
         ds: FieldList = self.upstream_result.datasource
         ds = ds.sel(**self.action.kwargs)
         return _tidy(ds)
@@ -54,11 +50,7 @@ class StepFunctionResult(StepResult):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """Returns the datasource after applying the function.
-
-        Returns:
-            FieldList: The datasource after applying the function.
-        """
+        """Returns the datasource after applying the function."""
         try:
             return _tidy(
                 self.action.function(

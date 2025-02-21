@@ -8,10 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import Dict
+from typing import List
+
+import xarray as xr
+
 from .xarray import load_many
 
 
-def execute(context, dates, url, *args, **kwargs):
+def execute(context: Dict[str, Any], dates: List[str], url: str, *args: Any, **kwargs: Any) -> xr.Dataset:
     """Execute the data loading process from an OpenDAP source.
 
     Parameters

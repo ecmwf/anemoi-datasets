@@ -193,21 +193,13 @@ class Dataset:
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
     @cached_property
-    def anemoi_dataset(self) -> Any:
-        """Get the Anemoi dataset.
-
-        Returns:
-            Any: The Anemoi dataset.
-        """
+    def anemoi_dataset(self):
+        """Get the Anemoi dataset."""
         return open_dataset(self.path)
 
     @cached_property
-    def zarr_metadata(self) -> dict:
-        """Get the Zarr metadata.
-
-        Returns:
-            dict: The Zarr metadata.
-        """
+    def zarr_metadata(self):
+        """Get the Zarr metadata."""
         import zarr
 
         return dict(zarr.open(self.path, mode="r").attrs)
@@ -288,12 +280,8 @@ class WritableDataset(Dataset):
         self.z = zarr.open(self.path, mode="r+")
 
     @cached_property
-    def data_array(self) -> zarr.Array:
-        """Get the data array of the dataset.
-
-        Returns:
-            zarr.Array: The data array.
-        """
+    def data_array(self):
+        """Get the data array of the dataset."""
         import zarr
 
         return zarr.open(self.path, mode="r+")["data"]
@@ -451,12 +439,8 @@ class HasRegistryMixin:
     """A mixin class to provide registry functionality."""
 
     @cached_property
-    def registry(self) -> Any:
-        """Get the registry.
-
-        Returns:
-            Any: The registry.
-        """
+    def registry(self):
+        """Get the registry."""
         from .zarr import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
@@ -466,12 +450,8 @@ class HasStatisticTempMixin:
     """A mixin class to provide temporary statistics functionality."""
 
     @cached_property
-    def tmp_statistics(self) -> TmpStatistics:
-        """Get the temporary statistics.
-
-        Returns:
-            TmpStatistics: The temporary statistics.
-        """
+    def tmp_statistics(self):
+        """Get the temporary statistics."""
         directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
         return TmpStatistics(directory)
 
@@ -1022,12 +1002,8 @@ class AdditionsMixin:
         return False
 
     @cached_property
-    def tmp_storage_path(self) -> str:
-        """Get the path to the temporary storage.
-
-        Returns:
-            str: The path to the temporary storage.
-        """
+    def tmp_storage_path(self):
+        """Get the path to the temporary storage."""
         name = "storage_for_additions"
         if self.delta:
             name += frequency_to_string(self.delta)
@@ -1405,12 +1381,8 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(f"Wrote statistics in {self.path}")
 
     @cached_property
-    def allow_nans(self) -> bool:
-        """Check if NaNs are allowed.
-
-        Returns:
-            bool: Whether NaNs are allowed.
-        """
+    def allow_nans(self):
+        """Check if NaNs are allowed."""
         import zarr
 
         z = zarr.open(self.path, mode="r")

@@ -32,6 +32,11 @@ def is_scalar(variable: Any) -> bool:
     ----------
     variable : Any
         The variable to check.
+
+    Returns
+    -------
+    bool
+        True if the variable is scalar, False otherwise.
     """
     shape = variable.shape
     if shape == (1,):
@@ -48,6 +53,11 @@ def extract_single_value(variable: Any) -> Any:
     ----------
     variable : Any
         The variable to extract the value from.
+
+    Returns
+    -------
+    Any
+        The extracted single value.
     """
     shape = variable.shape
     if np.issubdtype(variable.values.dtype, np.datetime64):
@@ -99,11 +109,23 @@ class Coordinate:
         self.kwargs: Dict[str, Any] = {}  # Used when creating a new coordinate (reduced method)
 
     def __len__(self) -> int:
-        """Get the length of the coordinate."""
+        """Get the length of the coordinate.
+
+        Returns
+        -------
+        int
+            The length of the coordinate.
+        """
         return 1 if self.scalar else len(self.variable)
 
     def __repr__(self) -> str:
-        """Get the string representation of the coordinate."""
+        """Get the string representation of the coordinate.
+
+        Returns
+        -------
+        str
+            The string representation of the coordinate.
+        """
         return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
             self.variable.name,
@@ -118,6 +140,11 @@ class Coordinate:
         ----------
         i : int
             The index of the value to select.
+
+        Returns
+        -------
+        Coordinate
+            A new coordinate with the selected value.
         """
         return self.__class__(
             self.variable.isel({self.variable.dims[0]: i}),
@@ -131,6 +158,11 @@ class Coordinate:
         ----------
         value : Union[Any, list, tuple]
             The value to search for.
+
+        Returns
+        -------
+        Optional[Union[int, list]]
+            The index or indices of the value in the coordinate, or None if not found.
         """
         if isinstance(value, (list, tuple)):
             if len(value) == 1:
@@ -146,6 +178,11 @@ class Coordinate:
         ----------
         value : Any
             The value to search for.
+
+        Returns
+        -------
+        Optional[int]
+            The index of the value in the coordinate, or None if not found.
         """
         values = self.variable.values
 
@@ -170,6 +207,11 @@ class Coordinate:
         ----------
         value : list
             The values to search for.
+
+        Returns
+        -------
+        Optional[list]
+            The indices of the values in the coordinate, or None if not found.
         """
         values = self.variable.values
 
@@ -203,6 +245,11 @@ class Coordinate:
         ----------
         value : Any
             The value to normalize.
+
+        Returns
+        -------
+        Any
+            The normalized value.
         """
         # Subclasses to format values that will be added to the field metadata
         return value
@@ -226,6 +273,11 @@ class TimeCoordinate(Coordinate):
         ----------
         time : datetime.datetime
             The time to search for.
+
+        Returns
+        -------
+        Optional[int]
+            The index of the time in the coordinate, or None if not found.
         """
         return super().index(np.datetime64(time))
 
@@ -243,6 +295,11 @@ class DateCoordinate(Coordinate):
         ----------
         date : datetime.datetime
             The date to search for.
+
+        Returns
+        -------
+        Optional[int]
+            The index of the date in the coordinate, or None if not found.
         """
         return super().index(np.datetime64(date))
 
@@ -286,6 +343,11 @@ class LevelCoordinate(Coordinate):
         ----------
         value : Any
             The value to normalize.
+
+        Returns
+        -------
+        Any
+            The normalized value.
         """
         # Some netcdf have pressue levels in float
         if int(value) == value:
@@ -306,6 +368,11 @@ class EnsembleCoordinate(Coordinate):
         ----------
         value : Any
             The value to normalize.
+
+        Returns
+        -------
+        Any
+            The normalized value.
         """
         if int(value) == value:
             return int(value)

@@ -51,11 +51,7 @@ class Statistics(Forwards):
 
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Get the statistics.
-
-        Returns:
-            Dict[str, NDArray[Any]]: The statistics.
-        """
+        """Get the statistics."""
         return self._statistic.statistics
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:

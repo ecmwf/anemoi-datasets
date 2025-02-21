@@ -611,11 +611,7 @@ class Result:
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """Retrieve the metadata for the variables.
-
-        Returns:
-            Dict[str, Any]: The metadata dictionary.
-        """
+        """Retrieve the metadata for the variables."""
         return _fields_metatata(self.variables, self._cube)
 
     @property
@@ -656,11 +652,7 @@ class Result:
 
     @cached_property
     def shape(self) -> List[int]:
-        """Retrieve the shape of the result.
-
-        Returns:
-            List[int]: The shape of the result.
-        """
+        """Retrieve the shape of the result."""
         return [
             len(self.group_of_dates),
             len(self.variables),
@@ -670,11 +662,7 @@ class Result:
 
     @cached_property
     def coords(self) -> Dict[str, Any]:
-        """Retrieve the coordinates of the result.
-
-        Returns:
-            Dict[str, Any]: The coordinates of the result.
-        """
+        """Retrieve the coordinates of the result."""
         return {
             "dates": list(self.group_of_dates),
             "variables": self.variables,

@@ -181,11 +181,7 @@ class Rescale(Forwards):
 
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Get the statistics of the rescaled data.
-
-        Returns:
-            Dict[str, NDArray[Any]]: The statistics dictionary.
-        """
+        """Get the statistics of the rescaled data."""
         result = {}
         a = self._a.squeeze()
         assert np.all(a >= 0)

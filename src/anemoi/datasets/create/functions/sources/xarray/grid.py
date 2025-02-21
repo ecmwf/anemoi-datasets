@@ -39,13 +39,7 @@ class Grid(ABC):
     @abstractmethod
     @property
     def grid_points(self) -> Tuple[Any, Any]:
-        """Get the grid points.
-
-        Returns
-        -------
-        Tuple[Any, Any]
-            A tuple containing the latitudes and longitudes of the grid points.
-        """
+        """Get the grid points."""
         pass
 
 
@@ -184,10 +178,5 @@ class UnstructuredProjectionGrid(XYGrid):
 
     @cached_property
     def grid_points(self) -> Tuple[Any, Any]:
-        """Get the grid points for the unstructured projection grid.
-
-        Raises
-        ------
-        NotImplementedError
-        """
+        """Get the grid points for the unstructured projection grid."""
         raise NotImplementedError("UnstructuredProjectionGrid")

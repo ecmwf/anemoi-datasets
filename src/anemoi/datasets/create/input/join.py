@@ -57,11 +57,7 @@ class JoinResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """Returns the combined datasource from all results.
-
-        Returns:
-            FieldList: The combined datasource from all results.
-        """
+        """Returns the combined datasource from all results."""
         ds: FieldList = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource

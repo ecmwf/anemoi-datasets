@@ -8,10 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import List
+
 from .xarray import load_many
 
 
-def execute(context, dates, path, *args, **kwargs):
+def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> Any:
     """Execute the loading of multiple NetCDF files.
 
     Parameters

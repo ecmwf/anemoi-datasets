@@ -144,11 +144,7 @@ class DatesProvider:
 
     @property
     def summary(self) -> str:
-        """Get a summary of the date range.
-
-        Returns:
-            str: A summary string of the date range.
-        """
+        """Get a summary of the date range."""
         return f"📅 {self.values[0]} ... {self.values[-1]}"
 
 
@@ -181,8 +177,10 @@ class ValuesDates(DatesProvider):
     def as_dict(self) -> Dict[str, Any]:
         """Convert the ValuesDates instance to a dictionary.
 
-        Returns:
-            Dict[str, Any]: Dictionary representation of the instance.
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary representation of the instance.
         """
         return {"values": self.values[0]}
 
@@ -246,8 +244,10 @@ class StartEndDates(DatesProvider):
     def as_dict(self) -> Dict[str, Any]:
         """Convert the StartEndDates instance to a dictionary.
 
-        Returns:
-            Dict[str, Any]: Dictionary representation of the instance.
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary representation of the instance.
         """
         return {
             "start": self.start.isoformat(),
@@ -386,8 +386,10 @@ class HindcastsDates(DatesProvider):
     def as_dict(self) -> Dict[str, Any]:
         """Convert the HindcastsDates instance to a dictionary.
 
-        Returns:
-            Dict[str, Any]: Dictionary representation of the instance.
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary representation of the instance.
         """
         return {"hindcasts": self.hindcasts}
 

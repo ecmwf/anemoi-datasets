@@ -57,13 +57,7 @@ class StepResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> Any:
-        """Retrieve the datasource associated with this step result.
-
-        Returns
-        -------
-        unknown
-            The datasource.
-        """
+        """Retrieve the datasource associated with this step result."""
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
 

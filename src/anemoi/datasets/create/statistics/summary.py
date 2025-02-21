@@ -40,11 +40,7 @@ class Summary(dict):
 
     @property
     def size(self) -> int:
-        """Get the size of the summary, which is the number of variables.
-
-        Returns:
-            int: The number of variables in the summary.
-        """
+        """Get the size of the summary, which is the number of variables."""
         return len(self["variables_names"])
 
     def check(self) -> None:
