@@ -36,7 +36,7 @@ LOG = logging.getLogger(__name__)
 class MissingDatesFill(Forwards):
     """Class to handle filling missing dates in a dataset."""
 
-    def __init__(self, dataset: Any) -> None:
+    def __init__(self, dataset: Dataset) -> None:
         """Initialize the MissingDatesFill class.
 
         Args:

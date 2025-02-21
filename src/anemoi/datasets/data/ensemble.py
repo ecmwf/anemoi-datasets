@@ -16,6 +16,7 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape
 from .debug import Node
@@ -35,7 +36,7 @@ OFFSETS = dict(number=1, numbers=1, member=0, members=0)
 class Number(Forwards):
     """A class to represent a subset of ensemble members from a dataset."""
 
-    def __init__(self, forward: Any, **kwargs: Any) -> None:
+    def __init__(self, forward: Dataset, **kwargs: Any) -> None:
         """Initializes a Number object.
 
         Parameters
