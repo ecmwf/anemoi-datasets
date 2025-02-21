@@ -59,6 +59,11 @@ repos:
   hooks:
   - id: rstfmt
     exclude: '(cli|schemas)/.*' # Because we use argparse and pydantic sphinx directives
+- repo: https://github.com/b8raoult/pre-commit-docconvert
+  rev: "0.1.4"
+  hooks:
+  - id: docconvert
+    args: ["numpy"]
 - repo: https://github.com/tox-dev/pyproject-fmt
   rev: "v2.5.0"
   hooks:
