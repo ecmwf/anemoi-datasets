@@ -30,7 +30,7 @@ from .misc import load_config
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyStore(zarr.storage.BaseStore):
+class ReadOnlyStore(zarr.abc.store.Store):
     def __delitem__(self, key):
         raise NotImplementedError()
 
@@ -145,22 +145,31 @@ class DebugStore(ReadOnlyStore):
 
 
 def name_to_zarr_store(path_or_url):
+    # TODO: test this extensively on s3 and http stores, and remove the additional classes to use directly the zarr stores
+
     store = path_or_url
 
     if store.startswith("s3://"):
-        store = S3Store(store)
+        LOG.warning("using s3:// and http:// store has not been tested with multiprocess and forks")
+        return store
+        # return S3Store(store)
 
     elif store.startswith("http://") or store.startswith("https://"):
         parsed = urlparse(store)
         bits = parsed.netloc.split(".")
         if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
-            s3_url = f"s3://{bits[0]}{parsed.path}"
-            store = S3Store(s3_url, region=bits[2])
-        elif store.startswith("https://planetarycomputer.microsoft.com/"):
-            data_catalog_id = store.rsplit("/", 1)[-1]
-            store = PlanetaryComputerStore(data_catalog_id).__getitem__()
+            LOG.warning("using s3:// and http:// store has not been tested with multiprocess and forks")
+            return store
+            # s3_url = f"s3://{bits[0]}{parsed.path}"
+            # return S3Store(s3_url, region=bits[2])
+        if store.startswith("https://planetarycomputer.microsoft.com/"):
+            raise NotImplementedError("Integration with Planetary Computer has not been ported to zarr yet")
+            # data_catalog_id = store.rsplit("/", 1)[-1]
+            # return PlanetaryComputerStore(data_catalog_id).__getitem__()
         else:
-            store = HTTPStore(store)
+            LOG.warning("using http:// store has not been tested with multiprocess and forks")
+            return store
+            # return HTTPStore(store)
 
     return store
 
@@ -184,17 +193,17 @@ def open_zarr(path, dont_fail=False, cache=None):
         if cache is not None:
             store = zarr.LRUStoreCache(store, max_size=cache)
 
-        return zarr.convenience.open(store, "r")
-    except zarr.errors.PathNotFoundError:
+        return zarr.open(store, "r")
+    except FileNotFoundError:
         if not dont_fail:
-            raise zarr.errors.PathNotFoundError(path)
+            raise FileNotFoundError(path)
 
 
 class Zarr(Dataset):
     """A zarr dataset."""
 
     def __init__(self, path):
-        if isinstance(path, zarr.hierarchy.Group):
+        if isinstance(path, zarr.Group):
             self.was_zarr = True
             self.path = str(id(path))
             self.z = path
@@ -204,7 +213,7 @@ class Zarr(Dataset):
             self.z = open_zarr(self.path)
 
         # This seems to speed up the reading of the data a lot
-        self.data = self.z.data
+        self.data = self.z["data"]
         self.missing = set()
 
     @classmethod
@@ -245,43 +254,49 @@ class Zarr(Dataset):
 
     @cached_property
     def chunks(self):
-        return self.z.data.chunks
+        return self.z["data"].chunks
 
     @cached_property
     def shape(self):
-        return self.data.shape
+        return self.z["data"].shape
 
     @cached_property
     def dtype(self):
-        return self.z.data.dtype
+        return self.z["data"].dtype
 
     @cached_property
     def dates(self):
-        return self.z.dates[:]  # Convert to numpy
+        dates = self.z["dates"][:]  # Convert to numpy
+        if not dates.dtype == "datetime64[s]":
+            # The datasets created with zarr3 will have the dates as int64 as long
+            # as zarr3 does not support datetime64
+            LOG.warning("Converting dates to 'datetime64[s]'")
+            dates = dates.astype("datetime64[s]")
+        return dates
 
     @property
     def latitudes(self):
         try:
-            return self.z.latitudes[:]
+            return self.z["latitudes"][:]
         except AttributeError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.z.latitude[:]
+            return self.z["latitude"][:]
 
     @property
     def longitudes(self):
         try:
-            return self.z.longitudes[:]
+            return self.z["longitudes"][:]
         except AttributeError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.z.longitude[:]
+            return self.z["longitude"][:]
 
     @property
     def statistics(self):
         return dict(
-            mean=self.z.mean[:],
-            stdev=self.z.stdev[:],
-            maximum=self.z.maximum[:],
-            minimum=self.z.minimum[:],
+            mean=self.z["mean"][:],
+            stdev=self.z["stdev"][:],
+            maximum=self.z["maximum"][:],
+            minimum=self.z["minimum"][:],
         )
 
     def statistics_tendencies(self, delta=None):
@@ -481,7 +496,7 @@ def zarr_lookup(name, fail=True):
                     LOG.info("Opening `%s` as `%s`", name, full)
                     QUIET.add(name)
                 return full
-        except zarr.errors.PathNotFoundError:
+        except FileNotFoundError:
             pass
 
     if fail:

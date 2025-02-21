@@ -28,3 +28,7 @@ __all__ = [
     "MissingDateError",
     "open_dataset",
 ]
+
+# remove this flag (and the relevant code) when Zarr 3 supports datetime64
+# https://github.com/zarr-developers/zarr-python/issues/2616
+ZARR3_DOES_NOT_SUPPORT_DATETIME64 = True

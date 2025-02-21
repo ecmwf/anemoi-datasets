@@ -29,7 +29,7 @@ except AttributeError:
 
 
 class ZarrCopier:
-    def __init__(self, source, target, transfers, block_size, overwrite, resume, verbosity, nested, rechunk, **kwargs):
+    def __init__(self, source, target, transfers, block_size, overwrite, resume, verbosity, rechunk, **kwargs):
         self.source = source
         self.target = target
         self.transfers = transfers
@@ -37,7 +37,6 @@ class ZarrCopier:
         self.overwrite = overwrite
         self.resume = resume
         self.verbosity = verbosity
-        self.nested = nested
         self.rechunk = rechunk
 
         self.rechunking = rechunk.split(",") if rechunk else []
@@ -49,13 +48,6 @@ class ZarrCopier:
             if self.rechunk:
                 raise NotImplementedError("Rechunking with SSH not implemented.")
             assert NotImplementedError("SSH not implemented.")
-
-    def _store(self, path, nested=False):
-        if nested:
-            import zarr
-
-            return zarr.storage.NestedDirectoryStore(path)
-        return path
 
     def copy_chunk(self, n, m, source, target, _copy, verbosity):
         if _copy[n:m].all():
@@ -111,7 +103,7 @@ class ZarrCopier:
         target_data = (
             target["data"]
             if "data" in target
-            else target.create_dataset(
+            else target.create_array(
                 "data",
                 shape=source_data.shape,
                 chunks=self.data_chunks,
@@ -169,7 +161,7 @@ class ZarrCopier:
             target.attrs[k] = v
 
         for name in sorted(source.keys()):
-            if isinstance(source[name], zarr.hierarchy.Group):
+            if isinstance(source[name], zarr.Group):
                 group = target[name] if name in target else target.create_group(name)
                 self.copy_group(
                     source[name],
@@ -210,13 +202,13 @@ class ZarrCopier:
 
         def target_exists():
             try:
-                zarr.open(self._store(self.target), mode="r")
+                zarr.open(self.target, mode="r")
                 return True
             except ValueError:
                 return False
 
         def target_finished():
-            target = zarr.open(self._store(self.target), mode="r")
+            target = zarr.open(self.target, mode="r")
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
                 todo = len(target["_copy"])
@@ -234,11 +226,11 @@ class ZarrCopier:
         def open_target():
 
             if not target_exists():
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr.open(self.target, mode="w")
 
             if self.overwrite:
                 LOG.error("Target already exists, overwriting.")
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr.open(self.target, mode="w")
 
             if self.resume:
                 if target_finished():
@@ -246,7 +238,7 @@ class ZarrCopier:
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr.open(self._store(self.target, self.nested), mode="w+")
+                return zarr.open(self.target, mode="a")
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
@@ -255,7 +247,7 @@ class ZarrCopier:
 
         assert target is not None, target
 
-        source = zarr.open(self._store(self.source), mode="r")
+        source = zarr.open(self.source, mode="r")
         self.copy(source, target, self.verbosity)
 
 
@@ -280,7 +272,6 @@ class CopyMixin:
             help="Verbosity level. 0 is silent, 1 is normal, 2 is verbose.",
             default=1,
         )
-        command_parser.add_argument("--nested", action="store_true", help="Use ZARR's nested directpry backend.")
         command_parser.add_argument(
             "--rechunk", help="Rechunk the target data array. Rechunk size should be a diviser of the block size."
         )

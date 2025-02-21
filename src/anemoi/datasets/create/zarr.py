@@ -9,9 +9,14 @@
 
 import datetime
 import logging
-import shutil
 
 import numpy as np
+import zarr
+
+from anemoi.datasets import ZARR3_DOES_NOT_SUPPORT_DATETIME64
+
+from .synchronise import NoSynchroniser
+from .synchronise import Synchroniser
 
 LOG = logging.getLogger(__name__)
 
@@ -40,8 +45,11 @@ def add_zarr_dataset(
         shape = array.shape
 
     if array is not None:
+        if dtype == np.dtype("datetime64[s]") and ZARR3_DOES_NOT_SUPPORT_DATETIME64:
+            dtype = "int64"
+            array = array.astype(dtype)
         assert array.shape == shape, (array.shape, shape)
-        a = zarr_root.create_dataset(
+        a = zarr_root.create_array(
             name,
             shape=shape,
             dtype=dtype,
@@ -68,7 +76,10 @@ def add_zarr_dataset(
         else:
             raise ValueError(f"No fill_value for dtype={dtype}")
 
-    a = zarr_root.create_dataset(
+    if dtype == np.dtype("datetime64[s]") and ZARR3_DOES_NOT_SUPPORT_DATETIME64:
+        dtype = "int64"
+
+    a = zarr_root.create_array(
         name,
         shape=shape,
         dtype=dtype,
@@ -87,44 +98,26 @@ class ZarrBuiltRegistry:
     z = None
 
     def __init__(self, path, synchronizer_path=None, use_threads=False):
-        import zarr
 
         assert isinstance(path, str), path
         self.zarr_path = path
-
-        if use_threads:
-            self.synchronizer = zarr.ThreadSynchronizer()
-            self.synchronizer_path = None
-        else:
-            if synchronizer_path is None:
-                synchronizer_path = self.zarr_path + ".sync"
-            self.synchronizer_path = synchronizer_path
-            self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
+        self.synchronizer = Synchroniser(synchronizer_path) if synchronizer_path else NoSynchroniser()
 
     def clean(self):
-        if self.synchronizer_path is not None:
-            try:
-                shutil.rmtree(self.synchronizer_path)
-            except FileNotFoundError:
-                pass
+        self.synchronizer.clean()
 
     def _open_write(self):
-        import zarr
+        return zarr.open(self.zarr_path, mode="r+")
 
-        return zarr.open(self.zarr_path, mode="r+", synchronizer=self.synchronizer)
-
-    def _open_read(self, sync=True):
-        import zarr
-
-        if sync:
-            return zarr.open(self.zarr_path, mode="r", synchronizer=self.synchronizer)
-        else:
-            return zarr.open(self.zarr_path, mode="r")
+    def _open_read(self):
+        return zarr.open(self.zarr_path, mode="r")
 
     def new_dataset(self, *args, **kwargs):
-        z = self._open_write()
-        zarr_root = z["_build"]
-        add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
+        with self.synchronizer:
+            z = self._open_write()
+            zarr_root = z["_build"]
+            add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
+            del z
 
     def add_to_history(self, action, **kwargs):
         new = dict(
@@ -133,29 +126,42 @@ class ZarrBuiltRegistry:
         )
         new.update(kwargs)
 
-        z = self._open_write()
-        history = z.attrs.get("history", [])
-        history.append(new)
-        z.attrs["history"] = history
+        with self.synchronizer:
+            z = self._open_write()
+            history = z.attrs.get("history", [])
+            history.append(new)
+            z.attrs["history"] = history
+            del z
 
     def get_lengths(self):
-        z = self._open_read()
-        return list(z["_build"][self.name_lengths][:])
+        with self.synchronizer:
+            z = self._open_read()
+            lenghts = list(z["_build"][self.name_lengths][:])
+            del z
+            return lenghts
 
     def get_flags(self, **kwargs):
-        z = self._open_read(**kwargs)
-        return list(z["_build"][self.name_flags][:])
+        with self.synchronizer:
+            z = self._open_read(**kwargs)
+            flags = list(z["_build"][self.name_flags][:])
+            del z
+            return flags
 
     def get_flag(self, i):
-        z = self._open_read()
-        return z["_build"][self.name_flags][i]
+        with self.synchronizer:
+            z = self._open_read()
+            flag = z["_build"][self.name_flags][i]
+            del z
+            return flag
 
     def set_flag(self, i, value=True):
-        z = self._open_write()
-        z.attrs["latest_write_timestamp"] = (
-            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
-        )
-        z["_build"][self.name_flags][i] = value
+        with self.synchronizer:
+            z = self._open_write()
+            z.attrs["latest_write_timestamp"] = (
+                datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+            )
+            z["_build"][self.name_flags][i] = value
+            del z
 
     def ready(self):
         return all(self.get_flags())
@@ -169,11 +175,13 @@ class ZarrBuiltRegistry:
         return self.create(lengths, overwrite=True)
 
     def add_provenance(self, name):
-        z = self._open_write()
+        with self.synchronizer:
+            z = self._open_write()
 
-        if name in z.attrs:
-            return
+            if name in z.attrs:
+                return
 
-        from anemoi.utils.provenance import gather_provenance_info
+            from anemoi.utils.provenance import gather_provenance_info
 
-        z.attrs[name] = gather_provenance_info()
+            z.attrs[name] = gather_provenance_info()
+            del z

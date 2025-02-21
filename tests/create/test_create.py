@@ -117,6 +117,7 @@ def compare_dot_zattrs(a, b, path, errors):
                 "description",
                 "config_path",
                 "total_size",
+                "total_number_of_files",  # expected to differ when comparing datasets generated with zarr 2 vs zarr 3
             ]:
                 if type(a[k]) is not type(b[k]):
                     errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
