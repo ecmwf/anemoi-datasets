@@ -598,7 +598,7 @@ class Dataset(ABC, Sized):
 
         for path, name, array in collected:
             assert isinstance(path, tuple) and isinstance(name, str)
-            assert isinstance(array, NDArray[Any])
+            assert isinstance(array, np.ndarray)
 
             name = _path(path, name)
 

@@ -487,7 +487,7 @@ def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
         if name not in QUIET:
             LOG.info("Opening `%s` as `%s`", name, config["named"][name])
             QUIET.add(name)
-        return config["named"][name]
+        return str(config["named"][name])
 
     tried = []
     for location in config["path"]:
