@@ -20,8 +20,7 @@ from numpy.typing import NDArray
 
 
 def cache_context(dirname: str) -> contextmanager:
-    """
-    Context manager for setting a temporary cache directory.
+    """Context manager for setting a temporary cache directory.
 
     Args:
         dirname (str): The directory name for the cache.
@@ -43,8 +42,7 @@ def cache_context(dirname: str) -> contextmanager:
 
 
 def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
-    """
-    Convert various date formats to a list of datetime objects.
+    """Convert various date formats to a list of datetime objects.
 
     Returns:
         list[datetime.datetime]: A list of datetime objects.
@@ -60,8 +58,7 @@ def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
 
 
 def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
-    """
-    Convert various date formats to a single datetime object.
+    """Convert various date formats to a single datetime object.
 
     Returns:
         datetime.datetime: A datetime object.
@@ -78,8 +75,7 @@ def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
 
 
 def make_list_int(value: str | list | tuple | int) -> list[int]:
-    """
-    Convert a string, list, tuple, or integer to a list of integers.
+    """Convert a string, list, tuple, or integer to a list of integers.
 
     Args:
         value (str | list | tuple | int): The value to convert.
@@ -121,8 +117,7 @@ def normalize_and_check_dates(
     frequency: datetime.timedelta,
     dtype: str = "datetime64[s]",
 ) -> NDArray[Any]:
-    """
-    Normalize and check a list of dates against a specified frequency.
+    """Normalize and check a list of dates against a specified frequency.
 
     Args:
         dates (list[datetime.datetime]): The list of dates to check.

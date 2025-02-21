@@ -29,6 +29,17 @@ class ViewCacheArray:
     """
 
     def __init__(self, array: NDArray[Any], *, shape: tuple[int, ...], indexes: list[int]):
+        """Initialize the ViewCacheArray.
+
+        Parameters
+        ----------
+        array : NDArray[Any]
+            The NumPy-like array to store the final data.
+        shape : tuple[int, ...]
+            The shape of the cache array.
+        indexes : list[int]
+            List to reindex the first dimension.
+        """
         assert len(indexes) == shape[0], (len(indexes), shape[0])
         self.array = array
         self.dtype = array.dtype
@@ -36,9 +47,19 @@ class ViewCacheArray:
         self.indexes = indexes
 
     def __setitem__(self, key: tuple[int, ...], value: NDArray[Any]) -> None:
+        """Set the value in the cache array at the specified key.
+
+        Parameters
+        ----------
+        key : tuple[int, ...]
+            The index key to set the value.
+        value : NDArray[Any]
+            The value to set in the cache array.
+        """
         self.cache[key] = value
 
     def flush(self) -> None:
+        """Copy the contents of the cache to the final array."""
         for i in range(self.cache.shape[0]):
             global_i = self.indexes[i]
             self.array[global_i] = self.cache[i]

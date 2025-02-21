@@ -29,8 +29,7 @@ LOG = logging.getLogger(__name__)
 
 
 class JoinResult(Result):
-    """
-    Represents a result that combines multiple results.
+    """Represents a result that combines multiple results.
 
     Attributes:
         context (object): The context object.
@@ -42,8 +41,7 @@ class JoinResult(Result):
     def __init__(
         self, context: object, action_path: list, group_of_dates: GroupOfDates, results: List[Result], **kwargs: Any
     ) -> None:
-        """
-        Initializes a JoinResult instance.
+        """Initializes a JoinResult instance.
 
         Args:
             context (object): The context object.
@@ -59,8 +57,7 @@ class JoinResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """
-        Returns the combined datasource from all results.
+        """Returns the combined datasource from all results.
 
         Returns:
             FieldList: The combined datasource from all results.
@@ -71,8 +68,7 @@ class JoinResult(Result):
         return _tidy(ds)
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the JoinResult instance.
+        """Returns a string representation of the JoinResult instance.
 
         Returns:
             str: A string representation of the JoinResult instance.
@@ -82,8 +78,7 @@ class JoinResult(Result):
 
 
 class JoinAction(Action):
-    """
-    Represents an action that combines multiple actions.
+    """Represents an action that combines multiple actions.
 
     Attributes:
         context (object): The context object.
@@ -92,8 +87,7 @@ class JoinAction(Action):
     """
 
     def __init__(self, context: object, action_path: list, *configs: dict) -> None:
-        """
-        Initializes a JoinAction instance.
+        """Initializes a JoinAction instance.
 
         Args:
             context (object): The context object.
@@ -104,8 +98,7 @@ class JoinAction(Action):
         self.actions: List[Action] = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the JoinAction instance.
+        """Returns a string representation of the JoinAction instance.
 
         Returns:
             str: A string representation of the JoinAction instance.
@@ -115,8 +108,7 @@ class JoinAction(Action):
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> JoinResult:
-        """
-        Selects the results for the given group of dates.
+        """Selects the results for the given group of dates.
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.

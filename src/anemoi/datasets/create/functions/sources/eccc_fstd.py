@@ -12,5 +12,25 @@ from .xarray import load_many
 
 
 def execute(context, dates, path, *args, **kwargs):
+    """Execute the loading of data using the specified context, dates, and path.
+
+    Parameters
+    ----------
+    context : object
+        The context in which the data loading is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    path : str
+        The path to the data source.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    xarray.Dataset
+        The loaded dataset.
+    """
     options = {"engine": "fstd"}
     return load_many("🍁", context, dates, path, *args, options=options, **kwargs)

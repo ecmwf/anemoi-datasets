@@ -27,8 +27,7 @@ LOG = logging.getLogger(__name__)
 
 
 def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
-    """
-    Checks if the dataset has the expected number of fields.
+    """Checks if the dataset has the expected number of fields.
 
     Args:
         what (str): Description of what is being checked.
@@ -56,8 +55,7 @@ def load_one(
     patch: Optional[Any] = None,
     **kwargs: Any,
 ) -> MultiFieldList:
-    """
-    Loads a single dataset.
+    """Loads a single dataset.
 
     We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
     zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
@@ -118,8 +116,7 @@ def load_one(
 
 
 def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> MultiFieldList:
-    """
-    Loads multiple datasets.
+    """Loads multiple datasets.
 
     Args:
         emoji (str): Emoji for tracing.
@@ -140,8 +137,7 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
 
 
 def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> MultiFieldList:
-    """
-    Executes the loading of datasets.
+    """Executes the loading of datasets.
 
     Args:
         context (Any): Context object.

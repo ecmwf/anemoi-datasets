@@ -20,9 +20,7 @@ from anemoi.datasets.testing import assert_field_list
 # it is skipped by default, and is only run when the SLOW_TESTS env var is set
 @pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 def test_opendap() -> None:
-    """
-    Test loading and validating the opendap dataset.
-    """
+    """Test loading and validating the opendap dataset."""
     ds = xr.open_dataset(
         "https://thredds.met.no/thredds/dodsC/meps25epsarchive/2023/01/01/meps_det_2_5km_20230101T00Z.nc",
     )

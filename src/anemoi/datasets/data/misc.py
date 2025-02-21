@@ -30,8 +30,7 @@ LOG = logging.getLogger(__name__)
 
 
 def load_config() -> Dict[str, Any]:
-    """
-    Load the configuration settings.
+    """Load the configuration settings.
 
     Returns:
         Dict[str, Any]: The configuration settings.
@@ -40,8 +39,7 @@ def load_config() -> Dict[str, Any]:
 
 
 def add_named_dataset(name: str, path: str, **kwargs: Any) -> None:
-    """
-    Add a named dataset to the configuration.
+    """Add a named dataset to the configuration.
 
     Args:
         name (str): The name of the dataset.
@@ -56,8 +54,7 @@ def add_named_dataset(name: str, path: str, **kwargs: Any) -> None:
 
 
 def add_dataset_path(path: str) -> None:
-    """
-    Add a dataset path to the configuration.
+    """Add a dataset path to the configuration.
 
     Args:
         path (str): The path to add.
@@ -69,8 +66,7 @@ def add_dataset_path(path: str) -> None:
 
 
 def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) -> np.datetime64:
-    """
-    Round up (or down) a datetime to the nearest date in a list of dates.
+    """Round up (or down) a datetime to the nearest date in a list of dates.
 
     Args:
         d (np.datetime64): The datetime to round.
@@ -98,8 +94,7 @@ def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) ->
 def _as_date(
     d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64], last: bool
 ) -> np.datetime64:
-    """
-    Convert a date to a numpy datetime64 object, rounding to the nearest date in a list of dates.
+    """Convert a date to a numpy datetime64 object, rounding to the nearest date in a list of dates.
 
     Args:
         d (Union[int, str, np.datetime64, datetime.date]): The date to convert.
@@ -215,8 +210,7 @@ def _as_date(
 def as_first_date(
     d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]
 ) -> np.datetime64:
-    """
-    Convert a date to the first date in a list of dates.
+    """Convert a date to the first date in a list of dates.
 
     Args:
         d (Union[int, str, np.datetime64, datetime.date]): The date to convert.
@@ -229,8 +223,7 @@ def as_first_date(
 
 
 def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]) -> np.datetime64:
-    """
-    Convert a date to the last date in a list of dates.
+    """Convert a date to the last date in a list of dates.
 
     Args:
         d (Union[int, str, np.datetime64, datetime.date]): The date to convert.
@@ -243,8 +236,7 @@ def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArra
 
 
 def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Dataset, Dict[str, Any]]:
-    """
-    Concatenate or join datasets based on their date ranges.
+    """Concatenate or join datasets based on their date ranges.
 
     Args:
         datasets (List[Dataset]): The list of datasets.
@@ -273,8 +265,7 @@ def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Da
 
 
 def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -> Dataset:
-    """
-    Open a dataset from various input types.
+    """Open a dataset from various input types.
 
     Args:
         a (Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]): The input to open.
@@ -311,8 +302,7 @@ def _auto_adjust(
     kwargs: Dict[str, Any],
     exclude: Optional[List[str]] = None,
 ) -> Tuple[List[Dataset], Dict[str, Any]]:
-    """
-    Automatically adjust datasets based on specified criteria.
+    """Automatically adjust datasets based on specified criteria.
 
     Args:
         datasets (List[Dataset]): The list of datasets.
@@ -399,8 +389,7 @@ def _auto_adjust(
 
 
 def _open_dataset(*args: Any, **kwargs: Any) -> Dataset:
-    """
-    Open a dataset.
+    """Open a dataset.
 
     Args:
         *args (Any): Positional arguments.

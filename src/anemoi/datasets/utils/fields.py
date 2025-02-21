@@ -12,9 +12,7 @@ from typing import Optional
 
 
 class WrappedField:
-    """
-    Wrapper class for a field to provide additional functionality.
-    """
+    """Wrapper class for a field to provide additional functionality."""
 
     def __init__(self, field: Any) -> None:
         self._field = field
@@ -27,9 +25,7 @@ class WrappedField:
 
 
 class NewDataField(WrappedField):
-    """
-    Class to represent a new data field with additional data.
-    """
+    """Class to represent a new data field with additional data."""
 
     def __init__(self, field: Any, data: Any) -> None:
         super().__init__(field)
@@ -48,9 +44,7 @@ class NewDataField(WrappedField):
 
 
 class NewMetadataField(WrappedField):
-    """
-    Class to represent a new metadata field with additional metadata.
-    """
+    """Class to represent a new metadata field with additional metadata."""
 
     def __init__(self, field: Any, **kwargs: Any) -> None:
         super().__init__(field)

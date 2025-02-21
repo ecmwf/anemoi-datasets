@@ -36,8 +36,7 @@ class MissingDateError(Exception):
 
 
 def _convert(x: Any) -> Any:
-    """
-    Convert OmegaConf objects to standard Python containers.
+    """Convert OmegaConf objects to standard Python containers.
 
     Args:
         x (Any): The object to convert.
@@ -63,8 +62,7 @@ def _convert(x: Any) -> Any:
 
 
 def open_dataset(*args: Any, **kwargs: Any) -> Dataset:
-    """
-    Open a dataset.
+    """Open a dataset.
 
     Args:
         *args (Any): Positional arguments.
@@ -86,8 +84,7 @@ def open_dataset(*args: Any, **kwargs: Any) -> Dataset:
 
 
 def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
-    """
-    List the names of datasets.
+    """List the names of datasets.
 
     Args:
         *args (Any): Positional arguments.

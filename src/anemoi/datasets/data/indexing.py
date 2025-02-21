@@ -24,8 +24,15 @@ from .dataset import TupleIndex
 
 
 def _tuple_with_slices(t: TupleIndex, shape: Shape) -> Tuple[TupleIndex, Tuple[int, ...]]:
-    """Replace all integers in a tuple with slices, so we preserve the dimensionality."""
+    """Replace all integers in a tuple with slices, so we preserve the dimensionality.
 
+    Parameters:
+    t (TupleIndex): The tuple index to process.
+    shape (Shape): The shape of the array.
+
+    Returns:
+    Tuple[TupleIndex, Tuple[int, ...]]: A tuple containing the modified index and the changes.
+    """
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
     result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
@@ -34,6 +41,15 @@ def _tuple_with_slices(t: TupleIndex, shape: Shape) -> Tuple[TupleIndex, Tuple[i
 
 
 def _extend_shape(index: TupleIndex, shape: Shape) -> TupleIndex:
+    """Extend the shape of the index to match the shape of the array.
+
+    Parameters:
+    index (TupleIndex): The index to extend.
+    shape (Shape): The shape of the array.
+
+    Returns:
+    TupleIndex: The extended index.
+    """
     if Ellipsis in index:
         if index.count(Ellipsis) > 1:
             raise IndexError("Only one Ellipsis is allowed")
@@ -51,6 +67,15 @@ def _extend_shape(index: TupleIndex, shape: Shape) -> TupleIndex:
 
 
 def _index_to_tuple(index: FullIndex, shape: Shape) -> TupleIndex:
+    """Convert an index to a tuple index.
+
+    Parameters:
+    index (FullIndex): The index to convert.
+    shape (Shape): The shape of the array.
+
+    Returns:
+    TupleIndex: The converted tuple index.
+    """
     if isinstance(index, int):
         return _extend_shape((index,), shape)
     if isinstance(index, slice):
@@ -63,11 +88,28 @@ def _index_to_tuple(index: FullIndex, shape: Shape) -> TupleIndex:
 
 
 def index_to_slices(index: Union[int, slice, Tuple], shape: Shape) -> Tuple[TupleIndex, Tuple[int, ...]]:
-    """Convert an index to a tuple of slices, with the same dimensionality as the shape."""
+    """Convert an index to a tuple of slices, with the same dimensionality as the shape.
+
+    Parameters:
+    index (Union[int, slice, Tuple]): The index to convert.
+    shape (Shape): The shape of the array.
+
+    Returns:
+    Tuple[TupleIndex, Tuple[int, ...]]: A tuple containing the slices and the changes.
+    """
     return _tuple_with_slices(_index_to_tuple(index, shape), shape)
 
 
 def apply_index_to_slices_changes(result: NDArray[Any], changes: Tuple[int, ...]) -> NDArray[Any]:
+    """Apply changes to the result array based on the slices.
+
+    Parameters:
+    result (NDArray[Any]): The result array.
+    changes (Tuple[int, ...]): The changes to apply.
+
+    Returns:
+    NDArray[Any]: The modified result array.
+    """
     if changes:
         shape = result.shape
         for i in changes:
@@ -77,7 +119,16 @@ def apply_index_to_slices_changes(result: NDArray[Any], changes: Tuple[int, ...]
 
 
 def update_tuple(tp: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
-    """Replace the elements of a tuple at the given index with a new value."""
+    """Replace the elements of a tuple at the given index with a new value.
+
+    Parameters:
+    tp (Tuple): The original tuple.
+    index (int): The index to update.
+    value (Any): The new value.
+
+    Returns:
+    Tuple[Tuple, Any]: The updated tuple and the previous value.
+    """
     t = list(tp)
     prev = t[index]
     t[index] = value
@@ -85,7 +136,15 @@ def update_tuple(tp: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
 
 
 def length_to_slices(index: slice, lengths: List[int]) -> List[Union[slice, None]]:
-    """Convert an index to a list of slices, given the lengths of the dimensions."""
+    """Convert an index to a list of slices, given the lengths of the dimensions.
+
+    Parameters:
+    index (slice): The index to convert.
+    lengths (List[int]): The lengths of the dimensions.
+
+    Returns:
+    List[Union[slice, None]]: A list of slices.
+    """
     total = sum(lengths)
     start, stop, step = index.indices(total)
 
@@ -116,6 +175,15 @@ def length_to_slices(index: slice, lengths: List[int]) -> List[Union[slice, None
 
 
 def _as_tuples(index: Tuple) -> Tuple:
+    """Convert elements of the index to tuples if they are lists or arrays.
+
+    Parameters:
+    index (Tuple): The index to convert.
+
+    Returns:
+    Tuple: The converted index.
+    """
+
     def _(i: Any) -> Any:
         if hasattr(i, "tolist"):
             # NumPy arrays, TensorFlow tensors, etc.
@@ -134,7 +202,14 @@ def _as_tuples(index: Tuple) -> Tuple:
 def expand_list_indexing(method: Callable[[Any, FullIndex], NDArray[Any]]) -> Callable[[Any, FullIndex], NDArray[Any]]:
     """Allows to use slices, lists, and tuples to select data from the dataset.
     Zarr does not support indexing with lists/arrays directly,
-    so we need to implement it ourselves."""
+    so we need to implement it ourselves.
+
+    Parameters:
+    method (Callable[[Any, FullIndex], NDArray[Any]]): The method to wrap.
+
+    Returns:
+    Callable[[Any, FullIndex], NDArray[Any]]: The wrapped method.
+    """
 
     @wraps(method)
     def wrapper(self: Any, index: FullIndex) -> NDArray[Any]:
@@ -167,8 +242,14 @@ def expand_list_indexing(method: Callable[[Any, FullIndex], NDArray[Any]]) -> Ca
 
 
 def make_slice_or_index_from_list_or_tuple(indices: List[int]) -> Union[List[int], slice]:
-    """Convert a list or tuple of indices to a slice or an index, if possible."""
+    """Convert a list or tuple of indices to a slice or an index, if possible.
 
+    Parameters:
+    indices (List[int]): The list or tuple of indices.
+
+    Returns:
+    Union[List[int], slice]: The slice or index.
+    """
     if len(indices) < 2:
         return indices
 

@@ -27,8 +27,7 @@ class Cleanup(Command):
     timestamp = True
 
     def add_arguments(self, subparser: Any) -> None:
-        """
-        Add command line arguments to the parser.
+        """Add command line arguments to the parser.
 
         Args:
             subparser (Any): The argument parser.
@@ -41,8 +40,7 @@ class Cleanup(Command):
         )
 
     def run(self, args: Any) -> None:
-        """
-        Execute the cleanup command.
+        """Execute the cleanup command.
 
         Args:
             args (Any): The command line arguments.

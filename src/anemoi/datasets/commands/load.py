@@ -27,7 +27,11 @@ class Load(Command):
     timestamp = True
 
     def add_arguments(self, subparser: Any) -> None:
+        """Add arguments to the command parser.
 
+        Args:
+            subparser (Any): The command parser.
+        """
         subparser.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
         # subparser.add_argument(
         #        "--delta",
@@ -39,6 +43,11 @@ class Load(Command):
         subparser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
+        """Run the command.
+
+        Args:
+            args (Any): The command arguments.
+        """
         options = vars(args)
         options.pop("command")
         now = time.time()

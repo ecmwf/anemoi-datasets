@@ -27,8 +27,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Statistics(Forwards):
-    """
-    A class to represent statistics for a dataset.
+    """A class to represent statistics for a dataset.
 
     Attributes:
         dataset (Dataset): The dataset object.
@@ -36,8 +35,7 @@ class Statistics(Forwards):
     """
 
     def __init__(self, dataset: Dataset, statistic: Any) -> None:
-        """
-        Initialize the Statistics object.
+        """Initialize the Statistics object.
 
         Args:
             dataset (Dataset): The dataset object.
@@ -53,8 +51,7 @@ class Statistics(Forwards):
 
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics.
+        """Get the statistics.
 
         Returns:
             Dict[str, NDArray[Any]]: The statistics.
@@ -62,8 +59,7 @@ class Statistics(Forwards):
         return self._statistic.statistics
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics tendencies.
+        """Get the statistics tendencies.
 
         Args:
             delta (Optional[datetime.timedelta]): The time delta.
@@ -76,8 +72,7 @@ class Statistics(Forwards):
         return self._statistic.statistics_tendencies(delta)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the forwards subclass.
+        """Get the metadata specific to the forwards subclass.
 
         Returns:
             Dict[str, Any]: The metadata specific to the forwards subclass.
@@ -85,8 +80,7 @@ class Statistics(Forwards):
         return dict(statistics=self._statistic.metadata_specific())
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the statistics.
+        """Get the tree representation of the statistics.
 
         Returns:
             Node: The tree representation of the statistics.
@@ -94,8 +88,7 @@ class Statistics(Forwards):
         return Node(self, [self.forward.tree()])
 
     def get_dataset_names(self, names: Set[str]) -> None:
-        """
-        Get the dataset names.
+        """Get the dataset names.
 
         Args:
             names (Set[str]): The set of dataset names.

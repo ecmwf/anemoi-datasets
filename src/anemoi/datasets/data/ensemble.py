@@ -33,13 +33,10 @@ OFFSETS = dict(number=1, numbers=1, member=0, members=0)
 
 
 class Number(Forwards):
-    """
-    A class to represent a subset of ensemble members from a dataset.
-    """
+    """A class to represent a subset of ensemble members from a dataset."""
 
     def __init__(self, forward: Any, **kwargs: Any) -> None:
-        """
-        Initializes a Number object.
+        """Initializes a Number object.
 
         Parameters
         ----------
@@ -66,14 +63,11 @@ class Number(Forwards):
 
     @property
     def shape(self) -> Shape:
-        """
-        Returns the shape of the dataset.
-        """
+        """Returns the shape of the dataset."""
         return self._shape
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the dataset based on the given index.
+        """Retrieves data from the dataset based on the given index.
 
         Parameters
         ----------
@@ -101,8 +95,7 @@ class Number(Forwards):
         return apply_index_to_slices_changes(result, changes)
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the dataset.
+        """Generates a hierarchical tree structure for the dataset.
 
         Returns
         -------
@@ -112,8 +105,7 @@ class Number(Forwards):
         return Node(self, [self.forward.tree()], numbers=[n + 1 for n in self.members])
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Returns metadata specific to the Number object.
+        """Returns metadata specific to the Number object.
 
         Parameters
         ----------
@@ -131,13 +123,10 @@ class Number(Forwards):
 
 
 class Ensemble(GivenAxis):
-    """
-    A class to represent an ensemble of datasets combined along a given axis.
-    """
+    """A class to represent an ensemble of datasets combined along a given axis."""
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the ensemble datasets.
+        """Generates a hierarchical tree structure for the ensemble datasets.
 
         Returns
         -------
@@ -148,8 +137,7 @@ class Ensemble(GivenAxis):
 
 
 def ensemble_factory(args: Tuple[Any, ...], kwargs: dict) -> Ensemble:
-    """
-    Factory function to create an Ensemble object.
+    """Factory function to create an Ensemble object.
 
     Parameters
     ----------

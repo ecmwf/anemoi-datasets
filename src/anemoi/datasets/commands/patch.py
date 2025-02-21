@@ -27,8 +27,7 @@ class Patch(Command):
     timestamp = True
 
     def add_arguments(self, parser: Any) -> None:
-        """
-        Add command-line arguments to the parser.
+        """Add command-line arguments to the parser.
 
         Args:
             parser (Any): The argument parser instance.
@@ -36,8 +35,7 @@ class Patch(Command):
         parser.add_argument("path", help="Path to store the created data.")
 
     def run(self, args: Any) -> None:
-        """
-        Execute the patch command.
+        """Execute the patch command.
 
         Args:
             args (Any): The command-line arguments.

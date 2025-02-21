@@ -32,14 +32,12 @@ LOG = logging.getLogger(__name__)
 
 
 class FunctionContext:
-    """
-    A FunctionContext is passed to all functions, it will be used to pass information
+    """A FunctionContext is passed to all functions, it will be used to pass information
     to the functions from the other actions and filters and results.
     """
 
     def __init__(self, owner: Result) -> None:
-        """
-        Initializes a FunctionContext instance.
+        """Initializes a FunctionContext instance.
 
         Args:
             owner (object): The owner object.
@@ -48,8 +46,7 @@ class FunctionContext:
         self.use_grib_paramid: bool = owner.context.use_grib_paramid
 
     def trace(self, emoji: str, *args: Any) -> None:
-        """
-        Traces the given arguments with an emoji.
+        """Traces the given arguments with an emoji.
 
         Args:
             emoji (str): The emoji to use.
@@ -58,8 +55,7 @@ class FunctionContext:
         trace(emoji, *args)
 
     def info(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Logs an info message.
+        """Logs an info message.
 
         Args:
             *args (Any): The arguments for the log message.
@@ -69,30 +65,24 @@ class FunctionContext:
 
     @property
     def dates_provider(self) -> object:
-        """
-        Returns the dates provider.
-        """
+        """Returns the dates provider."""
         return self.owner.group_of_dates.provider
 
     @property
     def partial_ok(self) -> bool:
-        """
-        Returns whether partial results are acceptable.
-        """
+        """Returns whether partial results are acceptable."""
         return self.owner.group_of_dates.partial_ok
 
 
 class FunctionAction(Action):
-    """
-    Represents an action that executes a function.
+    """Represents an action that executes a function.
 
     Attributes:
         name (str): The name of the function.
     """
 
     def __init__(self, context: object, action_path: list, _name: str, **kwargs: Dict[str, Any]) -> None:
-        """
-        Initializes a FunctionAction instance.
+        """Initializes a FunctionAction instance.
 
         Args:
             context (object): The context object.
@@ -105,8 +95,7 @@ class FunctionAction(Action):
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":
-        """
-        Selects the function result for the given group of dates.
+        """Selects the function result for the given group of dates.
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.
@@ -118,8 +107,7 @@ class FunctionAction(Action):
 
     @property
     def function(self) -> Callable[..., Any]:
-        """
-        Returns the function to be executed.
+        """Returns the function to be executed.
 
         Returns:
             Callable[..., Any]: The function to be executed.
@@ -127,8 +115,7 @@ class FunctionAction(Action):
         return import_function(self.name, "sources")
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the FunctionAction instance.
+        """Returns a string representation of the FunctionAction instance.
 
         Returns:
             str: The string representation of the instance.
@@ -140,8 +127,7 @@ class FunctionAction(Action):
         return super().__repr__(_inline_=content, _indent_=" ")
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """
-        Traces the selection of the function for the given group of dates.
+        """Traces the selection of the function for the given group of dates.
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.
@@ -153,8 +139,7 @@ class FunctionAction(Action):
 
 
 class FunctionResult(Result):
-    """
-    Represents the result of executing a function.
+    """Represents the result of executing a function.
 
     Attributes:
         action (Action): The action instance.
@@ -163,8 +148,7 @@ class FunctionResult(Result):
     """
 
     def __init__(self, context: object, action_path: list, group_of_dates: GroupOfDates, action: Action) -> None:
-        """
-        Initializes a FunctionResult instance.
+        """Initializes a FunctionResult instance.
 
         Args:
             context (object): The context object.
@@ -179,8 +163,7 @@ class FunctionResult(Result):
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """
-        Traces the datasource for the given arguments.
+        """Traces the datasource for the given arguments.
 
         Args:
             *args (Any): The arguments.
@@ -196,8 +179,7 @@ class FunctionResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """
-        Returns the datasource for the function result.
+        """Returns the datasource for the function result.
 
         Returns:
             FieldList: The datasource field list.
@@ -218,8 +200,7 @@ class FunctionResult(Result):
             raise
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the FunctionResult instance.
+        """Returns a string representation of the FunctionResult instance.
 
         Returns:
             str: The string representation of the instance.
@@ -231,8 +212,7 @@ class FunctionResult(Result):
 
     @property
     def function(self) -> None:
-        """
-        Raises NotImplementedError as this property is not implemented.
+        """Raises NotImplementedError as this property is not implemented.
 
         Raises:
             NotImplementedError: Always raised.

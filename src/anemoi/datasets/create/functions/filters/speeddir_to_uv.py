@@ -19,8 +19,7 @@ from earthkit.meteo.wind.array import polar_to_xy
 
 
 class NewDataField:
-    """
-    A class to represent a new data field with converted wind component data.
+    """A class to represent a new data field with converted wind component data.
 
     Attributes:
         field (Any): The original field.
@@ -29,8 +28,7 @@ class NewDataField:
     """
 
     def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """
-        Initialize a NewDataField instance.
+        """Initialize a NewDataField instance.
 
         Args:
             field (Any): The original field.
@@ -42,8 +40,7 @@ class NewDataField:
         self.new_name = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Convert the data to a numpy array.
+        """Convert the data to a numpy array.
 
         Returns:
             Any: The data as a numpy array.
@@ -51,8 +48,7 @@ class NewDataField:
         return self.data
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """
-        Get metadata from the original field, with the option to rename the parameter.
+        """Get metadata from the original field, with the option to rename the parameter.
 
         Args:
             key (Optional[str]): The metadata key.
@@ -70,8 +66,7 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Get an attribute from the original field.
+        """Get an attribute from the original field.
 
         Args:
             name (str): The name of the attribute.
@@ -91,6 +86,20 @@ def execute(
     v_component: str = "v",
     in_radians: bool = False,
 ) -> FieldArray:
+    """Convert wind speed and direction to u and v components.
+
+    Args:
+        context (Any): The context for the execution.
+        input (List[Any]): The input data fields.
+        wind_speed (str): The name of the wind speed parameter.
+        wind_dir (str): The name of the wind direction parameter.
+        u_component (str, optional): The name for the u component. Defaults to "u".
+        v_component (str, optional): The name for the v component. Defaults to "v".
+        in_radians (bool, optional): Whether the wind direction is in radians. Defaults to False.
+
+    Returns:
+        FieldArray: The resulting field array with u and v components.
+    """
 
     result = FieldArray()
 

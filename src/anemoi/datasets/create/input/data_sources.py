@@ -26,9 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DataSourcesAction(Action):
-    """
-    Class to handle data sources actions in the dataset creation process.
-    """
+    """Class to handle data sources actions in the dataset creation process."""
 
     def __init__(
         self,
@@ -37,8 +35,7 @@ class DataSourcesAction(Action):
         sources: Union[Dict[str, Any], List[Dict[str, Any]]],
         input: Dict[str, Any],
     ) -> None:
-        """
-        Initializes a DataSourcesAction instance.
+        """Initializes a DataSourcesAction instance.
 
         Args:
             context (object): The context object.
@@ -58,8 +55,7 @@ class DataSourcesAction(Action):
         self.input = action_factory(input, context, ["input"])
 
     def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
-        """
-        Selects the data sources result for the given group of dates.
+        """Selects the data sources result for the given group of dates.
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.
@@ -77,8 +73,7 @@ class DataSourcesAction(Action):
         )
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the DataSourcesAction instance.
+        """Returns a string representation of the DataSourcesAction instance.
 
         Returns:
             str: A string representation of the DataSourcesAction instance.
@@ -88,9 +83,7 @@ class DataSourcesAction(Action):
 
 
 class DataSourcesResult(Result):
-    """
-    Class to represent the result of data sources actions in the dataset creation process.
-    """
+    """Class to represent the result of data sources actions in the dataset creation process."""
 
     def __init__(
         self,
@@ -100,8 +93,7 @@ class DataSourcesResult(Result):
         input_result: Result,
         sources_results: List[Result],
     ) -> None:
-        """
-        Initializes a DataSourcesResult instance.
+        """Initializes a DataSourcesResult instance.
 
         Args:
             context (object): The context object.
@@ -118,8 +110,7 @@ class DataSourcesResult(Result):
 
     @cached_property
     def datasource(self) -> FieldList:
-        """
-        Returns the combined datasource from all sources.
+        """Returns the combined datasource from all sources.
 
         Returns:
             FieldList: The combined datasource from all sources.

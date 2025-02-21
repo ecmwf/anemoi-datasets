@@ -42,8 +42,7 @@ class Join(Combined):
     """Join the datasets along the variables axis."""
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check the compatibility of two datasets.
+        """Check the compatibility of two datasets.
 
         Args:
             d1 (Dataset): The first dataset.
@@ -53,8 +52,7 @@ class Join(Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=1)
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if the datasets have the same variables.
+        """Check if the datasets have the same variables.
 
         Args:
             d1 (Dataset): The first dataset.
@@ -64,8 +62,7 @@ class Join(Combined):
         pass
 
     def __len__(self) -> int:
-        """
-        Get the length of the joined dataset.
+        """Get the length of the joined dataset.
 
         Returns:
             int: The length of the joined dataset.
@@ -75,8 +72,7 @@ class Join(Combined):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get the data for a tuple index.
+        """Get the data for a tuple index.
 
         Args:
             index (TupleIndex): The tuple index to retrieve data from.
@@ -95,8 +91,7 @@ class Join(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Get the data for a slice.
+        """Get the data for a slice.
 
         Args:
             s (slice): The slice to retrieve data from.
@@ -108,8 +103,7 @@ class Join(Combined):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get the data at the specified index.
+        """Get the data at the specified index.
 
         Args:
             n (FullIndex): The index to retrieve data from.
@@ -127,8 +121,7 @@ class Join(Combined):
 
     @cached_property
     def shape(self) -> Shape:
-        """
-        Get the shape of the joined dataset.
+        """Get the shape of the joined dataset.
 
         Returns:
             Shape: The shape of the joined dataset.
@@ -137,8 +130,7 @@ class Join(Combined):
         return (len(self), cols) + self.datasets[0].shape[2:]
 
     def _overlay(self) -> Dataset:
-        """
-        Overlay the datasets.
+        """Overlay the datasets.
 
         Returns:
             Dataset: The overlaid dataset.
@@ -173,8 +165,7 @@ class Join(Combined):
 
     @cached_property
     def variables(self) -> List[str]:
-        """
-        Get the variables of the joined dataset.
+        """Get the variables of the joined dataset.
 
         Returns:
             List[str]: The variables of the joined dataset.
@@ -192,8 +183,7 @@ class Join(Combined):
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """
-        Get the metadata of the variables.
+        """Get the metadata of the variables.
 
         Returns:
             Dict[str, Any]: The metadata of the variables.
@@ -217,8 +207,7 @@ class Join(Combined):
 
     @cached_property
     def name_to_index(self) -> Dict[str, int]:
-        """
-        Get the mapping of variable names to indices.
+        """Get the mapping of variable names to indices.
 
         Returns:
             Dict[str, int]: The mapping of variable names to indices.
@@ -227,8 +216,7 @@ class Join(Combined):
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics of the joined dataset.
+        """Get the statistics of the joined dataset.
 
         Returns:
             Dict[str, NDArray[Any]]: The statistics of the joined dataset.
@@ -238,8 +226,7 @@ class Join(Combined):
         }
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics tendencies of the joined dataset.
+        """Get the statistics tendencies of the joined dataset.
 
         Args:
             delta (Optional[datetime.timedelta]): The time delta for the tendencies.
@@ -255,8 +242,7 @@ class Join(Combined):
         }
 
     def source(self, index: int) -> Source:
-        """
-        Get the source of the data at the specified index.
+        """Get the source of the data at the specified index.
 
         Args:
             index (int): The index to retrieve the source from.
@@ -273,8 +259,7 @@ class Join(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Get the missing data indices.
+        """Get the missing data indices.
 
         Returns:
             Set[int]: The missing data indices.
@@ -285,8 +270,7 @@ class Join(Combined):
         return result
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns:
             Node: The tree representation of the dataset.
@@ -295,8 +279,7 @@ class Join(Combined):
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
-    """
-    Create a joined dataset.
+    """Create a joined dataset.
 
     Args:
         args (tuple): The positional arguments.

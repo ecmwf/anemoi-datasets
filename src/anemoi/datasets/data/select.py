@@ -35,13 +35,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Select(Forwards):
-    """
-    Class to select a subset of variables from a dataset.
-    """
+    """Class to select a subset of variables from a dataset."""
 
     def __init__(self, dataset: Dataset, indices: List[int], reason: Dict[str, Any]) -> None:
-        """
-        Initialize the Select class.
+        """Initialize the Select class.
 
         Args:
             dataset (Dataset): The dataset to select from.
@@ -63,8 +60,7 @@ class Select(Forwards):
         super().__init__(dataset)
 
     def clone(self, dataset: Dataset) -> "Select":
-        """
-        Clone the Select object with a new dataset.
+        """Clone the Select object with a new dataset.
 
         Args:
             dataset (Dataset): The new dataset.
@@ -75,8 +71,7 @@ class Select(Forwards):
         return self.__class__(dataset, self.indices, self.reason).mutate()
 
     def mutate(self) -> Dataset:
-        """
-        Mutate the dataset.
+        """Mutate the dataset.
 
         Returns:
             Dataset: The mutated dataset.
@@ -86,8 +81,7 @@ class Select(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get a tuple of data.
+        """Get a tuple of data.
 
         Args:
             index (TupleIndex): The index to retrieve.
@@ -105,8 +99,7 @@ class Select(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get an item from the dataset.
+        """Get an item from the dataset.
 
         Args:
             n (FullIndex): The index to retrieve.
@@ -125,42 +118,31 @@ class Select(Forwards):
 
     @cached_property
     def shape(self) -> Shape:
-        """
-        Get the shape of the dataset.
-        """
+        """Get the shape of the dataset."""
         return (len(self), len(self.indices)) + self.dataset.shape[2:]
 
     @cached_property
     def variables(self) -> List[str]:
-        """
-        Get the variables of the dataset.
-        """
+        """Get the variables of the dataset."""
         return [self.dataset.variables[i] for i in self.indices]
 
     @cached_property
     def variables_metadata(self) -> Dict[str, Any]:
-        """
-        Get the metadata of the variables.
-        """
+        """Get the metadata of the variables."""
         return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}
 
     @cached_property
     def name_to_index(self) -> Dict[str, int]:
-        """
-        Get the mapping of variable names to indices.
-        """
+        """Get the mapping of variable names to indices."""
         return {k: i for i, k in enumerate(self.variables)}
 
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics of the dataset.
-        """
+        """Get the statistics of the dataset."""
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistical tendencies of the dataset.
+        """Get the statistical tendencies of the dataset.
 
         Args:
             delta (Optional[datetime.timedelta]): The time delta for the tendencies.
@@ -173,8 +155,7 @@ class Select(Forwards):
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Get the specific metadata of the dataset.
+        """Get the specific metadata of the dataset.
 
         Args:
             **kwargs (Any): Additional keyword arguments.
@@ -185,8 +166,7 @@ class Select(Forwards):
         return super().metadata_specific(indices=self.indices, **kwargs)
 
     def source(self, index: int) -> Source:
-        """
-        Get the source of the dataset.
+        """Get the source of the dataset.
 
         Args:
             index (int): The index of the source.
@@ -197,8 +177,7 @@ class Select(Forwards):
         return Source(self, index, self.dataset.source(self.indices[index]))
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns:
             Node: The tree representation of the dataset.
@@ -206,8 +185,7 @@ class Select(Forwards):
         return Node(self, [self.dataset.tree()], **self.reason)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the subclass.
+        """Get the metadata specific to the subclass.
 
         Returns:
             Dict[str, Any]: The metadata specific to the subclass.
@@ -217,13 +195,10 @@ class Select(Forwards):
 
 
 class Rename(Forwards):
-    """
-    Class to rename variables in a dataset.
-    """
+    """Class to rename variables in a dataset."""
 
     def __init__(self, dataset: Dataset, rename: Dict[str, str]) -> None:
-        """
-        Initialize the Rename class.
+        """Initialize the Rename class.
 
         Args:
             dataset (Dataset): The dataset to rename.
@@ -240,28 +215,21 @@ class Rename(Forwards):
 
     @property
     def variables(self) -> List[str]:
-        """
-        Get the renamed variables.
-        """
+        """Get the renamed variables."""
         return self._variables
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """
-        Get the renamed variables metadata.
-        """
+        """Get the renamed variables metadata."""
         return self._variables_metadata
 
     @cached_property
     def name_to_index(self) -> Dict[str, int]:
-        """
-        Get the mapping of renamed variable names to indices.
-        """
+        """Get the mapping of renamed variable names to indices."""
         return {k: i for i, k in enumerate(self.variables)}
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns:
             Node: The tree representation of the dataset.
@@ -269,8 +237,7 @@ class Rename(Forwards):
         return Node(self, [self.forward.tree()], rename=self.rename)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the subclass.
+        """Get the metadata specific to the subclass.
 
         Returns:
             Dict[str, Any]: The metadata specific to the subclass.

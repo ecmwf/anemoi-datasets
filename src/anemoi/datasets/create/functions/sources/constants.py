@@ -15,8 +15,7 @@ from earthkit.data import from_source
 
 
 def constants(context: Any, dates: List[str], template: Dict[str, Any], param: str) -> Any:
-    """
-    Deprecated function to retrieve constants data.
+    """Deprecated function to retrieve constants data.
 
     Args:
         context (Any): The context object for tracing.

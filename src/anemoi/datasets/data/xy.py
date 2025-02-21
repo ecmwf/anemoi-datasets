@@ -27,13 +27,10 @@ LOG = logging.getLogger(__name__)
 
 
 class ZipBase(Combined):
-    """
-    Base class for handling zipped datasets.
-    """
+    """Base class for handling zipped datasets."""
 
     def __init__(self, datasets: List[Any], check_compatibility: bool = True) -> None:
-        """
-        Initialize ZipBase with a list of datasets.
+        """Initialize ZipBase with a list of datasets.
 
         Args:
             datasets (List[Any]): List of datasets.
@@ -43,8 +40,7 @@ class ZipBase(Combined):
         super().__init__(datasets)
 
     def swap_with_parent(self, parent: Any) -> Any:
-        """
-        Swap datasets with the parent.
+        """Swap datasets with the parent.
 
         Args:
             parent (Any): Parent dataset.
@@ -56,8 +52,7 @@ class ZipBase(Combined):
         return self.clone(new_parents)
 
     def clone(self, datasets: List[Any]) -> "ZipBase":
-        """
-        Clone the ZipBase with new datasets.
+        """Clone the ZipBase with new datasets.
 
         Args:
             datasets (List[Any]): List of new datasets.
@@ -68,8 +63,7 @@ class ZipBase(Combined):
         return self.__class__(datasets, check_compatibility=self._check_compatibility)
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the datasets.
+        """Get the tree representation of the datasets.
 
         Returns:
             Node: Tree representation of the datasets.
@@ -77,8 +71,7 @@ class ZipBase(Combined):
         return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
 
     def __len__(self) -> int:
-        """
-        Get the length of the smallest dataset.
+        """Get the length of the smallest dataset.
 
         Returns:
             int: Length of the smallest dataset.
@@ -86,8 +79,7 @@ class ZipBase(Combined):
         return min(len(d) for d in self.datasets)
 
     def __getitem__(self, n: FullIndex) -> Tuple[Any, ...]:
-        """
-        Get the item at the specified index from all datasets.
+        """Get the item at the specified index from all datasets.
 
         Args:
             n (FullIndex): Index to retrieve.
@@ -98,8 +90,7 @@ class ZipBase(Combined):
         return tuple(d[n] for d in self.datasets)
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if two datasets have the same resolution.
+        """Check if two datasets have the same resolution.
 
         Args:
             d1 (Dataset): First dataset.
@@ -108,8 +99,7 @@ class ZipBase(Combined):
         pass
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if two datasets have the same grid.
+        """Check if two datasets have the same grid.
 
         Args:
             d1 (Dataset): First dataset.
@@ -118,8 +108,7 @@ class ZipBase(Combined):
         pass
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if two datasets have the same variables.
+        """Check if two datasets have the same variables.
 
         Args:
             d1 (Dataset): First dataset.
@@ -129,8 +118,7 @@ class ZipBase(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Get the set of missing indices from all datasets.
+        """Get the set of missing indices from all datasets.
 
         Returns:
             Set[int]: Set of missing indices.
@@ -142,70 +130,51 @@ class ZipBase(Combined):
 
     @property
     def shape(self) -> Tuple[Any, ...]:
-        """
-        Get the shape of all datasets.
-        """
+        """Get the shape of all datasets."""
         return tuple(d.shape for d in self.datasets)
 
     @property
     def field_shape(self) -> Tuple[Any, ...]:
-        """
-        Get the field shape of all datasets.
-        """
+        """Get the field shape of all datasets."""
         return tuple(d.shape for d in self.datasets)
 
     @property
     def latitudes(self) -> Tuple[Any, ...]:
-        """
-        Get the latitudes of all datasets.
-        """
+        """Get the latitudes of all datasets."""
         return tuple(d.latitudes for d in self.datasets)
 
     @property
     def longitudes(self) -> Tuple[Any, ...]:
-        """
-        Get the longitudes of all datasets.
-        """
+        """Get the longitudes of all datasets."""
         return tuple(d.longitudes for d in self.datasets)
 
     @property
     def dtype(self) -> Tuple[Any, ...]:
-        """
-        Get the data types of all datasets.
-        """
+        """Get the data types of all datasets."""
         return tuple(d.dtype for d in self.datasets)
 
     @property
     def grids(self) -> Tuple[Any, ...]:
-        """
-        Get the grids of all datasets.
-        """
+        """Get the grids of all datasets."""
         return tuple(d.grids for d in self.datasets)
 
     @property
     def statistics(self) -> Tuple[Any, ...]:
-        """
-        Get the statistics of all datasets.
-        """
+        """Get the statistics of all datasets."""
         return tuple(d.statistics for d in self.datasets)
 
     @property
     def resolution(self) -> Tuple[Any, ...]:
-        """
-        Get the resolution of all datasets.
-        """
+        """Get the resolution of all datasets."""
         return tuple(d.resolution for d in self.datasets)
 
     @property
     def name_to_index(self) -> Tuple[Any, ...]:
-        """
-        Get the name to index mapping of all datasets.
-        """
+        """Get the name to index mapping of all datasets."""
         return tuple(d.name_to_index for d in self.datasets)
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check compatibility between two datasets.
+        """Check compatibility between two datasets.
 
         Args:
             d1 (Dataset): First dataset.
@@ -216,24 +185,19 @@ class ZipBase(Combined):
 
 
 class Zip(ZipBase):
-    """
-    Class for handling zipped datasets.
-    """
+    """Class for handling zipped datasets."""
 
     pass
 
 
 class XY(ZipBase):
-    """
-    Class for handling XY datasets.
-    """
+    """Class for handling XY datasets."""
 
     pass
 
 
 def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
-    """
-    Factory function to create an XY instance.
+    """Factory function to create an XY instance.
 
     Args:
         args (Tuple[Any, ...]): Positional arguments.
@@ -261,8 +225,7 @@ def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
 
 
 def zip_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Zip:
-    """
-    Factory function to create a Zip instance.
+    """Factory function to create a Zip instance.
 
     Args:
         args (Tuple[Any, ...]): Positional arguments.

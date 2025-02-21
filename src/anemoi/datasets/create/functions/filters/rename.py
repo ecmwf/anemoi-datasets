@@ -27,8 +27,7 @@ class RenamedFieldMapping:
     """
 
     def __init__(self, field: Any, what: str, renaming: Dict[str, Dict[str, str]]) -> None:
-        """
-        Initialize a RenamedFieldMapping instance.
+        """Initialize a RenamedFieldMapping instance.
 
         Args:
             field (Any): The field to be renamed.
@@ -42,8 +41,7 @@ class RenamedFieldMapping:
             self.renaming[k] = {str(a): str(b) for a, b in v.items()}
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """
-        Get metadata from the original field, with the option to rename the parameter.
+        """Get metadata from the original field, with the option to rename the parameter.
 
         Args:
             key (Optional[str]): The metadata key.
@@ -62,8 +60,7 @@ class RenamedFieldMapping:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Get an attribute from the original field.
+        """Get an attribute from the original field.
 
         Args:
             name (str): The name of the attribute.
@@ -74,8 +71,7 @@ class RenamedFieldMapping:
         return getattr(self.field, name)
 
     def __repr__(self) -> str:
-        """
-        Get the string representation of the original field.
+        """Get the string representation of the original field.
 
         Returns:
             str: The string representation of the original field.
@@ -87,8 +83,7 @@ class RenamedFieldFormat:
     """Rename a field based on a format string."""
 
     def __init__(self, field: Any, what: str, format: str) -> None:
-        """
-        Initialize a RenamedFieldFormat instance.
+        """Initialize a RenamedFieldFormat instance.
 
         Args:
             field (Any): The field to be renamed.
@@ -101,8 +96,7 @@ class RenamedFieldFormat:
         self.bits = re.findall(r"{(\w+)}", format)
 
     def metadata(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Get metadata from the original field, with the option to rename the parameter using a format string.
+        """Get metadata from the original field, with the option to rename the parameter using a format string.
 
         Args:
             *args (Any): Positional arguments.
@@ -120,8 +114,7 @@ class RenamedFieldFormat:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Get an attribute from the original field.
+        """Get an attribute from the original field.
 
         Args:
             name (str): The name of the attribute.
@@ -132,8 +125,7 @@ class RenamedFieldFormat:
         return getattr(self.field, name)
 
     def __repr__(self) -> str:
-        """
-        Get the string representation of the original field.
+        """Get the string representation of the original field.
 
         Returns:
             str: The string representation of the original field.

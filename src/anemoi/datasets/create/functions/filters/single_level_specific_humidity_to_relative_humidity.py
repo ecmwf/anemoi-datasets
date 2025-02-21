@@ -9,6 +9,8 @@
 
 
 from typing import Any
+from typing import Dict
+from typing import Tuple
 from typing import Union
 
 import numpy as np
@@ -31,8 +33,7 @@ class NewDataField:
     """A class to represent a new data field with modified metadata."""
 
     def __init__(self, field, data, new_name):
-        """
-        Initialize the NewDataField.
+        """Initialize the NewDataField.
 
         Parameters
         ----------
@@ -52,8 +53,7 @@ class NewDataField:
         return self.data
 
     def metadata(self, key=None, **kwargs):
-        """
-        Get the metadata for the field.
+        """Get the metadata for the field.
 
         Parameters
         ----------
@@ -78,7 +78,9 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def model_level_pressure(A, B, surface_pressure) -> tuple[NDArray[Any], np.ndarray, np.ndarray, np.ndarray]:
+def model_level_pressure(
+    A: np.ndarray, B: np.ndarray, surface_pressure: Union[float, np.ndarray]
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Calculates:
      - pressure at the model full- and half-levels
      - delta: depth of log(pressure) at full levels
@@ -149,7 +151,7 @@ def model_level_pressure(A, B, surface_pressure) -> tuple[NDArray[Any], np.ndarr
     return p_full_level, p_half_level, delta, alpha
 
 
-def calc_specific_gas_constant(q) -> Union[float, NDArray[Any]]:
+def calc_specific_gas_constant(q: Union[float, np.ndarray]) -> Union[float, NDArray[Any]]:
     """Calculates the specific gas constant of moist air
     (specific content of cloud particles and hydrometeors are neglected)
 
@@ -168,7 +170,7 @@ def calc_specific_gas_constant(q) -> Union[float, NDArray[Any]]:
     return R
 
 
-def relative_geopotential_thickness(alpha, q, T) -> NDArray[Any]:
+def relative_geopotential_thickness(alpha: np.ndarray, q: np.ndarray, T: np.ndarray) -> NDArray[Any]:
     """Calculates the geopotential thickness w.r.t the surface on model full-levels
 
     Parameters
@@ -193,7 +195,9 @@ def relative_geopotential_thickness(alpha, q, T) -> NDArray[Any]:
     return dphi
 
 
-def pressure_at_height_level(height, q, T, sp, A, B) -> Union[float, NDArray[Any]]:
+def pressure_at_height_level(
+    height: float, q: np.ndarray, T: np.ndarray, sp: np.ndarray, A: np.ndarray, B: np.ndarray
+) -> Union[float, NDArray[Any]]:
     """Calculates the pressure at a height level given in meters above surface.
     This is done by finding the model level above and below the specified height
     and interpolating the pressure
@@ -260,9 +264,10 @@ def pressure_at_height_level(height, q, T, sp, A, B) -> Union[float, NDArray[Any
     return p_height
 
 
-def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
-    """
-    Convert the single (height) level specific humidity to relative humidity.
+def execute(
+    context: Any, input: Any, height: float, t: str, q: str, sp: str, new_name: str = "2r", **kwargs: Dict[str, Any]
+) -> FieldArray:
+    """Convert the single (height) level specific humidity to relative humidity.
 
     Parameters
     ----------
@@ -389,7 +394,7 @@ def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
     return result
 
 
-def test():
+def test() -> None:
     from earthkit.data import from_source
     from earthkit.data.readers.grib.index import GribFieldList
 

@@ -17,6 +17,14 @@ LOG = logging.getLogger(__name__)
 
 
 def fix_order_by(order_by: dict | list) -> list[dict]:
+    """Fix the order_by attribute to ensure it is a list of dictionaries.
+
+    Args:
+        order_by (dict | list): The order_by attribute to fix.
+
+    Returns:
+        list[dict]: The fixed order_by attribute.
+    """
     if isinstance(order_by, list):
         return order_by
 
@@ -30,6 +38,14 @@ def fix_order_by(order_by: dict | list) -> list[dict]:
 
 
 def fix_history(history: list[dict]) -> list[dict]:
+    """Fix the history attribute by removing specific actions.
+
+    Args:
+        history (list[dict]): The history attribute to fix.
+
+    Returns:
+        list[dict]: The fixed history attribute.
+    """
     new = history
     new = [d for d in new if d.get("action") != "loading_data_start"]
     new = [d for d in new if d.get("action") != "loading_data_end"]
@@ -37,6 +53,14 @@ def fix_history(history: list[dict]) -> list[dict]:
 
 
 def fix_provenance(provenance: dict) -> dict:
+    """Fix the provenance attribute by adding missing fields and removing unnecessary ones.
+
+    Args:
+        provenance (dict): The provenance attribute to fix.
+
+    Returns:
+        dict: The fixed provenance attribute.
+    """
     if "python" not in provenance:
         provenance["python"] = provenance["platform"]["python_version"]
 
@@ -80,6 +104,13 @@ def fix_provenance(provenance: dict) -> dict:
 
 
 def apply_patch(path: str, verbose: bool = True, dry_run: bool = False) -> None:
+    """Apply a patch to the dataset at the given path.
+
+    Args:
+        path (str): The path to the dataset.
+        verbose (bool): Whether to log detailed information. Defaults to True.
+        dry_run (bool): If True, do not actually apply the patch. Defaults to False.
+    """
     LOG.debug("====================")
     LOG.debug(f"Patching {path}")
     LOG.debug("====================")

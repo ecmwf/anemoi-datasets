@@ -14,9 +14,7 @@ from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
 
 
 def dont_test_kerchunk() -> None:
-    """
-    Test loading and validating the kerchunk dataset.
-    """
+    """Test loading and validating the kerchunk dataset."""
     ds = xr.open_dataset(
         "reference://",
         engine="zarr",

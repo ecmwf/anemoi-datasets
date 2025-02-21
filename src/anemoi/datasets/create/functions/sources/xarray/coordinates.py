@@ -26,8 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 def is_scalar(variable: Any) -> bool:
-    """
-    Check if the variable is scalar.
+    """Check if the variable is scalar.
 
     Parameters
     ----------
@@ -43,8 +42,7 @@ def is_scalar(variable: Any) -> bool:
 
 
 def extract_single_value(variable: Any) -> Any:
-    """
-    Extract a single value from the variable.
+    """Extract a single value from the variable.
 
     Parameters
     ----------
@@ -75,9 +73,7 @@ def extract_single_value(variable: Any) -> Any:
 
 
 class Coordinate:
-    """
-    Base class for coordinates.
-    """
+    """Base class for coordinates."""
 
     is_grid = False
     is_dim = True
@@ -91,8 +87,7 @@ class Coordinate:
     is_y = False
 
     def __init__(self, variable: xr.DataArray) -> None:
-        """
-        Initialize the coordinate.
+        """Initialize the coordinate.
 
         Parameters
         ----------
@@ -104,15 +99,11 @@ class Coordinate:
         self.kwargs: Dict[str, Any] = {}  # Used when creating a new coordinate (reduced method)
 
     def __len__(self) -> int:
-        """
-        Get the length of the coordinate.
-        """
+        """Get the length of the coordinate."""
         return 1 if self.scalar else len(self.variable)
 
     def __repr__(self) -> str:
-        """
-        Get the string representation of the coordinate.
-        """
+        """Get the string representation of the coordinate."""
         return "%s[name=%s,values=%s,shape=%s]" % (
             self.__class__.__name__,
             self.variable.name,
@@ -121,8 +112,7 @@ class Coordinate:
         )
 
     def reduced(self, i: int) -> Coordinate:
-        """
-        Create a new coordinate with a single value.
+        """Create a new coordinate with a single value.
 
         Parameters
         ----------
@@ -135,8 +125,7 @@ class Coordinate:
         )
 
     def index(self, value: Union[Any, list, tuple]) -> Optional[Union[int, list]]:
-        """
-        Return the index of the value in the coordinate.
+        """Return the index of the value in the coordinate.
 
         Parameters
         ----------
@@ -151,8 +140,7 @@ class Coordinate:
         return self._index_single(value)
 
     def _index_single(self, value: Any) -> Optional[int]:
-        """
-        Return the index of a single value in the coordinate.
+        """Return the index of a single value in the coordinate.
 
         Parameters
         ----------
@@ -176,8 +164,7 @@ class Coordinate:
         return None
 
     def _index_multiple(self, value: list) -> Optional[list]:
-        """
-        Return the indices of multiple values in the coordinate.
+        """Return the indices of multiple values in the coordinate.
 
         Parameters
         ----------
@@ -206,14 +193,11 @@ class Coordinate:
 
     @property
     def name(self) -> str:
-        """
-        Get the name of the coordinate.
-        """
+        """Get the name of the coordinate."""
         return self.variable.name
 
     def normalise(self, value: Any) -> Any:
-        """
-        Normalize the value for the coordinate.
+        """Normalize the value for the coordinate.
 
         Parameters
         ----------
@@ -225,23 +209,18 @@ class Coordinate:
 
     @property
     def single_value(self) -> Any:
-        """
-        Get the single value of the coordinate.
-        """
+        """Get the single value of the coordinate."""
         return extract_single_value(self.variable)
 
 
 class TimeCoordinate(Coordinate):
-    """
-    Coordinate class for time.
-    """
+    """Coordinate class for time."""
 
     is_time = True
     mars_names = ("valid_datetime",)
 
     def index(self, time: datetime.datetime) -> Optional[int]:
-        """
-        Return the index of the time in the coordinate.
+        """Return the index of the time in the coordinate.
 
         Parameters
         ----------
@@ -252,16 +231,13 @@ class TimeCoordinate(Coordinate):
 
 
 class DateCoordinate(Coordinate):
-    """
-    Coordinate class for date.
-    """
+    """Coordinate class for date."""
 
     is_date = True
     mars_names = ("date",)
 
     def index(self, date: datetime.datetime) -> Optional[int]:
-        """
-        Return the index of the date in the coordinate.
+        """Return the index of the date in the coordinate.
 
         Parameters
         ----------
@@ -272,14 +248,11 @@ class DateCoordinate(Coordinate):
 
 
 class StepCoordinate(Coordinate):
-    """
-    Coordinate class for step.
-    """
+    """Coordinate class for step."""
 
 
 class LevelCoordinate(Coordinate):
-    """
-    Coordinate class for level.
+    """Coordinate class for level.
 
     Parameters
     ----------
@@ -292,8 +265,7 @@ class LevelCoordinate(Coordinate):
     mars_names = ("level", "levelist")
 
     def __init__(self, variable: Any, levtype: str) -> None:
-        """
-        Initialize the level coordinate.
+        """Initialize the level coordinate.
 
         Parameters
         ----------
@@ -308,8 +280,7 @@ class LevelCoordinate(Coordinate):
         self.kwargs = {"levtype": levtype}
 
     def normalise(self, value: Any) -> Any:
-        """
-        Normalize the value for the level coordinate.
+        """Normalize the value for the level coordinate.
 
         Parameters
         ----------
@@ -323,16 +294,13 @@ class LevelCoordinate(Coordinate):
 
 
 class EnsembleCoordinate(Coordinate):
-    """
-    Coordinate class for ensemble.
-    """
+    """Coordinate class for ensemble."""
 
     is_member = True
     mars_names = ("number",)
 
     def normalise(self, value: Any) -> Any:
-        """
-        Normalize the value for the ensemble coordinate.
+        """Normalize the value for the ensemble coordinate.
 
         Parameters
         ----------
@@ -345,9 +313,7 @@ class EnsembleCoordinate(Coordinate):
 
 
 class LongitudeCoordinate(Coordinate):
-    """
-    Coordinate class for longitude.
-    """
+    """Coordinate class for longitude."""
 
     is_grid = True
     is_lon = True
@@ -355,9 +321,7 @@ class LongitudeCoordinate(Coordinate):
 
 
 class LatitudeCoordinate(Coordinate):
-    """
-    Coordinate class for latitude.
-    """
+    """Coordinate class for latitude."""
 
     is_grid = True
     is_lat = True
@@ -365,9 +329,7 @@ class LatitudeCoordinate(Coordinate):
 
 
 class XCoordinate(Coordinate):
-    """
-    Coordinate class for X.
-    """
+    """Coordinate class for X."""
 
     is_grid = True
     is_x = True
@@ -375,9 +337,7 @@ class XCoordinate(Coordinate):
 
 
 class YCoordinate(Coordinate):
-    """
-    Coordinate class for Y.
-    """
+    """Coordinate class for Y."""
 
     is_grid = True
     is_y = True
@@ -385,28 +345,20 @@ class YCoordinate(Coordinate):
 
 
 class ScalarCoordinate(Coordinate):
-    """
-    Coordinate class for scalar.
-    """
+    """Coordinate class for scalar."""
 
     is_grid = False
 
     @property
     def mars_names(self) -> Tuple[str, ...]:
-        """
-        Get the MARS names for the coordinate.
-        """
+        """Get the MARS names for the coordinate."""
         return (self.variable.name,)
 
 
 class UnsupportedCoordinate(Coordinate):
-    """
-    Coordinate class for unsupported coordinates.
-    """
+    """Coordinate class for unsupported coordinates."""
 
     @property
     def mars_names(self) -> tuple:
-        """
-        Get the MARS names for the coordinate.
-        """
+        """Get the MARS names for the coordinate."""
         return (self.variable.name,)

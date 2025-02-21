@@ -30,8 +30,7 @@ except AttributeError:
 
 
 class ZarrCopier:
-    """
-    Class to handle copying of Zarr datasets.
+    """Class to handle copying of Zarr datasets.
 
     Attributes:
         source (str): Source location of the dataset.
@@ -58,8 +57,7 @@ class ZarrCopier:
         rechunk: str,
         **kwargs: Any,
     ) -> None:
-        """
-        Initialize the ZarrCopier.
+        """Initialize the ZarrCopier.
 
         Args:
             source (str): Source location of the dataset.
@@ -94,8 +92,7 @@ class ZarrCopier:
             assert NotImplementedError("SSH not implemented.")
 
     def _store(self, path: str, nested: bool = False) -> Any:
-        """
-        Get the storage path.
+        """Get the storage path.
 
         Args:
             path (str): Path to the storage.
@@ -111,8 +108,7 @@ class ZarrCopier:
         return path
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
-        """
-        Copy a chunk of data from source to target.
+        """Copy a chunk of data from source to target.
 
         Args:
             n (int): Start index of the chunk.
@@ -151,8 +147,7 @@ class ZarrCopier:
         return slice(n, m)
 
     def parse_rechunking(self, rechunking: list[str], source_data: Any) -> tuple:
-        """
-        Parse the rechunking configuration.
+        """Parse the rechunking configuration.
 
         Args:
             rechunking (list[str]): List of rechunk sizes.
@@ -180,8 +175,7 @@ class ZarrCopier:
         return chunks
 
     def copy_data(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
-        """
-        Copy data from source to target.
+        """Copy data from source to target.
 
         Args:
             source (Any): Source data.
@@ -234,8 +228,7 @@ class ZarrCopier:
         LOG.info("Copied data")
 
     def copy_array(self, name: str, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
-        """
-        Copy an array from source to target.
+        """Copy an array from source to target.
 
         Args:
             name (str): Name of the array.
@@ -259,8 +252,7 @@ class ZarrCopier:
         LOG.info(f"Copied {name}")
 
     def copy_group(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
-        """
-        Copy a group from source to target.
+        """Copy a group from source to target.
 
         Args:
             source (Any): Source data.
@@ -292,8 +284,7 @@ class ZarrCopier:
                 )
 
     def copy(self, source: Any, target: Any, verbosity: int) -> None:
-        """
-        Copy the entire dataset from source to target.
+        """Copy the entire dataset from source to target.
 
         Args:
             source (Any): Source data.
@@ -314,9 +305,7 @@ class ZarrCopier:
         del target["_copy"]
 
     def run(self) -> None:
-        """
-        Execute the copy operation.
-        """
+        """Execute the copy operation."""
         import zarr
 
         # base, ext = os.path.splitext(os.path.basename(args.source))
@@ -376,16 +365,13 @@ class ZarrCopier:
 
 
 class CopyMixin:
-    """
-    Mixin class for adding copy command arguments and running the copy operation.
-    """
+    """Mixin class for adding copy command arguments and running the copy operation."""
 
     internal = True
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
-        """
-        Add arguments to the command parser.
+        """Add arguments to the command parser.
 
         Args:
             command_parser (Any): Command parser object.
@@ -420,8 +406,7 @@ class CopyMixin:
         command_parser.add_argument("target", help="Target location.")
 
     def run(self, args: Any) -> None:
-        """
-        Run the copy command with the provided arguments.
+        """Run the copy command with the provided arguments.
 
         Args:
             args (Any): Command arguments.
@@ -459,9 +444,7 @@ class CopyMixin:
 
 
 class Copy(CopyMixin, Command):
-    """
-    Copy a dataset from one location to another.
-    """
+    """Copy a dataset from one location to another."""
 
 
 command = Copy

@@ -27,8 +27,7 @@ class Scan(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
-        """
-        Add arguments to the command parser.
+        """Add arguments to the command parser.
 
         Args:
             command_parser (Any): The command parser to which arguments are added.
@@ -45,16 +44,14 @@ class Scan(Command):
         command_parser.add_argument("paths", nargs="+", help="Paths to scan")
 
     def run(self, args: Any) -> None:
-        """
-        Execute the scan command.
+        """Execute the scan command.
 
         Args:
             args (Any): The arguments passed to the command.
         """
 
         def match(path: str) -> bool:
-            """
-            Check if a path matches the given pattern.
+            """Check if a path matches the given pattern.
 
             Args:
                 path (str): The path to check.

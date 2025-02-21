@@ -34,8 +34,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
-    """
-    Retrieve metadata for the given variables and cube.
+    """Retrieve metadata for the given variables and cube.
 
     Args:
         variables (Tuple[str, ...]): The variables to retrieve metadata for.
@@ -218,8 +217,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
 
 def _data_request(data: Any) -> Dict[str, Any]:
-    """
-    Build a data request dictionary from the given data.
+    """Build a data request dictionary from the given data.
 
     Args:
         data (Any): The data to build the request from.
@@ -275,16 +273,13 @@ def _data_request(data: Any) -> Dict[str, Any]:
 
 
 class Result:
-    """
-    Class to represent the result of an action in the dataset creation process.
-    """
+    """Class to represent the result of an action in the dataset creation process."""
 
     empty: bool = False
     _coords_already_built: bool = False
 
     def __init__(self, context: ActionContext, action_path: List[str], dates: Any) -> None:
-        """
-        Initialize a Result instance.
+        """Initialize a Result instance.
 
         Args:
             context (ActionContext): The context in which the result exists.
@@ -305,21 +300,16 @@ class Result:
     @property
     @trace_datasource
     def datasource(self) -> Any:
-        """
-        Retrieve the data source for the result.
-        """
+        """Retrieve the data source for the result."""
         self._raise_not_implemented()
 
     @property
     def data_request(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary with the parameters needed to retrieve the data.
-        """
+        """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
 
     def get_cube(self) -> Any:
-        """
-        Retrieve the data cube for the result.
+        """Retrieve the data cube for the result.
 
         Returns:
             Any: The data cube.
@@ -358,8 +348,7 @@ class Result:
         return cube
 
     def explain(self, ds: Any, *args: Any, remapping: Any, patches: Any) -> None:
-        """
-        Explain the data cube creation process.
+        """Explain the data cube creation process.
 
         Args:
             ds (Any): The data source.
@@ -511,8 +500,7 @@ class Result:
         exit(1)
 
     def __repr__(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
-        """
-        Return the string representation of the Result instance.
+        """Return the string representation of the Result instance.
 
         Args:
             args (Any): Additional positional arguments.
@@ -541,14 +529,11 @@ class Result:
         return txt
 
     def _raise_not_implemented(self) -> None:
-        """
-        Raise a NotImplementedError indicating the method is not implemented.
-        """
+        """Raise a NotImplementedError indicating the method is not implemented."""
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """
-        Trace the data source for the result.
+        """Trace the data source for the result.
 
         Args:
             args (Any): Additional positional arguments.
@@ -560,9 +545,7 @@ class Result:
         return f"{self.__class__.__name__}({self.group_of_dates})"
 
     def build_coords(self) -> None:
-        """
-        Build the coordinates for the result.
-        """
+        """Build the coordinates for the result."""
         if self._coords_already_built:
             return
 
@@ -622,16 +605,13 @@ class Result:
 
     @property
     def variables(self) -> List[str]:
-        """
-        Retrieve the variables for the result.
-        """
+        """Retrieve the variables for the result."""
         self.build_coords()
         return self._variables
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """
-        Retrieve the metadata for the variables.
+        """Retrieve the metadata for the variables.
 
         Returns:
             Dict[str, Any]: The metadata dictionary.
@@ -640,56 +620,43 @@ class Result:
 
     @property
     def ensembles(self) -> Any:
-        """
-        Retrieve the ensembles for the result.
-        """
+        """Retrieve the ensembles for the result."""
         self.build_coords()
         return self._ensembles
 
     @property
     def resolution(self) -> Any:
-        """
-        Retrieve the resolution for the result.
-        """
+        """Retrieve the resolution for the result."""
         self.build_coords()
         return self._resolution
 
     @property
     def grid_values(self) -> Any:
-        """
-        Retrieve the grid values for the result.
-        """
+        """Retrieve the grid values for the result."""
         self.build_coords()
         return self._grid_values
 
     @property
     def grid_points(self) -> Any:
-        """
-        Retrieve the grid points for the result.
-        """
+        """Retrieve the grid points for the result."""
         self.build_coords()
         return self._grid_points
 
     @property
     def field_shape(self) -> Any:
-        """
-        Retrieve the field shape for the result.
-        """
+        """Retrieve the field shape for the result."""
         self.build_coords()
         return self._field_shape
 
     @property
     def proj_string(self) -> Any:
-        """
-        Retrieve the projection string for the result.
-        """
+        """Retrieve the projection string for the result."""
         self.build_coords()
         return self._proj_string
 
     @cached_property
     def shape(self) -> List[int]:
-        """
-        Retrieve the shape of the result.
+        """Retrieve the shape of the result.
 
         Returns:
             List[int]: The shape of the result.
@@ -703,8 +670,7 @@ class Result:
 
     @cached_property
     def coords(self) -> Dict[str, Any]:
-        """
-        Retrieve the coordinates of the result.
+        """Retrieve the coordinates of the result.
 
         Returns:
             Dict[str, Any]: The coordinates of the result.

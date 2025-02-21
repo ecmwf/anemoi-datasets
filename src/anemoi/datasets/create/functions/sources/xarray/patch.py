@@ -19,8 +19,7 @@ LOG = logging.getLogger(__name__)
 
 
 def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> Any:
-    """
-    Patch the attributes of the dataset.
+    """Patch the attributes of the dataset.
 
     Parameters
     ----------
@@ -42,8 +41,7 @@ def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> A
 
 
 def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
-    """
-    Patch the coordinates of the dataset.
+    """Patch the coordinates of the dataset.
 
     Parameters
     ----------
@@ -70,8 +68,7 @@ PATCHES = {
 
 
 def patch_dataset(ds: xr.Dataset, patch: Dict[str, Dict[str, Any]]) -> Any:
-    """
-    Patch the dataset.
+    """Patch the dataset.
 
     Parameters
     ----------

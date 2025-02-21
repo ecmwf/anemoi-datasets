@@ -21,8 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
-    """
-    Converts the input to a list if it is not already a list or tuple.
+    """Converts the input to a list if it is not already a list or tuple.
 
     Args:
         x: The input to convert.
@@ -36,8 +35,7 @@ def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
 
 
 def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
-    """
-    Generates hindcast requests based on the provided dates and request parameters.
+    """Generates hindcast requests based on the provided dates and request parameters.
 
     Args:
         context: The context containing the dates provider and trace method.

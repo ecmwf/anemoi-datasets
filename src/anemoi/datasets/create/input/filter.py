@@ -32,8 +32,7 @@ class FilterStepResult(StepResult):
     @assert_fieldlist
     @trace_datasource
     def datasource(self) -> FieldList:
-        """
-        Returns the filtered datasource.
+        """Returns the filtered datasource.
 
         Returns:
             FieldList: The filtered datasource.
@@ -44,9 +43,7 @@ class FilterStepResult(StepResult):
 
 
 class FilterStepAction(StepAction):
-    """
-    Represents an action to filter a step result.
-    """
+    """Represents an action to filter a step result."""
 
     result_class: Type[FilterStepResult] = FilterStepResult
 
@@ -57,8 +54,7 @@ class StepFunctionResult(StepResult):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """
-        Returns the datasource after applying the function.
+        """Returns the datasource after applying the function.
 
         Returns:
             FieldList: The datasource after applying the function.
@@ -78,8 +74,7 @@ class StepFunctionResult(StepResult):
             raise
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """
-        Traces the datasource for the given arguments.
+        """Traces the datasource for the given arguments.
 
         Args:
             *args (Any): The arguments.
@@ -92,9 +87,7 @@ class StepFunctionResult(StepResult):
 
 
 class FunctionStepAction(StepAction):
-    """
-    Represents an action to apply a function to a step result.
-    """
+    """Represents an action to apply a function to a step result."""
 
     result_class: Type[StepFunctionResult] = StepFunctionResult
 
@@ -106,8 +99,7 @@ class FunctionStepAction(StepAction):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        """
-        Initializes a FunctionStepAction instance.
+        """Initializes a FunctionStepAction instance.
 
         Args:
             context (object): The context object.

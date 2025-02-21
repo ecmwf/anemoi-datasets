@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Action:
-    """
-    Represents an action to be performed within a given context.
+    """Represents an action to be performed within a given context.
 
     Attributes:
         context (ActionContext): The context in which the action exists.
@@ -37,8 +36,7 @@ class Action:
     def __init__(
         self, context: "ActionContext", action_path: List[str], /, *args: Any, **kwargs: Dict[str, Any]
     ) -> None:
-        """
-        Initialize an Action instance.
+        """Initialize an Action instance.
 
         Args:
             context (ActionContext): The context in which the action exists.
@@ -65,8 +63,7 @@ class Action:
 
     @classmethod
     def _short_str(cls, x: str) -> str:
-        """
-        Shorten the string representation if it exceeds 1000 characters.
+        """Shorten the string representation if it exceeds 1000 characters.
 
         Args:
             x (str): The string to shorten.
@@ -80,8 +77,7 @@ class Action:
         return x[:1000] + "..."
 
     def __repr__(self) -> str:
-        """
-        Return the string representation of the Action instance.
+        """Return the string representation of the Action instance.
 
         Returns:
             str: The string representation.
@@ -89,8 +85,7 @@ class Action:
         return f"{self.__class__.__name__}()"
 
     def select(self, dates: object, **kwargs: Any) -> None:
-        """
-        Select dates for the action.
+        """Select dates for the action.
 
         Args:
             dates (object): The dates to select.
@@ -99,14 +94,11 @@ class Action:
         self._raise_not_implemented()
 
     def _raise_not_implemented(self) -> None:
-        """
-        Raise a NotImplementedError indicating the method is not implemented.
-        """
+        """Raise a NotImplementedError indicating the method is not implemented."""
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """
-        Trace the selection of a group of dates.
+        """Trace the selection of a group of dates.
 
         Args:
             group_of_dates (GroupOfDates): The group of dates to trace.
@@ -118,8 +110,7 @@ class Action:
 
 
 class ActionContext(Context):
-    """
-    Represents the context in which an action is performed.
+    """Represents the context in which an action is performed.
 
     Attributes:
         order_by (str): The order by criteria.
@@ -129,8 +120,7 @@ class ActionContext(Context):
     """
 
     def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
-        """
-        Initialize an ActionContext instance.
+        """Initialize an ActionContext instance.
 
         Args:
             order_by (str): The order by criteria.
@@ -146,8 +136,7 @@ class ActionContext(Context):
 
 
 def action_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str]) -> Action:
-    """
-    Factory function to create an Action instance based on the configuration.
+    """Factory function to create an Action instance based on the configuration.
 
     Args:
         config (Dict[str, Any]): The action configuration.

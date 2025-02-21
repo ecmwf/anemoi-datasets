@@ -41,13 +41,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Concat(Combined):
-    """
-    A class to represent concatenated datasets.
-    """
+    """A class to represent concatenated datasets."""
 
     def __len__(self) -> int:
-        """
-        Returns the total length of the concatenated datasets.
+        """Returns the total length of the concatenated datasets.
 
         Returns
         -------
@@ -59,8 +56,7 @@ class Concat(Combined):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> NDArray[Any]:
-        """
-        Retrieves a tuple of data from the concatenated datasets based on the given index.
+        """Retrieves a tuple of data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
@@ -83,8 +79,7 @@ class Concat(Combined):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the concatenated datasets based on the given index.
+        """Retrieves data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
@@ -111,8 +106,7 @@ class Concat(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Retrieves a slice of data from the concatenated datasets.
+        """Retrieves a slice of data from the concatenated datasets.
 
         Parameters
         ----------
@@ -134,8 +128,7 @@ class Concat(Combined):
         return np.concatenate(result)
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks the compatibility of two datasets for concatenation.
+        """Check the compatibility of two datasets for concatenation.
 
         Parameters
         ----------
@@ -148,8 +141,7 @@ class Concat(Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=0)
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the lengths of two datasets are the same.
+        """Check if the lengths of two datasets are the same.
 
         Parameters
         ----------
@@ -162,8 +154,7 @@ class Concat(Combined):
         pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the dates of two datasets are the same.
+        """Check if the dates of two datasets are the same.
 
         Parameters
         ----------
@@ -177,21 +168,16 @@ class Concat(Combined):
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """
-        Returns the concatenated dates of all datasets.
-        """
+        """Returns the concatenated dates of all datasets."""
         return np.concatenate([d.dates for d in self.datasets])
 
     @property
     def shape(self) -> Shape:
-        """
-        Returns the shape of the concatenated datasets.
-        """
+        """Returns the shape of the concatenated datasets."""
         return (len(self),) + self.datasets[0].shape[1:]
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the concatenated datasets.
+        """Generates a hierarchical tree structure for the concatenated datasets.
 
         Returns
         -------
@@ -202,13 +188,10 @@ class Concat(Combined):
 
 
 class GridsBase(GivenAxis):
-    """
-    A base class for handling grids in datasets.
-    """
+    """A base class for handling grids in datasets."""
 
     def __init__(self, datasets: List[Any], axis: int) -> None:
-        """
-        Initializes a GridsBase object.
+        """Initializes a GridsBase object.
 
         Parameters
         ----------
@@ -222,8 +205,7 @@ class GridsBase(GivenAxis):
         assert len(datasets[0].shape) == 4, "Grids must be 1D for now"
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the grids of two datasets are the same.
+        """Check if the grids of two datasets are the same.
 
         Parameters
         ----------
@@ -236,8 +218,7 @@ class GridsBase(GivenAxis):
         pass
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the resolutions of two datasets are the same.
+        """Check if the resolutions of two datasets are the same.
 
         Parameters
         ----------
@@ -250,8 +231,7 @@ class GridsBase(GivenAxis):
         pass
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Returns metadata specific to the GridsBase object.
+        """Returns metadata specific to the GridsBase object.
 
         Parameters
         ----------
@@ -268,8 +248,7 @@ class GridsBase(GivenAxis):
         )
 
     def collect_input_sources(self, collected: List[Any]) -> None:
-        """
-        Collects input sources from the datasets.
+        """Collects input sources from the datasets.
 
         Parameters
         ----------
@@ -283,39 +262,29 @@ class GridsBase(GivenAxis):
 
 
 class Grids(GridsBase):
-    """
-    A class to represent combined grids from multiple datasets.
-    """
+    """A class to represent combined grids from multiple datasets."""
 
     # TODO: select the statistics of the most global grid?
     @property
     def latitudes(self) -> NDArray[Any]:
-        """
-        Returns the concatenated latitudes of all datasets.
-        """
+        """Returns the concatenated latitudes of all datasets."""
         return np.concatenate([d.latitudes for d in self.datasets])
 
     @property
     def longitudes(self) -> NDArray[Any]:
-        """
-        Returns the concatenated longitudes of all datasets.
-        """
+        """Returns the concatenated longitudes of all datasets."""
         return np.concatenate([d.longitudes for d in self.datasets])
 
     @property
     def grids(self) -> Tuple[Any, ...]:
-        """
-        Returns the grids of all datasets.
-
-        """
+        """Returns the grids of all datasets."""
         result = []
         for d in self.datasets:
             result.extend(d.grids)
         return tuple(result)
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the Grids object.
+        """Generates a hierarchical tree structure for the Grids object.
 
         Returns
         -------
@@ -326,9 +295,7 @@ class Grids(GridsBase):
 
 
 class Cutout(GridsBase):
-    """
-    A class to handle hierarchical management of Limited Area Models (LAMs) and a global dataset.
-    """
+    """A class to handle hierarchical management of Limited Area Models (LAMs) and a global dataset."""
 
     def __init__(
         self,
@@ -375,13 +342,12 @@ class Cutout(GridsBase):
         self._initialize_masks()
 
     def _initialize_masks(self) -> None:
-        """Generates hierarchical masks for each LAM dataset by excluding
-        overlapping regions with previous LAMs and creating a global mask for
-        the global dataset.
+        """Generate hierarchical masks for each LAM dataset by excluding overlapping regions with previous LAMs and creating a global mask for the global dataset.
 
-        Raises:
-            ValueError: If the global mask dimension does not match the global
-                dataset grid points.
+        Raises
+        ------
+        ValueError
+            If the global mask dimension does not match the global dataset grid points.
         """
         from anemoi.datasets.grids import cutout_mask
 
@@ -439,20 +405,25 @@ class Cutout(GridsBase):
         lons2: NDArray[Any],
         distance_threshold: float = 1.0,
     ) -> bool:
-        """Checks for overlapping points between two sets of latitudes and
-        longitudes within a specified distance threshold.
+        """Check for overlapping points between two sets of latitudes and longitudes within a specified distance threshold.
 
-        Args:
-            lats1, lons1 (NDArray[Any]): Latitude and longitude arrays for the
-                first dataset.
-            lats2, lons2 (NDArray[Any]): Latitude and longitude arrays for the
-                second dataset.
-            distance_threshold (float): Distance in degrees to consider as
-                overlapping.
+        Parameters
+        ----------
+        lats1 : NDArray[Any]
+            Latitude array for the first dataset.
+        lons1 : NDArray[Any]
+            Longitude array for the first dataset.
+        lats2 : NDArray[Any]
+            Latitude array for the second dataset.
+        lons2 : NDArray[Any]
+            Longitude array for the second dataset.
+        distance_threshold : float
+            Distance in degrees to consider as overlapping.
 
-        Returns:
-            bool: True if any points overlap within the distance threshold,
-                otherwise False.
+        Returns
+        -------
+        bool
+            True if any points overlap within the distance threshold, otherwise False.
         """
         # Create KDTree for the first set of points
         tree = cKDTree(np.vstack((lats1, lons1)).T)
@@ -464,30 +435,34 @@ class Cutout(GridsBase):
         return np.any(distances < distance_threshold)
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
-        """Retrieves data from the masked LAMs and global dataset based on the
-        given index.
+        """Retrieve data from the masked LAMs and global dataset based on the given index.
 
-        Args:
-            index (int or slice or tuple): Index specifying the data to
-                retrieve.
+        Parameters
+        ----------
+        index : FullIndex
+            Index specifying the data to retrieve.
 
-        Returns:
-            NDArray[Any]: Data array from the masked datasets based on the index.
+        Returns
+        -------
+        NDArray[Any]
+            Data array from the masked datasets based on the index.
         """
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
     def _get_tuple(self, index: Tuple[Union[int, slice], ...]) -> NDArray[Any]:
-        """Helper method that applies masks and retrieves data from each dataset
-        according to the specified index.
+        """Helper method that applies masks and retrieves data from each dataset according to the specified index.
 
-        Args:
-            index (tuple): Index specifying slices to retrieve data.
+        Parameters
+        ----------
+        index : tuple
+            Index specifying slices to retrieve data.
 
-        Returns:
-            NDArray[Any]: Concatenated data array from all datasets based on the
-                index.
+        Returns
+        -------
+        NDArray[Any]
+            Concatenated data array from all datasets based on the index.
         """
         index, changes = index_to_slices(index, self.shape)
         # Select data from each LAM
@@ -503,12 +478,14 @@ class Cutout(GridsBase):
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
-        """Collects supporting arrays, including masks for each LAM and the global
-        dataset.
+        """Collect supporting arrays, including masks for each LAM and the global dataset.
 
-        Args:
-            collected (list): List to which the supporting arrays are appended.
-            *path: Variable length argument list specifying the paths for the masks.
+        Parameters
+        ----------
+        collected : List[Any]
+            List to which the supporting arrays are appended.
+        *path : Any
+            Variable length argument list specifying the paths for the masks.
         """
         # Append masks for each LAM
         for i, (lam, mask) in enumerate(zip(self.lams, self.masks)):
@@ -529,8 +506,7 @@ class Cutout(GridsBase):
         return tuple(self.lams[0].shape[:-1] + (int(total_shape),))
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the resolutions of two datasets are the same.
+        """Checks if the resolutions of two datasets are the same.
 
         Parameters
         ----------

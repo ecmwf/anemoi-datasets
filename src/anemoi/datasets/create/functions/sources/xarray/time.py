@@ -26,14 +26,11 @@ LOG = logging.getLogger(__name__)
 
 
 class Time(ABC):
-    """
-    Base class for different time representations.
-    """
+    """Base class for different time representations."""
 
     @classmethod
     def from_coordinates(cls, coordinates: List[Coordinate]) -> "Time":
-        """
-        Create a Time instance from a list of coordinates.
+        """Create a Time instance from a list of coordinates.
 
         Args
         ----
@@ -89,8 +86,7 @@ class Time(ABC):
 
     @abstractmethod
     def select_valid_datetime(self, variable: Variable) -> Optional[str]:
-        """
-        Select the valid datetime for a given variable.
+        """Select the valid datetime for a given variable.
 
         Parameters
         ----------
@@ -106,13 +102,10 @@ class Time(ABC):
 
 
 class Constant(Time):
-    """
-    Represents a constant time.
-    """
+    """Represents a constant time."""
 
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> None:
-        """
-        Fill metadata with time information.
+        """Fill metadata with time information.
 
         Args
         ----
@@ -124,8 +117,7 @@ class Constant(Time):
         return None
 
     def select_valid_datetime(self, variable: Variable) -> None:
-        """
-        Select the valid datetime for a given variable.
+        """Select the valid datetime for a given variable.
 
         Args
         ----
@@ -140,13 +132,10 @@ class Constant(Time):
 
 
 class Analysis(Time):
-    """
-    Represents an analysis time.
-    """
+    """Represents an analysis time."""
 
     def __init__(self, time_coordinate: Coordinate) -> None:
-        """
-        Initialize Analysis with a time coordinate.
+        """Initialize Analysis with a time coordinate.
 
         Args
         ----
@@ -156,8 +145,7 @@ class Analysis(Time):
         self.time_coordinate_name = time_coordinate.variable.name
 
     def select_valid_datetime(self, variable: Variable) -> str:
-        """
-        Select the valid datetime for a given variable.
+        """Select the valid datetime for a given variable.
 
         Parameters
         ----------
@@ -173,15 +161,12 @@ class Analysis(Time):
 
 
 class ForecastFromValidTimeAndStep(Time):
-    """
-    Represents a forecast time derived from valid time and step.
-    """
+    """Represents a forecast time derived from valid time and step."""
 
     def __init__(
         self, time_coordinate: Coordinate, step_coordinate: Coordinate, date_coordinate: Optional[Coordinate] = None
     ) -> None:
-        """
-        Initialize ForecastFromValidTimeAndStep with time, step, and optional date coordinates.
+        """Initialize ForecastFromValidTimeAndStep with time, step, and optional date coordinates.
 
         Args
         ----
@@ -197,8 +182,7 @@ class ForecastFromValidTimeAndStep(Time):
         self.date_coordinate_name = date_coordinate.variable.name if date_coordinate else None
 
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
-        """
-        Fill metadata with time information.
+        """Fill metadata with time information.
 
         Args
         ----
@@ -237,8 +221,7 @@ class ForecastFromValidTimeAndStep(Time):
         return valid_datetime
 
     def select_valid_datetime(self, variable: Variable) -> str:
-        """
-        Select the valid datetime for a given variable.
+        """Select the valid datetime for a given variable.
 
         Parameters
         ----------
@@ -254,13 +237,10 @@ class ForecastFromValidTimeAndStep(Time):
 
 
 class ForecastFromValidTimeAndBaseTime(Time):
-    """
-    Represents a forecast time derived from valid time and base time.
-    """
+    """Represents a forecast time derived from valid time and base time."""
 
     def __init__(self, date_coordinate: Coordinate, time_coordinate: Coordinate) -> None:
-        """
-        Initialize ForecastFromValidTimeAndBaseTime with date and time coordinates.
+        """Initialize ForecastFromValidTimeAndBaseTime with date and time coordinates.
 
         Args
         ----
@@ -273,8 +253,7 @@ class ForecastFromValidTimeAndBaseTime(Time):
         self.time_coordinate_name = time_coordinate.name
 
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
-        """
-        Fill metadata with time information.
+        """Fill metadata with time information.
 
         Args
         ----
@@ -303,8 +282,7 @@ class ForecastFromValidTimeAndBaseTime(Time):
         return valid_datetime
 
     def select_valid_datetime(self, variable: Variable) -> str:
-        """
-        Select the valid datetime for a given variable.
+        """Select the valid datetime for a given variable.
 
         Parameters
         ----------
@@ -320,13 +298,10 @@ class ForecastFromValidTimeAndBaseTime(Time):
 
 
 class ForecastFromBaseTimeAndDate(Time):
-    """
-    Represents a forecast time derived from base time and date.
-    """
+    """Represents a forecast time derived from base time and date."""
 
     def __init__(self, date_coordinate: Coordinate, step_coordinate: Coordinate) -> None:
-        """
-        Initialize ForecastFromBaseTimeAndDate with date and step coordinates.
+        """Initialize ForecastFromBaseTimeAndDate with date and step coordinates.
 
         Args
         ----
@@ -339,8 +314,7 @@ class ForecastFromBaseTimeAndDate(Time):
         self.step_coordinate_name = step_coordinate.name
 
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
-        """
-        Fill metadata with time information.
+        """Fill metadata with time information.
 
         Args
         ----
@@ -369,8 +343,7 @@ class ForecastFromBaseTimeAndDate(Time):
         return date + step
 
     def select_valid_datetime(self, variable: Variable) -> Optional[str]:
-        """
-        Select the valid datetime for a given variable.
+        """Select the valid datetime for a given variable.
 
         Parameters
         ----------

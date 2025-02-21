@@ -34,14 +34,11 @@ LOG = logging.getLogger(__name__)
 
 
 class DateMapper:
-    """
-    A factory class to create DateMapper instances based on the given mode.
-    """
+    """A factory class to create DateMapper instances based on the given mode."""
 
     @staticmethod
     def from_mode(mode: str, source: Any, config: Dict[str, Any]) -> "DateMapper":
-        """
-        Create a DateMapper instance based on the given mode.
+        """Create a DateMapper instance based on the given mode.
 
         Args:
             mode (str): The mode to use for the DateMapper.
@@ -64,13 +61,10 @@ class DateMapper:
 
 
 class DateMapperClosest(DateMapper):
-    """
-    A DateMapper implementation that maps dates to the closest available dates.
-    """
+    """A DateMapper implementation that maps dates to the closest available dates."""
 
     def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
-        """
-        Initialize DateMapperClosest.
+        """Initialize DateMapperClosest.
 
         Args:
             source (Any): The data source.
@@ -86,8 +80,7 @@ class DateMapperClosest(DateMapper):
         self.found: Set[Any] = set()
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """
-        Transform the group of dates to the closest available dates.
+        """Transform the group of dates to the closest available dates.
 
         Args:
             group_of_dates (Any): The group of dates to transform.
@@ -171,13 +164,10 @@ class DateMapperClosest(DateMapper):
 
 
 class DateMapperClimatology(DateMapper):
-    """
-    A DateMapper implementation that maps dates to specified climatology dates.
-    """
+    """A DateMapper implementation that maps dates to specified climatology dates."""
 
     def __init__(self, source: Any, year: int, day: int, hour: Optional[int] = None) -> None:
-        """
-        Initialize DateMapperClimatology.
+        """Initialize DateMapperClimatology.
 
         Args:
             source (Any): The data source.
@@ -190,8 +180,7 @@ class DateMapperClimatology(DateMapper):
         self.hour: Optional[int] = hour
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """
-        Transform the group of dates to the specified climatology dates.
+        """Transform the group of dates to the specified climatology dates.
 
         Args:
             group_of_dates (Any): The group of dates to transform.
@@ -220,13 +209,10 @@ class DateMapperClimatology(DateMapper):
 
 
 class DateMapperConstant(DateMapper):
-    """
-    A DateMapper implementation that maps dates to a constant date.
-    """
+    """A DateMapper implementation that maps dates to a constant date."""
 
     def __init__(self, source: Any, date: Optional[Any] = None) -> None:
-        """
-        Initialize DateMapperConstant.
+        """Initialize DateMapperConstant.
 
         Args:
             source (Any): The data source.
@@ -236,8 +222,7 @@ class DateMapperConstant(DateMapper):
         self.date: Optional[Any] = date
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """
-        Transform the group of dates to a constant date.
+        """Transform the group of dates to a constant date.
 
         Args:
             group_of_dates (Any): The group of dates to transform.
@@ -261,9 +246,7 @@ class DateMapperConstant(DateMapper):
 
 
 class DateMapperResult(Result):
-    """
-    A Result implementation that updates the valid datetime of the datasource.
-    """
+    """A Result implementation that updates the valid datetime of the datasource."""
 
     def __init__(
         self,
@@ -274,8 +257,7 @@ class DateMapperResult(Result):
         mapper: DateMapper,
         original_group_of_dates: Any,
     ) -> None:
-        """
-        Initialize DateMapperResult.
+        """Initialize DateMapperResult.
 
         Args:
             context (Any): The context.
@@ -293,8 +275,7 @@ class DateMapperResult(Result):
 
     @property
     def datasource(self) -> Any:
-        """
-        Get the datasource with updated valid datetime.
+        """Get the datasource with updated valid datetime.
 
         Returns:
             Any: The updated datasource.
@@ -312,13 +293,10 @@ class DateMapperResult(Result):
 
 
 class RepeatedDatesAction(Action):
-    """
-    An Action implementation that selects and transforms a group of dates.
-    """
+    """An Action implementation that selects and transforms a group of dates."""
 
     def __init__(self, context: Any, action_path: List[str], source: Any, mode: str, **kwargs: Any) -> None:
-        """
-        Initialize RepeatedDatesAction.
+        """Initialize RepeatedDatesAction.
 
         Args:
             context (Any): The context.
@@ -334,8 +312,7 @@ class RepeatedDatesAction(Action):
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:
-        """
-        Select and transform the group of dates.
+        """Select and transform the group of dates.
 
         Args:
             group_of_dates (Any): The group of dates to select.
@@ -359,8 +336,7 @@ class RepeatedDatesAction(Action):
         return JoinResult(self.context, self.action_path, group_of_dates, results)
 
     def __repr__(self) -> str:
-        """
-        Get the string representation of the action.
+        """Get the string representation of the action.
 
         Returns:
             str: The string representation.

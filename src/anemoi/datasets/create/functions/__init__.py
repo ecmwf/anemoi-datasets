@@ -16,8 +16,7 @@ import entrypoints
 
 
 def assert_is_fieldlist(obj: Any) -> None:
-    """
-    Asserts that the given object is an instance of FieldList.
+    """Asserts that the given object is an instance of FieldList.
 
     Args:
         obj: The object to check.
@@ -31,8 +30,7 @@ def assert_is_fieldlist(obj: Any) -> None:
 
 
 def import_function(name: str, kind: str) -> Callable:
-    """
-    Imports a function based on the given name and kind.
+    """Imports a function based on the given name and kind.
 
     Args:
         name (str): The name of the function to import.
@@ -69,8 +67,7 @@ def import_function(name: str, kind: str) -> Callable:
         if filter_registry.lookup(name, return_none=True):
 
             def proc(context: Any, data: Any, *args: Any, **kwargs: Any) -> Any:
-                """
-                Processes data using the specified filter.
+                """Processes data using the specified filter.
 
                 Args:
                     context: The context for the filter.
@@ -91,8 +88,7 @@ def import_function(name: str, kind: str) -> Callable:
         if source_registry.lookup(name, return_none=True):
 
             def proc(context: Any, data: Any, *args: Any, **kwargs: Any) -> Any:
-                """
-                Processes data using the specified source.
+                """Processes data using the specified source.
 
                 Args:
                     context: The context for the source.

@@ -37,13 +37,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Forwards(Dataset):
-    """
-    A class to represent a dataset that forwards its properties and methods to another dataset.
-    """
+    """A class to represent a dataset that forwards its properties and methods to another dataset."""
 
     def __init__(self, forward: Dataset) -> None:
-        """
-        Initializes a Forwards object.
+        """Initializes a Forwards object.
 
         Parameters
         ----------
@@ -53,8 +50,7 @@ class Forwards(Dataset):
         self.forward = forward.mutate()
 
     def __len__(self) -> int:
-        """
-        Returns the length of the forward dataset.
+        """Returns the length of the forward dataset.
 
         Returns
         -------
@@ -64,8 +60,7 @@ class Forwards(Dataset):
         return len(self.forward)
 
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the forward dataset based on the given index.
+        """Retrieves data from the forward dataset based on the given index.
 
         Parameters
         ----------
@@ -81,87 +76,63 @@ class Forwards(Dataset):
 
     @property
     def name(self) -> str | None:
-        """
-        Returns the name of the forward dataset.
-        """
+        """Returns the name of the forward dataset."""
         if self._name is not None:
             return self._name
         return self.forward.name
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """
-        Returns the dates of the forward dataset.
-        """
+        """Returns the dates of the forward dataset."""
         return self.forward.dates
 
     @property
     def resolution(self) -> str:
-        """
-        Returns the resolution of the forward dataset.
-        """
+        """Returns the resolution of the forward dataset."""
         return self.forward.resolution
 
     @property
     def field_shape(self) -> Shape:
-        """
-        Returns the field shape of the forward dataset.
-        """
+        """Returns the field shape of the forward dataset."""
         return self.forward.field_shape
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """
-        Returns the frequency of the forward dataset.
-        """
+        """Returns the frequency of the forward dataset."""
         return self.forward.frequency
 
     @property
     def latitudes(self) -> NDArray[Any]:
-        """
-        Returns the latitudes of the forward dataset.
-        """
+        """Returns the latitudes of the forward dataset."""
         return self.forward.latitudes
 
     @property
     def longitudes(self) -> NDArray[Any]:
-        """
-        Returns the longitudes of the forward dataset.
-        """
+        """Returns the longitudes of the forward dataset."""
         return self.forward.longitudes
 
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """
-        Returns a dictionary mapping variable names to their indices.
-
-        """
+        """Returns a dictionary mapping variable names to their indices."""
         return self.forward.name_to_index
 
     @property
     def variables(self) -> List[str]:
-        """
-        Returns the variables of the forward dataset.
-        """
+        """Returns the variables of the forward dataset."""
         return self.forward.variables
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
-        """
-        Returns the metadata of the variables in the forward dataset.
-        """
+        """Returns the metadata of the variables in the forward dataset."""
         return self.forward.variables_metadata
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """
-        Returns the statistics of the forward dataset.
-        """
+        """Returns the statistics of the forward dataset."""
         return self.forward.statistics
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Returns the statistics tendencies of the forward dataset.
+        """Returns the statistics tendencies of the forward dataset.
 
         Parameters
         ----------
@@ -179,35 +150,26 @@ class Forwards(Dataset):
 
     @property
     def shape(self) -> Shape:
-        """
-        Returns the shape of the forward dataset.
-        """
+        """Returns the shape of the forward dataset."""
         return self.forward.shape
 
     @property
     def dtype(self) -> Any:
-        """
-        Returns the data type of the forward dataset.
-        """
+        """Returns the data type of the forward dataset."""
         return self.forward.dtype
 
     @property
     def missing(self) -> Set[int]:
-        """
-        Returns the missing data information of the forward dataset.
-        """
+        """Returns the missing data information of the forward dataset."""
         return self.forward.missing
 
     @property
     def grids(self) -> Any:
-        """
-        Returns the grids of the forward dataset.
-        """
+        """Returns the grids of the forward dataset."""
         return self.forward.grids
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Returns metadata specific to the forward dataset.
+        """Returns metadata specific to the forward dataset.
 
         Parameters
         ----------
@@ -226,8 +188,7 @@ class Forwards(Dataset):
         )
 
     def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
-        """
-        Collects supporting arrays from the forward dataset.
+        """Collects supporting arrays from the forward dataset.
 
         Parameters
         ----------
@@ -239,8 +200,7 @@ class Forwards(Dataset):
         self.forward.collect_supporting_arrays(collected, *path)
 
     def collect_input_sources(self, collected: List[Any]) -> None:
-        """
-        Collects input sources from the forward dataset.
+        """Collects input sources from the forward dataset.
 
         Parameters
         ----------
@@ -250,8 +210,7 @@ class Forwards(Dataset):
         self.forward.collect_input_sources(collected)
 
     def source(self, index: int) -> Any:
-        """
-        Returns the source of the data at the specified index.
+        """Returns the source of the data at the specified index.
 
         Parameters
         ----------
@@ -267,14 +226,11 @@ class Forwards(Dataset):
 
     @abstractmethod
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Returns metadata specific to the subclass.
-        """
+        """Returns metadata specific to the subclass."""
         pass
 
     def get_dataset_names(self, names: Set[str]) -> None:
-        """
-        Collects the names of the datasets.
+        """Collects the names of the datasets.
 
         Parameters
         ----------
@@ -285,20 +241,15 @@ class Forwards(Dataset):
 
     @property
     def constant_fields(self) -> List[str]:
-        """
-        Returns the constant fields of the forward dataset.
-        """
+        """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
 
 class Combined(Forwards):
-    """
-    A class to combine multiple datasets into a single dataset.
-    """
+    """A class to combine multiple datasets into a single dataset."""
 
     def __init__(self, datasets: List[Dataset]) -> None:
-        """
-        Initializes a Combined object.
+        """Initializes a Combined object.
 
         Parameters
         ----------
@@ -315,8 +266,7 @@ class Combined(Forwards):
         super().__init__(datasets[0])
 
     def mutate(self) -> Dataset:
-        """
-        Returns the mutated dataset.
+        """Returns the mutated dataset.
 
         Returns
         -------
@@ -326,8 +276,7 @@ class Combined(Forwards):
         return self
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the resolutions of two datasets are the same.
+        """Checks if the resolutions of two datasets are the same.
 
         Parameters
         ----------
@@ -345,8 +294,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible resolutions: {d1.resolution} and {d2.resolution} ({d1} {d2})")
 
     def check_same_frequency(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the frequencies of two datasets are the same.
+        """Checks if the frequencies of two datasets are the same.
 
         Parameters
         ----------
@@ -364,8 +312,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible frequencies: {d1.frequency} and {d2.frequency} ({d1} {d2})")
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the grids of two datasets are the same.
+        """Checks if the grids of two datasets are the same.
 
         Parameters
         ----------
@@ -383,8 +330,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible grid ({d1} {d2})")
 
     def check_same_shape(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the shapes of two datasets are the same.
+        """Checks if the shapes of two datasets are the same.
 
         Parameters
         ----------
@@ -405,8 +351,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})")
 
     def check_same_sub_shapes(self, d1: Any, d2: Any, drop_axis: int) -> None:
-        """
-        Checks if the sub-shapes of two datasets are the same along a given axis.
+        """Checks if the sub-shapes of two datasets are the same along a given axis.
 
         Parameters
         ----------
@@ -429,8 +374,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the variables of two datasets are the same.
+        """Checks if the variables of two datasets are the same.
 
         Parameters
         ----------
@@ -448,8 +392,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})")
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the lengths of two datasets are the same.
+        """Checks if the lengths of two datasets are the same.
 
         Parameters
         ----------
@@ -467,8 +410,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible lengths: {d1._len} and {d2._len}")
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the dates of two datasets are the same.
+        """Checks if the dates of two datasets are the same.
 
         Parameters
         ----------
@@ -491,8 +433,7 @@ class Combined(Forwards):
             raise ValueError(f"Incompatible end dates: {d1.dates[-1]} and {d2.dates[-1]} ({d1} {d2})")
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if two datasets are compatible.
+        """Checks if two datasets are compatible.
 
         Parameters
         ----------
@@ -516,8 +457,7 @@ class Combined(Forwards):
         self.check_same_dates(d1, d2)
 
     def provenance(self) -> List[Any]:
-        """
-        Returns the provenance of the combined datasets.
+        """Returns the provenance of the combined datasets.
 
         Returns
         -------
@@ -527,8 +467,7 @@ class Combined(Forwards):
         return [d.provenance() for d in self.datasets]
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the Combined object.
+        """Returns a string representation of the Combined object.
 
         Returns
         -------
@@ -539,8 +478,7 @@ class Combined(Forwards):
         return f"{self.__class__.__name__}({lst})"
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Returns metadata specific to the combined datasets.
+        """Returns metadata specific to the combined datasets.
 
         Parameters
         ----------
@@ -561,8 +499,7 @@ class Combined(Forwards):
         )
 
     def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
-        """
-        Collects supporting arrays from the combined datasets.
+        """Collects supporting arrays from the combined datasets.
 
         Parameters
         ----------
@@ -578,8 +515,7 @@ class Combined(Forwards):
 
     @property
     def missing(self) -> Set[int]:
-        """
-        Returns the missing data information of the combined datasets.
+        """Returns the missing data information of the combined datasets.
 
         Raises
         ------
@@ -589,8 +525,7 @@ class Combined(Forwards):
         raise NotImplementedError("missing() not implemented for Combined")
 
     def get_dataset_names(self, names: Set[str]) -> None:
-        """
-        Collects the names of the combined datasets.
+        """Collects the names of the combined datasets.
 
         Parameters
         ----------
@@ -602,13 +537,10 @@ class Combined(Forwards):
 
 
 class GivenAxis(Combined):
-    """
-    A class to combine datasets along a given axis.
-    """
+    """A class to combine datasets along a given axis."""
 
     def __init__(self, datasets: List[Any], axis: int) -> None:
-        """
-        Initializes a GivenAxis object.
+        """Initializes a GivenAxis object.
 
         Parameters
         ----------
@@ -626,8 +558,7 @@ class GivenAxis(Combined):
         )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if two datasets are compatible along the given axis.
+        """Checks if two datasets are compatible along the given axis.
 
         Parameters
         ----------
@@ -646,9 +577,7 @@ class GivenAxis(Combined):
 
     @cached_property
     def shape(self) -> Shape:
-        """
-        Returns the shape of the combined dataset along the given axis.
-        """
+        """Returns the shape of the combined dataset along the given axis."""
         shapes = [d.shape for d in self.datasets]
         before = shapes[0][: self.axis]
         after = shapes[0][self.axis + 1 :]
@@ -659,8 +588,7 @@ class GivenAxis(Combined):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the combined dataset based on the given index.
+        """Retrieves data from the combined dataset based on the given index.
 
         Parameters
         ----------
@@ -681,8 +609,7 @@ class GivenAxis(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Retrieves a slice of data from the combined dataset.
+        """Retrieves a slice of data from the combined dataset.
 
         Parameters
         ----------
@@ -698,8 +625,7 @@ class GivenAxis(Combined):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the combined dataset based on the given index.
+        """Retrieves data from the combined dataset based on the given index.
 
         Parameters
         ----------
@@ -721,9 +647,7 @@ class GivenAxis(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Returns the missing data information of the combined dataset along the given axis.
-        """
+        """Returns the missing data information of the combined dataset along the given axis."""
         offset = 0
         result: Set[int] = set()
         for d in self.datasets:

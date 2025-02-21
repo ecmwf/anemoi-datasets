@@ -36,8 +36,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Complement(Combined):
-    """
-    A class to complement a target dataset with variables from a source dataset,
+    """A class to complement a target dataset with variables from a source dataset,
     interpolated on the grid of the target dataset.
 
     Attributes:
@@ -53,8 +52,7 @@ class Complement(Combined):
         what: str = "variables",
         interpolation: str = "nearest",
     ) -> None:
-        """
-        Initializes the Complement class.
+        """Initializes the Complement class.
 
         Args:
             target (Dataset): The target dataset.
@@ -82,8 +80,7 @@ class Complement(Combined):
 
     @property
     def variables(self) -> List[str]:
-        """
-        Returns the list of variables to be added to the target dataset.
+        """Returns the list of variables to be added to the target dataset.
 
         Returns:
             List[str]: List of variables.
@@ -92,8 +89,7 @@ class Complement(Combined):
 
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """
-        Returns a dictionary mapping variable names to their indices.
+        """Returns a dictionary mapping variable names to their indices.
 
         Returns:
             Dict[str, int]: Dictionary of variable names and indices.
@@ -102,8 +98,7 @@ class Complement(Combined):
 
     @property
     def shape(self) -> Shape:
-        """
-        Returns the shape of the complemented dataset.
+        """Returns the shape of the complemented dataset.
 
         Returns:
             Shape: Shape of the dataset.
@@ -113,8 +108,7 @@ class Complement(Combined):
 
     @property
     def variables_metadata(self) -> dict:
-        """
-        Returns the metadata of the variables to be added to the target dataset.
+        """Returns the metadata of the variables to be added to the target dataset.
 
         Returns:
             dict: Metadata of the variables.
@@ -122,8 +116,7 @@ class Complement(Combined):
         return {k: v for k, v in self._source.variables_metadata.items() if k in self._variables}
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the variables in two datasets are the same.
+        """Checks if the variables in two datasets are the same.
 
         Args:
             d1 (Dataset): The first dataset.
@@ -133,8 +126,7 @@ class Complement(Combined):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Returns the set of missing indices in the source and target datasets.
+        """Returns the set of missing indices in the source and target datasets.
 
         Returns:
             Set[int]: Set of missing indices.
@@ -144,8 +136,7 @@ class Complement(Combined):
         return set(missing)
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the Complement instance and its associated datasets.
+        """Generates a hierarchical tree structure for the Complement instance and its associated datasets.
 
         Returns:
             Node: A Node object representing the Complement instance as the root node, with each dataset in self.datasets represented as a child node.
@@ -153,8 +144,7 @@ class Complement(Combined):
         return Node(self, [d.tree() for d in (self._target, self._source)])
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
-        """
-        Gets the data at the specified index.
+        """Gets the data at the specified index.
 
         Args:
             index (FullIndex): The index to retrieve data from.
@@ -168,8 +158,7 @@ class Complement(Combined):
 
     @abstractmethod
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Abstract method to get the data at the specified tuple index.
+        """Abstract method to get the data at the specified tuple index.
 
         Args:
             index (TupleIndex): The tuple index to retrieve data from.
@@ -181,13 +170,10 @@ class Complement(Combined):
 
 
 class ComplementNone(Complement):
-    """
-    A class to complement a target dataset with variables from a source dataset without interpolation.
-    """
+    """A class to complement a target dataset with variables from a source dataset without interpolation."""
 
     def __init__(self, target: Any, source: Any) -> None:
-        """
-        Initializes the ComplementNone class.
+        """Initializes the ComplementNone class.
 
         Args:
             target (Any): The target dataset.
@@ -196,8 +182,7 @@ class ComplementNone(Complement):
         super().__init__(target, source)
 
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Gets the data at the specified tuple index without interpolation.
+        """Gets the data at the specified tuple index without interpolation.
 
         Args:
             index (TupleIndex): The tuple index to retrieve data from.
@@ -211,13 +196,10 @@ class ComplementNone(Complement):
 
 
 class ComplementNearest(Complement):
-    """
-    A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation.
-    """
+    """A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation."""
 
     def __init__(self, target: Any, source: Any) -> None:
-        """
-        Initializes the ComplementNearest class.
+        """Initializes the ComplementNearest class.
 
         Args:
             target (Any): The target dataset.
@@ -233,8 +215,7 @@ class ComplementNearest(Complement):
         )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks the compatibility of two datasets for nearest neighbor interpolation.
+        """Checks the compatibility of two datasets for nearest neighbor interpolation.
 
         Args:
             d1 (Dataset): The first dataset.
@@ -243,8 +224,7 @@ class ComplementNearest(Complement):
         pass
 
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Gets the data at the specified tuple index using nearest neighbor interpolation.
+        """Gets the data at the specified tuple index using nearest neighbor interpolation.
 
         Args:
             index (TupleIndex): The tuple index to retrieve data from.
@@ -265,8 +245,7 @@ class ComplementNearest(Complement):
 
 
 def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
-    """
-    Factory function to create a Complement instance based on the provided arguments.
+    """Factory function to create a Complement instance based on the provided arguments.
 
     Args:
         args (Tuple): Positional arguments.

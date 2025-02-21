@@ -14,9 +14,7 @@ from anemoi.datasets.data.indexing import length_to_slices
 
 
 def test_length_to_slices() -> None:
-    """
-    Test the length_to_slices function with various inputs.
-    """
+    """Test the length_to_slices function with various inputs."""
     lengths = [5, 7, 11, 13]
     datasets = [np.random.rand(n) for n in lengths]
     total = sum(lengths)

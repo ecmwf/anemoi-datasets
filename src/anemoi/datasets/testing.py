@@ -26,8 +26,7 @@ def assert_field_list(
     constant: bool = False,
     skip: Optional[Any] = None,
 ) -> None:
-    """
-    Asserts various properties of a list of fields.
+    """Asserts various properties of a list of fields.
 
     Args:
         fs (List[Any]): List of fields to be checked.

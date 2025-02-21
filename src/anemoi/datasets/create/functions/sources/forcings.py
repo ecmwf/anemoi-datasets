@@ -11,6 +11,24 @@ from earthkit.data import from_source
 
 
 def forcings(context, dates, template, param):
+    """Loads forcing data from a specified source.
+
+    Parameters
+    ----------
+    context : object
+        The context in which the function is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    template : str
+        Template for the data source.
+    param : str
+        Parameter for the data source.
+
+    Returns
+    -------
+    object
+        Loaded forcing data.
+    """
     context.trace("✅", f"from_source(forcings, {template}, {param}")
     return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 

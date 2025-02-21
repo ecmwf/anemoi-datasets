@@ -26,8 +26,7 @@ DEBUG = False
 
 
 def to_list(x: Union[list, tuple, Any]) -> list:
-    """
-    Converts the input to a list if it is not already a list or tuple.
+    """Converts the input to a list if it is not already a list or tuple.
 
     Args:
         x: The input value to be converted.
@@ -43,8 +42,7 @@ def to_list(x: Union[list, tuple, Any]) -> list:
 def _date_to_datetime(
     d: Union[datetime.datetime, list, tuple, str]
 ) -> Union[datetime.datetime, List[datetime.datetime]]:
-    """
-    Converts the input date(s) to datetime objects.
+    """Converts the input date(s) to datetime objects.
 
     Args:
         d: The input date(s) to be converted.
@@ -60,8 +58,7 @@ def _date_to_datetime(
 
 
 def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
-    """
-    Expands a range expression to a list of values.
+    """Expands a range expression to a list of values.
 
     Args:
         x: The input range expression.
@@ -87,8 +84,7 @@ def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
 
 
 def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelta:
-    """
-    Normalizes a time delta string to a datetime.timedelta object.
+    """Normalizes a time delta string to a datetime.timedelta object.
 
     Args:
         t: The input time delta string.
@@ -107,8 +103,7 @@ def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelt
 
 
 def _normalise_time(t: Union[int, str]) -> str:
-    """
-    Normalizes a time value to a string in HHMM format.
+    """Normalizes a time value to a string in HHMM format.
 
     Args:
         t: The input time value.
@@ -128,8 +123,7 @@ def _expand_mars_request(
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
 ) -> List[Dict[str, Any]]:
-    """
-    Expands a MARS request with the given date and other parameters.
+    """Expands a MARS request with the given date and other parameters.
 
     Args:
         request: The input MARS request.
@@ -204,8 +198,7 @@ def factorise_requests(
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
 ) -> Generator[Dict[str, Any], None, None]:
-    """
-    Factorizes the requests based on the given dates.
+    """Factorizes the requests based on the given dates.
 
     Args:
         dates: The list of dates to be used in the requests.
@@ -240,8 +233,7 @@ def factorise_requests(
 
 
 def use_grib_paramid(r: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Converts the parameter short names to GRIB parameter IDs.
+    """Converts the parameter short names to GRIB parameter IDs.
 
     Args:
         r: The input request containing parameter short names.
@@ -339,8 +331,7 @@ def mars(
     use_cdsapi_dataset: Optional[str] = None,
     **kwargs: Any,
 ) -> Any:
-    """
-    Executes MARS requests based on the given context, dates, and other parameters.
+    """Executes MARS requests based on the given context, dates, and other parameters.
 
     Args:
         context: The context for the requests.

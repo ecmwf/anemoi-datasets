@@ -38,8 +38,7 @@ LOG = logging.getLogger(__name__)
 def make_rescale(
     variable: str, rescale: Union[Tuple[float, float], List[str], Dict[str, float]]
 ) -> Tuple[float, float]:
-    """
-    Create rescale parameters (scale and offset) based on the input rescale specification.
+    """Create rescale parameters (scale and offset) based on the input rescale specification.
 
     Args:
         variable (str): The variable name.
@@ -79,15 +78,12 @@ def make_rescale(
 
 
 class Rescale(Forwards):
-    """
-    A class to apply rescaling to dataset variables.
-    """
+    """A class to apply rescaling to dataset variables."""
 
     def __init__(
         self, dataset: Dataset, rescale: Dict[str, Union[Tuple[float, float], List[str], Dict[str, float]]]
     ) -> None:
-        """
-        Initialize the Rescale object.
+        """Initialize the Rescale object.
 
         Args:
             dataset (Dataset): The dataset to be rescaled.
@@ -116,8 +112,7 @@ class Rescale(Forwards):
         self._b = self._b.astype(self.forward.dtype)
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the rescale operation.
+        """Get the tree representation of the rescale operation.
 
         Returns:
             Node: The tree representation.
@@ -125,8 +120,7 @@ class Rescale(Forwards):
         return Node(self, [self.forward.tree()], rescale=self.rescale)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the rescale subclass.
+        """Get the metadata specific to the rescale subclass.
 
         Returns:
             Dict[str, Any]: The metadata dictionary.
@@ -136,8 +130,7 @@ class Rescale(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get a tuple of rescaled data based on the provided index.
+        """Get a tuple of rescaled data based on the provided index.
 
         Args:
             index (TupleIndex): The index to retrieve data.
@@ -155,8 +148,7 @@ class Rescale(Forwards):
 
     @debug_indexing
     def __get_slice_(self, n: slice) -> NDArray[Any]:
-        """
-        Get a slice of rescaled data.
+        """Get a slice of rescaled data.
 
         Args:
             n (slice): The slice to retrieve data.
@@ -169,8 +161,7 @@ class Rescale(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get an item or slice of rescaled data based on the provided index.
+        """Get an item or slice of rescaled data based on the provided index.
 
         Args:
             n (FullIndex): The index to retrieve data.
@@ -190,8 +181,7 @@ class Rescale(Forwards):
 
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics of the rescaled data.
+        """Get the statistics of the rescaled data.
 
         Returns:
             Dict[str, NDArray[Any]]: The statistics dictionary.
@@ -215,8 +205,7 @@ class Rescale(Forwards):
         return result
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the tendencies of the statistics of the rescaled data.
+        """Get the tendencies of the statistics of the rescaled data.
 
         Args:
             delta (Optional[datetime.timedelta]): The time delta for tendencies calculation.

@@ -46,9 +46,7 @@ URLS = {
 
 
 def skip_test_netcdf() -> None:
-    """
-    Test loading and validating various NetCDF datasets.
-    """
+    """Test loading and validating various NetCDF datasets."""
     for url, checks in URLS.items():
         print(url)
         path = os.path.join(os.path.dirname(__file__), os.path.basename(url))

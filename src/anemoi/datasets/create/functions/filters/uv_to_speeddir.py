@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+"""This module provides a function to convert u and v wind components to wind speed and direction."""
 
 from collections import defaultdict
 from typing import Any
@@ -28,6 +29,30 @@ def execute(
     wind_dir: str,
     in_radians: bool = False,
 ) -> FieldArray:
+    """Converts u and v wind components to wind speed and direction.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields containing wind components.
+    u_component : str
+        The name of the u component field.
+    v_component : str
+        The name of the v component field.
+    wind_speed : str
+        The name of the wind speed field to be created.
+    wind_dir : str
+        The name of the wind direction field to be created.
+    in_radians : bool, optional
+        If True, the wind direction is returned in radians. Default is False.
+
+    Returns
+    -------
+    FieldArray
+        A FieldArray containing the wind speed and direction fields.
+    """
     result = FieldArray()
 
     wind_params = (u_component, v_component)

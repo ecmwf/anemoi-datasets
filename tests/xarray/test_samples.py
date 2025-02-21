@@ -24,8 +24,7 @@ SKIP = [0, 1, 2, 3, 4, 22]
 
 
 def _test_samples(n: int, check_skip: bool = True) -> None:
-    """
-    Test loading and validating sample datasets.
+    """Test loading and validating sample datasets.
 
     Args:
         n (int): Sample number.
@@ -63,8 +62,7 @@ def _test_samples(n: int, check_skip: bool = True) -> None:
 # this could be done when refactoring the tests, and setting up canary/nightly builds
 @pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 def test_samples(n: int) -> None:
-    """
-    Parametrized test for sample datasets.
+    """Parametrized test for sample datasets.
 
     Args:
         n (int): Sample number.

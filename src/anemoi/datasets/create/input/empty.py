@@ -21,15 +21,12 @@ LOG = logging.getLogger(__name__)
 
 
 class EmptyResult(Result):
-    """
-    Class to represent an empty result in the dataset creation process.
-    """
+    """Class to represent an empty result in the dataset creation process."""
 
     empty = True
 
     def __init__(self, context: object, action_path: list, dates: object) -> None:
-        """
-        Initializes an EmptyResult instance.
+        """Initializes an EmptyResult instance.
 
         Args:
             context (object): The context object.
@@ -42,16 +39,12 @@ class EmptyResult(Result):
     @assert_fieldlist
     @trace_datasource
     def datasource(self) -> FieldList:
-        """
-        Returns an empty datasource.
-        """
+        """Returns an empty datasource."""
         from earthkit.data import from_source
 
         return from_source("empty")
 
     @property
     def variables(self) -> List[str]:
-        """
-        Returns an empty list of variables.
-        """
+        """Returns an empty list of variables."""
         return []

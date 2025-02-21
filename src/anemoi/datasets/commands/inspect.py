@@ -38,8 +38,7 @@ LOG = logging.getLogger(__name__)
 
 
 def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
-    """
-    Compute the total size and number of files in a directory.
+    """Compute the total size and number of files in a directory.
 
     Args:
         path (str): The path to the directory.
@@ -61,8 +60,7 @@ def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
 
 
 def local_time_bug(lon: float, date: datetime.datetime) -> float:
-    """
-    Calculate the local time bug based on longitude and date.
+    """Calculate the local time bug based on longitude and date.
 
     Args:
         lon (float): Longitude.
@@ -77,8 +75,7 @@ def local_time_bug(lon: float, date: datetime.datetime) -> float:
 
 
 def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
-    """
-    Calculate the cosine of the local time bug.
+    """Calculate the cosine of the local time bug.
 
     Args:
         lon (float): Longitude.
@@ -92,8 +89,7 @@ def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
 
 
 def find(config: dict | list, name: str) -> Any:
-    """
-    Recursively search for a key in a nested dictionary or list.
+    """Recursively search for a key in a nested dictionary or list.
 
     Args:
         config (dict | list): The configuration to search.
@@ -121,13 +117,10 @@ def find(config: dict | list, name: str) -> Any:
 
 
 class Version:
-    """
-    Represents a version of a dataset.
-    """
+    """Represents a version of a dataset."""
 
     def __init__(self, path: str, zarr: Any, metadata: dict, version: semantic_version.Version) -> None:
-        """
-        Initialize the Version object.
+        """Initialize the Version object.
 
         Args:
             path (str): Path to the dataset.
@@ -143,18 +136,26 @@ class Version:
         self.dataset = open_dataset(self.path)
 
     def describe(self) -> None:
-        """
-        Print a description of the dataset.
-        """
+        """Print a description of the dataset."""
         print(f"📦 Path          : {self.path}")
         print(f"🔢 Format version: {self.version}")
 
     @property
     def name_to_index(self) -> Dict[str, int]:
+        """Get a mapping of variable names to their indices.
+
+        Returns:
+            Dict[str, int]: A dictionary mapping variable names to indices.
+        """
         return find(self.metadata, "name_to_index")
 
     @property
     def longitudes(self) -> NDArray[Any]:
+        """Get the longitudes of the dataset.
+
+        Returns:
+            NDArray[Any]: An array of longitudes.
+        """
         try:
             return self.zarr.longitudes[:]
         except (KeyError, AttributeError):
@@ -162,6 +163,11 @@ class Version:
 
     @property
     def data(self) -> Any:
+        """Get the data of the dataset.
+
+        Returns:
+            Any: The data of the dataset.
+        """
         try:
             return self.zarr.data
         except AttributeError:
@@ -169,47 +175,91 @@ class Version:
 
     @property
     def first_date(self) -> datetime.datetime:
+        """Get the first date of the dataset.
+
+        Returns:
+            datetime.datetime: The first date of the dataset.
+        """
         return datetime.datetime.fromisoformat(self.metadata["first_date"])
 
     @property
     def last_date(self) -> datetime.datetime:
+        """Get the last date of the dataset.
+
+        Returns:
+            datetime.datetime: The last date of the dataset.
+        """
         return datetime.datetime.fromisoformat(self.metadata["last_date"])
 
     @property
     def frequency(self) -> str:
+        """Get the frequency of the dataset.
+
+        Returns:
+            str: The frequency of the dataset.
+        """
         return self.metadata["frequency"]
 
     @property
     def resolution(self) -> str:
+        """Get the resolution of the dataset.
+
+        Returns:
+            str: The resolution of the dataset.
+        """
         return self.metadata["resolution"]
 
     @property
     def field_shape(self) -> tuple | None:
+        """Get the field shape of the dataset.
+
+        Returns:
+            tuple | None: The field shape of the dataset, or None if not available.
+        """
         return self.metadata.get("field_shape")
 
     @property
     def proj_string(self) -> str | None:
+        """Get the projection string of the dataset.
+
+        Returns:
+            str | None: The projection string of the dataset, or None if not available.
+        """
         return self.metadata.get("proj_string")
 
     @property
     def shape(self) -> tuple | None:
+        """Get the shape of the dataset.
+
+        Returns:
+            tuple | None: The shape of the dataset, or None if not available.
+        """
         if self.data and hasattr(self.data, "shape"):
             return self.data.shape
 
     @property
     def n_missing_dates(self) -> int | None:
+        """Get the number of missing dates in the dataset.
+
+        Returns:
+            int | None: The number of missing dates, or None if not available.
+        """
         if "missing_dates" in self.metadata:
             return len(self.metadata["missing_dates"])
         return None
 
     @property
     def uncompressed_data_size(self) -> int | None:
+        """Get the uncompressed data size of the dataset.
+
+        Returns:
+            int | None: The uncompressed data size in bytes, or None if not available.
+        """
         if self.data and hasattr(self.data, "dtype") and hasattr(self.data, "size"):
             return self.data.dtype.itemsize * self.data.size
 
     def info(self, detailed: bool, size: bool) -> None:
-        """
-        Print detailed information about the dataset.
+        """Print detailed information about the dataset.
 
         Args:
             detailed (bool): Whether to print detailed information.
@@ -263,8 +313,7 @@ class Version:
 
     @property
     def variables(self) -> List[str]:
-        """
-        Get the list of variables in the dataset.
+        """Get the list of variables in the dataset.
 
         Returns:
             List[str]: A list of variable names.
@@ -273,8 +322,7 @@ class Version:
 
     @property
     def total_size(self) -> int | None:
-        """
-        Get the total size of the dataset.
+        """Get the total size of the dataset.
 
         Returns:
             int | None: The total size in bytes, or None if not available.
@@ -283,8 +331,7 @@ class Version:
 
     @property
     def total_number_of_files(self) -> int | None:
-        """
-        Get the total number of files in the dataset.
+        """Get the total number of files in the dataset.
 
         Returns:
             int | None: The total number of files, or None if not available.
@@ -292,8 +339,7 @@ class Version:
         return self.zarr.attrs.get("total_number_of_files")
 
     def print_sizes(self, size: bool) -> None:
-        """
-        Print the size and number of files in the dataset.
+        """Print the size and number of files in the dataset.
 
         Args:
             size (bool): Whether to compute and print the size.
@@ -314,8 +360,7 @@ class Version:
 
     @property
     def statistics(self) -> tuple[list, list, list, list]:
-        """
-        Get the statistics of the dataset.
+        """Get the statistics of the dataset.
 
         Returns:
             tuple[list, list, list, list]: A tuple containing lists of minimum, maximum, mean, and standard deviation values.
@@ -329,8 +374,7 @@ class Version:
 
     @property
     def statistics_ready(self) -> bool:
-        """
-        Check if the statistics are ready.
+        """Check if the statistics are ready.
 
         Returns:
             bool: True if the statistics are ready, False otherwise.
@@ -342,8 +386,7 @@ class Version:
 
     @property
     def statistics_started(self) -> datetime.datetime | None:
-        """
-        Get the timestamp when statistics computation started.
+        """Get the timestamp when statistics computation started.
 
         Returns:
             datetime.datetime | None: The timestamp, or None if not available.
@@ -355,8 +398,7 @@ class Version:
 
     @property
     def build_flags(self) -> NDArray[Any] | None:
-        """
-        Get the build flags of the dataset.
+        """Get the build flags of the dataset.
 
         Returns:
             NDArray[Any] | None: An array of build flags, or None if not available.
@@ -365,8 +407,7 @@ class Version:
 
     @cached_property
     def copy_flags(self) -> NDArray | None:
-        """
-        Get the copy flags of the dataset.
+        """Get the copy flags of the dataset.
 
         Returns:
             NDArray | None: An array of copy flags, or None if not available.
@@ -377,8 +418,7 @@ class Version:
 
     @property
     def copy_in_progress(self) -> bool:
-        """
-        Check if a copy operation is in progress.
+        """Check if a copy operation is in progress.
 
         Returns:
             bool: True if a copy operation is in progress, False otherwise.
@@ -395,8 +435,7 @@ class Version:
 
     @property
     def build_lengths(self) -> NDArray | None:
-        """
-        Get the build lengths of the dataset.
+        """Get the build lengths of the dataset.
 
         Returns:
             NDArray | None: An array of build lengths, or None if not available.
@@ -404,9 +443,7 @@ class Version:
         return self.zarr.get("_build_lengths")
 
     def progress(self) -> None:
-        """
-        Print the progress of dataset initialization or copying.
-        """
+        """Print the progress of dataset initialization or copying."""
         if self.copy_in_progress:
             copy_flags = self.copy_flags
             print("🪫  Dataset not ready, copy in progress.")
@@ -466,9 +503,7 @@ class Version:
                     print("⏳ Statistics not ready.")
 
     def brute_force_statistics(self) -> None:
-        """
-        Compute and print statistics for the dataset.
-        """
+        """Compute and print statistics for the dataset."""
         if self.dataset is None:
             return
         print("📊 Computing statistics...")
@@ -515,14 +550,11 @@ class Version:
 
 
 class NoVersion(Version):
-    """
-    Represents a dataset with no version.
-    """
+    """Represents a dataset with no version."""
 
     @property
     def first_date(self) -> datetime.datetime:
-        """
-        Get the first date of the dataset.
+        """Get the first date of the dataset.
 
         Returns:
             datetime.datetime: The first date of the dataset.
@@ -532,8 +564,7 @@ class NoVersion(Version):
 
     @property
     def last_date(self) -> datetime.datetime:
-        """
-        Get the last date of the dataset.
+        """Get the last date of the dataset.
 
         Returns:
             datetime.datetime: The last date of the dataset.
@@ -547,8 +578,7 @@ class NoVersion(Version):
 
     @property
     def frequency(self) -> int:
-        """
-        Get the frequency of the dataset.
+        """Get the frequency of the dataset.
 
         Returns:
             int: The frequency of the dataset.
@@ -558,8 +588,7 @@ class NoVersion(Version):
 
     @property
     def statistics(self) -> tuple[list, list, list, list]:
-        """
-        Get the statistics of the dataset.
+        """Get the statistics of the dataset.
 
         Returns:
             tuple[list, list, list, list]: A tuple containing lists of minimum, maximum, mean, and standard deviation values.
@@ -569,8 +598,7 @@ class NoVersion(Version):
 
     @property
     def statistics_ready(self) -> bool:
-        """
-        Check if the statistics are ready.
+        """Check if the statistics are ready.
 
         Returns:
             bool: True if the statistics are ready, False otherwise.
@@ -579,8 +607,7 @@ class NoVersion(Version):
 
     @property
     def resolution(self) -> str:
-        """
-        Get the resolution of the dataset.
+        """Get the resolution of the dataset.
 
         Returns:
             str: The resolution of the dataset.
@@ -588,20 +615,15 @@ class NoVersion(Version):
         return find(self.metadata, "grid")
 
     def details(self) -> None:
-        """
-        Print details of the dataset.
-        """
+        """Print details of the dataset."""
         pass
 
     def progress(self) -> None:
-        """
-        Print the progress of dataset initialization or copying.
-        """
+        """Print the progress of dataset initialization or copying."""
         pass
 
     def ready(self) -> bool:
-        """
-        Check if the dataset is ready.
+        """Check if the dataset is ready.
 
         Returns:
             bool: True if the dataset is ready, False otherwise.
@@ -610,20 +632,15 @@ class NoVersion(Version):
 
 
 class Version0_4(Version):
-    """
-    Represents version 0.4 of a dataset.
-    """
+    """Represents version 0.4 of a dataset."""
 
     def details(self) -> None:
-        """
-        Print details of the dataset.
-        """
+        """Print details of the dataset."""
         pass
 
     @property
     def initialised(self) -> datetime.datetime:
-        """
-        Get the initialization timestamp of the dataset.
+        """Get the initialization timestamp of the dataset.
 
         Returns:
             datetime.datetime: The initialization timestamp.
@@ -631,8 +648,7 @@ class Version0_4(Version):
         return datetime.datetime.fromisoformat(self.metadata["creation_timestamp"])
 
     def statistics_ready(self) -> bool:
-        """
-        Check if the statistics are ready.
+        """Check if the statistics are ready.
 
         Returns:
             bool: True if the statistics are ready, False otherwise.
@@ -643,8 +659,7 @@ class Version0_4(Version):
         return build_flags.attrs.get("_statistics_computed")
 
     def ready(self) -> bool:
-        """
-        Check if the dataset is ready.
+        """Check if the dataset is ready.
 
         Returns:
             bool: True if the dataset is ready, False otherwise.
@@ -659,8 +674,7 @@ class Version0_4(Version):
         return all(build_flags)
 
     def _info(self, verbose: bool, history: bool, statistics: bool, **kwargs) -> None:
-        """
-        Print information about the dataset.
+        """Print information about the dataset.
 
         Args:
             verbose (bool): Whether to print verbose information.
@@ -691,20 +705,15 @@ class Version0_4(Version):
 
 
 class Version0_6(Version):
-    """
-    Represents version 0.6 of a dataset.
-    """
+    """Represents version 0.6 of a dataset."""
 
     def details(self) -> None:
-        """
-        Print details of the dataset.
-        """
+        """Print details of the dataset."""
         pass
 
     @property
     def initialised(self) -> datetime.datetime | None:
-        """
-        Get the initialization timestamp of the dataset.
+        """Get the initialization timestamp of the dataset.
 
         Returns:
             datetime.datetime | None: The initialization timestamp, or None if not found.
@@ -721,8 +730,7 @@ class Version0_6(Version):
         return None
 
     def ready(self) -> bool:
-        """
-        Check if the dataset is ready.
+        """Check if the dataset is ready.
 
         Returns:
             bool: True if the dataset is ready, False otherwise.
@@ -735,8 +743,7 @@ class Version0_6(Version):
 
     @property
     def name_to_index(self) -> Dict[str, int]:
-        """
-        Get a mapping of variable names to their indices.
+        """Get a mapping of variable names to their indices.
 
         Returns:
             Dict[str, int]: A dictionary mapping variable names to indices.
@@ -745,8 +752,7 @@ class Version0_6(Version):
 
     @property
     def variables(self) -> List[str]:
-        """
-        Get the list of variables in the dataset.
+        """Get the list of variables in the dataset.
 
         Returns:
             List[str]: A list of variable names.
@@ -755,8 +761,7 @@ class Version0_6(Version):
 
     @property
     def variables_metadata(self) -> dict:
-        """
-        Get the metadata for the variables.
+        """Get the metadata for the variables.
 
         Returns:
             dict: A dictionary containing metadata for the variables.
@@ -765,14 +770,10 @@ class Version0_6(Version):
 
 
 class Version0_12(Version0_6):
-    """
-    Represents version 0.12 of a dataset.
-    """
+    """Represents version 0.12 of a dataset."""
 
     def details(self) -> None:
-        """
-        Print details of the dataset.
-        """
+        """Print details of the dataset."""
         print()
         for d in self.metadata.get("history", []):
             d = deepcopy(d)
@@ -787,8 +788,7 @@ class Version0_12(Version0_6):
 
     @property
     def first_date(self) -> datetime.datetime:
-        """
-        Get the first date of the dataset.
+        """Get the first date of the dataset.
 
         Returns:
             datetime.datetime: The first date of the dataset.
@@ -797,8 +797,7 @@ class Version0_12(Version0_6):
 
     @property
     def last_date(self) -> datetime.datetime:
-        """
-        Get the last date of the dataset.
+        """Get the last date of the dataset.
 
         Returns:
             datetime.datetime: The last date of the dataset.
@@ -807,14 +806,11 @@ class Version0_12(Version0_6):
 
 
 class Version0_13(Version0_12):
-    """
-    Represents version 0.13 of a dataset.
-    """
+    """Represents version 0.13 of a dataset."""
 
     @property
     def build_flags(self) -> NDArray | None:
-        """
-        Get the build flags for the dataset.
+        """Get the build flags for the dataset.
 
         Returns:
             NDArray | None: An array of build flags, or None if not found.
@@ -826,8 +822,7 @@ class Version0_13(Version0_12):
 
     @property
     def build_lengths(self) -> NDArray | None:
-        """
-        Get the build lengths for the dataset.
+        """Get the build lengths for the dataset.
 
         Returns:
             NDArray | None: An array of build lengths, or None if not found.
@@ -848,13 +843,10 @@ VERSIONS = {
 
 
 class InspectZarr(Command):
-    """
-    Command to inspect a zarr dataset.
-    """
+    """Command to inspect a zarr dataset."""
 
     def add_arguments(self, command_parser: Any) -> None:
-        """
-        Add arguments to the command parser.
+        """Add arguments to the command parser.
 
         Args:
             command_parser (Any): The command parser.
@@ -867,8 +859,7 @@ class InspectZarr(Command):
         command_parser.add_argument("--size", action="store_true", help="Print size")
 
     def run(self, args: Any) -> None:
-        """
-        Run the command.
+        """Run the command.
 
         Args:
             args (Any): The command arguments.
@@ -884,8 +875,7 @@ class InspectZarr(Command):
         size: bool = False,
         **kwargs,
     ) -> None:
-        """
-        Inspect a zarr dataset.
+        """Inspect a zarr dataset.
 
         Args:
             path (str): Path to the dataset.
@@ -915,8 +905,7 @@ class InspectZarr(Command):
             raise
 
     def _info(self, path: str) -> Version:
-        """
-        Get version information of the dataset.
+        """Get version information of the dataset.
 
         Args:
             path (str): Path to the dataset.

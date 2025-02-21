@@ -30,8 +30,7 @@ class Summary(dict):
     ]  # order matter for __str__.
 
     def __init__(self, **kwargs: Any) -> None:
-        """
-        Initialize the Summary object with given keyword arguments.
+        """Initialize the Summary object with given keyword arguments.
 
         Args:
             **kwargs: Arbitrary keyword arguments representing summary statistics.
@@ -41,8 +40,7 @@ class Summary(dict):
 
     @property
     def size(self) -> int:
-        """
-        Get the size of the summary, which is the number of variables.
+        """Get the size of the summary, which is the number of variables.
 
         Returns:
             int: The number of variables in the summary.
@@ -50,8 +48,7 @@ class Summary(dict):
         return len(self["variables_names"])
 
     def check(self) -> None:
-        """
-        Perform checks on the summary statistics to ensure they are valid.
+        """Perform checks on the summary statistics to ensure they are valid.
 
         Raises:
             AssertionError: If any of the checks fail.
@@ -84,8 +81,7 @@ class Summary(dict):
                 raise
 
     def __str__(self) -> str:
-        """
-        Return a string representation of the summary statistics.
+        """Return a string representation of the summary statistics.
 
         Returns:
             str: A formatted string of the summary statistics.
@@ -100,8 +96,7 @@ class Summary(dict):
         return "\n".join(out)
 
     def save(self, filename: str, **metadata: Any) -> None:
-        """
-        Save the summary statistics to a JSON file.
+        """Save the summary statistics to a JSON file.
 
         Args:
             filename (str): The name of the file to save the summary statistics.
@@ -123,8 +118,7 @@ class Summary(dict):
             json.dump(out, f, indent=2)
 
     def load(self, filename: str) -> "Summary":
-        """
-        Load the summary statistics from a JSON file.
+        """Load the summary statistics from a JSON file.
 
         Args:
             filename (str): The name of the file to load the summary statistics from.

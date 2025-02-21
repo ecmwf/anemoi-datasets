@@ -12,4 +12,20 @@ import earthkit.data as ekd
 
 
 def execute(context, dates, **kwargs):
+    """Executes the loading of an empty data source.
+
+    Parameters
+    ----------
+    context : object
+        The context in which the function is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    object
+        Loaded empty data source.
+    """
     return ekd.from_source("empty")

@@ -59,8 +59,7 @@ VERSION = "0.30"
 
 
 def json_tidy(o: Any) -> Any:
-    """
-    Convert various types to JSON serializable format.
+    """Convert various types to JSON serializable format.
 
     Args:
         o (Any): The object to convert.
@@ -99,8 +98,7 @@ def json_tidy(o: Any) -> Any:
 def build_statistics_dates(
     dates: list[datetime.datetime], start: datetime.datetime, end: datetime.datetime
 ) -> tuple[str, str]:
-    """
-    Compute the start and end dates for the statistics.
+    """Compute the start and end dates for the statistics.
 
     Args:
         dates (list[datetime.datetime]): The list of dates.
@@ -128,8 +126,7 @@ def build_statistics_dates(
 
 
 def _path_readable(path: str) -> bool:
-    """
-    Check if the path is readable.
+    """Check if the path is readable.
 
     Args:
         path (str): The path to check.
@@ -147,13 +144,10 @@ def _path_readable(path: str) -> bool:
 
 
 class Dataset:
-    """
-    A class to represent a dataset.
-    """
+    """A class to represent a dataset."""
 
     def __init__(self, path: str):
-        """
-        Initialize a Dataset instance.
+        """Initialize a Dataset instance.
 
         Args:
             path (str): The path to the dataset.
@@ -165,8 +159,7 @@ class Dataset:
             raise ValueError(f"Unsupported extension={ext} for path={self.path}")
 
     def add_dataset(self, mode: str = "r+", **kwargs) -> zarr.Array:
-        """
-        Add a dataset to the Zarr store.
+        """Add a dataset to the Zarr store.
 
         Args:
             mode (str): The mode to open the Zarr store.
@@ -183,8 +176,7 @@ class Dataset:
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
     def update_metadata(self, **kwargs) -> None:
-        """
-        Update the metadata of the dataset.
+        """Update the metadata of the dataset.
 
         Args:
             **kwargs: The metadata to update.
@@ -202,8 +194,7 @@ class Dataset:
 
     @cached_property
     def anemoi_dataset(self) -> Any:
-        """
-        Get the Anemoi dataset.
+        """Get the Anemoi dataset.
 
         Returns:
             Any: The Anemoi dataset.
@@ -212,8 +203,7 @@ class Dataset:
 
     @cached_property
     def zarr_metadata(self) -> dict:
-        """
-        Get the Zarr metadata.
+        """Get the Zarr metadata.
 
         Returns:
             dict: The Zarr metadata.
@@ -223,9 +213,7 @@ class Dataset:
         return dict(zarr.open(self.path, mode="r").attrs)
 
     def print_info(self) -> None:
-        """
-        Print information about the dataset.
-        """
+        """Print information about the dataset."""
         import zarr
 
         z = zarr.open(self.path, mode="r")
@@ -235,8 +223,7 @@ class Dataset:
             LOG.info(e)
 
     def get_zarr_chunks(self) -> tuple:
-        """
-        Get the chunks of the Zarr dataset.
+        """Get the chunks of the Zarr dataset.
 
         Returns:
             tuple: The chunks of the Zarr dataset.
@@ -254,8 +241,7 @@ class Dataset:
         raise_exception: bool = True,
         is_test: bool = False,
     ) -> None:
-        """
-        Check the name of the dataset.
+        """Check the name of the dataset.
 
         Args:
             resolution (str): The resolution of the dataset.
@@ -274,8 +260,7 @@ class Dataset:
                 LOG.warning(f"Dataset name error: {e}")
 
     def get_main_config(self) -> Any:
-        """
-        Get the main configuration of the dataset.
+        """Get the main configuration of the dataset.
 
         Returns:
             Any: The main configuration.
@@ -287,13 +272,10 @@ class Dataset:
 
 
 class WritableDataset(Dataset):
-    """
-    A class to represent a writable dataset.
-    """
+    """A class to represent a writable dataset."""
 
     def __init__(self, path: str):
-        """
-        Initialize a WritableDataset instance.
+        """Initialize a WritableDataset instance.
 
         Args:
             path (str): The path to the dataset.
@@ -307,8 +289,7 @@ class WritableDataset(Dataset):
 
     @cached_property
     def data_array(self) -> zarr.Array:
-        """
-        Get the data array of the dataset.
+        """Get the data array of the dataset.
 
         Returns:
             zarr.Array: The data array.
@@ -319,13 +300,10 @@ class WritableDataset(Dataset):
 
 
 class NewDataset(Dataset):
-    """
-    A class to represent a new dataset.
-    """
+    """A class to represent a new dataset."""
 
     def __init__(self, path: str, overwrite: bool = False):
-        """
-        Initialize a NewDataset instance.
+        """Initialize a NewDataset instance.
 
         Args:
             path (str): The path to the dataset.
@@ -341,15 +319,12 @@ class NewDataset(Dataset):
 
 
 class Actor:  # TODO: rename to Creator
-    """
-    A base class for dataset creation actors.
-    """
+    """A base class for dataset creation actors."""
 
     dataset_class = WritableDataset
 
     def __init__(self, path: str, cache: Optional[str] = None):
-        """
-        Initialize an Actor instance.
+        """Initialize an Actor instance.
 
         Args:
             path (str): The path to the dataset.
@@ -363,15 +338,12 @@ class Actor:  # TODO: rename to Creator
         self.dataset = self.dataset_class(self.path)
 
     def run(self) -> None:
-        """
-        Run the actor.
-        """
+        """Run the actor."""
         # to be implemented in the sub-classes
         raise NotImplementedError()
 
     def update_metadata(self, **kwargs) -> None:
-        """
-        Update the metadata of the dataset.
+        """Update the metadata of the dataset.
 
         Args:
             **kwargs: The metadata to update.
@@ -379,8 +351,7 @@ class Actor:  # TODO: rename to Creator
         self.dataset.update_metadata(**kwargs)
 
     def _cache_context(self) -> Any:
-        """
-        Get the cache context.
+        """Get the cache context.
 
         Returns:
             Any: The cache context.
@@ -390,8 +361,7 @@ class Actor:  # TODO: rename to Creator
         return cache_context(self.cache)
 
     def check_unkown_kwargs(self, kwargs: dict) -> None:
-        """
-        Check for unknown keyword arguments.
+        """Check for unknown keyword arguments.
 
         Args:
             kwargs (dict): The keyword arguments.
@@ -400,8 +370,7 @@ class Actor:  # TODO: rename to Creator
         LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
 
     def read_dataset_metadata(self, path: str) -> None:
-        """
-        Read the metadata of the dataset.
+        """Read the metadata of the dataset.
 
         Args:
             path (str): The path to the dataset.
@@ -430,13 +399,10 @@ class Actor:  # TODO: rename to Creator
 
 
 class Patch(Actor):
-    """
-    A class to apply patches to a dataset.
-    """
+    """A class to apply patches to a dataset."""
 
     def __init__(self, path: str, options: dict = None, **kwargs):
-        """
-        Initialize a Patch instance.
+        """Initialize a Patch instance.
 
         Args:
             path (str): The path to the dataset.
@@ -446,22 +412,17 @@ class Patch(Actor):
         self.options = options or {}
 
     def run(self) -> None:
-        """
-        Run the patch.
-        """
+        """Run the patch."""
         from .patch import apply_patch
 
         apply_patch(self.path, **self.options)
 
 
 class Size(Actor):
-    """
-    A class to compute the size of a dataset.
-    """
+    """A class to compute the size of a dataset."""
 
     def __init__(self, path: str, **kwargs):
-        """
-        Initialize a Size instance.
+        """Initialize a Size instance.
 
         Args:
             path (str): The path to the dataset.
@@ -469,9 +430,7 @@ class Size(Actor):
         super().__init__(path)
 
     def run(self) -> None:
-        """
-        Run the size computation.
-        """
+        """Run the size computation."""
         from .size import compute_directory_sizes
 
         metadata = compute_directory_sizes(self.path)
@@ -489,14 +448,11 @@ class Size(Actor):
 
 
 class HasRegistryMixin:
-    """
-    A mixin class to provide registry functionality.
-    """
+    """A mixin class to provide registry functionality."""
 
     @cached_property
     def registry(self) -> Any:
-        """
-        Get the registry.
+        """Get the registry.
 
         Returns:
             Any: The registry.
@@ -507,14 +463,11 @@ class HasRegistryMixin:
 
 
 class HasStatisticTempMixin:
-    """
-    A mixin class to provide temporary statistics functionality.
-    """
+    """A mixin class to provide temporary statistics functionality."""
 
     @cached_property
     def tmp_statistics(self) -> TmpStatistics:
-        """
-        Get the temporary statistics.
+        """Get the temporary statistics.
 
         Returns:
             TmpStatistics: The temporary statistics.
@@ -524,13 +477,10 @@ class HasStatisticTempMixin:
 
 
 class HasElementForDataMixin:
-    """
-    A mixin class to provide element creation functionality for data.
-    """
+    """A mixin class to provide element creation functionality for data."""
 
     def create_elements(self, config: Any) -> None:
-        """
-        Create elements for the dataset.
+        """Create elements for the dataset.
 
         Args:
             config (Any): The configuration.
@@ -550,8 +500,7 @@ class HasElementForDataMixin:
 
 
 def build_input_(main_config: Any, output_config: Any) -> Any:
-    """
-    Build the input for the dataset.
+    """Build the input for the dataset.
 
     Args:
         main_config (Any): The main configuration.
@@ -574,9 +523,7 @@ def build_input_(main_config: Any, output_config: Any) -> Any:
 
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    """
-    A class to initialize a new dataset.
-    """
+    """A class to initialize a new dataset."""
 
     dataset_class = NewDataset
 
@@ -593,8 +540,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         cache: Optional[str] = None,
         **kwargs,
     ):
-        """
-        Initialize an Init instance.
+        """Initialize an Init instance.
 
         Args:
             path (str): The path to the dataset.
@@ -635,8 +581,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info(self.minimal_input)
 
     def run(self) -> int:
-        """
-        Run the initialization.
+        """Run the initialization.
 
         Returns:
             int: The number of groups to process.
@@ -645,8 +590,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             return self._run()
 
     def _run(self) -> int:
-        """
-        Internal method to run the initialization.
+        """Internal method to run the initialization.
 
         Returns:
             int: The number of groups to process.
@@ -801,9 +745,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 
 class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    """
-    A class to load data into a dataset.
-    """
+    """A class to load data into a dataset."""
 
     def __init__(
         self,
@@ -815,8 +757,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         cache: Optional[str] = None,
         **kwargs,
     ):
-        """
-        Initialize a Load instance.
+        """Initialize a Load instance.
 
         Args:
             path (str): The path to the dataset.
@@ -844,16 +785,12 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.n_groups = len(self.groups)
 
     def run(self) -> None:
-        """
-        Run the data loading.
-        """
+        """Run the data loading."""
         with self._cache_context():
             self._run()
 
     def _run(self) -> None:
-        """
-        Internal method to run the data loading.
-        """
+        """Internal method to run the data loading."""
         for igroup, group in enumerate(self.groups):
             if not self.chunk_filter(igroup):
                 continue
@@ -878,8 +815,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.dataset.print_info()
 
     def load_result(self, result: Any) -> None:
-        """
-        Load the result into the dataset.
+        """Load the result into the dataset.
 
         Args:
             result (Any): The result to load.
@@ -945,8 +881,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info("Flushed data array")
 
     def _get_allow_nans(self) -> bool | list:
-        """
-        Get the allow_nans configuration.
+        """Get the allow_nans configuration.
 
         Returns:
             bool | list: The allow_nans configuration.
@@ -958,8 +893,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         return config.statistics.get("allow_nans", [])
 
     def load_cube(self, cube: Any, array: ViewCacheArray) -> None:
-        """
-        Load the cube into the array.
+        """Load the cube into the array.
 
         Args:
             cube (Any): The cube to load.
@@ -1016,9 +950,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
 
 class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
-    """
-    A class to clean up temporary data and registry entries.
-    """
+    """A class to clean up temporary data and registry entries."""
 
     def __init__(
         self,
@@ -1028,8 +960,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
         use_threads: bool = False,
         **kwargs,
     ):
-        """
-        Initialize a Cleanup instance.
+        """Initialize a Cleanup instance.
 
         Args:
             path (str): The path to the dataset.
@@ -1046,9 +977,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
         ]
 
     def run(self) -> None:
-        """
-        Run the cleanup.
-        """
+        """Run the cleanup."""
         self.tmp_statistics.delete()
         self.registry.clean()
         for actor in self.actors:
@@ -1056,13 +985,10 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
 
 
 class Verify(Actor):
-    """
-    A class to verify the integrity of a dataset.
-    """
+    """A class to verify the integrity of a dataset."""
 
     def __init__(self, path: str, **kwargs):
-        """
-        Initialize a Verify instance.
+        """Initialize a Verify instance.
 
         Args:
             path (str): The path to the dataset.
@@ -1070,21 +996,16 @@ class Verify(Actor):
         super().__init__(path)
 
     def run(self) -> None:
-        """
-        Run the verification.
-        """
+        """Run the verification."""
         LOG.info(f"Verifying dataset at {self.path}")
         LOG.info(str(self.dataset.anemoi_dataset))
 
 
 class AdditionsMixin:
-    """
-    A mixin class to handle dataset additions.
-    """
+    """A mixin class to handle dataset additions."""
 
     def skip(self) -> bool:
-        """
-        Check if the additions should be skipped.
+        """Check if the additions should be skipped.
 
         Returns:
             bool: Whether to skip the additions.
@@ -1102,8 +1023,7 @@ class AdditionsMixin:
 
     @cached_property
     def tmp_storage_path(self) -> str:
-        """
-        Get the path to the temporary storage.
+        """Get the path to the temporary storage.
 
         Returns:
             str: The path to the temporary storage.
@@ -1114,9 +1034,7 @@ class AdditionsMixin:
         return os.path.join(f"{self.path}.{name}.tmp")
 
     def read_from_dataset(self) -> None:
-        """
-        Read data from the dataset.
-        """
+        """Read data from the dataset."""
         self.variables = self.dataset.anemoi_dataset.variables
         self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
         start = self.dataset.zarr_metadata["statistics_start_date"]
@@ -1135,13 +1053,10 @@ class AdditionsMixin:
 
 
 class DeltaDataset:
-    """
-    A class to represent a dataset with delta values.
-    """
+    """A class to represent a dataset with delta values."""
 
     def __init__(self, ds: Any, idelta: int):
-        """
-        Initialize a DeltaDataset instance.
+        """Initialize a DeltaDataset instance.
 
         Args:
             ds (Any): The dataset.
@@ -1151,8 +1066,7 @@ class DeltaDataset:
         self.idelta = idelta
 
     def __getitem__(self, i: int) -> Any:
-        """
-        Get an item from the dataset.
+        """Get an item from the dataset.
 
         Args:
             i (int): The index.
@@ -1167,13 +1081,10 @@ class DeltaDataset:
 
 
 class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
-    """
-    A class to initialize dataset additions.
-    """
+    """A class to initialize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
-        """
-        Initialize an _InitAdditions instance.
+        """Initialize an _InitAdditions instance.
 
         Args:
             path (str): The path to the dataset.
@@ -1187,9 +1098,7 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.progress = progress
 
     def run(self) -> None:
-        """
-        Run the additions initialization.
-        """
+        """Run the additions initialization."""
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
             return
@@ -1200,18 +1109,14 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Dataset {self.tmp_storage_path} additions initialized.")
 
     def cleanup(self) -> None:
-        """
-        Clean up the temporary storage.
-        """
+        """Clean up the temporary storage."""
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         self.tmp_storage.delete()
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
 class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
-    """
-    A class to run dataset additions.
-    """
+    """A class to run dataset additions."""
 
     def __init__(
         self,
@@ -1222,8 +1127,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         progress: Any = None,
         **kwargs,
     ):
-        """
-        Initialize a _RunAdditions instance.
+        """Initialize a _RunAdditions instance.
 
         Args:
             path (str): The path to the dataset.
@@ -1243,9 +1147,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Writing in {self.tmp_storage_path}")
 
     def run(self) -> None:
-        """
-        Run the additions.
-        """
+        """Run the additions."""
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
             return
@@ -1267,8 +1169,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.debug(f"Dataset {self.path} additions run.")
 
     def allow_nans(self) -> bool:
-        """
-        Check if NaNs are allowed.
+        """Check if NaNs are allowed.
 
         Returns:
             bool: Whether NaNs are allowed.
@@ -1284,13 +1185,10 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
 
 
 class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
-    """
-    A class to finalize dataset additions.
-    """
+    """A class to finalize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
-        """
-        Initialize a _FinaliseAdditions instance.
+        """Initialize a _FinaliseAdditions instance.
 
         Args:
             path (str): The path to the dataset.
@@ -1307,9 +1205,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Reading from {self.tmp_storage_path}.")
 
     def run(self) -> None:
-        """
-        Run the additions finalization.
-        """
+        """Run the additions finalization."""
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}.")
             return
@@ -1412,8 +1308,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage.delete()
 
     def _write(self, summary: Summary) -> None:
-        """
-        Write the summary to the dataset.
+        """Write the summary to the dataset.
 
         Args:
             summary (Summary): The summary to write.
@@ -1426,8 +1321,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
 
 
 def multi_addition(cls: type) -> type:
-    """
-    Create a class to handle multiple additions.
+    """Create a class to handle multiple additions.
 
     Args:
         cls (type): The class to handle additions.
@@ -1447,9 +1341,7 @@ def multi_addition(cls: type) -> type:
                 LOG.warning("No delta found in kwargs, no additions will be computed.")
 
         def run(self) -> None:
-            """
-            Run the additions.
-            """
+            """Run the additions."""
             for actor in self.actors:
                 actor.run()
 
@@ -1462,9 +1354,7 @@ FinaliseAdditions = multi_addition(_FinaliseAdditions)
 
 
 class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
-    """
-    A class to compute statistics for a dataset.
-    """
+    """A class to compute statistics for a dataset."""
 
     def __init__(
         self,
@@ -1474,8 +1364,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         progress: Any = None,
         **kwargs,
     ):
-        """
-        Initialize a Statistics instance.
+        """Initialize a Statistics instance.
 
         Args:
             path (str): The path to the dataset.
@@ -1489,9 +1378,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         self.statistics_temp_dir = statistics_temp_dir
 
     def run(self) -> None:
-        """
-        Run the statistics computation.
-        """
+        """Run the statistics computation."""
         start, end = (
             self.dataset.zarr_metadata["statistics_start_date"],
             self.dataset.zarr_metadata["statistics_end_date"],
@@ -1519,8 +1406,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
 
     @cached_property
     def allow_nans(self) -> bool:
-        """
-        Check if NaNs are allowed.
+        """Check if NaNs are allowed.
 
         Returns:
             bool: Whether NaNs are allowed.
@@ -1539,8 +1425,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
 
 
 def chain(tasks: list) -> type:
-    """
-    Create a class to chain multiple tasks.
+    """Create a class to chain multiple tasks.
 
     Args:
         tasks (list): The list of tasks to chain.
@@ -1554,9 +1439,7 @@ def chain(tasks: list) -> type:
             self.kwargs = kwargs
 
         def run(self) -> None:
-            """
-            Run the chained tasks.
-            """
+            """Run the chained tasks."""
             for cls in tasks:
                 t = cls(**self.kwargs)
                 t.run()
@@ -1565,8 +1448,7 @@ def chain(tasks: list) -> type:
 
 
 def creator_factory(name: str, trace: Optional[str] = None, **kwargs) -> Any:
-    """
-    Create a dataset creator.
+    """Create a dataset creator.
 
     Args:
         name (str): The name of the creator.

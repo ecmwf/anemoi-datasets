@@ -24,9 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DatasetName:
-    """
-    Class to validate and parse dataset names according to naming conventions.
-    """
+    """Class to validate and parse dataset names according to naming conventions."""
 
     def __init__(
         self,
@@ -36,8 +34,7 @@ class DatasetName:
         end_date: Optional[datetime.date] = None,
         frequency: Optional[datetime.timedelta] = None,
     ):
-        """
-        Initialize a DatasetName instance.
+        """Initialize a DatasetName instance.
 
         Args:
             name (str): The name of the dataset.
@@ -65,8 +62,7 @@ class DatasetName:
 
     @property
     def error_message(self) -> str:
-        """
-        Generate an error message based on the collected messages.
+        """Generate an error message based on the collected messages.
 
         Returns:
             str: The error message.
@@ -77,8 +73,7 @@ class DatasetName:
         return out
 
     def raise_if_not_valid(self, print: Callable = print) -> None:
-        """
-        Raise a ValueError if the dataset name is not valid.
+        """Raise a ValueError if the dataset name is not valid.
 
         Args:
             print (Callable): The function to use for printing messages.
@@ -89,8 +84,7 @@ class DatasetName:
             raise ValueError(self.error_message)
 
     def _parse(self, name: str) -> dict:
-        """
-        Parse the dataset name into its components.
+        """Parse the dataset name into its components.
 
         Args:
             name (str): The name of the dataset.
@@ -122,8 +116,7 @@ class DatasetName:
         return parsed
 
     def __str__(self) -> str:
-        """
-        Return the string representation of the dataset name.
+        """Return the string representation of the dataset name.
 
         Returns:
             str: The dataset name.
@@ -131,9 +124,7 @@ class DatasetName:
         return self.name
 
     def check_parsed(self) -> None:
-        """
-        Check if the dataset name was parsed correctly.
-        """
+        """Check if the dataset name was parsed correctly."""
         if not self.parsed:
             self.messages.append(
                 f"the dataset name {self} does not follow naming convention. "
@@ -142,8 +133,7 @@ class DatasetName:
             )
 
     def check_resolution(self, resolution: str | None) -> None:
-        """
-        Check if the resolution matches the expected format.
+        """Check if the resolution matches the expected format.
 
         Args:
             resolution (str | None): The expected resolution.
@@ -161,8 +151,7 @@ class DatasetName:
         self._check_mismatch("resolution", resolution_str)
 
     def check_frequency(self, frequency: datetime.timedelta | None) -> None:
-        """
-        Check if the frequency matches the expected format.
+        """Check if the frequency matches the expected format.
 
         Args:
             frequency (datetime.timedelta | None): The expected frequency.
@@ -174,8 +163,7 @@ class DatasetName:
         self._check_mismatch("frequency", frequency_str)
 
     def check_start_date(self, start_date: datetime.date | None) -> None:
-        """
-        Check if the start date matches the expected format.
+        """Check if the start date matches the expected format.
 
         Args:
             start_date (datetime.date | None): The expected start date.
@@ -187,8 +175,7 @@ class DatasetName:
         self._check_mismatch("start_date", start_date_str)
 
     def check_end_date(self, end_date: datetime.date | None) -> None:
-        """
-        Check if the end date matches the expected format.
+        """Check if the end date matches the expected format.
 
         Args:
             end_date (datetime.date | None): The expected end date.
@@ -200,8 +187,7 @@ class DatasetName:
         self._check_mismatch("end_date", end_date_str)
 
     def _check_missing(self, key: str, value: str) -> None:
-        """
-        Check if a component is missing from the dataset name.
+        """Check if a component is missing from the dataset name.
 
         Args:
             key (str): The component key.
@@ -211,8 +197,7 @@ class DatasetName:
             self.messages.append(f"the {key} is {value}, but is missing in {self.name}.")
 
     def _check_mismatch(self, key: str, value: str) -> None:
-        """
-        Check if a component value mismatches the expected value.
+        """Check if a component value mismatches the expected value.
 
         Args:
             key (str): The component key.
@@ -223,9 +208,7 @@ class DatasetName:
 
 
 class StatisticsValueError(ValueError):
-    """
-    Custom error for statistics value issues.
-    """
+    """Custom error for statistics value issues."""
 
     pass
 
@@ -233,8 +216,7 @@ class StatisticsValueError(ValueError):
 def check_data_values(
     arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
 ) -> None:
-    """
-    Check the values in the data array for validity.
+    """Check the values in the data array for validity.
 
     Args:
         arr (NDArray[Any]): The data array to check.

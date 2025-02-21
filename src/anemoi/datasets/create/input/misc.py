@@ -23,8 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
-    """
-    Parses a function name to extract the base name and an optional time delta.
+    """Parses a function name to extract the base name and an optional time delta.
 
     Args:
         name (str): The function name to parse.
@@ -53,8 +52,7 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
 
 
 def is_function(name: str, kind: str) -> bool:
-    """
-    Checks if a function with the given name and kind exists.
+    """Checks if a function with the given name and kind exists.
 
     Args:
         name (str): The name of the function.
@@ -73,8 +71,7 @@ def is_function(name: str, kind: str) -> bool:
 
 
 def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator to assert that the result of a method is an instance of FieldList.
+    """Decorator to assert that the result of a method is an instance of FieldList.
 
     Args:
         method (Callable[..., Any]): The method to decorate.
@@ -94,8 +91,7 @@ def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def assert_is_fieldlist(obj: object) -> None:
-    """
-    Asserts that the given object is an instance of FieldList.
+    """Asserts that the given object is an instance of FieldList.
 
     Args:
         obj (object): The object to check.
@@ -104,8 +100,7 @@ def assert_is_fieldlist(obj: object) -> None:
 
 
 def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
-    """
-    Flattens a MultiFieldList or FieldList into a list of FieldList objects.
+    """Flattens a MultiFieldList or FieldList into a list of FieldList objects.
 
     Args:
         ds (Union[MultiFieldList, FieldList]): The dataset to flatten.
@@ -119,8 +114,7 @@ def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
 
 
 def _tidy(ds: Union[MultiFieldList, FieldList], indent: int = 0) -> Union[MultiFieldList, FieldList]:
-    """
-    Tidies up a MultiFieldList or FieldList by removing empty sources.
+    """Tidies up a MultiFieldList or FieldList by removing empty sources.
 
     Args:
         ds (Union[MultiFieldList, FieldList]): The dataset to tidy.

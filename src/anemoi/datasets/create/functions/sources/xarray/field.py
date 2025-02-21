@@ -28,19 +28,14 @@ LOG = logging.getLogger(__name__)
 
 
 class EmptyFieldList:
-    """
-    A class to represent an empty list of fields.
-    """
+    """A class to represent an empty list of fields."""
 
     def __len__(self) -> int:
-        """
-        Return the length of the field list.
-        """
+        """Return the length of the field list."""
         return 0
 
     def __getitem__(self, i: int) -> Any:
-        """
-        Raise an IndexError when trying to access an item.
+        """Raise an IndexError when trying to access an item.
 
         Args
         ----
@@ -60,16 +55,12 @@ class EmptyFieldList:
         raise IndexError(i)
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the EmptyFieldList.
-        """
+        """Return a string representation of the EmptyFieldList."""
         return "EmptyFieldList()"
 
 
 class XArrayField(Field):
-    """
-    A class to represent a field in an XArray dataset.
-    """
+    """A class to represent a field in an XArray dataset."""
 
     def __init__(self, owner: Any, selection: Any) -> None:
         """Create a new XArrayField object.
@@ -106,16 +97,13 @@ class XArrayField(Field):
 
     @property
     def shape(self) -> Tuple[int, int]:
-        """
-        Return the shape of the field.
-        """
+        """Return the shape of the field."""
         return self._shape
 
     def to_numpy(
         self, flatten: bool = False, dtype: Optional[type] = None, index: Optional[int] = None
     ) -> NDArray[Any]:
-        """
-        Convert the selection to a numpy array.
+        """Convert the selection to a numpy array.
 
         Args
         ----
@@ -145,20 +133,15 @@ class XArrayField(Field):
 
     @cached_property
     def _metadata(self) -> XArrayMetadata:
-        """
-        Return the metadata of the field.
-        """
+        """Return the metadata of the field."""
         return XArrayMetadata(self)
 
     def grid_points(self) -> Any:
-        """
-        Return the grid points of the field.
-        """
+        """Return the grid points of the field."""
         return self.owner.grid_points()
 
     def to_latlon(self, flatten: bool = True) -> Dict[str, Any]:
-        """
-        Convert the selection to latitude and longitude coordinates.
+        """Convert the selection to latitude and longitude coordinates.
 
         Args
         ----
@@ -175,37 +158,27 @@ class XArrayField(Field):
 
     @property
     def resolution(self) -> Optional[Any]:
-        """
-        Return the resolution of the field.
-        """
+        """Return the resolution of the field."""
         return None
 
     @property
     def grid_mapping(self) -> Any:
-        """
-        Return the grid mapping of the field.
-        """
+        """Return the grid mapping of the field."""
         return self.owner.grid_mapping
 
     @property
     def latitudes(self) -> Any:
-        """
-        Return the latitudes of the field.
-        """
+        """Return the latitudes of the field."""
         return self.owner.latitudes
 
     @property
     def longitudes(self) -> Any:
-        """
-        Return the longitudes of the field.
-        """
+        """Return the longitudes of the field."""
         return self.owner.longitudes
 
     @property
     def forecast_reference_time(self) -> datetime.datetime:
-        """
-        Return the forecast reference time of the field.
-        """
+        """Return the forecast reference time of the field."""
         date, time = self.metadata("date", "time")
         assert len(time) == 4, time
         assert len(date) == 8, date
@@ -214,14 +187,11 @@ class XArrayField(Field):
         return datetime.datetime(yyyymmdd // 10000, yyyymmdd // 100 % 100, yyyymmdd % 100, time)
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the field.
-        """
+        """Return a string representation of the field."""
         return repr(self._metadata)
 
     def _values(self, dtype: Optional[type] = None) -> Any:
-        """
-        Return the values of the selection.
+        """Return the values of the selection.
 
         Args
         ----

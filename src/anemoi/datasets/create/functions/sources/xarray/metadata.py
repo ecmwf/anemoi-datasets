@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 class _MDMapping:
-    """
-    A class to handle metadata mapping for variables.
+    """A class to handle metadata mapping for variables.
 
     Attributes
     ----------
@@ -38,8 +37,7 @@ class _MDMapping:
     """
 
     def __init__(self, variable: Any) -> None:
-        """
-        Initialize the _MDMapping class.
+        """Initialize the _MDMapping class.
 
         Args
         ----
@@ -51,8 +49,7 @@ class _MDMapping:
         # Aliases
 
     def _from_user(self, key: str) -> str:
-        """
-        Get the internal key corresponding to a user-provided key.
+        """Get the internal key corresponding to a user-provided key.
 
         Args
         ----
@@ -67,8 +64,7 @@ class _MDMapping:
         return self.mapping.get(key, key)
 
     def from_user(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Convert user-provided keys to internal keys.
+        """Convert user-provided keys to internal keys.
 
         Args
         ----
@@ -83,8 +79,7 @@ class _MDMapping:
         return {self._from_user(k): v for k, v in kwargs.items()}
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the _MDMapping object.
+        """Return a string representation of the _MDMapping object.
 
         Returns
         -------
@@ -94,8 +89,7 @@ class _MDMapping:
         return f"MDMapping({self.mapping})"
 
     def fill_time_metadata(self, field: Any, md: Dict[str, Any]) -> None:
-        """
-        Fill the time metadata for a field.
+        """Fill the time metadata for a field.
 
         Args
         ----
@@ -110,8 +104,7 @@ class _MDMapping:
 
 
 class XArrayMetadata(RawMetadata):
-    """
-    A class to handle metadata for XArray fields.
+    """A class to handle metadata for XArray fields.
 
     Attributes:
         LS_KEYS (List[str]): List of keys for the metadata.
@@ -124,8 +117,7 @@ class XArrayMetadata(RawMetadata):
     MARS_KEYS = ["param", "step", "levelist", "levtype", "number", "date", "time"]
 
     def __init__(self, field: Any) -> None:
-        """
-        Initialize the XArrayMetadata class.
+        """Initialize the XArrayMetadata class.
 
         Args
         ----
@@ -140,8 +132,7 @@ class XArrayMetadata(RawMetadata):
 
     @cached_property
     def geography(self) -> "XArrayFieldGeography":
-        """
-        Get the geography information for the field.
+        """Get the geography information for the field.
 
         Returns
         -------
@@ -151,8 +142,7 @@ class XArrayMetadata(RawMetadata):
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
     def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Get the metadata as a specific namespace.
+        """Get the metadata as a specific namespace.
 
         Args
         ----
@@ -174,8 +164,7 @@ class XArrayMetadata(RawMetadata):
             return self._as_mars()
 
     def _as_mars(self) -> Dict[str, Any]:
-        """
-        Get the metadata as MARS namespace.
+        """Get the metadata as MARS namespace.
 
         Returns
         -------
@@ -185,8 +174,7 @@ class XArrayMetadata(RawMetadata):
         return {}
 
     def _base_datetime(self) -> Optional[datetime.datetime]:
-        """
-        Get the base datetime for the field.
+        """Get the base datetime for the field.
 
         Returns
         -------
@@ -196,8 +184,7 @@ class XArrayMetadata(RawMetadata):
         return self._field.forecast_reference_time
 
     def _valid_datetime(self) -> Optional[datetime.datetime]:
-        """
-        Get the valid datetime for the field.
+        """Get the valid datetime for the field.
 
         Returns
         -------
@@ -207,8 +194,7 @@ class XArrayMetadata(RawMetadata):
         return self._get("valid_datetime")
 
     def get(self, key: str, astype: Optional[type] = None, **kwargs: Any) -> Any:
-        """
-        Get a metadata value by key.
+        """Get a metadata value by key.
 
         Args
         ----
@@ -233,8 +219,7 @@ class XArrayMetadata(RawMetadata):
 
 
 class XArrayFieldGeography(Geography):
-    """
-    A class to handle geography information for XArray fields.
+    """A class to handle geography information for XArray fields.
 
     Attributes:
         _field (Any): The field to extract geography information from.
@@ -242,8 +227,7 @@ class XArrayFieldGeography(Geography):
     """
 
     def __init__(self, field: Any, grid: Any) -> None:
-        """
-        Initialize the XArrayFieldGeography class.
+        """Initialize the XArrayFieldGeography class.
 
         Args
         ----
@@ -256,8 +240,7 @@ class XArrayFieldGeography(Geography):
         self._grid = grid
 
     def _unique_grid_id(self) -> None:
-        """
-        Get the unique grid ID.
+        """Get the unique grid ID.
 
         Raises
         ------
@@ -267,8 +250,7 @@ class XArrayFieldGeography(Geography):
         raise NotImplementedError()
 
     def bounding_box(self) -> None:
-        """
-        Get the bounding box for the field.
+        """Get the bounding box for the field.
 
         Raises
         ------
@@ -279,8 +261,7 @@ class XArrayFieldGeography(Geography):
         # return BoundingBox(north=self.north, south=self.south, east=self.east, west=self.west)
 
     def gridspec(self) -> None:
-        """
-        Get the grid specification for the field.
+        """Get the grid specification for the field.
 
         Raises
         ------
@@ -290,8 +271,7 @@ class XArrayFieldGeography(Geography):
         raise NotImplementedError()
 
     def latitudes(self, dtype: Optional[type] = None) -> Any:
-        """
-        Get the latitudes for the field.
+        """Get the latitudes for the field.
 
         Args
         ----
@@ -309,8 +289,7 @@ class XArrayFieldGeography(Geography):
         return result
 
     def longitudes(self, dtype: Optional[type] = None) -> Any:
-        """
-        Get the longitudes for the field.
+        """Get the longitudes for the field.
 
         Args
         ----
@@ -328,8 +307,7 @@ class XArrayFieldGeography(Geography):
         return result
 
     def resolution(self) -> Optional[Any]:
-        """
-        Get the resolution for the field.
+        """Get the resolution for the field.
 
         Returns
         -------
@@ -340,8 +318,7 @@ class XArrayFieldGeography(Geography):
         return None
 
     def mars_grid(self) -> Optional[Any]:
-        """
-        Get the MARS grid for the field.
+        """Get the MARS grid for the field.
 
         Returns
         -------
@@ -352,8 +329,7 @@ class XArrayFieldGeography(Geography):
         return None
 
     def mars_area(self) -> Optional[Any]:
-        """
-        Get the MARS area for the field.
+        """Get the MARS area for the field.
 
         Returns
         -------
@@ -365,8 +341,7 @@ class XArrayFieldGeography(Geography):
         return None
 
     def x(self, dtype: Optional[type] = None) -> None:
-        """
-        Get the x-coordinates for the field.
+        """Get the x-coordinates for the field.
 
         Args
         ----
@@ -381,8 +356,7 @@ class XArrayFieldGeography(Geography):
         raise NotImplementedError()
 
     def y(self, dtype: Optional[type] = None) -> None:
-        """
-        Get the y-coordinates for the field.
+        """Get the y-coordinates for the field.
 
         Args
         ----
@@ -397,8 +371,7 @@ class XArrayFieldGeography(Geography):
         raise NotImplementedError()
 
     def shape(self) -> Any:
-        """
-        Get the shape of the field.
+        """Get the shape of the field.
 
         Returns
         -------
@@ -408,8 +381,7 @@ class XArrayFieldGeography(Geography):
         return self._field.shape
 
     def projection(self) -> Projection:
-        """
-        Get the projection for the field.
+        """Get the projection for the field.
 
         Returns
         -------

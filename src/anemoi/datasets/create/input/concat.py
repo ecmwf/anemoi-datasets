@@ -34,9 +34,7 @@ LOG = logging.getLogger(__name__)
 
 
 class ConcatResult(Result):
-    """
-    Represents the result of concatenating multiple results.
-    """
+    """Represents the result of concatenating multiple results."""
 
     def __init__(
         self,
@@ -46,8 +44,7 @@ class ConcatResult(Result):
         results: List[Result],
         **kwargs: Any,
     ) -> None:
-        """
-        Initializes a ConcatResult instance.
+        """Initializes a ConcatResult instance.
 
         Args:
             context (object): The context object.
@@ -64,8 +61,7 @@ class ConcatResult(Result):
     @notify_result
     @trace_datasource
     def datasource(self) -> FieldList:
-        """
-        Returns the concatenated datasource from all results.
+        """Returns the concatenated datasource from all results.
 
         Returns:
             FieldList: The concatenated datasource from all results.
@@ -77,8 +73,7 @@ class ConcatResult(Result):
 
     @property
     def variables(self) -> List[str]:
-        """
-        Returns the list of variables, ensuring all results have the same variables.
+        """Returns the list of variables, ensuring all results have the same variables.
 
         Returns:
             List[str]: The list of variables.
@@ -94,8 +89,7 @@ class ConcatResult(Result):
         return variables
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the ConcatResult instance.
+        """Returns a string representation of the ConcatResult instance.
 
         Returns:
             str: A string representation of the ConcatResult instance.
@@ -104,13 +98,10 @@ class ConcatResult(Result):
 
 
 class ConcatAction(Action):
-    """
-    Represents an action that concatenates multiple actions based on their dates.
-    """
+    """Represents an action that concatenates multiple actions based on their dates."""
 
     def __init__(self, context: object, action_path: List[str], *configs: Dict[str, Any]) -> None:
-        """
-        Initializes a ConcatAction instance.
+        """Initializes a ConcatAction instance.
 
         Args:
             context (object): The context object.
@@ -131,8 +122,7 @@ class ConcatAction(Action):
         self.parts = parts
 
     def __repr__(self) -> str:
-        """
-        Returns a string representation of the ConcatAction instance.
+        """Returns a string representation of the ConcatAction instance.
 
         Returns:
             str: A string representation of the ConcatAction instance.
@@ -142,8 +132,7 @@ class ConcatAction(Action):
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> Union[ConcatResult, EmptyResult]:
-        """
-        Selects the concatenated result for the given group of dates.
+        """Selects the concatenated result for the given group of dates.
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.

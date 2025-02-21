@@ -26,8 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Variable:
-    """
-    Represents a variable in an xarray dataset.
+    """Represents a variable in an xarray dataset.
 
     Attributes:
         ds (xr.Dataset): The xarray dataset.
@@ -48,8 +47,7 @@ class Variable:
         time: Any,
         metadata: Dict[str, Any],
     ):
-        """
-        Initialize the Variable object.
+        """Initialize the Variable object.
 
         Parameters:
             ds (xr.Dataset): The xarray dataset.
@@ -81,8 +79,7 @@ class Variable:
 
     @property
     def name(self) -> str:
-        """
-        Return the name of the variable.
+        """Return the name of the variable.
 
         Returns
         -------
@@ -92,8 +89,7 @@ class Variable:
         return str(self.variable.name)
 
     def __len__(self) -> int:
-        """
-        Return the length of the variable.
+        """Return the length of the variable.
 
         Returns
         -------
@@ -104,8 +100,7 @@ class Variable:
 
     @property
     def grid_mapping(self) -> Optional[Dict[str, Any]]:
-        """
-        Return the grid mapping of the variable.
+        """Return the grid mapping of the variable.
 
         Returns
         -------
@@ -118,8 +113,7 @@ class Variable:
         return self.ds[grid_mapping].attrs
 
     def grid_points(self) -> Any:
-        """
-        Return the grid points of the variable.
+        """Return the grid points of the variable.
 
         Returns
         -------
@@ -130,8 +124,7 @@ class Variable:
 
     @property
     def latitudes(self) -> Any:
-        """
-        Return the latitudes of the variable.
+        """Return the latitudes of the variable.
 
         Returns
         -------
@@ -142,8 +135,7 @@ class Variable:
 
     @property
     def longitudes(self) -> Any:
-        """
-        Return the longitudes of the variable.
+        """Return the longitudes of the variable.
 
         Returns
         -------
@@ -153,8 +145,7 @@ class Variable:
         return self.grid.longitudes
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the variable.
+        """Return a string representation of the variable.
 
         Returns
         -------
@@ -168,8 +159,7 @@ class Variable:
         )
 
     def __getitem__(self, i: int) -> "XArrayField":
-        """
-        Get a 2D field from the variable.
+        """Get a 2D field from the variable.
 
         Parameters
         ----------
@@ -194,8 +184,7 @@ class Variable:
         return XArrayField(self, self.variable.isel(kwargs))
 
     def sel(self, missing: Dict[str, Any], **kwargs: Any) -> Optional["Variable"]:
-        """
-        Select a subset of the variable based on the given coordinates.
+        """Select a subset of the variable based on the given coordinates.
 
         Parameters
         ----------
@@ -255,8 +244,7 @@ class Variable:
         return variable.sel(missing, **kwargs)
 
     def match(self, **kwargs: Any) -> Tuple[bool, Dict[str, Any]]:
-        """
-        Match the variable based on the given metadata.
+        """Match the variable based on the given metadata.
 
         Parameters
         ----------
@@ -283,8 +271,7 @@ class Variable:
 
 
 class FilteredVariable:
-    """
-    Represents a filtered variable based on metadata.
+    """Represents a filtered variable based on metadata.
 
     Attributes:
         variable (Variable): The variable to filter.
@@ -292,8 +279,7 @@ class FilteredVariable:
     """
 
     def __init__(self, variable: Variable, **kwargs: Any):
-        """
-        Initialize the FilteredVariable object.
+        """Initialize the FilteredVariable object.
 
         Parameters
         ----------
@@ -307,8 +293,7 @@ class FilteredVariable:
 
     @cached_property
     def fields(self) -> List["XArrayField"]:
-        """
-        Filter the fields of a variable based on metadata.
+        """Filter the fields of a variable based on metadata.
 
         Returns
         -------
@@ -323,8 +308,7 @@ class FilteredVariable:
 
     @property
     def length(self) -> int:
-        """
-        Return the length of the filtered variable.
+        """Return the length of the filtered variable.
 
         Returns
         -------
@@ -334,8 +318,7 @@ class FilteredVariable:
         return len(self.fields)
 
     def __len__(self) -> int:
-        """
-        Return the length of the filtered variable.
+        """Return the length of the filtered variable.
 
         Returns
         -------
@@ -345,8 +328,7 @@ class FilteredVariable:
         return self.length
 
     def __getitem__(self, i: int) -> "XArrayField":
-        """
-        Get a field from the filtered variable.
+        """Get a field from the filtered variable.
 
         Parameters
         ----------

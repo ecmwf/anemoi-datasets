@@ -35,13 +35,10 @@ LOG = logging.getLogger(__name__)
 
 
 class InterpolateFrequency(Forwards):
-    """
-    A class to represent a dataset with interpolated frequency.
-    """
+    """A class to represent a dataset with interpolated frequency."""
 
     def __init__(self, dataset: Dataset, frequency: str) -> None:
-        """
-        Initialize the InterpolateFrequency class.
+        """Initialize the InterpolateFrequency class.
 
         Args:
             dataset (Dataset): The dataset to be interpolated.
@@ -76,8 +73,7 @@ class InterpolateFrequency(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get the interpolated data for a tuple index.
+        """Get the interpolated data for a tuple index.
 
         Args:
             index (TupleIndex): The tuple index to retrieve data from.
@@ -91,8 +87,7 @@ class InterpolateFrequency(Forwards):
         return apply_index_to_slices_changes(result[index], changes)
 
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Get the interpolated data for a slice.
+        """Get the interpolated data for a slice.
 
         Args:
             s (slice): The slice to retrieve data from.
@@ -104,8 +99,7 @@ class InterpolateFrequency(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get the interpolated data at the specified index.
+        """Get the interpolated data at the specified index.
 
         Args:
             n (FullIndex): The index to retrieve data from.
@@ -139,8 +133,7 @@ class InterpolateFrequency(Forwards):
         return self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
 
     def __len__(self) -> int:
-        """
-        Get the length of the interpolated dataset.
+        """Get the length of the interpolated dataset.
 
         Returns:
             int: The length of the interpolated dataset.
@@ -149,15 +142,12 @@ class InterpolateFrequency(Forwards):
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """
-        Get the interpolation frequency.
-        """
+        """Get the interpolation frequency."""
         return self._frequency
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
-        """
-        Get the interpolated dates.
+        """Get the interpolated dates.
 
         Returns:
             NDArray[np.datetime64]: The interpolated dates.
@@ -172,14 +162,11 @@ class InterpolateFrequency(Forwards):
 
     @property
     def shape(self) -> Shape:
-        """
-        Get the shape of the interpolated dataset.
-        """
+        """Get the shape of the interpolated dataset."""
         return (self._len,) + self.forward.shape[1:]
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns:
             Node: The tree representation of the dataset.
@@ -188,8 +175,7 @@ class InterpolateFrequency(Forwards):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Get the missing data indices.
+        """Get the missing data indices.
 
         Returns:
             Set[int]: The missing data indices.
@@ -206,8 +192,7 @@ class InterpolateFrequency(Forwards):
         return set(x for x in result if x < self._len)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the InterpolateFrequency subclass.
+        """Get the metadata specific to the InterpolateFrequency subclass.
 
         Returns:
             Dict[str, Any]: The metadata specific to the InterpolateFrequency subclass.

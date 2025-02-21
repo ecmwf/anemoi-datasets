@@ -20,13 +20,10 @@ LOG = logging.getLogger(__name__)
 
 
 class PipeAction(Action):
-    """
-    A class to represent a pipeline of actions.
-    """
+    """A class to represent a pipeline of actions."""
 
     def __init__(self, context: Any, action_path: list, *configs: dict) -> None:
-        """
-        Initialize the PipeAction.
+        """Initialize the PipeAction.
 
         Args:
             context (Any): The context for the action.
@@ -46,8 +43,7 @@ class PipeAction(Action):
 
     @trace_select
     def select(self, group_of_dates: Any) -> Any:
-        """
-        Select data based on the group of dates.
+        """Select data based on the group of dates.
 
         Args:
             group_of_dates (Any): The group of dates to select data for.
@@ -58,7 +54,5 @@ class PipeAction(Action):
         return self.last_step.select(group_of_dates)
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the PipeAction.
-        """
+        """Return a string representation of the PipeAction."""
         return f"PipeAction({self.last_step})"

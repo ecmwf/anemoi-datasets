@@ -16,8 +16,7 @@ ALL = object()
 
 
 class ChunkFilter:
-    """
-    A filter to determine which chunks to process based on the specified parts.
+    """A filter to determine which chunks to process based on the specified parts.
 
     Attributes:
         total (int): The total number of chunks.
@@ -25,8 +24,7 @@ class ChunkFilter:
     """
 
     def __init__(self, *, parts: str | list, total: int):
-        """
-        Initializes the ChunkFilter with the given parts and total number of chunks.
+        """Initializes the ChunkFilter with the given parts and total number of chunks.
 
         Args:
             parts (str | list): The parts to process, specified as 'i/n' or a list of such strings.
@@ -83,8 +81,7 @@ class ChunkFilter:
         self.allowed = parts
 
     def __call__(self, i: int) -> bool:
-        """
-        Checks if the given chunk number is allowed to be processed.
+        """Checks if the given chunk number is allowed to be processed.
 
         Args:
             i (int): The chunk number to check.
@@ -103,8 +100,7 @@ class ChunkFilter:
         return i in self.allowed
 
     def __iter__(self) -> iter:
-        """
-        Iterates over the allowed chunks.
+        """Iterates over the allowed chunks.
 
         Yields:
             int: The next allowed chunk number.
@@ -114,8 +110,7 @@ class ChunkFilter:
                 yield i
 
     def __len__(self) -> int:
-        """
-        Returns the number of allowed chunks.
+        """Returns the number of allowed chunks.
 
         Returns:
             int: The number of allowed chunks.

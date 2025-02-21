@@ -27,8 +27,7 @@ LOG = logging.getLogger(__name__)
 
 
 class PersistentDict:
-    """
-    A dictionary-like object that persists its contents to disk using pickle files.
+    """A dictionary-like object that persists its contents to disk using pickle files.
 
     Attributes:
         version (int): The version of the PersistentDict.
@@ -42,8 +41,7 @@ class PersistentDict:
     # Used in parrallel, during data loading,
     # to write data in pickle files.
     def __init__(self, directory: str, create: bool = True):
-        """
-        Initialize the PersistentDict.
+        """Initialize the PersistentDict.
 
         Args:
             directory (str): The directory where the data will be stored.
@@ -70,8 +68,7 @@ class PersistentDict:
         return f"{self.__class__.__name__}({self.dirname})"
 
     def items(self) -> Iterator[Any]:
-        """
-        Yield items stored in the directory.
+        """Yield items stored in the directory.
 
         Yields:
             Iterator[Any]: An iterator over the items.
@@ -85,8 +82,7 @@ class PersistentDict:
                 yield pickle.load(f)
 
     def add_provenance(self, **kwargs: Any) -> None:
-        """
-        Add provenance information to the directory.
+        """Add provenance information to the directory.
 
         Args:
             **kwargs: Additional provenance information.
@@ -99,8 +95,7 @@ class PersistentDict:
             json.dump(out, f)
 
     def add(self, elt: Any, *, key: Any) -> None:
-        """
-        Add an element to the PersistentDict.
+        """Add an element to the PersistentDict.
 
         Args:
             elt (Any): The element to add.
@@ -109,8 +104,7 @@ class PersistentDict:
         self[key] = elt
 
     def __setitem__(self, key: Any, elt: Any) -> None:
-        """
-        Set an item in the PersistentDict.
+        """Set an item in the PersistentDict.
 
         Args:
             key (Any): The key associated with the element.
@@ -135,8 +129,7 @@ class PersistentDict:
 
 
 class BufferedPersistentDict(PersistentDict):
-    """
-    A buffered version of PersistentDict that stores elements in memory before persisting them to disk.
+    """A buffered version of PersistentDict that stores elements in memory before persisting them to disk.
 
     Attributes:
         buffer_size (int): The size of the buffer.
@@ -146,8 +139,7 @@ class BufferedPersistentDict(PersistentDict):
     """
 
     def __init__(self, buffer_size: int = 1000, **kwargs: Any):
-        """
-        Initialize the BufferedPersistentDict.
+        """Initialize the BufferedPersistentDict.
 
         Args:
             buffer_size (int): The size of the buffer.
@@ -159,8 +151,7 @@ class BufferedPersistentDict(PersistentDict):
         self.storage = PersistentDict(**kwargs)
 
     def add(self, elt: Any, *, key: Any) -> None:
-        """
-        Add an element to the BufferedPersistentDict.
+        """Add an element to the BufferedPersistentDict.
 
         Args:
             elt (Any): The element to add.
@@ -179,8 +170,7 @@ class BufferedPersistentDict(PersistentDict):
         self.keys = []
 
     def items(self) -> Iterator[Tuple[Any, Any]]:
-        """
-        Yield items stored in the BufferedPersistentDict.
+        """Yield items stored in the BufferedPersistentDict.
 
         Yields:
             Iterator[Tuple[Any, Any]]: An iterator over the items.
@@ -199,8 +189,7 @@ class BufferedPersistentDict(PersistentDict):
 
 
 def build_storage(directory: str, create: bool = True) -> BufferedPersistentDict:
-    """
-    Build a BufferedPersistentDict storage.
+    """Build a BufferedPersistentDict storage.
 
     Args:
         directory (str): The directory where the data will be stored.

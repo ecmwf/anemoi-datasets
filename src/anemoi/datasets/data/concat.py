@@ -39,8 +39,7 @@ LOG = logging.getLogger(__name__)
 
 class ConcatMixin:
     def __len__(self) -> int:
-        """
-        Returns the total length of the concatenated datasets.
+        """Returns the total length of the concatenated datasets.
 
         Returns
         -------
@@ -52,8 +51,7 @@ class ConcatMixin:
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Retrieves a tuple of data from the concatenated datasets based on the given index.
+        """Retrieves a tuple of data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
@@ -76,8 +74,7 @@ class ConcatMixin:
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the concatenated datasets based on the given index.
+        """Retrieves data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
@@ -104,8 +101,7 @@ class ConcatMixin:
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Retrieves a slice of data from the concatenated datasets.
+        """Retrieves a slice of data from the concatenated datasets.
 
         Parameters
         ----------
@@ -128,9 +124,7 @@ class ConcatMixin:
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Returns the set of missing indices in the concatenated datasets.
-        """
+        """Returns the set of missing indices in the concatenated datasets."""
         result: Set[int] = set()
         offset = 0
         for d in self.datasets:
@@ -141,8 +135,7 @@ class ConcatMixin:
 
 class Concat(ConcatMixin, Combined):
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks the compatibility of two datasets for concatenation.
+        """Checks the compatibility of two datasets for concatenation.
 
         Parameters
         ----------
@@ -155,8 +148,7 @@ class Concat(ConcatMixin, Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=0)
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the lengths of two datasets are the same.
+        """Checks if the lengths of two datasets are the same.
 
         Parameters
         ----------
@@ -169,8 +161,7 @@ class Concat(ConcatMixin, Combined):
         pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the dates of two datasets are the same.
+        """Checks if the dates of two datasets are the same.
 
         Parameters
         ----------
@@ -184,21 +175,16 @@ class Concat(ConcatMixin, Combined):
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
-        """
-        Returns the concatenated dates of all datasets.
-        """
+        """Returns the concatenated dates of all datasets."""
         return np.concatenate([d.dates for d in self.datasets])
 
     @property
     def shape(self) -> Shape:
-        """
-        Returns the shape of the concatenated datasets.
-        """
+        """Returns the shape of the concatenated datasets."""
         return (len(self),) + self.datasets[0].shape[1:]
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the concatenated datasets.
+        """Generates a hierarchical tree structure for the concatenated datasets.
 
         Returns
         -------
@@ -210,8 +196,7 @@ class Concat(ConcatMixin, Combined):
 
     @classmethod
     def check_dataset_compatibility(cls, datasets: List[Any], fill_missing_gaps: bool = False) -> List[Any]:
-        """
-        Checks the compatibility of the datasets for concatenation and fills missing gaps if required.
+        """Checks the compatibility of the datasets for concatenation and fills missing gaps if required.
 
         Parameters
         ----------
@@ -265,8 +250,7 @@ class Concat(ConcatMixin, Combined):
 
 
 def concat_factory(args: Tuple[Any, ...], kwargs: dict) -> Concat:
-    """
-    Factory function to create a Concat object.
+    """Factory function to create a Concat object.
 
     Parameters
     ----------

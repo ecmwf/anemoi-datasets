@@ -30,8 +30,7 @@ from anemoi.utils.humanize import print_dates
 
 
 def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datetime]:
-    """
-    Extend a date range or list of dates into individual datetime objects.
+    """Extend a date range or list of dates into individual datetime objects.
 
     Args:
         x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
@@ -86,8 +85,7 @@ class DatesProvider:
     """
 
     def __init__(self, missing: Optional[List[Union[str, datetime.datetime]]] = None) -> None:
-        """
-        Initialize the DatesProvider with optional missing dates.
+        """Initialize the DatesProvider with optional missing dates.
 
         Args:
             missing (Optional[List[Union[str, datetime.datetime]]]): List of missing dates.
@@ -101,8 +99,7 @@ class DatesProvider:
 
     @classmethod
     def from_config(cls, **kwargs: Any) -> "DatesProvider":
-        """
-        Create a DatesProvider instance from configuration.
+        """Create a DatesProvider instance from configuration.
 
         Args:
             **kwargs (Any): Configuration parameters.
@@ -119,8 +116,7 @@ class DatesProvider:
         return StartEndDates(**kwargs)
 
     def __iter__(self) -> Iterator[datetime.datetime]:
-        """
-        Iterate over the dates.
+        """Iterate over the dates.
 
         Yields:
             Iterator[datetime.datetime]: An iterator of datetime objects.
@@ -128,8 +124,7 @@ class DatesProvider:
         yield from self.values
 
     def __getitem__(self, i: int) -> datetime.datetime:
-        """
-        Get a date by index.
+        """Get a date by index.
 
         Args:
             i (int): Index of the date.
@@ -140,8 +135,7 @@ class DatesProvider:
         return self.values[i]
 
     def __len__(self) -> int:
-        """
-        Get the number of dates.
+        """Get the number of dates.
 
         Returns:
             int: The number of dates.
@@ -150,8 +144,7 @@ class DatesProvider:
 
     @property
     def summary(self) -> str:
-        """
-        Get a summary of the date range.
+        """Get a summary of the date range.
 
         Returns:
             str: A summary string of the date range.
@@ -160,8 +153,7 @@ class DatesProvider:
 
 
 class ValuesDates(DatesProvider):
-    """
-    Class for handling a list of date values.
+    """Class for handling a list of date values.
 
     Args:
         values (List[Union[str, datetime.datetime]]): List of date values.
@@ -169,8 +161,7 @@ class ValuesDates(DatesProvider):
     """
 
     def __init__(self, values: List[Union[str, datetime.datetime]], **kwargs: Any) -> None:
-        """
-        Initialize ValuesDates with a list of values.
+        """Initialize ValuesDates with a list of values.
 
         Args:
             values (List[Union[str, datetime.datetime]]): List of date values.
@@ -180,8 +171,7 @@ class ValuesDates(DatesProvider):
         super().__init__(**kwargs)
 
     def __repr__(self) -> str:
-        """
-        Get a string representation of the ValuesDates instance.
+        """Get a string representation of the ValuesDates instance.
 
         Returns:
             str: String representation of the instance.
@@ -189,8 +179,7 @@ class ValuesDates(DatesProvider):
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        Convert the ValuesDates instance to a dictionary.
+        """Convert the ValuesDates instance to a dictionary.
 
         Returns:
             Dict[str, Any]: Dictionary representation of the instance.
@@ -199,8 +188,7 @@ class ValuesDates(DatesProvider):
 
 
 class StartEndDates(DatesProvider):
-    """
-    Class for generating dates between a start and end date with a specified frequency.
+    """Class for generating dates between a start and end date with a specified frequency.
 
     Args:
         start (Union[str, datetime.datetime]): Start date.
@@ -216,8 +204,7 @@ class StartEndDates(DatesProvider):
         frequency: Union[int, str] = 1,
         **kwargs: Any,
     ) -> None:
-        """
-        Initialize StartEndDates with start, end, and frequency.
+        """Initialize StartEndDates with start, end, and frequency.
 
         Args:
             start (Union[str, datetime.datetime]): Start date.
@@ -257,8 +244,7 @@ class StartEndDates(DatesProvider):
         super().__init__(missing=missing)
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        Convert the StartEndDates instance to a dictionary.
+        """Convert the StartEndDates instance to a dictionary.
 
         Returns:
             Dict[str, Any]: Dictionary representation of the instance.
@@ -271,8 +257,7 @@ class StartEndDates(DatesProvider):
 
 
 class Hindcast:
-    """
-    Class representing a single hindcast date.
+    """Class representing a single hindcast date.
 
     Args:
         date (datetime.datetime): The date of the hindcast.
@@ -284,8 +269,7 @@ class Hindcast:
     def __init__(
         self, date: datetime.datetime, refdate: datetime.datetime, hdate: datetime.datetime, step: int
     ) -> None:
-        """
-        Initialize a Hindcast instance.
+        """Initialize a Hindcast instance.
 
         Args:
             date (datetime.datetime): The date of the hindcast.
@@ -300,8 +284,7 @@ class Hindcast:
 
 
 class HindcastsDates(DatesProvider):
-    """
-    Class for generating hindcast dates over a range of years.
+    """Class for generating hindcast dates over a range of years.
 
     Args:
         start (Union[str, List[str]]): Start date(s).
@@ -319,8 +302,7 @@ class HindcastsDates(DatesProvider):
         years: int = 20,
         **kwargs: Any,
     ) -> None:
-        """
-        Initialize HindcastsDates with start, end, steps, and years.
+        """Initialize HindcastsDates with start, end, steps, and years.
 
         Args:
             start (Union[str, List[str]]): Start date(s).
@@ -394,8 +376,7 @@ class HindcastsDates(DatesProvider):
         super().__init__(missing=missing)
 
     def __repr__(self) -> str:
-        """
-        Get a string representation of the HindcastsDates instance.
+        """Get a string representation of the HindcastsDates instance.
 
         Returns:
             str: String representation of the instance.
@@ -403,8 +384,7 @@ class HindcastsDates(DatesProvider):
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        Convert the HindcastsDates instance to a dictionary.
+        """Convert the HindcastsDates instance to a dictionary.
 
         Returns:
             Dict[str, Any]: Dictionary representation of the instance.

@@ -23,8 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator to notify the context of the result of the method call.
+    """Decorator to notify the context of the result of the method call.
 
     Args:
         method (Callable[..., Any]): The method to wrap.
@@ -43,14 +42,11 @@ def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class Substitution(ABC):
-    """
-    Abstract base class for substitutions in templates.
-    """
+    """Abstract base class for substitutions in templates."""
 
     @abstractmethod
     def resolve(self, context: BuildContext) -> Any:
-        """
-        Resolve the substitution using the given context.
+        """Resolve the substitution using the given context.
 
         Args:
             context (Any): The context to use for resolution.
@@ -62,13 +58,10 @@ class Substitution(ABC):
 
 
 class Reference(Substitution):
-    """
-    A class to represent a reference to another value in the context.
-    """
+    """A class to represent a reference to another value in the context."""
 
     def __init__(self, context: Any, action_path: List[str]) -> None:
-        """
-        Initialize a Reference instance.
+        """Initialize a Reference instance.
 
         Args:
             context (Any): The context in which the reference exists.
@@ -78,8 +71,7 @@ class Reference(Substitution):
         self.action_path: List[str] = action_path
 
     def resolve(self, context: BuildContext) -> Any:
-        """
-        Resolve the reference using the given context.
+        """Resolve the reference using the given context.
 
         Args:
             context (Any): The context to use for resolution.
@@ -91,8 +83,7 @@ class Reference(Substitution):
 
 
 def resolve(context: BuildContext, x: Any) -> Any:
-    """
-    Recursively resolve substitutions in the given structure using the context.
+    """Recursively resolve substitutions in the given structure using the context.
 
     Args:
         context (Any): The context to use for resolution.
@@ -117,8 +108,7 @@ def resolve(context: BuildContext, x: Any) -> Any:
 
 
 def substitute(context: BuildContext, x: Any) -> Any:
-    """
-    Recursively substitute references in the given structure using the context.
+    """Recursively substitute references in the given structure using the context.
 
     Args:
         context (Any): The context to use for substitution.

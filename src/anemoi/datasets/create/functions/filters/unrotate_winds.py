@@ -18,13 +18,10 @@ from earthkit.geo.rotate import unrotate_vector
 
 
 class NewDataField:
-    """
-    A class to represent a new data field with unrotated wind components.
-    """
+    """A class to represent a new data field with unrotated wind components."""
 
     def __init__(self, field: Any, data: Any) -> None:
-        """
-        Initialize a NewDataField instance.
+        """Initialize a NewDataField instance.
 
         Args:
             field (Any): The original field.
@@ -34,8 +31,7 @@ class NewDataField:
         self.data = data
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Convert the data to a numpy array.
+        """Convert the data to a numpy array.
 
         Returns:
             Any: The data as a numpy array.
@@ -43,8 +39,7 @@ class NewDataField:
         return self.data
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Get an attribute from the original field.
+        """Get an attribute from the original field.
 
         Args:
             name (str): The name of the attribute.

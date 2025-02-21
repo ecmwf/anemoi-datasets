@@ -30,6 +30,16 @@ def plot_mask(
     global_lats: NDArray[Any],
     global_lons: NDArray[Any],
 ) -> None:
+    """Plot and save various visualizations of the mask and coordinates.
+
+    Args:
+        path (str): The base path for saving the plots.
+        mask (NDArray[Any]): The mask array.
+        lats (NDArray[Any]): Latitude coordinates.
+        lons (NDArray[Any]): Longitude coordinates.
+        global_lats (NDArray[Any]): Global latitude coordinates.
+        global_lons (NDArray[Any]): Global longitude coordinates.
+    """
     import matplotlib.pyplot as plt
 
     s = 1
@@ -78,6 +88,16 @@ def plot_mask(
 # TODO: Use the one from anemoi.utils.grids instead
 # from anemoi.utils.grids import ...
 def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
+    """Convert Cartesian coordinates to latitude and longitude.
+
+    Args:
+        x (NDArray[Any]): X coordinates.
+        y (NDArray[Any]): Y coordinates.
+        z (NDArray[Any]): Z coordinates.
+
+    Returns:
+        Tuple[NDArray[Any], NDArray[Any]]: Latitude and longitude coordinates.
+    """
     return (
         np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
         np.rad2deg(np.arctan2(y, x)),
@@ -89,6 +109,16 @@ def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> Tuple[ND
 def latlon_to_xyz(
     lat: NDArray[Any], lon: NDArray[Any], radius: float = 1.0
 ) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
+    """Convert latitude and longitude to Cartesian coordinates.
+
+    Args:
+        lat (NDArray[Any]): Latitude coordinates.
+        lon (NDArray[Any]): Longitude coordinates.
+        radius (float, optional): Radius of the sphere. Defaults to 1.0.
+
+    Returns:
+        Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]: X, Y, and Z coordinates.
+    """
     # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
     # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
     # We assume h = 0
@@ -109,16 +139,30 @@ def latlon_to_xyz(
 
 
 class Triangle3D:
-    """
-    A class to represent a 3D triangle and perform intersection tests with rays.
-    """
+    """A class to represent a 3D triangle and perform intersection tests with rays."""
 
     def __init__(self, v0: NDArray[Any], v1: NDArray[Any], v2: NDArray[Any]) -> None:
+        """Initialize the Triangle3D object.
+
+        Args:
+            v0 (NDArray[Any]): First vertex of the triangle.
+            v1 (NDArray[Any]): Second vertex of the triangle.
+            v2 (NDArray[Any]): Third vertex of the triangle.
+        """
         self.v0 = v0
         self.v1 = v1
         self.v2 = v2
 
     def intersect(self, ray_origin: NDArray[Any], ray_direction: NDArray[Any]) -> bool:
+        """Check if a ray intersects with the triangle.
+
+        Args:
+            ray_origin (NDArray[Any]): Origin of the ray.
+            ray_direction (NDArray[Any]): Direction of the ray.
+
+        Returns:
+            bool: True if the ray intersects with the triangle, False otherwise.
+        """
         # Möller–Trumbore intersection algorithm
         # https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 
@@ -159,6 +203,19 @@ def cropping_mask(
     south: float,
     east: float,
 ) -> NDArray[Any]:
+    """Create a mask for the points within the specified latitude and longitude bounds.
+
+    Args:
+        lats (NDArray[Any]): Latitude coordinates.
+        lons (NDArray[Any]): Longitude coordinates.
+        north (float): Northern boundary.
+        west (float): Western boundary.
+        south (float): Southern boundary.
+        east (float): Eastern boundary.
+
+    Returns:
+        NDArray[Any]: Mask array.
+    """
     mask = (
         (lats >= south)
         & (lats <= north)
@@ -181,7 +238,21 @@ def cutout_mask(
     min_distance_km: Optional[Union[int, float]] = None,
     plot: Optional[str] = None,
 ) -> NDArray[Any]:
-    """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
+    """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons].
+
+    Args:
+        lats (NDArray[Any]): Latitude coordinates.
+        lons (NDArray[Any]): Longitude coordinates.
+        global_lats (NDArray[Any]): Global latitude coordinates.
+        global_lons (NDArray[Any]): Global longitude coordinates.
+        cropping_distance (float, optional): Cropping distance. Defaults to 2.0.
+        neighbours (int, optional): Number of neighbours. Defaults to 5.
+        min_distance_km (Optional[Union[int, float]], optional): Minimum distance in kilometers. Defaults to None.
+        plot (Optional[str], optional): Path for saving the plot. Defaults to None.
+
+    Returns:
+        NDArray[Any]: Mask array.
+    """
     from scipy.spatial import cKDTree
 
     # TODO: transform min_distance from lat/lon to xyz
@@ -284,7 +355,18 @@ def thinning_mask(
     global_lons: NDArray[Any],
     cropping_distance: float = 2.0,
 ) -> NDArray[Any]:
-    """Return the list of points in [lats, lons] closest to [global_lats, global_lons]"""
+    """Return the list of points in [lats, lons] closest to [global_lats, global_lons].
+
+    Args:
+        lats (NDArray[Any]): Latitude coordinates.
+        lons (NDArray[Any]): Longitude coordinates.
+        global_lats (NDArray[Any]): Global latitude coordinates.
+        global_lons (NDArray[Any]): Global longitude coordinates.
+        cropping_distance (float, optional): Cropping distance. Defaults to 2.0.
+
+    Returns:
+        NDArray[Any]: Array of indices of the closest points.
+    """
     from scipy.spatial import cKDTree
 
     assert global_lats.ndim == 1
@@ -328,6 +410,16 @@ def thinning_mask(
 
 
 def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> List[int]:
+    """Find the outline of the grid points.
+
+    Args:
+        lats (NDArray[Any]): Latitude coordinates.
+        lons (NDArray[Any]): Longitude coordinates.
+        neighbours (int, optional): Number of neighbours. Defaults to 5.
+
+    Returns:
+        List[int]: Indices of the outline points.
+    """
     from scipy.spatial import cKDTree
 
     xyx = latlon_to_xyz(lats, lons)
@@ -360,6 +452,14 @@ def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> List
 
 
 def deserialise_mask(encoded: str) -> NDArray[Any]:
+    """Deserialise a mask from a base64 encoded string.
+
+    Args:
+        encoded (str): Base64 encoded string.
+
+    Returns:
+        NDArray[Any]: Deserialised mask array.
+    """
     import pickle
     import zlib
 
@@ -374,6 +474,14 @@ def deserialise_mask(encoded: str) -> NDArray[Any]:
 
 
 def _serialise_mask(mask: NDArray[Any]) -> str:
+    """Serialise a mask to a base64 encoded string.
+
+    Args:
+        mask (NDArray[Any]): Mask array.
+
+    Returns:
+        str: Base64 encoded string.
+    """
     import pickle
     import zlib
 
@@ -403,6 +511,14 @@ def _serialise_mask(mask: NDArray[Any]) -> str:
 
 
 def serialise_mask(mask: NDArray[Any]) -> str:
+    """Serialise a mask and ensure it can be deserialised.
+
+    Args:
+        mask (NDArray[Any]): Mask array.
+
+    Returns:
+        str: Base64 encoded string.
+    """
     result = _serialise_mask(mask)
     # Make sure we can deserialise it
     assert np.all(mask == deserialise_mask(result))
@@ -415,6 +531,17 @@ def nearest_grid_points(
     target_latitudes: NDArray[Any],
     target_longitudes: NDArray[Any],
 ) -> NDArray[Any]:
+    """Find the nearest grid points from source to target coordinates.
+
+    Args:
+        source_latitudes (NDArray[Any]): Source latitude coordinates.
+        source_longitudes (NDArray[Any]): Source longitude coordinates.
+        target_latitudes (NDArray[Any]): Target latitude coordinates.
+        target_longitudes (NDArray[Any]): Target longitude coordinates.
+
+    Returns:
+        NDArray[Any]: Indices of the nearest grid points.
+    """
     # TODO: Use the one from anemoi.utils.grids instead
     # from anemoi.utils.grids import ...
     from scipy.spatial import cKDTree

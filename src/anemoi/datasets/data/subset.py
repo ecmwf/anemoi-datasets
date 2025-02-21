@@ -39,8 +39,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _default(a: int, b: int, dates: NDArray[np.datetime64]) -> list[int]:
-    """
-    Default combination function for reasons.
+    """Default combination function for reasons.
 
     Parameters:
     a (int): First integer value.
@@ -54,8 +53,7 @@ def _default(a: int, b: int, dates: NDArray[np.datetime64]) -> list[int]:
 
 
 def _start(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
-    """
-    Determine the start date between two dates.
+    """Determine the start date between two dates.
 
     Parameters:
     a (int): First integer value.
@@ -76,8 +74,7 @@ def _start(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
 
 
 def _end(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
-    """
-    Determine the end date between two dates.
+    """Determine the end date between two dates.
 
     Parameters:
     a (int): First integer value.
@@ -98,8 +95,7 @@ def _end(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
 
 
 def _combine_reasons(reason1: Dict[str, Any], reason2: Dict[str, Any], dates: NDArray[np.datetime64]) -> Dict[str, Any]:
-    """
-    Combine two reason dictionaries.
+    """Combine two reason dictionaries.
 
     Parameters:
     reason1 (Dict[str, Any]): First reason dictionary.
@@ -121,8 +117,7 @@ def _combine_reasons(reason1: Dict[str, Any], reason2: Dict[str, Any], dates: ND
 
 
 class Subset(Forwards):
-    """
-    Select a subset of the dates.
+    """Select a subset of the dates.
 
     Attributes:
     dataset (Dataset): The dataset.
@@ -131,8 +126,7 @@ class Subset(Forwards):
     """
 
     def __init__(self, dataset: Dataset | "Subset", indices: Sequence[int], reason: Dict[str, Any]) -> None:
-        """
-        Initialize the Subset.
+        """Initialize the Subset.
 
         Parameters:
         dataset (Dataset | Subset): The dataset or subset.
@@ -152,8 +146,7 @@ class Subset(Forwards):
         super().__init__(dataset)
 
     def clone(self, dataset: Dataset) -> Dataset:
-        """
-        Clone the subset with a new dataset.
+        """Clone the subset with a new dataset.
 
         Parameters:
         dataset (Dataset): The new dataset.
@@ -164,8 +157,7 @@ class Subset(Forwards):
         return self.__class__(dataset, self.indices, self.reason).mutate()
 
     def mutate(self) -> Dataset:
-        """
-        Mutate the subset.
+        """Mutate the subset.
 
         Returns:
         Dataset: The mutated subset.
@@ -174,8 +166,7 @@ class Subset(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get item by index.
+        """Get item by index.
 
         Parameters:
         n (FullIndex): The index.
@@ -195,8 +186,7 @@ class Subset(Forwards):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Get slice of data.
+        """Get slice of data.
 
         Parameters:
         s (slice): The slice.
@@ -216,8 +206,7 @@ class Subset(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, n: TupleIndex) -> NDArray[Any]:
-        """
-        Get tuple of data.
+        """Get tuple of data.
 
         Parameters:
         n (TupleIndex): The tuple index.
@@ -234,8 +223,7 @@ class Subset(Forwards):
         return result
 
     def __len__(self) -> int:
-        """
-        Get the length of the subset.
+        """Get the length of the subset.
 
         Returns:
         int: The length of the subset.
@@ -244,31 +232,24 @@ class Subset(Forwards):
 
     @cached_property
     def shape(self) -> Shape:
-        """
-        Get the shape of the subset.
-        """
+        """Get the shape of the subset."""
         return (len(self),) + self.dataset.shape[1:]
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
-        """
-        Get the dates of the subset.
-        """
+        """Get the dates of the subset."""
         return self.dataset.dates[self.indices]
 
     @cached_property
     def frequency(self) -> datetime.timedelta:
-        """
-        Get the frequency of the subset.
-        """
+        """Get the frequency of the subset."""
         dates = self.dates
         if len(dates) < 2:
             raise ValueError(f"Cannot determine frequency of a subset with less than two dates ({self.dates}).")
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
     def source(self, index: int) -> Source:
-        """
-        Get the source of the subset.
+        """Get the source of the subset.
 
         Parameters:
         index (int): The index.
@@ -279,8 +260,7 @@ class Subset(Forwards):
         return Source(self, index, self.forward.source(index))
 
     def __repr__(self) -> str:
-        """
-        Get the string representation of the subset.
+        """Get the string representation of the subset.
 
         Returns:
         str: The string representation of the subset.
@@ -289,9 +269,7 @@ class Subset(Forwards):
 
     @cached_property
     def missing(self) -> Set[int]:
-        """
-        Get the missing indices of the subset.
-        """
+        """Get the missing indices of the subset."""
         missing = self.dataset.missing
         result: Set[int] = set()
         for j, i in enumerate(self.indices):
@@ -300,8 +278,7 @@ class Subset(Forwards):
         return result
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the subset.
+        """Get the tree representation of the subset.
 
         Returns:
         Node: The tree representation of the subset.
@@ -309,8 +286,7 @@ class Subset(Forwards):
         return Node(self, [self.dataset.tree()], **self.reason)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the forwards subclass.
+        """Get the metadata specific to the forwards subclass.
 
         Returns:
         Dict[str, Any]: The metadata specific to the forwards subclass.

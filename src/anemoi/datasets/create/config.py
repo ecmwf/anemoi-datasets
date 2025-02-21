@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _get_first_key_if_dict(x: str | dict) -> str:
-    """
-    Returns the first key if the input is a dictionary, otherwise returns the input string.
+    """Returns the first key if the input is a dictionary, otherwise returns the input string.
 
     Args:
         x (str | dict): Input string or dictionary.
@@ -39,8 +38,7 @@ def _get_first_key_if_dict(x: str | dict) -> str:
 
 
 def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
-    """
-    Ensures that a specified element is present at a given index in a list.
+    """Ensures that a specified element is present at a given index in a list.
 
     Args:
         lst (list): The list to check.
@@ -63,8 +61,7 @@ def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
 
 
 def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
-    """
-    Checks if a dictionary contains a specific key-value pair and sets it if not present.
+    """Checks if a dictionary contains a specific key-value pair and sets it if not present.
 
     Args:
         dic (dict): The dictionary to check.
@@ -83,8 +80,7 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
 
 
 def resolve_includes(config: dict | list) -> dict | list:
-    """
-    Resolves '<<' includes in a configuration dictionary or list.
+    """Resolves '<<' includes in a configuration dictionary or list.
 
     Args:
         config (dict | list): The configuration to resolve includes for.
@@ -103,13 +99,10 @@ def resolve_includes(config: dict | list) -> dict | list:
 
 
 class Config(DotDict):
-    """
-    Configuration class that extends DotDict to handle configuration loading and processing.
-    """
+    """Configuration class that extends DotDict to handle configuration loading and processing."""
 
     def __init__(self, config: str | dict = None, **kwargs):
-        """
-        Initializes the Config object.
+        """Initializes the Config object.
 
         Args:
             config (str | dict, optional): Path to the configuration file or a dictionary. Defaults to None.
@@ -126,13 +119,10 @@ class Config(DotDict):
 
 
 class OutputSpecs:
-    """
-    Class to handle output specifications for datasets.
-    """
+    """Class to handle output specifications for datasets."""
 
     def __init__(self, config: Config, parent: Any):
-        """
-        Initializes the OutputSpecs object.
+        """Initializes the OutputSpecs object.
 
         Args:
             config (Config): The configuration object.
@@ -146,8 +136,7 @@ class OutputSpecs:
 
     @property
     def dtype(self) -> str:
-        """
-        Returns the data type for the output.
+        """Returns the data type for the output.
 
         Returns:
             str: The data type.
@@ -156,8 +145,7 @@ class OutputSpecs:
 
     @property
     def order_by_as_list(self) -> list[dict]:
-        """
-        Returns the order_by configuration as a list of dictionaries.
+        """Returns the order_by configuration as a list of dictionaries.
 
         Returns:
             list[dict]: The order_by configuration.
@@ -166,8 +154,7 @@ class OutputSpecs:
         return [{k: v} for k, v in self.config.order_by.items()]
 
     def get_chunking(self, coords: dict) -> tuple:
-        """
-        Returns the chunking configuration based on coordinates.
+        """Returns the chunking configuration based on coordinates.
 
         Args:
             coords (dict): The coordinates dictionary.
@@ -190,8 +177,7 @@ class OutputSpecs:
 
     @property
     def order_by(self) -> dict:
-        """
-        Returns the order_by configuration.
+        """Returns the order_by configuration.
 
         Returns:
             dict: The order_by configuration.
@@ -200,8 +186,7 @@ class OutputSpecs:
 
     @property
     def remapping(self) -> dict:
-        """
-        Returns the remapping configuration.
+        """Returns the remapping configuration.
 
         Returns:
             dict: The remapping configuration.
@@ -210,8 +195,7 @@ class OutputSpecs:
 
     @property
     def flatten_grid(self) -> bool:
-        """
-        Returns whether the grid should be flattened.
+        """Returns whether the grid should be flattened.
 
         Returns:
             bool: True if the grid should be flattened, False otherwise.
@@ -220,8 +204,7 @@ class OutputSpecs:
 
     @property
     def statistics(self) -> str:
-        """
-        Returns the statistics configuration.
+        """Returns the statistics configuration.
 
         Returns:
             str: The statistics configuration.
@@ -230,13 +213,10 @@ class OutputSpecs:
 
 
 class LoadersConfig(Config):
-    """
-    Configuration class for dataset loaders.
-    """
+    """Configuration class for dataset loaders."""
 
     def __init__(self, config: dict, *args, **kwargs):
-        """
-        Initializes the LoadersConfig object.
+        """Initializes the LoadersConfig object.
 
         Args:
             config (dict): The configuration dictionary.
@@ -298,8 +278,7 @@ class LoadersConfig(Config):
         self.reading_chunks = self.get("reading_chunks")
 
     def get_serialisable_dict(self) -> dict:
-        """
-        Returns a serializable dictionary representation of the configuration.
+        """Returns a serializable dictionary representation of the configuration.
 
         Returns:
             dict: The serializable dictionary.
@@ -308,8 +287,7 @@ class LoadersConfig(Config):
 
 
 def _prepare_serialisation(o: Any) -> Any:
-    """
-    Prepares an object for serialization.
+    """Prepares an object for serialization.
 
     Args:
         o (Any): The object to prepare.
@@ -347,8 +325,7 @@ def _prepare_serialisation(o: Any) -> Any:
 
 
 def set_to_test_mode(cfg: dict) -> None:
-    """
-    Modifies the configuration to run in test mode.
+    """Modifies the configuration to run in test mode.
 
     Args:
         cfg (dict): The configuration dictionary.
@@ -392,8 +369,7 @@ def set_to_test_mode(cfg: dict) -> None:
 
 
 def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
-    """
-    Loads and validates the configuration for dataset loaders.
+    """Loads and validates the configuration for dataset loaders.
 
     Args:
         config (dict): The configuration dictionary.
@@ -424,8 +400,7 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
 
 
 def build_output(*args, **kwargs) -> OutputSpecs:
-    """
-    Builds the output specifications.
+    """Builds the output specifications.
 
     Args:
         *args: Additional positional arguments.

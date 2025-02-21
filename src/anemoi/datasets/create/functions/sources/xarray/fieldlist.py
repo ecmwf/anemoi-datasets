@@ -31,13 +31,10 @@ LOG = logging.getLogger(__name__)
 
 
 class XarrayFieldList(FieldList):
-    """
-    A class to represent a list of fields from an xarray Dataset.
-    """
+    """A class to represent a list of fields from an xarray Dataset."""
 
     def __init__(self, ds: xr.Dataset, variables: List[Variable]) -> None:
-        """
-        Initialize the XarrayFieldList.
+        """Initialize the XarrayFieldList.
 
         Args:
             ds (xr.Dataset): The xarray Dataset.
@@ -48,20 +45,15 @@ class XarrayFieldList(FieldList):
         self.total_length: int = sum(v.length for v in variables)
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the XarrayFieldList.
-        """
+        """Return a string representation of the XarrayFieldList."""
         return f"XarrayFieldList({self.total_length})"
 
     def __len__(self) -> int:
-        """
-        Return the length of the XarrayFieldList.
-        """
+        """Return the length of the XarrayFieldList."""
         return self.total_length
 
     def __getitem__(self, i: int) -> Any:
-        """
-        Get an item from the XarrayFieldList by index.
+        """Get an item from the XarrayFieldList by index.
 
         Args:
             i (int): The index of the item to get.
@@ -92,8 +84,7 @@ class XarrayFieldList(FieldList):
         flavour: Optional[Union[str, Dict[str, Any]]] = None,
         patch: Optional[Dict[str, Any]] = None,
     ) -> "XarrayFieldList":
-        """
-        Create an XarrayFieldList from an xarray Dataset.
+        """Create an XarrayFieldList from an xarray Dataset.
 
         Args:
             ds (xr.Dataset): The xarray Dataset to create the field list from.
@@ -180,8 +171,7 @@ class XarrayFieldList(FieldList):
         return cls(ds, variables)
 
     def sel(self, **kwargs: Any) -> FieldList:
-        """
-        Select fields from the XarrayFieldList based on criteria.
+        """Select fields from the XarrayFieldList based on criteria.
 
         Args:
             kwargs (dict): The selection criteria.

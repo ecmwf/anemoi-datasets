@@ -19,8 +19,7 @@ _ = datetime.datetime
 
 
 def date_list(start: tuple, end: tuple, step: int, missing: list = [], as_numpy: bool = False) -> list:
-    """
-    Generate a list of dates from start to end with a given step.
+    """Generate a list of dates from start to end with a given step.
 
     Args:
         start (tuple): Start date as (year, month, day).
@@ -47,8 +46,7 @@ def date_list(start: tuple, end: tuple, step: int, missing: list = [], as_numpy:
 
 
 def default_start(*args, **kwargs) -> datetime.datetime:
-    """
-    Get the default start date for statistics.
+    """Get the default start date for statistics.
 
     Returns:
         datetime.datetime: Default start date.
@@ -57,8 +55,7 @@ def default_start(*args, **kwargs) -> datetime.datetime:
 
 
 def default_end(*args, **kwargs) -> datetime.datetime:
-    """
-    Get the default end date for statistics.
+    """Get the default end date for statistics.
 
     Returns:
         datetime.datetime: Default end date.
@@ -69,8 +66,7 @@ def default_end(*args, **kwargs) -> datetime.datetime:
 @pytest.mark.parametrize("y", [2000, 2001, 2002, 2003, 2004, 2005, 1900, 2100])
 @pytest.mark.parametrize("as_numpy", [True, False])
 def test_default_statistics_dates(y: int, as_numpy: bool) -> None:
-    """
-    Test the default_statistics_dates function with various inputs.
+    """Test the default_statistics_dates function with various inputs.
 
     Args:
         y (int): Year.
@@ -104,8 +100,7 @@ def test_default_statistics_dates(y: int, as_numpy: bool) -> None:
 
 @pytest.mark.parametrize("as_numpy", [True, False])
 def test_default_statistics_dates_80_percent(as_numpy: bool) -> None:
-    """
-    Test the default_statistics_dates function for datasets less than 10 years.
+    """Test the default_statistics_dates function for datasets less than 10 years.
 
     Args:
         as_numpy (bool): Whether to use numpy.datetime64.
