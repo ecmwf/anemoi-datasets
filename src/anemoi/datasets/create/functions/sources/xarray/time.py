@@ -32,15 +32,15 @@ class Time(ABC):
     def from_coordinates(cls, coordinates: List[Coordinate]) -> "Time":
         """Create a Time instance from a list of coordinates.
 
-        Args
-        ----
-        coordinates : List[Coordinate]
-            List of coordinate objects.
-
         Returns
         -------
         Union[ForecastFromValidTimeAndStep, Analysis, Constant, ForecastFromValidTimeAndBaseTime, ForecastFromBaseTimeAndDate]
             An instance of a subclass of Time.
+
+        Args
+        ----
+        coordinates : List[Coordinate]
+            List of coordinate objects.
         """
         time_coordinate = [c for c in coordinates if c.is_time]
         step_coordinate = [c for c in coordinates if c.is_step]
@@ -119,14 +119,14 @@ class Constant(Time):
     def select_valid_datetime(self, variable: Variable) -> None:
         """Select the valid datetime for a given variable.
 
+        Returns
+        -------
+        None
+
         Args
         ----
         variable : Variable
             The variable to select the datetime for.
-
-        Returns
-        -------
-        None
         """
         return None
 
@@ -184,17 +184,17 @@ class ForecastFromValidTimeAndStep(Time):
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
+        Returns
+        -------
+        Any
+            The valid datetime.
+
         Args
         ----
         coords_values : Dict[str, Any]
             Coordinate values.
         metadata : Dict[str, Any]
             Metadata dictionary.
-
-        Returns
-        -------
-        Any
-            The valid datetime.
         """
         valid_datetime = coords_values[self.time_coordinate_name]
         step = coords_values[self.step_coordinate_name]
@@ -255,17 +255,17 @@ class ForecastFromValidTimeAndBaseTime(Time):
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
+        Returns
+        -------
+        Any
+            The valid datetime.
+
         Args
         ----
         coords_values : Dict[str, Any]
             Coordinate values.
         metadata : Dict[str, Any]
             Metadata dictionary.
-
-        Returns
-        -------
-        Any
-            The valid datetime.
         """
         valid_datetime = coords_values[self.time_coordinate_name]
         base_datetime = coords_values[self.date_coordinate_name]
@@ -316,17 +316,17 @@ class ForecastFromBaseTimeAndDate(Time):
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
+        Returns
+        -------
+        Any
+            The valid datetime.
+
         Args
         ----
         coords_values : Dict[str, Any]
             Coordinate values.
         metadata : Dict[str, Any]
             Metadata dictionary.
-
-        Returns
-        -------
-        Any
-            The valid datetime.
         """
         date = coords_values[self.date_coordinate_name]
         step = coords_values[self.step_coordinate_name]

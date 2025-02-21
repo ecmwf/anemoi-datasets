@@ -37,11 +37,6 @@ class EmptyFieldList:
     def __getitem__(self, i: int) -> Any:
         """Raise an IndexError when trying to access an item.
 
-        Args
-        ----
-        i : int
-            Index of the item to access.
-
         Returns
         -------
         Any
@@ -51,6 +46,11 @@ class EmptyFieldList:
         ------
         IndexError
             Always raised to indicate that the list is empty.
+
+        Args
+        ----
+        i : int
+            Index of the item to access.
         """
         raise IndexError(i)
 
@@ -105,6 +105,11 @@ class XArrayField(Field):
     ) -> NDArray[Any]:
         """Convert the selection to a numpy array.
 
+        Returns
+        -------
+        NDArray[Any]
+            The selection converted to a numpy array.
+
         Args
         ----
         flatten : bool, optional
@@ -113,11 +118,6 @@ class XArrayField(Field):
             Data type of the array, by default None.
         index : Optional[int], optional
             Index to select a specific element, by default None.
-
-        Returns
-        -------
-        NDArray[Any]
-            The selection converted to a numpy array.
         """
         if index is not None:
             values = self.selection[index]
@@ -143,15 +143,15 @@ class XArrayField(Field):
     def to_latlon(self, flatten: bool = True) -> Dict[str, Any]:
         """Convert the selection to latitude and longitude coordinates.
 
-        Args
-        ----
-        flatten : bool, optional
-            Whether to flatten the coordinates, by default True.
-
         Returns
         -------
         Dict[str, Any]
             The latitude and longitude coordinates.
+
+        Args
+        ----
+        flatten : bool, optional
+            Whether to flatten the coordinates, by default True.
         """
         assert flatten
         return dict(lat=self.latitudes, lon=self.longitudes)
@@ -193,15 +193,15 @@ class XArrayField(Field):
     def _values(self, dtype: Optional[type] = None) -> Any:
         """Return the values of the selection.
 
-        Args
-        ----
-        dtype : Optional[type], optional
-            Data type of the values, by default None.
-
         Returns
         -------
         Any
             The values of the selection.
+
+        Args
+        ----
+        dtype : Optional[type], optional
+            Data type of the values, by default None.
         """
         # we don't use .values as this will download the data
         return self.selection

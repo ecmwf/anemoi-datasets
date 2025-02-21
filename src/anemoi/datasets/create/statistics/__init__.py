@@ -21,6 +21,7 @@ from typing import Any
 import numpy as np
 import tqdm
 from anemoi.utils.provenance import gather_provenance_info
+from numpy.typing import NDArray
 
 from ..check import check_data_values
 from .summary import Summary
@@ -36,7 +37,6 @@ def default_statistics_dates(dates: list[datetime.datetime]) -> tuple[datetime.d
 
     Returns:
         tuple: A tuple containing the default start and end dates.
-
     """
 
     def to_datetime(d):
@@ -98,7 +98,7 @@ def to_datetimes(dates: list[str | datetime.datetime]) -> list[np.datetime64]:
     return [to_datetime(d) for d in dates]
 
 
-def fix_variance(x: float, name: str, count: np.ndarray, sums: np.ndarray, squares: np.ndarray) -> float:
+def fix_variance(x: float, name: str, count: NDArray[Any], sums: NDArray[Any], squares: NDArray[Any]) -> float:
     """Fix negative variance values due to numerical errors.
 
     Args:
@@ -142,14 +142,14 @@ def fix_variance(x: float, name: str, count: np.ndarray, sums: np.ndarray, squar
 
 
 def check_variance(
-    x: np.ndarray,
+    x: NDArray[Any],
     variables_names: list[str],
-    minimum: np.ndarray,
-    maximum: np.ndarray,
-    mean: np.ndarray,
-    count: np.ndarray,
-    sums: np.ndarray,
-    squares: np.ndarray,
+    minimum: NDArray[Any],
+    maximum: NDArray[Any],
+    mean: NDArray[Any],
+    count: NDArray[Any],
+    sums: NDArray[Any],
+    squares: NDArray[Any],
 ) -> None:
     """Check for negative variance values and raise an error if found.
 
@@ -187,7 +187,7 @@ def check_variance(
 
 
 def compute_statistics(
-    array: np.ndarray, check_variables_names: list[str] | None = None, allow_nans: bool = False
+    array: NDArray[Any], check_variables_names: list[str] | None = None, allow_nans: bool = False
 ) -> dict[str, np.ndarray]:
     """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary.
 

@@ -142,15 +142,15 @@ class Variable:
         i : int
             Index of the field.
 
-        Raises
-        ------
-        IndexError
-            If the index is out of range.
-
         Returns
         -------
         XArrayField
             The 2D field at the specified index.
+
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
         """
         if i >= self.length:
             raise IndexError(i)
@@ -299,15 +299,15 @@ class FilteredVariable:
         i : int
             Index of the field.
 
-        Raises
-        ------
-        IndexError
-            If the index is out of range.
-
         Returns
         -------
         XArrayField
             The field at the specified index.
+
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
         """
         if i >= self.length:
             raise IndexError(i)

@@ -193,7 +193,7 @@ def _expand(paths: List[str]) -> Any:
         paths (List[str]): List of paths to expand.
 
     Returns
-    ------
+    -------
     Any
         The expanded paths.
     """

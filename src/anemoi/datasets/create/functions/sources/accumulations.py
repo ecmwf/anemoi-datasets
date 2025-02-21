@@ -154,7 +154,7 @@ class Accumulation:
         self.values = None
         self.done = True
 
-    def add(self, field: Any, values: np.ndarray) -> None:
+    def add(self, field: Any, values: NDArray[Any]) -> None:
         """Adds values to the accumulation.
 
         Args:
@@ -243,7 +243,7 @@ class AccumulationFromStart(Accumulation):
 
     buggy_steps = True
 
-    def compute(self, values: np.ndarray, startStep: int, endStep: int) -> None:
+    def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the start.
 
         Args:
@@ -310,7 +310,7 @@ class AccumulationFromLastStep(Accumulation):
 
     buggy_steps = False
 
-    def compute(self, values: np.ndarray, startStep: int, endStep: int) -> None:
+    def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the last step.
 
         Args:

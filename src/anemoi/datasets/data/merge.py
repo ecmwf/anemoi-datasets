@@ -139,7 +139,7 @@ class Merge(Combined):
         return result
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if the lengths of two datasets are the same. (Disabled for merging)
+        """Check if the lengths of two datasets are the same. (Disabled for merging).
 
         Args:
             d1 (Dataset): First dataset.
@@ -149,7 +149,7 @@ class Merge(Combined):
         pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if the dates of two datasets are the same. (Disabled for merging)
+        """Check if the dates of two datasets are the same. (Disabled for merging).
 
         Args:
             d1 (Dataset): First dataset.

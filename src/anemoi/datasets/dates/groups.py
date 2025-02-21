@@ -119,6 +119,7 @@ class Groups:
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the class with the provided keyword arguments.
+
         Parameters
         ----------
             **kwargs : Any : Arbitrary keyword arguments. Expected keys include:

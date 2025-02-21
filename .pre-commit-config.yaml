@@ -74,10 +74,11 @@ repos:
     - --check-protected # Check protected methods
     - --check-class # Check class docstrings
     # - --disable=SIG503    # Disable empty docstrings
-- repo: https://github.com/b8raoult/pre-commit-docconvert
-  rev: "0.1.4"
+
+- repo: https://github.com/DanielNoord/pydocstringformatter
+  rev: "v0.7.3"
   hooks:
-  - id: docconvert
-    args: ["numpy"]
+  - id: pydocstringformatter
+
 ci:
   autoupdate_schedule: monthly

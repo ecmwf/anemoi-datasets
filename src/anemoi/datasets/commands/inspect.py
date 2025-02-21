@@ -16,6 +16,7 @@ from functools import cached_property
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import numpy as np
 import semantic_version
@@ -206,30 +207,30 @@ class Version:
         return self.metadata["resolution"]
 
     @property
-    def field_shape(self) -> tuple | None:
+    def field_shape(self) -> Optional[tuple]:
         """Get the field shape of the dataset."""
         return self.metadata.get("field_shape")
 
     @property
-    def proj_string(self) -> str | None:
+    def proj_string(self) -> Optional[str]:
         """Get the projection string of the dataset."""
         return self.metadata.get("proj_string")
 
     @property
-    def shape(self) -> tuple | None:
+    def shape(self) -> Optional[tuple]:
         """Get the shape of the dataset."""
         if self.data and hasattr(self.data, "shape"):
             return self.data.shape
 
     @property
-    def n_missing_dates(self) -> int | None:
+    def n_missing_dates(self) -> Optional[int]:
         """Get the number of missing dates in the dataset."""
         if "missing_dates" in self.metadata:
             return len(self.metadata["missing_dates"])
         return None
 
     @property
-    def uncompressed_data_size(self) -> int | None:
+    def uncompressed_data_size(self) -> Optional[int]:
         """Get the uncompressed data size of the dataset."""
         if self.data and hasattr(self.data, "dtype") and hasattr(self.data, "size"):
             return self.data.dtype.itemsize * self.data.size
@@ -296,12 +297,12 @@ class Version:
         return [v[0] for v in sorted(self.name_to_index.items(), key=lambda x: x[1])]
 
     @property
-    def total_size(self) -> int | None:
+    def total_size(self) -> Optional[int]:
         """Get the total size of the dataset."""
         return self.zarr.attrs.get("total_size")
 
     @property
-    def total_number_of_files(self) -> int | None:
+    def total_number_of_files(self) -> Optional[int]:
         """Get the total number of files in the dataset."""
         return self.zarr.attrs.get("total_number_of_files")
 
@@ -359,7 +360,7 @@ class Version:
         return self.zarr.get("_build_flags")
 
     @cached_property
-    def copy_flags(self) -> NDArray | None:
+    def copy_flags(self) -> Optional[NDArray[Any]]:
         """Get the copy flags of the dataset."""
         if "_copy" not in self.zarr:
             return None
@@ -379,7 +380,7 @@ class Version:
         return not all(self.copy_flags)
 
     @property
-    def build_lengths(self) -> NDArray | None:
+    def build_lengths(self) -> Optional[NDArray]:
         """Get the build lengths of the dataset."""
         return self.zarr.get("_build_lengths")
 
@@ -694,7 +695,7 @@ class Version0_13(Version0_12):
     """Represents version 0.13 of a dataset."""
 
     @property
-    def build_flags(self) -> NDArray | None:
+    def build_flags(self) -> Optional[NDArray]:
         """Get the build flags for the dataset."""
         if "_build" not in self.zarr:
             return None
@@ -702,7 +703,7 @@ class Version0_13(Version0_12):
         return build.get("flags")
 
     @property
-    def build_lengths(self) -> NDArray | None:
+    def build_lengths(self) -> Optional[NDArray]:
         """Get the build lengths for the dataset."""
         if "_build" not in self.zarr:
             return None

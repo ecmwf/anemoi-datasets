@@ -498,7 +498,6 @@ class Cutout(GridsBase):
     def shape(self) -> Shape:
         """Returns the shape of the Cutout, accounting for retained grid points
         across all LAMs and the global dataset.
-
         """
         shapes = [np.sum(mask) for mask in self.masks]
         global_shape = np.sum(self.global_mask)

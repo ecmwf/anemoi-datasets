@@ -120,12 +120,12 @@ class NewDataField:
 
 
 def model_level_pressure(
-    A: np.ndarray, B: np.ndarray, surface_pressure: Union[float, np.ndarray]
+    A: NDArray[Any], B: NDArray[Any], surface_pressure: Union[float, np.ndarray]
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Calculates:
      - pressure at the model full- and half-levels
      - delta: depth of log(pressure) at full levels
-     - alpha: alpha term #TODO: more descriptive information
+     - alpha: alpha term #TODO: more descriptive information.
 
     Parameters
     ----------
@@ -133,7 +133,7 @@ def model_level_pressure(
         A-coefficients defining the model levels
     B : ndarray
         B-coefficients defining the model levels
-    surface_pressure: number or ndarray
+    surface_pressure : number or ndarray
         surface pressure (Pa)
 
     Returns
@@ -194,7 +194,7 @@ def model_level_pressure(
 
 def calc_specific_gas_constant(q: Union[float, np.ndarray]) -> Union[float, NDArray[Any]]:
     """Calculates the specific gas constant of moist air
-    (specific content of cloud particles and hydrometeors are neglected)
+    (specific content of cloud particles and hydrometeors are neglected).
 
     Parameters
     ----------
@@ -211,8 +211,8 @@ def calc_specific_gas_constant(q: Union[float, np.ndarray]) -> Union[float, NDAr
     return R
 
 
-def relative_geopotential_thickness(alpha: np.ndarray, q: np.ndarray, T: np.ndarray) -> NDArray[Any]:
-    """Calculates the geopotential thickness w.r.t the surface on model full-levels
+def relative_geopotential_thickness(alpha: NDArray[Any], q: NDArray[Any], T: NDArray[Any]) -> NDArray[Any]:
+    """Calculates the geopotential thickness w.r.t the surface on model full-levels.
 
     Parameters
     ----------
@@ -237,11 +237,11 @@ def relative_geopotential_thickness(alpha: np.ndarray, q: np.ndarray, T: np.ndar
 
 
 def pressure_at_height_level(
-    height: float, q: np.ndarray, T: np.ndarray, sp: np.ndarray, A: np.ndarray, B: np.ndarray
+    height: float, q: NDArray[Any], T: NDArray[Any], sp: NDArray[Any], A: NDArray[Any], B: NDArray[Any]
 ) -> Union[float, NDArray[Any]]:
     """Calculates the pressure at a height level given in meters above surface.
     This is done by finding the model level above and below the specified height
-    and interpolating the pressure
+    and interpolating the pressure.
 
     Parameters
     ----------

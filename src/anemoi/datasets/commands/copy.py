@@ -14,6 +14,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
+from typing import Optional
 
 import tqdm
 from anemoi.utils.remote import Transfer
@@ -107,7 +108,7 @@ class ZarrCopier:
             return zarr.storage.NestedDirectoryStore(path)
         return path
 
-    def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
+    def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> Optional[slice]:
         """Copy a chunk of data from source to target.
 
         Args:

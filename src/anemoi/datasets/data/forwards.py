@@ -75,7 +75,7 @@ class Forwards(Dataset):
         return self.forward[n]
 
     @property
-    def name(self) -> str | None:
+    def name(self) -> Optional[str]:
         """Returns the name of the forward dataset."""
         if self._name is not None:
             return self._name

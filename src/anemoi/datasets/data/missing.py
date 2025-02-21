@@ -421,7 +421,6 @@ class MissingDataset(Forwards):
 
         Returns:
             NDArray[Any]: The data at the specified index.
-
         """
         raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 

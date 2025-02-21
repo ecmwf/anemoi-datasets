@@ -575,7 +575,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         Returns:
             int: The number of groups to process.
         """
-        """Create an empty dataset of the right final shape
+        """Create an empty dataset of the right final shape.
 
         Read a small part of the data to get the shape of the data and the resolution and more metadata.
         """

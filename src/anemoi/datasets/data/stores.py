@@ -472,7 +472,7 @@ class ZarrWithMissingDates(Zarr):
 QUIET = set()
 
 
-def zarr_lookup(name: str, fail: bool = True) -> str | None:
+def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
     """Look up a zarr dataset by name."""
     if name.endswith(".zarr") or name.endswith(".zip"):
         return name

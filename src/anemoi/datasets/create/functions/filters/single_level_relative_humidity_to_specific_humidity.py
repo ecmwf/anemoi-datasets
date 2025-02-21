@@ -31,7 +31,7 @@ def execute(
     new_name: str = "2q",
     **kwargs: Dict[str, Any],
 ) -> FieldArray:
-    """Convert the single (height) level relative humidity to specific humidity"""
+    """Convert the single (height) level relative humidity to specific humidity."""
     result = FieldArray()
 
     MANDATORY_KEYS = ["A", "B"]

@@ -97,9 +97,7 @@ def test_chunk_filter():
 
 
 if __name__ == "__main__":
-    """
-    Run all test functions in the module.
-    """
+    """Run all test functions in the module."""
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

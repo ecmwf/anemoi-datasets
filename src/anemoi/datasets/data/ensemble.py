@@ -121,6 +121,10 @@ class Number(Forwards):
             "numbers": [n + 1 for n in self.members],
         }
 
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Returns metadata specific to the Number object."""
+        return {}
+
 
 class Ensemble(GivenAxis):
     """A class to represent an ensemble of datasets combined along a given axis."""
@@ -136,7 +140,7 @@ class Ensemble(GivenAxis):
         return Node(self, [d.tree() for d in self.datasets])
 
 
-def ensemble_factory(args: Tuple[Any, ...], kwargs: dict) -> Ensemble:
+def ensemble_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Ensemble:
     """Factory function to create an Ensemble object.
 
     Parameters

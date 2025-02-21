@@ -877,6 +877,27 @@ class Dataset(ABC, Sized):
         return (date_index, variable_index, member)
 
     @abstractmethod
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """Get the item at the specified index.
+
+        Args:
+            n (FullIndex): Index to retrieve.
+
+        Returns:
+            NDArray[Any]: Retrieved item.
+        """
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """Return the length of the dataset.
+
+        Returns
+        -------
+        int
+            The length of the dataset.
+        """
+
+    @abstractmethod
     @property
     def variables(self) -> List[str]:
         """Return the list of variables in the dataset."""

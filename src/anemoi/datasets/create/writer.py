@@ -25,7 +25,6 @@ class ViewCacheArray:
     temporarily store the data before flushing it to the array.
 
     The `flush` method copies the contents of the cache to the final array.
-
     """
 
     def __init__(self, array: NDArray[Any], *, shape: tuple[int, ...], indexes: list[int]):

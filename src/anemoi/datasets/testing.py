@@ -35,7 +35,6 @@ def assert_field_list(
         end (Optional[Any]): Expected end metadata value. If None, no check is performed.
         constant (bool): If True, checks that all fields are constant.
         skip (Optional[Any]): Placeholder for future use.
-
     """
     import numpy as np
 
