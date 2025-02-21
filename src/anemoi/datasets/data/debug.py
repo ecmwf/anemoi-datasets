@@ -13,10 +13,12 @@ import os
 import textwrap
 from functools import wraps
 from typing import Any
+from typing import Callable
 from typing import List
 from typing import Optional
 
 from anemoi.utils.text import Tree
+from numpy.typing import NDArray
 
 from .dataset import Dataset
 
@@ -75,7 +77,7 @@ class Node:
             List to store the node representation.
         """
 
-        def _spaces(indent):
+        def _spaces(indent: int) -> str:
             return " " * indent if indent else ""
 
         result.append(f"{_spaces(indent)}{self.dataset.__class__.__name__}")
@@ -95,7 +97,7 @@ class Node:
         str
             String representation of the node.
         """
-        result = []
+        result: List[str] = []
         self._put(0, result)
         return "\n".join(result)
 
@@ -327,7 +329,7 @@ class Source:
             self.source.dump(depth + 1)
 
 
-def _debug_indexing(method: Any) -> Any:
+def _debug_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArray[Any]]:
     """Decorator to debug indexing methods.
 
     Parameters
@@ -342,7 +344,7 @@ def _debug_indexing(method: Any) -> Any:
     """
 
     @wraps(method)
-    def wrapper(self: Any, index: Any) -> Any:
+    def wrapper(self: Any, index: Any) -> NDArray[Any]:
         global DEPTH
         # if isinstance(index, tuple):
         print("  " * DEPTH, "->", self, method.__name__, index)
@@ -356,20 +358,20 @@ def _debug_indexing(method: Any) -> Any:
     return wrapper
 
 
-def _identity(x: Any) -> Any:
+def _identity(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArray[Any]]:
     """Identity function.
 
     Parameters
     ----------
-    x : Any
-        Input value.
+    method : Callable[..., NDArray[Any]]
+        Input method.
 
     Returns
     -------
-    Any
-        The input value.
+    Callable[..., NDArray[Any]]
+        The input method.
     """
-    return x
+    return method
 
 
 if DEBUG_ZARR_INDEXING:

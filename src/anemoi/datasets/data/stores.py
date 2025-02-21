@@ -190,7 +190,11 @@ class Zarr(Dataset):
 
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
-        self.missing = set()
+
+    @property
+    def missing(self) -> Set[int]:
+        """Return the missing dates of the dataset."""
+        return set()
 
     @classmethod
     def from_name(cls, name: str) -> "Zarr":
