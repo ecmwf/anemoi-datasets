@@ -334,12 +334,12 @@ def _debug_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArra
 
     Parameters
     ----------
-    method : Any
+    method : Callable[..., NDArray[Any]]Any
         The method to be decorated.
 
     Returns
     -------
-    Any
+    Callable[..., NDArray[Any]]
         The decorated method.
     """
 
