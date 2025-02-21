@@ -16,6 +16,10 @@ from typing import Any
 from typing import List
 from typing import Optional
 
+from anemoi.utils.text import Tree
+
+from .dataset import Dataset
+
 LOG = logging.getLogger(__name__)
 
 DEBUG_ZARR_LOADING = int(os.environ.get("DEBUG_ZARR_LOADING", "0"))
@@ -44,12 +48,12 @@ def css(name: str) -> str:
 class Node:
     """A class to represent a node in a dataset tree."""
 
-    def __init__(self, dataset: Any, kids: List[Any], **kwargs: Any) -> None:
+    def __init__(self, dataset: Dataset, kids: List[Any], **kwargs: Any) -> None:
         """Initializes a Node object.
 
         Parameters
         ----------
-        dataset : Any
+        dataset : Dataset
             The dataset associated with the node.
         kids : List[Any]
             List of child nodes.
@@ -229,15 +233,14 @@ class Node:
             n = tree.node(kid)
             kid._as_tree(n)
 
-    def as_tree(self) -> Any:
+    def as_tree(self) -> Tree:
         """Returns the tree representation of the node.
 
         Returns
         -------
-        Any
+        Tree
             Tree representation of the node.
         """
-        from anemoi.utils.text import Tree
 
         tree = Tree(self)
         self._as_tree(tree)
