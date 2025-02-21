@@ -9,6 +9,7 @@
 
 
 import datetime
+import os
 from functools import cache
 from functools import wraps
 from unittest.mock import patch
@@ -155,6 +156,10 @@ def create_zarr(
 
 def zarr_from_str(name, mode):
     # Format: test-2021-2021-6h-o96-abcd-0
+
+    if name.endswith(".zarr"):
+        name = os.path.basename(name)
+        name = os.path.splitext(name)[0]
 
     args = dict(
         test="test",
