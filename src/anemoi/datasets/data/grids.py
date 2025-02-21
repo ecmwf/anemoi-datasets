@@ -567,11 +567,31 @@ class Cutout(GridsBase):
         return Node(self, [d.tree() for d in self.datasets])
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """Returns metadata specific to the Cutout object."""
+        """Returns metadata specific to the Cutout object.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Metadata specific to the Cutout object.
+        """
         return {}
 
 
 def grids_factory(args: Tuple[Any, ...], kwargs: dict) -> Dataset:
+    """Factory function to create a Grids object.
+
+    Parameters
+    ----------
+    args : Tuple[Any, ...]
+        Positional arguments.
+    kwargs : dict
+        Keyword arguments.
+
+    Returns
+    -------
+    Dataset
+        A Grids object.
+    """
     if "ensemble" in kwargs:
         raise NotImplementedError("Cannot use both 'ensemble' and 'grids'")
 
@@ -588,6 +608,20 @@ def grids_factory(args: Tuple[Any, ...], kwargs: dict) -> Dataset:
 
 
 def cutout_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dataset:
+    """Factory function to create a Cutout object.
+
+    Parameters
+    ----------
+    args : Tuple[Any, ...]
+        Positional arguments.
+    kwargs : Dict[str, Any]
+        Keyword arguments.
+
+    Returns
+    -------
+    Dataset
+        A Cutout object.
+    """
     if "ensemble" in kwargs:
         raise NotImplementedError("Cannot use both 'ensemble' and 'cutout'")
 

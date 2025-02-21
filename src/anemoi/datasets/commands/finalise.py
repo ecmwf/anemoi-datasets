@@ -27,10 +27,24 @@ class Finalise(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
+        """Add arguments to the command parser.
+
+        Parameters
+        ----------
+        command_parser : Any
+            The command parser to which arguments will be added.
+        """
         command_parser.add_argument("path", help="Path to store the created data.")
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
+        """Execute the finalise command.
+
+        Parameters
+        ----------
+        args : Any
+            The arguments passed to the command.
+        """
         options = vars(args)
         options.pop("command")
         now = time.time()

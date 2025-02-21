@@ -18,10 +18,18 @@ from .commands import COMMANDS
 
 # For read-the-docs
 def create_parser() -> Any:
+    """Create the argument parser for the CLI.
+
+    Returns
+    -------
+    Any
+        The argument parser instance.
+    """
     return make_parser(__doc__, COMMANDS)
 
 
 def main() -> None:
+    """The main entry point for the CLI application."""
     cli_main(__version__, __doc__, COMMANDS)
 
 

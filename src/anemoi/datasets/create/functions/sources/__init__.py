@@ -21,7 +21,18 @@ LOG = logging.getLogger(__name__)
 
 
 def _expand(paths: List[str]) -> Generator[str]:
+    """Expand the given paths to include all matching file paths.
 
+    Parameters
+    ----------
+    paths : List[str]
+        List of paths to expand.
+
+    Yields
+    ------
+    str
+        Expanded file paths.
+    """
     if not isinstance(paths, list):
         paths = [paths]
 
@@ -46,6 +57,22 @@ def _expand(paths: List[str]) -> Generator[str]:
 
 
 def iterate_patterns(path: str, dates: List[datetime.datetime], **kwargs: Any) -> Generator[Tuple[str, List[str]]]:
+    """Iterate over patterns and expand them with given dates and additional keyword arguments.
+
+    Parameters
+    ----------
+    path : str
+        The pattern path to iterate over.
+    dates : List[datetime.datetime]
+        List of datetime objects to substitute in the pattern.
+    **kwargs : Any
+        Additional keyword arguments to substitute in the pattern.
+
+    Yields
+    ------
+    Tuple[str, List[str]]
+        The expanded path and list of ISO formatted dates.
+    """
     given_paths = path if isinstance(path, list) else [path]
 
     iso_dates = [d.isoformat() for d in dates]

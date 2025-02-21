@@ -12,4 +12,24 @@ from .xarray import load_many
 
 
 def execute(context, dates, path, *args, **kwargs):
+    """Execute the loading of multiple NetCDF files.
+
+    Parameters
+    ----------
+    context : object
+        The context in which the function is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    path : str
+        Path to the directory containing the NetCDF files.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    object
+        The loaded data.
+    """
     return load_many("📁", context, dates, path, *args, **kwargs)

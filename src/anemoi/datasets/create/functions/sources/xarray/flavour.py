@@ -50,8 +50,10 @@ class CoordinateGuesser(ABC):
     def __init__(self, ds: xr.Dataset) -> None:
         """Initializes the CoordinateGuesser.
 
-        Args:
-            ds (Any): The dataset to guess coordinates from.
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The dataset to guess coordinates from.
         """
         self.ds = ds
         self._coordinate_cache: Dict[Hashable, Coordinate] = {}
@@ -61,8 +63,8 @@ class CoordinateGuesser(ABC):
     def from_flavour(cls, ds: xr.Dataset, flavour: Optional[Dict[str, Any]]) -> "CoordinateGuesser":
         """Creates a CoordinateGuesser from a flavour.
 
-        Args
-        ----
+        Parameters
+        ----------
         ds : xr.Dataset
             The dataset to guess coordinates from.
         flavour : Optional[Dict[str, Any]]
@@ -81,8 +83,8 @@ class CoordinateGuesser(ABC):
     def guess(self, c: xr.DataArray, coord: Hashable) -> Coordinate:
         """Guesses the type of a coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to guess.
         coord : Hashable
@@ -100,8 +102,8 @@ class CoordinateGuesser(ABC):
     def _guess(self, coordinate: xr.DataArray, coord: Hashable) -> Coordinate:
         """Internal method to guess the type of a coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         coordinate : xr.DataArray
             The coordinate to guess.
         coord : Hashable
@@ -177,8 +179,8 @@ class CoordinateGuesser(ABC):
     def grid(self, coordinates: Any, variable: Any) -> Any:
         """Determines the grid type for the given coordinates and variable.
 
-        Args
-        ----
+        Parameters
+        ----------
         coordinates : Any
             The coordinates to determine the grid from.
         variable : Any
@@ -206,8 +208,8 @@ class CoordinateGuesser(ABC):
     def _check_dims(self, variable: Any, x_or_lon: Any, y_or_lat: Any) -> Tuple[Any, bool]:
         """Checks the dimensions of the variable against the coordinates.
 
-        Args
-        ----
+        Parameters
+        ----------
         variable : Any
             The variable to check.
         x_or_lon : Any
@@ -248,8 +250,8 @@ class CoordinateGuesser(ABC):
     def _lat_lon_provided(self, lat: Any, lon: Any, variable: Any) -> Any:
         """Determines the grid type when latitude and longitude are provided.
 
-        Args
-        ----
+        Parameters
+        ----------
         lat : Any
             The latitude coordinate.
         lon : Any
@@ -279,8 +281,8 @@ class CoordinateGuesser(ABC):
     def _x_y_provided(self, x: Any, y: Any, variable: Any) -> Any:
         """Determines the grid type when x and y coordinates are provided.
 
-        Args
-        ----
+        Parameters
+        ----------
         x : Any
             The x coordinate.
         y : Any
@@ -372,8 +374,8 @@ class CoordinateGuesser(ABC):
     def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
         """Checks if the coordinate is a longitude.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -390,8 +392,8 @@ class CoordinateGuesser(ABC):
     def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
         """Checks if the coordinate is a latitude.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -408,8 +410,8 @@ class CoordinateGuesser(ABC):
     def _is_x(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[XCoordinate]:
         """Checks if the coordinate is an x coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -426,8 +428,8 @@ class CoordinateGuesser(ABC):
     def _is_y(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[YCoordinate]:
         """Checks if the coordinate is a y coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -444,8 +446,8 @@ class CoordinateGuesser(ABC):
     def _is_time(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[TimeCoordinate]:
         """Checks if the coordinate is a time coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -462,8 +464,8 @@ class CoordinateGuesser(ABC):
     def _is_date(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[DateCoordinate]:
         """Checks if the coordinate is a date coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -480,8 +482,8 @@ class CoordinateGuesser(ABC):
     def _is_step(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[StepCoordinate]:
         """Checks if the coordinate is a step coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -498,8 +500,8 @@ class CoordinateGuesser(ABC):
     def _is_level(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LevelCoordinate]:
         """Checks if the coordinate is a level coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -516,8 +518,8 @@ class CoordinateGuesser(ABC):
     def _is_number(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[EnsembleCoordinate]:
         """Checks if the coordinate is an ensemble coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -537,16 +539,18 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def __init__(self, ds: xr.Dataset) -> None:
         """Initializes the DefaultCoordinateGuesser.
 
-        Args:
-            ds (Any): The dataset to guess coordinates from.
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The dataset to guess coordinates from.
         """
         super().__init__(ds)
 
     def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
         """Checks if the coordinate is a longitude.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -571,8 +575,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
         """Checks if the coordinate is a latitude.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -597,8 +601,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_x(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[XCoordinate]:
         """Checks if the coordinate is an x coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -620,8 +624,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_y(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[YCoordinate]:
         """Checks if the coordinate is a y coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -643,8 +647,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_time(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[TimeCoordinate]:
         """Checks if the coordinate is a time coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -666,8 +670,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_date(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[DateCoordinate]:
         """Checks if the coordinate is a date coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -689,8 +693,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_step(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[StepCoordinate]:
         """Checks if the coordinate is a step coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -715,8 +719,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_level(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LevelCoordinate]:
         """Checks if the coordinate is a level coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -753,8 +757,8 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
     def _is_number(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[EnsembleCoordinate]:
         """Checks if the coordinate is an ensemble coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -777,9 +781,12 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def __init__(self, ds: xr.Dataset, flavour: Dict[str, Any]) -> None:
         """Initializes the FlavourCoordinateGuesser.
 
-        Args:
-            ds (Any): The dataset to guess coordinates from.
-            flavour (Dict[str, Any]): The flavour to use for guessing.
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The dataset to guess coordinates from.
+        flavour : Dict[str, Any]
+            The flavour to use for guessing.
         """
         super().__init__(ds)
         self.flavour = flavour
@@ -787,10 +794,14 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _match(self, c: xr.DataArray, key: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Matches the coordinate against the flavour rules.
 
-        Args:
-            c (Any): The coordinate to match.
-            key (str): The key to match in the flavour rules.
-            values (Dict[str, Any]): The values to match against.
+        Parameters
+        ----------
+        c : xr.DataArray
+            The coordinate to match.
+        key : str
+            The key to match in the flavour rules.
+        values : Dict[str, Any]
+            The values to match against.
 
         Returns
         -------
@@ -818,8 +829,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
         """Checks if the coordinate is a longitude using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -838,8 +849,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
         """Checks if the coordinate is a latitude using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -858,12 +869,11 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_x(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[XCoordinate]:
         """Checks if the coordinate is an x coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
-
             The attributes of the coordinate.
 
         Returns
@@ -879,8 +889,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_y(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[YCoordinate]:
         """Checks if the coordinate is a y coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -899,8 +909,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_time(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[TimeCoordinate]:
         """Checks if the coordinate is a time coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -919,8 +929,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_step(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[StepCoordinate]:
         """Checks if the coordinate is a step coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -939,8 +949,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_date(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[DateCoordinate]:
         """Checks if the coordinate is a date coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -959,8 +969,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_level(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LevelCoordinate]:
         """Checks if the coordinate is a level coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes
@@ -982,6 +992,20 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         return None
 
     def _levtype(self, c: xr.DataArray, attributes: CoordinateAttributes) -> str:
+        """Determines the level type for the coordinate.
+
+        Parameters
+        ----------
+        c : xr.DataArray
+            The coordinate to check.
+        attributes : CoordinateAttributes
+            The attributes of the coordinate.
+
+        Returns
+        -------
+        str
+            The level type.
+        """
         if "levtype" in self.flavour:
             return str(self.flavour["levtype"])
 
@@ -990,8 +1014,8 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
     def _is_number(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[EnsembleCoordinate]:
         """Checks if the coordinate is an ensemble coordinate using the flavour rules.
 
-        Args
-        ----
+        Parameters
+        ----------
         c : xr.DataArray
             The coordinate to check.
         attributes : CoordinateAttributes

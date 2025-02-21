@@ -27,6 +27,13 @@ class FinaliseAdditions(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
+        """Add command line arguments to the parser.
+
+        Parameters
+        ----------
+        command_parser : Any
+            The argument parser instance to which arguments will be added.
+        """
         command_parser.add_argument(
             "--delta",
             help="Compute statistics tendencies on a given time delta, if possible. Must be a multiple of the frequency.",
@@ -37,6 +44,13 @@ class FinaliseAdditions(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
+        """Execute the command with the given arguments.
+
+        Parameters
+        ----------
+        args : Any
+            The arguments passed to the command.
+        """
         options = vars(args)
         options.pop("command")
         step = "finalise-additions"
