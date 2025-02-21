@@ -24,6 +24,16 @@ LOG = logging.getLogger(__name__)
 
 
 class Action:
+    """
+    Represents an action to be performed within a given context.
+
+    Attributes:
+        context (ActionContext): The context in which the action exists.
+        kwargs (Dict[str, Any]): Additional keyword arguments.
+        args (Any): Additional positional arguments.
+        action_path (List[str]): The action path.
+    """
+
     def __init__(
         self, context: "ActionContext", action_path: List[str], /, *args: Any, **kwargs: Dict[str, Any]
     ) -> None:
@@ -108,6 +118,16 @@ class Action:
 
 
 class ActionContext(Context):
+    """
+    Represents the context in which an action is performed.
+
+    Attributes:
+        order_by (str): The order by criteria.
+        flatten_grid (bool): Whether to flatten the grid.
+        remapping (Dict[str, Any]): The remapping configuration.
+        use_grib_paramid (bool): Whether to use GRIB parameter ID.
+    """
+
     def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
         """
         Initialize an ActionContext instance.

@@ -7,10 +7,26 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import Any
+from typing import Dict
+from typing import List
+
 from earthkit.data import from_source
 
 
-def constants(context, dates, template, param):
+def constants(context: Any, dates: List[str], template: Dict[str, Any], param: str) -> Any:
+    """
+    Deprecated function to retrieve constants data.
+
+    Args:
+        context (Any): The context object for tracing.
+        dates (List[str]): List of dates for which data is required.
+        template (Dict[str, Any]): Template dictionary for the data source.
+        param (str): Parameter to retrieve.
+
+    Returns:
+        Any: Data retrieved from the source.
+    """
     from warnings import warn
 
     warn(
@@ -25,4 +41,4 @@ def constants(context, dates, template, param):
     return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 
 
-execute = constants
+execute: Any = constants

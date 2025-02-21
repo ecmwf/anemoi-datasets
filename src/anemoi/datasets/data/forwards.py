@@ -288,6 +288,10 @@ class Forwards(Dataset):
 
 
 class Combined(Forwards):
+    """
+    A class to combine multiple datasets into a single dataset.
+    """
+
     def __init__(self, datasets: List[Dataset]) -> None:
         """
         Initializes a Combined object.
@@ -594,7 +598,9 @@ class Combined(Forwards):
 
 
 class GivenAxis(Combined):
-    """Given a given axis, combine the datasets along that axis."""
+    """
+    A class to combine datasets along a given axis.
+    """
 
     def __init__(self, datasets: List[Any], axis: int) -> None:
         """

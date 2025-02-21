@@ -72,7 +72,19 @@ class NewDataField:
 
 
 def execute(context: Any, input: List[Any], wz: str, t: str, w: str = "w") -> FieldArray:
-    """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s)"""
+    """
+    Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
+
+    Args:
+        context (Any): The context for the execution.
+        input (List[Any]): The list of input fields.
+        wz (str): The parameter name for geometric vertical velocity.
+        t (str): The parameter name for temperature.
+        w (str, optional): The parameter name for vertical velocity. Defaults to "w".
+
+    Returns:
+        FieldArray: The resulting FieldArray with converted vertical velocity fields.
+    """
     result = FieldArray()
 
     params = (wz, t)
@@ -109,6 +121,17 @@ def execute(context: Any, input: List[Any], wz: str, t: str, w: str = "w") -> Fi
 
 
 def wz_to_w(wz: Any, t: Any, pressure: float) -> Any:
+    """
+    Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
+
+    Args:
+        wz (Any): The geometric vertical velocity data.
+        t (Any): The temperature data.
+        pressure (float): The pressure value.
+
+    Returns:
+        Any: The vertical velocity data in Pa / s.
+    """
     g = 9.81
     Rd = 287.058
 

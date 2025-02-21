@@ -9,6 +9,12 @@
 
 import datetime
 import re
+from typing import Any
+from typing import Dict
+from typing import Generator
+from typing import List
+from typing import Optional
+from typing import Union
 
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
@@ -19,13 +25,33 @@ from anemoi.datasets.create.utils import to_datetime_list
 DEBUG = False
 
 
-def to_list(x):
+def to_list(x: Union[list, tuple, Any]) -> list:
+    """
+    Converts the input to a list if it is not already a list or tuple.
+
+    Args:
+        x: The input value to be converted.
+
+    Returns:
+        A list containing the input value(s).
+    """
     if isinstance(x, (list, tuple)):
         return x
     return [x]
 
 
-def _date_to_datetime(d):
+def _date_to_datetime(
+    d: Union[datetime.datetime, list, tuple, str]
+) -> Union[datetime.datetime, List[datetime.datetime]]:
+    """
+    Converts the input date(s) to datetime objects.
+
+    Args:
+        d: The input date(s) to be converted.
+
+    Returns:
+        A datetime object or a list of datetime objects.
+    """
     if isinstance(d, datetime.datetime):
         return d
     if isinstance(d, (list, tuple)):
@@ -33,8 +59,16 @@ def _date_to_datetime(d):
     return datetime.datetime.fromisoformat(d)
 
 
-def expand_to_by(x):
+def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
+    """
+    Expands a range expression to a list of values.
 
+    Args:
+        x: The input range expression.
+
+    Returns:
+        A list of expanded values.
+    """
     if isinstance(x, (str, int)):
         return expand_to_by(str(x).split("/"))
 
@@ -52,7 +86,16 @@ def expand_to_by(x):
     return x
 
 
-def normalise_time_delta(t):
+def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelta:
+    """
+    Normalizes a time delta string to a datetime.timedelta object.
+
+    Args:
+        t: The input time delta string.
+
+    Returns:
+        A normalized datetime.timedelta object.
+    """
     if isinstance(t, datetime.timedelta):
         assert t == datetime.timedelta(hours=t.hours), t
 
@@ -63,14 +106,40 @@ def normalise_time_delta(t):
     return t
 
 
-def _normalise_time(t):
+def _normalise_time(t: Union[int, str]) -> str:
+    """
+    Normalizes a time value to a string in HHMM format.
+
+    Args:
+        t: The input time value.
+
+    Returns:
+        A string representing the normalized time.
+    """
     t = int(t)
     if t < 100:
         t * 100
     return "{:04d}".format(t)
 
 
-def _expand_mars_request(request, date, request_already_using_valid_datetime=False, date_key="date"):
+def _expand_mars_request(
+    request: Dict[str, Any],
+    date: datetime.datetime,
+    request_already_using_valid_datetime: bool = False,
+    date_key: str = "date",
+) -> List[Dict[str, Any]]:
+    """
+    Expands a MARS request with the given date and other parameters.
+
+    Args:
+        request: The input MARS request.
+        date: The date to be used in the request.
+        request_already_using_valid_datetime: Flag indicating if the request already uses valid datetime.
+        date_key: The key for the date in the request.
+
+    Returns:
+        A list of expanded MARS requests.
+    """
     requests = []
 
     user_step = to_list(expand_to_by(request.get("step", [0])))
@@ -130,11 +199,23 @@ def _expand_mars_request(request, date, request_already_using_valid_datetime=Fal
 
 
 def factorise_requests(
-    dates,
-    *requests,
-    request_already_using_valid_datetime=False,
-    date_key="date",
-):
+    dates: List[datetime.datetime],
+    *requests: Dict[str, Any],
+    request_already_using_valid_datetime: bool = False,
+    date_key: str = "date",
+) -> Generator[Dict[str, Any], None, None]:
+    """
+    Factorizes the requests based on the given dates.
+
+    Args:
+        dates: The list of dates to be used in the requests.
+        requests: The input requests to be factorized.
+        request_already_using_valid_datetime: Flag indicating if the requests already use valid datetime.
+        date_key: The key for the date in the requests.
+
+    Yields:
+        Factorized requests.
+    """
     updates = []
     for req in requests:
         # req = normalise_request(req)
@@ -158,7 +239,16 @@ def factorise_requests(
         yield r
 
 
-def use_grib_paramid(r):
+def use_grib_paramid(r: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Converts the parameter short names to GRIB parameter IDs.
+
+    Args:
+        r: The input request containing parameter short names.
+
+    Returns:
+        The request with parameter IDs.
+    """
     from anemoi.utils.grib import shortname_to_paramid
 
     params = r["param"]
@@ -241,15 +331,29 @@ MARS_KEYS = [
 
 
 def mars(
-    context,
-    dates,
-    *requests,
-    request_already_using_valid_datetime=False,
-    date_key="date",
-    use_cdsapi_dataset=None,
-    **kwargs,
-):
+    context: Any,
+    dates: List[datetime.datetime],
+    *requests: Dict[str, Any],
+    request_already_using_valid_datetime: bool = False,
+    date_key: str = "date",
+    use_cdsapi_dataset: Optional[str] = None,
+    **kwargs: Any,
+) -> Any:
+    """
+    Executes MARS requests based on the given context, dates, and other parameters.
 
+    Args:
+        context: The context for the requests.
+        dates: The list of dates to be used in the requests.
+        requests: The input requests to be executed.
+        request_already_using_valid_datetime: Flag indicating if the requests already use valid datetime.
+        date_key: The key for the date in the requests.
+        use_cdsapi_dataset: The dataset to be used with CDS API.
+        kwargs: Additional keyword arguments for the requests.
+
+    Returns:
+        The resulting dataset.
+    """
     if not requests:
         requests = [kwargs]
 

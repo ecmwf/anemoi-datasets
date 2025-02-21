@@ -27,6 +27,16 @@ LOG = logging.getLogger(__name__)
 
 
 class PersistentDict:
+    """
+    A dictionary-like object that persists its contents to disk using pickle files.
+
+    Attributes:
+        version (int): The version of the PersistentDict.
+        dirname (str): The directory where the data is stored.
+        name (str): The name of the directory.
+        ext (str): The extension of the directory.
+    """
+
     version = 3
 
     # Used in parrallel, during data loading,
@@ -125,6 +135,16 @@ class PersistentDict:
 
 
 class BufferedPersistentDict(PersistentDict):
+    """
+    A buffered version of PersistentDict that stores elements in memory before persisting them to disk.
+
+    Attributes:
+        buffer_size (int): The size of the buffer.
+        elements (list): The list of elements in the buffer.
+        keys (list): The list of keys in the buffer.
+        storage (PersistentDict): The underlying PersistentDict used for storage.
+    """
+
     def __init__(self, buffer_size: int = 1000, **kwargs: Any):
         """
         Initialize the BufferedPersistentDict.

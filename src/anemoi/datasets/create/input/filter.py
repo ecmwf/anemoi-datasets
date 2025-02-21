@@ -34,6 +34,9 @@ class FilterStepResult(StepResult):
     def datasource(self) -> FieldList:
         """
         Returns the filtered datasource.
+
+        Returns:
+            FieldList: The filtered datasource.
         """
         ds: FieldList = self.upstream_result.datasource
         ds = ds.sel(**self.action.kwargs)
@@ -41,6 +44,10 @@ class FilterStepResult(StepResult):
 
 
 class FilterStepAction(StepAction):
+    """
+    Represents an action to filter a step result.
+    """
+
     result_class: Type[FilterStepResult] = FilterStepResult
 
 
@@ -52,6 +59,9 @@ class StepFunctionResult(StepResult):
     def datasource(self) -> FieldList:
         """
         Returns the datasource after applying the function.
+
+        Returns:
+            FieldList: The datasource after applying the function.
         """
         try:
             return _tidy(
@@ -74,11 +84,18 @@ class StepFunctionResult(StepResult):
         Args:
             *args (Any): The arguments.
             **kwargs (Any): The keyword arguments.
+
+        Returns:
+            str: A string representation of the traced datasource.
         """
         return f"{self.action.name}({self.group_of_dates})"
 
 
 class FunctionStepAction(StepAction):
+    """
+    Represents an action to apply a function to a step result.
+    """
+
     result_class: Type[StepFunctionResult] = StepFunctionResult
 
     def __init__(

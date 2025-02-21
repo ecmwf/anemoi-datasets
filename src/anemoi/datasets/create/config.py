@@ -24,12 +24,32 @@ LOG = logging.getLogger(__name__)
 
 
 def _get_first_key_if_dict(x: str | dict) -> str:
+    """
+    Returns the first key if the input is a dictionary, otherwise returns the input string.
+
+    Args:
+        x (str | dict): Input string or dictionary.
+
+    Returns:
+        str: The first key if input is a dictionary, otherwise the input string.
+    """
     if isinstance(x, str):
         return x
     return list(x.keys())[0]
 
 
 def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
+    """
+    Ensures that a specified element is present at a given index in a list.
+
+    Args:
+        lst (list): The list to check.
+        elt (str): The element to ensure is in the list.
+        index (int): The index at which the element should be present.
+
+    Returns:
+        list: The modified list with the element at the specified index.
+    """
     if elt in lst:
         assert lst[index] == elt
         return lst
@@ -43,6 +63,17 @@ def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
 
 
 def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
+    """
+    Checks if a dictionary contains a specific key-value pair and sets it if not present.
+
+    Args:
+        dic (dict): The dictionary to check.
+        key (str): The key to check in the dictionary.
+        value (Any): The value to set if the key is not present.
+
+    Raises:
+        ValueError: If the key is present but with a different value.
+    """
     if key in dic:
         if dic[key] == value:
             return
@@ -52,6 +83,15 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
 
 
 def resolve_includes(config: dict | list) -> dict | list:
+    """
+    Resolves '<<' includes in a configuration dictionary or list.
+
+    Args:
+        config (dict | list): The configuration to resolve includes for.
+
+    Returns:
+        dict | list: The configuration with includes resolved.
+    """
     if isinstance(config, list):
         return [resolve_includes(c) for c in config]
     if isinstance(config, dict):
@@ -63,7 +103,18 @@ def resolve_includes(config: dict | list) -> dict | list:
 
 
 class Config(DotDict):
+    """
+    Configuration class that extends DotDict to handle configuration loading and processing.
+    """
+
     def __init__(self, config: str | dict = None, **kwargs):
+        """
+        Initializes the Config object.
+
+        Args:
+            config (str | dict, optional): Path to the configuration file or a dictionary. Defaults to None.
+            **kwargs: Additional keyword arguments to update the configuration.
+        """
         if isinstance(config, str):
             self.config_path = os.path.realpath(config)
             config = load_any_dict_format(config)
@@ -75,7 +126,18 @@ class Config(DotDict):
 
 
 class OutputSpecs:
+    """
+    Class to handle output specifications for datasets.
+    """
+
     def __init__(self, config: Config, parent: Any):
+        """
+        Initializes the OutputSpecs object.
+
+        Args:
+            config (Config): The configuration object.
+            parent (Any): The parent object.
+        """
         self.config = config
         if "order_by" in config:
             assert isinstance(config.order_by, dict), config.order_by
@@ -84,14 +146,35 @@ class OutputSpecs:
 
     @property
     def dtype(self) -> str:
+        """
+        Returns the data type for the output.
+
+        Returns:
+            str: The data type.
+        """
         return self.config.dtype
 
     @property
     def order_by_as_list(self) -> list[dict]:
+        """
+        Returns the order_by configuration as a list of dictionaries.
+
+        Returns:
+            list[dict]: The order_by configuration.
+        """
         # this is used when an ordered dict is not supported (e.g. zarr attributes)
         return [{k: v} for k, v in self.config.order_by.items()]
 
     def get_chunking(self, coords: dict) -> tuple:
+        """
+        Returns the chunking configuration based on coordinates.
+
+        Args:
+            coords (dict): The coordinates dictionary.
+
+        Returns:
+            tuple: The chunking configuration.
+        """
         user = deepcopy(self.config.chunking)
         chunks = []
         for k, v in coords.items():
@@ -107,24 +190,59 @@ class OutputSpecs:
 
     @property
     def order_by(self) -> dict:
+        """
+        Returns the order_by configuration.
+
+        Returns:
+            dict: The order_by configuration.
+        """
         return self.config.order_by
 
     @property
     def remapping(self) -> dict:
+        """
+        Returns the remapping configuration.
+
+        Returns:
+            dict: The remapping configuration.
+        """
         return self.config.remapping
 
     @property
     def flatten_grid(self) -> bool:
+        """
+        Returns whether the grid should be flattened.
+
+        Returns:
+            bool: True if the grid should be flattened, False otherwise.
+        """
         return self.config.flatten_grid
 
     @property
     def statistics(self) -> str:
+        """
+        Returns the statistics configuration.
+
+        Returns:
+            str: The statistics configuration.
+        """
         return self.config.statistics
 
 
 class LoadersConfig(Config):
-    def __init__(self, config: dict, *args, **kwargs):
+    """
+    Configuration class for dataset loaders.
+    """
 
+    def __init__(self, config: dict, *args, **kwargs):
+        """
+        Initializes the LoadersConfig object.
+
+        Args:
+            config (dict): The configuration dictionary.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+        """
         super().__init__(config, *args, **kwargs)
 
         # TODO: should use a json schema to validate the config
@@ -180,10 +298,25 @@ class LoadersConfig(Config):
         self.reading_chunks = self.get("reading_chunks")
 
     def get_serialisable_dict(self) -> dict:
+        """
+        Returns a serializable dictionary representation of the configuration.
+
+        Returns:
+            dict: The serializable dictionary.
+        """
         return _prepare_serialisation(self)
 
 
 def _prepare_serialisation(o: Any) -> Any:
+    """
+    Prepares an object for serialization.
+
+    Args:
+        o (Any): The object to prepare.
+
+    Returns:
+        Any: The prepared object.
+    """
     if isinstance(o, dict):
         dic = {}
         for k, v in o.items():
@@ -214,6 +347,12 @@ def _prepare_serialisation(o: Any) -> Any:
 
 
 def set_to_test_mode(cfg: dict) -> None:
+    """
+    Modifies the configuration to run in test mode.
+
+    Args:
+        cfg (dict): The configuration dictionary.
+    """
     NUMBER_OF_DATES = 4
 
     LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
@@ -253,6 +392,16 @@ def set_to_test_mode(cfg: dict) -> None:
 
 
 def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
+    """
+    Loads and validates the configuration for dataset loaders.
+
+    Args:
+        config (dict): The configuration dictionary.
+        is_test (bool, optional): Whether to run in test mode. Defaults to False.
+
+    Returns:
+        LoadersConfig: The validated configuration object.
+    """
     config = Config(config)
     if is_test:
         set_to_test_mode(config)
@@ -275,4 +424,14 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
 
 
 def build_output(*args, **kwargs) -> OutputSpecs:
+    """
+    Builds the output specifications.
+
+    Args:
+        *args: Additional positional arguments.
+        **kwargs: Additional keyword arguments.
+
+    Returns:
+        OutputSpecs: The output specifications object.
+    """
     return OutputSpecs(*args, **kwargs)

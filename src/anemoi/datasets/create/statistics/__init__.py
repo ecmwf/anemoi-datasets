@@ -70,6 +70,14 @@ def default_statistics_dates(dates) -> tuple:
 
 
 def to_datetime(date):
+    """Convert a date to numpy datetime64 format.
+
+    Args:
+        date (str or datetime.datetime): The date to convert.
+
+    Returns:
+        numpy.datetime64: The converted date.
+    """
     if isinstance(date, str):
         return np.datetime64(date)
     if isinstance(date, datetime.datetime):
@@ -78,10 +86,30 @@ def to_datetime(date):
 
 
 def to_datetimes(dates):
+    """Convert a list of dates to numpy datetime64 format.
+
+    Args:
+        dates (list): List of dates to convert.
+
+    Returns:
+        list: List of converted dates.
+    """
     return [to_datetime(d) for d in dates]
 
 
 def fix_variance(x, name, count, sums, squares):
+    """Fix negative variance values due to numerical errors.
+
+    Args:
+        x (float): The variance value.
+        name (str): The variable name.
+        count (numpy.ndarray): The count array.
+        sums (numpy.ndarray): The sums array.
+        squares (numpy.ndarray): The squares array.
+
+    Returns:
+        float: The fixed variance value.
+    """
     assert count.shape == sums.shape == squares.shape
     assert isinstance(x, float)
 
@@ -113,6 +141,21 @@ def fix_variance(x, name, count, sums, squares):
 
 
 def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squares):
+    """Check for negative variance values and raise an error if found.
+
+    Args:
+        x (numpy.ndarray): The variance array.
+        variables_names (list): List of variable names.
+        minimum (numpy.ndarray): The minimum values array.
+        maximum (numpy.ndarray): The maximum values array.
+        mean (numpy.ndarray): The mean values array.
+        count (numpy.ndarray): The count array.
+        sums (numpy.ndarray): The sums array.
+        squares (numpy.ndarray): The squares array.
+
+    Raises:
+        ValueError: If negative variance is found.
+    """
     if (x >= 0).all():
         return
     print(x)
@@ -180,16 +223,29 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
 
 
 class TmpStatistics:
+    """Temporary statistics storage class."""
+
     version = 3
     # Used in parrallel, during data loading,
     # to write statistics in pickled npz files.
     # can provide statistics for a subset of dates.
 
     def __init__(self, dirname, overwrite=False):
+        """Initialize TmpStatistics.
+
+        Args:
+            dirname (str): Directory name for storing statistics.
+            overwrite (bool, optional): Whether to overwrite existing files. Defaults to False.
+        """
         self.dirname = dirname
         self.overwrite = overwrite
 
     def add_provenance(self, **kwargs):
+        """Add provenance information.
+
+        Args:
+            **kwargs: Additional provenance information.
+        """
         self.create(exist_ok=True)
         path = os.path.join(self.dirname, "provenance.json")
         if os.path.exists(path):
@@ -199,15 +255,28 @@ class TmpStatistics:
             json.dump(out, f)
 
     def create(self, exist_ok):
+        """Create the directory for storing statistics.
+
+        Args:
+            exist_ok (bool): Whether to ignore if the directory already exists.
+        """
         os.makedirs(self.dirname, exist_ok=exist_ok)
 
     def delete(self):
+        """Delete the directory for storing statistics."""
         try:
             shutil.rmtree(self.dirname)
         except FileNotFoundError:
             pass
 
     def write(self, key, data, dates):
+        """Write statistics data to a file.
+
+        Args:
+            key (str): The key for the data.
+            data (any): The data to write.
+            dates (list): List of dates associated with the data.
+        """
         self.create(exist_ok=True)
         h = hashlib.sha256(str(dates).encode("utf-8")).hexdigest()
         path = os.path.join(self.dirname, f"{h}.npz")
@@ -223,6 +292,11 @@ class TmpStatistics:
         LOG.debug(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
 
     def _gather_data(self):
+        """Gather data from stored files.
+
+        Yields:
+            tuple: A tuple containing key, dates, and data.
+        """
         # use glob to read all pickles
         files = glob.glob(self.dirname + "/*.npz")
         LOG.debug(f"Reading stats data, found {len(files)} files in {self.dirname}")
@@ -232,17 +306,37 @@ class TmpStatistics:
                 yield pickle.load(f)
 
     def get_aggregated(self, *args, **kwargs):
+        """Get aggregated statistics.
+
+        Returns:
+            Summary: The aggregated statistics summary.
+        """
         aggregator = StatAggregator(self, *args, **kwargs)
         return aggregator.aggregate()
 
     def __str__(self):
+        """String representation of TmpStatistics.
+
+        Returns:
+            str: The string representation.
+        """
         return f"TmpStatistics({self.dirname})"
 
 
 class StatAggregator:
+    """Statistics aggregator class."""
+
     NAMES = ["minimum", "maximum", "sums", "squares", "count", "has_nans"]
 
     def __init__(self, owner, dates, variables_names, allow_nans):
+        """Initialize StatAggregator.
+
+        Args:
+            owner (TmpStatistics): The owner TmpStatistics instance.
+            dates (list): List of dates to aggregate.
+            variables_names (list): List of variable names.
+            allow_nans (bool): Whether to allow NaN values.
+        """
         dates = sorted(dates)
         dates = to_datetimes(dates)
         assert dates, "No dates selected"
@@ -266,6 +360,8 @@ class StatAggregator:
         self._read()
 
     def _read(self):
+        """Read and aggregate statistics data from files."""
+
         def check_type(a, b):
             if not isinstance(a, set):
                 a = set(list(a))
@@ -322,6 +418,11 @@ class StatAggregator:
         LOG.debug(f"Statistics for {len(found)} dates found.")
 
     def aggregate(self):
+        """Aggregate the statistics data.
+
+        Returns:
+            Summary: The aggregated statistics summary.
+        """
         minimum = np.nanmin(self.minimum, axis=0)
         maximum = np.nanmax(self.maximum, axis=0)
 

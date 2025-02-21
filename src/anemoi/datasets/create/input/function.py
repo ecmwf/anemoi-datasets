@@ -83,6 +83,13 @@ class FunctionContext:
 
 
 class FunctionAction(Action):
+    """
+    Represents an action that executes a function.
+
+    Attributes:
+        name (str): The name of the function.
+    """
+
     def __init__(self, context: object, action_path: list, _name: str, **kwargs: Dict[str, Any]) -> None:
         """
         Initializes a FunctionAction instance.
@@ -103,6 +110,9 @@ class FunctionAction(Action):
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.
+
+        Returns:
+            FunctionResult: The function result instance.
         """
         return FunctionResult(self.context, self.action_path, group_of_dates, action=self)
 
@@ -110,12 +120,18 @@ class FunctionAction(Action):
     def function(self) -> Callable[..., Any]:
         """
         Returns the function to be executed.
+
+        Returns:
+            Callable[..., Any]: The function to be executed.
         """
         return import_function(self.name, "sources")
 
     def __repr__(self) -> str:
         """
         Returns a string representation of the FunctionAction instance.
+
+        Returns:
+            str: The string representation of the instance.
         """
         content: str = ""
         content += ",".join([self._short_str(a) for a in self.args])
@@ -129,11 +145,23 @@ class FunctionAction(Action):
 
         Args:
             group_of_dates (GroupOfDates): The group of dates.
+
+        Returns:
+            str: The trace string.
         """
         return f"{self.name}({group_of_dates})"
 
 
 class FunctionResult(Result):
+    """
+    Represents the result of executing a function.
+
+    Attributes:
+        action (Action): The action instance.
+        args (tuple): The positional arguments for the function.
+        kwargs (dict): The keyword arguments for the function.
+    """
+
     def __init__(self, context: object, action_path: list, group_of_dates: GroupOfDates, action: Action) -> None:
         """
         Initializes a FunctionResult instance.
@@ -157,6 +185,9 @@ class FunctionResult(Result):
         Args:
             *args (Any): The arguments.
             **kwargs (Any): The keyword arguments.
+
+        Returns:
+            str: The trace string.
         """
         return f"{self.action.name}({self.group_of_dates})"
 
@@ -167,6 +198,9 @@ class FunctionResult(Result):
     def datasource(self) -> FieldList:
         """
         Returns the datasource for the function result.
+
+        Returns:
+            FieldList: The datasource field list.
         """
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
 
@@ -186,6 +220,9 @@ class FunctionResult(Result):
     def __repr__(self) -> str:
         """
         Returns a string representation of the FunctionResult instance.
+
+        Returns:
+            str: The string representation of the instance.
         """
         try:
             return f"{self.action.name}({self.group_of_dates})"

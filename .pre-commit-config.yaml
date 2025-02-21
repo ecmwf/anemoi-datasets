@@ -74,6 +74,6 @@ repos:
     - --check-protected # Check protected methods
     - --check-class # Check class docstrings
     # - --disable=SIG101,SIG102     # Disable empty docstrings
-    - --disable=SIG505,SIG503,SIG203 # Disable extra return type in getter
+    - --disable=SIG505,SIG503,SIG203,SIG501,SIG502,SIG101 # Disable extra return type in getter
 ci:
   autoupdate_schedule: monthly

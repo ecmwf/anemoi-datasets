@@ -18,6 +18,15 @@ LOG = logging.getLogger(__name__)
 
 
 def compute_directory_sizes(path: str) -> dict[str, int] | None:
+    """
+    Computes the total size and number of files in a directory.
+
+    Args:
+        path (str): The path to the directory.
+
+    Returns:
+        dict[str, int] | None: A dictionary with the total size and number of files, or None if the path is not a directory.
+    """
     if not os.path.isdir(path):
         return None
 

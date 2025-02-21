@@ -118,9 +118,24 @@ class AddGrid:
         self._longitudes = geography.longitudes
 
     def __getattr__(self, name: str) -> Any:
+        """
+        Get an attribute from the wrapped field.
+
+        Args:
+            name (str): The name of the attribute.
+
+        Returns:
+            Any: The attribute value.
+        """
         return getattr(self._field, name)
 
     def __repr__(self) -> str:
+        """
+        Get the string representation of the wrapped field.
+
+        Returns:
+            str: The string representation.
+        """
         return repr(self._field)
 
     def grid_points(self) -> tuple:
@@ -134,6 +149,12 @@ class AddGrid:
 
     @property
     def resolution(self) -> str:
+        """
+        Get the resolution of the grid.
+
+        Returns:
+            str: The resolution.
+        """
         return "unknown"
 
 

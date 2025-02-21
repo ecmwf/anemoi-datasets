@@ -41,28 +41,34 @@ LOG = logging.getLogger(__name__)
 
 
 class ReadOnlyStore(zarr.storage.BaseStore):
+    """A base class for read-only stores."""
+
     def __delitem__(self, key: str) -> None:
+        """Prevent deletion of items."""
         raise NotImplementedError()
 
     def __setitem__(self, key: str, value: bytes) -> None:
+        """Prevent setting of items."""
         raise NotImplementedError()
 
     def __len__(self) -> int:
+        """Return the number of items in the store."""
         raise NotImplementedError()
 
     def __iter__(self) -> iter:
+        """Return an iterator over the store."""
         raise NotImplementedError()
 
 
 class HTTPStore(ReadOnlyStore):
-    """We write our own HTTPStore because the one used by zarr (s3fs)
-    does not play well with fork() and multiprocessing.
-    """
+    """A read-only store for HTTP(S) resources."""
 
     def __init__(self, url: str) -> None:
+        """Initialize the HTTPStore with a URL."""
         self.url = url
 
     def __getitem__(self, key: str) -> bytes:
+        """Retrieve an item from the store."""
         import requests
 
         r = requests.get(self.url + "/" + key)
@@ -75,18 +81,17 @@ class HTTPStore(ReadOnlyStore):
 
 
 class S3Store(ReadOnlyStore):
-    """We write our own S3Store because the one used by zarr (s3fs)
-    does not play well with fork(). We also get to control the s3 client
-    options using the anemoi configs.
-    """
+    """A read-only store for S3 resources."""
 
     def __init__(self, url: str, region: Optional[str] = None) -> None:
+        """Initialize the S3Store with a URL and optional region."""
         from anemoi.utils.remote.s3 import s3_client
 
         _, _, self.bucket, self.key = url.split("/", 3)
         self.s3 = s3_client(self.bucket, region=region)
 
     def __getitem__(self, key: str) -> bytes:
+        """Retrieve an item from the store."""
         try:
             response = self.s3.get_object(Bucket=self.bucket, Key=self.key + "/" + key)
         except self.s3.exceptions.NoSuchKey:
@@ -99,27 +104,33 @@ class DebugStore(ReadOnlyStore):
     """A store to debug the zarr loading."""
 
     def __init__(self, store: ReadOnlyStore) -> None:
+        """Initialize the DebugStore with another store."""
         assert not isinstance(store, DebugStore)
         self.store = store
 
     def __getitem__(self, key: str) -> bytes:
+        """Retrieve an item from the store and print debug information."""
         # print()
         print("GET", key, self)
         # traceback.print_stack(file=sys.stdout)
         return self.store[key]
 
     def __len__(self) -> int:
+        """Return the number of items in the store."""
         return len(self.store)
 
     def __iter__(self) -> iter:
+        """Return an iterator over the store."""
         warnings.warn("DebugStore: iterating over the store")
         return iter(self.store)
 
     def __contains__(self, key: str) -> bool:
+        """Check if the store contains a key."""
         return key in self.store
 
 
 def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
+    """Convert a path or URL to a zarr store."""
     store = path_or_url
 
     if store.startswith("s3://"):
@@ -138,6 +149,7 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
 
 
 def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hierarchy.Group:
+    """Open a zarr store from a path."""
     try:
         store = name_to_zarr_store(path)
 
@@ -166,6 +178,7 @@ class Zarr(Dataset):
     """A zarr dataset."""
 
     def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+        """Initialize the Zarr dataset with a path or zarr group."""
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
             self.path = str(id(path))
@@ -181,19 +194,23 @@ class Zarr(Dataset):
 
     @classmethod
     def from_name(cls, name: str) -> "Zarr":
+        """Create a Zarr dataset from a name."""
         if name.endswith(".zip") or name.endswith(".zarr"):
             return Zarr(name)
         return Zarr(zarr_lookup(name))
 
     def __len__(self) -> int:
+        """Return the length of the dataset."""
         return self.data.shape[0]
 
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """Retrieve an item from the dataset."""
         return self.data[n]
 
     def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:
+        """Unwind the index for multi-dimensional indexing."""
         if not isinstance(index, (int, slice, list, tuple)):
             try:
                 # NumPy arrays, TensorFlow tensors, etc.
@@ -217,22 +234,27 @@ class Zarr(Dataset):
 
     @cached_property
     def chunks(self) -> TupleIndex:
+        """Return the chunks of the dataset."""
         return self.z.data.chunks
 
     @cached_property
     def shape(self) -> Shape:
+        """Return the shape of the dataset."""
         return self.data.shape
 
     @cached_property
     def dtype(self) -> np.dtype:
+        """Return the data type of the dataset."""
         return self.z.data.dtype
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
+        """Return the dates of the dataset."""
         return self.z.dates[:]  # Convert to numpy
 
     @property
     def latitudes(self) -> NDArray[Any]:
+        """Return the latitudes of the dataset."""
         try:
             return self.z.latitudes[:]
         except AttributeError:
@@ -241,6 +263,7 @@ class Zarr(Dataset):
 
     @property
     def longitudes(self) -> NDArray[Any]:
+        """Return the longitudes of the dataset."""
         try:
             return self.z.longitudes[:]
         except AttributeError:
@@ -249,6 +272,7 @@ class Zarr(Dataset):
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
+        """Return the statistics of the dataset."""
         return dict(
             mean=self.z.mean[:],
             stdev=self.z.stdev[:],
@@ -257,6 +281,7 @@ class Zarr(Dataset):
         )
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        """Return the statistical tendencies of the dataset."""
         if delta is None:
             delta = self.frequency
         if isinstance(delta, int):
@@ -279,10 +304,12 @@ class Zarr(Dataset):
 
     @property
     def resolution(self) -> str:
+        """Return the resolution of the dataset."""
         return str(self.z.attrs["resolution"])
 
     @property
     def field_shape(self) -> tuple:
+        """Return the field shape of the dataset."""
         try:
             return tuple(self.z.attrs["field_shape"])
         except KeyError:
@@ -291,6 +318,7 @@ class Zarr(Dataset):
 
     @property
     def frequency(self) -> datetime.timedelta:
+        """Return the frequency of the dataset."""
         try:
             return frequency_to_timedelta(self.z.attrs["frequency"])
         except KeyError:
@@ -300,12 +328,14 @@ class Zarr(Dataset):
 
     @property
     def name_to_index(self) -> Dict[str, int]:
+        """Return the name to index mapping of the dataset."""
         if "variables" in self.z.attrs:
             return {n: i for i, n in enumerate(self.z.attrs["variables"])}
         return self.z.attrs["name_to_index"]
 
     @property
     def variables(self) -> List[str]:
+        """Return the variables of the dataset."""
         return [
             k
             for k, v in sorted(
@@ -316,6 +346,7 @@ class Zarr(Dataset):
 
     @cached_property
     def constant_fields(self) -> List[str]:
+        """Return the constant fields of the dataset."""
         result = self.z.attrs.get("constant_fields")
         if result is None:
             LOG.warning("No 'constant_fields' attribute in %r, computing them", self)
@@ -323,15 +354,19 @@ class Zarr(Dataset):
 
     @property
     def variables_metadata(self) -> Dict[str, Any]:
+        """Return the metadata of the variables."""
         return self.z.attrs.get("variables_metadata", {})
 
     def __repr__(self) -> str:
+        """Return the string representation of the dataset."""
         return self.path
 
     def end_of_statistics_date(self) -> np.datetime64:
+        """Return the end date of the statistics."""
         return self.dates[-1]
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+        """Return the specific metadata of the dataset."""
         return super().metadata_specific(
             attrs=dict(self.z.attrs),
             chunks=self.chunks,
@@ -340,25 +375,31 @@ class Zarr(Dataset):
         )
 
     def source(self, index: int) -> Source:
+        """Return the source of the dataset."""
         return Source(self, index, info=self.path)
 
     def mutate(self) -> Dataset:
+        """Mutate the dataset if it has missing dates."""
         if len(self.z.attrs.get("missing_dates", [])):
             LOG.warning(f"Dataset {self} has missing dates")
             return ZarrWithMissingDates(self.z if self.was_zarr else self.path)
         return self
 
     def tree(self) -> Node:
+        """Return the tree representation of the dataset."""
         return Node(self, [], path=self.path)
 
     def get_dataset_names(self, names: Set[str]) -> None:
+        """Get the names of the datasets."""
         name, _ = os.path.splitext(os.path.basename(self.path))
         names.add(name)
 
     def collect_supporting_arrays(self, collected: set, *path: str) -> None:
+        """Collect supporting arrays."""
         pass
 
     def collect_input_sources(self, collected: set) -> None:
+        """Collect input sources."""
         pass
 
 
@@ -366,6 +407,7 @@ class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
 
     def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+        """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(path)
 
         missing_dates = self.z.attrs.get("missing_dates", [])
@@ -374,11 +416,13 @@ class ZarrWithMissingDates(Zarr):
         self.missing = set(self.missing_to_dates)
 
     def mutate(self) -> Dataset:
+        """Mutate the dataset."""
         return self
 
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """Retrieve an item from the dataset."""
         if isinstance(n, int):
             if n in self.missing:
                 self._report_missing(n)
@@ -412,13 +456,16 @@ class ZarrWithMissingDates(Zarr):
         raise TypeError(f"Unsupported index {n} {type(n)}")
 
     def _report_missing(self, n: int) -> None:
+        """Report a missing date."""
         raise MissingDateError(f"Date {self.missing_to_dates[n]} is missing (index={n})")
 
     def tree(self) -> Node:
+        """Return the tree representation of the dataset."""
         return Node(self, [], path=self.path, missing=sorted(self.missing))
 
     @property
     def label(self) -> str:
+        """Return the label of the dataset."""
         return "zarr*"
 
 
@@ -426,7 +473,7 @@ QUIET = set()
 
 
 def zarr_lookup(name: str, fail: bool = True) -> str | None:
-
+    """Look up a zarr dataset by name."""
     if name.endswith(".zarr") or name.endswith(".zip"):
         return name
 

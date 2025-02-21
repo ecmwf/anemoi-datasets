@@ -241,6 +241,10 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
 
 
 class IndexTester:
+    """
+    Class to test indexing of datasets.
+    """
+
     def __init__(self, ds: Any) -> None:
         """
         Initialize the IndexTester.
@@ -319,6 +323,10 @@ def make_missing(x: Any) -> Any:
 
 
 class DatasetTester:
+    """
+    Class to test various dataset operations.
+    """
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
         Initialize the DatasetTester.

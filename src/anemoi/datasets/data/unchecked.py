@@ -36,18 +36,38 @@ LOG = logging.getLogger(__name__)
 
 class check:
     def __init__(self, check: str) -> None:
+        """
+        Initialize the check decorator.
+
+        Args:
+            check (str): The name of the check method.
+        """
         self.check = check
 
     def __call__(self, method: Callable) -> Callable:
+        """
+        Call the check decorator.
+
+        Args:
+            method (Callable): The method to decorate.
+
+        Returns:
+            Callable: The decorated method.
+        """
         name = method.__name__
         check = self.check
 
         @wraps(method)
         def wrapper(obj: "Unchecked") -> Any:
-            """This is a decorator that checks the compatibility of the datasets before calling the method.
-            If the datasets are compatible, it will return the result of the method,
-            otherwise it will raise an exception."""
+            """
+            Wrapper function to check compatibility before calling the method.
 
+            Args:
+                obj (Unchecked): The Unchecked object.
+
+            Returns:
+                Any: The result of the method.
+            """
             for d in obj.datasets[1:]:
                 getattr(obj, check)(obj.datasets[0], d)
 
@@ -58,75 +78,177 @@ class check:
 
 class Unchecked(Combined):
     def tree(self) -> Node:
+        """
+        Get the tree representation of the dataset.
+
+        Returns:
+            Node: The tree representation.
+        """
         return Node(self, [d.tree() for d in self.datasets])
 
     def _subset(self, **kwargs: dict) -> "Unchecked":
+        """
+        Get a subset of the dataset.
+
+        Args:
+            **kwargs (dict): Subset parameters.
+
+        Returns:
+            Unchecked: The subset of the dataset.
+        """
         assert not kwargs
         return self
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Check compatibility between two datasets.
+
+        Args:
+            d1 (Dataset): The first dataset.
+            d2 (Dataset): The second dataset.
+        """
         pass
 
-    ###########################################
     @property
     @check("check_same_dates")
     def dates(self) -> NDArray[np.datetime64]:
+        """
+        Get the dates of the dataset.
+
+        Returns:
+            NDArray[np.datetime64]: The dates of the dataset.
+        """
         pass
 
     @property
     @check("check_same_resolution")
     def resolution(self) -> Any:
+        """
+        Get the resolution of the dataset.
+
+        Returns:
+            Any: The resolution of the dataset.
+        """
         pass
 
     @property
     def field_shape(self) -> tuple:
+        """
+        Get the field shape of the dataset.
+
+        Returns:
+            tuple: The field shape of the dataset.
+        """
         raise NotImplementedError()
 
     @property
     @check("check_same_frequency")
     def frequency(self) -> datetime.timedelta:
+        """
+        Get the frequency of the dataset.
+
+        Returns:
+            datetime.timedelta: The frequency of the dataset.
+        """
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
     def latitudes(self) -> NDArray[Any]:
+        """
+        Get the latitudes of the dataset.
+
+        Returns:
+            NDArray[Any]: The latitudes of the dataset.
+        """
         raise NotImplementedError()
 
     @property
     @check("check_same_grid")
     def longitudes(self) -> NDArray[Any]:
+        """
+        Get the longitudes of the dataset.
+
+        Returns:
+            NDArray[Any]: The longitudes of the dataset.
+        """
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def name_to_index(self) -> Dict[str, int]:
+        """
+        Get the mapping of variable names to their indices.
+
+        Returns:
+            Dict[str, int]: The mapping of variable names to indices.
+        """
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def variables(self) -> List[str]:
+        """
+        Get the list of variables in the dataset.
+
+        Returns:
+            List[str]: The list of variables.
+        """
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def variables_metadata(self) -> dict:
+        """
+        Get the metadata for the variables.
+
+        Returns:
+            dict: The metadata for the variables.
+        """
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
+        """
+        Get the statistics of the dataset.
+
+        Returns:
+            Dict[str, NDArray[Any]]: The statistics of the dataset.
+        """
         raise NotImplementedError()
 
     @check("check_same_variables")
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        """
+        Get the statistics tendencies of the dataset.
+
+        Args:
+            delta (Optional[datetime.timedelta]): The time delta for tendencies.
+
+        Returns:
+            Dict[str, NDArray[Any]]: The statistics tendencies.
+        """
         raise NotImplementedError()
 
     @property
     def shape(self) -> Shape:
+        """
+        Get the shape of the dataset.
+
+        Returns:
+            Shape: The shape of the dataset.
+        """
         raise NotImplementedError()
 
     @cached_property
     def missing(self) -> Set[int]:
+        """
+        Get the missing data indices.
+
+        Returns:
+            Set[int]: The missing data indices.
+        """
         result: Set[int] = set()
         for d in self.datasets:
             result = result | d.missing
@@ -137,20 +259,57 @@ class Chain(ConcatMixin, Unchecked):
     """Same as Concat, but with no checks"""
 
     def __len__(self) -> int:
+        """
+        Get the length of the dataset.
+
+        Returns:
+            int: The length of the dataset.
+        """
         return sum(len(d) for d in self.datasets)
 
     def __getitem__(self, n: FullIndex) -> tuple:
+        """
+        Get an item from the dataset.
+
+        Args:
+            n (FullIndex): The index of the item.
+
+        Returns:
+            tuple: The item at the specified index.
+        """
         return tuple(d[n] for d in self.datasets)
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
+        """
+        Get the dates of the dataset.
+
+        Returns:
+            NDArray[np.datetime64]: The dates of the dataset.
+        """
         raise NotImplementedError()
 
     def dataset_metadata(self) -> dict:
+        """
+        Get the metadata of the dataset.
+
+        Returns:
+            dict: The metadata of the dataset.
+        """
         return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
 def chain_factory(args: tuple, kwargs: dict) -> Dataset:
+    """
+    Factory function to create a Chain dataset.
+
+    Args:
+        args (tuple): Positional arguments.
+        kwargs (dict): Keyword arguments.
+
+    Returns:
+        Dataset: The Chain dataset.
+    """
     chain = kwargs.pop("chain")
     assert len(args) == 0
     assert isinstance(chain, (list, tuple))

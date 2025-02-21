@@ -31,7 +31,18 @@ LOG = logging.getLogger(__name__)
 
 
 class XarrayFieldList(FieldList):
+    """
+    A class to represent a list of fields from an xarray Dataset.
+    """
+
     def __init__(self, ds: xr.Dataset, variables: List[Variable]) -> None:
+        """
+        Initialize the XarrayFieldList.
+
+        Args:
+            ds (xr.Dataset): The xarray Dataset.
+            variables (List[Variable]): The list of variables.
+        """
         self.ds: xr.Dataset = ds
         self.variables: List[Variable] = variables.copy()
         self.total_length: int = sum(v.length for v in variables)

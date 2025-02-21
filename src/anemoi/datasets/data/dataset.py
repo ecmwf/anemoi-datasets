@@ -78,20 +78,20 @@ class Dataset(ABC, Sized):
     _name: Union[str, None] = None
 
     def mutate(self) -> "Dataset":
-        """Give an opportunity to a subclass to return a new Dataset
-        object of a different class, if needed.
-        """
-
+        """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed."""
         return self
 
     def swap_with_parent(self, parent: "Dataset") -> "Dataset":
+        """Swap the current dataset with its parent dataset."""
         return parent
 
     @cached_property
     def _len(self) -> int:
+        """Return the length of the dataset."""
         return len(self)
 
     def _subset(self, **kwargs: Any) -> "Dataset":
+        """Create a subset of the dataset based on the provided keyword arguments."""
 
         if not kwargs:
             return self.mutate()
@@ -104,9 +104,11 @@ class Dataset(ABC, Sized):
 
     @property
     def name(self) -> Union[str, None]:
+        """Return the name of the dataset."""
         return self._name
 
     def __subset(self, **kwargs: Any) -> "Dataset":
+        """Internal method to create a subset of the dataset based on the provided keyword arguments."""
         if not kwargs:
             return self.mutate()
 
@@ -238,7 +240,7 @@ class Dataset(ABC, Sized):
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
-
+        """Convert a frequency string to a list of indices."""
         requested_frequency = frequency_to_seconds(frequency)
         dataset_frequency = frequency_to_seconds(self.frequency)
         assert requested_frequency % dataset_frequency == 0
@@ -248,7 +250,7 @@ class Dataset(ABC, Sized):
         return list(range(0, len(self), step))
 
     def _shuffle_indices(self) -> NDArray[np.int]:
-
+        """Return a shuffled array of indices."""
         return np.random.permutation(len(self))
 
     def _dates_to_indices(
@@ -256,6 +258,7 @@ class Dataset(ABC, Sized):
         start: Union[None, str, datetime.datetime],
         end: Union[None, str, datetime.datetime],
     ) -> List[int]:
+        """Convert date range to a list of indices."""
         from .misc import as_first_date
         from .misc import as_last_date
 
@@ -267,6 +270,7 @@ class Dataset(ABC, Sized):
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
     def _select_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
+        """Convert variable names to a list of column indices."""
         if isinstance(vars, set):
             # We keep the order of the variables as they are in the zarr file
             nvars = [v for v in self.name_to_index if v in vars]
@@ -279,6 +283,7 @@ class Dataset(ABC, Sized):
         return [self.name_to_index[v] for v in vars]
 
     def _drop_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
+        """Convert variable names to a list of column indices to drop."""
         if not isinstance(vars, (list, tuple, set)):
             vars = [vars]
 
@@ -288,6 +293,7 @@ class Dataset(ABC, Sized):
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
     def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str], Dict[str, int]]) -> List[int]:
+        """Convert variable names to a list of reordered column indices."""
         if isinstance(vars, str) and vars == "sort":
             # Sorting the variables alphabetically.
             # This is cruical for pre-training then transfer learning in combination with
@@ -310,12 +316,15 @@ class Dataset(ABC, Sized):
     def dates_interval_to_indices(
         self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
     ) -> List[int]:
+        """Convert date interval to a list of indices."""
         return self._dates_to_indices(start, end)
 
     def provenance(self) -> Dict[str, Any]:
+        """Return the provenance information of the dataset."""
         return {}
 
     def sub_shape(self, drop_axis: int) -> TupleIndex:
+        """Return the shape of the dataset with one axis dropped."""
         shape = self.shape
         shape = list(shape)
         shape.pop(drop_axis)
@@ -323,6 +332,7 @@ class Dataset(ABC, Sized):
 
     @property
     def typed_variables(self) -> Dict[str, Any]:
+        """Return the variables with their types."""
         from anemoi.transform.variables import Variable
 
         constants = self.constant_fields
@@ -343,11 +353,13 @@ class Dataset(ABC, Sized):
         return result
 
     def _input_sources(self) -> List[Any]:
+        """Return the input sources of the dataset."""
         sources = []
         self.collect_input_sources(sources)
         return sources
 
     def metadata(self) -> Dict[str, Any]:
+        """Return the metadata of the dataset."""
         import anemoi
 
         _, source_to_arrays = self._supporting_arrays_and_sources()
@@ -376,13 +388,16 @@ class Dataset(ABC, Sized):
 
     @property
     def start_date(self) -> np.datetime64:
+        """Return the start date of the dataset."""
         return self.dates[0]
 
     @property
     def end_date(self) -> np.datetime64:
+        """Return the end date of the dataset."""
         return self.dates[-1]
 
     def dataset_metadata(self) -> Dict[str, Any]:
+        """Return the metadata of the dataset."""
         return dict(
             specific=self.metadata_specific(),
             frequency=self.frequency,
@@ -396,6 +411,7 @@ class Dataset(ABC, Sized):
         )
 
     def _supporting_arrays(self, *path: str) -> Dict[str, NDArray[Any]]:
+        """Return the supporting arrays of the dataset."""
 
         def _path(path, name: str) -> str:
             return "/".join(str(_) for _ in [*path, name])
@@ -422,12 +438,12 @@ class Dataset(ABC, Sized):
         return result
 
     def supporting_arrays(self) -> Dict[str, NDArray[Any]]:
-        """Arrays to be saved in the checkpoints"""
+        """Return the supporting arrays to be saved in the checkpoints"""
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays
 
     def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, NDArray], Dict[int, List[str]]]:
-
+        """Return the supporting arrays and their sources."""
         source_to_arrays = {}
 
         # Top levels arrays
@@ -448,10 +464,12 @@ class Dataset(ABC, Sized):
         return result, source_to_arrays
 
     def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
+        """Collect supporting arrays."""
         # Override this method to add more arrays
         pass
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+        """Return specific metadata of the dataset."""
         action = self.__class__.__name__.lower()
         # assert isinstance(self.frequency, datetime.timedelta), (self.frequency, self, action)
         return dict(
@@ -465,13 +483,16 @@ class Dataset(ABC, Sized):
         )
 
     def __repr__(self) -> str:
+        """Return the string representation of the dataset."""
         return self.__class__.__name__ + "()"
 
     @property
     def grids(self) -> TupleIndex:
+        """Return the grid shape of the dataset."""
         return (self.shape[-1],)
 
     def _check(ds: "Dataset") -> None:
+        """Check for overridden private methods in the dataset."""
         common = Dataset.__dict__.keys() & ds.__class__.__dict__.keys()
         overriden = [m for m in common if Dataset.__dict__[m] is not ds.__class__.__dict__[m]]
 
@@ -480,14 +501,16 @@ class Dataset(ABC, Sized):
                 warnings.warn(f"Private method {n} is overriden in {ds.__class__.__name__}")
 
     def _repr_html_(self) -> str:
+        """Return the HTML representation of the dataset."""
         return self.tree().html()
 
     @property
     def label(self) -> str:
+        """Return the label of the dataset."""
         return self.__class__.__name__.lower()
 
     def computed_constant_fields(self) -> List[str]:
-        # Call `constant_fields` instead of `computed_constant_fields`
+        """Return the computed constant fields of the dataset."""
         try:
             # If the tendencies are computed, we can use them
             return sorted(self._compute_constant_fields_from_statistics())
@@ -498,6 +521,7 @@ class Dataset(ABC, Sized):
         return sorted(self._compute_constant_fields_from_a_few_samples())
 
     def _compute_constant_fields_from_a_few_samples(self) -> List[str]:
+        """Compute constant fields from a few samples."""
 
         import numpy as np
 
@@ -533,6 +557,7 @@ class Dataset(ABC, Sized):
         return [v for i, v in enumerate(self.variables) if constants[i]]
 
     def _compute_constant_fields_from_statistics(self) -> List[str]:
+        """Compute constant fields from statistics."""
         result = []
 
         t = self.statistics_tendencies()
@@ -569,7 +594,6 @@ class Dataset(ABC, Sized):
         -------
         axes : matplotlib.pyplot.Axes
         """
-
         from anemoi.utils.devtools import plot_values
 
         values = self[self.to_index(date, variable, member)]
@@ -582,7 +606,7 @@ class Dataset(ABC, Sized):
         variable: Union[int, str],
         member: int = 0,
     ) -> Tuple[int, int, int]:
-
+        """Convert date, variable, and member to indices."""
         from earthkit.data.utils.dates import to_datetime
 
         if not isinstance(date, int):
@@ -609,93 +633,113 @@ class Dataset(ABC, Sized):
     @abstractmethod
     @property
     def variables(self) -> List[str]:
+        """Return the list of variables in the dataset."""
         pass
 
     @abstractmethod
     @property
     def frequency(self) -> datetime.timedelta:
+        """Return the frequency of the dataset."""
         pass
 
     @abstractmethod
     @property
     def dates(self) -> NDArray[np.datetime64]:
+        """Return the dates in the dataset."""
         pass
 
     @abstractmethod
     @property
     def resolution(self) -> str:
+        """Return the resolution of the dataset."""
         pass
 
     @abstractmethod
     @property
     def name_to_index(self) -> Dict[str, int]:
+        """Return the mapping of variable names to indices."""
         pass
 
     @abstractmethod
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """Return the data at the specified index."""
         pass
 
     @abstractmethod
     @property
     def shape(self) -> Shape:
+        """Return the shape of the dataset."""
         pass
 
     @abstractmethod
     @property
     def field_shape(self) -> Shape:
+        """Return the shape of the fields in the dataset."""
         pass
 
     @abstractmethod
     @property
     def dtype(self) -> np.dtype:
+        """Return the data type of the dataset."""
         pass
 
     @abstractmethod
     @property
     def latitudes(self) -> NDArray[Any]:
+        """Return the latitudes in the dataset."""
         pass
 
     @abstractmethod
     @property
     def longitudes(self) -> NDArray[Any]:
+        """Return the longitudes in the dataset."""
         pass
 
     @abstractmethod
     @property
     def variables_metadata(self) -> Dict[str, Any]:
+        """Return the metadata of the variables in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
     def missing(self) -> Set[int]:
+        """Return the set of missing indices in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
     def constant_fields(self) -> List[str]:
+        """Return the list of constant fields in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
     def statistics(self) -> Dict[str, NDArray[Any]]:
+        """Return the statistics of the dataset."""
         pass
 
     @abstractmethod
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        """Return the tendencies of the statistics in the dataset."""
         pass
 
     @abstractmethod
     def source(self, index: int) -> Source:
+        """Return the source of the dataset at the specified index."""
         pass
 
     @abstractmethod
     def tree(self) -> Node:
+        """Return the tree representation of the dataset."""
         pass
 
     @abstractmethod
     def collect_input_sources(self, sources: List[Any]) -> None:
+        """Collect the input sources of the dataset."""
         pass
 
     @abstractmethod
     def get_dataset_names(self, names: Set[str]) -> None:
+        """Get the names of the datasets."""
         pass

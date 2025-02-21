@@ -36,6 +36,15 @@ LOG = logging.getLogger(__name__)
 
 
 class Complement(Combined):
+    """
+    A class to complement a target dataset with variables from a source dataset,
+    interpolated on the grid of the target dataset.
+
+    Attributes:
+        target (Dataset): The target dataset.
+        source (Dataset): The source dataset.
+        variables (List[str]): List of variables to be added to the target dataset.
+    """
 
     def __init__(
         self,
@@ -44,6 +53,15 @@ class Complement(Combined):
         what: str = "variables",
         interpolation: str = "nearest",
     ) -> None:
+        """
+        Initializes the Complement class.
+
+        Args:
+            target (Dataset): The target dataset.
+            source (Dataset): The source dataset.
+            what (str): What to complement, default is "variables".
+            interpolation (str): Interpolation method, default is "nearest".
+        """
         super().__init__([target, source])
 
         # We had the variables of dataset[1] to dataset[0]
@@ -64,65 +82,147 @@ class Complement(Combined):
 
     @property
     def variables(self) -> List[str]:
+        """
+        Returns the list of variables to be added to the target dataset.
+
+        Returns:
+            List[str]: List of variables.
+        """
         return self._variables
 
     @property
     def name_to_index(self) -> Dict[str, int]:
+        """
+        Returns a dictionary mapping variable names to their indices.
+
+        Returns:
+            Dict[str, int]: Dictionary of variable names and indices.
+        """
         return {v: i for i, v in enumerate(self.variables)}
 
     @property
     def shape(self) -> Shape:
+        """
+        Returns the shape of the complemented dataset.
+
+        Returns:
+            Shape: Shape of the dataset.
+        """
         shape = self._target.shape
         return (shape[0], len(self._variables)) + shape[2:]
 
     @property
     def variables_metadata(self) -> dict:
+        """
+        Returns the metadata of the variables to be added to the target dataset.
+
+        Returns:
+            dict: Metadata of the variables.
+        """
         return {k: v for k, v in self._source.variables_metadata.items() if k in self._variables}
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Checks if the variables in two datasets are the same.
+
+        Args:
+            d1 (Dataset): The first dataset.
+            d2 (Dataset): The second dataset.
+        """
         pass
 
     @cached_property
     def missing(self) -> Set[int]:
+        """
+        Returns the set of missing indices in the source and target datasets.
+
+        Returns:
+            Set[int]: Set of missing indices.
+        """
         missing = self._source.missing.copy()
         missing = missing | self._target.missing
         return set(missing)
 
     def tree(self) -> Node:
-        """Generates a hierarchical tree structure for the `Cutout` instance and
-        its associated datasets.
+        """
+        Generates a hierarchical tree structure for the Complement instance and its associated datasets.
 
         Returns:
-            Node: A `Node` object representing the `Cutout` instance as the root
-            node, with each dataset in `self.datasets` represented as a child
-            node.
+            Node: A Node object representing the Complement instance as the root node, with each dataset in self.datasets represented as a child node.
         """
         return Node(self, [d.tree() for d in (self._target, self._source)])
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
+        """
+        Gets the data at the specified index.
+
+        Args:
+            index (FullIndex): The index to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data at the specified index.
+        """
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
     @abstractmethod
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """
+        Abstract method to get the data at the specified tuple index.
+
+        Args:
+            index (TupleIndex): The tuple index to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data at the specified tuple index.
+        """
         pass
 
 
 class ComplementNone(Complement):
+    """
+    A class to complement a target dataset with variables from a source dataset without interpolation.
+    """
 
     def __init__(self, target: Any, source: Any) -> None:
+        """
+        Initializes the ComplementNone class.
+
+        Args:
+            target (Any): The target dataset.
+            source (Any): The source dataset.
+        """
         super().__init__(target, source)
 
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """
+        Gets the data at the specified tuple index without interpolation.
+
+        Args:
+            index (TupleIndex): The tuple index to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data at the specified tuple index.
+        """
         index, changes = index_to_slices(index, self.shape)
         result = self._source[index]
         return apply_index_to_slices_changes(result, changes)
 
 
 class ComplementNearest(Complement):
+    """
+    A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation.
+    """
 
     def __init__(self, target: Any, source: Any) -> None:
+        """
+        Initializes the ComplementNearest class.
+
+        Args:
+            target (Any): The target dataset.
+            source (Any): The source dataset.
+        """
         super().__init__(target, source)
 
         self._nearest_grid_points = nearest_grid_points(
@@ -133,9 +233,25 @@ class ComplementNearest(Complement):
         )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Checks the compatibility of two datasets for nearest neighbor interpolation.
+
+        Args:
+            d1 (Dataset): The first dataset.
+            d2 (Dataset): The second dataset.
+        """
         pass
 
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """
+        Gets the data at the specified tuple index using nearest neighbor interpolation.
+
+        Args:
+            index (TupleIndex): The tuple index to retrieve data from.
+
+        Returns:
+            NDArray[Any]: The data at the specified tuple index.
+        """
         variable_index = 1
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, variable_index, slice(None))
@@ -149,6 +265,16 @@ class ComplementNearest(Complement):
 
 
 def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
+    """
+    Factory function to create a Complement instance based on the provided arguments.
+
+    Args:
+        args (Tuple): Positional arguments.
+        kwargs (dict): Keyword arguments.
+
+    Returns:
+        Dataset: The complemented dataset.
+    """
     from .select import Select
 
     assert len(args) == 0, args

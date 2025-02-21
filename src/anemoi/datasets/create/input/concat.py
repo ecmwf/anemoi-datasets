@@ -34,6 +34,10 @@ LOG = logging.getLogger(__name__)
 
 
 class ConcatResult(Result):
+    """
+    Represents the result of concatenating multiple results.
+    """
+
     def __init__(
         self,
         context: object,
@@ -100,6 +104,10 @@ class ConcatResult(Result):
 
 
 class ConcatAction(Action):
+    """
+    Represents an action that concatenates multiple actions based on their dates.
+    """
+
     def __init__(self, context: object, action_path: List[str], *configs: Dict[str, Any]) -> None:
         """
         Initializes a ConcatAction instance.

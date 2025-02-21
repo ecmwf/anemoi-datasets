@@ -47,6 +47,12 @@ class Create(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
+        """
+        Add command line arguments to the parser.
+
+        Args:
+            command_parser (Any): The command line argument parser.
+        """
         command_parser.add_argument(
             "--overwrite",
             action="store_true",
@@ -65,7 +71,12 @@ class Create(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
+        """
+        Execute the create command.
 
+        Args:
+            args (Any): Command line arguments.
+        """
         now = time.time()
         if args.threads + args.processes:
             self.parallel_create(args)
@@ -74,7 +85,12 @@ class Create(Command):
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
     def serial_create(self, args: Any) -> None:
+        """
+        Create the dataset in serial mode.
 
+        Args:
+            args (Any): Command line arguments.
+        """
         options = vars(args)
         options.pop("command")
         options.pop("threads")
@@ -94,6 +110,12 @@ class Create(Command):
         task("verify", options)
 
     def parallel_create(self, args: Any) -> None:
+        """
+        Create the dataset in parallel mode.
+
+        Args:
+            args (Any): Command line arguments.
+        """
         """Some modules, like fsspec do not work well with fork()
         Other modules may not be thread safe. So we implement
         parallel loadining using multiprocessing before any
