@@ -19,45 +19,66 @@ from earthkit.data.indexing.fieldlist import FieldArray
 class NewDataField:
     """A class to represent a new data field with modified data and metadata.
 
-    Attributes:
-        field (Any): The original field.
-        data (Any): The data for the new field.
-        new_name (str): The new name for the parameter.
+    Attributes
+    ----------
+    field : Any
+        The original field.
+    data : Any
+        The data for the new field.
+    new_name : str
+        The new name for the parameter.
     """
 
     def __init__(self, field: Any, data: Any, new_name: str):
-        """Initialize a new data field.
+        """
+        Initialize a new data field.
 
-        Args:
-            field (Any): The original field.
-            data (Any): The data for the new field.
-            new_name (str): The new name for the parameter.
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The data for the new field.
+        new_name : str
+            The new name for the parameter.
         """
         self.field: Any = field
         self.data: Any = data
         self.new_name: str = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
+        """
+        Convert the data to a numpy array.
 
-        Args:
-            *args (Any): Additional arguments.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
 
-        Returns:
-            Any: The data as a numpy array.
+        Returns
+        -------
+        Any
+            The data as a numpy array.
         """
         return self.data
 
     def metadata(self, key: str = None, **kwargs: Any) -> Any:
-        """Retrieve metadata for the field.
+        """
+        Retrieve metadata for the field.
 
-        Args:
-            key (str, optional): The metadata key to retrieve. Defaults to None.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        key : str, optional
+            The metadata key to retrieve. Defaults to None.
+        **kwargs : Any
+            Additional keyword arguments.
 
-        Returns:
-            Any: The metadata value.
+        Returns
+        -------
+        Any
+            The metadata value.
         """
         if key is None:
             return self.field.metadata(**kwargs)
@@ -67,28 +88,41 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """Delegate attribute access to the original field.
+        """
+        Delegate attribute access to the original field.
 
-        Args:
-            name (str): The name of the attribute.
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
 
-        Returns:
-            Any: The attribute value.
+        Returns
+        -------
+        Any
+            The attribute value.
         """
         return getattr(self.field, name)
 
 
 def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> FieldList:
-    """Convert orography [m] to z (geopotential height).
+    """
+    Convert orography [m] to z (geopotential height).
 
-    Args:
-        context (Any): The context in which the function is executed.
-        input (FieldList): List of input fields.
-        orog (str): Orography parameter.
-        z (str, optional): Geopotential height parameter. Defaults to "z".
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : FieldList
+        List of input fields.
+    orog : str
+        Orography parameter.
+    z : str, optional
+        Geopotential height parameter. Defaults to "z".
 
-    Returns:
-        FieldList: List of fields with geopotential height.
+    Returns
+    -------
+    FieldList
+        List of fields with geopotential height.
     """
     result = FieldArray()
     processed_fields: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
