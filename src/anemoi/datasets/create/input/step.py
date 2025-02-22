@@ -147,7 +147,7 @@ def step_factory(config: Dict[str, Any], context: ActionContext, action_path: Li
     assert len(config) == 1, config
 
     key = list(config.keys())[0]
-    cls: Optional[Type[Action]] = dict(
+    cls = dict(
         filter=FilterStepAction,
         # rename=RenameAction,
         # remapping=RemappingAction,
@@ -168,4 +168,4 @@ def step_factory(config: Dict[str, Any], context: ActionContext, action_path: Li
         cls = FunctionStepAction
         args = [key] + args
 
-    return cls(context, action_path, previous_step, *args, kwargs)
+    return cls(context, action_path, previous_step, *args, **kwargs)

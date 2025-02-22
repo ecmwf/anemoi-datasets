@@ -182,6 +182,7 @@ if __name__ == "__main__":
 
     config = yaml.safe_load(
         """
+
     config:
       time_increment: 12h
       database: marser

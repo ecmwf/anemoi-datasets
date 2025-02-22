@@ -34,19 +34,31 @@ def add_zarr_dataset(
 ) -> zarr.Array:
     """Add a dataset to a Zarr group.
 
-    Parameters:
-        name (str): Name of the dataset.
-        dtype (np.dtype, optional): Data type of the dataset.
-        fill_value (np.generic, optional): Fill value for the dataset.
-        zarr_root (zarr.Group): Root Zarr group.
-        shape (tuple[int, ...], optional): Shape of the dataset.
-        array (NDArray[Any], optional): Array to initialize the dataset with.
-        overwrite (bool): Whether to overwrite existing dataset.
-        dimensions (tuple[str, ...]): Dimensions of the dataset.
-        **kwargs: Additional arguments for Zarr dataset creation.
+    Parameters
+    ----------
+    name : str
+        Name of the dataset.
+    dtype : np.dtype, optional
+        Data type of the dataset.
+    fill_value : np.generic, optional
+        Fill value for the dataset.
+    zarr_root : zarr.Group
+        Root Zarr group.
+    shape : tuple[int, ...], optional
+        Shape of the dataset.
+    array : NDArray[Any], optional
+        Array to initialize the dataset with.
+    overwrite : bool
+        Whether to overwrite existing dataset.
+    dimensions : tuple[str, ...]
+        Dimensions of the dataset.
+    **kwargs
+        Additional arguments for Zarr dataset creation.
 
-    Returns:
-        zarr.Array: The created Zarr array.
+    Returns
+    -------
+    zarr.Array
+        The created Zarr array.
     """
     assert dimensions is not None, "Please pass dimensions to add_zarr_dataset."
     assert isinstance(dimensions, (tuple, list))
@@ -111,10 +123,14 @@ class ZarrBuiltRegistry:
     def __init__(self, path: str, synchronizer_path: Optional[str] = None, use_threads: bool = False):
         """Initialize the ZarrBuiltRegistry.
 
-        Parameters:
-            path (str): Path to the Zarr store.
-            synchronizer_path (Optional[str], optional): Path to the synchronizer.
-            use_threads (bool): Whether to use thread-based synchronization.
+        Parameters
+        ----------
+        path : str
+            Path to the Zarr store.
+        synchronizer_path : Optional[str], optional
+            Path to the synchronizer.
+        use_threads : bool
+            Whether to use thread-based synchronization.
         """
         import zarr
 
@@ -147,11 +163,15 @@ class ZarrBuiltRegistry:
     def _open_read(self, sync: bool = True) -> zarr.Group:
         """Open the Zarr store in read mode.
 
-        Parameters:
-            sync (bool): Whether to use synchronization.
+        Parameters
+        ----------
+        sync : bool
+            Whether to use synchronization.
 
-        Returns:
-            zarr.Group: The opened Zarr group.
+        Returns
+        -------
+        zarr.Group
+            The opened Zarr group.
         """
         import zarr
 
@@ -163,9 +183,12 @@ class ZarrBuiltRegistry:
     def new_dataset(self, *args, **kwargs) -> None:
         """Create a new dataset in the Zarr store.
 
-        Parameters:
-            *args: Positional arguments for dataset creation.
-            **kwargs: Keyword arguments for dataset creation.
+        Parameters
+        ----------
+        *args
+            Positional arguments for dataset creation.
+        **kwargs
+            Keyword arguments for dataset creation.
         """
         z = self._open_write()
         zarr_root = z["_build"]
@@ -174,9 +197,12 @@ class ZarrBuiltRegistry:
     def add_to_history(self, action: str, **kwargs) -> None:
         """Add an action to the history attribute of the Zarr store.
 
-        Parameters:
-            action (str): The action to record.
-            **kwargs: Additional information about the action.
+        Parameters
+        ----------
+        action : str
+            The action to record.
+        **kwargs
+            Additional information about the action.
         """
         new = dict(
             action=action,
@@ -192,8 +218,10 @@ class ZarrBuiltRegistry:
     def get_lengths(self) -> list[int]:
         """Get the lengths dataset.
 
-        Returns:
-            list[int]: The lengths dataset.
+        Returns
+        -------
+        list[int]
+            The lengths dataset.
         """
         z = self._open_read()
         return list(z["_build"][self.name_lengths][:])
@@ -201,11 +229,15 @@ class ZarrBuiltRegistry:
     def get_flags(self, **kwargs) -> list[bool]:
         """Get the flags dataset.
 
-        Parameters:
-            **kwargs: Additional arguments for reading the dataset.
+        Parameters
+        ----------
+        **kwargs
+            Additional arguments for reading the dataset.
 
-        Returns:
-            list[bool]: The flags dataset.
+        Returns
+        -------
+        list[bool]
+            The flags dataset.
         """
         z = self._open_read(**kwargs)
         return list(z["_build"][self.name_flags][:])
@@ -213,11 +245,15 @@ class ZarrBuiltRegistry:
     def get_flag(self, i: int) -> bool:
         """Get a specific flag.
 
-        Parameters:
-            i (int): Index of the flag.
+        Parameters
+        ----------
+        i : int
+            Index of the flag.
 
-        Returns:
-            bool: The flag value.
+        Returns
+        -------
+        bool
+            The flag value.
         """
         z = self._open_read()
         return z["_build"][self.name_flags][i]
@@ -225,9 +261,12 @@ class ZarrBuiltRegistry:
     def set_flag(self, i: int, value: bool = True) -> None:
         """Set a specific flag.
 
-        Parameters:
-            i (int): Index of the flag.
-            value (bool): Value to set the flag to.
+        Parameters
+        ----------
+        i : int
+            Index of the flag.
+        value : bool
+            Value to set the flag to.
         """
         z = self._open_write()
         z.attrs["latest_write_timestamp"] = (
@@ -238,17 +277,22 @@ class ZarrBuiltRegistry:
     def ready(self) -> bool:
         """Check if all flags are set.
 
-        Returns:
-            bool: True if all flags are set, False otherwise.
+        Returns
+        -------
+        bool
+            True if all flags are set, False otherwise.
         """
         return all(self.get_flags())
 
     def create(self, lengths: list[int], overwrite: bool = False) -> None:
         """Create the lengths and flags datasets.
 
-        Parameters:
-            lengths (list[int]): Lengths to initialize the dataset with.
-            overwrite (bool): Whether to overwrite existing datasets.
+        Parameters
+        ----------
+        lengths : list[int]
+            Lengths to initialize the dataset with.
+        overwrite : bool
+            Whether to overwrite existing datasets.
         """
         self.new_dataset(name=self.name_lengths, array=np.array(lengths, dtype="i4"))
         self.new_dataset(name=self.name_flags, array=np.array([False] * len(lengths), dtype=bool))
@@ -257,16 +301,20 @@ class ZarrBuiltRegistry:
     def reset(self, lengths: list[int]) -> None:
         """Reset the lengths and flags datasets.
 
-        Parameters:
-            lengths (list[int]): Lengths to initialize the dataset with.
+        Parameters
+        ----------
+        lengths : list[int]
+            Lengths to initialize the dataset with.
         """
         return self.create(lengths, overwrite=True)
 
     def add_provenance(self, name: str) -> None:
         """Add provenance information to the Zarr store.
 
-        Parameters:
-            name (str): Name of the provenance attribute.
+        Parameters
+        ----------
+        name : str
+            Name of the provenance attribute.
         """
         z = self._open_write()
 

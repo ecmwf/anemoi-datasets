@@ -28,13 +28,20 @@ LOG = logging.getLogger(__name__)
 class Variable:
     """Represents a variable in an xarray dataset.
 
-    Attributes:
-        ds (xr.Dataset): The xarray dataset.
-        variable (xr.DataArray): The data array representing the variable.
-        coordinates (List[Any]): List of coordinates associated with the variable.
-        grid (Any): The grid associated with the variable.
-        time (Any): The time dimension associated with the variable.
-        metadata (Dict[str, Any]): Metadata associated with the variable.
+    Attributes
+    ----------
+    ds : xr.Dataset
+        The xarray dataset.
+    variable : xr.DataArray
+        The data array representing the variable.
+    coordinates : List[Any]
+        List of coordinates associated with the variable.
+    grid : Any
+        The grid associated with the variable.
+    time : Any
+        The time dimension associated with the variable.
+    metadata : Dict[str, Any]
+        Metadata associated with the variable.
     """
 
     def __init__(
@@ -49,13 +56,20 @@ class Variable:
     ):
         """Initialize the Variable object.
 
-        Parameters:
-            ds (xr.Dataset): The xarray dataset.
-            variable (xr.DataArray): The data array representing the variable.
-            coordinates (List[Any]): List of coordinates associated with the variable.
-            grid (Any): The grid associated with the variable.
-            time (Any): The time dimension associated with the variable.
-            metadata (Dict[str, Any]): Metadata associated with the variable.
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The xarray dataset.
+        variable : xr.DataArray
+            The data array representing the variable.
+        coordinates : List[Any]
+            List of coordinates associated with the variable.
+        grid : Any
+            The grid associated with the variable.
+        time : Any
+            The time dimension associated with the variable.
+        metadata : Dict[str, Any]
+            Metadata associated with the variable.
         """
         self.ds = ds
         self.variable = variable
@@ -219,7 +233,7 @@ class Variable:
 
         return variable.sel(missing, **kwargs)
 
-    def match(self, **kwargs: Any) -> Tuple[bool, Dict[str, Any]]:
+    def match(self, **kwargs: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """Match the variable based on the given metadata.
 
         Parameters
@@ -241,7 +255,7 @@ class Variable:
             if not isinstance(name, (list, tuple)):
                 name = [name]
             if self.variable.name not in name:
-                return False, {}
+                return False, None
             return True, kwargs
         return True, kwargs
 
@@ -249,9 +263,12 @@ class Variable:
 class FilteredVariable:
     """Represents a filtered variable based on metadata.
 
-    Attributes:
-        variable (Variable): The variable to filter.
-        kwargs (Any): Metadata to filter the variable.
+    Attributes
+    ----------
+    variable : Variable
+        The variable to filter.
+    kwargs : Any
+        Metadata to filter the variable.
     """
 
     def __init__(self, variable: Variable, **kwargs: Any):

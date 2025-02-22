@@ -83,6 +83,11 @@ class HTTPStore(ReadOnlyStore):
 class S3Store(ReadOnlyStore):
     """A read-only store for S3 resources."""
 
+    """We write our own S3Store because the one used by zarr (s3fs)
+    does not play well with fork(). We also get to control the s3 client
+    options using the anemoi configs.
+    """
+
     def __init__(self, url: str, region: Optional[str] = None) -> None:
         """Initialize the S3Store with a URL and optional region."""
         from anemoi.utils.remote.s3 import s3_client
@@ -309,7 +314,7 @@ class Zarr(Dataset):
     @property
     def resolution(self) -> str:
         """Return the resolution of the dataset."""
-        return str(self.z.attrs["resolution"])
+        return self.z.attrs["resolution"]
 
     @property
     def field_shape(self) -> tuple:
