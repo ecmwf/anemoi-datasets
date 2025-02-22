@@ -29,25 +29,37 @@ LOG = logging.getLogger(__name__)
 
 
 class JoinResult(Result):
-    """Represents a result that combines multiple results.
+    """
+    Represents a result that combines multiple results.
 
-    Attributes:
-        context (object): The context object.
-        action_path (list): The action path.
-        group_of_dates (GroupOfDates): The group of dates.
-        results (List[Result]): The list of results.
+    Attributes
+    ----------
+    context : object
+        The context object.
+    action_path : list
+        The action path.
+    group_of_dates : GroupOfDates
+        The group of dates.
+    results : List[Result]
+        The list of results.
     """
 
     def __init__(
         self, context: object, action_path: list, group_of_dates: GroupOfDates, results: List[Result], **kwargs: Any
     ) -> None:
-        """Initializes a JoinResult instance.
+        """
+        Initializes a JoinResult instance.
 
-        Args:
-            context (object): The context object.
-            action_path (list): The action path.
-            group_of_dates (GroupOfDates): The group of dates.
-            results (List[Result]): The list of results.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        group_of_dates : GroupOfDates
+            The group of dates.
+        results : List[Result]
+            The list of results.
         """
         super().__init__(context, action_path, group_of_dates)
         self.results: List[Result] = [r for r in results if not r.empty]
@@ -64,53 +76,60 @@ class JoinResult(Result):
         return _tidy(ds)
 
     def __repr__(self) -> str:
-        """Returns a string representation of the JoinResult instance.
-
-        Returns:
-            str: A string representation of the JoinResult instance.
-        """
+        """Returns a string representation of the JoinResult instance."""
         content: str = "\n".join([str(i) for i in self.results])
         return super().__repr__(content)
 
 
 class JoinAction(Action):
-    """Represents an action that combines multiple actions.
+    """
+    Represents an action that combines multiple actions.
 
-    Attributes:
-        context (object): The context object.
-        action_path (list): The action path.
-        actions (List[Action]): The list of actions.
+    Attributes
+    ----------
+    context : object
+        The context object.
+    action_path : list
+        The action path.
+    actions : List[Action]
+        The list of actions.
     """
 
     def __init__(self, context: object, action_path: list, *configs: dict) -> None:
-        """Initializes a JoinAction instance.
+        """
+        Initializes a JoinAction instance.
 
-        Args:
-            context (object): The context object.
-            action_path (list): The action path.
-            *configs (dict): The configuration dictionaries.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        *configs : dict
+            The configuration dictionaries.
         """
         super().__init__(context, action_path, *configs)
         self.actions: List[Action] = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
 
     def __repr__(self) -> str:
-        """Returns a string representation of the JoinAction instance.
-
-        Returns:
-            str: A string representation of the JoinAction instance.
-        """
+        """Returns a string representation of the JoinAction instance."""
         content: str = "\n".join([str(i) for i in self.actions])
         return super().__repr__(content)
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> JoinResult:
-        """Selects the results for the given group of dates.
+        """
+        Selects the results for the given group of dates.
 
-        Args:
-            group_of_dates (GroupOfDates): The group of dates.
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            The group of dates.
 
-        Returns:
-            JoinResult: The combined result for the given group of dates.
+        Returns
+        -------
+        JoinResult
+            The combined result for the given group of dates.
         """
         results: List[Result] = [a.select(group_of_dates) for a in self.actions]
         return JoinResult(self.context, self.action_path, group_of_dates, results)

@@ -39,7 +39,8 @@ class BuildContext(ContextBase):
         self.results = {}
 
     def will_need_reference(self, key: Union[List, Tuple]) -> None:
-        """Marks a reference as needed.
+        """
+        Marks a reference as needed.
 
         Parameters
         ----------
@@ -51,7 +52,8 @@ class BuildContext(ContextBase):
         self.used_references.add(key)
 
     def notify_result(self, key: Union[List, Tuple], result: Any) -> None:
-        """Notifies that a result is available for a reference.
+        """
+        Notifies that a result is available for a reference.
 
         Parameters
         ----------
@@ -75,7 +77,8 @@ class BuildContext(ContextBase):
             self.results[key] = result
 
     def get_result(self, key: Union[List, Tuple]) -> Any:
-        """Retrieves the result for a given reference.
+        """
+        Retrieves the result for a given reference.
 
         Parameters
         ----------

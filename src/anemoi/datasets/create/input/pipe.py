@@ -23,12 +23,17 @@ class PipeAction(Action):
     """A class to represent a pipeline of actions."""
 
     def __init__(self, context: Any, action_path: list, *configs: dict) -> None:
-        """Initialize the PipeAction.
+        """
+        Initialize the PipeAction.
 
-        Args:
-            context (Any): The context for the action.
-            action_path (list): The path of the action.
-            configs (dict): The configurations for the actions.
+        Parameters
+        ----------
+        context : Any
+            The context for the action.
+        action_path : list
+            The path of the action.
+        configs : dict
+            The configurations for the actions.
         """
         super().__init__(context, action_path, *configs)
         if len(configs) <= 1:
@@ -43,13 +48,18 @@ class PipeAction(Action):
 
     @trace_select
     def select(self, group_of_dates: Any) -> Any:
-        """Select data based on the group of dates.
+        """
+        Select data based on the group of dates.
 
-        Args:
-            group_of_dates (Any): The group of dates to select data for.
+        Parameters
+        ----------
+        group_of_dates : Any
+            The group of dates to select data for.
 
-        Returns:
-            Any: The selected data.
+        Returns
+        -------
+        Any
+            The selected data.
         """
         return self.last_step.select(group_of_dates)
 

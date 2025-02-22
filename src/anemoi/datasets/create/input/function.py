@@ -32,34 +32,46 @@ LOG = logging.getLogger(__name__)
 
 
 class FunctionContext:
-    """A FunctionContext is passed to all functions, it will be used to pass information
+    """
+    A FunctionContext is passed to all functions, it will be used to pass information
     to the functions from the other actions and filters and results.
     """
 
     def __init__(self, owner: Result) -> None:
-        """Initializes a FunctionContext instance.
+        """
+        Initializes a FunctionContext instance.
 
-        Args:
-            owner (object): The owner object.
+        Parameters
+        ----------
+        owner : object
+            The owner object.
         """
         self.owner = owner
         self.use_grib_paramid: bool = owner.context.use_grib_paramid
 
     def trace(self, emoji: str, *args: Any) -> None:
-        """Traces the given arguments with an emoji.
+        """
+        Traces the given arguments with an emoji.
 
-        Args:
-            emoji (str): The emoji to use.
-            *args (Any): The arguments to trace.
+        Parameters
+        ----------
+        emoji : str
+            The emoji to use.
+        *args : Any
+            The arguments to trace.
         """
         trace(emoji, *args)
 
     def info(self, *args: Any, **kwargs: Any) -> None:
-        """Logs an info message.
+        """
+        Logs an info message.
 
-        Args:
-            *args (Any): The arguments for the log message.
-            **kwargs (Any): The keyword arguments for the log message.
+        Parameters
+        ----------
+        *args : Any
+            The arguments for the log message.
+        **kwargs : Any
+            The keyword arguments for the log message.
         """
         LOG.info(*args, **kwargs)
 
@@ -75,33 +87,47 @@ class FunctionContext:
 
 
 class FunctionAction(Action):
-    """Represents an action that executes a function.
+    """
+    Represents an action that executes a function.
 
-    Attributes:
-        name (str): The name of the function.
+    Attributes
+    ----------
+    name : str
+        The name of the function.
     """
 
     def __init__(self, context: object, action_path: list, _name: str, **kwargs: Dict[str, Any]) -> None:
-        """Initializes a FunctionAction instance.
+        """
+        Initializes a FunctionAction instance.
 
-        Args:
-            context (object): The context object.
-            action_path (list): The action path.
-            _name (str): The name of the function.
-            **kwargs (Dict[str, Any]): Additional keyword arguments.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        _name : str
+            The name of the function.
+        **kwargs : Dict[str, Any]
+            Additional keyword arguments.
         """
         super().__init__(context, action_path, **kwargs)
         self.name: str = _name
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":
-        """Selects the function result for the given group of dates.
+        """
+        Selects the function result for the given group of dates.
 
-        Args:
-            group_of_dates (GroupOfDates): The group of dates.
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            The group of dates.
 
-        Returns:
-            FunctionResult: The function result instance.
+        Returns
+        -------
+        FunctionResult
+            The function result instance.
         """
         return FunctionResult(self.context, self.action_path, group_of_dates, action=self)
 
@@ -111,11 +137,7 @@ class FunctionAction(Action):
         return import_function(self.name, "sources")
 
     def __repr__(self) -> str:
-        """Returns a string representation of the FunctionAction instance.
-
-        Returns:
-            str: The string representation of the instance.
-        """
+        """Returns a string representation of the FunctionAction instance."""
         content: str = ""
         content += ",".join([self._short_str(a) for a in self.args])
         content += " ".join([self._short_str(f"{k}={v}") for k, v in self.kwargs.items()])
@@ -123,34 +145,50 @@ class FunctionAction(Action):
         return super().__repr__(_inline_=content, _indent_=" ")
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """Traces the selection of the function for the given group of dates.
+        """
+        Traces the selection of the function for the given group of dates.
 
-        Args:
-            group_of_dates (GroupOfDates): The group of dates.
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            The group of dates.
 
-        Returns:
-            str: The trace string.
+        Returns
+        -------
+        str
+            The trace string.
         """
         return f"{self.name}({group_of_dates})"
 
 
 class FunctionResult(Result):
-    """Represents the result of executing a function.
+    """
+    Represents the result of executing a function.
 
-    Attributes:
-        action (Action): The action instance.
-        args (tuple): The positional arguments for the function.
-        kwargs (dict): The keyword arguments for the function.
+    Attributes
+    ----------
+    action : Action
+        The action instance.
+    args : tuple
+        The positional arguments for the function.
+    kwargs : dict
+        The keyword arguments for the function.
     """
 
     def __init__(self, context: object, action_path: list, group_of_dates: GroupOfDates, action: Action) -> None:
-        """Initializes a FunctionResult instance.
+        """
+        Initializes a FunctionResult instance.
 
-        Args:
-            context (object): The context object.
-            action_path (list): The action path.
-            group_of_dates (GroupOfDates): The group of dates.
-            action (Action): The action instance.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        group_of_dates : GroupOfDates
+            The group of dates.
+        action : Action
+            The action instance.
         """
         super().__init__(context, action_path, group_of_dates)
         assert isinstance(action, Action), type(action)
@@ -159,14 +197,20 @@ class FunctionResult(Result):
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """Traces the datasource for the given arguments.
+        """
+        Traces the datasource for the given arguments.
 
-        Args:
-            *args (Any): The arguments.
-            **kwargs (Any): The keyword arguments.
+        Parameters
+        ----------
+        *args : Any
+            The arguments.
+        **kwargs : Any
+            The keyword arguments.
 
-        Returns:
-            str: The trace string.
+        Returns
+        -------
+        str
+            The trace string.
         """
         return f"{self.action.name}({self.group_of_dates})"
 
@@ -192,11 +236,7 @@ class FunctionResult(Result):
             raise
 
     def __repr__(self) -> str:
-        """Returns a string representation of the FunctionResult instance.
-
-        Returns:
-            str: The string representation of the instance.
-        """
+        """Returns a string representation of the FunctionResult instance."""
         try:
             return f"{self.action.name}({self.group_of_dates})"
         except Exception:
@@ -204,9 +244,12 @@ class FunctionResult(Result):
 
     @property
     def function(self) -> None:
-        """Raises NotImplementedError as this property is not implemented.
+        """
+        Raises NotImplementedError as this property is not implemented.
 
-        Raises:
-            NotImplementedError: Always raised.
+        Raises
+        ------
+        NotImplementedError
+            Always raised.
         """
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")

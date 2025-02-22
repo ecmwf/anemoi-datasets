@@ -66,14 +66,20 @@ class StepFunctionResult(StepResult):
             raise
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """Traces the datasource for the given arguments.
+        """
+        Traces the datasource for the given arguments.
 
-        Args:
-            *args (Any): The arguments.
-            **kwargs (Any): The keyword arguments.
+        Parameters
+        ----------
+        *args : Any
+            The arguments.
+        **kwargs : Any
+            The keyword arguments.
 
-        Returns:
-            str: A string representation of the traced datasource.
+        Returns
+        -------
+        str
+            A string representation of the traced datasource.
         """
         return f"{self.action.name}({self.group_of_dates})"
 
@@ -91,14 +97,21 @@ class FunctionStepAction(StepAction):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        """Initializes a FunctionStepAction instance.
+        """
+        Initializes a FunctionStepAction instance.
 
-        Args:
-            context (object): The context object.
-            action_path (list): The action path.
-            previous_step (StepAction): The previous step action.
-            *args (Any): Additional arguments.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        previous_step : StepAction
+            The previous step action.
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
         """
         super().__init__(context, action_path, previous_step, *args, **kwargs)
         self.name = args[0]

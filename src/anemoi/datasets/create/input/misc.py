@@ -23,13 +23,18 @@ LOG = logging.getLogger(__name__)
 
 
 def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
-    """Parses a function name to extract the base name and an optional time delta.
+    """
+    Parses a function name to extract the base name and an optional time delta.
 
-    Args:
-        name (str): The function name to parse.
+    Parameters
+    ----------
+    name : str
+        The function name to parse.
 
-    Returns:
-        Tuple[str, Union[int, None]]: The base name and an optional time delta.
+    Returns
+    -------
+    Tuple[str, Union[int, None]]
+        The base name and an optional time delta.
     """
     if name.endswith("h") and name[:-1].isdigit():
 
@@ -52,14 +57,20 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
 
 
 def is_function(name: str, kind: str) -> bool:
-    """Checks if a function with the given name and kind exists.
+    """
+    Checks if a function with the given name and kind exists.
 
-    Args:
-        name (str): The name of the function.
-        kind (str): The kind of the function.
+    Parameters
+    ----------
+    name : str
+        The name of the function.
+    kind : str
+        The kind of the function.
 
-    Returns:
-        bool: True if the function exists, False otherwise.
+    Returns
+    -------
+    bool
+        True if the function exists, False otherwise.
     """
     name, _ = parse_function_name(name)
     try:
@@ -71,13 +82,18 @@ def is_function(name: str, kind: str) -> bool:
 
 
 def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator to assert that the result of a method is an instance of FieldList.
+    """
+    Decorator to assert that the result of a method is an instance of FieldList.
 
-    Args:
-        method (Callable[..., Any]): The method to decorate.
+    Parameters
+    ----------
+    method : Callable[..., Any]
+        The method to decorate.
 
-    Returns:
-        Callable[..., Any]: The decorated method.
+    Returns
+    -------
+    Callable[..., Any]
+        The decorated method.
     """
 
     @wraps(method)
@@ -91,10 +107,13 @@ def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def assert_is_fieldlist(obj: object) -> None:
-    """Asserts that the given object is an instance of FieldList.
+    """
+    Asserts that the given object is an instance of FieldList.
 
-    Args:
-        obj (object): The object to check.
+    Parameters
+    ----------
+    obj : object
+        The object to check.
     """
     assert isinstance(obj, FieldList), type(obj)
 

@@ -26,12 +26,17 @@ class EmptyResult(Result):
     empty = True
 
     def __init__(self, context: object, action_path: list, dates: object) -> None:
-        """Initializes an EmptyResult instance.
+        """
+        Initializes an EmptyResult instance.
 
-        Args:
-            context (object): The context object.
-            action_path (list): The action path.
-            dates (object): The dates object.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        dates : object
+            The dates object.
         """
         super().__init__(context, action_path + ["empty"], dates)
 
