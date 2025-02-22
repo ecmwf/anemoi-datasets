@@ -54,11 +54,11 @@ def _extend_shape(index: TupleIndex, shape: Shape) -> TupleIndex:
         if index.count(Ellipsis) > 1:
             raise IndexError("Only one Ellipsis is allowed")
         ellipsis_index = index.index(Ellipsis)
-        index_list = list(index)
-        index_list[ellipsis_index] = slice(None)
-        while len(index_list) < len(shape):
-            index_list.insert(ellipsis_index, slice(None))
-        index = tuple(index_list)
+        index = list(index)
+        index[ellipsis_index] = slice(None)
+        while len(index) < len(shape):
+            index.insert(ellipsis_index, slice(None))
+        index = tuple(index)
 
     while len(index) < len(shape):
         index = index + (slice(None),)
@@ -118,7 +118,7 @@ def apply_index_to_slices_changes(result: NDArray[Any], changes: Tuple[int, ...]
     return result
 
 
-def update_tuple(tp: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
+def update_tuple(t: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
     """Replace the elements of a tuple at the given index with a new value.
 
     Parameters:
@@ -129,7 +129,7 @@ def update_tuple(tp: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
     Returns:
     Tuple[Tuple, Any]: The updated tuple and the previous value.
     """
-    t = list(tp)
+    t = list(t)
     prev = t[index]
     t[index] = value
     return tuple(t), prev
@@ -229,14 +229,14 @@ def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., N
         if len(which) > 1:
             raise IndexError("Only one list index is allowed")
 
-        axis = which[0]
+        which = which[0]
         index = _as_tuples(index)
-        result: List[int] = []
-        for i in index[axis]:
-            index, _ = update_tuple(index, axis, slice(i, i + 1))
+        result = []
+        for i in index[which]:
+            index, _ = update_tuple(index, which, slice(i, i + 1))
             result.append(method(self, index))
 
-        return np.concatenate(result, axis=axis)
+        return np.concatenate(result, axis=which)
 
     return wrapper
 

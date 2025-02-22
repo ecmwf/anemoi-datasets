@@ -100,7 +100,7 @@ def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
         Cosine of the local time bug.
     """
     radians = local_time_bug(lon, date) / 24 * np.pi * 2
-    return float(np.cos(radians))
+    return np.cos(radians)
 
 
 def find(config: dict | list, name: str) -> Any:
@@ -621,10 +621,6 @@ class Version0_4(Version):
 class Version0_6(Version):
     """Represents version 0.6 of a dataset."""
 
-    def details(self) -> None:
-        """Print details of the dataset."""
-        pass
-
     @property
     def initialised(self) -> datetime.datetime | None:
         """Get the initialization timestamp of the dataset."""
@@ -638,6 +634,20 @@ class Version0_6(Version):
             return timestamps[0]
 
         return None
+
+    def details(self) -> None:
+        """Print details of the dataset."""
+        print()
+        for d in self.metadata.get("history", []):
+            d = deepcopy(d)
+            timestamp = d.pop("timestamp")
+            timestamp = datetime.datetime.fromisoformat(timestamp)
+            action = d.pop("action")
+            versions = d.pop("versions")
+            versions = ", ".join(f"{k}={v}" for k, v in versions.items())
+            more = ", ".join(f"{k}={v}" for k, v in d.items())
+            print(f"  {timestamp} : {action} ({versions}) {more}")
+        print()
 
     def ready(self) -> bool:
         """Check if the dataset is ready."""

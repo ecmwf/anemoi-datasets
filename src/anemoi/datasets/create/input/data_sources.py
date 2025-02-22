@@ -86,7 +86,7 @@ class DataSourcesAction(Action):
     def __repr__(self) -> str:
         """Returns a string representation of the DataSourcesAction instance."""
         content = "\n".join([str(i) for i in self.sources])
-        return super().__repr__(content)
+        return self._repr(content)
 
 
 class DataSourcesResult(Result):

@@ -142,7 +142,7 @@ class FunctionAction(Action):
         content += ",".join([self._short_str(a) for a in self.args])
         content += " ".join([self._short_str(f"{k}={v}") for k, v in self.kwargs.items()])
         content = self._short_str(content)
-        return super().__repr__(_inline_=content, _indent_=" ")
+        return self._repr(_inline_=content, _indent_=" ")
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
         """

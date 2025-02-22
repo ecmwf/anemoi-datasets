@@ -94,7 +94,8 @@ class ConcatResult(Result):
         str
             A string representation of the ConcatResult instance.
         """
-        return f"{self.__class__.__name__}({self.results})"
+        content = "\n".join([str(i) for i in self.results])
+        return self._repr(content)
 
 
 class ConcatAction(Action):
@@ -134,7 +135,7 @@ class ConcatAction(Action):
             A string representation of the ConcatAction instance.
         """
         content = "\n".join([str(i) for i in self.parts])
-        return super().__repr__(content)
+        return self._repr(content)
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> Union[ConcatResult, EmptyResult]:

@@ -140,6 +140,14 @@ class Ensemble(GivenAxis):
         """
         return Node(self, [d.tree() for d in self.datasets])
 
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Get the metadata specific to the forwards subclass.
+
+        Returns:
+        Dict[str, Any]: The metadata specific to the forwards subclass.
+        """
+        return {}
+
 
 def ensemble_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Ensemble:
     """Factory function to create an Ensemble object.

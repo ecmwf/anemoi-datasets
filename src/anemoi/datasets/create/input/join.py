@@ -78,7 +78,7 @@ class JoinResult(Result):
     def __repr__(self) -> str:
         """Returns a string representation of the JoinResult instance."""
         content: str = "\n".join([str(i) for i in self.results])
-        return super().__repr__(content)
+        return self._repr(content)
 
 
 class JoinAction(Action):
@@ -114,7 +114,7 @@ class JoinAction(Action):
     def __repr__(self) -> str:
         """Returns a string representation of the JoinAction instance."""
         content: str = "\n".join([str(i) for i in self.actions])
-        return super().__repr__(content)
+        return self._repr(content)
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> JoinResult:

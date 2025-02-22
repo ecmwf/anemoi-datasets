@@ -315,7 +315,7 @@ class Dataset(ABC, Sized):
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
         step = requested_frequency // dataset_frequency
 
-        return list(range(0, len(self), step))
+        return range(0, len(self), step)
 
     def _shuffle_indices(self) -> NDArray[Any]:
         """
@@ -550,7 +550,7 @@ class Dataset(ABC, Sized):
         )
 
         try:
-            return dict(json.loads(json.dumps(_tidy(md))))
+            return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
             pprint.pprint(md)

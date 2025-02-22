@@ -1007,7 +1007,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
             The level type.
         """
         if "levtype" in self.flavour:
-            return str(self.flavour["levtype"])
+            return self.flavour["levtype"]
 
         raise NotImplementedError(f"levtype for {c=}")
 

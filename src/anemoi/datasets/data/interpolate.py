@@ -206,7 +206,8 @@ class InterpolateFrequency(Forwards):
                     result.append(j)
                 j += 1
 
-        return set(x for x in result if x < self._len)
+        result = set(x for x in result if x < self._len)
+        return result
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """

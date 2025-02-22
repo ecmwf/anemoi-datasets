@@ -50,8 +50,8 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
             return name, None
 
         assert delta[-1] == "h", (name, delta)
-
-        return name, sign * int(delta[:-1])
+        delta = sign * int(delta[:-1])
+        return name, delta
 
     return name, None
 

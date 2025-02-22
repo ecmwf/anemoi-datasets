@@ -202,6 +202,18 @@ class XarrayFieldList(FieldList):
         FieldList
             The new FieldList with selected fields.
         """
+
+        """
+        The algorithm is as follows:
+        1 - Use the kwargs to select the variables that match the selection (`param` or `variable`)
+        2 - For each variable, use the remaining kwargs to select the coordinates (`level`, `number`, ...)
+        3 - Some mars like keys, like `date`, `time`, `step` are not found in the coordinates,
+            but added to the metadata of the selected fields. A example is `step` that is added to the
+            metadata of the field. Step 2 may return a variable that contain all the fields that
+            verify at the same `valid_datetime`, with different base `date` and `time` and a different `step`.
+            So we get an extra chance to filter the fields by the metadata.
+        """
+
         variables: List[Variable] = []
         count: int = 0
 

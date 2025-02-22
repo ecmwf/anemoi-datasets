@@ -89,6 +89,16 @@ def load_one(
     MultiFieldList
         The loaded dataset.
     """
+
+    """
+    We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
+    zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
+    connection error). In that case,  Zarr will silently fill the chunks that could not be downloaded with NaNs.
+    See https://github.com/pydata/xarray/issues/8842
+
+    We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
+    """
+
     context.trace(emoji, dataset, options, kwargs)
 
     if isinstance(dataset, str) and ".zarr" in dataset:

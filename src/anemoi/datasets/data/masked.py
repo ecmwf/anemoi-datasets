@@ -166,7 +166,6 @@ class Thinning(Masked):
 
             latitudes = forward_latitudes.reshape(shape)
             longitudes = forward_longitudes.reshape(shape)
-
             latitudes = latitudes[::thinning, ::thinning].flatten()
             longitudes = longitudes[::thinning, ::thinning].flatten()
 

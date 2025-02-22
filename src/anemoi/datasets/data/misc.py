@@ -135,7 +135,8 @@ def _as_date(
     # so we need to check for datetime.datetime first
 
     if isinstance(d, (np.datetime64, datetime.datetime)):
-        return round_datetime(np.datetime64(d), dates, up=not last)
+        d = round_datetime(d, dates, up=not last)
+        return np.datetime64(d)
 
     if isinstance(d, datetime.date):
         d = d.year * 10_000 + d.month * 100 + d.day

@@ -10,6 +10,7 @@
 import logging
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Set
 
 # from .dataset import FullIndex
 # from .dataset import Shape
@@ -28,9 +29,6 @@ __all__ = [
     "MissingDateError",
     "add_dataset_path",
     "add_named_dataset",
-    # "FullIndex",
-    # "TupleIndex",
-    # "Shape",
 ]
 
 
@@ -90,7 +88,6 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     ds = _open_dataset(*args, **kwargs)
     ds = ds.mutate()
     ds.arguments = {"args": args, "kwargs": kwargs}
-
     ds._check()
     return ds
 
@@ -111,6 +108,6 @@ def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
         The list of dataset names.
     """
     ds = _open_dataset(*args, **kwargs)
-    names: set[str] = set()
+    names: Set[str] = set()
     ds.get_dataset_names(names)
     return sorted(names)

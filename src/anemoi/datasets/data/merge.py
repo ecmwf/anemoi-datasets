@@ -296,13 +296,13 @@ def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
     assert isinstance(datasets, (list, tuple))
     assert len(args) == 0
 
-    open_datasets = [_open(e) for e in datasets]
+    datasets = [_open(e) for e in datasets]
 
-    if len(open_datasets) == 1:
-        return open_datasets[0]._subset(**kwargs)
+    if len(datasets) == 1:
+        return datasets[0]._subset(**kwargs)
 
-    datasets, kwargs = _auto_adjust(open_datasets, kwargs)
+    datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     allow_gaps_in_dates = kwargs.pop("allow_gaps_in_dates", False)
 
-    return Merge(open_datasets, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)
+    return Merge(datasets, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)

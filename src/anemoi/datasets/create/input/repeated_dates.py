@@ -108,30 +108,31 @@ class DateMapperClosest(DateMapper):
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 
-        asked_dates: list = list(group_of_dates)
+        asked_dates = list(group_of_dates)
         if not asked_dates:
-            return
+            return []
 
-        to_try: Set[Any] = set()
+        to_try = set()
         for date in asked_dates:
-            start: Any = date
+            start = date
             while start >= date - self.maximum:
                 to_try.add(start)
                 start -= self.frequency
 
-            end: Any = date
+            end = date
             while end <= date + self.maximum:
                 to_try.add(end)
                 end += self.frequency
 
         to_try = sorted(to_try - self.tried)
-        info: Dict[Any, str] = {k: "no-data" for k in to_try}
+        info = {k: "no-data" for k in to_try}
 
         if not to_try:
             LOG.warning(f"No new dates to try for {group_of_dates} in {self.source}")
+            # return []
 
         if to_try:
-            result: Any = self.source.select(
+            result = self.source.select(
                 GroupOfDates(
                     sorted(to_try),
                     group_of_dates.provider,
@@ -139,10 +140,11 @@ class DateMapperClosest(DateMapper):
                 )
             )
 
-            cnt: int = 0
+            cnt = 0
             for f in result.datasource:
                 cnt += 1
-                date: Any = as_datetime(f.metadata("valid_datetime"))
+                # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
+                date = as_datetime(f.metadata("valid_datetime"))
 
                 if self.skip_all_nans:
                     if np.isnan(f.to_numpy()).all():
@@ -164,12 +166,14 @@ class DateMapperClosest(DateMapper):
 
             raise ValueError(f"No matching data found for {asked_dates} in {self.source}")
 
-        new_dates: defaultdict = defaultdict(list)
+        new_dates = defaultdict(list)
 
         for date in asked_dates:
-            best: Any = None
+            best = None
             for found_date in sorted(self.found):
-                delta: Any = abs(date - found_date)
+                delta = abs(date - found_date)
+                # With < we prefer the first date
+                # With <= we prefer the last date
                 if best is None or delta <= best[0]:
                     best = delta, found_date
             new_dates[best[1]].append(date)
@@ -219,13 +223,13 @@ class DateMapperClimatology(DateMapper):
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 
-        dates: list = list(group_of_dates)
+        dates = list(group_of_dates)
         if not dates:
-            return
+            return []
 
-        new_dates: defaultdict = defaultdict(list)
+        new_dates = defaultdict(list)
         for date in dates:
-            new_date: Any = date.replace(year=self.year, day=self.day)
+            new_date = date.replace(year=self.year, day=self.day)
             if self.hour is not None:
                 new_date = new_date.replace(hour=self.hour, minute=0, second=0)
             new_dates[new_date].append(date)
@@ -254,7 +258,7 @@ class DateMapperConstant(DateMapper):
         self.source: Any = source
         self.date: Optional[Any] = date
 
-    def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
+    def transform(self, group_of_dates: Any) -> Tuple[Any, Any]:
         """
         Transform the group of dates to a constant date.
 
@@ -265,22 +269,25 @@ class DateMapperConstant(DateMapper):
 
         Returns
         -------
-        Generator[Tuple[Any, Any], None, None]
+        Tuple[Any, Any]
             Transformed dates.
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 
         if self.date is None:
-            yield (
-                GroupOfDates([], group_of_dates.provider),
+            return [
+                (
+                    GroupOfDates([], group_of_dates.provider),
+                    group_of_dates,
+                )
+            ]
+
+        return [
+            (
+                GroupOfDates([self.date], group_of_dates.provider),
                 group_of_dates,
             )
-            return
-
-        yield (
-            GroupOfDates([self.date], group_of_dates.provider),
-            group_of_dates,
-        )
+        ]
 
 
 class DateMapperResult(Result):

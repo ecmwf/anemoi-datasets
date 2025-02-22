@@ -710,7 +710,9 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata = {}
         metadata["uuid"] = str(uuid.uuid4())
 
-        metadata.update(self.main_config.get_serialisable_dict())
+        metadata.update(self.main_config.get("add_metadata", {}))
+
+        metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
 
         recipe = sanitise(self.main_config.get_serialisable_dict())
 
@@ -875,7 +877,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(group)
+            result = self.input.select(group_of_dates=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -1057,6 +1059,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
         super().__init__(path)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
+        self.additinon_temp_dir = statistics_temp_dir
         self.actors = [
             _InitAdditions(path, delta=d, use_threads=use_threads, statistics_temp_dir=statistics_temp_dir)
             for d in delta
@@ -1242,7 +1245,6 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         """
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
-
         self.use_threads = use_threads
         self.progress = progress
         self.parts = parts

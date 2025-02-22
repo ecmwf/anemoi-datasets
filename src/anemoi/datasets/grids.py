@@ -634,7 +634,7 @@ def nearest_grid_points(
     target_points = np.array(target_xyz).transpose()
 
     _, indices = cKDTree(source_points).query(target_points, k=1)
-    return indices  # type: ignore
+    return indices
 
 
 if __name__ == "__main__":

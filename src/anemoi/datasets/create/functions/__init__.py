@@ -98,6 +98,7 @@ def import_function(name: str, kind: str) -> Callable:
                 """
                 filter = filter_registry.create(name, *args, **kwargs)
                 filter.context = context
+                # filter = filter_registry.create(context, name, *args, **kwargs)
                 return filter.forward(data)
 
             return proc
@@ -125,6 +126,7 @@ def import_function(name: str, kind: str) -> Callable:
                     The processed data.
                 """
                 source = source_registry.create(name, *args, **kwargs)
+                # source = source_registry.create(context, name, *args, **kwargs)
                 return source.forward(data)
 
             return proc

@@ -113,7 +113,7 @@ class StepAction(Action):
         unknown
             String representation of the instance.
         """
-        return super().__repr__(self.previous_step, _inline_=str(self.kwargs))
+        return self._repr(self.previous_step, _inline_=str(self.kwargs))
 
 
 def step_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str], previous_step: Any) -> Any:

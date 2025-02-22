@@ -322,18 +322,17 @@ def join_factory(args: tuple, kwargs: dict) -> Dataset:
     Dataset
         The joined dataset.
     """
-    xdatasets = kwargs.pop("join")
-
-    assert isinstance(xdatasets, (list, tuple))
+    datasets = kwargs.pop("join")
+    assert isinstance(datasets, (list, tuple))
     assert len(args) == 0
 
-    assert isinstance(xdatasets, (list, tuple))
+    assert isinstance(datasets, (list, tuple))
 
-    open_datasets: List[Dataset] = [_open(e) for e in xdatasets]
+    datasets = [_open(e) for e in datasets]
 
-    if len(open_datasets) == 1:
-        return open_datasets[0]._subset(**kwargs)
+    if len(datasets) == 1:
+        return datasets[0]._subset(**kwargs)
 
-    open_datasets, kwargs = _auto_adjust(open_datasets, kwargs)
+    datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Join(open_datasets)._overlay()._subset(**kwargs)
+    return Join(datasets)._overlay()._subset(**kwargs)

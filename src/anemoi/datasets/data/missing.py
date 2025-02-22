@@ -35,6 +35,8 @@ from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
+# TODO: Use that class instead of ZarrMissing
+
 
 class MissingDates(Forwards):
     """Handles missing dates in a dataset.

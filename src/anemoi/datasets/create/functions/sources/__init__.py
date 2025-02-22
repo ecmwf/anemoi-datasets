@@ -77,11 +77,11 @@ def iterate_patterns(
     """
     given_paths = path if isinstance(path, list) else [path]
 
-    iso_dates = [d.isoformat() for d in dates]
-    if len(iso_dates) > 0:
-        kwargs["date"] = iso_dates
+    dates = [d.isoformat() for d in dates]
+    if len(dates) > 0:
+        kwargs["date"] = dates
 
     for path in given_paths:
         paths = Pattern(path, ignore_missing_keys=True).substitute(**kwargs)
         for path in _expand(paths):
-            yield path, iso_dates
+            yield path, dates

@@ -306,6 +306,14 @@ class Grids(GridsBase):
         """
         return Node(self, [d.tree() for d in self.datasets], mode="concat")
 
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Get the metadata specific to the forwards subclass.
+
+        Returns:
+        Dict[str, Any]: The metadata specific to the forwards subclass.
+        """
+        return {}
+
 
 class Cutout(GridsBase):
     """A class to handle hierarchical management of Limited Area Models (LAMs) and a global dataset."""

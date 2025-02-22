@@ -12,7 +12,6 @@ from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
-from typing import Type
 
 from earthkit.data.core.order import build_remapping
 
@@ -90,6 +89,34 @@ class Action:
             return x
         return x[:1000] + "..."
 
+    def _repr(self, *args: Any, _indent_: str = "\n", _inline_: str = "", **kwargs: Any) -> str:
+        """Generate a string representation of the Action instance.
+
+        Parameters
+        ----------
+        args : Any
+            Additional positional arguments.
+        _indent_ : str, optional
+            The indentation string, by default "\n".
+        _inline_ : str, optional
+            The inline string, by default "".
+        kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        str
+            The string representation.
+        """
+        more = ",".join([str(a)[:5000] for a in args])
+        more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
+
+        more = more[:5000]
+        txt = f"{self.__class__.__name__}: {_inline_}{_indent_}{more}"
+        if _indent_:
+            txt = txt.replace("\n", "\n  ")
+        return txt
+
     def __repr__(self) -> str:
         """Return the string representation of the Action instance.
 
@@ -98,7 +125,7 @@ class Action:
         str
             The string representation.
         """
-        return f"{self.__class__.__name__}()"
+        return self._repr()
 
     def select(self, dates: object, **kwargs: Any) -> None:
         """Select dates for the action.
@@ -225,6 +252,4 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
         cls = FunctionAction
         args = [key] + args
 
-    klass: Type[Action] = cls
-
-    return klass(context, action_path + [key], *args, **kwargs)
+    return cls(context, action_path + [key], *args, **kwargs)
