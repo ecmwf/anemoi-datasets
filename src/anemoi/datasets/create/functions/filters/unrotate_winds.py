@@ -21,50 +21,73 @@ class NewDataField:
     """A class to represent a new data field with unrotated wind components."""
 
     def __init__(self, field: Any, data: Any) -> None:
-        """Initialize a NewDataField instance.
+        """
+        Initialize a NewDataField instance.
 
-        Args:
-            field (Any): The original field.
-            data (Any): The unrotated wind component data.
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The unrotated wind component data.
         """
         self.field = field
         self.data = data
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
+        """
+        Convert the data to a numpy array.
 
-        Args:
-            *args (Any): Additional arguments.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
 
-        Returns:
-            Any: The data as a numpy array.
+        Returns
+        -------
+        Any
+            The data as a numpy array.
         """
         return self.data
 
     def __getattr__(self, name: str) -> Any:
-        """Get an attribute from the original field.
+        """
+        Get an attribute from the original field.
 
-        Args:
-            name (str): The name of the attribute.
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
 
-        Returns:
-            Any: The attribute value.
+        Returns
+        -------
+        Any
+            The attribute value.
         """
         return getattr(self.field, name)
 
 
 def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> FieldArray:
-    """Unrotate the wind components of a GRIB file.
+    """
+    Unrotate the wind components of a GRIB file.
 
-    Args:
-        context (Any): The execution context.
-        input (List[Any]): The list of input fields.
-        u (str): The parameter name for the u-component of the wind.
-        v (str): The parameter name for the v-component of the wind.
+    Parameters
+    ----------
+    context : Any
+        The execution context.
+    input : List[Any]
+        The list of input fields.
+    u : str
+        The parameter name for the u-component of the wind.
+    v : str
+        The parameter name for the v-component of the wind.
 
-    Returns:
-        FieldArray: The resulting field array with unrotated wind components.
+    Returns
+    -------
+    FieldArray
+        The resulting field array with unrotated wind components.
     """
     result = FieldArray()
 
