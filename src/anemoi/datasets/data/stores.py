@@ -145,6 +145,10 @@ class PlanetaryComputerStore(ReadOnlyStore):
 
         self.store = store
 
+    def __getitem__(self, key: str) -> bytes:
+        """Retrieve an item from the store."""
+        raise NotImplementedError()
+
 
 class DebugStore(ReadOnlyStore):
     """A store to debug the zarr loading."""
@@ -239,11 +243,12 @@ class Zarr(Dataset):
 
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
+        self._missing = set()
 
     @property
     def missing(self) -> Set[int]:
         """Return the missing dates of the dataset."""
-        return set()
+        return self._missing
 
     @classmethod
     def from_name(cls, name: str) -> "Zarr":
@@ -466,7 +471,12 @@ class ZarrWithMissingDates(Zarr):
         missing_dates = self.z.attrs.get("missing_dates", [])
         missing_dates = set([np.datetime64(x, "s") for x in missing_dates])
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
-        self.missing = set(self.missing_to_dates)
+        self._missing = set(self.missing_to_dates)
+
+    @property
+    def missing(self) -> Set[int]:
+        """Return the missing dates of the dataset."""
+        return self._missing
 
     def mutate(self) -> Dataset:
         """Mutate the dataset."""
