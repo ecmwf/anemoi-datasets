@@ -22,45 +22,66 @@ from earthkit.data.indexing.fieldlist import FieldArray
 class NewDataField:
     """Represents a new data field with modified data and metadata.
 
-    Attributes:
-        field (Any): The original field.
-        data (Any): The data for the new field.
-        new_name (str): The new name for the field.
+    Attributes
+    ----------
+    field : Any
+        The original field.
+    data : Any
+        The data for the new field.
+    new_name : str
+        The new name for the field.
     """
 
     def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """Initialize a NewDataField instance.
+        """
+        Initialize a NewDataField instance.
 
-        Args:
-            field (Any): The original field.
-            data (Any): The data for the new field.
-            new_name (str): The new name for the field.
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The data for the new field.
+        new_name : str
+            The new name for the field.
         """
         self.field = field
         self.data = data
         self.new_name = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
+        """
+        Convert the data to a numpy array.
 
-        Args:
-            *args (Any): Additional positional arguments.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        *args : Any
+            Additional positional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
 
-        Returns:
-            Any: The data as a numpy array.
+        Returns
+        -------
+        Any
+            The data as a numpy array.
         """
         return self.data
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """Retrieve metadata for the field.
+        """
+        Retrieve metadata for the field.
 
-        Args:
-            key (Optional[str]): The metadata key to retrieve. If None, all metadata is returned.
-            **kwargs (Any): Additional arguments for metadata retrieval.
+        Parameters
+        ----------
+        key : Optional[str], optional
+            The metadata key to retrieve. If None, all metadata is returned.
+        **kwargs : Any
+            Additional arguments for metadata retrieval.
 
-        Returns:
-            Any: The metadata value.
+        Returns
+        -------
+        Any
+            The metadata value.
         """
         if key is None:
             return self.field.metadata(**kwargs)
@@ -71,13 +92,18 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """Delegate attribute access to the original field.
+        """
+        Delegate attribute access to the original field.
 
-        Args:
-            name (str): The attribute name.
+        Parameters
+        ----------
+        name : str
+            The attribute name.
 
-        Returns:
-            Any: The attribute value.
+        Returns
+        -------
+        Any
+            The attribute value.
         """
         return getattr(self.field, name)
 
