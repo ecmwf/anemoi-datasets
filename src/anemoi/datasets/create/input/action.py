@@ -15,7 +15,7 @@ from typing import List
 
 from earthkit.data.core.order import build_remapping
 
-from ..dates import GroupOfDates
+from ...dates.groups import GroupOfDates
 from .context import Context
 from .misc import is_function
 

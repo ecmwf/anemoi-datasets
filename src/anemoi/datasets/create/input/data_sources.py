@@ -16,7 +16,7 @@ from typing import Union
 
 from earthkit.data import FieldList
 
-from ..dates import GroupOfDates
+from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .misc import _tidy

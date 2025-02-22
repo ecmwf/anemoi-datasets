@@ -14,7 +14,7 @@ from typing import List
 
 from earthkit.data import FieldList
 
-from ..dates import GroupOfDates
+from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .empty import EmptyResult

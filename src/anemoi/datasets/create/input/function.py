@@ -15,7 +15,7 @@ from typing import Dict
 
 from earthkit.data import FieldList
 
-from ..dates import GroupOfDates
+from ...dates.groups import GroupOfDates
 from ..functions import import_function
 from .action import Action
 from .misc import _tidy

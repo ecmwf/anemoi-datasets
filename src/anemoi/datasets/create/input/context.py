@@ -22,17 +22,11 @@ from .trace import trace
 LOG = logging.getLogger(__name__)
 
 
-class ContextBase:
-    """Base class for context in the dataset creation process."""
-
-    pass
-
-
-class BuildContext(ContextBase):
+class Context:
     """Class to handle the build context in the dataset creation process."""
 
     def __init__(self) -> None:
-        """Initializes a BuildContext instance."""
+        """Initializes a Context instance."""
         # used_references is a set of reference paths that will be needed
         self.used_references = set()
         # results is a dictionary of reference path -> obj

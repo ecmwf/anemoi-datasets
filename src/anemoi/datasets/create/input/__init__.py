@@ -19,7 +19,7 @@ from .trace import trace_select
 LOG = logging.getLogger(__name__)
 
 
-class BuildContext:
+class Context:
     """Context for building input data."""
 
     pass

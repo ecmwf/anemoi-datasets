@@ -524,7 +524,7 @@ class Result:
         print()
         exit(1)
 
-    def __repr__(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
+    def _repr(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
         """
         Return the string representation of the Result instance.
 
@@ -559,6 +559,10 @@ class Result:
         if _indent_:
             txt = txt.replace("\n", "\n  ")
         return txt
+
+    def __repr__(self) -> str:
+        """Return the string representation of the Result instance."""
+        return self._repr()
 
     def _raise_not_implemented(self) -> None:
         """Raise a NotImplementedError indicating the method is not implemented."""

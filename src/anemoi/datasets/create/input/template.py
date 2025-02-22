@@ -17,7 +17,7 @@ from typing import Any
 from typing import Callable
 from typing import List
 
-from .context import BuildContext
+from .context import Context
 
 LOG = logging.getLogger(__name__)
 
@@ -50,13 +50,13 @@ class Substitution(ABC):
     """Abstract base class for substitutions in templates."""
 
     @abstractmethod
-    def resolve(self, context: BuildContext) -> Any:
+    def resolve(self, context: Context) -> Any:
         """
         Resolve the substitution using the given context.
 
         Parameters
         ----------
-        context : BuildContext
+        context : Context
             The context to use for resolution.
 
         Returns
@@ -84,13 +84,13 @@ class Reference(Substitution):
         self.context: Any = context
         self.action_path: List[str] = action_path
 
-    def resolve(self, context: BuildContext) -> Any:
+    def resolve(self, context: Context) -> Any:
         """
         Resolve the reference using the given context.
 
         Parameters
         ----------
-        context : BuildContext
+        context : Context
             The context to use for resolution.
 
         Returns
@@ -101,13 +101,13 @@ class Reference(Substitution):
         return context.get_result(self.action_path)
 
 
-def resolve(context: BuildContext, x: Any) -> Any:
+def resolve(context: Context, x: Any) -> Any:
     """
     Recursively resolve substitutions in the given structure using the context.
 
     Parameters
     ----------
-    context : BuildContext
+    context : Context
         The context to use for resolution.
     x : Union[tuple, list, dict, Substitution, Any]
         The structure to resolve.
@@ -132,13 +132,13 @@ def resolve(context: BuildContext, x: Any) -> Any:
     return x
 
 
-def substitute(context: BuildContext, x: Any) -> Any:
+def substitute(context: Context, x: Any) -> Any:
     """
     Recursively substitute references in the given structure using the context.
 
     Parameters
     ----------
-    context : BuildContext
+    context : Context
         The context to use for substitution.
     x : Union[tuple, list, dict, str, Any]
         The structure to substitute.
