@@ -105,7 +105,7 @@ class Complement(Combined):
         return (shape[0], len(self._variables)) + shape[2:]
 
     @property
-    def variables_metadata(self) -> dict:
+    def variables_metadata(self) -> Dict[str, Any]:
         """Returns the metadata of the variables to be added to the target dataset."""
         return {k: v for k, v in self._source.variables_metadata.items() if k in self._variables}
 

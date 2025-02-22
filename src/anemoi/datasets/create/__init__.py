@@ -420,7 +420,19 @@ class Actor:  # TODO: rename to Creator
 
         self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
 
-        def check_missing_dates(expected):
+        def check_missing_dates(expected: list[np.datetime64]) -> None:
+            """Check if the missing dates in the dataset match the expected dates.
+
+            Parameters
+            ----------
+            expected : list of np.datetime64
+                The expected missing dates.
+
+            Raises
+            ------
+            ValueError
+                If the missing dates in the dataset do not match the expected dates.
+            """
             import zarr
 
             z = zarr.open(path, "r")
@@ -977,7 +989,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         total = cube.count(reading_chunks)
         LOG.debug(f"Loading datacube: {cube}")
 
-        def position(x):
+        def position(x: Any) -> Optional[int]:
             if isinstance(x, str) and "/" in x:
                 x = x.split("/")
                 return int(x[0])

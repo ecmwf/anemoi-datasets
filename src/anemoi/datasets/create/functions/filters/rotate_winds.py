@@ -11,7 +11,6 @@
 from collections import defaultdict
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Optional
 
 import earthkit.data as ekd
@@ -82,7 +81,7 @@ class NewDataField:
 
 def execute(
     context: Any,
-    input: List[Any],
+    input: ekd.FieldList,
     x_wind: str,
     y_wind: str,
     source_projection: Optional[str] = None,
@@ -94,7 +93,7 @@ def execute(
     ----------
     context : Any
         The context in which the function is executed.
-    input : List[Any]
+    input : ekd.FieldList
         List of input fields.
     x_wind : str
         X wind component parameter.

@@ -15,7 +15,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -56,13 +55,13 @@ class Concat(Combined):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> NDArray[Any]:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """
         Retrieves a tuple of data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
-        index : Union[int, slice, Tuple[Union[int, slice], ...]]
+        index : TupleIndex
             Index specifying the data to retrieve.
 
         Returns
@@ -472,13 +471,13 @@ class Cutout(GridsBase):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
-    def _get_tuple(self, index: Tuple[Union[int, slice], ...]) -> NDArray[Any]:
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """
         Helper method that applies masks and retrieves data from each dataset according to the specified index.
 
         Parameters
         ----------
-        index : tuple
+        index : TupleIndex
             Index specifying slices to retrieve data.
 
         Returns

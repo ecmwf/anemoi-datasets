@@ -64,7 +64,7 @@ class Select(Forwards):
 
         super().__init__(dataset)
 
-    def clone(self, dataset: Dataset) -> "Select":
+    def clone(self, dataset: Dataset) -> Dataset:
         """
         Clone the Select object with a new dataset.
 

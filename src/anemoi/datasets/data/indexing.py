@@ -199,16 +199,16 @@ def _as_tuples(index: Tuple) -> Tuple:
     return tuple(_(i) for i in index)
 
 
-def expand_list_indexing(method: Callable[[Any, FullIndex], NDArray[Any]]) -> Callable[[Any, FullIndex], NDArray[Any]]:
+def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArray[Any]]:
     """Allows to use slices, lists, and tuples to select data from the dataset.
     Zarr does not support indexing with lists/arrays directly,
     so we need to implement it ourselves.
 
     Parameters:
-    method (Callable[[Any, FullIndex], NDArray[Any]]): The method to wrap.
+    method (Callable[..., NDArray[Any]]): The method to wrap.
 
     Returns:
-    Callable[[Any, FullIndex], NDArray[Any]]: The wrapped method.
+    Callable[..., NDArray[Any]]: The wrapped method.
     """
 
     @wraps(method)
