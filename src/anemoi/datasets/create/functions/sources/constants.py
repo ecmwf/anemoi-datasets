@@ -15,16 +15,24 @@ from earthkit.data import from_source
 
 
 def constants(context: Any, dates: List[str], template: Dict[str, Any], param: str) -> Any:
-    """Deprecated function to retrieve constants data.
+    """
+    Deprecated function to retrieve constants data.
 
-    Args:
-        context (Any): The context object for tracing.
-        dates (List[str]): List of dates for which data is required.
-        template (Dict[str, Any]): Template dictionary for the data source.
-        param (str): Parameter to retrieve.
+    Parameters
+    ----------
+    context : Any
+        The context object for tracing.
+    dates : list of str
+        List of dates for which data is required.
+    template : dict of str to Any
+        Template dictionary for the data source.
+    param : str
+        Parameter to retrieve.
 
-    Returns:
-        Any: Data retrieved from the source.
+    Returns
+    -------
+    Any
+        Data retrieved from the source.
     """
     from warnings import warn
 

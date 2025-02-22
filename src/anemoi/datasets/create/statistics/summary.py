@@ -30,10 +30,13 @@ class Summary(dict):
     ]  # order matter for __str__.
 
     def __init__(self, **kwargs: Any) -> None:
-        """Initialize the Summary object with given keyword arguments.
+        """
+        Initialize the Summary object with given keyword arguments.
 
-        Args:
-            **kwargs: Arbitrary keyword arguments representing summary statistics.
+        Parameters
+        ----------
+        **kwargs : Any
+            Arbitrary keyword arguments representing summary statistics.
         """
         super().__init__(**kwargs)
         self.check()
@@ -44,11 +47,15 @@ class Summary(dict):
         return len(self["variables_names"])
 
     def check(self) -> None:
-        """Perform checks on the summary statistics to ensure they are valid.
+        """
+        Perform checks on the summary statistics to ensure they are valid.
 
-        Raises:
-            AssertionError: If any of the checks fail.
-            StatisticsValueError: If any of the statistical checks fail.
+        Raises
+        ------
+        AssertionError
+            If any of the checks fail.
+        StatisticsValueError
+            If any of the statistical checks fail.
         """
         for k, v in self.items():
             if k == "variables_names":
@@ -77,10 +84,13 @@ class Summary(dict):
                 raise
 
     def __str__(self) -> str:
-        """Return a string representation of the summary statistics.
+        """
+        Return a string representation of the summary statistics.
 
-        Returns:
-            str: A formatted string of the summary statistics.
+        Returns
+        -------
+        str
+            A formatted string of the summary statistics.
         """
         header = ["Variables"] + self.STATS_NAMES
         out = [" ".join(header)]
@@ -92,11 +102,15 @@ class Summary(dict):
         return "\n".join(out)
 
     def save(self, filename: str, **metadata: Any) -> None:
-        """Save the summary statistics to a JSON file.
+        """
+        Save the summary statistics to a JSON file.
 
-        Args:
-            filename (str): The name of the file to save the summary statistics.
-            **metadata: Additional metadata to include in the JSON file.
+        Parameters
+        ----------
+        filename : str
+            The name of the file to save the summary statistics.
+        **metadata : Any
+            Additional metadata to include in the JSON file.
         """
         assert filename.endswith(".json"), filename
         dic = {}
@@ -114,13 +128,18 @@ class Summary(dict):
             json.dump(out, f, indent=2)
 
     def load(self, filename: str) -> "Summary":
-        """Load the summary statistics from a JSON file.
+        """
+        Load the summary statistics from a JSON file.
 
-        Args:
-            filename (str): The name of the file to load the summary statistics from.
+        Parameters
+        ----------
+        filename : str
+            The name of the file to load the summary statistics from.
 
-        Returns:
-            Summary: The loaded Summary object.
+        Returns
+        -------
+        Summary
+            The loaded Summary object.
         """
         assert filename.endswith(".json"), filename
         with open(filename) as f:

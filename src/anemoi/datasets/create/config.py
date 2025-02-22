@@ -397,14 +397,20 @@ def set_to_test_mode(cfg: dict) -> None:
 
 
 def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
-    """Loads and validates the configuration for dataset loaders.
+    """
+    Loads and validates the configuration for dataset loaders.
 
-    Args:
-        config (dict): The configuration dictionary.
-        is_test (bool, optional): Whether to run in test mode. Defaults to False.
+    Parameters
+    ----------
+    config : dict
+        The configuration dictionary.
+    is_test : bool, optional
+        Whether to run in test mode. Defaults to False.
 
-    Returns:
-        LoadersConfig: The validated configuration object.
+    Returns
+    -------
+    LoadersConfig
+        The validated configuration object.
     """
     config = Config(config)
     if is_test:
@@ -428,13 +434,19 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
 
 
 def build_output(*args, **kwargs) -> OutputSpecs:
-    """Builds the output specifications.
+    """
+    Builds the output specifications.
 
-    Args:
-        *args: Additional positional arguments.
-        **kwargs: Additional keyword arguments.
+    Parameters
+    ----------
+    *args
+        Additional positional arguments.
+    **kwargs
+        Additional keyword arguments.
 
-    Returns:
-        OutputSpecs: The output specifications object.
+    Returns
+    -------
+    OutputSpecs
+        The output specifications object.
     """
     return OutputSpecs(*args, **kwargs)
