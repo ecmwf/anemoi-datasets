@@ -42,43 +42,59 @@ class Join(Combined):
     """Join the datasets along the variables axis."""
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """Check the compatibility of two datasets.
+        """
+        Check the compatibility of two datasets.
 
-        Args:
-            d1 (Dataset): The first dataset.
-            d2 (Dataset): The second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            The first dataset.
+        d2 : Dataset
+            The second dataset.
         """
         super().check_compatibility(d1, d2)
         self.check_same_sub_shapes(d1, d2, drop_axis=1)
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if the datasets have the same variables.
+        """
+        Check if the datasets have the same variables.
 
-        Args:
-            d1 (Dataset): The first dataset.
-            d2 (Dataset): The second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            The first dataset.
+        d2 : Dataset
+            The second dataset.
         """
         # Turned off because we are joining along the variables axis
         pass
 
     def __len__(self) -> int:
-        """Get the length of the joined dataset.
+        """
+        Get the length of the joined dataset.
 
-        Returns:
-            int: The length of the joined dataset.
+        Returns
+        -------
+        int
+            The length of the joined dataset.
         """
         return len(self.datasets[0])
 
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """Get the data for a tuple index.
+        """
+        Get the data for a tuple index.
 
-        Args:
-            index (TupleIndex): The tuple index to retrieve data from.
+        Parameters
+        ----------
+        index : TupleIndex
+            The tuple index to retrieve data from.
 
-        Returns:
-            NDArray[Any]: The data for the tuple index.
+        Returns
+        -------
+        NDArray[Any]
+            The data for the tuple index.
         """
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
@@ -91,25 +107,35 @@ class Join(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """Get the data for a slice.
+        """
+        Get the data for a slice.
 
-        Args:
-            s (slice): The slice to retrieve data from.
+        Parameters
+        ----------
+        s : slice
+            The slice to retrieve data from.
 
-        Returns:
-            NDArray[Any]: The data for the slice.
+        Returns
+        -------
+        NDArray[Any]
+            The data for the slice.
         """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """Get the data at the specified index.
+        """
+        Get the data at the specified index.
 
-        Args:
-            n (FullIndex): The index to retrieve data from.
+        Parameters
+        ----------
+        n : FullIndex
+            The index to retrieve data from.
 
-        Returns:
-            NDArray[Any]: The data at the specified index.
+        Returns
+        -------
+        NDArray[Any]
+            The data at the specified index.
         """
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -126,10 +152,13 @@ class Join(Combined):
         return (len(self), cols) + self.datasets[0].shape[2:]
 
     def _overlay(self) -> Dataset:
-        """Overlay the datasets.
+        """
+        Overlay the datasets.
 
-        Returns:
-            Dataset: The overlaid dataset.
+        Returns
+        -------
+        Dataset
+            The overlaid dataset.
         """
         indices = {}
         i = 0
@@ -206,13 +235,18 @@ class Join(Combined):
         }
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """Get the statistics tendencies of the joined dataset.
+        """
+        Get the statistics tendencies of the joined dataset.
 
-        Args:
-            delta (Optional[datetime.timedelta]): The time delta for the tendencies.
+        Parameters
+        ----------
+        delta : Optional[datetime.timedelta]
+            The time delta for the tendencies.
 
-        Returns:
-            Dict[str, NDArray[Any]]: The statistics tendencies of the joined dataset.
+        Returns
+        -------
+        Dict[str, NDArray[Any]]
+            The statistics tendencies of the joined dataset.
         """
         if delta is None:
             delta = self.frequency
@@ -222,13 +256,18 @@ class Join(Combined):
         }
 
     def source(self, index: int) -> Source:
-        """Get the source of the data at the specified index.
+        """
+        Get the source of the data at the specified index.
 
-        Args:
-            index (int): The index to retrieve the source from.
+        Parameters
+        ----------
+        index : int
+            The index to retrieve the source from.
 
-        Returns:
-            Source: The source of the data at the specified index.
+        Returns
+        -------
+        Source
+            The source of the data at the specified index.
         """
         i = index
         for dataset in self.datasets:

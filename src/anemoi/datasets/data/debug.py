@@ -34,13 +34,18 @@ DEPTH = 0
 
 
 def css(name: str) -> str:
-    """Get the CSS content from a file.
+    """
+    Get the CSS content from a file.
 
-    Args:
-        name (str): The name of the CSS file.
+    Parameters
+    ----------
+    name : str
+        The name of the CSS file.
 
-    Returns:
-        str: The CSS content.
+    Returns
+    -------
+    str
+        The CSS content.
     """
     path = os.path.join(os.path.dirname(__file__), f"{name}.css")
     with open(path) as f:
@@ -51,7 +56,8 @@ class Node:
     """A class to represent a node in a dataset tree."""
 
     def __init__(self, dataset: Dataset, kids: List[Any], **kwargs: Any) -> None:
-        """Initializes a Node object.
+        """
+        Initializes a Node object.
 
         Parameters
         ----------
@@ -67,7 +73,8 @@ class Node:
         self.kwargs = kwargs
 
     def _put(self, indent: int, result: List[str]) -> None:
-        """Helper method to add the node representation to the result list.
+        """
+        Helper method to add the node representation to the result list.
 
         Parameters
         ----------
@@ -90,7 +97,8 @@ class Node:
             kid._put(indent + 2, result)
 
     def __repr__(self) -> str:
-        """Returns the string representation of the node.
+        """
+        Returns the string representation of the node.
 
         Returns
         -------
@@ -102,7 +110,8 @@ class Node:
         return "\n".join(result)
 
     def graph(self, digraph: List[str], nodes: dict) -> None:
-        """Generates a graph representation of the node.
+        """
+        Generates a graph representation of the node.
 
         Parameters
         ----------
@@ -145,7 +154,8 @@ class Node:
             kid.graph(digraph, nodes)
 
     def digraph(self) -> str:
-        """Returns the graph representation of the node.
+        """
+        Returns the graph representation of the node.
 
         Returns
         -------
@@ -165,7 +175,8 @@ class Node:
         return "\n".join(digraph)
 
     def _html(self, indent: str, rows: List[List[str]]) -> None:
-        """Helper method to add the node representation to the HTML rows.
+        """
+        Helper method to add the node representation to the HTML rows.
 
         Parameters
         ----------
@@ -202,7 +213,8 @@ class Node:
             kid._html(indent + "&nbsp;&nbsp;&nbsp;", rows)
 
     def html(self) -> str:
-        """Returns the HTML representation of the node.
+        """
+        Returns the HTML representation of the node.
 
         Returns
         -------
@@ -224,7 +236,8 @@ class Node:
         return "\n".join(result)
 
     def _as_tree(self, tree: Any) -> None:
-        """Helper method to add the node representation to the tree.
+        """
+        Helper method to add the node representation to the tree.
 
         Parameters
         ----------
@@ -236,7 +249,8 @@ class Node:
             kid._as_tree(n)
 
     def as_tree(self) -> Tree:
-        """Returns the tree representation of the node.
+        """
+        Returns the tree representation of the node.
 
         Returns
         -------
@@ -254,7 +268,8 @@ class Node:
         return self.dataset.label
 
     def as_dict(self) -> dict:
-        """Returns the dictionary representation of the node.
+        """
+        Returns the dictionary representation of the node.
 
         Returns
         -------
@@ -268,7 +283,8 @@ class Source:
     """A class used to follow the provenance of a data point."""
 
     def __init__(self, dataset: Any, index: int, source: Optional[Any] = None, info: Optional[Any] = None) -> None:
-        """Initializes a Source object.
+        """
+        Initializes a Source object.
 
         Parameters
         ----------
@@ -288,7 +304,8 @@ class Source:
         self.info = info
 
     def __repr__(self) -> str:
-        """Returns the string representation of the source.
+        """
+        Returns the string representation of the source.
 
         Returns
         -------
@@ -303,7 +320,8 @@ class Source:
         return f"{self.dataset}[{self.index}, {self.dataset.variables[self.index]}] ({p})"
 
     def target(self) -> Any:
-        """Returns the target source.
+        """
+        Returns the target source.
 
         Returns
         -------
@@ -317,7 +335,8 @@ class Source:
         return p
 
     def dump(self, depth: int = 0) -> None:
-        """Dumps the source information.
+        """
+        Dumps the source information.
 
         Parameters
         ----------
@@ -330,11 +349,12 @@ class Source:
 
 
 def _debug_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArray[Any]]:
-    """Decorator to debug indexing methods.
+    """
+    Decorator to debug indexing methods.
 
     Parameters
     ----------
-    method : Callable[..., NDArray[Any]]Any
+    method : Callable[..., NDArray[Any]]
         The method to be decorated.
 
     Returns
@@ -359,7 +379,8 @@ def _debug_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArra
 
 
 def _identity(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArray[Any]]:
-    """Identity function.
+    """
+    Identity function.
 
     Parameters
     ----------
@@ -381,7 +402,8 @@ else:
 
 
 def debug_zarr_loading(on_off: int) -> None:
-    """Enables or disables Zarr loading debugging.
+    """
+    Enables or disables Zarr loading debugging.
 
     Parameters
     ----------
