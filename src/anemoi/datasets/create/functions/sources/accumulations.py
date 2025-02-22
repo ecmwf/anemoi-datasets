@@ -35,11 +35,15 @@ LOG = logging.getLogger(__name__)
 def _member(field: Any) -> int:
     """Retrieves the member number from the field metadata.
 
-    Args:
-        field (Any): The field from which to retrieve the member number.
+    Parameters
+    ----------
+    field : Any
+        The field from which to retrieve the member number.
 
-    Returns:
-        int: The member number.
+    Returns
+    -------
+    int
+        The member number.
     """
     # Bug in eccodes has number=0 randomly
     number = field.metadata("number", default=0)
@@ -67,15 +71,24 @@ class Accumulation:
     ) -> None:
         """Initializes an Accumulation instance.
 
-        Args:
-            out (Any): Output object for writing data.
-            param (str): Parameter name.
-            date (int): Date of the accumulation.
-            time (int): Time of the accumulation.
-            number (int): Member number.
-            step (List[int]): List of steps.
-            frequency (int): Frequency of accumulation.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        out : Any
+            Output object for writing data.
+        param : str
+            Parameter name.
+        date : int
+            Date of the accumulation.
+        time : int
+            Time of the accumulation.
+        number : int
+            Member number.
+        step : List[int]
+            List of steps.
+        frequency : int
+            Frequency of accumulation.
+        **kwargs : Any
+            Additional keyword arguments.
         """
         self.out = out
         self.param = param
@@ -99,8 +112,10 @@ class Accumulation:
     def check(self, field: Any) -> None:
         """Checks the field metadata against the accumulation parameters.
 
-        Args:
-            field (Any): The field to check.
+        Parameters
+        ----------
+        field : Any
+            The field to check.
         """
         if self._check is None:
             self._check = field.metadata(namespace="mars")
@@ -134,8 +149,10 @@ class Accumulation:
     def write(self, template: Any) -> None:
         """Writes the accumulated values to the output.
 
-        Args:
-            template (Any): Template for writing the output.
+        Parameters
+        ----------
+        template : Any
+            Template for writing the output.
         """
         assert self.startStep != self.endStep, (self.startStep, self.endStep)
         if np.all(self.values < 0):
@@ -157,9 +174,12 @@ class Accumulation:
     def add(self, field: Any, values: NDArray[Any]) -> None:
         """Adds values to the accumulation.
 
-        Args:
-            field (Any): The field containing the values.
-            values (np.ndarray): The values to add.
+        Parameters
+        ----------
+        field : Any
+            The field containing the values.
+        values : np.ndarray
+            The values to add.
         """
         self.check(field)
 
@@ -200,16 +220,25 @@ class Accumulation:
     ) -> Generator[Tuple[int, int, Tuple[int, ...]], None, None]:
         """Generates MARS date-time steps.
 
-        Args:
-            dates (List[datetime.datetime]): List of dates.
-            step1 (int): First step.
-            step2 (int): Second step.
-            frequency (Optional[int]): Frequency of accumulation.
-            base_times (List[int]): List of base times.
-            adjust_step (bool): Whether to adjust the step.
+        Parameters
+        ----------
+        dates : List[datetime.datetime]
+            List of dates.
+        step1 : int
+            First step.
+        step2 : int
+            Second step.
+        frequency : Optional[int]
+            Frequency of accumulation.
+        base_times : List[int]
+            List of base times.
+        adjust_step : bool
+            Whether to adjust the step.
 
-        Returns:
-            Generator[Tuple[int, int, Tuple[int, ...]], None, None]: A generator of MARS date-time steps.
+        Returns
+        -------
+        Generator[Tuple[int, int, Tuple[int, ...]], None, None]
+            A generator of MARS date-time steps.
         """
         # assert step1 > 0, (step1, step2, frequency)
 
@@ -232,8 +261,10 @@ class Accumulation:
     def __repr__(self) -> str:
         """Returns a string representation of the Accumulation instance.
 
-        Returns:
-            str: String representation of the Accumulation instance.
+        Returns
+        -------
+        str
+            String representation of the Accumulation instance.
         """
         return f"{self.__class__.__name__}({self.key})"
 
@@ -246,10 +277,14 @@ class AccumulationFromStart(Accumulation):
     def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the start.
 
-        Args:
-            values (np.ndarray): The values to accumulate.
-            startStep (int): The start step.
-            endStep (int): The end step.
+        Parameters
+        ----------
+        values : np.ndarray
+            The values to accumulate.
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
         """
         assert startStep == 0, startStep
 
@@ -282,15 +317,23 @@ class AccumulationFromStart(Accumulation):
     ) -> Tuple[int, int, Tuple[int, ...]]:
         """Generates a MARS date-time step.
 
-        Args:
-            base_date (datetime.datetime): The base date.
-            step1 (int): First step.
-            step2 (int): Second step.
-            add_step (int): Additional step.
-            frequency (Optional[int]): Frequency of accumulation.
+        Parameters
+        ----------
+        base_date : datetime.datetime
+            The base date.
+        step1 : int
+            First step.
+        step2 : int
+            Second step.
+        add_step : int
+            Additional step.
+        frequency : Optional[int]
+            Frequency of accumulation.
 
-        Returns:
-            Tuple[int, int, Tuple[int, ...]]: A tuple representing the MARS date-time step.
+        Returns
+        -------
+        Tuple[int, int, Tuple[int, ...]]
+            A tuple representing the MARS date-time step.
         """
         assert not frequency, frequency
 
@@ -313,10 +356,14 @@ class AccumulationFromLastStep(Accumulation):
     def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the last step.
 
-        Args:
-            values (np.ndarray): The values to accumulate.
-            startStep (int): The start step.
-            endStep (int): The end step.
+        Parameters
+        ----------
+        values : np.ndarray
+            The values to accumulate.
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
         """
         assert endStep - startStep == self.frequency, (
             startStep,
@@ -345,15 +392,23 @@ class AccumulationFromLastStep(Accumulation):
     ) -> Tuple[int, int, Tuple[int, ...]]:
         """Generates a MARS date-time step.
 
-        Args:
-            base_date (datetime.datetime): The base date.
-            step1 (int): First step.
-            step2 (int): Second step.
-            add_step (int): Additional step.
-            frequency (int): Frequency of accumulation.
+        Parameters
+        ----------
+        base_date : datetime.datetime
+            The base date.
+        step1 : int
+            First step.
+        step2 : int
+            Second step.
+        add_step : int
+            Additional step.
+        frequency : int
+            Frequency of accumulation.
 
-        Returns:
-            Tuple[int, int, Tuple[int, ...]]: A tuple representing the MARS date-time step.
+        Returns
+        -------
+        Tuple[int, int, Tuple[int, ...]]
+            A tuple representing the MARS date-time step.
         """
         assert frequency > 0, frequency
         # assert step1 > 0, (step1, step2, frequency, add_step, base_date)
@@ -371,11 +426,15 @@ class AccumulationFromLastStep(Accumulation):
 def _identity(x: Any) -> Any:
     """Identity function that returns the input as is.
 
-    Args:
-        x (Any): Input value.
+    Parameters
+    ----------
+    x : Any
+        Input value.
 
-    Returns:
-        Any: The input value.
+    Returns
+    -------
+    Any
+        The input value.
     """
     return x
 
@@ -392,18 +451,29 @@ def _compute_accumulations(
 ) -> Any:
     """Computes accumulations based on the provided parameters.
 
-    Args:
-        context (Any): Context for the computation.
-        dates (List[datetime.datetime]): List of dates.
-        request (Dict[str, Any]): Request parameters.
-        user_accumulation_period (Union[int, Tuple[int, int]], optional): User-defined accumulation period. Defaults to 6.
-        data_accumulation_period (Optional[int], optional): Data accumulation period. Defaults to None.
-        patch (Any, optional): Patch function. Defaults to _identity.
-        base_times (Optional[List[int]], optional): List of base times. Defaults to None.
-        use_cdsapi_dataset (Optional[str], optional): CDSAPI dataset to use. Defaults to None.
+    Parameters
+    ----------
+    context : Any
+        Context for the computation.
+    dates : List[datetime.datetime]
+        List of dates.
+    request : Dict[str, Any]
+        Request parameters.
+    user_accumulation_period : Union[int, Tuple[int, int]], optional
+        User-defined accumulation period. Defaults to 6.
+    data_accumulation_period : Optional[int], optional
+        Data accumulation period. Defaults to None.
+    patch : Any, optional
+        Patch function. Defaults to _identity.
+    base_times : Optional[List[int]], optional
+        List of base times. Defaults to None.
+    use_cdsapi_dataset : Optional[str], optional
+        CDSAPI dataset to use. Defaults to None.
 
-    Returns:
-        Any: The computed accumulations.
+    Returns
+    -------
+    Any
+        The computed accumulations.
     """
     adjust_step = isinstance(user_accumulation_period, int)
 
@@ -508,11 +578,15 @@ def _compute_accumulations(
 def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
-    Args:
-        x (Union[List[Any], Tuple[Any], Any]): Input value.
+    Parameters
+    ----------
+    x : Union[List[Any], Tuple[Any], Any]
+        Input value.
 
-    Returns:
-        List[Any]: The input value as a list.
+    Returns
+    -------
+    List[Any]
+        The input value as a list.
     """
     if isinstance(x, (list, tuple)):
         return x
@@ -522,11 +596,15 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
 def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
     """Modifies the request stream based on the time.
 
-    Args:
-        request (Dict[str, Any]): Request parameters.
+    Parameters
+    ----------
+    request : Dict[str, Any]
+        Request parameters.
 
-    Returns:
-        Dict[str, Any]: The modified request parameters.
+    Returns
+    -------
+    Dict[str, Any]
+        The modified request parameters.
     """
     if request["time"] in (6, 18, 600, 1800):
         request["stream"] = "scda"
@@ -540,14 +618,21 @@ def accumulations(
 ) -> Any:
     """Computes accumulations based on the provided context, dates, and request parameters.
 
-    Args:
-        context (Any): Context for the computation.
-        dates (List[datetime.datetime]): List of dates.
-        use_cdsapi_dataset (Optional[str], optional): CDSAPI dataset to use. Defaults to None.
-        **request (Any): Additional request parameters.
+    Parameters
+    ----------
+    context : Any
+        Context for the computation.
+    dates : List[datetime.datetime]
+        List of dates.
+    use_cdsapi_dataset : Optional[str], optional
+        CDSAPI dataset to use. Defaults to None.
+    **request : Any
+        Additional request parameters.
 
-    Returns:
-        Any: The computed accumulations.
+    Returns
+    -------
+    Any
+        The computed accumulations.
     """
     _to_list(request["param"])
     class_ = request.get("class", "od")
