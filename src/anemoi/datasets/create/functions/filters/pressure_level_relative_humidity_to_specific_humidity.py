@@ -22,15 +22,23 @@ from .single_level_specific_humidity_to_relative_humidity import NewDataField
 def execute(context: Any, input: ekd.FieldList, t: str, rh: str, q: str = "q") -> FieldArray:
     """Convert relative humidity on pressure levels to specific humidity.
 
-    Args:
-        context (Any): The context in which the function is executed.
-        input (List[Any]): List of input fields.
-        t (str): Temperature parameter.
-        rh (str): Relative humidity parameter.
-        q (str, optional): Specific humidity parameter. Defaults to "q".
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    t : str
+        Temperature parameter.
+    rh : str
+        Relative humidity parameter.
+    q : str, optional
+        Specific humidity parameter. Defaults to "q".
 
-    Returns:
-        FieldArray: Array of fields with specific humidity.
+    Returns
+    -------
+    FieldArray
+        Array of fields with specific humidity.
     """
     result = FieldArray()
     params: Tuple[str, str] = (t, rh)
