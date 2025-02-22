@@ -100,7 +100,7 @@ def json_tidy(o: Any) -> Any:
 
 
 def build_statistics_dates(
-    dates: list[datetime.datetime], start: datetime.datetime, end: datetime.datetime
+    dates: list[datetime.datetime], start: Optional[datetime.datetime], end: Optional[datetime.datetime]
 ) -> tuple[str, str]:
     """Compute the start and end dates for the statistics.
 
@@ -108,9 +108,9 @@ def build_statistics_dates(
     ----------
     dates : list of datetime.datetime
         The list of dates.
-    start : datetime.datetime
+    start : Optional[datetime.datetime]
         The start date.
-    end : datetime.datetime
+    end : Optional[datetime.datetime]
         The end date.
 
     Returns
@@ -174,7 +174,7 @@ class Dataset:
         if ext != ".zarr":
             raise ValueError(f"Unsupported extension={ext} for path={self.path}")
 
-    def add_dataset(self, mode: str = "r+", **kwargs) -> zarr.Array:
+    def add_dataset(self, mode: str = "r+", **kwargs: Any) -> zarr.Array:
         """Add a dataset to the Zarr store.
 
         Parameters
@@ -196,7 +196,7 @@ class Dataset:
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
-    def update_metadata(self, **kwargs) -> None:
+    def update_metadata(self, **kwargs: Any) -> None:
         """Update the metadata of the dataset.
 
         Parameters
@@ -216,12 +216,12 @@ class Dataset:
             z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
 
     @cached_property
-    def anemoi_dataset(self):
+    def anemoi_dataset(self) -> Any:
         """Get the Anemoi dataset."""
         return open_dataset(self.path)
 
     @cached_property
-    def zarr_metadata(self):
+    def zarr_metadata(self) -> dict:
         """Get the Zarr metadata."""
         import zarr
 
@@ -315,7 +315,7 @@ class WritableDataset(Dataset):
         self.z = zarr.open(self.path, mode="r+")
 
     @cached_property
-    def data_array(self):
+    def data_array(self) -> Any:
         """Get the data array of the dataset."""
         import zarr
 
@@ -371,7 +371,7 @@ class Actor:  # TODO: rename to Creator
         # to be implemented in the sub-classes
         raise NotImplementedError()
 
-    def update_metadata(self, **kwargs) -> None:
+    def update_metadata(self, **kwargs: Any) -> None:
         """Update the metadata of the dataset.
 
         Parameters
@@ -438,7 +438,7 @@ class Actor:  # TODO: rename to Creator
 class Patch(Actor):
     """A class to apply patches to a dataset."""
 
-    def __init__(self, path: str, options: dict = None, **kwargs):
+    def __init__(self, path: str, options: dict = None, **kwargs: Any):
         """Initialize a Patch instance.
 
         Parameters
@@ -461,7 +461,7 @@ class Patch(Actor):
 class Size(Actor):
     """A class to compute the size of a dataset."""
 
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: str, **kwargs: Any):
         """Initialize a Size instance.
 
         Parameters
@@ -493,7 +493,7 @@ class HasRegistryMixin:
     """A mixin class to provide registry functionality."""
 
     @cached_property
-    def registry(self):
+    def registry(self) -> Any:
         """Get the registry."""
         from .zarr import ZarrBuiltRegistry
 
@@ -504,7 +504,7 @@ class HasStatisticTempMixin:
     """A mixin class to provide temporary statistics functionality."""
 
     @cached_property
-    def tmp_statistics(self):
+    def tmp_statistics(self) -> TmpStatistics:
         """Get the temporary statistics."""
         directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
         return TmpStatistics(directory)
@@ -579,7 +579,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         progress: Any = None,
         test: bool = False,
         cache: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize an Init instance.
 
@@ -810,7 +810,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         statistics_temp_dir: Optional[str] = None,
         progress: Any = None,
         cache: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize a Load instance.
 
@@ -1027,7 +1027,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
         statistics_temp_dir: Optional[str] = None,
         delta: list = [],
         use_threads: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize a Cleanup instance.
 
@@ -1061,7 +1061,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
 class Verify(Actor):
     """A class to verify the integrity of a dataset."""
 
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: str, **kwargs: Any):
         """Initialize a Verify instance.
 
         Parameters
@@ -1100,7 +1100,7 @@ class AdditionsMixin:
         return False
 
     @cached_property
-    def tmp_storage_path(self):
+    def tmp_storage_path(self) -> str:
         """Get the path to the temporary storage."""
         name = "storage_for_additions"
         if self.delta:
@@ -1164,7 +1164,7 @@ class DeltaDataset:
 class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     """A class to initialize dataset additions."""
 
-    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
+    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
         """Initialize an _InitAdditions instance.
 
         Parameters
@@ -1211,7 +1211,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         parts: Optional[str] = None,
         use_threads: bool = False,
         progress: Any = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize a _RunAdditions instance.
 
@@ -1281,7 +1281,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
 class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     """A class to finalize dataset additions."""
 
-    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
+    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
         """Initialize a _FinaliseAdditions instance.
 
         Parameters
@@ -1436,7 +1436,7 @@ def multi_addition(cls: type) -> type:
     """
 
     class MultiAdditions:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs: Any):
             self.actors = []
 
             for k in kwargs.pop("delta", []):
@@ -1467,7 +1467,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         use_threads: bool = False,
         statistics_temp_dir: Optional[str] = None,
         progress: Any = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize a Statistics instance.
 
@@ -1515,7 +1515,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(f"Wrote statistics in {self.path}")
 
     @cached_property
-    def allow_nans(self):
+    def allow_nans(self) -> bool | list:
         """Check if NaNs are allowed."""
         import zarr
 
@@ -1545,7 +1545,7 @@ def chain(tasks: list) -> type:
     """
 
     class Chain(Actor):
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any):
             self.kwargs = kwargs
 
         def run(self) -> None:
@@ -1557,7 +1557,7 @@ def chain(tasks: list) -> type:
     return Chain
 
 
-def creator_factory(name: str, trace: Optional[str] = None, **kwargs) -> Any:
+def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> Any:
     """Create a dataset creator.
 
     Parameters
