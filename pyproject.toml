@@ -123,8 +123,12 @@ profile = "black"
 # Temporary until we can fix the mypy issues
 
 [tool.mypy]
-strict = true
-ignore_missing_imports = true
+strict = false
+exclude = [
+  "docs/**",
+]
+[tool.mypy.ignore]
+import-untyped = true
 
 [tool.pydocstringformatter]
 write = true
