@@ -248,6 +248,16 @@ class Concat(ConcatMixin, Combined):
 
         return result
 
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the forwards subclass.
+
+        Returns
+        -------
+        dict[str, Any]
+            The metadata specific to the forwards subclass.
+        """
+        return {}
+
 
 def concat_factory(args: Tuple[Any, ...], kwargs: dict) -> Concat:
     """Factory function to create a Concat object.

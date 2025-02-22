@@ -12,6 +12,7 @@ import logging
 import os
 import textwrap
 from functools import wraps
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Callable
 from typing import List
@@ -20,7 +21,8 @@ from typing import Optional
 from anemoi.utils.text import Tree
 from numpy.typing import NDArray
 
-from .dataset import Dataset
+if TYPE_CHECKING:
+    from .dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -55,7 +57,7 @@ def css(name: str) -> str:
 class Node:
     """A class to represent a node in a dataset tree."""
 
-    def __init__(self, dataset: Dataset, kids: List[Any], **kwargs: Any) -> None:
+    def __init__(self, dataset: "Dataset", kids: List[Any], **kwargs: Any) -> None:
         """
         Initializes a Node object.
 

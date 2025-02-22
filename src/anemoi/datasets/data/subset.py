@@ -16,6 +16,7 @@ from typing import Dict
 from typing import List
 from typing import Sequence
 from typing import Set
+from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -125,7 +126,7 @@ class Subset(Forwards):
     reason (Dict[str, Any]): Dictionary of reasons.
     """
 
-    def __init__(self, dataset: Dataset | "Subset", indices: Sequence[int], reason: Dict[str, Any]) -> None:
+    def __init__(self, dataset: Union[Dataset, "Subset"], indices: Sequence[int], reason: Dict[str, Any]) -> None:
         """Initialize the Subset.
 
         Parameters:

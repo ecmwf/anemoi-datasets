@@ -317,7 +317,7 @@ class Dataset(ABC, Sized):
 
         return list(range(0, len(self), step))
 
-    def _shuffle_indices(self) -> NDArray[np.int]:
+    def _shuffle_indices(self) -> NDArray[Any]:
         """
         Return a shuffled array of indices.
 
@@ -932,68 +932,68 @@ class Dataset(ABC, Sized):
             The length of the dataset.
         """
 
-    @abstractmethod
     @property
+    @abstractmethod
     def variables(self) -> List[str]:
         """Return the list of variables in the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def frequency(self) -> datetime.timedelta:
         """Return the frequency of the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates in the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def resolution(self) -> str:
         """Return the resolution of the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def name_to_index(self) -> Dict[str, int]:
         """Return the mapping of variable names to indices."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def shape(self) -> Shape:
         """Return the shape of the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def field_shape(self) -> Shape:
         """Return the shape of the fields in the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes in the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes in the dataset."""
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def variables_metadata(self) -> Dict[str, Any]:
         """Return the metadata of the variables in the dataset."""
         pass

@@ -12,6 +12,7 @@ import calendar
 import datetime
 import logging
 from pathlib import PurePath
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Dict
 from typing import List
@@ -24,7 +25,8 @@ import zarr
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
-from .dataset import Dataset
+if TYPE_CHECKING:
+    from .dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -110,7 +112,7 @@ def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) ->
 
 
 def _as_date(
-    d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64], last: bool
+    d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[np.datetime64], last: bool
 ) -> np.datetime64:
     """
     Convert a date to a numpy datetime64 object, rounding to the nearest date in a list of dates.
@@ -119,7 +121,7 @@ def _as_date(
     ----------
     d : Union[int, str, np.datetime64, datetime.date]
         The date to convert.
-    dates : NDArray[Any][np.datetime64]
+    dates : NDArray[np.datetime64]
         The list of dates.
     last : bool
         Whether to round to the last date.
@@ -232,9 +234,7 @@ def _as_date(
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
 
-def as_first_date(
-    d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]
-) -> np.datetime64:
+def as_first_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[np.datetime64]) -> np.datetime64:
     """
     Convert a date to the first date in a list of dates.
 
@@ -242,7 +242,7 @@ def as_first_date(
     ----------
     d : Union[int, str, np.datetime64, datetime.date]
         The date to convert.
-    dates : NDArray[Any][np.datetime64]
+    dates : NDArray[np.datetime64]
         The list of dates.
 
     Returns
@@ -253,7 +253,7 @@ def as_first_date(
     return _as_date(d, dates, last=False)
 
 
-def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]) -> np.datetime64:
+def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[np.datetime64]) -> np.datetime64:
     """
     Convert a date to the last date in a list of dates.
 
@@ -261,7 +261,7 @@ def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArra
     ----------
     d : Union[int, str, np.datetime64, datetime.date]
         The date to convert.
-    dates : NDArray[Any][np.datetime64]
+    dates : NDArray[np.datetime64]
         The list of dates.
 
     Returns
@@ -272,7 +272,7 @@ def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArra
     return _as_date(d, dates, last=True)
 
 
-def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Dataset, Dict[str, Any]]:
+def _concat_or_join(datasets: List["Dataset"], kwargs: Dict[str, Any]) -> Tuple["Dataset", Dict[str, Any]]:
     """
     Concatenate or join datasets based on their date ranges.
 
@@ -307,7 +307,7 @@ def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Da
     return Concat(datasets), kwargs
 
 
-def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -> Dataset:
+def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -> "Dataset":
     """
     Open a dataset from various input types.
 
@@ -321,6 +321,7 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     Dataset
         The opened dataset.
     """
+    from .dataset import Dataset
     from .stores import Zarr
     from .stores import zarr_lookup
 
@@ -346,10 +347,10 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
 
 
 def _auto_adjust(
-    datasets: List[Dataset],
+    datasets: List["Dataset"],
     kwargs: Dict[str, Any],
     exclude: Optional[List[str]] = None,
-) -> Tuple[List[Dataset], Dict[str, Any]]:
+) -> Tuple[List["Dataset"], Dict[str, Any]]:
     """
     Automatically adjust datasets based on specified criteria.
 
@@ -443,7 +444,7 @@ def _auto_adjust(
     return datasets, kwargs
 
 
-def _open_dataset(*args: Any, **kwargs: Any) -> Dataset:
+def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     """
     Open a dataset.
 

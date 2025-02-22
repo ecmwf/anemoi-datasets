@@ -12,7 +12,8 @@ from copy import deepcopy
 from typing import Any
 from typing import Union
 
-from ..dates import GroupOfDates
+from anemoi.datasets.dates.groups import GroupOfDates
+
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)

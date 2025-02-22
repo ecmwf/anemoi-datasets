@@ -36,8 +36,8 @@ class Grid(ABC):
         """Get the longitudes of the grid."""
         return self.grid_points[1]
 
-    @abstractmethod
     @property
+    @abstractmethod
     def grid_points(self) -> Tuple[Any, Any]:
         """Get the grid points."""
         pass

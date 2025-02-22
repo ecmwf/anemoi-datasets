@@ -300,17 +300,17 @@ class IndexTester:
             assert (self.ds[index] == self.np[index]).all()
 
 
-def make_row(ensemble: bool = False, grid: bool = False, *args: Any) -> np.ndarray:
+def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
     """Create a row of data.
 
     Parameters
     ----------
+    *args : Any
+        Additional arguments.
     ensemble : bool, optional
         Whether to include ensemble dimension, by default False.
     grid : bool, optional
         Whether to include grid dimension, by default False.
-    *args : Any
-        Additional arguments.
 
     Returns
     -------

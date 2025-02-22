@@ -8,15 +8,18 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import TYPE_CHECKING
 from typing import Any
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
+# from .dataset import FullIndex
+# from .dataset import Shape
+# from .dataset import TupleIndex
 from .misc import _open_dataset
 from .misc import add_dataset_path
 from .misc import add_named_dataset
+
+if TYPE_CHECKING:
+    from .dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -25,9 +28,9 @@ __all__ = [
     "MissingDateError",
     "add_dataset_path",
     "add_named_dataset",
-    "FullIndex",
-    "TupleIndex",
-    "Shape",
+    # "FullIndex",
+    # "TupleIndex",
+    # "Shape",
 ]
 
 
@@ -65,7 +68,7 @@ def _convert(x: Any) -> Any:
     return x
 
 
-def open_dataset(*args: Any, **kwargs: Any) -> Dataset:
+def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     """Open a dataset.
 
     Parameters

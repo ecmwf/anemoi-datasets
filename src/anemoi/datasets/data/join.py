@@ -295,6 +295,16 @@ class Join(Combined):
         """
         return Node(self, [d.tree() for d in self.datasets])
 
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the forwards subclass.
+
+        Returns
+        -------
+        dict[str, Any]
+            The metadata specific to the forwards subclass.
+        """
+        return {}
+
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
     """

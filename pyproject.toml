@@ -134,9 +134,3 @@ import-untyped = true
 write = true
 exclude = "docs/**"
 style = "numpydoc"
-
-[tool.pymend]
-output-style = "numpydoc"
-# check             = true
-write = true
-add_missing = false
