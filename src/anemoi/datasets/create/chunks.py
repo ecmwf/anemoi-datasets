@@ -18,22 +18,33 @@ ALL = object()
 class ChunkFilter:
     """A filter to determine which chunks to process based on the specified parts.
 
-    Attributes:
-        total (int): The total number of chunks.
-        allowed (object | list): The chunks that are allowed to be processed.
+    Attributes
+    ----------
+    total : int
+        The total number of chunks.
+    allowed : object or list
+        The chunks that are allowed to be processed.
     """
 
     def __init__(self, *, parts: str | list, total: int):
-        """Initializes the ChunkFilter with the given parts and total number of chunks.
+        """
+        Initializes the ChunkFilter with the given parts and total number of chunks.
 
-        Args:
-            parts (str | list): The parts to process, specified as 'i/n' or a list of such strings.
-            total (int): The total number of chunks.
+        Parameters
+        ----------
+        parts : str or list
+            The parts to process, specified as 'i/n' or a list of such strings.
+        total : int
+            The total number of chunks.
 
-        Raises:
-            ValueError: If the parts format is invalid.
-            AssertionError: If the chunk number is invalid.
-            Warning: If the number of chunks is larger than the total number of chunks.
+        Raises
+        ------
+        ValueError
+            If the parts format is invalid.
+        AssertionError
+            If the chunk number is invalid.
+        Warning
+            If the number of chunks is larger than the total number of chunks.
         """
         self.total = total
 
@@ -81,16 +92,23 @@ class ChunkFilter:
         self.allowed = parts
 
     def __call__(self, i: int) -> bool:
-        """Checks if the given chunk number is allowed to be processed.
+        """
+        Checks if the given chunk number is allowed to be processed.
 
-        Args:
-            i (int): The chunk number to check.
+        Parameters
+        ----------
+        i : int
+            The chunk number to check.
 
-        Returns:
-            bool: True if the chunk is allowed, False otherwise.
+        Returns
+        -------
+        bool
+            True if the chunk is allowed, False otherwise.
 
-        Raises:
-            AssertionError: If the chunk number is invalid.
+        Raises
+        ------
+        AssertionError
+            If the chunk number is invalid.
         """
         if i < 0 or i >= self.total:
             raise AssertionError(f"Invalid chunk number {i}. Must be between 0 and {self.total - 1}.")
@@ -100,19 +118,25 @@ class ChunkFilter:
         return i in self.allowed
 
     def __iter__(self) -> iter:
-        """Iterates over the allowed chunks.
+        """
+        Iterates over the allowed chunks.
 
-        Yields:
-            int: The next allowed chunk number.
+        Yields
+        ------
+        int
+            The next allowed chunk number.
         """
         for i in range(self.total):
             if self(i):
                 yield i
 
     def __len__(self) -> int:
-        """Returns the number of allowed chunks.
+        """
+        Returns the number of allowed chunks.
 
-        Returns:
-            int: The number of allowed chunks.
+        Returns
+        -------
+        int
+            The number of allowed chunks.
         """
         return len([_ for _ in self])

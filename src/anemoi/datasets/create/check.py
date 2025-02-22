@@ -34,14 +34,21 @@ class DatasetName:
         end_date: Optional[datetime.date] = None,
         frequency: Optional[datetime.timedelta] = None,
     ):
-        """Initialize a DatasetName instance.
+        """
+        Initialize a DatasetName instance.
 
-        Args:
-            name (str): The name of the dataset.
-            resolution (Optional[str]): The resolution of the dataset.
-            start_date (Optional[datetime.date]): The start date of the dataset.
-            end_date (Optional[datetime.date]): The end date of the dataset.
-            frequency (Optional[datetime.timedelta]): The frequency of the dataset.
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
+        resolution : Optional[str], optional
+            The resolution of the dataset.
+        start_date : Optional[datetime.date], optional
+            The start date of the dataset.
+        end_date : Optional[datetime.date], optional
+            The end date of the dataset.
+        frequency : Optional[datetime.timedelta], optional
+            The frequency of the dataset.
         """
         self.name = name
         self.parsed = self._parse(name)
@@ -69,10 +76,13 @@ class DatasetName:
         return out
 
     def raise_if_not_valid(self, print: Callable = print) -> None:
-        """Raise a ValueError if the dataset name is not valid.
+        """
+        Raise a ValueError if the dataset name is not valid.
 
-        Args:
-            print (Callable): The function to use for printing messages.
+        Parameters
+        ----------
+        print : Callable
+            The function to use for printing messages.
         """
         if self.messages:
             for m in self.messages:
@@ -80,13 +90,18 @@ class DatasetName:
             raise ValueError(self.error_message)
 
     def _parse(self, name: str) -> dict:
-        """Parse the dataset name into its components.
+        """
+        Parse the dataset name into its components.
 
-        Args:
-            name (str): The name of the dataset.
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
 
-        Returns:
-            dict: The parsed components of the dataset name.
+        Returns
+        -------
+        dict
+            The parsed components of the dataset name.
         """
         pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
         match = re.match(pattern, name)
@@ -125,10 +140,13 @@ class DatasetName:
             )
 
     def check_resolution(self, resolution: str | None) -> None:
-        """Check if the resolution matches the expected format.
+        """
+        Check if the resolution matches the expected format.
 
-        Args:
-            resolution (str | None): The expected resolution.
+        Parameters
+        ----------
+        resolution : str or None
+            The expected resolution.
         """
         if self.parsed.get("resolution") and self.parsed["resolution"][0] not in "0123456789on":
             self.messages.append(
@@ -143,10 +161,13 @@ class DatasetName:
         self._check_mismatch("resolution", resolution_str)
 
     def check_frequency(self, frequency: datetime.timedelta | None) -> None:
-        """Check if the frequency matches the expected format.
+        """
+        Check if the frequency matches the expected format.
 
-        Args:
-            frequency (datetime.timedelta | None): The expected frequency.
+        Parameters
+        ----------
+        frequency : datetime.timedelta or None
+            The expected frequency.
         """
         if frequency is None:
             return
@@ -155,10 +176,13 @@ class DatasetName:
         self._check_mismatch("frequency", frequency_str)
 
     def check_start_date(self, start_date: datetime.date | None) -> None:
-        """Check if the start date matches the expected format.
+        """
+        Check if the start date matches the expected format.
 
-        Args:
-            start_date (datetime.date | None): The expected start date.
+        Parameters
+        ----------
+        start_date : datetime.date or None
+            The expected start date.
         """
         if start_date is None:
             return
@@ -167,10 +191,13 @@ class DatasetName:
         self._check_mismatch("start_date", start_date_str)
 
     def check_end_date(self, end_date: datetime.date | None) -> None:
-        """Check if the end date matches the expected format.
+        """
+        Check if the end date matches the expected format.
 
-        Args:
-            end_date (datetime.date | None): The expected end date.
+        Parameters
+        ----------
+        end_date : datetime.date or None
+            The expected end date.
         """
         if end_date is None:
             return
@@ -179,21 +206,29 @@ class DatasetName:
         self._check_mismatch("end_date", end_date_str)
 
     def _check_missing(self, key: str, value: str) -> None:
-        """Check if a component is missing from the dataset name.
+        """
+        Check if a component is missing from the dataset name.
 
-        Args:
-            key (str): The component key.
-            value (str): The expected value.
+        Parameters
+        ----------
+        key : str
+            The component key.
+        value : str
+            The expected value.
         """
         if value not in self.name:
             self.messages.append(f"the {key} is {value}, but is missing in {self.name}.")
 
     def _check_mismatch(self, key: str, value: str) -> None:
-        """Check if a component value mismatches the expected value.
+        """
+        Check if a component value mismatches the expected value.
 
-        Args:
-            key (str): The component key.
-            value (str): The expected value.
+        Parameters
+        ----------
+        key : str
+            The component key.
+        value : str
+            The expected value.
         """
         if self.parsed.get(key) and self.parsed[key] != value:
             self.messages.append(f"the {key} is {value}, but is {self.parsed[key]} in {self.name}.")
@@ -208,13 +243,19 @@ class StatisticsValueError(ValueError):
 def check_data_values(
     arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
 ) -> None:
-    """Check the values in the data array for validity.
+    """
+    Check the values in the data array for validity.
 
-    Args:
-        arr (NDArray[Any]): The data array to check.
-        name (str): The name of the data array.
-        log (list): A list to log messages.
-        allow_nans (bool | list | set | tuple | dict): Whether to allow NaNs in the data array.
+    Parameters
+    ----------
+    arr : NDArray[Any]
+        The data array to check.
+    name : str
+        The name of the data array.
+    log : list, optional
+        A list to log messages.
+    allow_nans : bool or list or set or tuple or dict, optional
+        Whether to allow NaNs in the data array.
     """
     shape = arr.shape
 
