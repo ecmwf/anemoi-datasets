@@ -27,10 +27,13 @@ class Cleanup(Command):
     timestamp = True
 
     def add_arguments(self, subparser: Any) -> None:
-        """Add command line arguments to the parser.
+        """
+        Add command line arguments to the parser.
 
-        Args:
-            subparser (Any): The argument parser.
+        Parameters
+        ----------
+        subparser : Any
+            The argument parser.
         """
         subparser.add_argument("path", help="Path to store the created data.")
         subparser.add_argument(
@@ -40,10 +43,13 @@ class Cleanup(Command):
         )
 
     def run(self, args: Any) -> None:
-        """Execute the cleanup command.
+        """
+        Execute the cleanup command.
 
-        Args:
-            args (Any): The command line arguments.
+        Parameters
+        ----------
+        args : Any
+            The command line arguments.
         """
         options = vars(args)
         options.pop("command")
