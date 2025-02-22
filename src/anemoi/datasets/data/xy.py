@@ -30,89 +30,126 @@ class ZipBase(Combined):
     """Base class for handling zipped datasets."""
 
     def __init__(self, datasets: List[Any], check_compatibility: bool = True) -> None:
-        """Initialize ZipBase with a list of datasets.
+        """
+        Initialize ZipBase with a list of datasets.
 
-        Args:
-            datasets (List[Any]): List of datasets.
-            check_compatibility (bool): Flag to check compatibility of datasets.
+        Parameters
+        ----------
+        datasets : List[Any]
+            List of datasets.
+        check_compatibility : bool, optional
+            Flag to check compatibility of datasets, by default True.
         """
         self._check_compatibility = check_compatibility
         super().__init__(datasets)
 
     def swap_with_parent(self, parent: Any) -> Any:
-        """Swap datasets with the parent.
+        """
+        Swap datasets with the parent.
 
-        Args:
-            parent (Any): Parent dataset.
+        Parameters
+        ----------
+        parent : Any
+            Parent dataset.
 
-        Returns:
-            Any: New parent dataset with swapped datasets.
+        Returns
+        -------
+        Any
+            New parent dataset with swapped datasets.
         """
         new_parents = [parent.clone(ds) for ds in self.datasets]
         return self.clone(new_parents)
 
     def clone(self, datasets: List[Any]) -> "ZipBase":
-        """Clone the ZipBase with new datasets.
+        """
+        Clone the ZipBase with new datasets.
 
-        Args:
-            datasets (List[Any]): List of new datasets.
+        Parameters
+        ----------
+        datasets : List[Any]
+            List of new datasets.
 
-        Returns:
-            ZipBase: Cloned ZipBase instance.
+        Returns
+        -------
+        ZipBase
+            Cloned ZipBase instance.
         """
         return self.__class__(datasets, check_compatibility=self._check_compatibility)
 
     def tree(self) -> Node:
-        """Get the tree representation of the datasets.
+        """
+        Get the tree representation of the datasets.
 
-        Returns:
-            Node: Tree representation of the datasets.
+        Returns
+        -------
+        Node
+            Tree representation of the datasets.
         """
         return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
 
     def __len__(self) -> int:
-        """Get the length of the smallest dataset.
+        """
+        Get the length of the smallest dataset.
 
-        Returns:
-            int: Length of the smallest dataset.
+        Returns
+        -------
+        int
+            Length of the smallest dataset.
         """
         return min(len(d) for d in self.datasets)
 
     def __getitem__(self, n: FullIndex) -> Tuple[Any, ...]:
-        """Get the item at the specified index from all datasets.
+        """
+        Get the item at the specified index from all datasets.
 
-        Args:
-            n (FullIndex): Index to retrieve.
+        Parameters
+        ----------
+        n : FullIndex
+            Index to retrieve.
 
-        Returns:
-            Tuple[Any, ...]: Tuple of items from all datasets.
+        Returns
+        -------
+        Tuple[Any, ...]
+            Tuple of items from all datasets.
         """
         return tuple(d[n] for d in self.datasets)
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if two datasets have the same resolution.
+        """
+        Check if two datasets have the same resolution.
 
-        Args:
-            d1 (Dataset): First dataset.
-            d2 (Dataset): Second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
         """
         pass
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if two datasets have the same grid.
+        """
+        Check if two datasets have the same grid.
 
-        Args:
-            d1 (Dataset): First dataset.
-            d2 (Dataset): Second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
         """
         pass
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if two datasets have the same variables.
+        """
+        Check if two datasets have the same variables.
 
-        Args:
-            d1 (Dataset): First dataset.
-            d2 (Dataset): Second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
         """
         pass
 
@@ -170,11 +207,15 @@ class ZipBase(Combined):
         return tuple(d.name_to_index for d in self.datasets)
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """Check compatibility between two datasets.
+        """
+        Check compatibility between two datasets.
 
-        Args:
-            d1 (Dataset): First dataset.
-            d2 (Dataset): Second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
         """
         if self._check_compatibility:
             super().check_compatibility(d1, d2)
@@ -193,14 +234,20 @@ class XY(ZipBase):
 
 
 def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
-    """Factory function to create an XY instance.
+    """
+    Factory function to create an XY instance.
 
-    Args:
-        args (Tuple[Any, ...]): Positional arguments.
-        kwargs (Dict[str, Any]): Keyword arguments.
+    Parameters
+    ----------
+    args : Tuple[Any, ...]
+        Positional arguments.
+    kwargs : Dict[str, Any]
+        Keyword arguments.
 
-    Returns:
-        XY: An instance of XY.
+    Returns
+    -------
+    XY
+        An instance of XY.
     """
     if "xy" in kwargs:
         xy = kwargs.pop("xy")

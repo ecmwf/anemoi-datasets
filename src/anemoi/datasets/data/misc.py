@@ -30,21 +30,29 @@ LOG = logging.getLogger(__name__)
 
 
 def load_config() -> Dict[str, Any]:
-    """Load the configuration settings.
+    """
+    Load the configuration settings.
 
-    Returns:
-        Dict[str, Any]: The configuration settings.
+    Returns
+    -------
+    Dict[str, Any]
+        The configuration settings.
     """
     return load_settings(defaults={"datasets": {"named": {}, "path": []}})
 
 
 def add_named_dataset(name: str, path: str, **kwargs: Any) -> None:
-    """Add a named dataset to the configuration.
+    """
+    Add a named dataset to the configuration.
 
-    Args:
-        name (str): The name of the dataset.
-        path (str): The path to the dataset.
-        **kwargs (Any): Additional arguments.
+    Parameters
+    ----------
+    name : str
+        The name of the dataset.
+    path : str
+        The path to the dataset.
+    **kwargs : Any
+        Additional arguments.
     """
     config = load_config()
     if name["datasets"]["named"]:
@@ -54,10 +62,13 @@ def add_named_dataset(name: str, path: str, **kwargs: Any) -> None:
 
 
 def add_dataset_path(path: str) -> None:
-    """Add a dataset path to the configuration.
+    """
+    Add a dataset path to the configuration.
 
-    Args:
-        path (str): The path to add.
+    Parameters
+    ----------
+    path : str
+        The path to add.
     """
     config = load_config()
 
@@ -66,15 +77,22 @@ def add_dataset_path(path: str) -> None:
 
 
 def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) -> np.datetime64:
-    """Round up (or down) a datetime to the nearest date in a list of dates.
+    """
+    Round up (or down) a datetime to the nearest date in a list of dates.
 
-    Args:
-        d (np.datetime64): The datetime to round.
-        dates (NDArray[np.datetime64]): The list of dates.
-        up (bool): Whether to round up.
+    Parameters
+    ----------
+    d : np.datetime64
+        The datetime to round.
+    dates : NDArray[np.datetime64]
+        The list of dates.
+    up : bool
+        Whether to round up.
 
-    Returns:
-        np.datetime64: The rounded datetime.
+    Returns
+    -------
+    np.datetime64
+        The rounded datetime.
     """
     if dates is None or len(dates) == 0:
         return d
@@ -94,15 +112,22 @@ def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) ->
 def _as_date(
     d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64], last: bool
 ) -> np.datetime64:
-    """Convert a date to a numpy datetime64 object, rounding to the nearest date in a list of dates.
+    """
+    Convert a date to a numpy datetime64 object, rounding to the nearest date in a list of dates.
 
-    Args:
-        d (Union[int, str, np.datetime64, datetime.date]): The date to convert.
-        dates (NDArray[Any][np.datetime64]): The list of dates.
-        last (bool): Whether to round to the last date.
+    Parameters
+    ----------
+    d : Union[int, str, np.datetime64, datetime.date]
+        The date to convert.
+    dates : NDArray[Any][np.datetime64]
+        The list of dates.
+    last : bool
+        Whether to round to the last date.
 
-    Returns:
-        np.datetime64: The converted date.
+    Returns
+    -------
+    np.datetime64
+        The converted date.
     """
     # WARNING,  datetime.datetime is a subclass of datetime.date
     # so we need to check for datetime.datetime first
@@ -210,40 +235,58 @@ def _as_date(
 def as_first_date(
     d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]
 ) -> np.datetime64:
-    """Convert a date to the first date in a list of dates.
+    """
+    Convert a date to the first date in a list of dates.
 
-    Args:
-        d (Union[int, str, np.datetime64, datetime.date]): The date to convert.
-        dates (NDArray[Any][np.datetime64]): The list of dates.
+    Parameters
+    ----------
+    d : Union[int, str, np.datetime64, datetime.date]
+        The date to convert.
+    dates : NDArray[Any][np.datetime64]
+        The list of dates.
 
-    Returns:
-        np.datetime64: The first date.
+    Returns
+    -------
+    np.datetime64
+        The first date.
     """
     return _as_date(d, dates, last=False)
 
 
 def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[Any][np.datetime64]) -> np.datetime64:
-    """Convert a date to the last date in a list of dates.
+    """
+    Convert a date to the last date in a list of dates.
 
-    Args:
-        d (Union[int, str, np.datetime64, datetime.date]): The date to convert.
-        dates (NDArray[Any][np.datetime64]): The list of dates.
+    Parameters
+    ----------
+    d : Union[int, str, np.datetime64, datetime.date]
+        The date to convert.
+    dates : NDArray[Any][np.datetime64]
+        The list of dates.
 
-    Returns:
-        np.datetime64: The last date.
+    Returns
+    -------
+    np.datetime64
+        The last date.
     """
     return _as_date(d, dates, last=True)
 
 
 def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Dataset, Dict[str, Any]]:
-    """Concatenate or join datasets based on their date ranges.
+    """
+    Concatenate or join datasets based on their date ranges.
 
-    Args:
-        datasets (List[Dataset]): The list of datasets.
-        kwargs (Dict[str, Any]): Additional arguments.
+    Parameters
+    ----------
+    datasets : List[Dataset]
+        The list of datasets.
+    kwargs : Dict[str, Any]
+        Additional arguments.
 
-    Returns:
-        Tuple[Dataset, Dict[str, Any]]: The concatenated or joined dataset and remaining arguments.
+    Returns
+    -------
+    Tuple[Dataset, Dict[str, Any]]
+        The concatenated or joined dataset and remaining arguments.
     """
     if "adjust" in kwargs:
         raise ValueError("Cannot use 'adjust' without specifying 'concat' or 'join'")
@@ -265,13 +308,18 @@ def _concat_or_join(datasets: List[Dataset], kwargs: Dict[str, Any]) -> Tuple[Da
 
 
 def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -> Dataset:
-    """Open a dataset from various input types.
+    """
+    Open a dataset from various input types.
 
-    Args:
-        a (Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]): The input to open.
+    Parameters
+    ----------
+    a : Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]
+        The input to open.
 
-    Returns:
-        Dataset: The opened dataset.
+    Returns
+    -------
+    Dataset
+        The opened dataset.
     """
     from .stores import Zarr
     from .stores import zarr_lookup
@@ -302,15 +350,22 @@ def _auto_adjust(
     kwargs: Dict[str, Any],
     exclude: Optional[List[str]] = None,
 ) -> Tuple[List[Dataset], Dict[str, Any]]:
-    """Automatically adjust datasets based on specified criteria.
+    """
+    Automatically adjust datasets based on specified criteria.
 
-    Args:
-        datasets (List[Dataset]): The list of datasets.
-        kwargs (Dict[str, Any]): Additional arguments.
-        exclude (Optional[List[str]]): List of keys to exclude from adjustment.
+    Parameters
+    ----------
+    datasets : List[Dataset]
+        The list of datasets.
+    kwargs : Dict[str, Any]
+        Additional arguments.
+    exclude : Optional[List[str]]
+        List of keys to exclude from adjustment.
 
-    Returns:
-        Tuple[List[Dataset], Dict[str, Any]]: The adjusted datasets and remaining arguments.
+    Returns
+    -------
+    Tuple[List[Dataset], Dict[str, Any]]
+        The adjusted datasets and remaining arguments.
     """
     if "adjust" not in kwargs:
         return datasets, kwargs
@@ -389,14 +444,20 @@ def _auto_adjust(
 
 
 def _open_dataset(*args: Any, **kwargs: Any) -> Dataset:
-    """Open a dataset.
+    """
+    Open a dataset.
 
-    Args:
-        *args (Any): Positional arguments.
-        **kwargs (Any): Keyword arguments.
+    Parameters
+    ----------
+    *args : Any
+        Positional arguments.
+    **kwargs : Any
+        Keyword arguments.
 
-    Returns:
-        Dataset: The opened dataset.
+    Returns
+    -------
+    Dataset
+        The opened dataset.
     """
     sets = []
     for a in args:

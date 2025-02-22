@@ -38,12 +38,17 @@ class Select(Forwards):
     """Class to select a subset of variables from a dataset."""
 
     def __init__(self, dataset: Dataset, indices: List[int], reason: Dict[str, Any]) -> None:
-        """Initialize the Select class.
+        """
+        Initialize the Select class.
 
-        Args:
-            dataset (Dataset): The dataset to select from.
-            indices (List[int]): The indices of the variables to select.
-            reason (Dict[str, Any]): The reason for the selection.
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset to select from.
+        indices : List[int]
+            The indices of the variables to select.
+        reason : Dict[str, Any]
+            The reason for the selection.
         """
         reason = reason.copy()
 
@@ -60,34 +65,47 @@ class Select(Forwards):
         super().__init__(dataset)
 
     def clone(self, dataset: Dataset) -> "Select":
-        """Clone the Select object with a new dataset.
+        """
+        Clone the Select object with a new dataset.
 
-        Args:
-            dataset (Dataset): The new dataset.
+        Parameters
+        ----------
+        dataset : Dataset
+            The new dataset.
 
-        Returns:
-            Select: The cloned Select object.
+        Returns
+        -------
+        Select
+            The cloned Select object.
         """
         return self.__class__(dataset, self.indices, self.reason).mutate()
 
     def mutate(self) -> Dataset:
-        """Mutate the dataset.
+        """
+        Mutate the dataset.
 
-        Returns:
-            Dataset: The mutated dataset.
+        Returns
+        -------
+        Dataset
+            The mutated dataset.
         """
         return self.forward.swap_with_parent(parent=self)
 
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """Get a tuple of data.
+        """
+        Get a tuple of data.
 
-        Args:
-            index (TupleIndex): The index to retrieve.
+        Parameters
+        ----------
+        index : TupleIndex
+            The index to retrieve.
 
-        Returns:
-            NDArray[Any]: The retrieved data.
+        Returns
+        -------
+        NDArray[Any]
+            The retrieved data.
         """
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 1, slice(None))
@@ -99,13 +117,18 @@ class Select(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """Get an item from the dataset.
+        """
+        Get an item from the dataset.
 
-        Args:
-            n (FullIndex): The index to retrieve.
+        Parameters
+        ----------
+        n : FullIndex
+            The index to retrieve.
 
-        Returns:
-            NDArray[Any]: The retrieved data.
+        Returns
+        -------
+        NDArray[Any]
+            The retrieved data.
         """
         if isinstance(n, tuple):
             return self._get_tuple(n)
@@ -142,53 +165,74 @@ class Select(Forwards):
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """Get the statistical tendencies of the dataset.
+        """
+        Get the statistical tendencies of the dataset.
 
-        Args:
-            delta (Optional[datetime.timedelta]): The time delta for the tendencies.
+        Parameters
+        ----------
+        delta : Optional[datetime.timedelta]
+            The time delta for the tendencies.
 
-        Returns:
-            Dict[str, NDArray[Any]]: The statistical tendencies.
+        Returns
+        -------
+        Dict[str, NDArray[Any]]
+            The statistical tendencies.
         """
         if delta is None:
             delta = self.frequency
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """Get the specific metadata of the dataset.
+        """
+        Get the specific metadata of the dataset.
 
-        Args:
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        **kwargs : Any
+            Additional keyword arguments.
 
-        Returns:
-            Dict[str, Any]: The specific metadata.
+        Returns
+        -------
+        Dict[str, Any]
+            The specific metadata.
         """
         return super().metadata_specific(indices=self.indices, **kwargs)
 
     def source(self, index: int) -> Source:
-        """Get the source of the dataset.
+        """
+        Get the source of the dataset.
 
-        Args:
-            index (int): The index of the source.
+        Parameters
+        ----------
+        index : int
+            The index of the source.
 
-        Returns:
-            Source: The source of the dataset.
+        Returns
+        -------
+        Source
+            The source of the dataset.
         """
         return Source(self, index, self.dataset.source(self.indices[index]))
 
     def tree(self) -> Node:
-        """Get the tree representation of the dataset.
+        """
+        Get the tree representation of the dataset.
 
-        Returns:
-            Node: The tree representation of the dataset.
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
         """
         return Node(self, [self.dataset.tree()], **self.reason)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """Get the metadata specific to the subclass.
+        """
+        Get the metadata specific to the subclass.
 
-        Returns:
-            Dict[str, Any]: The metadata specific to the subclass.
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
         """
         # return dict(indices=self.indices)
         return dict(reason=self.reason)
@@ -198,11 +242,15 @@ class Rename(Forwards):
     """Class to rename variables in a dataset."""
 
     def __init__(self, dataset: Dataset, rename: Dict[str, str]) -> None:
-        """Initialize the Rename class.
+        """
+        Initialize the Rename class.
 
-        Args:
-            dataset (Dataset): The dataset to rename.
-            rename (Dict[str, str]): The mapping of old names to new names.
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset to rename.
+        rename : Dict[str, str]
+            The mapping of old names to new names.
         """
         super().__init__(dataset)
         for n in rename:
@@ -229,7 +277,8 @@ class Rename(Forwards):
         return {k: i for i, k in enumerate(self.variables)}
 
     def tree(self) -> Node:
-        """Get the tree representation of the dataset.
+        """
+        Get the tree representation of the dataset.
 
         Returns:
             Node: The tree representation of the dataset.

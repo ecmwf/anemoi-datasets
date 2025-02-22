@@ -38,34 +38,47 @@ class check:
     """A decorator class to perform checks before calling a method."""
 
     def __init__(self, check: str) -> None:
-        """Initialize the check decorator.
+        """
+        Initialize the check decorator.
 
-        Args:
-            check (str): The name of the check method.
+        Parameters
+        ----------
+        check : str
+            The name of the check method.
         """
         self.check = check
 
     def __call__(self, method: Callable) -> Callable:
-        """Call the check decorator.
+        """
+        Call the check decorator.
 
-        Args:
-            method (Callable): The method to decorate.
+        Parameters
+        ----------
+        method : Callable
+            The method to decorate.
 
-        Returns:
-            Callable: The decorated method.
+        Returns
+        -------
+        Callable
+            The decorated method.
         """
         name = method.__name__
         check = self.check
 
         @wraps(method)
         def wrapper(obj: "Unchecked") -> Any:
-            """Wrapper function to check compatibility before calling the method.
+            """
+            Wrapper function to check compatibility before calling the method.
 
-            Args:
-                obj (Unchecked): The Unchecked object.
+            Parameters
+            ----------
+            obj : Unchecked
+                The Unchecked object.
 
-            Returns:
-                Any: The result of the method.
+            Returns
+            -------
+            Any
+                The result of the method.
             """
             for d in obj.datasets[1:]:
                 getattr(obj, check)(obj.datasets[0], d)
@@ -79,31 +92,43 @@ class Unchecked(Combined):
     """A class representing a dataset without compatibility checks."""
 
     def tree(self) -> Node:
-        """Get the tree representation of the dataset.
+        """
+        Get the tree representation of the dataset.
 
-        Returns:
-            Node: The tree representation.
+        Returns
+        -------
+        Node
+            The tree representation.
         """
         return Node(self, [d.tree() for d in self.datasets])
 
     def _subset(self, **kwargs: dict) -> "Unchecked":
-        """Get a subset of the dataset.
+        """
+        Get a subset of the dataset.
 
-        Args:
-            **kwargs (dict): Subset parameters.
+        Parameters
+        ----------
+        **kwargs : dict
+            Subset parameters.
 
-        Returns:
-            Unchecked: The subset of the dataset.
+        Returns
+        -------
+        Unchecked
+            The subset of the dataset.
         """
         assert not kwargs
         return self
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """Check compatibility between two datasets.
+        """
+        Check compatibility between two datasets.
 
-        Args:
-            d1 (Dataset): The first dataset.
-            d2 (Dataset): The second dataset.
+        Parameters
+        ----------
+        d1 : Dataset
+            The first dataset.
+        d2 : Dataset
+            The second dataset.
         """
         pass
 
@@ -168,13 +193,18 @@ class Unchecked(Combined):
 
     @check("check_same_variables")
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """Get the statistics tendencies of the dataset.
+        """
+        Get the statistics tendencies of the dataset.
 
-        Args:
-            delta (Optional[datetime.timedelta]): The time delta for tendencies.
+        Parameters
+        ----------
+        delta : Optional[datetime.timedelta]
+            The time delta for tendencies.
 
-        Returns:
-            Dict[str, NDArray[Any]]: The statistics tendencies.
+        Returns
+        -------
+        Dict[str, NDArray[Any]]
+            The statistics tendencies.
         """
         raise NotImplementedError()
 
@@ -196,21 +226,29 @@ class Chain(ConcatMixin, Unchecked):
     """A class representing a chain of datasets without compatibility checks."""
 
     def __len__(self) -> int:
-        """Get the length of the dataset.
+        """
+        Get the length of the dataset.
 
-        Returns:
-            int: The length of the dataset.
+        Returns
+        -------
+        int
+            The length of the dataset.
         """
         return sum(len(d) for d in self.datasets)
 
     def __getitem__(self, n: FullIndex) -> tuple:
-        """Get an item from the dataset.
+        """
+        Get an item from the dataset.
 
-        Args:
-            n (FullIndex): The index of the item.
+        Parameters
+        ----------
+        n : FullIndex
+            The index of the item.
 
-        Returns:
-            tuple: The item at the specified index.
+        Returns
+        -------
+        tuple
+            The item at the specified index.
         """
         return tuple(d[n] for d in self.datasets)
 
@@ -220,23 +258,32 @@ class Chain(ConcatMixin, Unchecked):
         raise NotImplementedError()
 
     def dataset_metadata(self) -> dict:
-        """Get the metadata of the dataset.
+        """
+        Get the metadata of the dataset.
 
-        Returns:
-            dict: The metadata of the dataset.
+        Returns
+        -------
+        dict
+            The metadata of the dataset.
         """
         return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
 def chain_factory(args: tuple, kwargs: dict) -> Dataset:
-    """Factory function to create a Chain dataset.
+    """
+    Factory function to create a Chain dataset.
 
-    Args:
-        args (tuple): Positional arguments.
-        kwargs (dict): Keyword arguments.
+    Parameters
+    ----------
+    args : tuple
+        Positional arguments.
+    kwargs : dict
+        Keyword arguments.
 
-    Returns:
-        Dataset: The Chain dataset.
+    Returns
+    -------
+    Dataset
+        The Chain dataset.
     """
     chain = kwargs.pop("chain")
     assert len(args) == 0
