@@ -29,8 +29,10 @@ class Scan(Command):
     def add_arguments(self, command_parser: Any) -> None:
         """Add arguments to the command parser.
 
-        Args:
-            command_parser (Any): The command parser to which arguments are added.
+        Parameters
+        ----------
+        command_parser : Any
+            The command parser to which arguments are added.
         """
         command_parser.add_argument(
             "--match",
@@ -46,18 +48,24 @@ class Scan(Command):
     def run(self, args: Any) -> None:
         """Execute the scan command.
 
-        Args:
-            args (Any): The arguments passed to the command.
+        Parameters
+        ----------
+        args : Any
+            The arguments passed to the command.
         """
 
         def match(path: str) -> bool:
             """Check if a path matches the given pattern.
 
-            Args:
-                path (str): The path to check.
+            Parameters
+            ----------
+            path : str
+                The path to check.
 
-            Returns:
-                bool: True if the path matches, False otherwise.
+            Returns
+            -------
+            bool
+                True if the path matches, False otherwise.
             """
             return fnmatch.fnmatch(path, args.match)
 

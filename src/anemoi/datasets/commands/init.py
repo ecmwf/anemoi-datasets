@@ -29,8 +29,10 @@ class Init(Command):
     def add_arguments(self, subparser: Any) -> None:
         """Add command-line arguments to the parser.
 
-        Args:
-            subparser (Any): The argument parser to which the arguments will be added.
+        Parameters
+        ----------
+        subparser : Any
+            The argument parser to which the arguments will be added.
         """
         subparser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         subparser.add_argument("path", help="Path to store the created data.")
@@ -65,8 +67,10 @@ class Init(Command):
     def run(self, args: Any) -> None:
         """Execute the command with the provided arguments.
 
-        Args:
-            args (Any): The arguments passed to the command.
+        Parameters
+        ----------
+        args : Any
+            The arguments passed to the command.
         """
         options = vars(args)
         options.pop("command")

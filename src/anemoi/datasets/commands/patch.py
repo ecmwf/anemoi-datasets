@@ -29,16 +29,20 @@ class Patch(Command):
     def add_arguments(self, parser: Any) -> None:
         """Add command-line arguments to the parser.
 
-        Args:
-            parser (Any): The argument parser instance.
+        Parameters
+        ----------
+        parser : Any
+            The argument parser instance.
         """
         parser.add_argument("path", help="Path to store the created data.")
 
     def run(self, args: Any) -> None:
         """Execute the patch command.
 
-        Args:
-            args (Any): The command-line arguments.
+        Parameters
+        ----------
+        args : Any
+            The command-line arguments.
         """
         options = vars(args)
         options.pop("command")
