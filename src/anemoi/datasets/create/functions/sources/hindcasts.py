@@ -21,12 +21,17 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
-    """Converts the input to a list if it is not already a list or tuple.
+    """
+    Converts the input to a list if it is not already a list or tuple.
 
-    Args:
-        x: The input to convert.
+    Parameters
+    ----------
+    x : Any
+        The input to convert.
 
-    Returns:
+    Returns
+    -------
+    list
         A list containing the input elements.
     """
     if isinstance(x, (list, tuple)):
@@ -35,14 +40,21 @@ def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
 
 
 def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
-    """Generates hindcast requests based on the provided dates and request parameters.
+    """
+    Generates hindcast requests based on the provided dates and request parameters.
 
-    Args:
-        context: The context containing the dates provider and trace method.
-        dates: A list of dates for which to generate hindcast requests.
-        request: Additional request parameters.
+    Parameters
+    ----------
+    context : Any
+        The context containing the dates provider and trace method.
+    dates : List[Any]
+        A list of dates for which to generate hindcast requests.
+    request : Dict[str, Any]
+        Additional request parameters.
 
-    Returns:
+    Returns
+    -------
+    MultiFieldList
         A MultiFieldList containing the hindcast data.
     """
     from anemoi.datasets.dates import HindcastsDates

@@ -22,12 +22,17 @@ from anemoi.datasets.create.utils import to_datetime_list
 
 
 def _date_to_datetime(d: Any) -> Any:
-    """Converts a date string or a list/tuple of date strings to datetime objects.
+    """
+    Converts a date string or a list/tuple of date strings to datetime objects.
 
-    Args:
-        d: A date string or a list/tuple of date strings.
+    Parameters
+    ----------
+    d : Any
+        A date string or a list/tuple of date strings.
 
-    Returns:
+    Returns
+    -------
+    Any
         A datetime object or a list/tuple of datetime objects.
     """
     if isinstance(d, (list, tuple)):
@@ -36,12 +41,17 @@ def _date_to_datetime(d: Any) -> Any:
 
 
 def normalise_time_delta(t: Any) -> datetime.timedelta:
-    """Normalizes a time delta string to a datetime.timedelta object.
+    """
+    Normalizes a time delta string to a datetime.timedelta object.
 
-    Args:
-        t: A time delta string ending with 'h' or a datetime.timedelta object.
+    Parameters
+    ----------
+    t : Any
+        A time delta string ending with 'h' or a datetime.timedelta object.
 
-    Returns:
+    Returns
+    -------
+    datetime.timedelta
         A normalized datetime.timedelta object.
     """
     if isinstance(t, datetime.timedelta):
@@ -55,12 +65,17 @@ def normalise_time_delta(t: Any) -> datetime.timedelta:
 
 
 def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
-    """Groups fields by their metadata excluding 'date', 'time', and 'step'.
+    """
+    Groups fields by their metadata excluding 'date', 'time', and 'step'.
 
-    Args:
-        ds: A dataset object.
+    Parameters
+    ----------
+    ds : Any
+        A dataset object.
 
-    Returns:
+    Returns
+    -------
+    Dict[Tuple, List[Any]]
         A dictionary where keys are tuples of metadata items and values are lists of fields.
     """
     d = defaultdict(list)
@@ -74,14 +89,21 @@ def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
 
 
 def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
-    """Computes tendencies for the given dates and time increment.
+    """
+    Computes tendencies for the given dates and time increment.
 
-    Args:
-        dates: A list of datetime objects.
-        time_increment: A time increment string ending with 'h' or a datetime.timedelta object.
-        **kwargs: Additional keyword arguments.
+    Parameters
+    ----------
+    dates : List[datetime.datetime]
+        A list of datetime objects.
+    time_increment : Any
+        A time increment string ending with 'h' or a datetime.timedelta object.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    Returns:
+    Returns
+    -------
+    Any
         A dataset object with computed tendencies.
     """
     print("✅", kwargs)

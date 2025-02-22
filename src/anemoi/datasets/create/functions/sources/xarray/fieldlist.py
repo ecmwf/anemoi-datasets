@@ -34,11 +34,15 @@ class XarrayFieldList(FieldList):
     """A class to represent a list of fields from an xarray Dataset."""
 
     def __init__(self, ds: xr.Dataset, variables: List[Variable]) -> None:
-        """Initialize the XarrayFieldList.
+        """
+        Initialize the XarrayFieldList.
 
-        Args:
-            ds (xr.Dataset): The xarray Dataset.
-            variables (List[Variable]): The list of variables.
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The xarray Dataset.
+        variables : List[Variable]
+            The list of variables.
         """
         self.ds: xr.Dataset = ds
         self.variables: List[Variable] = variables.copy()
@@ -53,16 +57,23 @@ class XarrayFieldList(FieldList):
         return self.total_length
 
     def __getitem__(self, i: int) -> Any:
-        """Get an item from the XarrayFieldList by index.
+        """
+        Get an item from the XarrayFieldList by index.
 
-        Args:
-            i (int): The index of the item to get.
+        Parameters
+        ----------
+        i : int
+            The index of the item to get.
 
-        Returns:
-            Any: The item at the specified index.
+        Returns
+        -------
+        Any
+            The item at the specified index.
 
-        Raises:
-            IndexError: If the index is out of range.
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
         """
         k: int = i
 
@@ -84,15 +95,22 @@ class XarrayFieldList(FieldList):
         flavour: Optional[Union[str, Dict[str, Any]]] = None,
         patch: Optional[Dict[str, Any]] = None,
     ) -> "XarrayFieldList":
-        """Create an XarrayFieldList from an xarray Dataset.
+        """
+        Create an XarrayFieldList from an xarray Dataset.
 
-        Args:
-            ds (xr.Dataset): The xarray Dataset to create the field list from.
-            flavour (Optional[Union[str, Dict[str, Any]]]): The flavour to use for guessing coordinates.
-            patch (Optional[Dict[str, Any]]): The patch to apply to the dataset.
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The xarray Dataset to create the field list from.
+        flavour : Optional[Union[str, Dict[str, Any]]], optional
+            The flavour to use for guessing coordinates.
+        patch : Optional[Dict[str, Any]], optional
+            The patch to apply to the dataset.
 
-        Returns:
-            XarrayFieldList: The created XarrayFieldList.
+        Returns
+        -------
+        XarrayFieldList
+            The created XarrayFieldList.
         """
         if patch is not None:
             ds = patch_dataset(ds, patch)
@@ -171,13 +189,18 @@ class XarrayFieldList(FieldList):
         return cls(ds, variables)
 
     def sel(self, **kwargs: Any) -> FieldList:
-        """Select fields from the XarrayFieldList based on criteria.
+        """
+        Select fields from the XarrayFieldList based on criteria.
 
-        Args:
-            kwargs (dict): The selection criteria.
+        Parameters
+        ----------
+        kwargs : dict
+            The selection criteria.
 
-        Returns:
-            FieldList: The new FieldList with selected fields.
+        Returns
+        -------
+        FieldList
+            The new FieldList with selected fields.
         """
         variables: List[Variable] = []
         count: int = 0

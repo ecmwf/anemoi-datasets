@@ -27,13 +27,19 @@ LOG = logging.getLogger(__name__)
 
 
 def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
-    """Checks if the dataset has the expected number of fields.
+    """
+    Checks if the dataset has the expected number of fields.
 
-    Args:
-        what (str): Description of what is being checked.
-        ds (xr.Dataset): The dataset to check.
-        paths (List[str]): List of paths.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    what : str
+        Description of what is being checked.
+    ds : xr.Dataset
+        The dataset to check.
+    paths : List[str]
+        List of paths.
+    **kwargs : Any
+        Additional keyword arguments.
     """
     count = 1
     for k, v in kwargs.items():
@@ -55,27 +61,32 @@ def load_one(
     patch: Optional[Any] = None,
     **kwargs: Any,
 ) -> MultiFieldList:
-    """Loads a single dataset.
+    """
+    Loads a single dataset.
 
-    We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
-    zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
-    connection error). In that case,  Zarr will silently fill the chunks that could not be downloaded with NaNs.
-    See https://github.com/pydata/xarray/issues/8842
+    Parameters
+    ----------
+    emoji : str
+        Emoji for tracing.
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    dataset : Union[str, xr.Dataset]
+        The dataset to load.
+    options : Dict[str, Any], optional
+        Additional options for loading the dataset.
+    flavour : Optional[str], optional
+        Flavour of the dataset.
+    patch : Optional[Any], optional
+        Patch for the dataset.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
-
-    Args:
-        emoji (str): Emoji for tracing.
-        context (Any): Context object.
-        dates (List[str]): List of dates.
-        dataset (Union[str, xr.Dataset]): The dataset to load.
-        options (Dict[str, Any], optional): Additional options for loading the dataset.
-        flavour (Optional[str], optional): Flavour of the dataset.
-        patch (Optional[Any], optional): Patch for the dataset.
-        **kwargs (Any): Additional keyword arguments.
-
-    Returns:
-        MultiFieldList: The loaded dataset.
+    Returns
+    -------
+    MultiFieldList
+        The loaded dataset.
     """
     context.trace(emoji, dataset, options, kwargs)
 
@@ -116,17 +127,26 @@ def load_one(
 
 
 def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> MultiFieldList:
-    """Loads multiple datasets.
+    """
+    Loads multiple datasets.
 
-    Args:
-        emoji (str): Emoji for tracing.
-        context (Any): Context object.
-        dates (List[str]): List of dates.
-        pattern (str): Pattern for loading datasets.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    emoji : str
+        Emoji for tracing.
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    pattern : str
+        Pattern for loading datasets.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    Returns:
-        MultiFieldList: The loaded datasets.
+    Returns
+    -------
+    MultiFieldList
+        The loaded datasets.
     """
     result = []
 
@@ -137,16 +157,25 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
 
 
 def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> MultiFieldList:
-    """Executes the loading of datasets.
+    """
+    Executes the loading of datasets.
 
-    Args:
-        context (Any): Context object.
-        dates (List[str]): List of dates.
-        url (str): URL pattern for loading datasets.
-        *args (Any): Additional arguments.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    url : str
+        URL pattern for loading datasets.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    Returns:
-        MultiFieldList: The loaded datasets.
+    Returns
+    -------
+    MultiFieldList
+        The loaded datasets.
     """
     return load_many("🌐", context, dates, url, *args, **kwargs)

@@ -19,13 +19,18 @@ from .mars import mars
 
 
 def to_list(x: Union[list, tuple, str]) -> List:
-    """Converts the input to a list. If the input is a string, it splits it by '/'.
+    """
+    Converts the input to a list. If the input is a string, it splits it by '/'.
 
-    Args:
-        x (Union[list, tuple, str]): The input to convert.
+    Parameters
+    ----------
+    x : Union[list, tuple, str]
+        The input to convert.
 
-    Returns:
-        list: The converted list.
+    Returns
+    -------
+    list
+        The converted list.
     """
     if isinstance(x, (list, tuple)):
         return x
@@ -35,13 +40,18 @@ def to_list(x: Union[list, tuple, str]) -> List:
 
 
 def normalise_number(number: Union[list, tuple, str]) -> List[int]:
-    """Normalises the input number to a list of integers.
+    """
+    Normalises the input number to a list of integers.
 
-    Args:
-        number (Union[list, tuple, str]): The number to normalise.
+    Parameters
+    ----------
+    number : Union[list, tuple, str]
+        The number to normalise.
 
-    Returns:
-        list: The normalised list of integers.
+    Returns
+    -------
+    list
+        The normalised list of integers.
     """
     number = to_list(number)
 
@@ -55,13 +65,18 @@ def normalise_number(number: Union[list, tuple, str]) -> List[int]:
 
 
 def normalise_request(request: Dict) -> Dict:
-    """Normalises the request dictionary by converting certain fields to lists.
+    """
+    Normalises the request dictionary by converting certain fields to lists.
 
-    Args:
-        request (dict): The request dictionary to normalise.
+    Parameters
+    ----------
+    request : dict
+        The request dictionary to normalise.
 
-    Returns:
-        dict: The normalised request dictionary.
+    Returns
+    -------
+    dict
+        The normalised request dictionary.
     """
     request = deepcopy(request)
     if "number" in request:
@@ -73,15 +88,22 @@ def normalise_request(request: Dict) -> Dict:
 
 
 def load_if_needed(context: Any, dates: Any, dict_or_dataset: Union[Dict, Any]) -> Any:
-    """Loads the dataset if the input is a dictionary, otherwise returns the input.
+    """
+    Loads the dataset if the input is a dictionary, otherwise returns the input.
 
-    Args:
-        context: The context for loading the dataset.
-        dates: The dates for loading the dataset.
-        dict_or_dataset (Union[dict, Any]): The input dictionary or dataset.
+    Parameters
+    ----------
+    context : Any
+        The context for loading the dataset.
+    dates : Any
+        The dates for loading the dataset.
+    dict_or_dataset : Union[dict, Any]
+        The input dictionary or dataset.
 
-    Returns:
-        Any: The loaded dataset or the original input.
+    Returns
+    -------
+    Any
+        The loaded dataset or the original input.
     """
     if isinstance(dict_or_dataset, dict):
         dict_or_dataset = normalise_request(dict_or_dataset)
@@ -98,19 +120,30 @@ def recentre(
     remapping: Dict = {},
     patches: Dict = {},
 ) -> Any:
-    """Recentres the members dataset using the centre dataset.
+    """
+    Recentres the members dataset using the centre dataset.
 
-    Args:
-        context: The context for recentering.
-        dates: The dates for recentering.
-        members (Union[dict, Any]): The members dataset or request dictionary.
-        centre (Union[dict, Any]): The centre dataset or request dictionary.
-        alpha (float, optional): The alpha value for recentering. Defaults to 1.0.
-        remapping (dict, optional): The remapping dictionary. Defaults to {}.
-        patches (dict, optional): The patches dictionary. Defaults to {}.
+    Parameters
+    ----------
+    context : Any
+        The context for recentering.
+    dates : Any
+        The dates for recentering.
+    members : Union[dict, Any]
+        The members dataset or request dictionary.
+    centre : Union[dict, Any]
+        The centre dataset or request dictionary.
+    alpha : float, optional
+        The alpha value for recentering. Defaults to 1.0.
+    remapping : dict, optional
+        The remapping dictionary. Defaults to {}.
+    patches : dict, optional
+        The patches dictionary. Defaults to {}.
 
-    Returns:
-        Any: The recentred dataset.
+    Returns
+    -------
+    Any
+        The recentred dataset.
     """
     members = load_if_needed(context, dates, members)
     centre = load_if_needed(context, dates, centre)

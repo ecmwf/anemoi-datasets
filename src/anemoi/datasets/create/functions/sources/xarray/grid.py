@@ -47,12 +47,17 @@ class LatLonGrid(Grid):
     """Grid class for latitude and longitude coordinates."""
 
     def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
-        """Initialize the LatLonGrid class.
+        """
+        Initialize the LatLonGrid class.
 
-        Args:
-            lat (Any): The latitudes.
-            lon (Any): The longitudes.
-            variable_dims (Any): The variable dimensions.
+        Parameters
+        ----------
+        lat : Any
+            The latitudes.
+        lon : Any
+            The longitudes.
+        variable_dims : Any
+            The variable dimensions.
         """
         super().__init__()
         self.lat = lat
@@ -63,11 +68,15 @@ class XYGrid(Grid):
     """Grid class for x and y coordinates."""
 
     def __init__(self, x: Any, y: Any) -> None:
-        """Initialize the XYGrid class.
+        """
+        Initialize the XYGrid class.
 
-        Args:
-            x (Any): The x-coordinates.
-            y (Any): The y-coordinates.
+        Parameters
+        ----------
+        x : Any
+            The x-coordinates.
+        y : Any
+            The y-coordinates.
         """
         self.x = x
         self.y = y
@@ -91,12 +100,17 @@ class UnstructuredGrid(LatLonGrid):
     """Grid class for unstructured latitude and longitude coordinates."""
 
     def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
-        """Initialize the UnstructuredGrid class.
+        """
+        Initialize the UnstructuredGrid class.
 
-        Args:
-            lat (Any): The latitudes.
-            lon (Any): The longitudes.
-            variable_dims (Any): The variable dimensions.
+        Parameters
+        ----------
+        lat : Any
+            The latitudes.
+        lon : Any
+            The longitudes.
+        variable_dims : Any
+            The variable dimensions.
         """
         super().__init__(lat, lon, variable_dims)
         assert len(lat) == len(lon), (len(lat), len(lon))
@@ -130,18 +144,24 @@ class ProjectionGrid(XYGrid):
     """Grid class for projected x and y coordinates."""
 
     def __init__(self, x: Any, y: Any, projection: Any) -> None:
-        """Initialize the ProjectionGrid class.
+        """
+        Initialize the ProjectionGrid class.
 
-        Args:
-            x (Any): The x-coordinates.
-            y (Any): The y-coordinates.
-            projection (Any): The projection information.
+        Parameters
+        ----------
+        x : Any
+            The x-coordinates.
+        y : Any
+            The y-coordinates.
+        projection : Any
+            The projection information.
         """
         super().__init__(x, y)
         self.projection = projection
 
     def transformer(self) -> Any:
-        """Get the transformer for the projection.
+        """
+        Get the transformer for the projection.
 
         Returns
         -------
