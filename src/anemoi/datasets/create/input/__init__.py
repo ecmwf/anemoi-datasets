@@ -28,12 +28,17 @@ class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
     def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
-        """Initialize the InputBuilder.
+        """
+        Initialize the InputBuilder.
 
-        Args:
-            config (dict): Configuration dictionary.
-            data_sources (Union[dict, list]): Data sources.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        config : dict
+            Configuration dictionary.
+        data_sources : Union[dict, list]
+            Data sources.
+        **kwargs : Any
+            Additional keyword arguments.
         """
         self.kwargs = kwargs
 
@@ -50,13 +55,18 @@ class InputBuilder:
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> Any:
-        """Select data based on the group of dates.
+        """
+        Select data based on the group of dates.
 
-        Args:
-            group_of_dates (GroupOfDates): Group of dates to select data for.
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            Group of dates to select data for.
 
-        Returns:
-            Any: Selected data.
+        Returns
+        -------
+        Any
+            Selected data.
         """
         from .action import ActionContext
         from .action import action_factory
@@ -67,10 +77,13 @@ class InputBuilder:
         return action.select(group_of_dates)
 
     def __repr__(self) -> str:
-        """Return a string representation of the InputBuilder.
+        """
+        Return a string representation of the InputBuilder.
 
-        Returns:
-            str: String representation.
+        Returns
+        -------
+        str
+            String representation.
         """
         from .action import ActionContext
         from .action import action_factory
@@ -80,26 +93,38 @@ class InputBuilder:
         return repr(a)
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """Trace the select operation.
+        """
+        Trace the select operation.
 
-        Args:
-            group_of_dates (GroupOfDates): Group of dates to select data for.
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            Group of dates to select data for.
 
-        Returns:
-            str: Trace string.
+        Returns
+        -------
+        str
+            Trace string.
         """
         return f"InputBuilder({group_of_dates})"
 
 
 def build_input(config: dict, data_sources: Union[dict, list], **kwargs: Any) -> InputBuilder:
-    """Build an InputBuilder instance.
+    """
+    Build an InputBuilder instance.
 
-    Args:
-        config (dict): Configuration dictionary.
-        data_sources (Union[dict, list]): Data sources.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary.
+    data_sources : Union[dict, list]
+        Data sources.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    Returns:
-        InputBuilder: An instance of InputBuilder.
+    Returns
+    -------
+    InputBuilder
+        An instance of InputBuilder.
     """
     return InputBuilder(config, data_sources, **kwargs)
