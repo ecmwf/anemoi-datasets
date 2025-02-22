@@ -14,14 +14,21 @@ import earthkit.data as ekd
 
 
 def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> Any:
-    """Create a pipeline that returns an empty result.
+    """
+    Create a pipeline that returns an empty result.
 
-    Args:
-        context (Any): The context in which the function is executed.
-        input (List[Any]): List of input fields.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    Returns:
-        Any: An empty result.
+    Returns
+    -------
+    Any
+        An empty result.
     """
     return ekd.from_source("empty")

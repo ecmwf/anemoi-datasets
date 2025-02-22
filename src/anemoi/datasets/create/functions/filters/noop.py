@@ -14,15 +14,23 @@ import earthkit.data as ekd
 
 
 def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> List[Any]:
-    """No operation filter that returns the input as is.
+    """
+    No operation filter that returns the input as is.
 
-    Args:
-        context (Any): The context in which the function is executed.
-        input (List[Any]): List of input fields.
-        *args (Any): Additional arguments.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    Returns:
-        List[Any]: The input list of fields.
+    Returns
+    -------
+    List[Any]
+        The input list of fields.
     """
     return input
