@@ -61,11 +61,15 @@ VERSION = "0.30"
 def json_tidy(o: Any) -> Any:
     """Convert various types to JSON serializable format.
 
-    Args:
-        o (Any): The object to convert.
+    Parameters
+    ----------
+    o : Any
+        The object to convert.
 
-    Returns:
-        Any: The JSON serializable object.
+    Returns
+    -------
+    Any
+        The JSON serializable object.
     """
     if isinstance(o, datetime.datetime):
         return o.isoformat()
@@ -100,13 +104,19 @@ def build_statistics_dates(
 ) -> tuple[str, str]:
     """Compute the start and end dates for the statistics.
 
-    Args:
-        dates (list[datetime.datetime]): The list of dates.
-        start (datetime.datetime): The start date.
-        end (datetime.datetime): The end date.
+    Parameters
+    ----------
+    dates : list of datetime.datetime
+        The list of dates.
+    start : datetime.datetime
+        The start date.
+    end : datetime.datetime
+        The end date.
 
-    Returns:
-        tuple[str, str]: The start and end dates in ISO format.
+    Returns
+    -------
+    tuple of str
+        The start and end dates in ISO format.
     """
     # if not specified, use the default statistics dates
     default_start, default_end = default_statistics_dates(dates)
@@ -128,11 +138,15 @@ def build_statistics_dates(
 def _path_readable(path: str) -> bool:
     """Check if the path is readable.
 
-    Args:
-        path (str): The path to check.
+    Parameters
+    ----------
+    path : str
+        The path to check.
 
-    Returns:
-        bool: True if the path is readable, False otherwise.
+    Returns
+    -------
+    bool
+        True if the path is readable, False otherwise.
     """
     import zarr
 
@@ -149,8 +163,10 @@ class Dataset:
     def __init__(self, path: str):
         """Initialize a Dataset instance.
 
-        Args:
-            path (str): The path to the dataset.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
         """
         self.path = path
 
@@ -161,12 +177,17 @@ class Dataset:
     def add_dataset(self, mode: str = "r+", **kwargs) -> zarr.Array:
         """Add a dataset to the Zarr store.
 
-        Args:
-            mode (str): The mode to open the Zarr store.
-            **kwargs: Additional arguments for the dataset.
+        Parameters
+        ----------
+        mode : str, optional
+            The mode to open the Zarr store.
+        **kwargs
+            Additional arguments for the dataset.
 
-        Returns:
-            zarr.Array: The added dataset.
+        Returns
+        -------
+        zarr.Array
+            The added dataset.
         """
         import zarr
 
@@ -178,8 +199,10 @@ class Dataset:
     def update_metadata(self, **kwargs) -> None:
         """Update the metadata of the dataset.
 
-        Args:
-            **kwargs: The metadata to update.
+        Parameters
+        ----------
+        **kwargs
+            The metadata to update.
         """
         import zarr
 
@@ -217,8 +240,10 @@ class Dataset:
     def get_zarr_chunks(self) -> tuple:
         """Get the chunks of the Zarr dataset.
 
-        Returns:
-            tuple: The chunks of the Zarr dataset.
+        Returns
+        -------
+        tuple
+            The chunks of the Zarr dataset.
         """
         import zarr
 
@@ -235,12 +260,18 @@ class Dataset:
     ) -> None:
         """Check the name of the dataset.
 
-        Args:
-            resolution (str): The resolution of the dataset.
-            dates (list[datetime.datetime]): The dates of the dataset.
-            frequency (datetime.timedelta): The frequency of the dataset.
-            raise_exception (bool): Whether to raise an exception if the name is invalid.
-            is_test (bool): Whether this is a test.
+        Parameters
+        ----------
+        resolution : str
+            The resolution of the dataset.
+        dates : list of datetime.datetime
+            The dates of the dataset.
+        frequency : datetime.timedelta
+            The frequency of the dataset.
+        raise_exception : bool, optional
+            Whether to raise an exception if the name is invalid.
+        is_test : bool, optional
+            Whether this is a test.
         """
         basename, _ = os.path.splitext(os.path.basename(self.path))
         try:
@@ -254,8 +285,10 @@ class Dataset:
     def get_main_config(self) -> Any:
         """Get the main configuration of the dataset.
 
-        Returns:
-            Any: The main configuration.
+        Returns
+        -------
+        Any
+            The main configuration.
         """
         import zarr
 
@@ -269,8 +302,10 @@ class WritableDataset(Dataset):
     def __init__(self, path: str):
         """Initialize a WritableDataset instance.
 
-        Args:
-            path (str): The path to the dataset.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
         """
         super().__init__(path)
         self.path = path
@@ -293,9 +328,12 @@ class NewDataset(Dataset):
     def __init__(self, path: str, overwrite: bool = False):
         """Initialize a NewDataset instance.
 
-        Args:
-            path (str): The path to the dataset.
-            overwrite (bool): Whether to overwrite the existing dataset.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        overwrite : bool, optional
+            Whether to overwrite the existing dataset.
         """
         super().__init__(path)
         self.path = path
@@ -314,9 +352,12 @@ class Actor:  # TODO: rename to Creator
     def __init__(self, path: str, cache: Optional[str] = None):
         """Initialize an Actor instance.
 
-        Args:
-            path (str): The path to the dataset.
-            cache (Optional[str]): The cache directory.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        cache : Optional[str], optional
+            The cache directory.
         """
         # Catch all floating point errors, including overflow, sqrt(<0), etc
         np.seterr(all="raise", under="warn")
@@ -333,16 +374,20 @@ class Actor:  # TODO: rename to Creator
     def update_metadata(self, **kwargs) -> None:
         """Update the metadata of the dataset.
 
-        Args:
-            **kwargs: The metadata to update.
+        Parameters
+        ----------
+        **kwargs
+            The metadata to update.
         """
         self.dataset.update_metadata(**kwargs)
 
     def _cache_context(self) -> Any:
         """Get the cache context.
 
-        Returns:
-            Any: The cache context.
+        Returns
+        -------
+        Any
+            The cache context.
         """
         from .utils import cache_context
 
@@ -351,8 +396,10 @@ class Actor:  # TODO: rename to Creator
     def check_unkown_kwargs(self, kwargs: dict) -> None:
         """Check for unknown keyword arguments.
 
-        Args:
-            kwargs (dict): The keyword arguments.
+        Parameters
+        ----------
+        kwargs : dict
+            The keyword arguments.
         """
         # remove this latter
         LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
@@ -360,8 +407,10 @@ class Actor:  # TODO: rename to Creator
     def read_dataset_metadata(self, path: str) -> None:
         """Read the metadata of the dataset.
 
-        Args:
-            path (str): The path to the dataset.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
         """
         ds = open_dataset(path)
         self.dataset_shape = ds.shape
@@ -392,9 +441,12 @@ class Patch(Actor):
     def __init__(self, path: str, options: dict = None, **kwargs):
         """Initialize a Patch instance.
 
-        Args:
-            path (str): The path to the dataset.
-            options (dict): The patch options.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        options : dict, optional
+            The patch options.
         """
         self.path = path
         self.options = options or {}
@@ -412,8 +464,10 @@ class Size(Actor):
     def __init__(self, path: str, **kwargs):
         """Initialize a Size instance.
 
-        Args:
-            path (str): The path to the dataset.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
         """
         super().__init__(path)
 
@@ -462,8 +516,10 @@ class HasElementForDataMixin:
     def create_elements(self, config: Any) -> None:
         """Create elements for the dataset.
 
-        Args:
-            config (Any): The configuration.
+        Parameters
+        ----------
+        config : Any
+            The configuration.
         """
         assert self.registry
         assert self.tmp_statistics
@@ -482,12 +538,17 @@ class HasElementForDataMixin:
 def build_input_(main_config: Any, output_config: Any) -> Any:
     """Build the input for the dataset.
 
-    Args:
-        main_config (Any): The main configuration.
-        output_config (Any): The output configuration.
+    Parameters
+    ----------
+    main_config : Any
+        The main configuration.
+    output_config : Any
+        The output configuration.
 
-    Returns:
-        Any: The input builder.
+    Returns
+    -------
+    Any
+        The input builder.
     """
     builder = build_input(
         main_config.input,
@@ -522,16 +583,26 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     ):
         """Initialize an Init instance.
 
-        Args:
-            path (str): The path to the dataset.
-            config (dict): The configuration.
-            check_name (bool): Whether to check the dataset name.
-            overwrite (bool): Whether to overwrite the existing dataset.
-            use_threads (bool): Whether to use threads.
-            statistics_temp_dir (Optional[str]): The directory for temporary statistics.
-            progress (Any): The progress indicator.
-            test (bool): Whether this is a test.
-            cache (Optional[str]): The cache directory.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        config : dict
+            The configuration.
+        check_name : bool, optional
+            Whether to check the dataset name.
+        overwrite : bool, optional
+            Whether to overwrite the existing dataset.
+        use_threads : bool, optional
+            Whether to use threads.
+        statistics_temp_dir : Optional[str], optional
+            The directory for temporary statistics.
+        progress : Any, optional
+            The progress indicator.
+        test : bool, optional
+            Whether this is a test.
+        cache : Optional[str], optional
+            The cache directory.
         """
         if _path_readable(path) and not overwrite:
             raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
@@ -563,8 +634,10 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def run(self) -> int:
         """Run the initialization.
 
-        Returns:
-            int: The number of groups to process.
+        Returns
+        -------
+        int
+            The number of groups to process.
         """
         with self._cache_context():
             return self._run()
@@ -572,8 +645,10 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def _run(self) -> int:
         """Internal method to run the initialization.
 
-        Returns:
-            int: The number of groups to process.
+        Returns
+        -------
+        int
+            The number of groups to process.
         """
         """Create an empty dataset of the right final shape.
 
@@ -739,13 +814,20 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     ):
         """Initialize a Load instance.
 
-        Args:
-            path (str): The path to the dataset.
-            parts (Optional[str]): The parts to load.
-            use_threads (bool): Whether to use threads.
-            statistics_temp_dir (Optional[str]): The directory for temporary statistics.
-            progress (Any): The progress indicator.
-            cache (Optional[str]): The cache directory.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        parts : Optional[str], optional
+            The parts to load.
+        use_threads : bool, optional
+            Whether to use threads.
+        statistics_temp_dir : Optional[str], optional
+            The directory for temporary statistics.
+        progress : Any, optional
+            The progress indicator.
+        cache : Optional[str], optional
+            The cache directory.
         """
         super().__init__(path, cache=cache)
         self.use_threads = use_threads
@@ -797,8 +879,10 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def load_result(self, result: Any) -> None:
         """Load the result into the dataset.
 
-        Args:
-            result (Any): The result to load.
+        Parameters
+        ----------
+        result : Any
+            The result to load.
         """
         # There is one cube to load for each result.
         dates = list(result.group_of_dates)
@@ -863,8 +947,10 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def _get_allow_nans(self) -> bool | list:
         """Get the allow_nans configuration.
 
-        Returns:
-            bool | list: The allow_nans configuration.
+        Returns
+        -------
+        bool | list
+            The allow_nans configuration.
         """
         config = self.main_config
         if "allow_nans" in config.build:
@@ -875,9 +961,12 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def load_cube(self, cube: Any, array: ViewCacheArray) -> None:
         """Load the cube into the array.
 
-        Args:
-            cube (Any): The cube to load.
-            array (ViewCacheArray): The array to load into.
+        Parameters
+        ----------
+        cube : Any
+            The cube to load.
+        array : ViewCacheArray
+            The array to load into.
         """
         # There are several cubelets for each cube
         start = time.time()
@@ -942,11 +1031,16 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
     ):
         """Initialize a Cleanup instance.
 
-        Args:
-            path (str): The path to the dataset.
-            statistics_temp_dir (Optional[str]): The directory for temporary statistics.
-            delta (list): The delta values.
-            use_threads (bool): Whether to use threads.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        statistics_temp_dir : Optional[str], optional
+            The directory for temporary statistics.
+        delta : list, optional
+            The delta values.
+        use_threads : bool, optional
+            Whether to use threads.
         """
         super().__init__(path)
         self.use_threads = use_threads
@@ -970,8 +1064,10 @@ class Verify(Actor):
     def __init__(self, path: str, **kwargs):
         """Initialize a Verify instance.
 
-        Args:
-            path (str): The path to the dataset.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
         """
         super().__init__(path)
 
@@ -987,8 +1083,10 @@ class AdditionsMixin:
     def skip(self) -> bool:
         """Check if the additions should be skipped.
 
-        Returns:
-            bool: Whether to skip the additions.
+        Returns
+        -------
+        bool
+            Whether to skip the additions.
         """
         frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
         if not self.delta.total_seconds() % frequency.total_seconds() == 0:
@@ -1034,9 +1132,12 @@ class DeltaDataset:
     def __init__(self, ds: Any, idelta: int):
         """Initialize a DeltaDataset instance.
 
-        Args:
-            ds (Any): The dataset.
-            idelta (int): The delta value.
+        Parameters
+        ----------
+        ds : Any
+            The dataset.
+        idelta : int
+            The delta value.
         """
         self.ds = ds
         self.idelta = idelta
@@ -1044,11 +1145,15 @@ class DeltaDataset:
     def __getitem__(self, i: int) -> Any:
         """Get an item from the dataset.
 
-        Args:
-            i (int): The index.
+        Parameters
+        ----------
+        i : int
+            The index.
 
-        Returns:
-            Any: The item.
+        Returns
+        -------
+        Any
+            The item.
         """
         j = i - self.idelta
         if j < 0:
@@ -1062,11 +1167,16 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
         """Initialize an _InitAdditions instance.
 
-        Args:
-            path (str): The path to the dataset.
-            delta (str): The delta value.
-            use_threads (bool): Whether to use threads.
-            progress (Any): The progress indicator.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        delta : str
+            The delta value.
+        use_threads : bool, optional
+            Whether to use threads.
+        progress : Any, optional
+            The progress indicator.
         """
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
@@ -1105,12 +1215,18 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     ):
         """Initialize a _RunAdditions instance.
 
-        Args:
-            path (str): The path to the dataset.
-            delta (str): The delta value.
-            parts (Optional[str]): The parts to load.
-            use_threads (bool): Whether to use threads.
-            progress (Any): The progress indicator.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        delta : str
+            The delta value.
+        parts : Optional[str], optional
+            The parts to load.
+        use_threads : bool, optional
+            Whether to use threads.
+        progress : Any, optional
+            The progress indicator.
         """
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
@@ -1147,8 +1263,10 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def allow_nans(self) -> bool:
         """Check if NaNs are allowed.
 
-        Returns:
-            bool: Whether NaNs are allowed.
+        Returns
+        -------
+        bool
+            Whether NaNs are allowed.
         """
         if self.dataset.anemoi_dataset.metadata.get("allow_nans", False):
             return True
@@ -1166,11 +1284,16 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs):
         """Initialize a _FinaliseAdditions instance.
 
-        Args:
-            path (str): The path to the dataset.
-            delta (str): The delta value.
-            use_threads (bool): Whether to use threads.
-            progress (Any): The progress indicator.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        delta : str
+            The delta value.
+        use_threads : bool, optional
+            Whether to use threads.
+        progress : Any, optional
+            The progress indicator.
         """
         super().__init__(path)
         self.delta = frequency_to_timedelta(delta)
@@ -1286,8 +1409,10 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     def _write(self, summary: Summary) -> None:
         """Write the summary to the dataset.
 
-        Args:
-            summary (Summary): The summary to write.
+        Parameters
+        ----------
+        summary : Summary
+            The summary to write.
         """
         for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             name = f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
@@ -1299,11 +1424,15 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
 def multi_addition(cls: type) -> type:
     """Create a class to handle multiple additions.
 
-    Args:
-        cls (type): The class to handle additions.
+    Parameters
+    ----------
+    cls : type
+        The class to handle additions.
 
-    Returns:
-        type: The class to handle multiple additions.
+    Returns
+    -------
+    type
+        The class to handle multiple additions.
     """
 
     class MultiAdditions:
@@ -1342,11 +1471,16 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
     ):
         """Initialize a Statistics instance.
 
-        Args:
-            path (str): The path to the dataset.
-            use_threads (bool): Whether to use threads.
-            statistics_temp_dir (Optional[str]): The directory for temporary statistics.
-            progress (Any): The progress indicator.
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        use_threads : bool, optional
+            Whether to use threads.
+        statistics_temp_dir : Optional[str], optional
+            The directory for temporary statistics.
+        progress : Any, optional
+            The progress indicator.
         """
         super().__init__(path)
         self.use_threads = use_threads
@@ -1399,11 +1533,15 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
 def chain(tasks: list) -> type:
     """Create a class to chain multiple tasks.
 
-    Args:
-        tasks (list): The list of tasks to chain.
+    Parameters
+    ----------
+    tasks : list
+        The list of tasks to chain.
 
-    Returns:
-        type: The class to chain multiple tasks.
+    Returns
+    -------
+    type
+        The class to chain multiple tasks.
     """
 
     class Chain(Actor):
@@ -1422,13 +1560,19 @@ def chain(tasks: list) -> type:
 def creator_factory(name: str, trace: Optional[str] = None, **kwargs) -> Any:
     """Create a dataset creator.
 
-    Args:
-        name (str): The name of the creator.
-        trace (Optional[str]): The trace file.
-        **kwargs: Additional arguments for the creator.
+    Parameters
+    ----------
+    name : str
+        The name of the creator.
+    trace : Optional[str], optional
+        The trace file.
+    **kwargs
+        Additional arguments for the creator.
 
-    Returns:
-        Any: The dataset creator.
+    Returns
+    -------
+    Any
+        The dataset creator.
     """
     if trace:
 
