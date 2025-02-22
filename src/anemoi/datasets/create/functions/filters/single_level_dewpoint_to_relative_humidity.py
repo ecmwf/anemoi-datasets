@@ -22,15 +22,23 @@ from .single_level_specific_humidity_to_relative_humidity import NewDataField
 def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") -> FieldArray:
     """Convert dewpoint on single levels to relative humidity.
 
-    Args:
-        context (Any): The context in which the function is executed.
-        input (List[Any]): List of input fields.
-        t (str): Temperature parameter.
-        td (str): Dewpoint parameter.
-        rh (str, optional): Relative humidity parameter. Defaults to "d".
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    t : str
+        Temperature parameter.
+    td : str
+        Dewpoint parameter.
+    rh : str, optional
+        Relative humidity parameter. Defaults to "d".
 
-    Returns:
-        FieldArray: Array of fields with relative humidity.
+    Returns
+    -------
+    FieldArray
+        Array of fields with relative humidity.
     """
     result = FieldArray()
     params: tuple[str, str] = (t, td)
@@ -73,10 +81,14 @@ def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") 
 #         """
 #         Initialize a NewDataField instance.
 
-#         Args:
-#             field (Any): The original field.
-#             data (NDArray[Any]): The converted relative humidity data.
-#             new_name (str): The new name for the field.
+#         Parameters
+#         ----------
+#         field : Any
+#             The original field.
+#         data : NDArray[Any]
+#             The converted relative humidity data.
+#         new_name : str
+#             The new name for the field.
 #         """
 #         self.field = field
 #         self.data = data
@@ -86,8 +98,10 @@ def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") 
 #         """
 #         Convert the data to a numpy array.
 
-#         Returns:
-#             NDArray[Any]: The data as a numpy array.
+#         Returns
+#         -------
+#         NDArray[Any]
+#             The data as a numpy array.
 #         """
 #         return self.data
 
@@ -95,12 +109,17 @@ def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") 
 #         """
 #         Get metadata from the original field, with the option to rename the parameter.
 
-#         Args:
-#             key (Optional[str]): The metadata key.
-#             **kwargs (Any): Additional keyword arguments.
+#         Parameters
+#         ----------
+#         key : Optional[str]
+#             The metadata key.
+#         **kwargs : Any
+#             Additional keyword arguments.
 
-#         Returns:
-#             Any: The metadata value.
+#         Returns
+#         -------
+#         Any
+#             The metadata value.
 #         """
 #         if key is None:
 #             return self.field.metadata(**kwargs)
@@ -114,11 +133,14 @@ def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") 
 #         """
 #         Get an attribute from the original field.
 
-#         Args:
-#             name (str): The name of the attribute.
+#         Parameters
+#         ----------
+#         name : str
+#             The name of the attribute.
 
-#         Returns:
-
-#             Any: The attribute value.
+#         Returns
+#         -------
+#         Any
+#             The attribute value.
 #         """
 #         return getattr(self.field, name)
