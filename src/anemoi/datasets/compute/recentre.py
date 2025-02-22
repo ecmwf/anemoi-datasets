@@ -42,11 +42,16 @@ def check_compatible(
 ) -> None:
     """Check if two fields are compatible.
 
-    Args:
-        f1 (Any): The first field.
-        f2 (Any): The second field.
-        centre_field_as_mars (Dict[str, Any]): Metadata of the centre field.
-        ensemble_field_as_mars (Dict[str, Any]): Metadata of the ensemble field.
+    Parameters
+    ----------
+    f1 : Any
+        The first field.
+    f2 : Any
+        The second field.
+    centre_field_as_mars : Dict[str, Any]
+        Metadata of the centre field.
+    ensemble_field_as_mars : Dict[str, Any]
+        Metadata of the ensemble field.
     """
     assert f1.mars_grid == f2.mars_grid, (f1.mars_grid, f2.mars_grid)
     assert f1.mars_area == f2.mars_area, (f1.mars_area, f2.mars_area)
@@ -78,15 +83,23 @@ def recentre(
 ) -> Any:
     """Recentre ensemble members around the centre field.
 
-    Args:
-        members (Any): The ensemble members.
-        centre (Any): The centre field.
-        clip_variables (Tuple[str, ...], optional): Variables to clip. Defaults to CLIP_VARIABLES.
-        alpha (float, optional): Scaling factor. Defaults to 1.0.
-        output (Optional[str], optional): Output path. Defaults to None.
+    Parameters
+    ----------
+    members : Any
+        The ensemble members.
+    centre : Any
+        The centre field.
+    clip_variables : Tuple[str, ...], optional
+        Variables to clip. Defaults to CLIP_VARIABLES.
+    alpha : float, optional
+        Scaling factor. Defaults to 1.0.
+    output : Optional[str], optional
+        Output path. Defaults to None.
 
-    Returns:
-        Any: The recentred dataset or output path.
+    Returns
+    -------
+    Any
+        The recentred dataset or output path.
     """
     keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
 

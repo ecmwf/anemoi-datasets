@@ -27,16 +27,20 @@ class Publish(Command):
     def add_arguments(self, parser: Any) -> None:
         """Add arguments to the command parser.
 
-        Args:
-            parser (Any): The command parser to which arguments are added.
+        Parameters
+        ----------
+        parser : Any
+            The command parser to which arguments are added.
         """
         parser.add_argument("path", help="Path of the dataset to publish.")
 
     def run(self, args: Any) -> None:
         """Execute the publish command.
 
-        Args:
-            args (Any): The arguments passed to the command.
+        Parameters
+        ----------
+        args : Any
+            The arguments passed to the command.
         """
         try:
             from anemoi.registry import publish_dataset
