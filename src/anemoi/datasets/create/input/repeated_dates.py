@@ -38,12 +38,17 @@ class DateMapper:
 
     @staticmethod
     def from_mode(mode: str, source: Any, config: Dict[str, Any]) -> "DateMapper":
-        """Create a DateMapper instance based on the given mode.
+        """
+        Create a DateMapper instance based on the given mode.
 
-        Args:
-            mode (str): The mode to use for the DateMapper.
-            source (Any): The data source.
-            config (Dict[str, Any]): Configuration parameters.
+        Parameters
+        ----------
+        mode : str
+            The mode to use for the DateMapper.
+        source : Any
+            The data source.
+        config : dict
+            Configuration parameters.
 
         Returns
         -------
@@ -66,13 +71,19 @@ class DateMapperClosest(DateMapper):
     """A DateMapper implementation that maps dates to the closest available dates."""
 
     def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
-        """Initialize DateMapperClosest.
+        """
+        Initialize DateMapperClosest.
 
-        Args:
-            source (Any): The data source.
-            frequency (str): Frequency of the dates.
-            maximum (str): Maximum time delta.
-            skip_all_nans (bool): Whether to skip all NaN values.
+        Parameters
+        ----------
+        source : Any
+            The data source.
+        frequency : str
+            Frequency of the dates.
+        maximum : str
+            Maximum time delta.
+        skip_all_nans : bool
+            Whether to skip all NaN values.
         """
         self.source: Any = source
         self.maximum: Any = frequency_to_timedelta(maximum)
@@ -82,10 +93,13 @@ class DateMapperClosest(DateMapper):
         self.found: Set[Any] = set()
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """Transform the group of dates to the closest available dates.
+        """
+        Transform the group of dates to the closest available dates.
 
-        Args:
-            group_of_dates (Any): The group of dates to transform.
+        Parameters
+        ----------
+        group_of_dates : Any
+            The group of dates to transform.
 
         Returns
         -------
@@ -171,23 +185,32 @@ class DateMapperClimatology(DateMapper):
     """A DateMapper implementation that maps dates to specified climatology dates."""
 
     def __init__(self, source: Any, year: int, day: int, hour: Optional[int] = None) -> None:
-        """Initialize DateMapperClimatology.
+        """
+        Initialize DateMapperClimatology.
 
-        Args:
-            source (Any): The data source.
-            year (int): The year to map to.
-            day (int): The day to map to.
-            hour (Optional[int]): The hour to map to.
+        Parameters
+        ----------
+        source : Any
+            The data source.
+        year : int
+            The year to map to.
+        day : int
+            The day to map to.
+        hour : Optional[int]
+            The hour to map to.
         """
         self.year: int = year
         self.day: int = day
         self.hour: Optional[int] = hour
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """Transform the group of dates to the specified climatology dates.
+        """
+        Transform the group of dates to the specified climatology dates.
 
-        Args:
-            group_of_dates (Any): The group of dates to transform.
+        Parameters
+        ----------
+        group_of_dates : Any
+            The group of dates to transform.
 
         Returns
         -------
@@ -218,20 +241,27 @@ class DateMapperConstant(DateMapper):
     """A DateMapper implementation that maps dates to a constant date."""
 
     def __init__(self, source: Any, date: Optional[Any] = None) -> None:
-        """Initialize DateMapperConstant.
+        """
+        Initialize DateMapperConstant.
 
-        Args:
-            source (Any): The data source.
-            date (Optional[Any]): The constant date to map to.
+        Parameters
+        ----------
+        source : Any
+            The data source.
+        date : Optional[Any]
+            The constant date to map to.
         """
         self.source: Any = source
         self.date: Optional[Any] = date
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """Transform the group of dates to a constant date.
+        """
+        Transform the group of dates to a constant date.
 
-        Args:
-            group_of_dates (Any): The group of dates to transform.
+        Parameters
+        ----------
+        group_of_dates : Any
+            The group of dates to transform.
 
         Returns
         -------
@@ -265,15 +295,23 @@ class DateMapperResult(Result):
         mapper: DateMapper,
         original_group_of_dates: Any,
     ) -> None:
-        """Initialize DateMapperResult.
+        """
+        Initialize DateMapperResult.
 
-        Args:
-            context (Any): The context.
-            action_path (List[str]): The action path.
-            group_of_dates (Any): The group of dates.
-            source_result (Any): The source result.
-            mapper (DateMapper): The date mapper.
-            original_group_of_dates (Any): The original group of dates.
+        Parameters
+        ----------
+        context : Any
+            The context.
+        action_path : list of str
+            The action path.
+        group_of_dates : Any
+            The group of dates.
+        source_result : Any
+            The source result.
+        mapper : DateMapper
+            The date mapper.
+        original_group_of_dates : Any
+            The original group of dates.
         """
         super().__init__(context, action_path, group_of_dates)
 
@@ -300,7 +338,8 @@ class RepeatedDatesAction(Action):
     """An Action implementation that selects and transforms a group of dates."""
 
     def __init__(self, context: Any, action_path: List[str], source: Any, mode: str, **kwargs: Any) -> None:
-        """Initialize RepeatedDatesAction.
+        """
+        Initialize RepeatedDatesAction.
 
         Args:
             context (Any): The context.

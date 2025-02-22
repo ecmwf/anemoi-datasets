@@ -23,13 +23,18 @@ LOG = logging.getLogger(__name__)
 
 
 def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator to notify the context of the result of the method call.
+    """
+    Decorator to notify the context of the result of the method call.
 
-    Args:
-        method (Callable[..., Any]): The method to wrap.
+    Parameters
+    ----------
+    method : Callable[..., Any]
+        The method to wrap.
 
-    Returns:
-        Callable[..., Any]: The wrapped method.
+    Returns
+    -------
+    Callable[..., Any]
+        The wrapped method.
     """
 
     @wraps(method)
@@ -46,13 +51,18 @@ class Substitution(ABC):
 
     @abstractmethod
     def resolve(self, context: BuildContext) -> Any:
-        """Resolve the substitution using the given context.
+        """
+        Resolve the substitution using the given context.
 
-        Args:
-            context (Any): The context to use for resolution.
+        Parameters
+        ----------
+        context : BuildContext
+            The context to use for resolution.
 
-        Returns:
-            Any: The resolved value.
+        Returns
+        -------
+        Any
+            The resolved value.
         """
         pass
 
@@ -61,36 +71,51 @@ class Reference(Substitution):
     """A class to represent a reference to another value in the context."""
 
     def __init__(self, context: Any, action_path: List[str]) -> None:
-        """Initialize a Reference instance.
+        """
+        Initialize a Reference instance.
 
-        Args:
-            context (Any): The context in which the reference exists.
-            action_path (List[str]): The action path to resolve.
+        Parameters
+        ----------
+        context : Any
+            The context in which the reference exists.
+        action_path : list of str
+            The action path to resolve.
         """
         self.context: Any = context
         self.action_path: List[str] = action_path
 
     def resolve(self, context: BuildContext) -> Any:
-        """Resolve the reference using the given context.
+        """
+        Resolve the reference using the given context.
 
-        Args:
-            context (Any): The context to use for resolution.
+        Parameters
+        ----------
+        context : BuildContext
+            The context to use for resolution.
 
-        Returns:
-            Any: The resolved value.
+        Returns
+        -------
+        Any
+            The resolved value.
         """
         return context.get_result(self.action_path)
 
 
 def resolve(context: BuildContext, x: Any) -> Any:
-    """Recursively resolve substitutions in the given structure using the context.
+    """
+    Recursively resolve substitutions in the given structure using the context.
 
-    Args:
-        context (Any): The context to use for resolution.
-        x (Union[tuple, list, dict, Substitution, Any]): The structure to resolve.
+    Parameters
+    ----------
+    context : BuildContext
+        The context to use for resolution.
+    x : Union[tuple, list, dict, Substitution, Any]
+        The structure to resolve.
 
-    Returns:
-        Any: The resolved structure.
+    Returns
+    -------
+    Any
+        The resolved structure.
     """
     if isinstance(x, tuple):
         return tuple([resolve(context, y) for y in x])
@@ -108,14 +133,20 @@ def resolve(context: BuildContext, x: Any) -> Any:
 
 
 def substitute(context: BuildContext, x: Any) -> Any:
-    """Recursively substitute references in the given structure using the context.
+    """
+    Recursively substitute references in the given structure using the context.
 
-    Args:
-        context (Any): The context to use for substitution.
-        x (Union[tuple, list, dict, str, Any]): The structure to substitute.
+    Parameters
+    ----------
+    context : BuildContext
+        The context to use for substitution.
+    x : Union[tuple, list, dict, str, Any]
+        The structure to substitute.
 
-    Returns:
-        Any: The substituted structure.
+    Returns
+    -------
+    Any
+        The substituted structure.
     """
     if isinstance(x, tuple):
         return tuple([substitute(context, y) for y in x])

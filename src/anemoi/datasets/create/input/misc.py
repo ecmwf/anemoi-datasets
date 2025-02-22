@@ -33,7 +33,7 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
 
     Returns
     -------
-    Tuple[str, Union[int, None]]
+    tuple of (str, int or None)
         The base name and an optional time delta.
     """
     if name.endswith("h") and name[:-1].isdigit():
@@ -119,13 +119,18 @@ def assert_is_fieldlist(obj: object) -> None:
 
 
 def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
-    """Flattens a MultiFieldList or FieldList into a list of FieldList objects.
+    """
+    Flattens a MultiFieldList or FieldList into a list of FieldList objects.
 
-    Args:
-        ds (Union[MultiFieldList, FieldList]): The dataset to flatten.
+    Parameters
+    ----------
+    ds : Union[MultiFieldList, FieldList]
+        The dataset to flatten.
 
-    Returns:
-        list: A list of FieldList objects.
+    Returns
+    -------
+    list
+        A list of FieldList objects.
     """
     if isinstance(ds, MultiFieldList):
         return [_tidy(f) for s in ds._indexes for f in _flatten(s)]
@@ -133,14 +138,20 @@ def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
 
 
 def _tidy(ds: Union[MultiFieldList, FieldList], indent: int = 0) -> Union[MultiFieldList, FieldList]:
-    """Tidies up a MultiFieldList or FieldList by removing empty sources.
+    """
+    Tidies up a MultiFieldList or FieldList by removing empty sources.
 
-    Args:
-        ds (Union[MultiFieldList, FieldList]): The dataset to tidy.
-        indent (int, optional): The indentation level. Defaults to 0.
+    Parameters
+    ----------
+    ds : Union[MultiFieldList, FieldList]
+        The dataset to tidy.
+    indent : int, optional
+        The indentation level. Defaults to 0.
 
-    Returns:
-        Union[MultiFieldList, FieldList]: The tidied dataset.
+    Returns
+    -------
+    Union[MultiFieldList, FieldList]
+        The tidied dataset.
     """
     if isinstance(ds, MultiFieldList):
 
