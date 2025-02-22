@@ -157,8 +157,8 @@ def test_planetary_computer_conus404() -> None:
 
 
 if __name__ == "__main__":
-    test_weatherbench()
-    exit()
+    # test_weatherbench()
+    # exit()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

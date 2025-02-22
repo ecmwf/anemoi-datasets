@@ -120,19 +120,6 @@ class PlanetaryComputerStore(ReadOnlyStore):
         """
         self.data_catalog_id = data_catalog_id
 
-    def __getitem__(self, key: str) -> Dict[str, Any]:
-        """Retrieve an item from the store.
-
-        Parameters
-        ----------
-        key : str
-            The key of the item to retrieve.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The item retrieved from the store.
-        """
         import planetary_computer
         import pystac_client
 
@@ -156,7 +143,7 @@ class PlanetaryComputerStore(ReadOnlyStore):
                 **asset.extra_fields["xarray:open_kwargs"],
             }
 
-        return store
+        self.store = store
 
 
 class DebugStore(ReadOnlyStore):
@@ -203,7 +190,7 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
             store = S3Store(s3_url, region=bits[2])
         elif store.startswith("https://planetarycomputer.microsoft.com/"):
             data_catalog_id = store.rsplit("/", 1)[-1]
-            store = PlanetaryComputerStore(data_catalog_id).__getitem__()
+            store = PlanetaryComputerStore(data_catalog_id).store
         else:
             store = HTTPStore(store)
 
