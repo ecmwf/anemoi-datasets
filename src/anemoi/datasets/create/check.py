@@ -296,3 +296,27 @@ def check_data_values(
                 f"For {name}: maximum value in the data is {max}. "
                 "Not in acceptable range [{limits[name]['minimum']} ; {limits[name]['maximum']}]"
             )
+
+
+def check_stats(minimum: float, maximum: float, mean: float, msg: str, **kwargs: Any) -> None:
+    """
+    Check if the mean value is within the min/max interval.
+
+    Parameters
+    ----------
+    minimum : float
+        The minimum value.
+    maximum : float
+        The maximum value.
+    mean : float
+        The mean value.
+    msg : str
+        The message to include in the error.
+    **kwargs : Any
+        Additional keyword arguments.
+    """
+    tolerance = (abs(minimum) + abs(maximum)) * 0.01
+    if (mean - minimum < -tolerance) or (mean - minimum < -tolerance):
+        raise StatisticsValueError(
+            f"Mean is not in min/max interval{msg} : we should have {minimum} <= {mean} <= {maximum}"
+        )

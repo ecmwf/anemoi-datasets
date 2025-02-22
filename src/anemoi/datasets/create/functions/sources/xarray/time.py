@@ -20,7 +20,7 @@ from typing import Optional
 from anemoi.utils.dates import as_datetime
 
 from .coordinates import Coordinate
-from .variables import Variable
+from .variable import Variable
 
 LOG = logging.getLogger(__name__)
 
@@ -100,10 +100,7 @@ class Time(ABC):
         """
         pass
 
-
-class Constant(Time):
-    """Represents a constant time."""
-
+    @abstractmethod
     def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> None:
         """Fill metadata with time information.
 
@@ -114,17 +111,30 @@ class Constant(Time):
         metadata : Dict[str, Any]
             Metadata dictionary.
         """
+
+        pass
+
+
+class Constant(Time):
+    """Represents a constant time."""
+
+    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> None:
+        """Fill metadata with time information.
+
+        Parameters
+        ----------
+        coords_values : Dict[str, Any]
+            Coordinate values.
+        metadata : Dict[str, Any]
+            Metadata dictionary.
+        """
         return None
 
     def select_valid_datetime(self, variable: Variable) -> None:
         """Select the valid datetime for a given variable.
 
-        Returns
-        -------
-        None
-
-        Args
-        ----
+        Parameters
+        ----------
         variable : Variable
             The variable to select the datetime for.
         """
@@ -137,12 +147,35 @@ class Analysis(Time):
     def __init__(self, time_coordinate: Coordinate) -> None:
         """Initialize Analysis with a time coordinate.
 
-        Args
-        ----
+        Parameters
+        ----------
         time_coordinate : Coordinate
             The time coordinate.
         """
         self.time_coordinate_name = time_coordinate.variable.name
+
+    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
+        """Fill metadata with time information.
+
+        Parameters
+        ----------
+        coords_values : Dict[str, Any]
+            Coordinate values.
+        metadata : Dict[str, Any]
+            Metadata dictionary.
+
+        Returns
+        -------
+        Any
+            The valid datetime.
+        """
+        valid_datetime = coords_values[self.time_coordinate_name]
+
+        metadata["date"] = as_datetime(valid_datetime).strftime("%Y%m%d")
+        metadata["time"] = as_datetime(valid_datetime).strftime("%H%M")
+        metadata["step"] = 0
+
+        return valid_datetime
 
     def select_valid_datetime(self, variable: Variable) -> str:
         """Select the valid datetime for a given variable.

@@ -20,7 +20,7 @@ from earthkit.data.utils.patterns import Pattern
 LOG = logging.getLogger(__name__)
 
 
-def _expand(paths: List[str]) -> Generator[str]:
+def _expand(paths: List[str]) -> Generator[str, None, None]:
     """Expand the given paths to include all matching file paths.
 
     Parameters
@@ -56,7 +56,9 @@ def _expand(paths: List[str]) -> Generator[str]:
             yield path
 
 
-def iterate_patterns(path: str, dates: List[datetime.datetime], **kwargs: Any) -> Generator[Tuple[str, List[str]]]:
+def iterate_patterns(
+    path: str, dates: List[datetime.datetime], **kwargs: Any
+) -> Generator[Tuple[str, List[str]], None, None]:
     """Iterate over patterns and expand them with given dates and additional keyword arguments.
 
     Parameters
