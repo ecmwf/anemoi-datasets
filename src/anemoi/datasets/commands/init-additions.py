@@ -27,10 +27,13 @@ class InitAdditions(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
-        """Add command line arguments to the parser.
+        """
+        Add command line arguments to the parser.
 
-        Args:
-            command_parser (Any): The argument parser instance.
+        Parameters
+        ----------
+        command_parser : Any
+            The argument parser instance.
         """
         command_parser.add_argument(
             "--delta",
@@ -42,10 +45,13 @@ class InitAdditions(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
-        """Execute the command with the given arguments.
+        """
+        Execute the command with the given arguments.
 
-        Args:
-            args (Any): The command line arguments.
+        Parameters
+        ----------
+        args : Any
+            The command line arguments.
         """
         options = vars(args)
         options.pop("command")

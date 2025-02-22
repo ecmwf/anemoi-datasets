@@ -24,8 +24,25 @@ LOG = logging.getLogger(__name__)
 
 
 def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
-    """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
+    """
+    Make sure `import Creator` is done in the sub-processes, and not in the main one.
 
+    Parameters
+    ----------
+    what : str
+        The task to be executed.
+    options : dict
+        Options for the task.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    Any
+        The result of the task.
+    """
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
@@ -47,10 +64,13 @@ class Create(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
-        """Add command line arguments to the parser.
+        """
+        Add command line arguments to the parser.
 
-        Args:
-            command_parser (Any): The command line argument parser.
+        Parameters
+        ----------
+        command_parser : Any
+            The command line argument parser.
         """
         command_parser.add_argument(
             "--overwrite",
@@ -70,10 +90,13 @@ class Create(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
-        """Execute the create command.
+        """
+        Execute the create command.
 
-        Args:
-            args (Any): Command line arguments.
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
         """
         now = time.time()
         if args.threads + args.processes:
@@ -83,10 +106,13 @@ class Create(Command):
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
     def serial_create(self, args: Any) -> None:
-        """Create the dataset in serial mode.
+        """
+        Create the dataset in serial mode.
 
-        Args:
-            args (Any): Command line arguments.
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
         """
         options = vars(args)
         options.pop("command")
@@ -107,10 +133,13 @@ class Create(Command):
         task("verify", options)
 
     def parallel_create(self, args: Any) -> None:
-        """Create the dataset in parallel mode.
+        """
+        Create the dataset in parallel mode.
 
-        Args:
-            args (Any): Command line arguments.
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
         """
         """Some modules, like fsspec do not work well with fork()
         Other modules may not be thread safe. So we implement
