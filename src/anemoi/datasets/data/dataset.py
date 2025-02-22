@@ -729,7 +729,7 @@ class Dataset(ABC, Sized):
         overriden = [m for m in common if Dataset.__dict__[m] is not self.__class__.__dict__[m]]
 
         for n in overriden:
-            if n.startswith("_") and not n.startswith("__"):
+            if n.startswith("_") and not n.startswith("__") and n not in ("_abc_impl",):
                 warnings.warn(f"Private method {n} is overriden in {self.__class__.__name__}")
 
     def _repr_html_(self) -> str:

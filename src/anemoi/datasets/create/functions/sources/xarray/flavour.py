@@ -11,7 +11,6 @@
 import logging
 from abc import ABC
 from abc import abstractmethod
-from collections import namedtuple
 from typing import Any
 from typing import Dict
 from typing import Hashable
@@ -19,6 +18,7 @@ from typing import Optional
 from typing import Tuple
 
 import xarray as xr
+from anemoi.utils.config import DotDict
 
 from .coordinates import Coordinate
 from .coordinates import DateCoordinate
@@ -41,7 +41,11 @@ from .grid import UnstructuredProjectionGrid
 
 LOG = logging.getLogger(__name__)
 
-CoordinateAttributes = namedtuple("CoordinateAttributes", ["axis", "name", "long_name", "standard_name", "units"])
+# CoordinateAttributes = namedtuple("CoordinateAttributes", ["axis", "name", "long_name", "standard_name", "units"])
+
+
+class CoordinateAttributes(DotDict):
+    pass
 
 
 class CoordinateGuesser(ABC):
@@ -791,7 +795,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         super().__init__(ds)
         self.flavour = flavour
 
-    def _match(self, c: xr.DataArray, key: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _match(self, c: xr.DataArray, key: str, attributes: CoordinateAttributes) -> Optional[Dict[str, Any]]:
         """Matches the coordinate against the flavour rules.
 
         Parameters
@@ -800,7 +804,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
             The coordinate to match.
         key : str
             The key to match in the flavour rules.
-        values : Dict[str, Any]
+        attributes : CoordinateAttributes
             The values to match against.
 
         Returns
@@ -819,7 +823,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         for rule in rules:
             ok = True
             for k, v in rule.items():
-                if isinstance(v, str) and values.get(k) != v:
+                if isinstance(v, str) and attributes.get(k) != v:
                     ok = False
             if ok:
                 return rule
@@ -841,7 +845,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[LongitudeCoordinate]
             The LongitudeCoordinate if matched, else None.
         """
-        if self._match(c, "longitude", locals()):
+        if self._match(c, "longitude", attributes):
             return LongitudeCoordinate(c)
 
         return None
@@ -861,7 +865,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[LatitudeCoordinate]
             The LatitudeCoordinate if matched, else None.
         """
-        if self._match(c, "latitude", locals()):
+        if self._match(c, "latitude", attributes):
             return LatitudeCoordinate(c)
 
         return None
@@ -881,7 +885,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[XCoordinate]
             The XCoordinate if matched, else None.
         """
-        if self._match(c, "x", locals()):
+        if self._match(c, "x", attributes):
             return XCoordinate(c)
 
         return None
@@ -901,7 +905,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[YCoordinate]
             The YCoordinate if matched, else None.
         """
-        if self._match(c, "y", locals()):
+        if self._match(c, "y", attributes):
             return YCoordinate(c)
 
         return None
@@ -921,7 +925,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[TimeCoordinate]
             The TimeCoordinate if matched, else None.
         """
-        if self._match(c, "time", locals()):
+        if self._match(c, "time", attributes):
             return TimeCoordinate(c)
 
         return None
@@ -941,7 +945,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[StepCoordinate]
             The StepCoordinate if matched, else None.
         """
-        if self._match(c, "step", locals()):
+        if self._match(c, "step", attributes):
             return StepCoordinate(c)
 
         return None
@@ -961,7 +965,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[DateCoordinate]
             The DateCoordinate if matched, else None.
         """
-        if self._match(c, "date", locals()):
+        if self._match(c, "date", attributes):
             return DateCoordinate(c)
 
         return None
@@ -981,7 +985,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[LevelCoordinate]
             The LevelCoordinate if matched, else None.
         """
-        rule = self._match(c, "level", locals())
+        rule = self._match(c, "level", attributes)
         if rule:
             # assert False, rule
             return LevelCoordinate(
@@ -1026,7 +1030,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         Optional[EnsembleCoordinate]
             The EnsembleCoordinate if matched, else None.
         """
-        if self._match(c, "number", locals()):
+        if self._match(c, "number", attributes):
             return EnsembleCoordinate(c)
 
         return None

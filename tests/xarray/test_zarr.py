@@ -17,10 +17,11 @@ from anemoi.datasets.testing import assert_field_list
 
 try:
     import adlfs  # noqa: F401
+    import planetary_computer  # noqa: F401
 
-    HAS_ADLS = True
+    PLANETARY_COMPUTER = True
 except ImportError:
-    HAS_ADLS = False
+    PLANETARY_COMPUTER = False
 
 
 def test_arco_era5_1() -> None:
@@ -129,7 +130,7 @@ def test_noaa_replay() -> None:
     )
 
 
-@pytest.mark.skipif(not HAS_ADLS, reason="package adlfs not installed")
+@pytest.mark.skipif(not PLANETARY_COMPUTER, reason="packages adlfs and/or planetary_computer not installed")
 def test_planetary_computer_conus404() -> None:
     """Test loading and validating the planetary_computer_conus404 dataset."""
     url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
@@ -156,8 +157,8 @@ def test_planetary_computer_conus404() -> None:
 
 
 if __name__ == "__main__":
-    # test_arco_era5_2()
-    # exit()
+    test_weatherbench()
+    exit()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

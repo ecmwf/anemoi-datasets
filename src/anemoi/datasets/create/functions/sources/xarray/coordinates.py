@@ -307,6 +307,9 @@ class DateCoordinate(Coordinate):
 class StepCoordinate(Coordinate):
     """Coordinate class for step."""
 
+    is_step = True
+    mars_names = ("step",)
+
 
 class LevelCoordinate(Coordinate):
     """Coordinate class for level.
