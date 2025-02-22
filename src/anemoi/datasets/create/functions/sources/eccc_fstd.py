@@ -11,12 +11,12 @@
 from typing import Any
 from typing import List
 
-import xarray as xr
+import earthkit.data as ekd
 
 from .xarray import load_many
 
 
-def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> xr.Dataset:
+def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the loading of data using the specified context, dates, and path.
 
     Parameters

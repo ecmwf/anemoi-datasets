@@ -14,7 +14,7 @@ from typing import List
 import earthkit.data as ekd
 
 
-def execute(context: Any, dates: List[str], **kwargs: Any) -> Any:
+def execute(context: Any, dates: List[str], **kwargs: Any) -> ekd.FieldList:
     """Executes the loading of an empty data source.
 
     Parameters
@@ -28,7 +28,7 @@ def execute(context: Any, dates: List[str], **kwargs: Any) -> Any:
 
     Returns
     -------
-    object
+    ekd.FieldList
         Loaded empty data source.
     """
     return ekd.from_source("empty")

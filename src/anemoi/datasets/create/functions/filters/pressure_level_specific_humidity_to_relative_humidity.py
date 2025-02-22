@@ -37,7 +37,7 @@ def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         Array of fields with relative humidity.
     """
     result = FieldArray()

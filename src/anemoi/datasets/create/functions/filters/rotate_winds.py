@@ -14,6 +14,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+import earthkit.data as ekd
 import tqdm
 from anemoi.utils.humanize import plural
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -86,7 +87,7 @@ def execute(
     y_wind: str,
     source_projection: Optional[str] = None,
     target_projection: str = "+proj=longlat",
-) -> FieldArray:
+) -> ekd.FieldList:
     """Rotate wind components from one projection to another.
 
     Parameters
@@ -106,7 +107,7 @@ def execute(
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         Array of fields with rotated wind components.
     """
     from pyproj import CRS

@@ -176,7 +176,7 @@ class RenamedFieldFormat:
         return repr(self.field)
 
 
-def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: Any) -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: Any) -> ekd.FieldList:
     """Rename fields based on the value of another field or a format string.
 
     Parameters
@@ -192,7 +192,7 @@ def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: A
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         Array of renamed fields.
     """
     if what in kwargs and isinstance(kwargs[what], str):

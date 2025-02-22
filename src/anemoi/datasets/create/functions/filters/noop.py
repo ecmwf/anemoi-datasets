@@ -8,12 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 from typing import Any
-from typing import List
 
 import earthkit.data as ekd
 
 
-def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> List[Any]:
+def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """
     No operation filter that returns the input as is.
 
@@ -21,7 +20,7 @@ def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> Li
     ----------
     context : Any
         The context in which the function is executed.
-    input : List[Any]
+    input : ekd.FieldList
         List of input fields.
     *args : Any
         Additional arguments.

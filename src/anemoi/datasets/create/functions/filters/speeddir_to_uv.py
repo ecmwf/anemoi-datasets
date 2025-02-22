@@ -13,6 +13,7 @@ from typing import Any
 from typing import List
 from typing import Optional
 
+import earthkit.data as ekd
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo.wind.array import polar_to_xy
@@ -115,7 +116,7 @@ def execute(
     u_component: str = "u",
     v_component: str = "v",
     in_radians: bool = False,
-) -> FieldArray:
+) -> ekd.FieldList:
     """
     Convert wind speed and direction to u and v components.
 
@@ -138,7 +139,7 @@ def execute(
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         The resulting field array with u and v components.
     """
 

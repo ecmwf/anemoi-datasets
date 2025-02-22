@@ -12,6 +12,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.sources.url import download_and_cache
 
@@ -19,7 +20,7 @@ from . import iterate_patterns
 from .xarray import load_one
 
 
-def execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> MultiFieldList:
+def execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Executes the download and processing of files from Zenodo.
 
     Parameters

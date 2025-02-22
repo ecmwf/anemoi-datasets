@@ -69,7 +69,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> ekd.FieldList:
     """
     Unrotate the wind components of a GRIB file.
 
@@ -86,7 +86,7 @@ def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> FieldArray:
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         The resulting field array with unrotated wind components.
     """
     result = FieldArray()

@@ -15,6 +15,7 @@ from typing import List
 from typing import Optional
 from typing import Union
 
+import earthkit.data as ekd
 import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
@@ -60,7 +61,7 @@ def load_one(
     flavour: Optional[str] = None,
     patch: Optional[Any] = None,
     **kwargs: Any,
-) -> MultiFieldList:
+) -> ekd.FieldList:
     """
     Loads a single dataset.
 
@@ -126,7 +127,7 @@ def load_one(
     return result
 
 
-def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> MultiFieldList:
+def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
     """
     Loads multiple datasets.
 
@@ -156,7 +157,7 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
     return MultiFieldList(result)
 
 
-def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> MultiFieldList:
+def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """
     Executes the loading of datasets.
 
@@ -175,7 +176,7 @@ def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any)
 
     Returns
     -------
-    MultiFieldList
+    ekd.FieldList
         The loaded datasets.
     """
     return load_many("🌐", context, dates, url, *args, **kwargs)

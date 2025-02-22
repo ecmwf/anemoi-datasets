@@ -108,7 +108,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) -> ekd.FieldList:
     """Computes the sum over a set of variables.
 
     Args:
@@ -118,7 +118,7 @@ def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) 
         output (str): The name for the output field.
 
     Returns:
-        FieldArray: The resulting FieldArray with summed fields.
+        ekd.FieldList: The resulting FieldArray with summed fields.
     """
     result = FieldArray()
 

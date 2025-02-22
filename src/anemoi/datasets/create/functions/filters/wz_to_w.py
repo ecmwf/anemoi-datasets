@@ -96,7 +96,7 @@ class NewDataField:
         return getattr(self.field, name)
 
 
-def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> ekd.FieldList:
     """
     Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
 
@@ -115,7 +115,7 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         The resulting FieldArray with converted vertical velocity fields.
     """
     result = FieldArray()

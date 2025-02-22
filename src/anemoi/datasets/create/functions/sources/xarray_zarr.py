@@ -11,10 +11,12 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+import earthkit.data as ekd
+
 from .xarray import load_many
 
 
-def execute(context: Dict[str, Any], dates: List[str], url: str, *args: Any, **kwargs: Any) -> Any:
+def execute(context: Dict[str, Any], dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the loading of data using xarray and zarr.
 
     Parameters

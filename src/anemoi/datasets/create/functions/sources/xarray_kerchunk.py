@@ -13,6 +13,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from . import iterate_patterns
@@ -21,7 +22,7 @@ from .xarray import load_one
 
 def load_many(
     emoji: str, context: Any, dates: List[str], pattern: str, options: Optional[Dict[str, Any]], **kwargs: Any
-) -> MultiFieldList:
+) -> ekd.FieldList:
     """Loads multiple datasets based on the provided pattern and dates.
 
     Parameters
@@ -41,7 +42,7 @@ def load_many(
 
     Returns
     -------
-    MultiFieldList
+    ekd.FieldList
         A list of loaded datasets.
     """
 
@@ -69,7 +70,7 @@ def load_many(
 
 def execute(
     context: Any, dates: List[str], json: str, options: Optional[Dict[str, Any]] = None, **kwargs: Any
-) -> MultiFieldList:
+) -> ekd.FieldList:
     """Executes the loading of datasets using the provided context and dates.
 
     Parameters

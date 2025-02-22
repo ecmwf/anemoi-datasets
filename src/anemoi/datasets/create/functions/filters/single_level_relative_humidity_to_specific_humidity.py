@@ -12,6 +12,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+import earthkit.data as ekd
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
@@ -30,8 +31,40 @@ def execute(
     sp: str,
     new_name: str = "2q",
     **kwargs: Dict[str, Any],
-) -> FieldArray:
-    """Convert the single (height) level relative humidity to specific humidity."""
+) -> ekd.FieldList:
+    """Convert the single (height) level relative humidity to specific humidity.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    height : float
+        The height level.
+    t : str
+        Temperature parameter name.
+    rh : str
+        Relative humidity parameter name.
+    sp : str
+        Surface pressure parameter name.
+    new_name : str, optional
+        The new name for the specific humidity field, by default "2q".
+    **kwargs : Dict[str, Any]
+        Additional keyword arguments.
+
+    Returns
+    -------
+    ekd.FieldList
+        The resulting field list with specific humidity fields.
+
+    Raises
+    ------
+    KeyError
+        If mandatory keys are missing.
+    ValueError
+        If there are duplicate fields or missing fields.
+    """
     result = FieldArray()
 
     MANDATORY_KEYS = ["A", "B"]

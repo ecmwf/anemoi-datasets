@@ -16,6 +16,7 @@ from typing import List
 from typing import Optional
 from typing import Union
 
+import earthkit.data as ekd
 from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
@@ -253,7 +254,7 @@ def execute(
     longitudes: Optional[Dict[str, Any]] = None,
     *args: Any,
     **kwargs: Any,
-) -> Any:
+) -> ekd.FieldList:
     """
     Execute the function to load data from GRIB files.
 

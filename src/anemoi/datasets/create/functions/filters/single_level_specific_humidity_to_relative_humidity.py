@@ -15,6 +15,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import earthkit.data as ekd
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import constants
@@ -314,7 +315,7 @@ def execute(
     sp: str,
     new_name: str = "2r",
     **kwargs: Dict[str, Any],
-) -> FieldArray:
+) -> ekd.FieldList:
     """Convert the single (height) level specific humidity to relative humidity.
 
     Parameters
@@ -348,7 +349,7 @@ def execute(
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         The resulting field array with relative humidity.
     """
     result = FieldArray()

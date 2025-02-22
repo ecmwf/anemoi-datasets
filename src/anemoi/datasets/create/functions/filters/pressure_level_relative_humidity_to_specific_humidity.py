@@ -19,7 +19,7 @@ from earthkit.meteo import thermo
 from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
-def execute(context: Any, input: ekd.FieldList, t: str, rh: str, q: str = "q") -> FieldArray:
+def execute(context: Any, input: ekd.FieldList, t: str, rh: str, q: str = "q") -> ekd.FieldList:
     """Convert relative humidity on pressure levels to specific humidity.
 
     Parameters
@@ -37,7 +37,7 @@ def execute(context: Any, input: ekd.FieldList, t: str, rh: str, q: str = "q") -
 
     Returns
     -------
-    FieldArray
+    ekd.FieldList
         Array of fields with specific humidity.
     """
     result = FieldArray()

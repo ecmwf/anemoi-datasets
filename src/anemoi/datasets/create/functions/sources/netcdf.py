@@ -11,10 +11,12 @@
 from typing import Any
 from typing import List
 
+import earthkit.data as ekd
+
 from .xarray import load_many
 
 
-def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> Any:
+def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the loading of multiple NetCDF files.
 
     Parameters
