@@ -26,9 +26,12 @@ SKIP = [0, 1, 2, 3, 4, 22]
 def _test_samples(n: int, check_skip: bool = True) -> None:
     """Test loading and validating sample datasets.
 
-    Args:
-        n (int): Sample number.
-        check_skip (bool): Whether to check for skip conditions.
+    Parameters
+    ----------
+    n : int
+        Sample number.
+    check_skip : bool, optional
+        Whether to check for skip conditions.
     """
 
     r = requests.get(f"{URL}sample-{n:04d}.json")
@@ -64,8 +67,10 @@ def _test_samples(n: int, check_skip: bool = True) -> None:
 def test_samples(n: int) -> None:
     """Parametrized test for sample datasets.
 
-    Args:
-        n (int): Sample number.
+    Parameters
+    ----------
+    n : int
+        Sample number.
     """
     _test_samples(n)
 

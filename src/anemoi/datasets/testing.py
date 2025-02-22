@@ -28,13 +28,20 @@ def assert_field_list(
 ) -> None:
     """Asserts various properties of a list of fields.
 
-    Args:
-        fs (List[Any]): List of fields to be checked.
-        size (Optional[int]): Expected size of the list. If None, the list must be non-empty.
-        start (Optional[Any]): Expected start metadata value. If None, no check is performed.
-        end (Optional[Any]): Expected end metadata value. If None, no check is performed.
-        constant (bool): If True, checks that all fields are constant.
-        skip (Optional[Any]): Placeholder for future use.
+    Parameters
+    ----------
+    fs : List[Any]
+        List of fields to be checked.
+    size : Optional[int], optional
+        Expected size of the list. If None, the list must be non-empty.
+    start : Optional[Any], optional
+        Expected start metadata value. If None, no check is performed.
+    end : Optional[Any], optional
+        Expected end metadata value. If None, no check is performed.
+    constant : bool, optional
+        If True, checks that all fields are constant.
+    skip : Optional[Any], optional
+        Placeholder for future use.
     """
     import numpy as np
 

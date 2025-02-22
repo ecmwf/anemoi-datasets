@@ -30,7 +30,8 @@ from anemoi.utils.humanize import print_dates
 
 
 def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datetime]:
-    """Extend a date range or list of dates into individual datetime objects.
+    """
+    Extend a date range or list of dates into individual datetime objects.
 
     Args:
         x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
@@ -61,7 +62,8 @@ def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datet
 
 
 class DatesProvider:
-    """Base class for date generation.
+    """
+    Base class for date generation.
 
     >>> DatesProvider.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-02 00:00", "frequency": "1d"}).values
     [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 2, 0, 0)]
@@ -87,10 +89,13 @@ class DatesProvider:
     """
 
     def __init__(self, missing: Optional[List[Union[str, datetime.datetime]]] = None) -> None:
-        """Initialize the DatesProvider with optional missing dates.
+        """
+        Initialize the DatesProvider with optional missing dates.
 
-        Args:
-            missing (Optional[List[Union[str, datetime.datetime]]]): List of missing dates.
+        Parameters
+        ----------
+        missing : Optional[List[Union[str, datetime.datetime]]]
+            List of missing dates.
         """
         if not missing:
             missing = []
@@ -101,7 +106,8 @@ class DatesProvider:
 
     @classmethod
     def from_config(cls, **kwargs: Any) -> "DatesProvider":
-        """Create a DatesProvider instance from configuration.
+        """
+        Create a DatesProvider instance from configuration.
 
         Args:
             **kwargs (Any): Configuration parameters.

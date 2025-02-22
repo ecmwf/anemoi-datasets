@@ -39,8 +39,10 @@ class MissingDatesFill(Forwards):
     def __init__(self, dataset: Dataset) -> None:
         """Initialize the MissingDatesFill class.
 
-        Args:
-            dataset (Any): The dataset with missing dates.
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset with missing dates.
         """
         super().__init__(dataset)
         self._missing = set(dataset.missing)
@@ -51,11 +53,15 @@ class MissingDatesFill(Forwards):
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Get a tuple of data for the given index.
 
-        Args:
-            index (TupleIndex): The index to retrieve data for.
+        Parameters
+        ----------
+        index : TupleIndex
+            The index to retrieve data for.
 
-        Returns:
-            NDArray[Any]: The data for the given index.
+        Returns
+        -------
+        NDArray[Any]
+            The data for the given index.
         """
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
@@ -65,11 +71,15 @@ class MissingDatesFill(Forwards):
     def _get_slice(self, s: slice) -> NDArray[Any]:
         """Get a slice of data.
 
-        Args:
-            s (slice): The slice to retrieve data for.
+        Parameters
+        ----------
+        s : slice
+            The slice to retrieve data for.
 
-        Returns:
-            NDArray[Any]: The data for the given slice.
+        Returns
+        -------
+        NDArray[Any]
+            The data for the given slice.
         """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
@@ -82,11 +92,15 @@ class MissingDatesFill(Forwards):
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Get the data for the given index.
 
-        Args:
-            n (FullIndex): The index to retrieve data for.
+        Parameters
+        ----------
+        n : FullIndex
+            The index to retrieve data for.
 
-        Returns:
-            NDArray[Any]: The data for the given index.
+        Returns
+        -------
+        NDArray[Any]
+            The data for the given index.
         """
         try:
             return self.forward[n]
@@ -128,9 +142,12 @@ class MissingDatesClosest(MissingDatesFill):
     def __init__(self, dataset: Any, closest: str) -> None:
         """Initialize the MissingDatesClosest class.
 
-        Args:
-            dataset (Any): The dataset with missing dates.
-            closest (str): The strategy to use for filling missing dates ('up' or 'down').
+        Parameters
+        ----------
+        dataset : Any
+            The dataset with missing dates.
+        closest : str
+            The strategy to use for filling missing dates ('up' or 'down').
         """
         super().__init__(dataset)
         self.closest = closest
@@ -139,13 +156,19 @@ class MissingDatesClosest(MissingDatesFill):
     def _fill_missing(self, n: int, a: Optional[int], b: Optional[int]) -> NDArray[Any]:
         """Fill the missing date at the given index.
 
-        Args:
-            n (int): The index of the missing date.
-            a (Optional[int]): The previous available date index.
-            b (Optional[int]): The next available date index.
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
+        a : Optional[int]
+            The previous available date index.
+        b : Optional[int]
+            The next available date index.
 
-        Returns:
-            NDArray[Any]: The filled data for the missing date.
+        Returns
+        -------
+        NDArray[Any]
+            The filled data for the missing date.
         """
         if n not in self._warnings:
             LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
@@ -169,16 +192,20 @@ class MissingDatesClosest(MissingDatesFill):
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """Get metadata specific to the subclass.
 
-        Returns:
-            Dict[str, Any]: The metadata specific to the subclass.
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
         """
         return {"closest": self.closest}
 
     def tree(self) -> Node:
         """Get the tree representation of the object.
 
-        Returns:
-            Node: The tree representation of the object.
+        Returns
+        -------
+        Node
+            The tree representation of the object.
         """
         return Node(self, [self.forward.tree()], closest=self.closest)
 
@@ -189,8 +216,10 @@ class MissingDatesInterpolate(MissingDatesFill):
     def __init__(self, dataset: Any) -> None:
         """Initialize the MissingDatesInterpolate class.
 
-        Args:
-            dataset (Any): The dataset with missing dates.
+        Parameters
+        ----------
+        dataset : Any
+            The dataset with missing dates.
         """
         super().__init__(dataset)
         self._alpha = {}
@@ -198,13 +227,19 @@ class MissingDatesInterpolate(MissingDatesFill):
     def _fill_missing(self, n: int, a: Optional[int], b: Optional[int]) -> NDArray[Any]:
         """Fill the missing date at the given index using interpolation.
 
-        Args:
-            n (int): The index of the missing date.
-            a (Optional[int]): The previous available date index.
-            b (Optional[int]): The next available date index.
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
+        a : Optional[int]
+            The previous available date index.
+        b : Optional[int]
+            The next available date index.
 
-        Returns:
-            NDArray[Any]: The filled data for the missing date.
+        Returns
+        -------
+        NDArray[Any]
+            The filled data for the missing date.
         """
         if n not in self._warnings:
             LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
@@ -232,16 +267,20 @@ class MissingDatesInterpolate(MissingDatesFill):
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
         """Get metadata specific to the subclass.
 
-        Returns:
-            Dict[str, Any]: The metadata specific to the subclass.
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
         """
         return {}
 
     def tree(self) -> Node:
         """Get the tree representation of the object.
 
-        Returns:
-            Node: The tree representation of the object.
+        Returns
+        -------
+        Node
+            The tree representation of the object.
         """
         return Node(self, [self.forward.tree()])
 
@@ -249,13 +288,19 @@ class MissingDatesInterpolate(MissingDatesFill):
 def fill_missing_dates_factory(dataset: Any, method: str, kwargs: Dict[str, Any]) -> Dataset:
     """Factory function to create an instance of a class to fill missing dates.
 
-    Args:
-        dataset (Any): The dataset with missing dates.
-        method (str): The method to use for filling missing dates ('closest' or 'interpolate').
-        kwargs (Dict[str, Any]): Additional arguments for the method.
+    Parameters
+    ----------
+    dataset : Any
+        The dataset with missing dates.
+    method : str
+        The method to use for filling missing dates ('closest' or 'interpolate').
+    kwargs : Dict[str, Any]
+        Additional arguments for the method.
 
-    Returns:
-        Dataset: An instance of a class to fill missing dates.
+    Returns
+    -------
+    Dataset
+        An instance of a class to fill missing dates.
     """
     if method == "closest":
         closest = kwargs.get("closest", "up")
