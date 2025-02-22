@@ -46,12 +46,18 @@ class ConcatResult(Result):
     ) -> None:
         """Initializes a ConcatResult instance.
 
-        Args:
-            context (object): The context object.
-            action_path (List[str]): The action path.
-            group_of_dates (GroupOfDates): The group of dates.
-            results (List[Result]): The list of results.
-            **kwargs (Any): Additional keyword arguments.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : List[str]
+            The action path.
+        group_of_dates : GroupOfDates
+            The group of dates.
+        results : List[Result]
+            The list of results.
+        kwargs : Any
+            Additional keyword arguments.
         """
         super().__init__(context, action_path, group_of_dates)
         self.results = [r for r in results if not r.empty]
@@ -83,8 +89,10 @@ class ConcatResult(Result):
     def __repr__(self) -> str:
         """Returns a string representation of the ConcatResult instance.
 
-        Returns:
-            str: A string representation of the ConcatResult instance.
+        Returns
+        -------
+        str
+            A string representation of the ConcatResult instance.
         """
         return f"{self.__class__.__name__}({self.results})"
 
@@ -95,10 +103,14 @@ class ConcatAction(Action):
     def __init__(self, context: object, action_path: List[str], *configs: Dict[str, Any]) -> None:
         """Initializes a ConcatAction instance.
 
-        Args:
-            context (object): The context object.
-            action_path (List[str]): The action path.
-            *configs (Dict[str, Any]): The configuration dictionaries.
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : List[str]
+            The action path.
+        configs : Dict[str, Any]
+            The configuration dictionaries.
         """
         super().__init__(context, action_path, *configs)
         parts = []
@@ -116,8 +128,10 @@ class ConcatAction(Action):
     def __repr__(self) -> str:
         """Returns a string representation of the ConcatAction instance.
 
-        Returns:
-            str: A string representation of the ConcatAction instance.
+        Returns
+        -------
+        str
+            A string representation of the ConcatAction instance.
         """
         content = "\n".join([str(i) for i in self.parts])
         return super().__repr__(content)
@@ -126,11 +140,15 @@ class ConcatAction(Action):
     def select(self, group_of_dates: GroupOfDates) -> Union[ConcatResult, EmptyResult]:
         """Selects the concatenated result for the given group of dates.
 
-        Args:
-            group_of_dates (GroupOfDates): The group of dates.
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            The group of dates.
 
-        Returns:
-            Union[ConcatResult, EmptyResult]: The concatenated result or an empty result.
+        Returns
+        -------
+        Union[ConcatResult, EmptyResult]
+            The concatenated result or an empty result.
         """
         from anemoi.datasets.dates.groups import GroupOfDates
 

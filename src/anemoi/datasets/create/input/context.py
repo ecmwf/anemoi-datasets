@@ -41,8 +41,10 @@ class BuildContext(ContextBase):
     def will_need_reference(self, key: Union[List, Tuple]) -> None:
         """Marks a reference as needed.
 
-        Args:
-            key (Union[List, Tuple]): The reference key.
+        Parameters
+        ----------
+        key : Union[List, Tuple]
+            The reference key.
         """
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
@@ -51,9 +53,12 @@ class BuildContext(ContextBase):
     def notify_result(self, key: Union[List, Tuple], result: Any) -> None:
         """Notifies that a result is available for a reference.
 
-        Args:
-            key (Union[List, Tuple]): The reference key.
-            result (Any): The result object.
+        Parameters
+        ----------
+        key : Union[List, Tuple]
+            The reference key.
+        result : Any
+            The result object.
         """
         trace(
             "🎯",
@@ -72,11 +77,15 @@ class BuildContext(ContextBase):
     def get_result(self, key: Union[List, Tuple]) -> Any:
         """Retrieves the result for a given reference.
 
-        Args:
-            key (Union[List, Tuple]): The reference key.
+        Parameters
+        ----------
+        key : Union[List, Tuple]
+            The reference key.
 
-        Returns:
-            Any: The result for the given reference.
+        Returns
+        -------
+        Any
+            The result for the given reference.
         """
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
