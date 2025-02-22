@@ -268,14 +268,20 @@ def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
 
 
 def zip_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Zip:
-    """Factory function to create a Zip instance.
+    """
+    Factory function to create a Zip instance.
 
-    Args:
-        args (Tuple[Any, ...]): Positional arguments.
-        kwargs (Dict[str, Any]): Keyword arguments.
+    Parameters
+    ----------
+    args : Tuple[Any, ...]
+        Positional arguments.
+    kwargs : Dict[str, Any]
+        Keyword arguments.
 
-    Returns:
-        Zip: An instance of Zip.
+    Returns
+    -------
+    Zip
+        An instance of Zip.
     """
     zip = kwargs.pop("zip")
     assert len(args) == 0

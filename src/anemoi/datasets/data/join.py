@@ -285,23 +285,32 @@ class Join(Combined):
         return result
 
     def tree(self) -> Node:
-        """Get the tree representation of the dataset.
+        """
+        Get the tree representation of the dataset.
 
-        Returns:
-            Node: The tree representation of the dataset.
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
         """
         return Node(self, [d.tree() for d in self.datasets])
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
-    """Create a joined dataset.
+    """
+    Create a joined dataset.
 
-    Args:
-        args (tuple): The positional arguments.
-        kwargs (dict): The keyword arguments.
+    Parameters
+    ----------
+    args : tuple
+        The positional arguments.
+    kwargs : dict
+        The keyword arguments.
 
-    Returns:
-        Dataset: The joined dataset.
+    Returns
+    -------
+    Dataset
+        The joined dataset.
     """
     xdatasets = kwargs.pop("join")
 

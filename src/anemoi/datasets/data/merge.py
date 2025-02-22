@@ -259,26 +259,37 @@ class Merge(Combined):
         return apply_index_to_slices_changes(result[index], changes)
 
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """Get the items in the specified slice.
+        """
+        Get the items in the specified slice.
 
-        Args:
-            s (slice): Slice to retrieve.
+        Parameters
+        ----------
+        s : slice
+            Slice to retrieve.
 
-        Returns:
-            NDArray[Any]: Retrieved items.
+        Returns
+        -------
+        NDArray[Any]
+            Retrieved items.
         """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
 
 def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
-    """Factory function to create a merged dataset.
+    """
+    Factory function to create a merged dataset.
 
-    Args:
-        args (Tuple): Positional arguments.
-        kwargs (Dict[str, Any]): Keyword arguments.
+    Parameters
+    ----------
+    args : Tuple
+        Positional arguments.
+    kwargs : Dict[str, Any]
+        Keyword arguments.
 
-    Returns:
-        Dataset: Merged dataset.
+    Returns
+    -------
+    Dataset
+        Merged dataset.
     """
     datasets = kwargs.pop("merge")
 
