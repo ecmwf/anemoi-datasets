@@ -21,8 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
-    """
-    Converts the input to a list if it is not already a list or tuple.
+    """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
     ----------

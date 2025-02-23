@@ -30,8 +30,7 @@ class ZipBase(Combined):
     """Base class for handling zipped datasets."""
 
     def __init__(self, datasets: List[Any], check_compatibility: bool = True) -> None:
-        """
-        Initialize ZipBase with a list of datasets.
+        """Initialize ZipBase with a list of datasets.
 
         Parameters
         ----------
@@ -44,8 +43,7 @@ class ZipBase(Combined):
         super().__init__(datasets)
 
     def swap_with_parent(self, parent: Any) -> Any:
-        """
-        Swap datasets with the parent.
+        """Swap datasets with the parent.
 
         Parameters
         ----------
@@ -61,8 +59,7 @@ class ZipBase(Combined):
         return self.clone(new_parents)
 
     def clone(self, datasets: List[Any]) -> "ZipBase":
-        """
-        Clone the ZipBase with new datasets.
+        """Clone the ZipBase with new datasets.
 
         Parameters
         ----------
@@ -77,8 +74,7 @@ class ZipBase(Combined):
         return self.__class__(datasets, check_compatibility=self._check_compatibility)
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the datasets.
+        """Get the tree representation of the datasets.
 
         Returns
         -------
@@ -88,8 +84,7 @@ class ZipBase(Combined):
         return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
 
     def __len__(self) -> int:
-        """
-        Get the length of the smallest dataset.
+        """Get the length of the smallest dataset.
 
         Returns
         -------
@@ -99,8 +94,7 @@ class ZipBase(Combined):
         return min(len(d) for d in self.datasets)
 
     def __getitem__(self, n: FullIndex) -> Tuple[Any, ...]:
-        """
-        Get the item at the specified index from all datasets.
+        """Get the item at the specified index from all datasets.
 
         Parameters
         ----------
@@ -115,8 +109,7 @@ class ZipBase(Combined):
         return tuple(d[n] for d in self.datasets)
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if two datasets have the same resolution.
+        """Check if two datasets have the same resolution.
 
         Parameters
         ----------
@@ -128,8 +121,7 @@ class ZipBase(Combined):
         pass
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if two datasets have the same grid.
+        """Check if two datasets have the same grid.
 
         Parameters
         ----------
@@ -141,8 +133,7 @@ class ZipBase(Combined):
         pass
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if two datasets have the same variables.
+        """Check if two datasets have the same variables.
 
         Parameters
         ----------
@@ -207,8 +198,7 @@ class ZipBase(Combined):
         return tuple(d.name_to_index for d in self.datasets)
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check compatibility between two datasets.
+        """Check compatibility between two datasets.
 
         Parameters
         ----------

@@ -32,14 +32,12 @@ LOG = logging.getLogger(__name__)
 
 
 class FunctionContext:
-    """
-    A FunctionContext is passed to all functions, it will be used to pass information
+    """A FunctionContext is passed to all functions, it will be used to pass information
     to the functions from the other actions and filters and results.
     """
 
     def __init__(self, owner: Result) -> None:
-        """
-        Initializes a FunctionContext instance.
+        """Initializes a FunctionContext instance.
 
         Parameters
         ----------
@@ -50,8 +48,7 @@ class FunctionContext:
         self.use_grib_paramid: bool = owner.context.use_grib_paramid
 
     def trace(self, emoji: str, *args: Any) -> None:
-        """
-        Traces the given arguments with an emoji.
+        """Traces the given arguments with an emoji.
 
         Parameters
         ----------
@@ -63,8 +60,7 @@ class FunctionContext:
         trace(emoji, *args)
 
     def info(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Logs an info message.
+        """Logs an info message.
 
         Parameters
         ----------

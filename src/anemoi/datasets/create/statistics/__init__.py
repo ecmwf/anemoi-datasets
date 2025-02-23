@@ -30,8 +30,7 @@ LOG = logging.getLogger(__name__)
 
 
 def default_statistics_dates(dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
-    """
-    Calculate default statistics dates based on the given list of dates.
+    """Calculate default statistics dates based on the given list of dates.
 
     Parameters
     ----------
@@ -290,8 +289,7 @@ class TmpStatistics:
     # can provide statistics for a subset of dates.
 
     def __init__(self, dirname: str, overwrite: bool = False) -> None:
-        """
-        Initialize TmpStatistics.
+        """Initialize TmpStatistics.
 
         Parameters
         ----------
@@ -415,8 +413,7 @@ class StatAggregator:
     def __init__(
         self, owner: TmpStatistics, dates: list[datetime.datetime], variables_names: list[str], allow_nans: bool
     ) -> None:
-        """
-        Initialize StatAggregator.
+        """Initialize StatAggregator.
 
         Parameters
         ----------

@@ -25,8 +25,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
-    """
-    Load data from a given source.
+    """Load data from a given source.
 
     Parameters
     ----------

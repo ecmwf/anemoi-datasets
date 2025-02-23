@@ -38,8 +38,7 @@ LOG = logging.getLogger(__name__)
 def make_rescale(
     variable: str, rescale: Union[Tuple[float, float], List[str], Dict[str, float]]
 ) -> Tuple[float, float]:
-    """
-    Create rescale parameters (scale and offset) based on the input rescale specification.
+    """Create rescale parameters (scale and offset) based on the input rescale specification.
 
     Parameters
     ----------

@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _get_first_key_if_dict(x: str | dict) -> str:
-    """
-    Returns the first key if the input is a dictionary, otherwise returns the input string.
+    """Returns the first key if the input is a dictionary, otherwise returns the input string.
 
     Parameters
     ----------

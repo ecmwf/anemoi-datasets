@@ -32,8 +32,7 @@ LOG = logging.getLogger(__name__)
 
 
 def load_config() -> Dict[str, Any]:
-    """
-    Load the configuration settings.
+    """Load the configuration settings.
 
     Returns
     -------

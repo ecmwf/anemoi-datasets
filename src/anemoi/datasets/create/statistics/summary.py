@@ -30,8 +30,7 @@ class Summary(dict):
     ]  # order matter for __str__.
 
     def __init__(self, **kwargs: Any) -> None:
-        """
-        Initialize the Summary object with given keyword arguments.
+        """Initialize the Summary object with given keyword arguments.
 
         Parameters
         ----------

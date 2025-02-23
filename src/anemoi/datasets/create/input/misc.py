@@ -23,8 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
-    """
-    Parses a function name to extract the base name and an optional time delta.
+    """Parses a function name to extract the base name and an optional time delta.
 
     Parameters
     ----------

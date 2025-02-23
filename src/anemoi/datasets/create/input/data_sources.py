@@ -35,8 +35,7 @@ class DataSourcesAction(Action):
         sources: Union[Dict[str, Any], List[Dict[str, Any]]],
         input: Dict[str, Any],
     ) -> None:
-        """
-        Initializes a DataSourcesAction instance.
+        """Initializes a DataSourcesAction instance.
 
         Parameters
         ----------
@@ -61,8 +60,7 @@ class DataSourcesAction(Action):
         self.input = action_factory(input, context, ["input"])
 
     def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
-        """
-        Selects the data sources result for the given group of dates.
+        """Selects the data sources result for the given group of dates.
 
         Parameters
         ----------

@@ -24,8 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
-    """
-    Make sure `import Creator` is done in the sub-processes, and not in the main one.
+    """Make sure `import Creator` is done in the sub-processes, and not in the main one.
 
     Parameters
     ----------

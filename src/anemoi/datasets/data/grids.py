@@ -43,8 +43,7 @@ class Concat(Combined):
     """A class to represent concatenated datasets."""
 
     def __len__(self) -> int:
-        """
-        Returns the total length of the concatenated datasets.
+        """Returns the total length of the concatenated datasets.
 
         Returns
         -------
@@ -56,8 +55,7 @@ class Concat(Combined):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Retrieves a tuple of data from the concatenated datasets based on the given index.
+        """Retrieves a tuple of data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
@@ -80,8 +78,7 @@ class Concat(Combined):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Retrieves data from the concatenated datasets based on the given index.
+        """Retrieves data from the concatenated datasets based on the given index.
 
         Parameters
         ----------
@@ -108,8 +105,7 @@ class Concat(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Retrieves a slice of data from the concatenated datasets.
+        """Retrieves a slice of data from the concatenated datasets.
 
         Parameters
         ----------
@@ -131,8 +127,7 @@ class Concat(Combined):
         return np.concatenate(result)
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check the compatibility of two datasets for concatenation.
+        """Check the compatibility of two datasets for concatenation.
 
         Parameters
         ----------
@@ -145,8 +140,7 @@ class Concat(Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=0)
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if the lengths of two datasets are the same.
+        """Check if the lengths of two datasets are the same.
 
         Parameters
         ----------
@@ -159,8 +153,7 @@ class Concat(Combined):
         pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if the dates of two datasets are the same.
+        """Check if the dates of two datasets are the same.
 
         Parameters
         ----------
@@ -183,8 +176,7 @@ class Concat(Combined):
         return (len(self),) + self.datasets[0].shape[1:]
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the concatenated datasets.
+        """Generates a hierarchical tree structure for the concatenated datasets.
 
         Returns
         -------

@@ -38,8 +38,7 @@ class InterpolateFrequency(Forwards):
     """A class to represent a dataset with interpolated frequency."""
 
     def __init__(self, dataset: Dataset, frequency: str) -> None:
-        """
-        Initialize the InterpolateFrequency class.
+        """Initialize the InterpolateFrequency class.
 
         Parameters
         ----------
@@ -77,8 +76,7 @@ class InterpolateFrequency(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get the interpolated data for a tuple index.
+        """Get the interpolated data for a tuple index.
 
         Parameters
         ----------
@@ -96,8 +94,7 @@ class InterpolateFrequency(Forwards):
         return apply_index_to_slices_changes(result[index], changes)
 
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Get the interpolated data for a slice.
+        """Get the interpolated data for a slice.
 
         Parameters
         ----------
@@ -113,8 +110,7 @@ class InterpolateFrequency(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get the interpolated data at the specified index.
+        """Get the interpolated data at the specified index.
 
         Parameters
         ----------
@@ -152,8 +148,7 @@ class InterpolateFrequency(Forwards):
         return self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
 
     def __len__(self) -> int:
-        """
-        Get the length of the interpolated dataset.
+        """Get the length of the interpolated dataset.
 
         Returns
         -------
@@ -184,8 +179,7 @@ class InterpolateFrequency(Forwards):
         return (self._len,) + self.forward.shape[1:]
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns
         -------
@@ -210,8 +204,7 @@ class InterpolateFrequency(Forwards):
         return result
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the InterpolateFrequency subclass.
+        """Get the metadata specific to the InterpolateFrequency subclass.
 
         Returns
         -------

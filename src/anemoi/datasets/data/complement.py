@@ -56,8 +56,7 @@ class Complement(Combined):
         what: str = "variables",
         interpolation: str = "nearest",
     ) -> None:
-        """
-        Initializes the Complement class.
+        """Initializes the Complement class.
 
         Parameters
         ----------
@@ -110,8 +109,7 @@ class Complement(Combined):
         return {k: v for k, v in self._source.variables_metadata.items() if k in self._variables}
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks if the variables in two datasets are the same.
+        """Checks if the variables in two datasets are the same.
 
         Parameters
         ----------
@@ -130,8 +128,7 @@ class Complement(Combined):
         return set(missing)
 
     def tree(self) -> Node:
-        """
-        Generates a hierarchical tree structure for the Complement instance and its associated datasets.
+        """Generates a hierarchical tree structure for the Complement instance and its associated datasets.
 
         Returns
         -------
@@ -141,8 +138,7 @@ class Complement(Combined):
         return Node(self, [d.tree() for d in (self._target, self._source)])
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
-        """
-        Gets the data at the specified index.
+        """Gets the data at the specified index.
 
         Parameters
         ----------
@@ -160,8 +156,7 @@ class Complement(Combined):
 
     @abstractmethod
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Abstract method to get the data at the specified tuple index.
+        """Abstract method to get the data at the specified tuple index.
 
         Parameters
         ----------

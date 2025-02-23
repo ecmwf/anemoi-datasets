@@ -28,8 +28,7 @@ LOG = logging.getLogger(__name__)
 
 
 def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
-    """
-    Checks if the dataset has the expected number of fields.
+    """Checks if the dataset has the expected number of fields.
 
     Parameters
     ----------

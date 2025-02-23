@@ -34,8 +34,7 @@ LOG = logging.getLogger(__name__)
 
 
 def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
-    """
-    Retrieve metadata for the given variables and cube.
+    """Retrieve metadata for the given variables and cube.
 
     Parameters
     ----------

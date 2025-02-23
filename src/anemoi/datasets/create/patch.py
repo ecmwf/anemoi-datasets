@@ -17,8 +17,7 @@ LOG = logging.getLogger(__name__)
 
 
 def fix_order_by(order_by: dict | list) -> list[dict]:
-    """
-    Fix the order_by attribute to ensure it is a list of dictionaries.
+    """Fix the order_by attribute to ensure it is a list of dictionaries.
 
     Parameters
     ----------

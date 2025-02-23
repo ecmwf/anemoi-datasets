@@ -26,8 +26,7 @@ DEBUG = False
 
 
 def to_list(x: Union[list, tuple, Any]) -> list:
-    """
-    Converts the input to a list if it is not already a list or tuple.
+    """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
     ----------
@@ -370,8 +369,7 @@ def mars(
     use_cdsapi_dataset: Optional[str] = None,
     **kwargs: Any,
 ) -> Any:
-    """
-    Executes MARS requests based on the given context, dates, and other parameters.
+    """Executes MARS requests based on the given context, dates, and other parameters.
 
     Parameters
     ----------

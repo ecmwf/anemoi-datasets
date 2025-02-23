@@ -23,8 +23,7 @@ TRACE = 0
 
 
 def enable_trace(on_off: int) -> None:
-    """
-    Enables or disables tracing.
+    """Enables or disables tracing.
 
     Parameters
     ----------

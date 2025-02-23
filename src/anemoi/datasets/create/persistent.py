@@ -46,8 +46,7 @@ class PersistentDict:
     # Used in parrallel, during data loading,
     # to write data in pickle files.
     def __init__(self, directory: str, create: bool = True):
-        """
-        Initialize the PersistentDict.
+        """Initialize the PersistentDict.
 
         Parameters
         ----------
@@ -77,8 +76,7 @@ class PersistentDict:
         return f"{self.__class__.__name__}({self.dirname})"
 
     def items(self) -> Iterator[Any]:
-        """
-        Yield items stored in the directory.
+        """Yield items stored in the directory.
 
         Yields
         ------
@@ -94,8 +92,7 @@ class PersistentDict:
                 yield pickle.load(f)
 
     def add_provenance(self, **kwargs: Any) -> None:
-        """
-        Add provenance information to the directory.
+        """Add provenance information to the directory.
 
         Parameters
         ----------
@@ -110,8 +107,7 @@ class PersistentDict:
             json.dump(out, f)
 
     def add(self, elt: Any, *, key: Any) -> None:
-        """
-        Add an element to the PersistentDict.
+        """Add an element to the PersistentDict.
 
         Parameters
         ----------
@@ -123,8 +119,7 @@ class PersistentDict:
         self[key] = elt
 
     def __setitem__(self, key: Any, elt: Any) -> None:
-        """
-        Set an item in the PersistentDict.
+        """Set an item in the PersistentDict.
 
         Parameters
         ----------

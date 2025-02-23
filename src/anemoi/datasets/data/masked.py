@@ -40,8 +40,7 @@ class Masked(Forwards):
     """A class to represent a masked dataset."""
 
     def __init__(self, forward: Dataset, mask: NDArray[np.bool_]) -> None:
-        """
-        Initialize the Masked class.
+        """Initialize the Masked class.
 
         Parameters
         ----------
@@ -74,8 +73,7 @@ class Masked(Forwards):
 
     @debug_indexing
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
-        """
-        Get the masked data at the specified index.
+        """Get the masked data at the specified index.
 
         Parameters
         ----------
@@ -99,8 +97,7 @@ class Masked(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get the masked data for a tuple index.
+        """Get the masked data for a tuple index.
 
         Parameters
         ----------
@@ -121,8 +118,7 @@ class Masked(Forwards):
         return result
 
     def collect_supporting_arrays(self, collected: List[Tuple], *path: Any) -> None:
-        """
-        Collect supporting arrays.
+        """Collect supporting arrays.
 
         Parameters
         ----------

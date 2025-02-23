@@ -42,8 +42,7 @@ class Join(Combined):
     """Join the datasets along the variables axis."""
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check the compatibility of two datasets.
+        """Check the compatibility of two datasets.
 
         Parameters
         ----------
@@ -56,8 +55,7 @@ class Join(Combined):
         self.check_same_sub_shapes(d1, d2, drop_axis=1)
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check if the datasets have the same variables.
+        """Check if the datasets have the same variables.
 
         Parameters
         ----------
@@ -70,8 +68,7 @@ class Join(Combined):
         pass
 
     def __len__(self) -> int:
-        """
-        Get the length of the joined dataset.
+        """Get the length of the joined dataset.
 
         Returns
         -------
@@ -83,8 +80,7 @@ class Join(Combined):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get the data for a tuple index.
+        """Get the data for a tuple index.
 
         Parameters
         ----------
@@ -107,8 +103,7 @@ class Join(Combined):
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
-        """
-        Get the data for a slice.
+        """Get the data for a slice.
 
         Parameters
         ----------
@@ -124,8 +119,7 @@ class Join(Combined):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get the data at the specified index.
+        """Get the data at the specified index.
 
         Parameters
         ----------
@@ -152,8 +146,7 @@ class Join(Combined):
         return (len(self), cols) + self.datasets[0].shape[2:]
 
     def _overlay(self) -> Dataset:
-        """
-        Overlay the datasets.
+        """Overlay the datasets.
 
         Returns
         -------
@@ -235,8 +228,7 @@ class Join(Combined):
         }
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics tendencies of the joined dataset.
+        """Get the statistics tendencies of the joined dataset.
 
         Parameters
         ----------
@@ -256,8 +248,7 @@ class Join(Combined):
         }
 
     def source(self, index: int) -> Source:
-        """
-        Get the source of the data at the specified index.
+        """Get the source of the data at the specified index.
 
         Parameters
         ----------
@@ -285,8 +276,7 @@ class Join(Combined):
         return result
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns
         -------

@@ -38,8 +38,7 @@ class DateMapper:
 
     @staticmethod
     def from_mode(mode: str, source: Any, config: Dict[str, Any]) -> "DateMapper":
-        """
-        Create a DateMapper instance based on the given mode.
+        """Create a DateMapper instance based on the given mode.
 
         Parameters
         ----------

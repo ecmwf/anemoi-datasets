@@ -23,8 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator to notify the context of the result of the method call.
+    """Decorator to notify the context of the result of the method call.
 
     Parameters
     ----------

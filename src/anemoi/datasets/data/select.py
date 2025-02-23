@@ -38,8 +38,7 @@ class Select(Forwards):
     """Class to select a subset of variables from a dataset."""
 
     def __init__(self, dataset: Dataset, indices: List[int], reason: Dict[str, Any]) -> None:
-        """
-        Initialize the Select class.
+        """Initialize the Select class.
 
         Parameters
         ----------
@@ -65,8 +64,7 @@ class Select(Forwards):
         super().__init__(dataset)
 
     def clone(self, dataset: Dataset) -> Dataset:
-        """
-        Clone the Select object with a new dataset.
+        """Clone the Select object with a new dataset.
 
         Parameters
         ----------
@@ -81,8 +79,7 @@ class Select(Forwards):
         return self.__class__(dataset, self.indices, self.reason).mutate()
 
     def mutate(self) -> Dataset:
-        """
-        Mutate the dataset.
+        """Mutate the dataset.
 
         Returns
         -------
@@ -94,8 +91,7 @@ class Select(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get a tuple of data.
+        """Get a tuple of data.
 
         Parameters
         ----------
@@ -117,8 +113,7 @@ class Select(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get an item from the dataset.
+        """Get an item from the dataset.
 
         Parameters
         ----------
@@ -165,8 +160,7 @@ class Select(Forwards):
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistical tendencies of the dataset.
+        """Get the statistical tendencies of the dataset.
 
         Parameters
         ----------
@@ -183,8 +177,7 @@ class Select(Forwards):
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Get the specific metadata of the dataset.
+        """Get the specific metadata of the dataset.
 
         Parameters
         ----------
@@ -199,8 +192,7 @@ class Select(Forwards):
         return super().metadata_specific(indices=self.indices, **kwargs)
 
     def source(self, index: int) -> Source:
-        """
-        Get the source of the dataset.
+        """Get the source of the dataset.
 
         Parameters
         ----------
@@ -215,8 +207,7 @@ class Select(Forwards):
         return Source(self, index, self.dataset.source(self.indices[index]))
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns
         -------
@@ -226,8 +217,7 @@ class Select(Forwards):
         return Node(self, [self.dataset.tree()], **self.reason)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the subclass.
+        """Get the metadata specific to the subclass.
 
         Returns
         -------

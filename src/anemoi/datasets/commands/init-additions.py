@@ -27,8 +27,7 @@ class InitAdditions(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
-        """
-        Add command line arguments to the parser.
+        """Add command line arguments to the parser.
 
         Parameters
         ----------
@@ -45,8 +44,7 @@ class InitAdditions(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
-        """
-        Execute the command with the given arguments.
+        """Execute the command with the given arguments.
 
         Parameters
         ----------

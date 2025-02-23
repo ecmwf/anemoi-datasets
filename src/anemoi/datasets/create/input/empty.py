@@ -26,8 +26,7 @@ class EmptyResult(Result):
     empty = True
 
     def __init__(self, context: object, action_path: list, dates: object) -> None:
-        """
-        Initializes an EmptyResult instance.
+        """Initializes an EmptyResult instance.
 
         Parameters
         ----------

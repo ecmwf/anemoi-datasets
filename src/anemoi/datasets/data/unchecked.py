@@ -38,8 +38,7 @@ class check:
     """A decorator class to perform checks before calling a method."""
 
     def __init__(self, check: str) -> None:
-        """
-        Initialize the check decorator.
+        """Initialize the check decorator.
 
         Parameters
         ----------
@@ -49,8 +48,7 @@ class check:
         self.check = check
 
     def __call__(self, method: Callable) -> Callable:
-        """
-        Call the check decorator.
+        """Call the check decorator.
 
         Parameters
         ----------
@@ -67,8 +65,7 @@ class check:
 
         @wraps(method)
         def wrapper(obj: "Unchecked") -> Any:
-            """
-            Wrapper function to check compatibility before calling the method.
+            """Wrapper function to check compatibility before calling the method.
 
             Parameters
             ----------

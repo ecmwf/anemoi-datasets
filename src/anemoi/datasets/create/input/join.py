@@ -29,8 +29,7 @@ LOG = logging.getLogger(__name__)
 
 
 class JoinResult(Result):
-    """
-    Represents a result that combines multiple results.
+    """Represents a result that combines multiple results.
 
     Attributes
     ----------
@@ -47,8 +46,7 @@ class JoinResult(Result):
     def __init__(
         self, context: object, action_path: list, group_of_dates: GroupOfDates, results: List[Result], **kwargs: Any
     ) -> None:
-        """
-        Initializes a JoinResult instance.
+        """Initializes a JoinResult instance.
 
         Parameters
         ----------

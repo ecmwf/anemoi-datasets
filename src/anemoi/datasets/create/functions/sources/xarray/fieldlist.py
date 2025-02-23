@@ -34,8 +34,7 @@ class XarrayFieldList(FieldList):
     """A class to represent a list of fields from an xarray Dataset."""
 
     def __init__(self, ds: xr.Dataset, variables: List[Variable]) -> None:
-        """
-        Initialize the XarrayFieldList.
+        """Initialize the XarrayFieldList.
 
         Parameters
         ----------
@@ -57,8 +56,7 @@ class XarrayFieldList(FieldList):
         return self.total_length
 
     def __getitem__(self, i: int) -> Any:
-        """
-        Get an item from the XarrayFieldList by index.
+        """Get an item from the XarrayFieldList by index.
 
         Parameters
         ----------
@@ -95,8 +93,7 @@ class XarrayFieldList(FieldList):
         flavour: Optional[Union[str, Dict[str, Any]]] = None,
         patch: Optional[Dict[str, Any]] = None,
     ) -> "XarrayFieldList":
-        """
-        Create an XarrayFieldList from an xarray Dataset.
+        """Create an XarrayFieldList from an xarray Dataset.
 
         Parameters
         ----------
@@ -189,8 +186,7 @@ class XarrayFieldList(FieldList):
         return cls(ds, variables)
 
     def sel(self, **kwargs: Any) -> FieldList:
-        """
-        Select fields from the XarrayFieldList based on criteria.
+        """Select fields from the XarrayFieldList based on criteria.
 
         Parameters
         ----------

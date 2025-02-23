@@ -34,8 +34,7 @@ class DatasetName:
         end_date: Optional[datetime.date] = None,
         frequency: Optional[datetime.timedelta] = None,
     ):
-        """
-        Initialize a DatasetName instance.
+        """Initialize a DatasetName instance.
 
         Parameters
         ----------
@@ -76,8 +75,7 @@ class DatasetName:
         return out
 
     def raise_if_not_valid(self, print: Callable = print) -> None:
-        """
-        Raise a ValueError if the dataset name is not valid.
+        """Raise a ValueError if the dataset name is not valid.
 
         Parameters
         ----------
@@ -90,8 +88,7 @@ class DatasetName:
             raise ValueError(self.error_message)
 
     def _parse(self, name: str) -> dict:
-        """
-        Parse the dataset name into its components.
+        """Parse the dataset name into its components.
 
         Parameters
         ----------
@@ -140,8 +137,7 @@ class DatasetName:
             )
 
     def check_resolution(self, resolution: str | None) -> None:
-        """
-        Check if the resolution matches the expected format.
+        """Check if the resolution matches the expected format.
 
         Parameters
         ----------
@@ -161,8 +157,7 @@ class DatasetName:
         self._check_mismatch("resolution", resolution_str)
 
     def check_frequency(self, frequency: datetime.timedelta | None) -> None:
-        """
-        Check if the frequency matches the expected format.
+        """Check if the frequency matches the expected format.
 
         Parameters
         ----------
@@ -176,8 +171,7 @@ class DatasetName:
         self._check_mismatch("frequency", frequency_str)
 
     def check_start_date(self, start_date: datetime.date | None) -> None:
-        """
-        Check if the start date matches the expected format.
+        """Check if the start date matches the expected format.
 
         Parameters
         ----------
@@ -191,8 +185,7 @@ class DatasetName:
         self._check_mismatch("start_date", start_date_str)
 
     def check_end_date(self, end_date: datetime.date | None) -> None:
-        """
-        Check if the end date matches the expected format.
+        """Check if the end date matches the expected format.
 
         Parameters
         ----------
@@ -206,8 +199,7 @@ class DatasetName:
         self._check_mismatch("end_date", end_date_str)
 
     def _check_missing(self, key: str, value: str) -> None:
-        """
-        Check if a component is missing from the dataset name.
+        """Check if a component is missing from the dataset name.
 
         Parameters
         ----------
@@ -220,8 +212,7 @@ class DatasetName:
             self.messages.append(f"the {key} is {value}, but is missing in {self.name}.")
 
     def _check_mismatch(self, key: str, value: str) -> None:
-        """
-        Check if a component value mismatches the expected value.
+        """Check if a component value mismatches the expected value.
 
         Parameters
         ----------
