@@ -11,8 +11,14 @@
 import logging
 import math
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
+import xarray as xr
 
 from .field import XArrayField
 
@@ -20,16 +26,51 @@ LOG = logging.getLogger(__name__)
 
 
 class Variable:
+    """Represents a variable in an xarray dataset.
+
+    Attributes
+    ----------
+    ds : xr.Dataset
+        The xarray dataset.
+    variable : xr.DataArray
+        The data array representing the variable.
+    coordinates : List[Any]
+        List of coordinates associated with the variable.
+    grid : Any
+        The grid associated with the variable.
+    time : Any
+        The time dimension associated with the variable.
+    metadata : Dict[str, Any]
+        Metadata associated with the variable.
+    """
+
     def __init__(
         self,
         *,
-        ds,
-        variable,
-        coordinates,
-        grid,
-        time,
-        metadata,
+        ds: xr.Dataset,
+        variable: xr.DataArray,
+        coordinates: List[Any],
+        grid: Any,
+        time: Any,
+        metadata: Dict[str, Any],
     ):
+        """Initialize the Variable object.
+
+        Parameters
+        ----------
+        ds : xr.Dataset
+            The xarray dataset.
+        variable : xr.DataArray
+            The data array representing the variable.
+        coordinates : List[Any]
+            List of coordinates associated with the variable.
+        grid : Any
+            The grid associated with the variable.
+        time : Any
+            The time dimension associated with the variable.
+        metadata : Dict[str, Any]
+            Metadata associated with the variable.
+        """
         self.ds = ds
         self.variable = variable
 
@@ -51,40 +92,80 @@ class Variable:
         self.length = math.prod(self.shape)
 
     @property
-    def name(self):
-        return self.variable.name
+    def name(self) -> str:
+        """Return the name of the variable."""
+        return str(self.variable.name)
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """Return the length of the variable.
+
+        Returns
+        -------
+        int
+            The length of the variable.
+        """
         return self.length
 
     @property
-    def grid_mapping(self):
+    def grid_mapping(self) -> Optional[Dict[str, Any]]:
+        """Return the grid mapping of the variable."""
         grid_mapping = self.variable.attrs.get("grid_mapping", None)
         if grid_mapping is None:
             return None
         return self.ds[grid_mapping].attrs
 
-    def grid_points(self):
+    def grid_points(self) -> Any:
+        """Return the grid points of the variable.
+
+        Returns
+        -------
+        Any
+            The grid points of the variable.
+        """
         return self.grid.grid_points
 
     @property
-    def latitudes(self):
+    def latitudes(self) -> Any:
+        """Return the latitudes of the variable."""
         return self.grid.latitudes
 
     @property
-    def longitudes(self):
+    def longitudes(self) -> Any:
+        """Return the longitudes of the variable."""
         return self.grid.longitudes
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return a string representation of the variable.
+
+        Returns
+        -------
+        str
+            A string representation of the variable.
+        """
         return "Variable[name=%s,coordinates=%s,metadata=%s]" % (
             self.variable.name,
             self.coordinates,
             self._metadata,
         )
 
-    def __getitem__(self, i):
-        """Get a 2D field from the variable"""
+    def __getitem__(self, i: int) -> "XArrayField":
+        """Get a 2D field from the variable.
 
+        Parameters
+        ----------
+        i : int
+            Index of the field.
+
+        Returns
+        -------
+        XArrayField
+            The 2D field at the specified index.
+
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
+        """
         if i >= self.length:
             raise IndexError(i)
 
@@ -92,8 +173,21 @@ class Variable:
         kwargs = {k: v for k, v in zip(self.names, coords)}
         return XArrayField(self, self.variable.isel(kwargs))
 
-    def sel(self, missing, **kwargs):
+    def sel(self, missing: Dict[str, Any], **kwargs: Any) -> Optional["Variable"]:
+        """Select a subset of the variable based on the given coordinates.
 
+        Parameters
+        ----------
+        missing : Dict[str, Any]
+            Dictionary to store missing coordinates.
+        **kwargs : Any
+            Coordinates to select.
+
+        Returns
+        -------
+        Optional[Variable]
+            The selected subset of the variable.
+        """
         if not kwargs:
             return self
 
@@ -139,8 +233,19 @@ class Variable:
 
         return variable.sel(missing, **kwargs)
 
-    def match(self, **kwargs):
+    def match(self, **kwargs: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """Match the variable based on the given metadata.
 
+        Parameters
+        ----------
+        **kwargs : Any
+            Metadata to match.
+
+        Returns
+        -------
+        Tuple[bool, Optional[Dict[str, Any]]]
+            A tuple containing a boolean indicating if the match was successful and the remaining metadata.
+        """
         if "param" in kwargs:
             assert "variable" not in kwargs
             kwargs["variable"] = kwargs.pop("param")
@@ -156,12 +261,31 @@ class Variable:
 
 
 class FilteredVariable:
-    def __init__(self, variable, **kwargs):
+    """Represents a filtered variable based on metadata.
+
+    Attributes
+    ----------
+    variable : Variable
+        The variable to filter.
+    kwargs : Any
+        Metadata to filter the variable.
+    """
+
+    def __init__(self, variable: Variable, **kwargs: Any):
+        """Initialize the FilteredVariable object.
+
+        Parameters
+        ----------
+        variable : Variable
+            The variable to filter.
+        **kwargs : Any
+            Metadata to filter the variable.
+        """
         self.variable = variable
         self.kwargs = kwargs
 
     @cached_property
-    def fields(self):
+    def fields(self) -> List["XArrayField"]:
         """Filter the fields of a variable based on metadata."""
         return [
             field
@@ -170,13 +294,38 @@ class FilteredVariable:
         ]
 
     @property
-    def length(self):
+    def length(self) -> int:
+        """Return the length of the filtered variable."""
         return len(self.fields)
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """Return the length of the filtered variable.
+
+        Returns
+        -------
+        int
+            The length of the filtered variable.
+        """
         return self.length
 
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> "XArrayField":
+        """Get a field from the filtered variable.
+
+        Parameters
+        ----------
+        i : int
+            Index of the field.
+
+        Returns
+        -------
+        XArrayField
+            The field at the specified index.
+
+        Raises
+        ------
+        IndexError
+            If the index is out of range.
+        """
         if i >= self.length:
             raise IndexError(i)
         return self.fields[i]

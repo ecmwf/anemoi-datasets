@@ -23,7 +23,16 @@ SAMPLES = list(range(23))
 SKIP = [0, 1, 2, 3, 4, 22]
 
 
-def _test_samples(n, check_skip=True):
+def _test_samples(n: int, check_skip: bool = True) -> None:
+    """Test loading and validating sample datasets.
+
+    Parameters
+    ----------
+    n : int
+        Sample number.
+    check_skip : bool, optional
+        Whether to check for skip conditions.
+    """
 
     r = requests.get(f"{URL}sample-{n:04d}.json")
     if r.status_code not in [200, 404]:
@@ -55,7 +64,14 @@ def _test_samples(n, check_skip=True):
 # it would be nice to use a @pytest.mark.slow and configure this globally
 # this could be done when refactoring the tests, and setting up canary/nightly builds
 @pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
-def test_samples(n):
+def test_samples(n: int) -> None:
+    """Parametrized test for sample datasets.
+
+    Parameters
+    ----------
+    n : int
+        Sample number.
+    """
     _test_samples(n)
 
 

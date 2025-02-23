@@ -8,31 +8,94 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 from typing import Union
 
+import earthkit.data as ekd
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import constants
 from earthkit.meteo import thermo
+from numpy.typing import NDArray
 
 
 # Alternative proposed by Baudouin Raoult
 class AutoDict(dict):
-    def __missing__(self, key):
+    """A dictionary that automatically creates nested dictionaries for missing keys."""
+
+    def __missing__(self, key: Any) -> Any:
+        """Handle missing keys by creating nested dictionaries.
+
+        Parameters
+        ----------
+        key : Any
+            The missing key.
+
+        Returns
+        -------
+        Any
+            A new nested dictionary.
+        """
         value = self[key] = type(self)()
         return value
 
 
 class NewDataField:
-    def __init__(self, field, data, new_name):
+    """A class to represent a new data field with modified metadata."""
+
+    def __init__(self, field: Any, data: Any, new_name: str) -> None:
+        """Initialize the NewDataField.
+
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The data for the new field.
+        new_name : str
+            The new name for the parameter.
+        """
         self.field = field
         self.data = data
         self.new_name = new_name
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> np.ndarray:
+        """Convert the data to a numpy array.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        np.ndarray
+            The data as a numpy array.
+        """
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
+        """Get the metadata for the field.
+
+        Parameters
+        ----------
+        key : str, optional
+            The metadata key to retrieve. If None, all metadata is returned.
+
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -41,15 +104,29 @@ class NewDataField:
             return self.new_name
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the original field.
+
+        Parameters
+        ----------
+        name : str
+            The attribute name.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
 
-def model_level_pressure(A, B, surface_pressure) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def model_level_pressure(
+    A: NDArray[Any], B: NDArray[Any], surface_pressure: Union[float, np.ndarray]
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Calculates:
      - pressure at the model full- and half-levels
      - delta: depth of log(pressure) at full levels
-     - alpha: alpha term #TODO: more descriptive information
+     - alpha: alpha term #TODO: more descriptive information.
 
     Parameters
     ----------
@@ -57,7 +134,7 @@ def model_level_pressure(A, B, surface_pressure) -> tuple[np.ndarray, np.ndarray
         A-coefficients defining the model levels
     B : ndarray
         B-coefficients defining the model levels
-    surface_pressure: number or ndarray
+    surface_pressure : number or ndarray
         surface pressure (Pa)
 
     Returns
@@ -116,9 +193,9 @@ def model_level_pressure(A, B, surface_pressure) -> tuple[np.ndarray, np.ndarray
     return p_full_level, p_half_level, delta, alpha
 
 
-def calc_specific_gas_constant(q) -> Union[float, np.ndarray]:
+def calc_specific_gas_constant(q: Union[float, np.ndarray]) -> Union[float, NDArray[Any]]:
     """Calculates the specific gas constant of moist air
-    (specific content of cloud particles and hydrometeors are neglected)
+    (specific content of cloud particles and hydrometeors are neglected).
 
     Parameters
     ----------
@@ -135,8 +212,8 @@ def calc_specific_gas_constant(q) -> Union[float, np.ndarray]:
     return R
 
 
-def relative_geopotential_thickness(alpha, q, T) -> np.ndarray:
-    """Calculates the geopotential thickness w.r.t the surface on model full-levels
+def relative_geopotential_thickness(alpha: NDArray[Any], q: NDArray[Any], T: NDArray[Any]) -> NDArray[Any]:
+    """Calculates the geopotential thickness w.r.t the surface on model full-levels.
 
     Parameters
     ----------
@@ -160,10 +237,12 @@ def relative_geopotential_thickness(alpha, q, T) -> np.ndarray:
     return dphi
 
 
-def pressure_at_height_level(height, q, T, sp, A, B) -> Union[float, np.ndarray]:
+def pressure_at_height_level(
+    height: float, q: NDArray[Any], T: NDArray[Any], sp: NDArray[Any], A: NDArray[Any], B: NDArray[Any]
+) -> Union[float, NDArray[Any]]:
     """Calculates the pressure at a height level given in meters above surface.
     This is done by finding the model level above and below the specified height
-    and interpolating the pressure
+    and interpolating the pressure.
 
     Parameters
     ----------
@@ -227,8 +306,52 @@ def pressure_at_height_level(height, q, T, sp, A, B) -> Union[float, np.ndarray]
     return p_height
 
 
-def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
-    """Convert the single (height) level specific humidity to relative humidity"""
+def execute(
+    context: Any,
+    input: List[Any],
+    height: float,
+    t: str,
+    q: str,
+    sp: str,
+    new_name: str = "2r",
+    **kwargs: Dict[str, Any],
+) -> ekd.FieldList:
+    """Convert the single (height) level specific humidity to relative humidity.
+
+    Parameters
+    ----------
+    context : Any
+        The context for the execution.
+    input : list of Any
+        The input data.
+    height : float
+        The height level in meters.
+    t : str
+        The temperature parameter name.
+    q : str
+        The specific humidity parameter name.
+    sp : str
+        The surface pressure parameter name.
+    new_name : str, optional
+        The new name for the relative humidity parameter, by default "2r".
+    **kwargs : dict
+        Additional keyword arguments.
+        t_ml : str, optional
+            The temperature parameter name for model levels, by default "t".
+        q_ml : str, optional
+            The specific humidity parameter name for model levels, by default "q".
+        A : list of float
+            A-coefficients defining the model levels.
+        B : list of float
+            B-coefficients defining the model levels.
+        keep_q : bool, optional
+            Whether to keep the specific humidity field in the result, by default False.
+
+    Returns
+    -------
+    ekd.FieldList
+        The resulting field array with relative humidity.
+    """
     result = FieldArray()
 
     MANDATORY_KEYS = ["A", "B"]
@@ -330,7 +453,16 @@ def execute(context, input, height, t, q, sp, new_name="2r", **kwargs):
     return result
 
 
-def test():
+def test() -> None:
+    """Test the conversion from specific humidity to relative humidity.
+
+    This function fetches data from a source, performs the conversion, and prints
+    the mean, median, and maximum differences in dewpoint temperature.
+
+    Returns
+    -------
+    None
+    """
     from earthkit.data import from_source
     from earthkit.data.readers.grib.index import GribFieldList
 

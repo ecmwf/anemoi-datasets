@@ -16,10 +16,12 @@ import os
 import pickle
 import shutil
 import socket
+from typing import Any
 
 import numpy as np
 import tqdm
 from anemoi.utils.provenance import gather_provenance_info
+from numpy.typing import NDArray
 
 from ..check import check_data_values
 from .summary import Summary
@@ -27,15 +29,19 @@ from .summary import Summary
 LOG = logging.getLogger(__name__)
 
 
-def default_statistics_dates(dates) -> tuple:
-    """Calculate default statistics dates based on the given list of dates.
+def default_statistics_dates(dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
+    """
+    Calculate default statistics dates based on the given list of dates.
 
-    Args:
-        dates (list): List of datetime objects representing dates.
+    Parameters
+    ----------
+    dates : list of datetime.datetime
+        List of datetime objects representing dates.
 
-    Returns:
-        tuple: A tuple containing the default start and end dates.
-
+    Returns
+    -------
+    tuple of datetime.datetime
+        A tuple containing the default start and end dates.
     """
 
     def to_datetime(d):
@@ -69,7 +75,20 @@ def default_statistics_dates(dates) -> tuple:
     return dates[0], end
 
 
-def to_datetime(date):
+def to_datetime(date: str | datetime.datetime) -> np.datetime64:
+    """
+    Convert a date to numpy datetime64 format.
+
+    Parameters
+    ----------
+    date : str or datetime.datetime
+        The date to convert.
+
+    Returns
+    -------
+    numpy.datetime64
+        The converted date.
+    """
     if isinstance(date, str):
         return np.datetime64(date)
     if isinstance(date, datetime.datetime):
@@ -77,11 +96,45 @@ def to_datetime(date):
     return date
 
 
-def to_datetimes(dates):
+def to_datetimes(dates: list[str | datetime.datetime]) -> list[np.datetime64]:
+    """
+    Convert a list of dates to numpy datetime64 format.
+
+    Parameters
+    ----------
+    dates : list of str or datetime.datetime
+        List of dates to convert.
+
+    Returns
+    -------
+    list of numpy.datetime64
+        List of converted dates.
+    """
     return [to_datetime(d) for d in dates]
 
 
-def fix_variance(x, name, count, sums, squares):
+def fix_variance(x: float, name: str, count: NDArray[Any], sums: NDArray[Any], squares: NDArray[Any]) -> float:
+    """
+    Fix negative variance values due to numerical errors.
+
+    Parameters
+    ----------
+    x : float
+        The variance value.
+    name : str
+        The variable name.
+    count : numpy.ndarray
+        The count array.
+    sums : numpy.ndarray
+        The sums array.
+    squares : numpy.ndarray
+        The squares array.
+
+    Returns
+    -------
+    float
+        The fixed variance value.
+    """
     assert count.shape == sums.shape == squares.shape
     assert isinstance(x, float)
 
@@ -112,7 +165,43 @@ def fix_variance(x, name, count, sums, squares):
     return 0
 
 
-def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squares):
+def check_variance(
+    x: NDArray[Any],
+    variables_names: list[str],
+    minimum: NDArray[Any],
+    maximum: NDArray[Any],
+    mean: NDArray[Any],
+    count: NDArray[Any],
+    sums: NDArray[Any],
+    squares: NDArray[Any],
+) -> None:
+    """
+    Check for negative variance values and raise an error if found.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        The variance array.
+    variables_names : list of str
+        List of variable names.
+    minimum : numpy.ndarray
+        The minimum values array.
+    maximum : numpy.ndarray
+        The maximum values array.
+    mean : numpy.ndarray
+        The mean values array.
+    count : numpy.ndarray
+        The count array.
+    sums : numpy.ndarray
+        The sums array.
+    squares : numpy.ndarray
+        The squares array.
+
+    Raises
+    ------
+    ValueError
+        If negative variance is found.
+    """
     if (x >= 0).all():
         return
     print(x)
@@ -133,8 +222,26 @@ def check_variance(x, variables_names, minimum, maximum, mean, count, sums, squa
     raise ValueError("Negative variance")
 
 
-def compute_statistics(array, check_variables_names=None, allow_nans=False):
-    """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary."""
+def compute_statistics(
+    array: NDArray[Any], check_variables_names: list[str] | None = None, allow_nans: bool = False
+) -> dict[str, np.ndarray]:
+    """
+    Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        The array to compute statistics for.
+    check_variables_names : list of str, optional
+        List of variable names to check. Defaults to None.
+    allow_nans : bool, optional
+        Whether to allow NaN values. Defaults to False.
+
+    Returns
+    -------
+    dict of str to numpy.ndarray
+        A dictionary containing the computed statistics.
+    """
     LOG.info(f"Computing statistics for {array.shape} array")
     nvars = array.shape[1]
 
@@ -180,16 +287,36 @@ def compute_statistics(array, check_variables_names=None, allow_nans=False):
 
 
 class TmpStatistics:
+    """Temporary statistics storage class."""
+
     version = 3
     # Used in parrallel, during data loading,
     # to write statistics in pickled npz files.
     # can provide statistics for a subset of dates.
 
-    def __init__(self, dirname, overwrite=False):
+    def __init__(self, dirname: str, overwrite: bool = False) -> None:
+        """
+        Initialize TmpStatistics.
+
+        Parameters
+        ----------
+        dirname : str
+            Directory name for storing statistics.
+        overwrite : bool, optional
+            Whether to overwrite existing files. Defaults to False.
+        """
         self.dirname = dirname
         self.overwrite = overwrite
 
-    def add_provenance(self, **kwargs):
+    def add_provenance(self, **kwargs: dict) -> None:
+        """
+        Add provenance information.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional provenance information.
+        """
         self.create(exist_ok=True)
         path = os.path.join(self.dirname, "provenance.json")
         if os.path.exists(path):
@@ -198,16 +325,37 @@ class TmpStatistics:
         with open(path, "w") as f:
             json.dump(out, f)
 
-    def create(self, exist_ok):
+    def create(self, exist_ok: bool) -> None:
+        """
+        Create the directory for storing statistics.
+
+        Parameters
+        ----------
+        exist_ok : bool
+            Whether to ignore if the directory already exists.
+        """
         os.makedirs(self.dirname, exist_ok=exist_ok)
 
-    def delete(self):
+    def delete(self) -> None:
+        """Delete the directory for storing statistics."""
         try:
             shutil.rmtree(self.dirname)
         except FileNotFoundError:
             pass
 
-    def write(self, key, data, dates):
+    def write(self, key: str, data: any, dates: list[datetime.datetime]) -> None:
+        """
+        Write statistics data to a file.
+
+        Parameters
+        ----------
+        key : str
+            The key for the data.
+        data : any
+            The data to write.
+        dates : list of datetime.datetime
+            List of dates associated with the data.
+        """
         self.create(exist_ok=True)
         h = hashlib.sha256(str(dates).encode("utf-8")).hexdigest()
         path = os.path.join(self.dirname, f"{h}.npz")
@@ -222,7 +370,15 @@ class TmpStatistics:
 
         LOG.debug(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
 
-    def _gather_data(self):
+    def _gather_data(self) -> tuple[str, list[datetime.datetime], dict]:
+        """
+        Gather data from stored files.
+
+        Yields
+        ------
+        tuple of str, list of datetime.datetime, dict
+            A tuple containing key, dates, and data.
+        """
         # use glob to read all pickles
         files = glob.glob(self.dirname + "/*.npz")
         LOG.debug(f"Reading stats data, found {len(files)} files in {self.dirname}")
@@ -231,18 +387,59 @@ class TmpStatistics:
             with open(f, "rb") as f:
                 yield pickle.load(f)
 
-    def get_aggregated(self, *args, **kwargs):
+    def get_aggregated(self, *args: Any, **kwargs: Any) -> Summary:
+        """
+        Get aggregated statistics.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Summary
+            The aggregated statistics summary.
+        """
         aggregator = StatAggregator(self, *args, **kwargs)
         return aggregator.aggregate()
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        String representation of TmpStatistics.
+
+        Returns
+        -------
+        str
+            The string representation.
+        """
         return f"TmpStatistics({self.dirname})"
 
 
 class StatAggregator:
+    """Statistics aggregator class."""
+
     NAMES = ["minimum", "maximum", "sums", "squares", "count", "has_nans"]
 
-    def __init__(self, owner, dates, variables_names, allow_nans):
+    def __init__(
+        self, owner: TmpStatistics, dates: list[datetime.datetime], variables_names: list[str], allow_nans: bool
+    ) -> None:
+        """
+        Initialize StatAggregator.
+
+        Parameters
+        ----------
+        owner : TmpStatistics
+            The owner TmpStatistics instance.
+        dates : list of datetime.datetime
+            List of dates to aggregate.
+        variables_names : list of str
+            List of variable names.
+        allow_nans : bool
+            Whether to allow NaN values.
+        """
         dates = sorted(dates)
         dates = to_datetimes(dates)
         assert dates, "No dates selected"
@@ -265,7 +462,9 @@ class StatAggregator:
 
         self._read()
 
-    def _read(self):
+    def _read(self) -> None:
+        """Read and aggregate statistics data from files."""
+
         def check_type(a, b):
             if not isinstance(a, set):
                 a = set(list(a))
@@ -321,7 +520,15 @@ class StatAggregator:
         assert self._number_of_dates == offset, "Not all dates found in precomputed statistics."
         LOG.debug(f"Statistics for {len(found)} dates found.")
 
-    def aggregate(self):
+    def aggregate(self) -> Summary:
+        """
+        Aggregate the statistics data.
+
+        Returns
+        -------
+        Summary
+            The aggregated statistics summary.
+        """
         minimum = np.nanmin(self.minimum, axis=0)
         maximum = np.nanmax(self.maximum, axis=0)
 

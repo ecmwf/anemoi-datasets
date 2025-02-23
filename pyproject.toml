@@ -119,3 +119,14 @@ version_file = "src/anemoi/datasets/_version.py"
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+strict = false
+exclude = [
+  "docs/**",
+]
+
+[tool.pydocstringformatter]
+write = true
+exclude = "docs/**"
+style = "numpydoc"

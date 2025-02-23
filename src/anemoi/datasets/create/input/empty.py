@@ -9,6 +9,9 @@
 
 import logging
 from functools import cached_property
+from typing import List
+
+from earthkit.data import FieldList
 
 from .misc import assert_fieldlist
 from .result import Result
@@ -18,19 +21,35 @@ LOG = logging.getLogger(__name__)
 
 
 class EmptyResult(Result):
+    """Class to represent an empty result in the dataset creation process."""
+
     empty = True
 
-    def __init__(self, context, action_path, dates):
+    def __init__(self, context: object, action_path: list, dates: object) -> None:
+        """
+        Initializes an EmptyResult instance.
+
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : list
+            The action path.
+        dates : object
+            The dates object.
+        """
         super().__init__(context, action_path + ["empty"], dates)
 
     @cached_property
     @assert_fieldlist
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> FieldList:
+        """Returns an empty datasource."""
         from earthkit.data import from_source
 
         return from_source("empty")
 
     @property
-    def variables(self):
+    def variables(self) -> List[str]:
+        """Returns an empty list of variables."""
         return []

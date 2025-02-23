@@ -10,13 +10,43 @@
 
 import base64
 import logging
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
 
-def plot_mask(path, mask, lats, lons, global_lats, global_lons):
+def plot_mask(
+    path: str,
+    mask: NDArray[Any],
+    lats: NDArray[Any],
+    lons: NDArray[Any],
+    global_lats: NDArray[Any],
+    global_lons: NDArray[Any],
+) -> None:
+    """Plot and save various visualizations of the mask and coordinates.
+
+    Parameters
+    ----------
+    path : str
+        The base path for saving the plots.
+    mask : NDArray[Any]
+        The mask array.
+    lats : NDArray[Any]
+        Latitude coordinates.
+    lons : NDArray[Any]
+        Longitude coordinates.
+    global_lats : NDArray[Any]
+        Global latitude coordinates.
+    global_lons : NDArray[Any]
+        Global longitude coordinates.
+    """
     import matplotlib.pyplot as plt
 
     s = 1
@@ -64,7 +94,23 @@ def plot_mask(path, mask, lats, lons, global_lats, global_lons):
 
 # TODO: Use the one from anemoi.utils.grids instead
 # from anemoi.utils.grids import ...
-def xyz_to_latlon(x, y, z):
+def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
+    """Convert Cartesian coordinates to latitude and longitude.
+
+    Parameters
+    ----------
+    x : NDArray[Any]
+        X coordinates.
+    y : NDArray[Any]
+        Y coordinates.
+    z : NDArray[Any]
+        Z coordinates.
+
+    Returns
+    -------
+    Tuple[NDArray[Any], NDArray[Any]]
+        Latitude and longitude coordinates.
+    """
     return (
         np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
         np.rad2deg(np.arctan2(y, x)),
@@ -73,7 +119,25 @@ def xyz_to_latlon(x, y, z):
 
 # TODO: Use the one from anemoi.utils.grids instead
 # from anemoi.utils.grids import ...
-def latlon_to_xyz(lat, lon, radius=1.0):
+def latlon_to_xyz(
+    lat: NDArray[Any], lon: NDArray[Any], radius: float = 1.0
+) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
+    """Convert latitude and longitude to Cartesian coordinates.
+
+    Parameters
+    ----------
+    lat : NDArray[Any]
+        Latitude coordinates.
+    lon : NDArray[Any]
+        Longitude coordinates.
+    radius : float, optional
+        Radius of the sphere. Defaults to 1.0.
+
+    Returns
+    -------
+    Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]
+        X, Y, and Z coordinates.
+    """
     # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
     # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
     # We assume h = 0
@@ -94,12 +158,39 @@ def latlon_to_xyz(lat, lon, radius=1.0):
 
 
 class Triangle3D:
-    def __init__(self, v0, v1, v2):
+    """A class to represent a 3D triangle and perform intersection tests with rays."""
+
+    def __init__(self, v0: NDArray[Any], v1: NDArray[Any], v2: NDArray[Any]) -> None:
+        """Initialize the Triangle3D object.
+
+        Parameters
+        ----------
+        v0 : NDArray[Any]
+            First vertex of the triangle.
+        v1 : NDArray[Any]
+            Second vertex of the triangle.
+        v2 : NDArray[Any]
+            Third vertex of the triangle.
+        """
         self.v0 = v0
         self.v1 = v1
         self.v2 = v2
 
-    def intersect(self, ray_origin, ray_direction):
+    def intersect(self, ray_origin: NDArray[Any], ray_direction: NDArray[Any]) -> bool:
+        """Check if a ray intersects with the triangle.
+
+        Parameters
+        ----------
+        ray_origin : NDArray[Any]
+            Origin of the ray.
+        ray_direction : NDArray[Any]
+            Direction of the ray.
+
+        Returns
+        -------
+        bool
+            True if the ray intersects with the triangle, False otherwise.
+        """
         # Möller–Trumbore intersection algorithm
         # https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
 
@@ -132,7 +223,36 @@ class Triangle3D:
         return False
 
 
-def cropping_mask(lats, lons, north, west, south, east):
+def cropping_mask(
+    lats: NDArray[Any],
+    lons: NDArray[Any],
+    north: float,
+    west: float,
+    south: float,
+    east: float,
+) -> NDArray[Any]:
+    """Create a mask for the points within the specified latitude and longitude bounds.
+
+    Parameters
+    ----------
+    lats : NDArray[Any]
+        Latitude coordinates.
+    lons : NDArray[Any]
+        Longitude coordinates.
+    north : float
+        Northern boundary.
+    west : float
+        Western boundary.
+    south : float
+        Southern boundary.
+    east : float
+        Eastern boundary.
+
+    Returns
+    -------
+    NDArray[Any]
+        Mask array.
+    """
     mask = (
         (lats >= south)
         & (lats <= north)
@@ -146,16 +266,41 @@ def cropping_mask(lats, lons, north, west, south, east):
 
 
 def cutout_mask(
-    lats,
-    lons,
-    global_lats,
-    global_lons,
-    cropping_distance=2.0,
-    neighbours=5,
-    min_distance_km=None,
-    plot=None,
-):
-    """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons]"""
+    lats: NDArray[Any],
+    lons: NDArray[Any],
+    global_lats: NDArray[Any],
+    global_lons: NDArray[Any],
+    cropping_distance: float = 2.0,
+    neighbours: int = 5,
+    min_distance_km: Optional[Union[int, float]] = None,
+    plot: Optional[str] = None,
+) -> NDArray[Any]:
+    """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons].
+
+    Parameters
+    ----------
+    lats : NDArray[Any]
+        Latitude coordinates.
+    lons : NDArray[Any]
+        Longitude coordinates.
+    global_lats : NDArray[Any]
+        Global latitude coordinates.
+    global_lons : NDArray[Any]
+        Global longitude coordinates.
+    cropping_distance : float, optional
+        Cropping distance. Defaults to 2.0.
+    neighbours : int, optional
+        Number of neighbours. Defaults to 5.
+    min_distance_km : Optional[Union[int, float]], optional
+        Minimum distance in kilometers. Defaults to None.
+    plot : Optional[str], optional
+        Path for saving the plot. Defaults to None.
+
+    Returns
+    -------
+    NDArray[Any]
+        Mask array.
+    """
     from scipy.spatial import cKDTree
 
     # TODO: transform min_distance from lat/lon to xyz
@@ -232,15 +377,15 @@ def cutout_mask(
         inside_lam.append(inside or close)
 
     j = 0
-    inside_lam = np.array(inside_lam)
+    inside_lam_array = np.array(inside_lam)
     for i, m in enumerate(mask):
         if not m:
             continue
 
-        mask[i] = inside_lam[j]
+        mask[i] = inside_lam_array[j]
         j += 1
 
-    assert j == len(inside_lam)
+    assert j == len(inside_lam_array)
 
     # Invert the mask, so we have only the points outside the cutout
     mask = ~mask
@@ -252,13 +397,32 @@ def cutout_mask(
 
 
 def thinning_mask(
-    lats,
-    lons,
-    global_lats,
-    global_lons,
-    cropping_distance=2.0,
-):
-    """Return the list of points in [lats, lons] closest to [global_lats, global_lons]"""
+    lats: NDArray[Any],
+    lons: NDArray[Any],
+    global_lats: NDArray[Any],
+    global_lons: NDArray[Any],
+    cropping_distance: float = 2.0,
+) -> NDArray[Any]:
+    """Return the list of points in [lats, lons] closest to [global_lats, global_lons].
+
+    Parameters
+    ----------
+    lats : NDArray[Any]
+        Latitude coordinates.
+    lons : NDArray[Any]
+        Longitude coordinates.
+    global_lats : NDArray[Any]
+        Global latitude coordinates.
+    global_lons : NDArray[Any]
+        Global longitude coordinates.
+    cropping_distance : float, optional
+        Cropping distance. Defaults to 2.0.
+
+    Returns
+    -------
+    NDArray[Any]
+        Array of indices of the closest points.
+    """
     from scipy.spatial import cKDTree
 
     assert global_lats.ndim == 1
@@ -301,7 +465,23 @@ def thinning_mask(
     return np.array([i for i in indices])
 
 
-def outline(lats, lons, neighbours=5):
+def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> List[int]:
+    """Find the outline of the grid points.
+
+    Parameters
+    ----------
+    lats : NDArray[Any]
+        Latitude coordinates.
+    lons : NDArray[Any]
+        Longitude coordinates.
+    neighbours : int, optional
+        Number of neighbours. Defaults to 5.
+
+    Returns
+    -------
+    List[int]
+        Indices of the outline points.
+    """
     from scipy.spatial import cKDTree
 
     xyx = latlon_to_xyz(lats, lons)
@@ -333,7 +513,19 @@ def outline(lats, lons, neighbours=5):
     return outside
 
 
-def deserialise_mask(encoded):
+def deserialise_mask(encoded: str) -> NDArray[Any]:
+    """Deserialise a mask from a base64 encoded string.
+
+    Parameters
+    ----------
+    encoded : str
+        Base64 encoded string.
+
+    Returns
+    -------
+    NDArray[Any]
+        Deserialised mask array.
+    """
     import pickle
     import zlib
 
@@ -347,7 +539,19 @@ def deserialise_mask(encoded):
     return np.array(mask, dtype=bool)
 
 
-def _serialise_mask(mask):
+def _serialise_mask(mask: NDArray[Any]) -> str:
+    """Serialise a mask to a base64 encoded string.
+
+    Parameters
+    ----------
+    mask : NDArray[Any]
+        Mask array.
+
+    Returns
+    -------
+    str
+        Base64 encoded string.
+    """
     import pickle
     import zlib
 
@@ -376,14 +580,49 @@ def _serialise_mask(mask):
     return base64.b64encode(zlib.compress(pickle.dumps(packed))).decode("utf-8")
 
 
-def serialise_mask(mask):
+def serialise_mask(mask: NDArray[Any]) -> str:
+    """Serialise a mask and ensure it can be deserialised.
+
+    Parameters
+    ----------
+    mask : NDArray[Any]
+        Mask array.
+
+    Returns
+    -------
+    str
+        Base64 encoded string.
+    """
     result = _serialise_mask(mask)
     # Make sure we can deserialise it
     assert np.all(mask == deserialise_mask(result))
     return result
 
 
-def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, target_longitudes):
+def nearest_grid_points(
+    source_latitudes: NDArray[Any],
+    source_longitudes: NDArray[Any],
+    target_latitudes: NDArray[Any],
+    target_longitudes: NDArray[Any],
+) -> NDArray[Any]:
+    """Find the nearest grid points from source to target coordinates.
+
+    Parameters
+    ----------
+    source_latitudes : NDArray[Any]
+        Source latitude coordinates.
+    source_longitudes : NDArray[Any]
+        Source longitude coordinates.
+    target_latitudes : NDArray[Any]
+        Target latitude coordinates.
+    target_longitudes : NDArray[Any]
+        Target longitude coordinates.
+
+    Returns
+    -------
+    NDArray[Any]
+        Indices of the nearest grid points.
+    """
     # TODO: Use the one from anemoi.utils.grids instead
     # from anemoi.utils.grids import ...
     from scipy.spatial import cKDTree
