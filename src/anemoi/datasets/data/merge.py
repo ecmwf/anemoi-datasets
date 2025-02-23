@@ -8,12 +8,22 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
+from typing import Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 from . import MissingDateError
+from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Combined
@@ -28,14 +38,19 @@ LOG = logging.getLogger(__name__)
 
 
 class Merge(Combined):
+    """A class to merge multiple datasets along the dates axis, handling gaps in dates if allowed."""
 
-    # d0 d2 d4 d6 ...
-    # d1 d3 d5 d7 ...
+    def __init__(self, datasets: List[Dataset], allow_gaps_in_dates: bool = False) -> None:
+        """
+        Initialize the Merge object.
 
-    # gives
-    # d0 d1 d2 d3 ...
-
-    def __init__(self, datasets, allow_gaps_in_dates=False):
+        Parameters
+        ----------
+        datasets : List[Dataset]
+            List of datasets to merge.
+        allow_gaps_in_dates : bool, optional
+            Whether to allow gaps in dates. Defaults to False.
+        """
         super().__init__(datasets)
 
         self.allow_gaps_in_dates = allow_gaps_in_dates
@@ -91,23 +106,34 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency  # .astype(object)
+        self._frequency = frequency.astype(object)
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Get the number of dates in the merged dataset.
+
+        Returns
+        -------
+        int
+            Number of dates.
+        """
         return len(self._dates)
 
     @property
-    def dates(self):
+    def dates(self) -> NDArray[np.datetime64]:
+        """Get the dates of the merged dataset."""
         return self._dates
 
     @property
-    def frequency(self):
+    def frequency(self) -> datetime.timedelta:
+        """Get the frequency of the dates in the merged dataset."""
         return self._frequency
 
     @cached_property
-    def missing(self):
+    def missing(self) -> Set[int]:
+        """Get the indices of missing dates in the merged dataset."""
         # TODO: optimize
-        result = set()
+        result: Set[int] = set()
 
         for i, (dataset, row) in enumerate(self._indices):
             if dataset == self._missing_index:
@@ -119,26 +145,85 @@ class Merge(Combined):
 
         return result
 
-    def check_same_lengths(self, d1, d2):
+    def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Check if the lengths of two datasets are the same. (Disabled for merging).
+
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
+        """
         # Turned off because we are concatenating along the first axis
         pass
 
-    def check_same_dates(self, d1, d2):
+    def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Check if the dates of two datasets are the same. (Disabled for merging).
+
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
+        """
         # Turned off because we are concatenating along the dates axis
         pass
 
-    def check_compatibility(self, d1, d2):
+    def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """
+        Check if two datasets are compatible for merging.
+
+        Parameters
+        ----------
+        d1 : Dataset
+            First dataset.
+        d2 : Dataset
+            Second dataset.
+        """
         super().check_compatibility(d1, d2)
         self.check_same_sub_shapes(d1, d2, drop_axis=0)
 
-    def tree(self):
+    def tree(self) -> Node:
+        """
+        Get the tree representation of the merged dataset.
+
+        Returns
+        -------
+        Node
+            Tree representation of the merged dataset.
+        """
         return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
 
-    def metadata_specific(self):
+    def metadata_specific(self) -> Dict[str, Any]:
+        """
+        Get the specific metadata for the merged dataset.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Specific metadata.
+        """
         return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
 
     @debug_indexing
-    def __getitem__(self, n):
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """
+        Get the item at the specified index.
+
+        Parameters
+        ----------
+        n : FullIndex
+            Index to retrieve.
+
+        Returns
+        -------
+        NDArray[Any]
+            Retrieved item.
+        """
         if isinstance(n, tuple):
             return self._get_tuple(n)
 
@@ -154,18 +239,57 @@ class Merge(Combined):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """
+        Get the item at the specified tuple index.
+
+        Parameters
+        ----------
+        index : TupleIndex
+            Tuple index to retrieve.
+
+        Returns
+        -------
+        NDArray[Any]
+            Retrieved item.
+        """
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, 0, slice(None))
         result = self._get_slice(previous)
         return apply_index_to_slices_changes(result[index], changes)
 
-    def _get_slice(self, s):
+    def _get_slice(self, s: slice) -> NDArray[Any]:
+        """
+        Get the items in the specified slice.
+
+        Parameters
+        ----------
+        s : slice
+            Slice to retrieve.
+
+        Returns
+        -------
+        NDArray[Any]
+            Retrieved items.
+        """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
 
-def merge_factory(args, kwargs):
+def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
+    """Factory function to create a merged dataset.
 
+    Parameters
+    ----------
+    args : Tuple
+        Positional arguments.
+    kwargs : Dict[str, Any]
+        Keyword arguments.
+
+    Returns
+    -------
+    Dataset
+        Merged dataset.
+    """
     datasets = kwargs.pop("merge")
 
     assert isinstance(datasets, (list, tuple))

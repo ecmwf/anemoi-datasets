@@ -7,6 +7,28 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import Any
 
-def execute(context, input, *args, **kwargs):
+import earthkit.data as ekd
+
+
+def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """No operation filter that returns the input as is.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : ekd.FieldList
+        List of input fields.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    List[Any]
+        The input list of fields.
+    """
     return input

@@ -7,8 +7,16 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import logging
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
+import earthkit.data as ekd
+import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.data.stores import name_to_zarr_store
@@ -19,7 +27,21 @@ from .fieldlist import XarrayFieldList
 LOG = logging.getLogger(__name__)
 
 
-def check(what, ds, paths, **kwargs):
+def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
+    """
+    Checks if the dataset has the expected number of fields.
+
+    Parameters
+    ----------
+    what : str
+        Description of what is being checked.
+    ds : xr.Dataset
+        The dataset to check.
+    paths : List[str]
+        List of paths.
+    **kwargs : Any
+        Additional keyword arguments.
+    """
     count = 1
     for k, v in kwargs.items():
         if isinstance(v, (tuple, list)):
@@ -29,8 +51,43 @@ def check(what, ds, paths, **kwargs):
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
-def load_one(emoji, context, dates, dataset, *, options={}, flavour=None, patch=None, **kwargs):
-    import xarray as xr
+def load_one(
+    emoji: str,
+    context: Any,
+    dates: List[str],
+    dataset: Union[str, xr.Dataset],
+    *,
+    options: Dict[str, Any] = {},
+    flavour: Optional[str] = None,
+    patch: Optional[Any] = None,
+    **kwargs: Any,
+) -> ekd.FieldList:
+    """Loads a single dataset.
+
+    Parameters
+    ----------
+    emoji : str
+        Emoji for tracing.
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    dataset : Union[str, xr.Dataset]
+        The dataset to load.
+    options : Dict[str, Any], optional
+        Additional options for loading the dataset.
+    flavour : Optional[str], optional
+        Flavour of the dataset.
+    patch : Optional[Any], optional
+        Patch for the dataset.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    MultiFieldList
+        The loaded dataset.
+    """
 
     """
     We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
@@ -79,8 +136,27 @@ def load_one(emoji, context, dates, dataset, *, options={}, flavour=None, patch=
     return result
 
 
-def load_many(emoji, context, dates, pattern, **kwargs):
+def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
+    """Loads multiple datasets.
 
+    Parameters
+    ----------
+    emoji : str
+        Emoji for tracing.
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    pattern : str
+        Pattern for loading datasets.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    MultiFieldList
+        The loaded datasets.
+    """
     result = []
 
     for path, dates in iterate_patterns(pattern, dates, **kwargs):
@@ -89,5 +165,25 @@ def load_many(emoji, context, dates, pattern, **kwargs):
     return MultiFieldList(result)
 
 
-def execute(context, dates, url, *args, **kwargs):
+def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Executes the loading of datasets.
+
+    Parameters
+    ----------
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    url : str
+        URL pattern for loading datasets.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    ekd.FieldList
+        The loaded datasets.
+    """
     return load_many("🌐", context, dates, url, *args, **kwargs)

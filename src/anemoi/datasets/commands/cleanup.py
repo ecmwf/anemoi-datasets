@@ -9,6 +9,7 @@
 
 import logging
 import time
+from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
@@ -25,7 +26,15 @@ class Cleanup(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, subparser):
+    def add_arguments(self, subparser: Any) -> None:
+        """
+        Add command line arguments to the parser.
+
+        Parameters
+        ----------
+        subparser : Any
+            The argument parser.
+        """
         subparser.add_argument("path", help="Path to store the created data.")
         subparser.add_argument(
             "--delta",
@@ -33,7 +42,15 @@ class Cleanup(Command):
             nargs="+",
         )
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
+        """
+        Execute the cleanup command.
+
+        Parameters
+        ----------
+        args : Any
+            The command line arguments.
+        """
         options = vars(args)
         options.pop("command")
         now = time.time()

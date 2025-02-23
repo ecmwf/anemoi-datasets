@@ -8,6 +8,10 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Union
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
@@ -16,14 +20,42 @@ from anemoi.datasets.create.functions.sources.mars import mars
 LOGGER = logging.getLogger(__name__)
 
 
-def _to_list(x):
+def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
+    """
+    Converts the input to a list if it is not already a list or tuple.
+
+    Parameters
+    ----------
+    x : Any
+        The input to convert.
+
+    Returns
+    -------
+    list
+        A list containing the input elements.
+    """
     if isinstance(x, (list, tuple)):
         return x
     return [x]
 
 
-def hindcasts(context, dates, **request):
+def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
+    """Generates hindcast requests based on the provided dates and request parameters.
 
+    Parameters
+    ----------
+    context : Any
+        The context containing the dates provider and trace method.
+    dates : List[Any]
+        A list of dates for which to generate hindcast requests.
+    request : Dict[str, Any]
+        Additional request parameters.
+
+    Returns
+    -------
+    MultiFieldList
+        A MultiFieldList containing the hindcast data.
+    """
     from anemoi.datasets.dates import HindcastsDates
 
     provider = context.dates_provider
