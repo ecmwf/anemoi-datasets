@@ -137,8 +137,7 @@ class DatasetName:
             )
 
     def check_resolution(self, resolution: Optional[str]) -> None:
-        """
-        Check if the resolution matches the expected format.
+        """Check if the resolution matches the expected format.
 
         Parameters
         ----------
@@ -158,8 +157,7 @@ class DatasetName:
         self._check_mismatch("resolution", resolution_str)
 
     def check_frequency(self, frequency: Optional[datetime.timedelta]) -> None:
-        """
-        Check if the frequency matches the expected format.
+        """Check if the frequency matches the expected format.
 
         Parameters
         ----------
@@ -173,8 +171,7 @@ class DatasetName:
         self._check_mismatch("frequency", frequency_str)
 
     def check_start_date(self, start_date: Optional[datetime.date]) -> None:
-        """
-        Check if the start date matches the expected format.
+        """Check if the start date matches the expected format.
 
         Parameters
         ----------
@@ -188,8 +185,7 @@ class DatasetName:
         self._check_mismatch("start_date", start_date_str)
 
     def check_end_date(self, end_date: Optional[datetime.date]) -> None:
-        """
-        Check if the end date matches the expected format.
+        """Check if the end date matches the expected format.
 
         Parameters
         ----------
