@@ -136,8 +136,9 @@ class DatasetName:
                 "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
             )
 
-    def check_resolution(self, resolution: str | None) -> None:
-        """Check if the resolution matches the expected format.
+    def check_resolution(self, resolution: Optional[str]) -> None:
+        """
+        Check if the resolution matches the expected format.
 
         Parameters
         ----------
@@ -156,8 +157,9 @@ class DatasetName:
         self._check_missing("resolution", resolution_str)
         self._check_mismatch("resolution", resolution_str)
 
-    def check_frequency(self, frequency: datetime.timedelta | None) -> None:
-        """Check if the frequency matches the expected format.
+    def check_frequency(self, frequency: Optional[datetime.timedelta]) -> None:
+        """
+        Check if the frequency matches the expected format.
 
         Parameters
         ----------
@@ -170,8 +172,9 @@ class DatasetName:
         self._check_missing("frequency", frequency_str)
         self._check_mismatch("frequency", frequency_str)
 
-    def check_start_date(self, start_date: datetime.date | None) -> None:
-        """Check if the start date matches the expected format.
+    def check_start_date(self, start_date: Optional[datetime.date]) -> None:
+        """
+        Check if the start date matches the expected format.
 
         Parameters
         ----------
@@ -184,8 +187,9 @@ class DatasetName:
         self._check_missing("start_date", start_date_str)
         self._check_mismatch("start_date", start_date_str)
 
-    def check_end_date(self, end_date: datetime.date | None) -> None:
-        """Check if the end date matches the expected format.
+    def check_end_date(self, end_date: Optional[datetime.date]) -> None:
+        """
+        Check if the end date matches the expected format.
 
         Parameters
         ----------

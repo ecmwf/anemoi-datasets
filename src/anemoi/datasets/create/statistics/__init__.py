@@ -17,6 +17,8 @@ import pickle
 import shutil
 import socket
 from typing import Any
+from typing import List
+from typing import Optional
 
 import numpy as np
 import tqdm
@@ -218,7 +220,7 @@ def check_variance(
 
 
 def compute_statistics(
-    array: NDArray[Any], check_variables_names: list[str] | None = None, allow_nans: bool = False
+    array: NDArray[Any], check_variables_names: Optional[List[str]] = None, allow_nans: bool = False
 ) -> dict[str, np.ndarray]:
     """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary.
 

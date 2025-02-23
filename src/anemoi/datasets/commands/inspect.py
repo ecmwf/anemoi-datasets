@@ -347,7 +347,7 @@ class Version:
         return False
 
     @property
-    def statistics_started(self) -> datetime.datetime | None:
+    def statistics_started(self) -> Optional[datetime.datetime]:
         """Get the timestamp when statistics computation started."""
         for d in reversed(self.metadata.get("history", [])):
             if d["action"] == "compute_statistics_start":
@@ -355,7 +355,7 @@ class Version:
         return None
 
     @property
-    def build_flags(self) -> NDArray[Any] | None:
+    def build_flags(self) -> Optional[NDArray[Any]]:
         """Get the build flags of the dataset."""
         return self.zarr.get("_build_flags")
 
@@ -622,7 +622,7 @@ class Version0_6(Version):
     """Represents version 0.6 of a dataset."""
 
     @property
-    def initialised(self) -> datetime.datetime | None:
+    def initialised(self) -> Optional[datetime.datetime]:
         """Get the initialization timestamp of the dataset."""
         for record in self.metadata.get("history", []):
             if record["action"] == "initialised":
