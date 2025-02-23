@@ -57,8 +57,7 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
 
 
 def is_function(name: str, kind: str) -> bool:
-    """
-    Checks if a function with the given name and kind exists.
+    """Checks if a function with the given name and kind exists.
 
     Parameters
     ----------
@@ -82,8 +81,7 @@ def is_function(name: str, kind: str) -> bool:
 
 
 def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator to assert that the result of a method is an instance of FieldList.
+    """Decorator to assert that the result of a method is an instance of FieldList.
 
     Parameters
     ----------
@@ -107,8 +105,7 @@ def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def assert_is_fieldlist(obj: object) -> None:
-    """
-    Asserts that the given object is an instance of FieldList.
+    """Asserts that the given object is an instance of FieldList.
 
     Parameters
     ----------
@@ -119,8 +116,7 @@ def assert_is_fieldlist(obj: object) -> None:
 
 
 def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
-    """
-    Flattens a MultiFieldList or FieldList into a list of FieldList objects.
+    """Flattens a MultiFieldList or FieldList into a list of FieldList objects.
 
     Parameters
     ----------
@@ -138,8 +134,7 @@ def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
 
 
 def _tidy(ds: Union[MultiFieldList, FieldList], indent: int = 0) -> Union[MultiFieldList, FieldList]:
-    """
-    Tidies up a MultiFieldList or FieldList by removing empty sources.
+    """Tidies up a MultiFieldList or FieldList by removing empty sources.
 
     Parameters
     ----------

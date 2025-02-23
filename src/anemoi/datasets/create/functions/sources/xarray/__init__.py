@@ -62,8 +62,7 @@ def load_one(
     patch: Optional[Any] = None,
     **kwargs: Any,
 ) -> ekd.FieldList:
-    """
-    Loads a single dataset.
+    """Loads a single dataset.
 
     Parameters
     ----------
@@ -138,8 +137,7 @@ def load_one(
 
 
 def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
-    """
-    Loads multiple datasets.
+    """Loads multiple datasets.
 
     Parameters
     ----------
@@ -168,8 +166,7 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
 
 
 def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """
-    Executes the loading of datasets.
+    """Executes the loading of datasets.
 
     Parameters
     ----------

@@ -19,8 +19,7 @@ from .mars import mars
 
 
 def to_list(x: Union[list, tuple, str]) -> List:
-    """
-    Converts the input to a list. If the input is a string, it splits it by '/'.
+    """Converts the input to a list. If the input is a string, it splits it by '/'.
 
     Parameters
     ----------
@@ -40,8 +39,7 @@ def to_list(x: Union[list, tuple, str]) -> List:
 
 
 def normalise_number(number: Union[list, tuple, str]) -> List[int]:
-    """
-    Normalises the input number to a list of integers.
+    """Normalises the input number to a list of integers.
 
     Parameters
     ----------
@@ -65,8 +63,7 @@ def normalise_number(number: Union[list, tuple, str]) -> List[int]:
 
 
 def normalise_request(request: Dict) -> Dict:
-    """
-    Normalises the request dictionary by converting certain fields to lists.
+    """Normalises the request dictionary by converting certain fields to lists.
 
     Parameters
     ----------
@@ -88,8 +85,7 @@ def normalise_request(request: Dict) -> Dict:
 
 
 def load_if_needed(context: Any, dates: Any, dict_or_dataset: Union[Dict, Any]) -> Any:
-    """
-    Loads the dataset if the input is a dictionary, otherwise returns the input.
+    """Loads the dataset if the input is a dictionary, otherwise returns the input.
 
     Parameters
     ----------
@@ -120,8 +116,7 @@ def recentre(
     remapping: Dict = {},
     patches: Dict = {},
 ) -> Any:
-    """
-    Recentres the members dataset using the centre dataset.
+    """Recentres the members dataset using the centre dataset.
 
     Parameters
     ----------

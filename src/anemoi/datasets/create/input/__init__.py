@@ -29,8 +29,7 @@ class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
     def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
-        """
-        Initialize the InputBuilder.
+        """Initialize the InputBuilder.
 
         Parameters
         ----------
@@ -56,8 +55,7 @@ class InputBuilder:
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> Any:
-        """
-        Select data based on the group of dates.
+        """Select data based on the group of dates.
 
         Parameters
         ----------
@@ -78,8 +76,7 @@ class InputBuilder:
         return action.select(group_of_dates)
 
     def __repr__(self) -> str:
-        """
-        Return a string representation of the InputBuilder.
+        """Return a string representation of the InputBuilder.
 
         Returns
         -------
@@ -94,8 +91,7 @@ class InputBuilder:
         return repr(a)
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """
-        Trace the select operation.
+        """Trace the select operation.
 
         Parameters
         ----------
@@ -111,8 +107,7 @@ class InputBuilder:
 
 
 def build_input(config: dict, data_sources: Union[dict, list], **kwargs: Any) -> InputBuilder:
-    """
-    Build an InputBuilder instance.
+    """Build an InputBuilder instance.
 
     Parameters
     ----------

@@ -63,8 +63,7 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
 
 
 class Geography:
-    """
-    This class retrieves the latitudes and longitudes of unstructured grids,
+    """This class retrieves the latitudes and longitudes of unstructured grids,
     and checks if the fields are compatible with the grid.
 
     Parameters
@@ -78,8 +77,7 @@ class Geography:
     """
 
     def __init__(self, context: Any, latitudes: Dict[str, Any], longitudes: Dict[str, Any]) -> None:
-        """
-        Initialize the Geography class.
+        """Initialize the Geography class.
 
         Parameters
         ----------
@@ -106,8 +104,7 @@ class Geography:
         self.first = True
 
     def check(self, field: Any) -> None:
-        """
-        Check if the field is compatible with the grid.
+        """Check if the field is compatible with the grid.
 
         Parameters
         ----------
@@ -123,8 +120,7 @@ class Geography:
 
 
 class AddGrid:
-    """
-    An earth-kit.data.Field wrapper that adds grid information.
+    """An earth-kit.data.Field wrapper that adds grid information.
 
     Parameters
     ----------
@@ -135,8 +131,7 @@ class AddGrid:
     """
 
     def __init__(self, field: Any, geography: Geography) -> None:
-        """
-        Initialize the AddGrid class.
+        """Initialize the AddGrid class.
 
         Parameters
         ----------
@@ -153,8 +148,7 @@ class AddGrid:
         self._longitudes = geography.longitudes
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Get an attribute from the wrapped field.
+        """Get an attribute from the wrapped field.
 
         Parameters
         ----------
@@ -169,8 +163,7 @@ class AddGrid:
         return getattr(self._field, name)
 
     def __repr__(self) -> str:
-        """
-        Get the string representation of the wrapped field.
+        """Get the string representation of the wrapped field.
 
         Returns
         -------
@@ -180,8 +173,7 @@ class AddGrid:
         return repr(self._field)
 
     def grid_points(self) -> tuple:
-        """
-        Get the grid points (latitudes and longitudes).
+        """Get the grid points (latitudes and longitudes).
 
         Returns
         -------
@@ -197,8 +189,7 @@ class AddGrid:
 
 
 def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
-    """
-    Check if the dataset matches the expected number of fields.
+    """Check if the dataset matches the expected number of fields.
 
     Parameters
     ----------
@@ -224,8 +215,7 @@ def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
 
 
 def _expand(paths: List[str]) -> Any:
-    """
-    Expand the given paths using glob.
+    """Expand the given paths using glob.
 
     Parameters
     ----------
@@ -255,8 +245,7 @@ def execute(
     *args: Any,
     **kwargs: Any,
 ) -> ekd.FieldList:
-    """
-    Execute the function to load data from GRIB files.
+    """Execute the function to load data from GRIB files.
 
     Args:
         context (Any): The context in which the function is executed.

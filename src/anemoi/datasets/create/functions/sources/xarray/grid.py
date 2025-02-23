@@ -47,8 +47,7 @@ class LatLonGrid(Grid):
     """Grid class for latitude and longitude coordinates."""
 
     def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
-        """
-        Initialize the LatLonGrid class.
+        """Initialize the LatLonGrid class.
 
         Parameters
         ----------
@@ -68,8 +67,7 @@ class XYGrid(Grid):
     """Grid class for x and y coordinates."""
 
     def __init__(self, x: Any, y: Any) -> None:
-        """
-        Initialize the XYGrid class.
+        """Initialize the XYGrid class.
 
         Parameters
         ----------
@@ -100,8 +98,7 @@ class UnstructuredGrid(LatLonGrid):
     """Grid class for unstructured latitude and longitude coordinates."""
 
     def __init__(self, lat: Any, lon: Any, variable_dims: Any) -> None:
-        """
-        Initialize the UnstructuredGrid class.
+        """Initialize the UnstructuredGrid class.
 
         Parameters
         ----------
@@ -144,8 +141,7 @@ class ProjectionGrid(XYGrid):
     """Grid class for projected x and y coordinates."""
 
     def __init__(self, x: Any, y: Any, projection: Any) -> None:
-        """
-        Initialize the ProjectionGrid class.
+        """Initialize the ProjectionGrid class.
 
         Parameters
         ----------
@@ -160,8 +156,7 @@ class ProjectionGrid(XYGrid):
         self.projection = projection
 
     def transformer(self) -> Any:
-        """
-        Get the transformer for the projection.
+        """Get the transformer for the projection.
 
         Returns
         -------

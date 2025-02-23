@@ -307,8 +307,7 @@ class Join(Combined):
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
-    """
-    Create a joined dataset.
+    """Create a joined dataset.
 
     Parameters
     ----------

@@ -23,8 +23,7 @@ class Compare(Command):
     """Compare two datasets. This command compares the variables in two datasets and prints the mean of the common variables. It does not compare the data itself (yet)."""
 
     def add_arguments(self, command_parser: Any) -> None:
-        """
-        Add arguments to the command parser.
+        """Add arguments to the command parser.
 
         Parameters
         ----------
@@ -37,8 +36,7 @@ class Compare(Command):
         command_parser.add_argument("--statistics", action="store_true", help="Compare the statistics.")
 
     def run(self, args: Any) -> None:
-        """
-        Run the compare command with the provided arguments.
+        """Run the compare command with the provided arguments.
 
         Parameters
         ----------

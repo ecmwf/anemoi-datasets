@@ -64,8 +64,7 @@ class Create(Command):
     timestamp = True
 
     def add_arguments(self, command_parser: Any) -> None:
-        """
-        Add command line arguments to the parser.
+        """Add command line arguments to the parser.
 
         Parameters
         ----------
@@ -90,8 +89,7 @@ class Create(Command):
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
-        """
-        Execute the create command.
+        """Execute the create command.
 
         Parameters
         ----------
@@ -106,8 +104,7 @@ class Create(Command):
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
     def serial_create(self, args: Any) -> None:
-        """
-        Create the dataset in serial mode.
+        """Create the dataset in serial mode.
 
         Parameters
         ----------
@@ -133,8 +130,7 @@ class Create(Command):
         task("verify", options)
 
     def parallel_create(self, args: Any) -> None:
-        """
-        Create the dataset in parallel mode.
+        """Create the dataset in parallel mode.
 
         Parameters
         ----------

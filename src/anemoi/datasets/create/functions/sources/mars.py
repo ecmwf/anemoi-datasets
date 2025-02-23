@@ -47,8 +47,7 @@ def to_list(x: Union[list, tuple, Any]) -> list:
 def _date_to_datetime(
     d: Union[datetime.datetime, list, tuple, str]
 ) -> Union[datetime.datetime, List[datetime.datetime]]:
-    """
-    Converts the input date(s) to datetime objects.
+    """Converts the input date(s) to datetime objects.
 
     Parameters
     ----------
@@ -68,8 +67,7 @@ def _date_to_datetime(
 
 
 def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
-    """
-    Expands a range expression to a list of values.
+    """Expands a range expression to a list of values.
 
     Parameters
     ----------
@@ -99,8 +97,7 @@ def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
 
 
 def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelta:
-    """
-    Normalizes a time delta string to a datetime.timedelta object.
+    """Normalizes a time delta string to a datetime.timedelta object.
 
     Parameters
     ----------
@@ -123,8 +120,7 @@ def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelt
 
 
 def _normalise_time(t: Union[int, str]) -> str:
-    """
-    Normalizes a time value to a string in HHMM format.
+    """Normalizes a time value to a string in HHMM format.
 
     Parameters
     ----------
@@ -148,8 +144,7 @@ def _expand_mars_request(
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
 ) -> List[Dict[str, Any]]:
-    """
-    Expands a MARS request with the given date and other parameters.
+    """Expands a MARS request with the given date and other parameters.
 
     Parameters
     ----------
@@ -231,8 +226,7 @@ def factorise_requests(
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
 ) -> Generator[Dict[str, Any], None, None]:
-    """
-    Factorizes the requests based on the given dates.
+    """Factorizes the requests based on the given dates.
 
     Parameters
     ----------
@@ -274,8 +268,7 @@ def factorise_requests(
 
 
 def use_grib_paramid(r: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Converts the parameter short names to GRIB parameter IDs.
+    """Converts the parameter short names to GRIB parameter IDs.
 
     Parameters
     ----------

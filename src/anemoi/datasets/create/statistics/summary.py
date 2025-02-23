@@ -47,8 +47,7 @@ class Summary(dict):
         return len(self["variables_names"])
 
     def check(self) -> None:
-        """
-        Perform checks on the summary statistics to ensure they are valid.
+        """Perform checks on the summary statistics to ensure they are valid.
 
         Raises
         ------
@@ -84,8 +83,7 @@ class Summary(dict):
                 raise
 
     def __str__(self) -> str:
-        """
-        Return a string representation of the summary statistics.
+        """Return a string representation of the summary statistics.
 
         Returns
         -------
@@ -102,8 +100,7 @@ class Summary(dict):
         return "\n".join(out)
 
     def save(self, filename: str, **metadata: Any) -> None:
-        """
-        Save the summary statistics to a JSON file.
+        """Save the summary statistics to a JSON file.
 
         Parameters
         ----------
@@ -128,8 +125,7 @@ class Summary(dict):
             json.dump(out, f, indent=2)
 
     def load(self, filename: str) -> "Summary":
-        """
-        Load the summary statistics from a JSON file.
+        """Load the summary statistics from a JSON file.
 
         Parameters
         ----------

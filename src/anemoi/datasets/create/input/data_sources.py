@@ -100,8 +100,7 @@ class DataSourcesResult(Result):
         input_result: Result,
         sources_results: List[Result],
     ) -> None:
-        """
-        Initializes a DataSourcesResult instance.
+        """Initializes a DataSourcesResult instance.
 
         Parameters
         ----------

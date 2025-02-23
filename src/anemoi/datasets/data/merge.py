@@ -276,8 +276,7 @@ class Merge(Combined):
 
 
 def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
-    """
-    Factory function to create a merged dataset.
+    """Factory function to create a merged dataset.
 
     Parameters
     ----------

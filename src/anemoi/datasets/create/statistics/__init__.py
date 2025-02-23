@@ -76,8 +76,7 @@ def default_statistics_dates(dates: list[datetime.datetime]) -> tuple[datetime.d
 
 
 def to_datetime(date: str | datetime.datetime) -> np.datetime64:
-    """
-    Convert a date to numpy datetime64 format.
+    """Convert a date to numpy datetime64 format.
 
     Parameters
     ----------
@@ -97,8 +96,7 @@ def to_datetime(date: str | datetime.datetime) -> np.datetime64:
 
 
 def to_datetimes(dates: list[str | datetime.datetime]) -> list[np.datetime64]:
-    """
-    Convert a list of dates to numpy datetime64 format.
+    """Convert a list of dates to numpy datetime64 format.
 
     Parameters
     ----------
@@ -114,8 +112,7 @@ def to_datetimes(dates: list[str | datetime.datetime]) -> list[np.datetime64]:
 
 
 def fix_variance(x: float, name: str, count: NDArray[Any], sums: NDArray[Any], squares: NDArray[Any]) -> float:
-    """
-    Fix negative variance values due to numerical errors.
+    """Fix negative variance values due to numerical errors.
 
     Parameters
     ----------
@@ -175,8 +172,7 @@ def check_variance(
     sums: NDArray[Any],
     squares: NDArray[Any],
 ) -> None:
-    """
-    Check for negative variance values and raise an error if found.
+    """Check for negative variance values and raise an error if found.
 
     Parameters
     ----------
@@ -225,8 +221,7 @@ def check_variance(
 def compute_statistics(
     array: NDArray[Any], check_variables_names: list[str] | None = None, allow_nans: bool = False
 ) -> dict[str, np.ndarray]:
-    """
-    Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary.
+    """Compute statistics for a given array, provides minimum, maximum, sum, squares, count and has_nans as a dictionary.
 
     Parameters
     ----------
@@ -309,8 +304,7 @@ class TmpStatistics:
         self.overwrite = overwrite
 
     def add_provenance(self, **kwargs: dict) -> None:
-        """
-        Add provenance information.
+        """Add provenance information.
 
         Parameters
         ----------
@@ -326,8 +320,7 @@ class TmpStatistics:
             json.dump(out, f)
 
     def create(self, exist_ok: bool) -> None:
-        """
-        Create the directory for storing statistics.
+        """Create the directory for storing statistics.
 
         Parameters
         ----------
@@ -344,8 +337,7 @@ class TmpStatistics:
             pass
 
     def write(self, key: str, data: any, dates: list[datetime.datetime]) -> None:
-        """
-        Write statistics data to a file.
+        """Write statistics data to a file.
 
         Parameters
         ----------
@@ -371,8 +363,7 @@ class TmpStatistics:
         LOG.debug(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
 
     def _gather_data(self) -> tuple[str, list[datetime.datetime], dict]:
-        """
-        Gather data from stored files.
+        """Gather data from stored files.
 
         Yields
         ------
@@ -388,8 +379,7 @@ class TmpStatistics:
                 yield pickle.load(f)
 
     def get_aggregated(self, *args: Any, **kwargs: Any) -> Summary:
-        """
-        Get aggregated statistics.
+        """Get aggregated statistics.
 
         Parameters
         ----------
@@ -407,8 +397,7 @@ class TmpStatistics:
         return aggregator.aggregate()
 
     def __str__(self) -> str:
-        """
-        String representation of TmpStatistics.
+        """String representation of TmpStatistics.
 
         Returns
         -------
@@ -521,8 +510,7 @@ class StatAggregator:
         LOG.debug(f"Statistics for {len(found)} dates found.")
 
     def aggregate(self) -> Summary:
-        """
-        Aggregate the statistics data.
+        """Aggregate the statistics data.
 
         Returns
         -------

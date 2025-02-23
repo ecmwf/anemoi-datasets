@@ -66,8 +66,7 @@ class StepFunctionResult(StepResult):
             raise
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """
-        Traces the datasource for the given arguments.
+        """Traces the datasource for the given arguments.
 
         Parameters
         ----------
@@ -97,8 +96,7 @@ class FunctionStepAction(StepAction):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        """
-        Initializes a FunctionStepAction instance.
+        """Initializes a FunctionStepAction instance.
 
         Parameters
         ----------

@@ -40,8 +40,7 @@ def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
 
 
 def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
-    """
-    Generates hindcast requests based on the provided dates and request parameters.
+    """Generates hindcast requests based on the provided dates and request parameters.
 
     Parameters
     ----------

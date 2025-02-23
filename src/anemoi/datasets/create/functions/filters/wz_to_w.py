@@ -29,9 +29,8 @@ class NewDataField:
     """
 
     def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """
-        Parameters
-        ----------
+        """Parameters
+        -------------
         field : Any
             The original field.
         data : Any
@@ -44,9 +43,8 @@ class NewDataField:
         self.new_name = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Parameters
-        ----------
+        """Parameters
+        -------------
         *args : Any
             Additional arguments for conversion.
         **kwargs : Any
@@ -60,9 +58,8 @@ class NewDataField:
         return self.data
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """
-        Parameters
-        ----------
+        """Parameters
+        -------------
         key : Optional[str], optional
             The metadata key to retrieve. If None, all metadata is returned.
         **kwargs : Any
@@ -82,9 +79,8 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Parameters
-        ----------
+        """Parameters
+        -------------
         name : str
             The attribute name.
 
@@ -97,8 +93,7 @@ class NewDataField:
 
 
 def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> ekd.FieldList:
-    """
-    Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
+    """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
 
     Parameters
     ----------
@@ -154,8 +149,7 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
 
 
 def wz_to_w(wz: Any, t: Any, pressure: float) -> Any:
-    """
-    Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
+    """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
 
     Parameters
     ----------

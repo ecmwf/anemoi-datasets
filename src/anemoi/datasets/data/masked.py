@@ -139,8 +139,7 @@ class Thinning(Masked):
     """A class to represent a thinned dataset."""
 
     def __init__(self, forward: Dataset, thinning: Optional[int], method: str) -> None:
-        """
-        Initialize the Thinning class.
+        """Initialize the Thinning class.
 
         Parameters
         ----------
@@ -179,8 +178,7 @@ class Thinning(Masked):
         super().__init__(forward, mask)
 
     def mutate(self) -> Dataset:
-        """
-        Mutate the dataset.
+        """Mutate the dataset.
 
         Returns
         -------
@@ -192,8 +190,7 @@ class Thinning(Masked):
         return super().mutate()
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns
         -------
@@ -203,8 +200,7 @@ class Thinning(Masked):
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the Thinning subclass.
+        """Get the metadata specific to the Thinning subclass.
 
         Returns
         -------
@@ -218,8 +214,7 @@ class Cropping(Masked):
     """A class to represent a cropped dataset."""
 
     def __init__(self, forward: Dataset, area: Union[Dataset, Tuple[float, float, float, float]]) -> None:
-        """
-        Initialize the Cropping class.
+        """Initialize the Cropping class.
 
         Parameters
         ----------
@@ -245,8 +240,7 @@ class Cropping(Masked):
         super().__init__(forward, mask)
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns
         -------
@@ -256,8 +250,7 @@ class Cropping(Masked):
         return Node(self, [self.forward.tree()], area=self.area)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the Cropping subclass.
+        """Get the metadata specific to the Cropping subclass.
 
         Returns
         -------

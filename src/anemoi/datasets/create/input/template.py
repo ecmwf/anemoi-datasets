@@ -51,8 +51,7 @@ class Substitution(ABC):
 
     @abstractmethod
     def resolve(self, context: Context) -> Any:
-        """
-        Resolve the substitution using the given context.
+        """Resolve the substitution using the given context.
 
         Parameters
         ----------
@@ -71,8 +70,7 @@ class Reference(Substitution):
     """A class to represent a reference to another value in the context."""
 
     def __init__(self, context: Any, action_path: List[str]) -> None:
-        """
-        Initialize a Reference instance.
+        """Initialize a Reference instance.
 
         Parameters
         ----------
@@ -85,8 +83,7 @@ class Reference(Substitution):
         self.action_path: List[str] = action_path
 
     def resolve(self, context: Context) -> Any:
-        """
-        Resolve the reference using the given context.
+        """Resolve the reference using the given context.
 
         Parameters
         ----------
@@ -102,8 +99,7 @@ class Reference(Substitution):
 
 
 def resolve(context: Context, x: Any) -> Any:
-    """
-    Recursively resolve substitutions in the given structure using the context.
+    """Recursively resolve substitutions in the given structure using the context.
 
     Parameters
     ----------
@@ -133,8 +129,7 @@ def resolve(context: Context, x: Any) -> Any:
 
 
 def substitute(context: Context, x: Any) -> Any:
-    """
-    Recursively substitute references in the given structure using the context.
+    """Recursively substitute references in the given structure using the context.
 
     Parameters
     ----------

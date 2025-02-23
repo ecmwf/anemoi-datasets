@@ -89,8 +89,7 @@ class Rescale(Forwards):
     def __init__(
         self, dataset: Dataset, rescale: Dict[str, Union[Tuple[float, float], List[str], Dict[str, float]]]
     ) -> None:
-        """
-        Initialize the Rescale object.
+        """Initialize the Rescale object.
 
         Parameters
         ----------
@@ -122,8 +121,7 @@ class Rescale(Forwards):
         self._b = self._b.astype(self.forward.dtype)
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the rescale operation.
+        """Get the tree representation of the rescale operation.
 
         Returns
         -------
@@ -133,8 +131,7 @@ class Rescale(Forwards):
         return Node(self, [self.forward.tree()], rescale=self.rescale)
 
     def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
-        """
-        Get the metadata specific to the rescale subclass.
+        """Get the metadata specific to the rescale subclass.
 
         Returns
         -------
@@ -146,8 +143,7 @@ class Rescale(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Get a tuple of rescaled data based on the provided index.
+        """Get a tuple of rescaled data based on the provided index.
 
         Parameters
         ----------
@@ -169,8 +165,7 @@ class Rescale(Forwards):
 
     @debug_indexing
     def __get_slice_(self, n: slice) -> NDArray[Any]:
-        """
-        Get a slice of rescaled data.
+        """Get a slice of rescaled data.
 
         Parameters
         ----------
@@ -187,8 +182,7 @@ class Rescale(Forwards):
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get an item or slice of rescaled data based on the provided index.
+        """Get an item or slice of rescaled data based on the provided index.
 
         Parameters
         ----------
@@ -232,8 +226,7 @@ class Rescale(Forwards):
         return result
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the tendencies of the statistics of the rescaled data.
+        """Get the tendencies of the statistics of the rescaled data.
 
         Parameters
         ----------

@@ -49,8 +49,7 @@ FullIndex = Union[int, slice, TupleIndex]
 
 
 def _tidy(v: Any) -> Any:
-    """
-    Tidy up the input value.
+    """Tidy up the input value.
 
     Parameters
     ----------
@@ -92,8 +91,7 @@ class Dataset(ABC, Sized):
     _name: Union[str, None] = None
 
     def mutate(self) -> "Dataset":
-        """
-        Give an opportunity to a subclass to return a new Dataset object of a different class, if needed.
+        """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed.
 
         Returns
         -------
@@ -103,8 +101,7 @@ class Dataset(ABC, Sized):
         return self
 
     def swap_with_parent(self, parent: "Dataset") -> "Dataset":
-        """
-        Swap the current dataset with its parent dataset.
+        """Swap the current dataset with its parent dataset.
 
         Parameters
         ----------
@@ -124,8 +121,7 @@ class Dataset(ABC, Sized):
         return len(self)
 
     def _subset(self, **kwargs: Any) -> "Dataset":
-        """
-        Create a subset of the dataset based on the provided keyword arguments.
+        """Create a subset of the dataset based on the provided keyword arguments.
 
         Parameters
         ----------
@@ -152,8 +148,7 @@ class Dataset(ABC, Sized):
         return self._name
 
     def __subset(self, **kwargs: Any) -> "Dataset":
-        """
-        Internal method to create a subset of the dataset based on the provided keyword arguments.
+        """Internal method to create a subset of the dataset based on the provided keyword arguments.
 
         Parameters
         ----------
@@ -296,8 +291,7 @@ class Dataset(ABC, Sized):
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
-        """
-        Convert a frequency string to a list of indices.
+        """Convert a frequency string to a list of indices.
 
         Parameters
         ----------
@@ -318,8 +312,7 @@ class Dataset(ABC, Sized):
         return range(0, len(self), step)
 
     def _shuffle_indices(self) -> NDArray[Any]:
-        """
-        Return a shuffled array of indices.
+        """Return a shuffled array of indices.
 
         Returns
         -------
@@ -333,8 +326,7 @@ class Dataset(ABC, Sized):
         start: Union[None, str, datetime.datetime],
         end: Union[None, str, datetime.datetime],
     ) -> List[int]:
-        """
-        Convert date range to a list of indices.
+        """Convert date range to a list of indices.
 
         Parameters
         ----------
@@ -359,8 +351,7 @@ class Dataset(ABC, Sized):
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
     def _select_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
-        """
-        Convert variable names to a list of column indices.
+        """Convert variable names to a list of column indices.
 
         Parameters
         ----------
@@ -384,8 +375,7 @@ class Dataset(ABC, Sized):
         return [self.name_to_index[v] for v in vars]
 
     def _drop_to_columns(self, vars: Union[str, Sequence[str]]) -> List[int]:
-        """
-        Convert variable names to a list of column indices to drop.
+        """Convert variable names to a list of column indices to drop.
 
         Parameters
         ----------
@@ -406,8 +396,7 @@ class Dataset(ABC, Sized):
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
     def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str], Dict[str, int]]) -> List[int]:
-        """
-        Convert variable names to a list of reordered column indices.
+        """Convert variable names to a list of reordered column indices.
 
         Parameters
         ----------
@@ -441,8 +430,7 @@ class Dataset(ABC, Sized):
     def dates_interval_to_indices(
         self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
     ) -> List[int]:
-        """
-        Convert date interval to a list of indices.
+        """Convert date interval to a list of indices.
 
         Parameters
         ----------
@@ -459,8 +447,7 @@ class Dataset(ABC, Sized):
         return self._dates_to_indices(start, end)
 
     def provenance(self) -> Dict[str, Any]:
-        """
-        Return the provenance information of the dataset.
+        """Return the provenance information of the dataset.
 
         Returns
         -------
@@ -470,8 +457,7 @@ class Dataset(ABC, Sized):
         return {}
 
     def sub_shape(self, drop_axis: int) -> TupleIndex:
-        """
-        Return the shape of the dataset with one axis dropped.
+        """Return the shape of the dataset with one axis dropped.
 
         Parameters
         ----------
@@ -510,8 +496,7 @@ class Dataset(ABC, Sized):
         return result
 
     def _input_sources(self) -> List[Any]:
-        """
-        Return the input sources of the dataset.
+        """Return the input sources of the dataset.
 
         Returns
         -------
@@ -523,8 +508,7 @@ class Dataset(ABC, Sized):
         return sources
 
     def metadata(self) -> Dict[str, Any]:
-        """
-        Return the metadata of the dataset.
+        """Return the metadata of the dataset.
 
         Returns
         -------
@@ -568,8 +552,7 @@ class Dataset(ABC, Sized):
         return self.dates[-1]
 
     def dataset_metadata(self) -> Dict[str, Any]:
-        """
-        Return the metadata of the dataset.
+        """Return the metadata of the dataset.
 
         Returns
         -------
@@ -589,8 +572,7 @@ class Dataset(ABC, Sized):
         )
 
     def _supporting_arrays(self, *path: str) -> Dict[str, NDArray[Any]]:
-        """
-        Return the supporting arrays of the dataset.
+        """Return the supporting arrays of the dataset.
 
         Parameters
         ----------
@@ -628,8 +610,7 @@ class Dataset(ABC, Sized):
         return result
 
     def supporting_arrays(self) -> Dict[str, NDArray[Any]]:
-        """
-        Return the supporting arrays to be saved in the checkpoints.
+        """Return the supporting arrays to be saved in the checkpoints.
 
         Returns
         -------
@@ -640,8 +621,7 @@ class Dataset(ABC, Sized):
         return arrays
 
     def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, NDArray], Dict[int, List[str]]]:
-        """
-        Return the supporting arrays and their sources.
+        """Return the supporting arrays and their sources.
 
         Returns
         -------
@@ -668,8 +648,7 @@ class Dataset(ABC, Sized):
         return result, source_to_arrays
 
     def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
-        """
-        Collect supporting arrays.
+        """Collect supporting arrays.
 
         Parameters
         ----------
@@ -682,8 +661,7 @@ class Dataset(ABC, Sized):
         pass
 
     def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
-        """
-        Return specific metadata of the dataset.
+        """Return specific metadata of the dataset.
 
         Parameters
         ----------
@@ -708,8 +686,7 @@ class Dataset(ABC, Sized):
         )
 
     def __repr__(self) -> str:
-        """
-        Return the string representation of the dataset.
+        """Return the string representation of the dataset.
 
         Returns
         -------
@@ -733,8 +710,7 @@ class Dataset(ABC, Sized):
                 warnings.warn(f"Private method {n} is overriden in {self.__class__.__name__}")
 
     def _repr_html_(self) -> str:
-        """
-        Return the HTML representation of the dataset.
+        """Return the HTML representation of the dataset.
 
         Returns
         -------
@@ -749,8 +725,7 @@ class Dataset(ABC, Sized):
         return self.__class__.__name__.lower()
 
     def computed_constant_fields(self) -> List[str]:
-        """
-        Return the computed constant fields of the dataset.
+        """Return the computed constant fields of the dataset.
 
         Returns
         -------
@@ -767,8 +742,7 @@ class Dataset(ABC, Sized):
         return sorted(self._compute_constant_fields_from_a_few_samples())
 
     def _compute_constant_fields_from_a_few_samples(self) -> List[str]:
-        """
-        Compute constant fields from a few samples.
+        """Compute constant fields from a few samples.
 
         Returns
         -------
@@ -809,8 +783,7 @@ class Dataset(ABC, Sized):
         return [v for i, v in enumerate(self.variables) if constants[i]]
 
     def _compute_constant_fields_from_statistics(self) -> List[str]:
-        """
-        Compute constant fields from statistics.
+        """Compute constant fields from statistics.
 
         Returns
         -------
@@ -834,8 +807,7 @@ class Dataset(ABC, Sized):
         member: int = 0,
         **kwargs: Any,
     ) -> "matplotlib.pyplot.Axes":
-        """
-        For debugging purposes, plot a field.
+        """For debugging purposes, plot a field.
 
         Parameters
         ----------
@@ -865,8 +837,7 @@ class Dataset(ABC, Sized):
         variable: Union[int, str],
         member: int = 0,
     ) -> Tuple[int, int, int]:
-        """
-        Convert date, variable, and member to indices.
+        """Convert date, variable, and member to indices.
 
         Parameters
         ----------
@@ -907,8 +878,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """
-        Get the item at the specified index.
+        """Get the item at the specified index.
 
         Parameters
         ----------
@@ -923,8 +893,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def __len__(self) -> int:
-        """
-        Return the length of the dataset.
+        """Return the length of the dataset.
 
         Returns
         -------
@@ -1018,8 +987,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Return the tendencies of the statistics in the dataset.
+        """Return the tendencies of the statistics in the dataset.
 
         Parameters
         ----------
@@ -1035,8 +1003,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def source(self, index: int) -> Source:
-        """
-        Return the source of the dataset at the specified index.
+        """Return the source of the dataset at the specified index.
 
         Parameters
         ----------
@@ -1052,8 +1019,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def tree(self) -> Node:
-        """
-        Return the tree representation of the dataset.
+        """Return the tree representation of the dataset.
 
         Returns
         -------
@@ -1064,8 +1030,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def collect_input_sources(self, sources: List[Any]) -> None:
-        """
-        Collect the input sources of the dataset.
+        """Collect the input sources of the dataset.
 
         Parameters
         ----------
@@ -1076,8 +1041,7 @@ class Dataset(ABC, Sized):
 
     @abstractmethod
     def get_dataset_names(self, names: Set[str]) -> None:
-        """
-        Get the names of the datasets.
+        """Get the names of the datasets.
 
         Parameters
         ----------

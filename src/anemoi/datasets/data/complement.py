@@ -180,8 +180,7 @@ class ComplementNone(Complement):
     """A class to complement a target dataset with variables from a source dataset without interpolation."""
 
     def __init__(self, target: Any, source: Any) -> None:
-        """
-        Initializes the ComplementNone class.
+        """Initializes the ComplementNone class.
 
         Parameters
         ----------
@@ -193,8 +192,7 @@ class ComplementNone(Complement):
         super().__init__(target, source)
 
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Gets the data at the specified tuple index without interpolation.
+        """Gets the data at the specified tuple index without interpolation.
 
         Parameters
         ----------
@@ -215,8 +213,7 @@ class ComplementNearest(Complement):
     """A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation."""
 
     def __init__(self, target: Any, source: Any) -> None:
-        """
-        Initializes the ComplementNearest class.
+        """Initializes the ComplementNearest class.
 
         Parameters
         ----------
@@ -235,8 +232,7 @@ class ComplementNearest(Complement):
         )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Checks the compatibility of two datasets for nearest neighbor interpolation.
+        """Checks the compatibility of two datasets for nearest neighbor interpolation.
 
         Parameters
         ----------
@@ -248,8 +244,7 @@ class ComplementNearest(Complement):
         pass
 
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """
-        Gets the data at the specified tuple index using nearest neighbor interpolation.
+        """Gets the data at the specified tuple index using nearest neighbor interpolation.
 
         Parameters
         ----------
@@ -274,8 +269,7 @@ class ComplementNearest(Complement):
 
 
 def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
-    """
-    Factory function to create a Complement instance based on the provided arguments.
+    """Factory function to create a Complement instance based on the provided arguments.
 
     Parameters
     ----------

@@ -92,8 +92,7 @@ class Unchecked(Combined):
     """A class representing a dataset without compatibility checks."""
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns
         -------
@@ -103,8 +102,7 @@ class Unchecked(Combined):
         return Node(self, [d.tree() for d in self.datasets])
 
     def _subset(self, **kwargs: dict) -> "Unchecked":
-        """
-        Get a subset of the dataset.
+        """Get a subset of the dataset.
 
         Parameters
         ----------
@@ -120,8 +118,7 @@ class Unchecked(Combined):
         return self
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """
-        Check compatibility between two datasets.
+        """Check compatibility between two datasets.
 
         Parameters
         ----------
@@ -193,8 +190,7 @@ class Unchecked(Combined):
 
     @check("check_same_variables")
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
-        """
-        Get the statistics tendencies of the dataset.
+        """Get the statistics tendencies of the dataset.
 
         Parameters
         ----------
@@ -226,8 +222,7 @@ class Chain(ConcatMixin, Unchecked):
     """A class representing a chain of datasets without compatibility checks."""
 
     def __len__(self) -> int:
-        """
-        Get the length of the dataset.
+        """Get the length of the dataset.
 
         Returns
         -------
@@ -237,8 +232,7 @@ class Chain(ConcatMixin, Unchecked):
         return sum(len(d) for d in self.datasets)
 
     def __getitem__(self, n: FullIndex) -> tuple:
-        """
-        Get an item from the dataset.
+        """Get an item from the dataset.
 
         Parameters
         ----------
@@ -258,8 +252,7 @@ class Chain(ConcatMixin, Unchecked):
         raise NotImplementedError()
 
     def dataset_metadata(self) -> dict:
-        """
-        Get the metadata of the dataset.
+        """Get the metadata of the dataset.
 
         Returns
         -------
@@ -270,8 +263,7 @@ class Chain(ConcatMixin, Unchecked):
 
 
 def chain_factory(args: tuple, kwargs: dict) -> Dataset:
-    """
-    Factory function to create a Chain dataset.
+    """Factory function to create a Chain dataset.
 
     Parameters
     ----------

@@ -243,8 +243,7 @@ class StatisticsValueError(ValueError):
 def check_data_values(
     arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
 ) -> None:
-    """
-    Check the values in the data array for validity.
+    """Check the values in the data array for validity.
 
     Parameters
     ----------
@@ -299,8 +298,7 @@ def check_data_values(
 
 
 def check_stats(minimum: float, maximum: float, mean: float, msg: str, **kwargs: Any) -> None:
-    """
-    Check if the mean value is within the min/max interval.
+    """Check if the mean value is within the min/max interval.
 
     Parameters
     ----------

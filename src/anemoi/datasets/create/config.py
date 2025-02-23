@@ -43,8 +43,7 @@ def _get_first_key_if_dict(x: str | dict) -> str:
 
 
 def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
-    """
-    Ensures that a specified element is present at a given index in a list.
+    """Ensures that a specified element is present at a given index in a list.
 
     Parameters
     ----------
@@ -73,8 +72,7 @@ def ensure_element_in_list(lst: list, elt: str, index: int) -> list:
 
 
 def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
-    """
-    Checks if a dictionary contains a specific key-value pair and sets it if not present.
+    """Checks if a dictionary contains a specific key-value pair and sets it if not present.
 
     Parameters
     ----------
@@ -99,8 +97,7 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
 
 
 def resolve_includes(config: dict | list) -> dict | list:
-    """
-    Resolves '<<' includes in a configuration dictionary or list.
+    """Resolves '<<' includes in a configuration dictionary or list.
 
     Parameters
     ----------
@@ -126,8 +123,7 @@ class Config(DotDict):
     """Configuration class that extends DotDict to handle configuration loading and processing."""
 
     def __init__(self, config: str | dict = None, **kwargs):
-        """
-        Initializes the Config object.
+        """Initializes the Config object.
 
         Parameters
         ----------
@@ -150,8 +146,7 @@ class OutputSpecs:
     """Class to handle output specifications for datasets."""
 
     def __init__(self, config: Config, parent: Any):
-        """
-        Initializes the OutputSpecs object.
+        """Initializes the OutputSpecs object.
 
         Parameters
         ----------
@@ -177,8 +172,7 @@ class OutputSpecs:
         return [{k: v} for k, v in self.config.order_by.items()]
 
     def get_chunking(self, coords: dict) -> tuple:
-        """
-        Returns the chunking configuration based on coordinates.
+        """Returns the chunking configuration based on coordinates.
 
         Parameters
         ----------
@@ -228,8 +222,7 @@ class LoadersConfig(Config):
     """Configuration class for dataset loaders."""
 
     def __init__(self, config: dict, *args, **kwargs):
-        """
-        Initializes the LoadersConfig object.
+        """Initializes the LoadersConfig object.
 
         Parameters
         ----------
@@ -295,8 +288,7 @@ class LoadersConfig(Config):
         self.reading_chunks = self.get("reading_chunks")
 
     def get_serialisable_dict(self) -> dict:
-        """
-        Returns a serializable dictionary representation of the configuration.
+        """Returns a serializable dictionary representation of the configuration.
 
         Returns
         -------
@@ -307,8 +299,7 @@ class LoadersConfig(Config):
 
 
 def _prepare_serialisation(o: Any) -> Any:
-    """
-    Prepares an object for serialization.
+    """Prepares an object for serialization.
 
     Parameters
     ----------
@@ -350,8 +341,7 @@ def _prepare_serialisation(o: Any) -> Any:
 
 
 def set_to_test_mode(cfg: dict) -> None:
-    """
-    Modifies the configuration to run in test mode.
+    """Modifies the configuration to run in test mode.
 
     Parameters
     ----------
@@ -397,8 +387,7 @@ def set_to_test_mode(cfg: dict) -> None:
 
 
 def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
-    """
-    Loads and validates the configuration for dataset loaders.
+    """Loads and validates the configuration for dataset loaders.
 
     Parameters
     ----------
@@ -434,8 +423,7 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
 
 
 def build_output(*args, **kwargs) -> OutputSpecs:
-    """
-    Builds the output specifications.
+    """Builds the output specifications.
 
     Parameters
     ----------

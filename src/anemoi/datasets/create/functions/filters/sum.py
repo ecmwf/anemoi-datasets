@@ -33,8 +33,7 @@ class NewDataField:
     """
 
     def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """
-        Initialize a NewDataField instance.
+        """Initialize a NewDataField instance.
 
         Parameters
         ----------
@@ -50,8 +49,7 @@ class NewDataField:
         self.new_name = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Convert the data to a numpy array.
+        """Convert the data to a numpy array.
 
         Parameters
         ----------
@@ -68,8 +66,7 @@ class NewDataField:
         return self.data
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """
-        Retrieve metadata for the field.
+        """Retrieve metadata for the field.
 
         Parameters
         ----------
@@ -92,8 +89,7 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Delegate attribute access to the original field.
+        """Delegate attribute access to the original field.
 
         Parameters
         ----------

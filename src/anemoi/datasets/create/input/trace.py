@@ -36,8 +36,7 @@ def enable_trace(on_off: int) -> None:
 
 
 def step(action_path: list[str]) -> str:
-    """
-    Returns a formatted string representing the action path.
+    """Returns a formatted string representing the action path.
 
     Parameters
     ----------
@@ -53,8 +52,7 @@ def step(action_path: list[str]) -> str:
 
 
 def trace(emoji: str, *args: Any) -> None:
-    """
-    Logs a trace message with an emoji.
+    """Logs a trace message with an emoji.
 
     Parameters
     ----------
@@ -73,8 +71,7 @@ def trace(emoji: str, *args: Any) -> None:
 
 
 def trace_datasource(method: Callable) -> Callable:
-    """
-    Decorator to trace the datasource method.
+    """Decorator to trace the datasource method.
 
     Parameters
     ----------
@@ -114,8 +111,7 @@ def trace_datasource(method: Callable) -> Callable:
 
 
 def trace_select(method: Callable) -> Callable:
-    """
-    Decorator to trace the select method.
+    """Decorator to trace the select method.
 
     Parameters
     ----------

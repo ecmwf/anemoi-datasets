@@ -27,8 +27,7 @@ class ChunkFilter:
     """
 
     def __init__(self, *, parts: str | list, total: int):
-        """
-        Initializes the ChunkFilter with the given parts and total number of chunks.
+        """Initializes the ChunkFilter with the given parts and total number of chunks.
 
         Parameters
         ----------
@@ -92,8 +91,7 @@ class ChunkFilter:
         self.allowed = parts
 
     def __call__(self, i: int) -> bool:
-        """
-        Checks if the given chunk number is allowed to be processed.
+        """Checks if the given chunk number is allowed to be processed.
 
         Parameters
         ----------
@@ -118,8 +116,7 @@ class ChunkFilter:
         return i in self.allowed
 
     def __iter__(self) -> iter:
-        """
-        Iterates over the allowed chunks.
+        """Iterates over the allowed chunks.
 
         Yields
         ------
@@ -131,8 +128,7 @@ class ChunkFilter:
                 yield i
 
     def __len__(self) -> int:
-        """
-        Returns the number of allowed chunks.
+        """Returns the number of allowed chunks.
 
         Returns
         -------

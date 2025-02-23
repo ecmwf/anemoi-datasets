@@ -21,8 +21,7 @@ class NewDataField:
     """A class to represent a new data field with unrotated wind components."""
 
     def __init__(self, field: Any, data: Any) -> None:
-        """
-        Initialize a NewDataField instance.
+        """Initialize a NewDataField instance.
 
         Parameters
         ----------
@@ -35,8 +34,7 @@ class NewDataField:
         self.data = data
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Convert the data to a numpy array.
+        """Convert the data to a numpy array.
 
         Parameters
         ----------
@@ -53,8 +51,7 @@ class NewDataField:
         return self.data
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Get an attribute from the original field.
+        """Get an attribute from the original field.
 
         Parameters
         ----------
@@ -70,8 +67,7 @@ class NewDataField:
 
 
 def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> ekd.FieldList:
-    """
-    Unrotate the wind components of a GRIB file.
+    """Unrotate the wind components of a GRIB file.
 
     Parameters
     ----------

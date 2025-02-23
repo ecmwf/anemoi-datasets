@@ -223,8 +223,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
 
 def _data_request(data: Any) -> Dict[str, Any]:
-    """
-    Build a data request dictionary from the given data.
+    """Build a data request dictionary from the given data.
 
     Parameters
     ----------
@@ -290,8 +289,7 @@ class Result:
     _coords_already_built: bool = False
 
     def __init__(self, context: ActionContext, action_path: List[str], dates: Any) -> None:
-        """
-        Initialize a Result instance.
+        """Initialize a Result instance.
 
         Parameters
         ----------
@@ -325,8 +323,7 @@ class Result:
         return _data_request(self.datasource)
 
     def get_cube(self) -> Any:
-        """
-        Retrieve the data cube for the result.
+        """Retrieve the data cube for the result.
 
         Returns
         -------
@@ -367,8 +364,7 @@ class Result:
         return cube
 
     def explain(self, ds: Any, *args: Any, remapping: Any, patches: Any) -> None:
-        """
-        Explain the data cube creation process.
+        """Explain the data cube creation process.
 
         Parameters
         ----------
@@ -525,8 +521,7 @@ class Result:
         exit(1)
 
     def _repr(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
-        """
-        Return the string representation of the Result instance.
+        """Return the string representation of the Result instance.
 
         Parameters
         ----------
@@ -569,8 +564,7 @@ class Result:
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """
-        Trace the data source for the result.
+        """Trace the data source for the result.
 
         Parameters
         ----------

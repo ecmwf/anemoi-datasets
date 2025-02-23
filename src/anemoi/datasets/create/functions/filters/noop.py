@@ -13,8 +13,7 @@ import earthkit.data as ekd
 
 
 def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """
-    No operation filter that returns the input as is.
+    """No operation filter that returns the input as is.
 
     Parameters
     ----------

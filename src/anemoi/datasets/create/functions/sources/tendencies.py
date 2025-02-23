@@ -22,8 +22,7 @@ from anemoi.datasets.create.utils import to_datetime_list
 
 
 def _date_to_datetime(d: Any) -> Any:
-    """
-    Converts a date string or a list/tuple of date strings to datetime objects.
+    """Converts a date string or a list/tuple of date strings to datetime objects.
 
     Parameters
     ----------
@@ -41,8 +40,7 @@ def _date_to_datetime(d: Any) -> Any:
 
 
 def normalise_time_delta(t: Any) -> datetime.timedelta:
-    """
-    Normalizes a time delta string to a datetime.timedelta object.
+    """Normalizes a time delta string to a datetime.timedelta object.
 
     Parameters
     ----------
@@ -65,8 +63,7 @@ def normalise_time_delta(t: Any) -> datetime.timedelta:
 
 
 def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
-    """
-    Groups fields by their metadata excluding 'date', 'time', and 'step'.
+    """Groups fields by their metadata excluding 'date', 'time', and 'step'.
 
     Parameters
     ----------
@@ -89,8 +86,7 @@ def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
 
 
 def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
-    """
-    Computes tendencies for the given dates and time increment.
+    """Computes tendencies for the given dates and time increment.
 
     Parameters
     ----------

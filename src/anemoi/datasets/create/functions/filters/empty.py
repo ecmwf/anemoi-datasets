@@ -14,8 +14,7 @@ import earthkit.data as ekd
 
 
 def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
-    """
-    Create a pipeline that returns an empty result.
+    """Create a pipeline that returns an empty result.
 
     Parameters
     ----------

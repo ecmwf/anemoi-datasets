@@ -87,8 +87,7 @@ class FunctionContext:
 
 
 class FunctionAction(Action):
-    """
-    Represents an action that executes a function.
+    """Represents an action that executes a function.
 
     Attributes
     ----------
@@ -97,8 +96,7 @@ class FunctionAction(Action):
     """
 
     def __init__(self, context: object, action_path: list, _name: str, **kwargs: Dict[str, Any]) -> None:
-        """
-        Initializes a FunctionAction instance.
+        """Initializes a FunctionAction instance.
 
         Parameters
         ----------
@@ -116,8 +114,7 @@ class FunctionAction(Action):
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":
-        """
-        Selects the function result for the given group of dates.
+        """Selects the function result for the given group of dates.
 
         Parameters
         ----------
@@ -145,8 +142,7 @@ class FunctionAction(Action):
         return self._repr(_inline_=content, _indent_=" ")
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """
-        Traces the selection of the function for the given group of dates.
+        """Traces the selection of the function for the given group of dates.
 
         Parameters
         ----------
@@ -162,8 +158,7 @@ class FunctionAction(Action):
 
 
 class FunctionResult(Result):
-    """
-    Represents the result of executing a function.
+    """Represents the result of executing a function.
 
     Attributes
     ----------
@@ -176,8 +171,7 @@ class FunctionResult(Result):
     """
 
     def __init__(self, context: object, action_path: list, group_of_dates: GroupOfDates, action: Action) -> None:
-        """
-        Initializes a FunctionResult instance.
+        """Initializes a FunctionResult instance.
 
         Parameters
         ----------
@@ -197,8 +191,7 @@ class FunctionResult(Result):
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
 
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """
-        Traces the datasource for the given arguments.
+        """Traces the datasource for the given arguments.
 
         Parameters
         ----------
@@ -244,8 +237,7 @@ class FunctionResult(Result):
 
     @property
     def function(self) -> None:
-        """
-        Raises NotImplementedError as this property is not implemented.
+        """Raises NotImplementedError as this property is not implemented.
 
         Raises
         ------

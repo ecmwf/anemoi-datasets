@@ -242,8 +242,7 @@ class Rename(Forwards):
     """Class to rename variables in a dataset."""
 
     def __init__(self, dataset: Dataset, rename: Dict[str, str]) -> None:
-        """
-        Initialize the Rename class.
+        """Initialize the Rename class.
 
         Parameters
         ----------
@@ -277,8 +276,7 @@ class Rename(Forwards):
         return {k: i for i, k in enumerate(self.variables)}
 
     def tree(self) -> Node:
-        """
-        Get the tree representation of the dataset.
+        """Get the tree representation of the dataset.
 
         Returns:
             Node: The tree representation of the dataset.

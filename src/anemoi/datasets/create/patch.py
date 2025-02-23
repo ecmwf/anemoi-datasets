@@ -43,8 +43,7 @@ def fix_order_by(order_by: dict | list) -> list[dict]:
 
 
 def fix_history(history: list[dict]) -> list[dict]:
-    """
-    Fix the history attribute by removing specific actions.
+    """Fix the history attribute by removing specific actions.
 
     Parameters
     ----------
@@ -63,8 +62,7 @@ def fix_history(history: list[dict]) -> list[dict]:
 
 
 def fix_provenance(provenance: dict) -> dict:
-    """
-    Fix the provenance attribute by adding missing fields and removing unnecessary ones.
+    """Fix the provenance attribute by adding missing fields and removing unnecessary ones.
 
     Parameters
     ----------
@@ -119,8 +117,7 @@ def fix_provenance(provenance: dict) -> dict:
 
 
 def apply_patch(path: str, verbose: bool = True, dry_run: bool = False) -> None:
-    """
-    Apply a patch to the dataset at the given path.
+    """Apply a patch to the dataset at the given path.
 
     Parameters
     ----------

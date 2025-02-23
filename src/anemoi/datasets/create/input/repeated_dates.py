@@ -71,8 +71,7 @@ class DateMapperClosest(DateMapper):
     """A DateMapper implementation that maps dates to the closest available dates."""
 
     def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
-        """
-        Initialize DateMapperClosest.
+        """Initialize DateMapperClosest.
 
         Parameters
         ----------
@@ -93,8 +92,7 @@ class DateMapperClosest(DateMapper):
         self.found: Set[Any] = set()
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """
-        Transform the group of dates to the closest available dates.
+        """Transform the group of dates to the closest available dates.
 
         Parameters
         ----------
@@ -189,8 +187,7 @@ class DateMapperClimatology(DateMapper):
     """A DateMapper implementation that maps dates to specified climatology dates."""
 
     def __init__(self, source: Any, year: int, day: int, hour: Optional[int] = None) -> None:
-        """
-        Initialize DateMapperClimatology.
+        """Initialize DateMapperClimatology.
 
         Parameters
         ----------
@@ -208,8 +205,7 @@ class DateMapperClimatology(DateMapper):
         self.hour: Optional[int] = hour
 
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
-        """
-        Transform the group of dates to the specified climatology dates.
+        """Transform the group of dates to the specified climatology dates.
 
         Parameters
         ----------
@@ -245,8 +241,7 @@ class DateMapperConstant(DateMapper):
     """A DateMapper implementation that maps dates to a constant date."""
 
     def __init__(self, source: Any, date: Optional[Any] = None) -> None:
-        """
-        Initialize DateMapperConstant.
+        """Initialize DateMapperConstant.
 
         Parameters
         ----------
@@ -259,8 +254,7 @@ class DateMapperConstant(DateMapper):
         self.date: Optional[Any] = date
 
     def transform(self, group_of_dates: Any) -> Tuple[Any, Any]:
-        """
-        Transform the group of dates to a constant date.
+        """Transform the group of dates to a constant date.
 
         Parameters
         ----------
@@ -302,8 +296,7 @@ class DateMapperResult(Result):
         mapper: DateMapper,
         original_group_of_dates: Any,
     ) -> None:
-        """
-        Initialize DateMapperResult.
+        """Initialize DateMapperResult.
 
         Parameters
         ----------
@@ -345,8 +338,7 @@ class RepeatedDatesAction(Action):
     """An Action implementation that selects and transforms a group of dates."""
 
     def __init__(self, context: Any, action_path: List[str], source: Any, mode: str, **kwargs: Any) -> None:
-        """
-        Initialize RepeatedDatesAction.
+        """Initialize RepeatedDatesAction.
 
         Args:
             context (Any): The context.

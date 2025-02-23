@@ -82,8 +82,7 @@ class JoinResult(Result):
 
 
 class JoinAction(Action):
-    """
-    Represents an action that combines multiple actions.
+    """Represents an action that combines multiple actions.
 
     Attributes
     ----------
@@ -96,8 +95,7 @@ class JoinAction(Action):
     """
 
     def __init__(self, context: object, action_path: list, *configs: dict) -> None:
-        """
-        Initializes a JoinAction instance.
+        """Initializes a JoinAction instance.
 
         Parameters
         ----------
@@ -118,8 +116,7 @@ class JoinAction(Action):
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> JoinResult:
-        """
-        Selects the results for the given group of dates.
+        """Selects the results for the given group of dates.
 
         Parameters
         ----------

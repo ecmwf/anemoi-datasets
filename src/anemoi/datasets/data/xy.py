@@ -234,8 +234,7 @@ class XY(ZipBase):
 
 
 def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
-    """
-    Factory function to create an XY instance.
+    """Factory function to create an XY instance.
 
     Parameters
     ----------
@@ -268,8 +267,7 @@ def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
 
 
 def zip_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Zip:
-    """
-    Factory function to create a Zip instance.
+    """Factory function to create a Zip instance.
 
     Parameters
     ----------

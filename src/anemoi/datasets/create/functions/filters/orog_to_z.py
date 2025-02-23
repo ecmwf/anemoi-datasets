@@ -29,8 +29,7 @@ class NewDataField:
     """
 
     def __init__(self, field: Any, data: Any, new_name: str):
-        """
-        Initialize a new data field.
+        """Initialize a new data field.
 
         Parameters
         ----------
@@ -46,8 +45,7 @@ class NewDataField:
         self.new_name: str = new_name
 
     def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """
-        Convert the data to a numpy array.
+        """Convert the data to a numpy array.
 
         Parameters
         ----------
@@ -64,8 +62,7 @@ class NewDataField:
         return self.data
 
     def metadata(self, key: str = None, **kwargs: Any) -> Any:
-        """
-        Retrieve metadata for the field.
+        """Retrieve metadata for the field.
 
         Parameters
         ----------
@@ -87,8 +84,7 @@ class NewDataField:
         return value
 
     def __getattr__(self, name: str) -> Any:
-        """
-        Delegate attribute access to the original field.
+        """Delegate attribute access to the original field.
 
         Parameters
         ----------
@@ -104,8 +100,7 @@ class NewDataField:
 
 
 def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.FieldList:
-    """
-    Convert orography [m] to z (geopotential height).
+    """Convert orography [m] to z (geopotential height).
 
     Parameters
     ----------

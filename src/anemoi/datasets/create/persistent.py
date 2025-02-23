@@ -167,8 +167,7 @@ class BufferedPersistentDict(PersistentDict):
     """
 
     def __init__(self, buffer_size: int = 1000, **kwargs: Any):
-        """
-        Initialize the BufferedPersistentDict.
+        """Initialize the BufferedPersistentDict.
 
         Parameters
         ----------
@@ -183,8 +182,7 @@ class BufferedPersistentDict(PersistentDict):
         self.storage = PersistentDict(**kwargs)
 
     def add(self, elt: Any, *, key: Any) -> None:
-        """
-        Add an element to the BufferedPersistentDict.
+        """Add an element to the BufferedPersistentDict.
 
         Parameters
         ----------
@@ -206,8 +204,7 @@ class BufferedPersistentDict(PersistentDict):
         self.keys = []
 
     def items(self) -> Iterator[Tuple[Any, Any]]:
-        """
-        Yield items stored in the BufferedPersistentDict.
+        """Yield items stored in the BufferedPersistentDict.
 
         Yields
         ------
@@ -228,8 +225,7 @@ class BufferedPersistentDict(PersistentDict):
 
 
 def build_storage(directory: str, create: bool = True) -> BufferedPersistentDict:
-    """
-    Build a BufferedPersistentDict storage.
+    """Build a BufferedPersistentDict storage.
 
     Parameters
     ----------
