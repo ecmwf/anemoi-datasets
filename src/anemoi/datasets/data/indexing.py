@@ -9,6 +9,7 @@
 
 
 import logging
+import math
 from functools import wraps
 
 import numpy as np
@@ -16,21 +17,31 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
-def _tuple_of_lists_to_slice(t):
+def tuple_or_list_to_slice(indices):
     """Convert a tuple of lists to a tuple of a slice when possible."""
-    assert isinstance(t, (list, tuple)), t
-    if len(t) == 0:
-        return t
-    if len(t) == 1:
-        return slice(t[0], t[0] + 1)
-    if len(t) == 2:
-        return slice(t[0], t[1], t[1] - t[0])
+    assert isinstance(indices, (list, tuple)), indices
+    if len(indices) == 0:
+        return indices, slice(None)
 
-    diffs = set(t[i] - t[i - 1] for i in range(1, len(t)))
-    if len(diffs) == 1:
-        return slice(t[0], t[-1], diffs.pop())
+    if len(indices) == 1:
+        return slice(indices[0], indices[0] + 1), slice(None)
 
-    return t
+    if len(indices) == 2:
+        return slice(indices[0], indices[1] + 1, indices[1] - indices[0]), slice(None)
+
+    first = indices[0]
+    last = indices[-1] + 1
+
+    print([indices[i] - first for i in range(1, len(indices))])
+
+    step = math.gcd(*[indices[i] - first for i in range(1, len(indices))])
+
+    result = slice(first, last, step)
+
+    # Subset of indices in the slice that match the required indices
+    subset = tuple(i for i, j in enumerate(range(first, last, step)) if j in set(indices))
+
+    return result, subset
 
 
 def _tuple_with_slices(t, shape):
@@ -205,6 +216,8 @@ def make_slice_or_index_from_list_or_tuple(indices):
 
 
 def check_indexing(method):
+    return method
+
     @wraps(method)
     def wrapper(self, index):
         try:

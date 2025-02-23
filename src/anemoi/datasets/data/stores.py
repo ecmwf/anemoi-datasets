@@ -24,8 +24,10 @@ from .debug import DEBUG_ZARR_LOADING
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
+from .indexing import apply_index_to_slices_changes
 from .indexing import check_indexing
 from .indexing import index_to_slices
+from .indexing import tuple_or_list_to_slice
 from .misc import load_config
 
 LOG = logging.getLogger(__name__)
@@ -226,10 +228,38 @@ class Zarr(Dataset):
 
     @debug_indexing
     @check_indexing
-    def _get_tuple(self, key):
-        newkey, _ = index_to_slices(key, self.shape)
-        assert False, (key, newkey, self.shape)
-        return self.data[key]
+    def _get_tuple(self, index):
+        # TODO: align code to self.data.chunks
+
+        index, changes = index_to_slices(index, self.shape)
+
+        # ZARR does not support indexing with lists/arrays directly, so we need to implement it ourselves.
+
+        # Change the index to slices
+
+        slices_and_subsets = []
+
+        for n in index:
+            if isinstance(n, (list, tuple)):
+                slices_and_subsets.append(tuple_or_list_to_slice(n))
+            elif isinstance(n, slice):
+                slices_and_subsets.append((n, slice(None)))
+            else:
+                raise ValueError("Unsupported index type")
+
+        print(slices_and_subsets)
+
+        # Get the data for each slice
+        result = self.data[tuple(s for s, _ in slices_and_subsets)]
+
+        print(result.shape)
+
+        # Subset if needed
+        result = result[tuple(s for _, s in slices_and_subsets)]
+
+        print(result.shape)
+
+        return apply_index_to_slices_changes(result, changes)
 
     @cached_property
     def chunks(self):

@@ -195,13 +195,15 @@ class IndexTester:
         assert (self.ds == self.np).all()
 
     def __getitem__(self, index):
-        # print("INDEX", type(self.ds), index)
+        print("INDEX ==>", index)
 
         ds_values = self.ds[index]
         pn_values = self.np[index]
 
         if ds_values is None:
             assert False, (self.ds, index)
+
+        print("SHAPES ==>", self.ds.shape, ds_values.shape, pn_values.shape)
 
         if not (ds_values == pn_values).all():
             print("DS", ds_values)
@@ -382,6 +384,11 @@ class DatasetTester:
         t[:, _idx(1), _idx(2), _idx(3)]
         t[_idx(0), _idx(1), :, _idx(3)]
         t[_idx(0), :, _idx(2), _idx(3)]
+
+        t[_idx(0), 3, _idx(2), _idx(3)]
+        t[:, _idx(1), _idx(2), _idx(3)]
+        t[1:8, _idx(1), :, _idx(3)]
+        t[_idx(0), :-3, _idx(2), _idx(3)]
 
 
 def simple_row(date, vars):

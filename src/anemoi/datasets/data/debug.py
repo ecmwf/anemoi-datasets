@@ -216,10 +216,10 @@ def _identity(x):
     return x
 
 
-# if DEBUG_ZARR_INDEXING:
-debug_indexing = _debug_indexing
-# else:
-#     debug_indexing = _identity
+if DEBUG_ZARR_INDEXING:
+    debug_indexing = _debug_indexing
+else:
+    debug_indexing = _identity
 
 
 def debug_zarr_loading(on_off):

@@ -12,6 +12,7 @@ import numpy as np
 
 from anemoi.datasets.data.indexing import index_to_slices
 from anemoi.datasets.data.indexing import length_to_slices
+from anemoi.datasets.data.indexing import tuple_or_list_to_slice
 
 
 def test_length_to_slices():
@@ -48,5 +49,12 @@ def test_index_to_slices():
     print(new_shape)
 
 
+def test_tuple_or_list_to_slice():
+    s, m = tuple_or_list_to_slice([3, 7, 19, 23])
+
+    assert s == slice(3, 24, 4)
+    assert m == (0, 1, 4, 5)
+
+
 if __name__ == "__main__":
-    test_index_to_slices()
+    test_tuple_or_list_to_slice()
