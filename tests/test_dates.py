@@ -26,7 +26,7 @@ def date_list(
     step: int,
     missing: list[tuple[int, int, int]] = [],
     as_numpy: bool = False,
-) -> Union[list[datetime.datetime] | list[np.datetime64]]:
+) -> Union[list[datetime.datetime], list[np.datetime64]]:
     """Generate a list of dates from start to end with a given step.
 
     Parameters

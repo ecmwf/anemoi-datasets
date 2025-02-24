@@ -1530,7 +1530,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(f"Wrote statistics in {self.path}")
 
     @cached_property
-    def allow_nans(self) -> bool | list:
+    def allow_nans(self) -> Union[bool, list]:
         """Check if NaNs are allowed."""
         import zarr
 
