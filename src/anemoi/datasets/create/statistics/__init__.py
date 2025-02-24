@@ -19,6 +19,7 @@ import socket
 from typing import Any
 from typing import List
 from typing import Optional
+from typing import Union
 
 import numpy as np
 import tqdm
@@ -76,7 +77,7 @@ def default_statistics_dates(dates: list[datetime.datetime]) -> tuple[datetime.d
     return dates[0], end
 
 
-def to_datetime(date: str | datetime.datetime) -> np.datetime64:
+def to_datetime(date: Union[str, datetime.datetime]) -> np.datetime64:
     """Convert a date to numpy datetime64 format.
 
     Parameters
@@ -96,7 +97,7 @@ def to_datetime(date: str | datetime.datetime) -> np.datetime64:
     return date
 
 
-def to_datetimes(dates: list[str | datetime.datetime]) -> list[np.datetime64]:
+def to_datetimes(dates: list[Union[str, datetime.datetime]]) -> list[np.datetime64]:
     """Convert a list of dates to numpy datetime64 format.
 
     Parameters

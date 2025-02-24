@@ -17,6 +17,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 import numpy as np
 import semantic_version
@@ -38,7 +39,7 @@ from . import Command
 LOG = logging.getLogger(__name__)
 
 
-def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
+def compute_directory_size(path: str) -> Union[tuple[int, int], tuple[None, None]]:
     """Compute the total size and number of files in a directory.
 
     Parameters
@@ -103,12 +104,12 @@ def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
     return np.cos(radians)
 
 
-def find(config: dict | list, name: str) -> Any:
+def find(config: Union[dict, list], name: str) -> Any:
     """Recursively search for a key in a nested dictionary or list.
 
     Parameters
     ----------
-    config : dict | list
+    config : dict or list
         The configuration to search.
     name : str
         The key to search for.

@@ -13,6 +13,7 @@ import os
 import warnings
 from contextlib import contextmanager
 from typing import Any
+from typing import Union
 
 import numpy as np
 from earthkit.data import settings
@@ -96,12 +97,12 @@ def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
     return to_datetime_(*args, **kwargs)
 
 
-def make_list_int(value: str | list | tuple | int) -> list[int]:
+def make_list_int(value: Union[str, list, tuple, int]) -> list[int]:
     """Convert a string, list, tuple, or integer to a list of integers.
 
     Parameters
     ----------
-    value : str | list | tuple | int
+    value : str or list or tuple or int
         The value to convert.
 
     Returns

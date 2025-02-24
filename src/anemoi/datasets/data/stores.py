@@ -18,6 +18,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
+from typing import Union
 from urllib.parse import urlparse
 
 import numpy as np
@@ -230,7 +231,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
 class Zarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
@@ -267,7 +268,7 @@ class Zarr(Dataset):
         """Retrieve an item from the dataset."""
         return self.data[n]
 
-    def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:
+    def _unwind(self, index: Union[int, slice, list, tuple], rest: list, shape: tuple, axis: int, axes: list) -> iter:
         """Unwind the index for multi-dimensional indexing."""
         if not isinstance(index, (int, slice, list, tuple)):
             try:
@@ -464,7 +465,7 @@ class Zarr(Dataset):
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(path)
 

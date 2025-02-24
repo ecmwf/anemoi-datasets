@@ -15,6 +15,7 @@ import warnings
 from typing import Any
 from typing import Callable
 from typing import Optional
+from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_string
@@ -232,7 +233,7 @@ class StatisticsValueError(ValueError):
 
 
 def check_data_values(
-    arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
+    arr: NDArray[Any], *, name: str, log: list = [], allow_nans: Union[bool, list, set, tuple, dict] = False
 ) -> None:
     """Check the values in the data array for validity.
 
