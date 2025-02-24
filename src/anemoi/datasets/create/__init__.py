@@ -17,6 +17,7 @@ import warnings
 from functools import cached_property
 from typing import Any
 from typing import Optional
+from typing import Union
 
 import cftime
 import numpy as np
@@ -958,7 +959,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         array.flush()
         LOG.info("Flushed data array")
 
-    def _get_allow_nans(self) -> bool | list:
+    def _get_allow_nans(self) -> Union[bool, list]:
         """Get the allow_nans configuration.
 
         Returns

@@ -16,7 +16,12 @@ import warnings
 from abc import ABC
 from abc import abstractmethod
 from functools import cached_property
-from types import EllipsisType
+
+try:
+    from types import EllipsisType
+except ImportError:
+    # Python 3.9
+    EllipsisType = type(Ellipsis)
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Dict
