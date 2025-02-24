@@ -7,9 +7,34 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import Any
+from typing import Dict
+from typing import List
+
+import earthkit.data as ekd
 
 from .xarray import load_many
 
 
-def execute(context, dates, url, *args, **kwargs):
+def execute(context: Dict[str, Any], dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Execute the loading of data using xarray and zarr.
+
+    Parameters
+    ----------
+    context : dict
+        The context dictionary containing configuration and state.
+    dates : list of str
+        The list of dates for which to load data.
+    url : str
+        The URL from which to load the data.
+    *args : Any
+        Additional positional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    Any
+        The loaded data.
+    """
     return load_many("🇿", context, dates, url, *args, **kwargs)

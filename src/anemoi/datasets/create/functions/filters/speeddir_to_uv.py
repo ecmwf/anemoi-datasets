@@ -9,22 +9,77 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import List
+from typing import Optional
 
+import earthkit.data as ekd
 import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo.wind.array import polar_to_xy
 
 
 class NewDataField:
-    def __init__(self, field, data, new_name):
+    """A class to represent a new data field with converted wind component data.
+
+    Attributes
+    ----------
+    field : Any
+        The original field.
+    data : Any
+        The converted wind component data.
+    new_name : str
+        The new name for the field.
+    """
+
+    def __init__(self, field: Any, data: Any, new_name: str) -> None:
+        """Initialize a NewDataField instance.
+
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The converted wind component data.
+        new_name : str
+            The new name for the field.
+        """
         self.field = field
         self.data = data
         self.new_name = new_name
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
+        """Convert the data to a numpy array.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional positional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The data as a numpy array.
+        """
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
+        """Get metadata from the original field, with the option to rename the parameter.
+
+        Parameters
+        ----------
+        key : Optional[str], optional
+            The metadata key.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -33,11 +88,55 @@ class NewDataField:
             return self.new_name
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Get an attribute from the original field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
 
-def execute(context, input, wind_speed, wind_dir, u_component="u", v_component="v", in_radians=False):
+def execute(
+    context: Any,
+    input: List[Any],
+    wind_speed: str,
+    wind_dir: str,
+    u_component: str = "u",
+    v_component: str = "v",
+    in_radians: bool = False,
+) -> ekd.FieldList:
+    """Convert wind speed and direction to u and v components.
+
+    Parameters
+    ----------
+    context : Any
+        The context for the execution.
+    input : List[Any]
+        The input data fields.
+    wind_speed : str
+        The name of the wind speed parameter.
+    wind_dir : str
+        The name of the wind direction parameter.
+    u_component : str, optional
+        The name for the u component. Defaults to "u".
+    v_component : str, optional
+        The name for the v component. Defaults to "v".
+    in_radians : bool, optional
+        Whether the wind direction is in radians. Defaults to False.
+
+    Returns
+    -------
+    ekd.FieldList
+        The resulting field array with u and v components.
+    """
 
     result = FieldArray()
 

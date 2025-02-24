@@ -7,21 +7,42 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
+from typing import Any
+from typing import Dict
+from typing import Tuple
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
 from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
-def execute(context, input, t, rh, q="q"):
-    """Convert relative humidity on pressure levels to specific humidity"""
-    result = FieldArray()
+def execute(context: Any, input: ekd.FieldList, t: str, rh: str, q: str = "q") -> ekd.FieldList:
+    """Convert relative humidity on pressure levels to specific humidity.
 
-    params = (t, rh)
-    pairs = defaultdict(dict)
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    t : str
+        Temperature parameter.
+    rh : str
+        Relative humidity parameter.
+    q : str, optional
+        Specific humidity parameter. Defaults to "q".
+
+    Returns
+    -------
+    ekd.FieldList
+        Array of fields with specific humidity.
+    """
+    result = FieldArray()
+    params: Tuple[str, str] = (t, rh)
+    pairs: Dict[Tuple[Any, ...], Dict[str, Any]] = defaultdict(dict)
 
     # Gather all necessary fields
     for f in input:

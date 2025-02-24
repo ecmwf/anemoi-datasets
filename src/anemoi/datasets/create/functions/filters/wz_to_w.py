@@ -7,22 +7,73 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
+from typing import Any
+from typing import Optional
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class NewDataField:
-    def __init__(self, field, data, new_name):
+    """A class to represent a new data field with modified data and metadata.
+
+    Attributes
+    ----------
+    field : Any
+        The original field.
+    data : Any
+        The data for the new field.
+    new_name : str
+        The new name for the field.
+    """
+
+    def __init__(self, field: Any, data: Any, new_name: str) -> None:
+        """Parameters
+        -------------
+        field : Any
+            The original field.
+        data : Any
+            The data for the new field.
+        new_name : str
+            The new name for the field.
+        """
         self.field = field
         self.data = data
         self.new_name = new_name
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
+        """Convert the data to a numpy array.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments for conversion.
+        **kwargs : Any
+            Additional keyword arguments for conversion.
+
+        Returns
+        -------
+        Any
+            The data as a numpy array.
+        """
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
+        """Retrieve metadata for the field.
+
+        Parameters
+        ----------
+        key : Optional[str], optional
+            The metadata key to retrieve. If None, all metadata is returned.
+        **kwargs : Any
+            Additional arguments for metadata retrieval.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -31,12 +82,43 @@ class NewDataField:
             return self.new_name
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Retrieve an attribute from the 'field' attribute of the instance.
+
+        Parameters
+        ----------
+        name : str
+            The attribute name.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
 
-def execute(context, input, wz, t, w="w"):
-    """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s)"""
+def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> ekd.FieldList:
+    """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
+
+    Parameters
+    ----------
+    context : Any
+        The context for the execution.
+    input : List[Any]
+        The list of input fields.
+    wz : str
+        The parameter name for geometric vertical velocity.
+    t : str
+        The parameter name for temperature.
+    w : str, optional
+        The parameter name for vertical velocity. Defaults to "w".
+
+    Returns
+    -------
+    ekd.FieldList
+        The resulting FieldArray with converted vertical velocity fields.
+    """
     result = FieldArray()
 
     params = (wz, t)
@@ -72,7 +154,23 @@ def execute(context, input, wz, t, w="w"):
     return result
 
 
-def wz_to_w(wz, t, pressure):
+def wz_to_w(wz: Any, t: Any, pressure: float) -> Any:
+    """Convert geometric vertical velocity (m/s) to vertical velocity (Pa / s).
+
+    Parameters
+    ----------
+    wz : Any
+        The geometric vertical velocity data.
+    t : Any
+        The temperature data.
+    pressure : float
+        The pressure value.
+
+    Returns
+    -------
+    Any
+        The vertical velocity data in Pa / s.
+    """
     g = 9.81
     Rd = 287.058
 

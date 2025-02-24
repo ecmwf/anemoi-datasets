@@ -7,8 +7,10 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
+from typing import Any
+
+import earthkit.data as ekd
 
 # import numpy as np
 from earthkit.data.indexing.fieldlist import FieldArray
@@ -16,19 +18,73 @@ from earthkit.geo.rotate import unrotate_vector
 
 
 class NewDataField:
-    def __init__(self, field, data):
+    """A class to represent a new data field with unrotated wind components."""
+
+    def __init__(self, field: Any, data: Any) -> None:
+        """Initialize a NewDataField instance.
+
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The unrotated wind component data.
+        """
         self.field = field
         self.data = data
 
-    def to_numpy(self, *args, **kwargs):
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
+        """Convert the data to a numpy array.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The data as a numpy array.
+        """
         return self.data
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Get an attribute from the original field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
 
-def execute(context, input, u, v):
-    """Unrotate the wind components of a GRIB file."""
+def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> ekd.FieldList:
+    """Unrotate the wind components of a GRIB file.
+
+    Parameters
+    ----------
+    context : Any
+        The execution context.
+    input : List[Any]
+        The list of input fields.
+    u : str
+        The parameter name for the u-component of the wind.
+    v : str
+        The parameter name for the v-component of the wind.
+
+    Returns
+    -------
+    ekd.FieldList
+        The resulting field array with unrotated wind components.
+    """
     result = FieldArray()
 
     wind_params = (u, v)

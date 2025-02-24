@@ -9,7 +9,14 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Union
 
+from earthkit.data import FieldList
+
+from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .misc import _tidy
@@ -19,7 +26,28 @@ LOG = logging.getLogger(__name__)
 
 
 class DataSourcesAction(Action):
-    def __init__(self, context, action_path, sources, input):
+    """Class to handle data sources actions in the dataset creation process."""
+
+    def __init__(
+        self,
+        context: object,
+        action_path: List[str],
+        sources: Union[Dict[str, Any], List[Dict[str, Any]]],
+        input: Dict[str, Any],
+    ) -> None:
+        """Initializes a DataSourcesAction instance.
+
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : List[str]
+            The action path.
+        sources : Union[Dict[str, Any], List[Dict[str, Any]]]
+            The sources configuration.
+        input : Dict[str, Any]
+            The input configuration.
+        """
         super().__init__(context, ["data_sources"], *sources)
         if isinstance(sources, dict):
             configs = [(str(k), c) for k, c in sources.items()]
@@ -31,7 +59,19 @@ class DataSourcesAction(Action):
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
 
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
+        """Selects the data sources result for the given group of dates.
+
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            The group of dates.
+
+        Returns
+        -------
+        DataSourcesResult
+            The data sources result.
+        """
         sources_results = [a.select(group_of_dates) for a in self.sources]
         return DataSourcesResult(
             self.context,
@@ -41,13 +81,38 @@ class DataSourcesAction(Action):
             sources_results,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Returns a string representation of the DataSourcesAction instance."""
         content = "\n".join([str(i) for i in self.sources])
-        return super().__repr__(content)
+        return self._repr(content)
 
 
 class DataSourcesResult(Result):
-    def __init__(self, context, action_path, dates, input_result, sources_results):
+    """Class to represent the result of data sources actions in the dataset creation process."""
+
+    def __init__(
+        self,
+        context: object,
+        action_path: List[str],
+        dates: object,
+        input_result: Result,
+        sources_results: List[Result],
+    ) -> None:
+        """Initializes a DataSourcesResult instance.
+
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : List[str]
+            The action path.
+        dates : object
+            The dates object.
+        input_result : Result
+            The input result.
+        sources_results : List[Result]
+            The list of sources results.
+        """
         super().__init__(context, action_path, dates)
         # result is the main input result
         self.input_result = input_result
@@ -55,7 +120,8 @@ class DataSourcesResult(Result):
         self.sources_results = sources_results
 
     @cached_property
-    def datasource(self):
+    def datasource(self) -> FieldList:
+        """Returns the combined datasource from all sources."""
         for i in self.sources_results:
             # for each result trigger the datasource to be computed
             # and saved in context

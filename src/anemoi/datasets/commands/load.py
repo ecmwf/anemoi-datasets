@@ -9,6 +9,7 @@
 
 import logging
 import time
+from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
@@ -25,8 +26,14 @@ class Load(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, subparser):
+    def add_arguments(self, subparser: Any) -> None:
+        """Add arguments to the command parser.
 
+        Parameters
+        ----------
+        subparser : Any
+            The command parser.
+        """
         subparser.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
         # subparser.add_argument(
         #        "--delta",
@@ -37,7 +44,14 @@ class Load(Command):
         subparser.add_argument("--cache", help="Location to store the downloaded data.", metavar="DIR")
         subparser.add_argument("--trace", action="store_true")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
+        """Run the command.
+
+        Parameters
+        ----------
+        args : Any
+            The command arguments.
+        """
         options = vars(args)
         options.pop("command")
         now = time.time()

@@ -10,6 +10,8 @@
 
 import logging
 import os
+from typing import Dict
+from typing import Optional
 
 import tqdm
 from anemoi.utils.humanize import bytes_to_human
@@ -17,7 +19,19 @@ from anemoi.utils.humanize import bytes_to_human
 LOG = logging.getLogger(__name__)
 
 
-def compute_directory_sizes(path):
+def compute_directory_sizes(path: str) -> Optional[Dict[str, int]]:
+    """Computes the total size and number of files in a directory.
+
+    Parameters
+    ----------
+    path : str
+        The path to the directory.
+
+    Returns
+    -------
+    dict of str to int or None
+        A dictionary with the total size and number of files, or None if the path is not a directory.
+    """
     if not os.path.isdir(path):
         return None
 

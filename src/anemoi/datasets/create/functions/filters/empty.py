@@ -8,10 +8,26 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+
 import earthkit.data as ekd
 
 
-def execute(context, input, **kwargs):
-    # Useful to create a pipeline that returns an empty result
-    # So we can reference an earlier step in a function like 'constants'
+def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
+    """Create a pipeline that returns an empty result.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    Any
+        An empty result.
+    """
     return ekd.from_source("empty")

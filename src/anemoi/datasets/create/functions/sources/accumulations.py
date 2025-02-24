@@ -11,11 +11,19 @@ import datetime
 import logging
 import warnings
 from copy import deepcopy
+from typing import Any
+from typing import Dict
+from typing import Generator
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
+from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -24,7 +32,19 @@ from .mars import mars
 LOG = logging.getLogger(__name__)
 
 
-def _member(field):
+def _member(field: Any) -> int:
+    """Retrieves the member number from the field metadata.
+
+    Parameters
+    ----------
+    field : Any
+        The field from which to retrieve the member number.
+
+    Returns
+    -------
+    int
+        The member number.
+    """
     # Bug in eccodes has number=0 randomly
     number = field.metadata("number", default=0)
     if number is None:
@@ -33,26 +53,70 @@ def _member(field):
 
 
 class Accumulation:
-    def __init__(self, out, /, param, date, time, number, step, frequency, **kwargs):
+    """Class to handle data accumulation for a specific parameter, date, time, and member."""
+
+    buggy_steps: bool = False
+
+    def __init__(
+        self,
+        out: Any,
+        /,
+        param: str,
+        date: int,
+        time: int,
+        number: int,
+        step: List[int],
+        frequency: int,
+        **kwargs: Any,
+    ) -> None:
+        """Initializes an Accumulation instance.
+
+        Parameters
+        ----------
+        out : Any
+            Output object for writing data.
+        param : str
+            Parameter name.
+        date : int
+            Date of the accumulation.
+        time : int
+            Time of the accumulation.
+        number : int
+            Member number.
+        step : List[int]
+            List of steps.
+        frequency : int
+            Frequency of accumulation.
+        **kwargs : Any
+            Additional keyword arguments.
+        """
         self.out = out
         self.param = param
         self.date = date
         self.time = time
         self.steps = step
         self.number = number
-        self.values = None
+        self.values: Optional[NDArray[None]] = None
         self.seen = set()
-        self.startStep = None
-        self.endStep = None
+        self.startStep: Optional[int] = None
+        self.endStep: Optional[int] = None
         self.done = False
         self.frequency = frequency
         self._check = None
 
     @property
-    def key(self):
+    def key(self) -> Tuple[str, int, int, List[int], int]:
+        """Returns the key for the accumulation."""
         return (self.param, self.date, self.time, self.steps, self.number)
 
-    def check(self, field):
+    def check(self, field: Any) -> None:
+        """Checks the field metadata against the accumulation parameters.
+
+        Parameters
+        ----------
+        field : Any
+            The field to check.
+        """
         if self._check is None:
             self._check = field.metadata(namespace="mars")
 
@@ -82,8 +146,14 @@ class Accumulation:
             if k not in ("step",):
                 assert self._check[k] == mars[k], (k, self._check[k], mars[k])
 
-    def write(self, template):
+    def write(self, template: Any) -> None:
+        """Writes the accumulated values to the output.
 
+        Parameters
+        ----------
+        template : Any
+            Template for writing the output.
+        """
         assert self.startStep != self.endStep, (self.startStep, self.endStep)
         if np.all(self.values < 0):
             LOG.warning(
@@ -101,8 +171,16 @@ class Accumulation:
         self.values = None
         self.done = True
 
-    def add(self, field, values):
+    def add(self, field: Any, values: NDArray[Any]) -> None:
+        """Adds values to the accumulation.
 
+        Parameters
+        ----------
+        field : Any
+            The field containing the values.
+        values : np.ndarray
+            The values to add.
+        """
         self.check(field)
 
         step = field.metadata("step")
@@ -131,8 +209,37 @@ class Accumulation:
             self.write(template=field)
 
     @classmethod
-    def mars_date_time_steps(cls, dates, step1, step2, frequency, base_times, adjust_step):
+    def mars_date_time_steps(
+        cls,
+        dates: List[datetime.datetime],
+        step1: int,
+        step2: int,
+        frequency: Optional[int],
+        base_times: List[int],
+        adjust_step: bool,
+    ) -> Generator[Tuple[int, int, Tuple[int, ...]], None, None]:
+        """Generates MARS date-time steps.
 
+        Parameters
+        ----------
+        dates : List[datetime.datetime]
+            List of dates.
+        step1 : int
+            First step.
+        step2 : int
+            Second step.
+        frequency : Optional[int]
+            Frequency of accumulation.
+        base_times : List[int]
+            List of base times.
+        adjust_step : bool
+            Whether to adjust the step.
+
+        Returns
+        -------
+        Generator[Tuple[int, int, Tuple[int, ...]], None, None]
+            A generator of MARS date-time steps.
+        """
         # assert step1 > 0, (step1, step2, frequency)
 
         for valid_date in dates:
@@ -152,14 +259,33 @@ class Accumulation:
             yield cls._mars_date_time_step(base_date, step1, step2, add_step, frequency)
 
     def __repr__(self) -> str:
+        """Returns a string representation of the Accumulation instance.
+
+        Returns
+        -------
+        str
+            String representation of the Accumulation instance.
+        """
         return f"{self.__class__.__name__}({self.key})"
 
 
 class AccumulationFromStart(Accumulation):
+    """Class to handle data accumulation from the start of the forecast."""
+
     buggy_steps = True
 
-    def compute(self, values, startStep, endStep):
+    def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
+        """Computes the accumulation from the start.
 
+        Parameters
+        ----------
+        values : np.ndarray
+            The values to accumulate.
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
+        """
         assert startStep == 0, startStep
 
         if self.values is None:
@@ -186,7 +312,29 @@ class AccumulationFromStart(Accumulation):
                 self.values = np.maximum(self.values, 0)
 
     @classmethod
-    def _mars_date_time_step(cls, base_date, step1, step2, add_step, frequency):
+    def _mars_date_time_step(
+        cls, base_date: datetime.datetime, step1: int, step2: int, add_step: int, frequency: Optional[int]
+    ) -> Tuple[int, int, Tuple[int, ...]]:
+        """Generates a MARS date-time step.
+
+        Parameters
+        ----------
+        base_date : datetime.datetime
+            The base date.
+        step1 : int
+            First step.
+        step2 : int
+            Second step.
+        add_step : int
+            Additional step.
+        frequency : Optional[int]
+            Frequency of accumulation.
+
+        Returns
+        -------
+        Tuple[int, int, Tuple[int, ...]]
+            A tuple representing the MARS date-time step.
+        """
         assert not frequency, frequency
 
         steps = (step1 + add_step, step2 + add_step)
@@ -201,10 +349,22 @@ class AccumulationFromStart(Accumulation):
 
 
 class AccumulationFromLastStep(Accumulation):
+    """Class to handle data accumulation from the last step of the forecast."""
+
     buggy_steps = False
 
-    def compute(self, values, startStep, endStep):
+    def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
+        """Computes the accumulation from the last step.
 
+        Parameters
+        ----------
+        values : np.ndarray
+            The values to accumulate.
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
+        """
         assert endStep - startStep == self.frequency, (
             startStep,
             endStep,
@@ -227,7 +387,29 @@ class AccumulationFromLastStep(Accumulation):
         self.values += values
 
     @classmethod
-    def _mars_date_time_step(cls, base_date, step1, step2, add_step, frequency):
+    def _mars_date_time_step(
+        cls, base_date: datetime.datetime, step1: int, step2: int, add_step: int, frequency: int
+    ) -> Tuple[int, int, Tuple[int, ...]]:
+        """Generates a MARS date-time step.
+
+        Parameters
+        ----------
+        base_date : datetime.datetime
+            The base date.
+        step1 : int
+            First step.
+        step2 : int
+            Second step.
+        add_step : int
+            Additional step.
+        frequency : int
+            Frequency of accumulation.
+
+        Returns
+        -------
+        Tuple[int, int, Tuple[int, ...]]
+            A tuple representing the MARS date-time step.
+        """
         assert frequency > 0, frequency
         # assert step1 > 0, (step1, step2, frequency, add_step, base_date)
 
@@ -241,20 +423,58 @@ class AccumulationFromLastStep(Accumulation):
         )
 
 
-def _identity(x):
+def _identity(x: Any) -> Any:
+    """Identity function that returns the input as is.
+
+    Parameters
+    ----------
+    x : Any
+        Input value.
+
+    Returns
+    -------
+    Any
+        The input value.
+    """
     return x
 
 
 def _compute_accumulations(
-    context,
-    dates,
-    request,
-    user_accumulation_period=6,
-    data_accumulation_period=None,
-    patch=_identity,
-    base_times=None,
-    use_cdsapi_dataset=None,
-):
+    context: Any,
+    dates: List[datetime.datetime],
+    request: Dict[str, Any],
+    user_accumulation_period: Union[int, Tuple[int, int]] = 6,
+    data_accumulation_period: Optional[int] = None,
+    patch: Any = _identity,
+    base_times: Optional[List[int]] = None,
+    use_cdsapi_dataset: Optional[str] = None,
+) -> Any:
+    """Computes accumulations based on the provided parameters.
+
+    Parameters
+    ----------
+    context : Any
+        Context for the computation.
+    dates : List[datetime.datetime]
+        List of dates.
+    request : Dict[str, Any]
+        Request parameters.
+    user_accumulation_period : Union[int, Tuple[int, int]], optional
+        User-defined accumulation period. Defaults to 6.
+    data_accumulation_period : Optional[int], optional
+        Data accumulation period. Defaults to None.
+    patch : Any, optional
+        Patch function. Defaults to _identity.
+    base_times : Optional[List[int]], optional
+        List of base times. Defaults to None.
+    use_cdsapi_dataset : Optional[str], optional
+        CDSAPI dataset to use. Defaults to None.
+
+    Returns
+    -------
+    Any
+        The computed accumulations.
+    """
     adjust_step = isinstance(user_accumulation_period, int)
 
     if not isinstance(user_accumulation_period, (list, tuple)):
@@ -355,13 +575,37 @@ def _compute_accumulations(
     return ds
 
 
-def _to_list(x):
+def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
+    """Converts the input to a list if it is not already a list or tuple.
+
+    Parameters
+    ----------
+    x : Union[List[Any], Tuple[Any], Any]
+        Input value.
+
+    Returns
+    -------
+    List[Any]
+        The input value as a list.
+    """
     if isinstance(x, (list, tuple)):
         return x
     return [x]
 
 
-def _scda(request):
+def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
+    """Modifies the request stream based on the time.
+
+    Parameters
+    ----------
+    request : Dict[str, Any]
+        Request parameters.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The modified request parameters.
+    """
     if request["time"] in (6, 18, 600, 1800):
         request["stream"] = "scda"
     else:
@@ -369,7 +613,27 @@ def _scda(request):
     return request
 
 
-def accumulations(context, dates, use_cdsapi_dataset=None, **request):
+def accumulations(
+    context: Any, dates: List[datetime.datetime], use_cdsapi_dataset: Optional[str] = None, **request: Any
+) -> Any:
+    """Computes accumulations based on the provided context, dates, and request parameters.
+
+    Parameters
+    ----------
+    context : Any
+        Context for the computation.
+    dates : List[datetime.datetime]
+        List of dates.
+    use_cdsapi_dataset : Optional[str], optional
+        CDSAPI dataset to use. Defaults to None.
+    **request : Any
+        Additional request parameters.
+
+    Returns
+    -------
+    Any
+        The computed accumulations.
+    """
     _to_list(request["param"])
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")

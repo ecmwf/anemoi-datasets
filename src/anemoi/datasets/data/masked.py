@@ -10,11 +10,21 @@
 
 import logging
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ..grids import cropping_mask
 from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
 from .debug import Node
 from .debug import debug_indexing
 from .forwards import Forwards
@@ -27,7 +37,18 @@ LOG = logging.getLogger(__name__)
 
 
 class Masked(Forwards):
-    def __init__(self, forward, mask):
+    """A class to represent a masked dataset."""
+
+    def __init__(self, forward: Dataset, mask: NDArray[np.bool_]) -> None:
+        """Initialize the Masked class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be masked.
+        mask : NDArray[np.bool_]
+            The mask array.
+        """
         super().__init__(forward)
         assert len(forward.shape) == 4, "Grids must be 1D for now"
         self.mask = mask
@@ -36,19 +57,34 @@ class Masked(Forwards):
         self.mask_name = f"{self.__class__.__name__.lower()}_mask"
 
     @cached_property
-    def shape(self):
+    def shape(self) -> Shape:
+        """Get the shape of the masked dataset."""
         return self.forward.shape[:-1] + (np.count_nonzero(self.mask),)
 
     @cached_property
-    def latitudes(self):
+    def latitudes(self) -> NDArray[Any]:
+        """Get the masked latitudes."""
         return self.forward.latitudes[self.mask]
 
     @cached_property
-    def longitudes(self):
+    def longitudes(self) -> NDArray[Any]:
+        """Get the masked longitudes."""
         return self.forward.longitudes[self.mask]
 
     @debug_indexing
-    def __getitem__(self, index):
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
+        """Get the masked data at the specified index.
+
+        Parameters
+        ----------
+        index : FullIndex
+            The index to retrieve data from.
+
+        Returns
+        -------
+        NDArray[Any]
+            The masked data at the specified index.
+        """
         if isinstance(index, tuple):
             return self._get_tuple(index)
 
@@ -60,7 +96,19 @@ class Masked(Forwards):
 
     @debug_indexing
     @expand_list_indexing
-    def _get_tuple(self, index):
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """Get the masked data for a tuple index.
+
+        Parameters
+        ----------
+        index : TupleIndex
+            The tuple index to retrieve data from.
+
+        Returns
+        -------
+        NDArray[Any]
+            The masked data for the tuple index.
+        """
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, self.axis, slice(None))
         result = self.forward[index]
@@ -69,14 +117,35 @@ class Masked(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
-    def collect_supporting_arrays(self, collected, *path):
+    def collect_supporting_arrays(self, collected: List[Tuple], *path: Any) -> None:
+        """Collect supporting arrays.
+
+        Parameters
+        ----------
+        collected : List[Tuple]
+            The list to collect supporting arrays into.
+        path : Any
+            Additional path arguments.
+        """
         super().collect_supporting_arrays(collected, *path)
         collected.append((path, self.mask_name, self.mask))
 
 
 class Thinning(Masked):
+    """A class to represent a thinned dataset."""
 
-    def __init__(self, forward, thinning, method):
+    def __init__(self, forward: Dataset, thinning: Optional[int], method: str) -> None:
+        """Initialize the Thinning class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be thinned.
+        thinning : Optional[int]
+            The thinning factor.
+        method : str
+            The thinning method.
+        """
         self.thinning = thinning
         self.method = method
 
@@ -105,20 +174,51 @@ class Thinning(Masked):
         super().__init__(forward, mask)
 
     def mutate(self) -> Dataset:
+        """Mutate the dataset.
+
+        Returns
+        -------
+        Dataset
+            The mutated dataset.
+        """
         if self.thinning is None:
             return self.forward.mutate()
         return super().mutate()
 
-    def tree(self):
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
 
-    def subclass_metadata_specific(self):
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Get the metadata specific to the Thinning subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the Thinning subclass.
+        """
         return dict(thinning=self.thinning, method=self.method)
 
 
 class Cropping(Masked):
+    """A class to represent a cropped dataset."""
 
-    def __init__(self, forward, area):
+    def __init__(self, forward: Dataset, area: Union[Dataset, Tuple[float, float, float, float]]) -> None:
+        """Initialize the Cropping class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be cropped.
+        area : Union[Dataset, Tuple[float, float, float, float]]
+            The cropping area.
+        """
         from ..data import open_dataset
 
         area = area if isinstance(area, (list, tuple)) else open_dataset(area)
@@ -135,8 +235,22 @@ class Cropping(Masked):
 
         super().__init__(forward, mask)
 
-    def tree(self):
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
         return Node(self, [self.forward.tree()], area=self.area)
 
-    def subclass_metadata_specific(self):
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Get the metadata specific to the Cropping subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the Cropping subclass.
+        """
         return dict(area=self.area)

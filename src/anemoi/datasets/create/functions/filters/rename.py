@@ -7,29 +7,61 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 import re
+from typing import Any
+from typing import Dict
+from typing import Optional
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class RenamedFieldMapping:
     """Rename a field based on the value of another field.
 
-    Args:
-        field (Field): The field to be renamed.
-        what (str): The name of the field that will be used to rename the field.
-        renaming (dict): A dictionary mapping the values of 'what' to the new names.
+    Parameters
+    ----------
+    field : Any
+        The field to be renamed.
+    what : str
+        The name of the field that will be used to rename the field.
+    renaming : dict of dict of str
+        A dictionary mapping the values of 'what' to the new names.
     """
 
-    def __init__(self, field, what, renaming):
+    def __init__(self, field: Any, what: str, renaming: Dict[str, Dict[str, str]]) -> None:
+        """Initialize a RenamedFieldMapping instance.
+
+        Parameters
+        ----------
+        field : Any
+            The field to be renamed.
+        what : str
+            The name of the field that will be used to rename the field.
+        renaming : dict of dict of str
+            A dictionary mapping the values of 'what' to the new names.
+        """
         self.field = field
         self.what = what
         self.renaming = {}
         for k, v in renaming.items():
             self.renaming[k] = {str(a): str(b) for a, b in v.items()}
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
+        """Get metadata from the original field, with the option to rename the parameter.
+
+        Parameters
+        ----------
+        key : str, optional
+            The metadata key.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
 
@@ -39,23 +71,77 @@ class RenamedFieldMapping:
 
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Get an attribute from the original field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
     def __repr__(self) -> str:
+        """Get the string representation of the original field.
+
+        Returns
+        -------
+        str
+            The string representation of the original field.
+        """
         return repr(self.field)
 
 
 class RenamedFieldFormat:
-    """Rename a field based on a format string."""
+    """Rename a field based on a format string.
 
-    def __init__(self, field, what, format):
+    Parameters
+    ----------
+    field : Any
+        The field to be renamed.
+    what : str
+        The name of the field that will be used to rename the field.
+    format : str
+        The format string for renaming.
+    """
+
+    def __init__(self, field: Any, what: str, format: str) -> None:
+        """Initialize a RenamedFieldFormat instance.
+
+        Parameters
+        ----------
+        field : Any
+            The field to be renamed.
+        what : str
+            The name of the field that will be used to rename the field.
+        format : str
+            The format string for renaming.
+        """
         self.field = field
         self.what = what
         self.format = format
         self.bits = re.findall(r"{(\w+)}", format)
 
-    def metadata(self, *args, **kwargs):
+    def metadata(self, *args: Any, **kwargs: Any) -> Any:
+        """Get metadata from the original field, with the option to rename the parameter using a format string.
+
+        Parameters
+        ----------
+        *args : Any
+            Positional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         value = self.field.metadata(*args, **kwargs)
         if args:
             assert len(args) == 1
@@ -64,11 +150,51 @@ class RenamedFieldFormat:
                 return self.format.format(**bits)
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Get an attribute from the original field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
+    def __repr__(self) -> str:
+        """Get the string representation of the original field.
 
-def execute(context, input, what="param", **kwargs):
+        Returns
+        -------
+        str
+            The string representation of the original field.
+        """
+        return repr(self.field)
+
+
+def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: Any) -> ekd.FieldList:
+    """Rename fields based on the value of another field or a format string.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    what : str, optional
+        The field to be used for renaming. Defaults to "param".
+    **kwargs : Any
+        Additional keyword arguments for renaming.
+
+    Returns
+    -------
+    ekd.FieldList
+        Array of renamed fields.
+    """
     if what in kwargs and isinstance(kwargs[what], str):
         return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
 

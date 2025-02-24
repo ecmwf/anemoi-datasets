@@ -10,9 +10,16 @@
 import logging
 from copy import deepcopy
 from functools import cached_property
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Union
+
+from earthkit.data import FieldList
 
 from anemoi.datasets.dates import DatesProvider
 
+from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .empty import EmptyResult
@@ -27,7 +34,31 @@ LOG = logging.getLogger(__name__)
 
 
 class ConcatResult(Result):
-    def __init__(self, context, action_path, group_of_dates, results, **kwargs):
+    """Represents the result of concatenating multiple results."""
+
+    def __init__(
+        self,
+        context: object,
+        action_path: List[str],
+        group_of_dates: GroupOfDates,
+        results: List[Result],
+        **kwargs: Any,
+    ) -> None:
+        """Initializes a ConcatResult instance.
+
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : List[str]
+            The action path.
+        group_of_dates : GroupOfDates
+            The group of dates.
+        results : List[Result]
+            The list of results.
+        kwargs : Any
+            Additional keyword arguments.
+        """
         super().__init__(context, action_path, group_of_dates)
         self.results = [r for r in results if not r.empty]
 
@@ -35,15 +66,16 @@ class ConcatResult(Result):
     @assert_fieldlist
     @notify_result
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> FieldList:
+        """Returns the concatenated datasource from all results."""
         ds = EmptyResult(self.context, self.action_path, self.group_of_dates).datasource
         for i in self.results:
             ds += i.datasource
         return _tidy(ds)
 
     @property
-    def variables(self):
-        """Check that all the results objects have the same variables."""
+    def variables(self) -> List[str]:
+        """Returns the list of variables, ensuring all results have the same variables."""
         variables = None
         for f in self.results:
             if f.empty:
@@ -54,13 +86,33 @@ class ConcatResult(Result):
         assert variables is not None, self.results
         return variables
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Returns a string representation of the ConcatResult instance.
+
+        Returns
+        -------
+        str
+            A string representation of the ConcatResult instance.
+        """
         content = "\n".join([str(i) for i in self.results])
-        return super().__repr__(content)
+        return self._repr(content)
 
 
 class ConcatAction(Action):
-    def __init__(self, context, action_path, *configs):
+    """Represents an action that concatenates multiple actions based on their dates."""
+
+    def __init__(self, context: object, action_path: List[str], *configs: Dict[str, Any]) -> None:
+        """Initializes a ConcatAction instance.
+
+        Parameters
+        ----------
+        context : object
+            The context object.
+        action_path : List[str]
+            The action path.
+        configs : Dict[str, Any]
+            The configuration dictionaries.
+        """
         super().__init__(context, action_path, *configs)
         parts = []
         for i, cfg in enumerate(configs):
@@ -74,12 +126,31 @@ class ConcatAction(Action):
             parts.append((filtering_dates, action))
         self.parts = parts
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Returns a string representation of the ConcatAction instance.
+
+        Returns
+        -------
+        str
+            A string representation of the ConcatAction instance.
+        """
         content = "\n".join([str(i) for i in self.parts])
-        return super().__repr__(content)
+        return self._repr(content)
 
     @trace_select
-    def select(self, group_of_dates):
+    def select(self, group_of_dates: GroupOfDates) -> Union[ConcatResult, EmptyResult]:
+        """Selects the concatenated result for the given group of dates.
+
+        Parameters
+        ----------
+        group_of_dates : GroupOfDates
+            The group of dates.
+
+        Returns
+        -------
+        Union[ConcatResult, EmptyResult]
+            The concatenated result or an empty result.
+        """
         from anemoi.datasets.dates.groups import GroupOfDates
 
         results = []

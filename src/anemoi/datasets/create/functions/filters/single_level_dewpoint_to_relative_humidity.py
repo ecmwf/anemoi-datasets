@@ -9,19 +9,40 @@
 
 
 from collections import defaultdict
+from typing import Any
+from typing import Dict
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
 from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
-def execute(context, input, t, td, rh="d"):
-    """Convert relative humidity on single levels to dewpoint"""
-    result = FieldArray()
+def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") -> ekd.FieldList:
+    """Convert dewpoint on single levels to relative humidity.
 
-    params = (t, td)
-    pairs = defaultdict(dict)
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : List[Any]
+        List of input fields.
+    t : str
+        Temperature parameter.
+    td : str
+        Dewpoint parameter.
+    rh : str, optional
+        Relative humidity parameter. Defaults to "d".
+
+    Returns
+    -------
+    ekd.FieldList
+        Array of fields with relative humidity.
+    """
+    result = FieldArray()
+    params: tuple[str, str] = (t, td)
+    pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
     # Gather all necessary fields
     for f in input:
