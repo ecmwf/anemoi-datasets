@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.17](https://github.com/ecmwf/anemoi-datasets/compare/0.5.16...0.5.17) (2025-02-25)
+
+
+### Features
+
+* support sub-hourly steps ([#188](https://github.com/ecmwf/anemoi-datasets/issues/188)) ([7f219e9](https://github.com/ecmwf/anemoi-datasets/commit/7f219e9e41befd732557e124e3f828fd2436c58d))
+* update test breaking due to noaa external data change ([#204](https://github.com/ecmwf/anemoi-datasets/issues/204)) ([4b99ea6](https://github.com/ecmwf/anemoi-datasets/commit/4b99ea63ba30a8d6d5ddf5ac3ab01573f0e77802))
+
+
+### Bug Fixes
+
+* Use set in computing statistics, faster and use less memory ([#209](https://github.com/ecmwf/anemoi-datasets/issues/209)) ([e93dbc1](https://github.com/ecmwf/anemoi-datasets/commit/e93dbc11759d2d8992b7e466eeade0883dd29f83))
+
+
+### Documentation
+
+* add animation ([#208](https://github.com/ecmwf/anemoi-datasets/issues/208)) ([2af2fd6](https://github.com/ecmwf/anemoi-datasets/commit/2af2fd6850279670214d9f2b2b83bddb18ebed45))
+* update doc with eccc-fstd, cdsapi and regrid ([#201](https://github.com/ecmwf/anemoi-datasets/issues/201)) ([57a53fc](https://github.com/ecmwf/anemoi-datasets/commit/57a53fcfde19f00262dbc3418e2b6208c56f080e))
+
 ## 0.5.16 (2025-02-04)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
