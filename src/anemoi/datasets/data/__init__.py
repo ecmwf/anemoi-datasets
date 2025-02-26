@@ -10,7 +10,10 @@
 import logging
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Dict
+from typing import Optional
 from typing import Set
+from typing import Union
 
 # from .dataset import FullIndex
 # from .dataset import Shape
@@ -66,13 +69,19 @@ def _convert(x: Any) -> Any:
     return x
 
 
-def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
+def open_dataset(*args: Any, options: Optional[Union[bool, Dict]], **kwargs: Any) -> "Dataset":
     """Open a dataset.
 
     Parameters
     ----------
     *args : Any
         Positional arguments.
+
+    options : Optional[Union[bool, Dict]]
+        Options for opening the dataset. If a boolean is provided, it will enable or disable
+        certain default options. If a dictionary is provided, it should contain specific
+        options as key-value pairs.
+
     **kwargs : Any
         Keyword arguments.
 
@@ -81,14 +90,22 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     Dataset
         The opened dataset.
     """
-    # That will get rid of OmegaConf objects
 
-    args, kwargs = _convert(args), _convert(kwargs)
+    from .options import set_options
 
-    ds = _open_dataset(*args, **kwargs)
-    ds = ds.mutate()
-    ds.arguments = {"args": args, "kwargs": kwargs}
-    ds._check()
+    try:
+        set_options(options)
+        # That will get rid of OmegaConf objects
+
+        args, kwargs = _convert(args), _convert(kwargs)
+
+        ds = _open_dataset(*args, **kwargs)
+        ds = ds.mutate()
+        ds.arguments = {"args": args, "kwargs": kwargs}
+        ds._check()
+    finally:
+        set_options(None)
+
     return ds
 
 

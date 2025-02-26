@@ -31,12 +31,12 @@ from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape
 from .dataset import TupleIndex
-from .debug import DEBUG_ZARR_LOADING
 from .debug import Node
 from .debug import Source
 from .debug import debug_indexing
 from .indexing import expand_list_indexing
 from .misc import load_config
+from .options import get_option
 
 LOG = logging.getLogger(__name__)
 
@@ -75,10 +75,25 @@ class HTTPStore(ReadOnlyStore):
         r = requests.get(self.url + "/" + key)
 
         if r.status_code == 404:
+            if get_option("debug_zarr_loading"):
+                print(f"404: {self.url}/{key}")
             raise KeyError(key)
 
         r.raise_for_status()
         return r.content
+
+    def __contains__(self, key: str) -> bool:
+        """Check if the store contains a key."""
+        import requests
+
+        r = requests.head(self.url + "/" + key)
+        if r.status_code == 200:
+            return True
+        if r.status_code == 404:
+            return False
+
+        r.raise_for_status()
+        assert False, "Unexpected status code %d" % r.status_code
 
 
 class S3Store(ReadOnlyStore):
@@ -104,6 +119,16 @@ class S3Store(ReadOnlyStore):
             raise KeyError(key)
 
         return response["Body"].read()
+
+    def __contains__(self, key: str) -> bool:
+        """Check if the store contains a key."""
+        try:
+            self.s3.get_object(Bucket=self.bucket, Key=self.key + "/" + key)
+            return True
+        except self.s3.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return False
+        raise
 
 
 class PlanetaryComputerStore(ReadOnlyStore):
@@ -177,7 +202,9 @@ class DebugStore(ReadOnlyStore):
 
     def __contains__(self, key: str) -> bool:
         """Check if the store contains a key."""
-        return key in self.store
+        ok = key in self.store
+        print("CONTAINS", key, ok)
+        return ok
 
 
 def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
@@ -207,7 +234,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
     try:
         store = name_to_zarr_store(path)
 
-        if DEBUG_ZARR_LOADING:
+        if get_option("debug_zarr_loading"):
             if isinstance(store, str):
                 import os
 
