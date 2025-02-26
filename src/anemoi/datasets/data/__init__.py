@@ -8,10 +8,19 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Set
 
+# from .dataset import FullIndex
+# from .dataset import Shape
+# from .dataset import TupleIndex
 from .misc import _open_dataset
 from .misc import add_dataset_path
 from .misc import add_named_dataset
+
+if TYPE_CHECKING:
+    from .dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -27,8 +36,19 @@ class MissingDateError(Exception):
     pass
 
 
-def _convert(x):
+def _convert(x: Any) -> Any:
+    """Convert OmegaConf objects to standard Python containers.
 
+    Parameters
+    ----------
+    x : Any
+        The object to convert.
+
+    Returns
+    -------
+    Any
+        The converted object.
+    """
     if isinstance(x, list):
         return [_convert(a) for a in x]
 
@@ -46,8 +66,21 @@ def _convert(x):
     return x
 
 
-def open_dataset(*args, **kwargs):
+def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
+    """Open a dataset.
 
+    Parameters
+    ----------
+    *args : Any
+        Positional arguments.
+    **kwargs : Any
+        Keyword arguments.
+
+    Returns
+    -------
+    Dataset
+        The opened dataset.
+    """
     # That will get rid of OmegaConf objects
 
     args, kwargs = _convert(args), _convert(kwargs)
@@ -59,8 +92,22 @@ def open_dataset(*args, **kwargs):
     return ds
 
 
-def list_dataset_names(*args, **kwargs):
+def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
+    """List the names of datasets.
+
+    Parameters
+    ----------
+    *args : Any
+        Positional arguments.
+    **kwargs : Any
+        Keyword arguments.
+
+    Returns
+    -------
+    list of str
+        The list of dataset names.
+    """
     ds = _open_dataset(*args, **kwargs)
-    names = set()
+    names: Set[str] = set()
     ds.get_dataset_names(names)
     return sorted(names)

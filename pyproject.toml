@@ -64,7 +64,7 @@ optional-dependencies.all = [
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.12",
+  "earthkit-data[mars]>=0.12.4",
   "earthkit-geo>=0.3",
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
@@ -119,3 +119,14 @@ version_file = "src/anemoi/datasets/_version.py"
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+strict = false
+exclude = [
+  "docs/**",
+]
+
+[tool.pydocstringformatter]
+write = true
+exclude = "docs/**"
+style = "numpydoc"

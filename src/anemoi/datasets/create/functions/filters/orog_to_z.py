@@ -7,39 +7,119 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 from collections import defaultdict
+from typing import Any
+from typing import Dict
 
+import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
 class NewDataField:
-    def __init__(self, field, data, new_name):
-        self.field = field
-        self.data = data
-        self.new_name = new_name
+    """A class to represent a new data field with modified data and metadata.
 
-    def to_numpy(self, *args, **kwargs):
+    Attributes
+    ----------
+    field : Any
+        The original field.
+    data : Any
+        The data for the new field.
+    new_name : str
+        The new name for the parameter.
+    """
+
+    def __init__(self, field: Any, data: Any, new_name: str):
+        """Initialize a new data field.
+
+        Parameters
+        ----------
+        field : Any
+            The original field.
+        data : Any
+            The data for the new field.
+        new_name : str
+            The new name for the parameter.
+        """
+        self.field: Any = field
+        self.data: Any = data
+        self.new_name: str = new_name
+
+    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
+        """Convert the data to a numpy array.
+
+        Parameters
+        ----------
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The data as a numpy array.
+        """
         return self.data
 
-    def metadata(self, key=None, **kwargs):
+    def metadata(self, key: str = None, **kwargs: Any) -> Any:
+        """Retrieve metadata for the field.
+
+        Parameters
+        ----------
+        key : str, optional
+            The metadata key to retrieve. Defaults to None.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            The metadata value.
+        """
         if key is None:
             return self.field.metadata(**kwargs)
-
         value = self.field.metadata(key, **kwargs)
         if key == "param":
             return self.new_name
         return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the original field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the attribute.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.field, name)
 
 
-def execute(context, input, orog, z="z"):
-    """Convert orography [m] to z (geopotential height)"""
-    result = FieldArray()
+def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.FieldList:
+    """Convert orography [m] to z (geopotential height).
 
-    processed_fields = defaultdict(dict)
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    input : FieldList
+        List of input fields.
+    orog : str
+        Orography parameter.
+    z : str, optional
+        Geopotential height parameter. Defaults to "z".
+
+    Returns
+    -------
+    FieldList
+        List of fields with geopotential height.
+    """
+    result = FieldArray()
+    processed_fields: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
     for f in input:
         key = f.metadata(namespace="mars")

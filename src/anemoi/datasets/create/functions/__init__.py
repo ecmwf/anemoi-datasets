@@ -9,18 +9,50 @@
 
 
 import importlib
+from typing import Any
+from typing import Callable
 
 import entrypoints
 
 
-def assert_is_fieldlist(obj):
+def assert_is_fieldlist(obj: Any) -> None:
+    """Asserts that the given object is an instance of FieldList.
+
+    Parameters
+    ----------
+    obj : Any
+        The object to check.
+
+    Raises
+    ------
+    AssertionError
+        If the object is not an instance of FieldList.
+    """
     from earthkit.data.indexing.fieldlist import FieldList
 
     assert isinstance(obj, FieldList), type(obj)
 
 
-def import_function(name, kind):
+def import_function(name: str, kind: str) -> Callable:
+    """Imports a function based on the given name and kind.
 
+    Parameters
+    ----------
+    name : str
+        The name of the function to import.
+    kind : str
+        The kind of function to import (e.g., 'filters', 'sources').
+
+    Returns
+    -------
+    Callable
+        The imported function.
+
+    Raises
+    ------
+    ValueError
+        If the function cannot be found.
+    """
     from anemoi.transform.filters import filter_registry
     from anemoi.transform.sources import source_registry
 
@@ -45,7 +77,25 @@ def import_function(name, kind):
     if kind == "filters":
         if filter_registry.lookup(name, return_none=True):
 
-            def proc(context, data, *args, **kwargs):
+            def proc(context: Any, data: Any, *args: Any, **kwargs: Any) -> Any:
+                """Processes data using the specified filter.
+
+                Parameters
+                ----------
+                context : Any
+                    The context for the filter.
+                data : Any
+                    The data to be processed.
+                *args : Any
+                    Additional arguments for the filter.
+                **kwargs : Any
+                    Additional keyword arguments for the filter.
+
+                Returns
+                -------
+                Any
+                    The processed data.
+                """
                 filter = filter_registry.create(name, *args, **kwargs)
                 filter.context = context
                 # filter = filter_registry.create(context, name, *args, **kwargs)
@@ -56,7 +106,25 @@ def import_function(name, kind):
     if kind == "sources":
         if source_registry.lookup(name, return_none=True):
 
-            def proc(context, data, *args, **kwargs):
+            def proc(context: Any, data: Any, *args: Any, **kwargs: Any) -> Any:
+                """Processes data using the specified source.
+
+                Parameters
+                ----------
+                context : Any
+                    The context for the source.
+                data : Any
+                    The data to be processed.
+                *args : Any
+                    Additional arguments for the source.
+                **kwargs : Any
+                    Additional keyword arguments for the source.
+
+                Returns
+                -------
+                Any
+                    The processed data.
+                """
                 source = source_registry.create(name, *args, **kwargs)
                 # source = source_registry.create(context, name, *args, **kwargs)
                 return source.forward(data)

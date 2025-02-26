@@ -37,7 +37,20 @@ NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
 
-def mockup_from_source(func):
+def mockup_from_source(func: callable) -> callable:
+    """Decorator to mock the `from_source` function from the `earthkit.data` module.
+
+    Parameters
+    ----------
+    func : function
+        The function to be wrapped.
+
+    Returns
+    -------
+    function
+        The wrapped function.
+    """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("earthkit.data.from_source", _from_source):
@@ -47,13 +60,44 @@ def mockup_from_source(func):
 
 
 class LoadSource:
+    """Class to load data sources and handle mockup data."""
 
-    def filename(self, args, kwargs):
+    def filename(self, args: tuple, kwargs: dict) -> str:
+        """Generate a filename based on the arguments and keyword arguments.
+
+        Parameters
+        ----------
+        args : tuple
+            The positional arguments.
+        kwargs : dict
+            The keyword arguments.
+
+        Returns
+        -------
+        str
+            The generated filename.
+        """
         string = json.dumps([args, kwargs], sort_keys=True, default=str)
         h = hashlib.md5(string.encode("utf8")).hexdigest()
         return h + ".grib"
 
-    def get_data(self, args, kwargs, path):
+    def get_data(self, args: tuple, kwargs: dict, path: str) -> None:
+        """Retrieve data and save it to the specified path.
+
+        Parameters
+        ----------
+        args : tuple
+            The positional arguments.
+        kwargs : dict
+            The keyword arguments.
+        path : str
+            The path to save the data.
+
+        Raises
+        ------
+        ValueError
+            If the test data is missing.
+        """
         upload_path = os.path.realpath(path + ".to_upload")
         ds = original_from_source("mars", *args, **kwargs)
         ds.save(upload_path)
@@ -65,7 +109,21 @@ class LoadSource:
         exit(1)
         raise ValueError("Test data is missing")
 
-    def mars(self, args, kwargs):
+    def mars(self, args: tuple, kwargs: dict) -> object:
+        """Load data from the MARS archive.
+
+        Parameters
+        ----------
+        args : tuple
+            The positional arguments.
+        kwargs : dict
+            The keyword arguments.
+
+        Returns
+        -------
+        object
+            The loaded data source.
+        """
         filename = self.filename(args, kwargs)
         dirname = "."
         path = os.path.join(dirname, filename)
@@ -86,7 +144,23 @@ class LoadSource:
 
         return original_from_source("file", path)
 
-    def __call__(self, name, *args, **kwargs):
+    def __call__(self, name: str, *args: tuple, **kwargs: dict) -> object:
+        """Call the appropriate method based on the data source name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the data source.
+        args : tuple
+            The positional arguments.
+        kwargs : dict
+            The keyword arguments.
+
+        Returns
+        -------
+        object
+            The loaded data source.
+        """
         if name == "mars":
             return self.mars(args, kwargs)
 
@@ -96,7 +170,20 @@ class LoadSource:
 _from_source = LoadSource()
 
 
-def compare_dot_zattrs(a, b, path, errors):
+def compare_dot_zattrs(a: dict, b: dict, path: str, errors: list) -> None:
+    """Compare the attributes of two Zarr datasets.
+
+    Parameters
+    ----------
+    a : dict
+        The attributes of the first dataset.
+    b : dict
+        The attributes of the second dataset.
+    path : str
+        The current path in the attribute hierarchy.
+    errors : list
+        The list to store error messages.
+    """
     if isinstance(a, dict):
         a_keys = list(a.keys())
         b_keys = list(b.keys())
@@ -146,7 +233,21 @@ def compare_dot_zattrs(a, b, path, errors):
         errors.append(msg)
 
 
-def compare_datasets(a, b):
+def compare_datasets(a: object, b: object) -> None:
+    """Compare two datasets.
+
+    Parameters
+    ----------
+    a : object
+        The first dataset.
+    b : object
+        The second dataset.
+
+    Raises
+    ------
+    AssertionError
+        If the datasets do not match.
+    """
     assert a.shape == b.shape, (a.shape, b.shape)
     assert (a.dates == b.dates).all(), (a.dates, b.dates)
     for a_, b_ in zip(a.variables, b.variables):
@@ -180,7 +281,21 @@ def compare_datasets(a, b):
             assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta)
 
 
-def compare_statistics(ds1, ds2):
+def compare_statistics(ds1: object, ds2: object) -> None:
+    """Compare the statistics of two datasets.
+
+    Parameters
+    ----------
+    ds1 : object
+        The first dataset.
+    ds2 : object
+        The second dataset.
+
+    Raises
+    ------
+    AssertionError
+        If the statistics do not match.
+    """
     vars1 = ds1.variables
     vars2 = ds2.variables
     assert len(vars1) == len(vars2)
@@ -194,7 +309,30 @@ def compare_statistics(ds1, ds2):
 
 
 class Comparer:
-    def __init__(self, name, output_path=None, reference_path=None):
+    """Class to compare datasets and their metadata.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset.
+    output_path : str, optional
+        The path to the output dataset.
+    reference_path : str, optional
+        The path to the reference dataset.
+    """
+
+    def __init__(self, name: str, output_path: str = None, reference_path: str = None) -> None:
+        """Initialize the Comparer instance.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset.
+        output_path : str, optional
+            The path to the output dataset.
+        reference_path : str, optional
+            The path to the reference dataset.
+        """
         self.name = name
         self.output_path = output_path or os.path.join(name + ".zarr")
         self.reference_path = reference_path
@@ -207,7 +345,14 @@ class Comparer:
         self.ds_output = open_dataset(self.output_path)
         self.ds_reference = open_dataset(self.reference_path)
 
-    def compare(self):
+    def compare(self) -> None:
+        """Compare the output dataset with the reference dataset.
+
+        Raises
+        ------
+        AssertionError
+            If the datasets or their metadata do not match.
+        """
         errors = []
         compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), "metadata", errors)
         if errors:
@@ -237,7 +382,19 @@ class Comparer:
 @pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
-def test_run(name):
+def test_run(name: str) -> None:
+    """Run the test for the specified dataset.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset.
+
+    Raises
+    ------
+    AssertionError
+        If the comparison fails.
+    """
     config = os.path.join(HERE, name + ".yaml")
     output = os.path.join(HERE, name + ".zarr")
     is_test = False

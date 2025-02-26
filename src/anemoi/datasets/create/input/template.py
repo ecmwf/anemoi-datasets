@@ -10,35 +10,108 @@
 
 import logging
 import re
+from abc import ABC
+from abc import abstractmethod
 from functools import wraps
+from typing import Any
+from typing import Callable
+from typing import List
+
+from .context import Context
 
 LOG = logging.getLogger(__name__)
 
 
-def notify_result(method):
+def notify_result(method: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator to notify the context of the result of the method call.
+
+    Parameters
+    ----------
+    method : Callable[..., Any]
+        The method to wrap.
+
+    Returns
+    -------
+    Callable[..., Any]
+        The wrapped method.
+    """
+
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        result = method(self, *args, **kwargs)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        result: Any = method(self, *args, **kwargs)
         self.context.notify_result(self.action_path, result)
         return result
 
     return wrapper
 
 
-class Substitution:
-    pass
+class Substitution(ABC):
+    """Abstract base class for substitutions in templates."""
+
+    @abstractmethod
+    def resolve(self, context: Context) -> Any:
+        """Resolve the substitution using the given context.
+
+        Parameters
+        ----------
+        context : Context
+            The context to use for resolution.
+
+        Returns
+        -------
+        Any
+            The resolved value.
+        """
+        pass
 
 
 class Reference(Substitution):
-    def __init__(self, context, action_path):
-        self.context = context
-        self.action_path = action_path
+    """A class to represent a reference to another value in the context."""
 
-    def resolve(self, context):
+    def __init__(self, context: Any, action_path: List[str]) -> None:
+        """Initialize a Reference instance.
+
+        Parameters
+        ----------
+        context : Any
+            The context in which the reference exists.
+        action_path : list of str
+            The action path to resolve.
+        """
+        self.context: Any = context
+        self.action_path: List[str] = action_path
+
+    def resolve(self, context: Context) -> Any:
+        """Resolve the reference using the given context.
+
+        Parameters
+        ----------
+        context : Context
+            The context to use for resolution.
+
+        Returns
+        -------
+        Any
+            The resolved value.
+        """
         return context.get_result(self.action_path)
 
 
-def resolve(context, x):
+def resolve(context: Context, x: Any) -> Any:
+    """Recursively resolve substitutions in the given structure using the context.
+
+    Parameters
+    ----------
+    context : Context
+        The context to use for resolution.
+    x : Union[tuple, list, dict, Substitution, Any]
+        The structure to resolve.
+
+    Returns
+    -------
+    Any
+        The resolved structure.
+    """
     if isinstance(x, tuple):
         return tuple([resolve(context, y) for y in x])
 
@@ -54,7 +127,21 @@ def resolve(context, x):
     return x
 
 
-def substitute(context, x):
+def substitute(context: Context, x: Any) -> Any:
+    """Recursively substitute references in the given structure using the context.
+
+    Parameters
+    ----------
+    context : Context
+        The context to use for substitution.
+    x : Union[tuple, list, dict, str, Any]
+        The structure to substitute.
+
+    Returns
+    -------
+    Any
+        The substituted structure.
+    """
     if isinstance(x, tuple):
         return tuple([substitute(context, y) for y in x])
 
