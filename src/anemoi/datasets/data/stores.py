@@ -206,7 +206,7 @@ class Zarr(Dataset):
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
         self.missing = set()
-        self._fake_dates = ("fake_hindcasts" in self.z.attrs) or ("fake_forecasts" in self.z.attrs)
+        self._has_fake_dates = ("fake_hindcasts" in self.z.attrs) or ("fake_forecasts" in self.z.attrs)
 
     @classmethod
     def from_name(cls, name):
@@ -259,7 +259,13 @@ class Zarr(Dataset):
     @cached_property
     def dates(self):
 
-        if self._fake_dates:
+        # if  "fake_hindcasts" in self.z.attrs:
+        #     return self._fake_hindcasts()
+
+        # if  "fake_forecasts" in self.z.attrs:
+        #     return self._fake_forecasts()
+
+        if self._has_fake_dates:
             raise NotImplementedError("Cannot read dates from a dataset with fake dates")
 
         return self.z.dates[:]  # Convert to numpy
@@ -397,17 +403,29 @@ class Zarr(Dataset):
     def collect_input_sources(self, collected):
         pass
 
-    @cached_property
-    def fake_hindcasts(self):
-
+    def _fake_dates(self, key):
         from earthkit.data.utils.dates import to_datetime
 
-        fake_hindcasts = sorted(self.z.attrs.get("fake_hindcasts", {}).items())
+        fake_hindcasts = sorted(self.z.attrs.get(key, {}).items())
 
         def __(x):
             return tuple(to_datetime(_) if isinstance(_, str) else _ for _ in x)
 
         return {to_datetime(k): __(v) for k, v in fake_hindcasts}
+
+    @cached_property
+    def fake_hindcasts(self):
+        return self._fake_dates("fake_hindcasts")
+
+    @cached_property
+    def fake_forecasts(self):
+        return self._fake_dates("fake_forecasts")
+
+    def _fake_hindcasts(self):
+        return sorted(self._fake_dates("fake_hindcasts").values())
+
+    def _fake_forecasts(self):
+        return sorted(self._fake_dates("fake_forecasts").values())
 
 
 class ZarrWithMissingDates(Zarr):

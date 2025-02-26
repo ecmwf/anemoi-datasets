@@ -112,6 +112,9 @@ class DatesProvider:
         # Give an opportunity to patch the result (e.g. change the valid_time)
         return result
 
+    def check_fake_support(self, action):
+        pass
+
     def check_fake_support_function(self, function, fake_function):
         return function
 
