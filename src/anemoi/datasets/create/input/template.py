@@ -154,8 +154,8 @@ def substitute(context: Context, x: Any) -> Any:
     if not isinstance(x, str):
         return x
 
-    if re.match(r"^\${[\.\w]+}$", x):
-        path: List[str] = x[2:-1].split(".")
+    if re.match(r"^\${[\.\w\-]+}$", x):
+        path = x[2:-1].split(".")
         context.will_need_reference(path)
         return Reference(context, path)
 
