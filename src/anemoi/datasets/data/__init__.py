@@ -69,7 +69,7 @@ def _convert(x: Any) -> Any:
     return x
 
 
-def open_dataset(*args: Any, options: Optional[Union[bool, Dict]], **kwargs: Any) -> "Dataset":
+def open_dataset(*args: Any, options: Optional[Union[bool, Dict]] = None, **kwargs: Any) -> "Dataset":
     """Open a dataset.
 
     Parameters
