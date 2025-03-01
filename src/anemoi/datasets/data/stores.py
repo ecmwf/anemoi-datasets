@@ -64,15 +64,27 @@ class ReadOnlyStore(zarr.storage.BaseStore):
 class HTTPStore(ReadOnlyStore):
     """A read-only store for HTTP(S) resources."""
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, timeout: int = 120, use_sessions: bool = False) -> None:
         """Initialize the HTTPStore with a URL."""
+        import requests
+
+        from ..utils.robust import robust
+
         self.url = url
+        self.timeout = timeout
+
+        if use_sessions:
+            self.session = requests.Session()
+        else:
+            self.session = requests
+
+        self.get = robust(self.session.get)
+        self.head = robust(self.session.head)
 
     def __getitem__(self, key: str) -> bytes:
         """Retrieve an item from the store."""
-        import requests
 
-        r = requests.get(self.url + "/" + key)
+        r = self.get(self.url + "/" + key, allow_redirects=True, timeout=self.timeout)
 
         if r.status_code == 404:
             if get_option("debug_zarr_loading"):
@@ -84,11 +96,12 @@ class HTTPStore(ReadOnlyStore):
 
     def __contains__(self, key: str) -> bool:
         """Check if the store contains a key."""
-        import requests
 
-        r = requests.head(self.url + "/" + key)
+        r = self.head(self.url + "/" + key, allow_redirects=True, timeout=self.timeout)
+
         if r.status_code == 200:
             return True
+
         if r.status_code == 404:
             return False
 
