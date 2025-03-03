@@ -517,6 +517,8 @@ class ZarrWithMissingDates(Zarr):
                     self._report_missing(list(common)[0])
                 return self.data[n]
 
+            raise TypeError(f"Unsupported index {n} {type(n)}, {first} {type(first)}")
+
         raise TypeError(f"Unsupported index {n} {type(n)}")
 
     def _report_missing(self, n: int) -> None:

@@ -871,6 +871,8 @@ class Dataset(ABC, Sized):
         else:
             date_index = date
 
+        date_index = int(date_index)  # because np.int64 is not instance of int
+
         if isinstance(variable, int):
             variable_index = variable
         else:
