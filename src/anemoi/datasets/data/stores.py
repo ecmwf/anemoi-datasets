@@ -26,6 +26,8 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets import Zarr2AndZarr3
+
 from . import MissingDateError
 from .dataset import Dataset
 from .dataset import FullIndex
@@ -41,24 +43,7 @@ from .misc import load_config
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyStore(zarr.storage.BaseStore):
-    """A base class for read-only stores."""
-
-    def __delitem__(self, key: str) -> None:
-        """Prevent deletion of items."""
-        raise NotImplementedError()
-
-    def __setitem__(self, key: str, value: bytes) -> None:
-        """Prevent setting of items."""
-        raise NotImplementedError()
-
-    def __len__(self) -> int:
-        """Return the number of items in the store."""
-        raise NotImplementedError()
-
-    def __iter__(self) -> iter:
-        """Return an iterator over the store."""
-        raise NotImplementedError()
+ReadOnlyStore = Zarr2AndZarr3.get_read_only_store_class()
 
 
 class HTTPStore(ReadOnlyStore):
@@ -154,7 +139,7 @@ class PlanetaryComputerStore(ReadOnlyStore):
 class DebugStore(ReadOnlyStore):
     """A store to debug the zarr loading."""
 
-    def __init__(self, store: ReadOnlyStore) -> None:
+    def __init__(self, store: Any) -> None:
         """Initialize the DebugStore with another store."""
         assert not isinstance(store, DebugStore)
         self.store = store
@@ -180,7 +165,7 @@ class DebugStore(ReadOnlyStore):
         return key in self.store
 
 
-def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
+def name_to_zarr_store(path_or_url: str) -> Any:
     """Convert a path or URL to a zarr store."""
     store = path_or_url
 
@@ -202,7 +187,7 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
     return store
 
 
-def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hierarchy.Group:
+def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> Any:
     """Open a zarr store from a path."""
     try:
         store = name_to_zarr_store(path)
@@ -222,18 +207,18 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
         if cache is not None:
             store = zarr.LRUStoreCache(store, max_size=cache)
 
-        return zarr.convenience.open(store, "r")
-    except zarr.errors.PathNotFoundError:
+        return Zarr2AndZarr3.zarr_open(store, "r")
+    except Zarr2AndZarr3.get_not_found_exception():
         if not dont_fail:
-            raise zarr.errors.PathNotFoundError(path)
+            raise FileNotFoundError(f"Zarr store not found: {path}")
 
 
 class Zarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
+    def __init__(self, path: Union[str, Any]) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
-        if isinstance(path, zarr.hierarchy.Group):
+        if Zarr2AndZarr3.is_zarr_group(path):
             self.was_zarr = True
             self.path = str(id(path))
             self.z = path
@@ -243,7 +228,7 @@ class Zarr(Dataset):
             self.z = open_zarr(self.path)
 
         # This seems to speed up the reading of the data a lot
-        self.data = self.z.data
+        self.data = self.z["data"]
         self._missing = set()
 
     @property
@@ -294,7 +279,7 @@ class Zarr(Dataset):
     @cached_property
     def chunks(self) -> TupleIndex:
         """Return the chunks of the dataset."""
-        return self.z.data.chunks
+        return self.data.chunks
 
     @cached_property
     def shape(self) -> Shape:
@@ -304,39 +289,45 @@ class Zarr(Dataset):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.z.data.dtype
+        return self.data.dtype
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates of the dataset."""
-        return self.z.dates[:]  # Convert to numpy
+        dates = self.z["dates"][:]
+        if not dates.dtype == np.dtype("datetime64[s]"):
+            # The datasets created with zarr3 will have the dates as int64 as long
+            # as zarr3 does not support datetime64
+            LOG.warning("Converting dates to 'datetime64[s]'")
+            dates = dates.astype("datetime64[s]")
+        return dates
 
     @property
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the dataset."""
         try:
-            return self.z.latitudes[:]
+            return self.z["latitudes"][:]
         except AttributeError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.z.latitude[:]
+            return self.z["latitude"][:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the dataset."""
         try:
-            return self.z.longitudes[:]
+            return self.z["longitudes"][:]
         except AttributeError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.z.longitude[:]
+            return self.z["longitude"][:]
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         return dict(
-            mean=self.z.mean[:],
-            stdev=self.z.stdev[:],
-            maximum=self.z.maximum[:],
-            minimum=self.z.minimum[:],
+            mean=self.z["mean"][:],
+            stdev=self.z["stdev"][:],
+            maximum=self.z["maximum"][:],
+            minimum=self.z["minimum"][:],
         )
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
@@ -465,7 +456,7 @@ class Zarr(Dataset):
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
+    def __init__(self, path: Union[str, Any]) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(path)
 
@@ -564,7 +555,7 @@ def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
                     LOG.info("Opening `%s` as `%s`", name, full)
                     QUIET.add(name)
                 return full
-        except zarr.errors.PathNotFoundError:
+        except Zarr2AndZarr3.get_not_found_exception():
             pass
 
     if fail:
