@@ -8,8 +8,34 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import Dict
+from typing import List
+
+import earthkit.data as ekd
+
 from .xarray import load_many
 
 
-def execute(context, dates, url, *args, **kwargs):
+def execute(context: Dict[str, Any], dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Execute the data loading process from an OpenDAP source.
+
+    Parameters
+    ----------
+    context : dict
+        The context in which the function is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    url : str
+        The URL of the OpenDAP source.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    xarray.Dataset
+        The loaded dataset.
+    """
     return load_many("🌐", context, dates, url, *args, **kwargs)

@@ -9,6 +9,10 @@
 
 import logging
 import textwrap
+from typing import Any
+from typing import List
+from typing import Tuple
+from typing import Union
 
 from anemoi.utils.humanize import plural
 
@@ -19,18 +23,37 @@ LOG = logging.getLogger(__name__)
 
 
 class Context:
-    def __init__(self):
+    """Class to handle the build context in the dataset creation process."""
+
+    def __init__(self) -> None:
+        """Initializes a Context instance."""
         # used_references is a set of reference paths that will be needed
         self.used_references = set()
         # results is a dictionary of reference path -> obj
         self.results = {}
 
-    def will_need_reference(self, key):
+    def will_need_reference(self, key: Union[List, Tuple]) -> None:
+        """Marks a reference as needed.
+
+        Parameters
+        ----------
+        key : Union[List, Tuple]
+            The reference key.
+        """
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         self.used_references.add(key)
 
-    def notify_result(self, key, result):
+    def notify_result(self, key: Union[List, Tuple], result: Any) -> None:
+        """Notifies that a result is available for a reference.
+
+        Parameters
+        ----------
+        key : Union[List, Tuple]
+            The reference key.
+        result : Any
+            The result object.
+        """
         trace(
             "🎯",
             step(key),
@@ -45,7 +68,19 @@ class Context:
                 raise ValueError(f"Duplicate result {key}")
             self.results[key] = result
 
-    def get_result(self, key):
+    def get_result(self, key: Union[List, Tuple]) -> Any:
+        """Retrieves the result for a given reference.
+
+        Parameters
+        ----------
+        key : Union[List, Tuple]
+            The reference key.
+
+        Returns
+        -------
+        Any
+            The result for the given reference.
+        """
         assert isinstance(key, (list, tuple)), key
         key = tuple(key)
         if key in self.results:
