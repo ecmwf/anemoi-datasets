@@ -63,9 +63,8 @@ optional-dependencies.all = [
   "anemoi-datasets[create,remote,xarray,comparelam]",
 ]
 
-optional-dependencies.compareLAM = [
+optional-dependencies.comparelam = [
   "prettytable",
-  "print-color",
   "termcolor",
 ]
 

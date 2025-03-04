@@ -7,15 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import logging
 import math
 import os
 
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 import numpy as np
-from prettytable import PrettyTable
-from print_color import print
 from termcolor import colored  # For coloring text in the terminal
 
 from anemoi.datasets import open_dataset
@@ -23,6 +20,8 @@ from anemoi.datasets import open_dataset
 from . import Command
 
 RADIUS_EARTH_KM = 6371.0  # Earth's radius in kilometers
+
+LOG = logging.getLogger(__name__)
 
 
 class HTML_Writer:
@@ -123,10 +122,13 @@ class HTML_Writer:
         with open(save_path, "w") as f:
             f.write(self.html_content)
 
-        print(f"\nHTML table saved to: {save_path}")
+        LOG.info(f"\nHTML table saved to: {save_path}")
 
 
 def plot_coordinates_on_map(lats, lons):
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+
     """
     Plots the given latitude and longitude coordinates on a map using Cartopy and Matplotlib.
 
@@ -169,9 +171,7 @@ def plot_coordinates_on_map(lats, lons):
 
 
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    Calculate the great-circle distance between two points on the Earth's surface using the Haversine formula.
-    """
+    """Calculate the great-circle distance between two points on the Earth's surface using the Haversine formula."""
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
@@ -180,8 +180,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 def rectangle_area_km2(lat1, lon1, lat2, lon2):
-    """
-    Calculate the area of a rectangle given the coordinates of the top left and bottom right corners in
+    """Calculate the area of a rectangle given the coordinates of the top left and bottom right corners in
     latitude and longitude.
 
     Parameters:
@@ -223,31 +222,32 @@ class CompareLAM(Command):
         command_parser.add_argument("dataset1", help="Path of the global dataset or the largest dataset.")
         command_parser.add_argument("dataset2", help="Path of the LAM dataset or the smallest dataset.")
         command_parser.add_argument(
-            "-nd", "--num_dates", type=int, default=10, help="Number of datapoints (in time) to compare over."
+            "-D", "--number-of-dates", type=int, default=10, help="Number of datapoints (in time) to compare over."
         )
-        command_parser.add_argument("-o", "--outpath", default="./", help="Path to output folder.")
-        command_parser.add_argument("-rd", "--round_ndigits", type=int, default=4, help="Number of digits to keep.")
+        command_parser.add_argument("-O", "--outpath", default="./", help="Path to output folder.")
+        command_parser.add_argument("-R", "--number-of-digits", type=int, default=4, help="Number of digits to keep.")
         command_parser.add_argument(
-            "--selected_vars",
+            "--selected-vars",
             nargs="+",
             default=["10u", "10v", "2d", "2t"],
             help="List of selected variables to use in the script.",
         )
         command_parser.add_argument(
-            "--save_plots", action="store_true", help="Toggle to save a picture of the data grid."
+            "--save-plots", action="store_true", help="Toggle to save a picture of the data grid."
         )
 
     def run(self, args):
+        from prettytable import PrettyTable
 
         # Unpack args
+        date_idx = args.number_of_dates
+        round_ndigits = args.number_of_digits
+        selected_vars = args.selected_vars
         global_name = args.dataset1
         lam_name = args.dataset2
-        date_idx = args.num_dates
-        round_ndigits = args.round_ndigits
         date_idx = 10  # "all" or specific index to stop at
         name = f"{global_name}-{lam_name}_{date_idx}"
         save_path = os.path.join(args.outpath, f"comparison_table_{name}.html")
-        selected_vars = args.selected_vars
 
         # Open LAM dataset
         lam_dataset = open_dataset(lam_name, select=selected_vars)
@@ -270,9 +270,9 @@ class CompareLAM(Command):
             _ = plot_coordinates_on_map(lam_dataset.latitudes, lam_dataset.longitudes)
             plt.savefig(os.path.join(args.outpath, "lam_dataset.png"))
 
-        print(f"Dataset {lam_name}, has {lam_num_grid_points} grid points. \n", color="yellow")
-        print("LAM (north, west, south, east): ", l_coords)
-        print(f"Point every: {math.sqrt(lam_area / lam_num_grid_points)} km")
+        LOG.info(f"Dataset {lam_name}, has {lam_num_grid_points} grid points. \n")
+        LOG.info("LAM (north, west, south, east): ", l_coords)
+        LOG.info(f"Point every: {math.sqrt(lam_area / lam_num_grid_points)} km")
 
         # Open global dataset and cut it
         lam_start = lam_dataset.dates[0]
@@ -297,15 +297,15 @@ class CompareLAM(Command):
             _ = plot_coordinates_on_map(global_dataset.latitudes, global_dataset.longitudes)
             plt.savefig(os.path.join(args.outpath, "global_dataset.png"))
 
-        print(f"Dataset {global_name}, has {global_num_grid_points} grid points. \n", color="yellow")
-        print("Global-lam cut (north, west, south, east): ", g_coords)
-        print(f"Point every: {math.sqrt(global_area / global_num_grid_points)} km")
+        LOG.info(f"Dataset {global_name}, has {global_num_grid_points} grid points. \n")
+        LOG.info("Global-lam cut (north, west, south, east): ", g_coords)
+        LOG.info(f"Point every: {math.sqrt(global_area / global_num_grid_points)} km")
 
         # Check variable ordering
         same_order = check_order(global_vars, lam_vars)
-        print(f"Lam dataset has the same order of variables as the global dataset: {same_order}", color="blue")
+        LOG.info(f"Lam dataset has the same order of variables as the global dataset: {same_order}")
 
-        print("\nComparing statistics..", color="yellow")
+        LOG.info("\nComparing statistics..")
         table = PrettyTable()
         table.field_names = [
             "Variable",
