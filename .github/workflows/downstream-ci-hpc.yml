@@ -42,6 +42,12 @@ jobs:
     with:
       anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
       codecov_upload: true
+      # Only run on fedora
+      skip_matrix_jobs: |
+        gnu@debian-11
+        gnu@rocky-8.6
+        clang@rocky-8.6
+        gnu@ubuntu-22.04
     secrets: inherit
 
   # # Build downstream packages on HPC
