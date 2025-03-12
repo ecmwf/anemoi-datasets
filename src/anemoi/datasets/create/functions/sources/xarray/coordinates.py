@@ -187,7 +187,7 @@ class Coordinate:
         values = self.variable.values
 
         # Check if dimension is 0D
-        if not isinstance(values,(list, np.ndarray)):
+        if not isinstance(values, (list, np.ndarray)):
             values = [values]
 
         # Assume the array is sorted
@@ -220,7 +220,7 @@ class Coordinate:
         values = self.variable.values
 
         # Check if dimension is 0D
-        if not isinstance(values,(list, np.ndarray)):
+        if not isinstance(values, (list, np.ndarray)):
             values = [values]
 
         # Assume the array is sorted
