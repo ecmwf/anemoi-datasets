@@ -44,7 +44,7 @@ def to_list(x: Union[list, tuple, Any]) -> list:
 
 
 def _date_to_datetime(
-    d: Union[datetime.datetime, list, tuple, str]
+    d: Union[datetime.datetime, list, tuple, str],
 ) -> Union[datetime.datetime, List[datetime.datetime]]:
     """Converts the input date(s) to datetime objects.
 
