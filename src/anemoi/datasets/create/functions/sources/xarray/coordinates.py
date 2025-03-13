@@ -186,6 +186,10 @@ class Coordinate:
         """
         values = self.variable.values
 
+        # Check if dimension is 0D
+        if not isinstance(values, (list, np.ndarray)):
+            values = [values]
+
         # Assume the array is sorted
         index = np.searchsorted(values, value)
 
@@ -214,6 +218,10 @@ class Coordinate:
             The indices of the values in the coordinate, or None if not found.
         """
         values = self.variable.values
+
+        # Check if dimension is 0D
+        if not isinstance(values, (list, np.ndarray)):
+            values = [values]
 
         # Assume the array is sorted
 
