@@ -21,9 +21,10 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
-import zarr
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
+
+from anemoi.datasets import Zarr2AndZarr3
 
 if TYPE_CHECKING:
     from .dataset import Dataset
@@ -320,7 +321,7 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     if isinstance(a, Dataset):
         return a.mutate()
 
-    if isinstance(a, zarr.hierarchy.Group):
+    if Zarr2AndZarr3.is_zarr_group(a):
         return Zarr(a).mutate()
 
     if isinstance(a, str):
