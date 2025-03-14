@@ -14,8 +14,8 @@ from typing import List
 
 import earthkit.data as ekd
 import numpy as np
-from anemoi.transform.field import new_field_from_numpy
-from anemoi.transform.field import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.meteo import thermo
 
 from .single_level_specific_humidity_to_relative_humidity import AutoDict

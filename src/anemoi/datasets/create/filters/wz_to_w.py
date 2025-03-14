@@ -11,8 +11,8 @@ from collections import defaultdict
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.field import new_field_from_numpy
-from anemoi.transform.field import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_fieldlist_from_list
 
 
 def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> ekd.FieldList:

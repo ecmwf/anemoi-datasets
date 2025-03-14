@@ -15,8 +15,8 @@ from typing import Optional
 
 import earthkit.data as ekd
 import tqdm
-from anemoi.transform.field import new_field_from_numpy
-from anemoi.transform.field import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.humanize import plural
 from earthkit.geo.rotate import rotate_vector
 

@@ -13,8 +13,8 @@ from typing import Any
 from typing import Dict
 
 import earthkit.data as ekd
-from anemoi.transform.field import new_field_from_numpy
-from anemoi.transform.field import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.meteo import thermo
 
 
