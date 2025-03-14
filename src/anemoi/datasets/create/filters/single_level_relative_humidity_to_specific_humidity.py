@@ -14,11 +14,11 @@ from typing import List
 
 import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
 from .single_level_specific_humidity_to_relative_humidity import AutoDict
-from .single_level_specific_humidity_to_relative_humidity import NewDataField
 from .single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
 
 
@@ -156,6 +156,6 @@ def execute(
         p_sl = pressure_at_height_level(height, q_ml, t_ml, sp_sl, np.array(kwargs["A"]), np.array(kwargs["B"]))
         q_sl = thermo.specific_humidity_from_relative_humidity(t_sl, rh_sl, p_sl)
 
-        result.append(NewDataField(values["sfc"][rh], q_sl, new_name))
+        result.append(new_field_from_numpy(values["sfc"][rh], q_sl, param=new_name))
 
     return result

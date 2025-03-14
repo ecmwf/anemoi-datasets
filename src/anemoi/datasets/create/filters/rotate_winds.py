@@ -15,68 +15,10 @@ from typing import Optional
 
 import earthkit.data as ekd
 import tqdm
+from anemoi.transform.field import new_field_from_numpy
 from anemoi.utils.humanize import plural
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import rotate_vector
-
-
-class NewDataField:
-    """A class to represent a new data field with rotated wind components."""
-
-    def __init__(self, field: Any, data: Any) -> None:
-        """Initialize a NewDataField instance.
-
-        Parameters
-        ----------
-        field : Any
-            The original field.
-        data : Any
-            The rotated wind component data.
-        """
-        self.field = field
-        self.data = data
-
-    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
-
-        Parameters
-        ----------
-        *args : Any
-            Additional arguments.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        Any
-            The data as a numpy array.
-        """
-        return self.data
-
-    def __getattr__(self, name: str) -> Any:
-        """Get an attribute from the original field.
-
-        Parameters
-        ----------
-        name : str
-            The name of the attribute.
-
-        Returns
-        -------
-        Any
-            The attribute value.
-        """
-        return getattr(self.field, name)
-
-    def __repr__(self) -> str:
-        """Get the string representation of the original field.
-
-        Returns
-        -------
-        str
-            The string representation of the original field.
-        """
-        return repr(self.field)
 
 
 def execute(
@@ -154,7 +96,7 @@ def execute(
             target_projection,
         )
 
-        result.append(NewDataField(x, x_new))
-        result.append(NewDataField(y, y_new))
+        result.append(new_field_from_numpy(x, x_new))
+        result.append(new_field_from_numpy(y, y_new))
 
     return result

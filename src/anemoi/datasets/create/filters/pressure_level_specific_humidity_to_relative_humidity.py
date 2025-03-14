@@ -13,10 +13,9 @@ from typing import Any
 from typing import Dict
 
 import earthkit.data as ekd
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
-
-from .single_level_specific_humidity_to_relative_humidity import NewDataField
 
 
 def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -> FieldArray:
@@ -74,6 +73,6 @@ def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -
 
         # actual conversion from rh --> q_v
         rh_pl = thermo.relative_humidity_from_specific_humidity(t_pl, q_pl, pressure)
-        result.append(NewDataField(values[q], rh_pl, rh))
+        result.append(new_field_from_numpy(values[q], rh_pl, param=rh))
 
     return result

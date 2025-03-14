@@ -11,12 +11,12 @@
 from typing import Any
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Tuple
 from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import constants
 from earthkit.meteo import thermo
@@ -42,82 +42,6 @@ class AutoDict(dict):
         """
         value = self[key] = type(self)()
         return value
-
-
-class NewDataField:
-    """A class to represent a new data field with modified metadata."""
-
-    def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """Initialize the NewDataField.
-
-        Parameters
-        ----------
-        field : Any
-            The original field.
-        data : Any
-            The data for the new field.
-        new_name : str
-            The new name for the parameter.
-        """
-        self.field = field
-        self.data = data
-        self.new_name = new_name
-
-    def to_numpy(self, *args: Any, **kwargs: Any) -> np.ndarray:
-        """Convert the data to a numpy array.
-
-        Parameters
-        ----------
-        *args : Any
-            Additional arguments.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        np.ndarray
-            The data as a numpy array.
-        """
-        return self.data
-
-    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """Get the metadata for the field.
-
-        Parameters
-        ----------
-        key : str, optional
-            The metadata key to retrieve. If None, all metadata is returned.
-
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        Any
-            The metadata value.
-        """
-        if key is None:
-            return self.field.metadata(**kwargs)
-
-        value = self.field.metadata(key, **kwargs)
-        if key == "param":
-            return self.new_name
-        return value
-
-    def __getattr__(self, name: str) -> Any:
-        """Delegate attribute access to the original field.
-
-        Parameters
-        ----------
-        name : str
-            The attribute name.
-
-        Returns
-        -------
-        Any
-            The attribute value.
-        """
-        return getattr(self.field, name)
 
 
 def model_level_pressure(
@@ -448,7 +372,7 @@ def execute(
         td_sl = thermo.dewpoint_from_specific_humidity(q=q_sl, p=p_sl)
         rh_sl = thermo.relative_humidity_from_dewpoint(t=t_sl, td=td_sl)
 
-        result.append(NewDataField(values["sfc"][q], rh_sl, new_name))
+        result.append(new_field_from_numpy(values["sfc"][q], rh_sl, param=new_name))
 
     return result
 

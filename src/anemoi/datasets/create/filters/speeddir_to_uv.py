@@ -11,97 +11,12 @@
 from collections import defaultdict
 from typing import Any
 from typing import List
-from typing import Optional
 
 import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo.wind.array import polar_to_xy
-
-
-class NewDataField:
-    """A class to represent a new data field with converted wind component data.
-
-    Attributes
-    ----------
-    field : Any
-        The original field.
-    data : Any
-        The converted wind component data.
-    new_name : str
-        The new name for the field.
-    """
-
-    def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """Initialize a NewDataField instance.
-
-        Parameters
-        ----------
-        field : Any
-            The original field.
-        data : Any
-            The converted wind component data.
-        new_name : str
-            The new name for the field.
-        """
-        self.field = field
-        self.data = data
-        self.new_name = new_name
-
-    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
-
-        Parameters
-        ----------
-        *args : Any
-            Additional positional arguments.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        Any
-            The data as a numpy array.
-        """
-        return self.data
-
-    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """Get metadata from the original field, with the option to rename the parameter.
-
-        Parameters
-        ----------
-        key : Optional[str], optional
-            The metadata key.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        Any
-            The metadata value.
-        """
-        if key is None:
-            return self.field.metadata(**kwargs)
-
-        value = self.field.metadata(key, **kwargs)
-        if key == "param":
-            return self.new_name
-        return value
-
-    def __getattr__(self, name: str) -> Any:
-        """Get an attribute from the original field.
-
-        Parameters
-        ----------
-        name : str
-            The name of the attribute.
-
-        Returns
-        -------
-        Any
-            The attribute value.
-        """
-        return getattr(self.field, name)
 
 
 def execute(
@@ -171,7 +86,7 @@ def execute(
 
         u, v = polar_to_xy(magnitude.to_numpy(flatten=True), direction.to_numpy(flatten=True))
 
-        result.append(NewDataField(magnitude, u, u_component))
-        result.append(NewDataField(direction, v, v_component))
+        result.append(new_field_from_numpy(magnitude, u, param=u_component))
+        result.append(new_field_from_numpy(direction, v, param=v_component))
 
     return result

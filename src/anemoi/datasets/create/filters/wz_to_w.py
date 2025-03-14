@@ -9,93 +9,10 @@
 
 from collections import defaultdict
 from typing import Any
-from typing import Optional
 
 import earthkit.data as ekd
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
-
-
-class NewDataField:
-    """A class to represent a new data field with modified data and metadata.
-
-    Attributes
-    ----------
-    field : Any
-        The original field.
-    data : Any
-        The data for the new field.
-    new_name : str
-        The new name for the field.
-    """
-
-    def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """Parameters
-        -------------
-        field : Any
-            The original field.
-        data : Any
-            The data for the new field.
-        new_name : str
-            The new name for the field.
-        """
-        self.field = field
-        self.data = data
-        self.new_name = new_name
-
-    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
-
-        Parameters
-        ----------
-        *args : Any
-            Additional arguments for conversion.
-        **kwargs : Any
-            Additional keyword arguments for conversion.
-
-        Returns
-        -------
-        Any
-            The data as a numpy array.
-        """
-        return self.data
-
-    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """Retrieve metadata for the field.
-
-        Parameters
-        ----------
-        key : Optional[str], optional
-            The metadata key to retrieve. If None, all metadata is returned.
-        **kwargs : Any
-            Additional arguments for metadata retrieval.
-
-        Returns
-        -------
-        Any
-            The metadata value.
-        """
-        if key is None:
-            return self.field.metadata(**kwargs)
-
-        value = self.field.metadata(key, **kwargs)
-        if key == "param":
-            return self.new_name
-        return value
-
-    def __getattr__(self, name: str) -> Any:
-        """Retrieve an attribute from the 'field' attribute of the instance.
-
-        Parameters
-        ----------
-        name : str
-            The attribute name.
-
-        Returns
-        -------
-        Any
-            The attribute value.
-        """
-        return getattr(self.field, name)
 
 
 def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> ekd.FieldList:
@@ -149,7 +66,7 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
         pressure = keys[4][1] * 100  # TODO: REMOVE HARDCODED INDICES
 
         w_pl = wz_to_w(wz_pl, t_pl, pressure)
-        result.append(NewDataField(values[wz], w_pl, w))
+        result.append(new_field_from_numpy(values[wz], w_pl, param=w))
 
     return result
 

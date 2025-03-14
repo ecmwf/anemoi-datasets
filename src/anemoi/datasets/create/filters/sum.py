@@ -12,96 +12,11 @@ from typing import Any
 from typing import Dict
 from typing import Hashable
 from typing import List
-from typing import Optional
 from typing import Tuple
 
 import earthkit.data as ekd
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
-
-
-class NewDataField:
-    """Represents a new data field with modified data and metadata.
-
-    Attributes
-    ----------
-    field : Any
-        The original field.
-    data : Any
-        The data for the new field.
-    new_name : str
-        The new name for the field.
-    """
-
-    def __init__(self, field: Any, data: Any, new_name: str) -> None:
-        """Initialize a NewDataField instance.
-
-        Parameters
-        ----------
-        field : Any
-            The original field.
-        data : Any
-            The data for the new field.
-        new_name : str
-            The new name for the field.
-        """
-        self.field = field
-        self.data = data
-        self.new_name = new_name
-
-    def to_numpy(self, *args: Any, **kwargs: Any) -> Any:
-        """Convert the data to a numpy array.
-
-        Parameters
-        ----------
-        *args : Any
-            Additional positional arguments.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        Any
-            The data as a numpy array.
-        """
-        return self.data
-
-    def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
-        """Retrieve metadata for the field.
-
-        Parameters
-        ----------
-        key : Optional[str], optional
-            The metadata key to retrieve. If None, all metadata is returned.
-        **kwargs : Any
-            Additional arguments for metadata retrieval.
-
-        Returns
-        -------
-        Any
-            The metadata value.
-        """
-        if key is None:
-            return self.field.metadata(**kwargs)
-
-        value = self.field.metadata(key, **kwargs)
-        if key == "param":
-            return self.new_name
-        return value
-
-    def __getattr__(self, name: str) -> Any:
-        """Delegate attribute access to the original field.
-
-        Parameters
-        ----------
-        name : str
-            The attribute name.
-
-        Returns
-        -------
-        Any
-            The attribute value.
-        """
-        return getattr(self.field, name)
 
 
 def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) -> ekd.FieldList:
@@ -145,6 +60,6 @@ def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) 
                 s = c
             else:
                 s += c
-        result.append(NewDataField(values[list(values.keys())[0]], s, output))
+        result.append(new_field_from_numpy(values[list(values.keys())[0]], s, param=output))
 
     return result
