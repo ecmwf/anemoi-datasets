@@ -11,6 +11,7 @@
 from typing import Any
 
 import earthkit.data as ekd
+from anemoi.transform.fields import new_empty_fieldlist
 
 
 def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
@@ -30,4 +31,4 @@ def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
     Any
         An empty result.
     """
-    return ekd.from_source("empty")
+    return new_empty_fieldlist()

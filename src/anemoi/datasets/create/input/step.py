@@ -161,15 +161,25 @@ def step_factory(config: Dict[str, Any], context: ActionContext, action_path: Li
     if isinstance(config[key], str):
         args, kwargs = [config[key]], {}
 
-    if cls is None:
-        from ..filters import create_filter
+    if cls is not None:
+        return cls(context, action_path, previous_step, *args, **kwargs)
 
-        filter = create_filter(None, config)
+    # Try filters from datasets filter registry
+    from ..filters import create_filter as create_datasets_filter
+    from ..filters import filter_registry as datasets_filter_registry
+
+    if datasets_filter_registry.is_registered(key):
+        filter = create_datasets_filter(None, config)
         return FunctionStepAction(context, action_path + [key], previous_step, key, filter)
 
-        # if not is_function(key, "filters"):
-        #     raise ValueError(f"Unknown step {key}")
-        # cls = FunctionStepAction
-        # args = [key] + args
+    # Use filters from transform registry
+    from anemoi.transform.filters import filter_registry as transform_filter_registry
 
-    return cls(context, action_path, previous_step, *args, **kwargs)
+    if transform_filter_registry.is_registered(key):
+        from ..filters.transform import TransformFilter
+
+        return FunctionStepAction(
+            context, action_path + [key], previous_step, key, TransformFilter(context, key, config)
+        )
+
+    raise ValueError(f"Unknown step action `{key}`")
