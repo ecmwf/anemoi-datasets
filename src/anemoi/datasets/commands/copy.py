@@ -234,6 +234,17 @@ class ZarrCopier:
 
         self.data_chunks = self.parse_rechunking(self.rechunking, source_data)
 
+        print('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
+        print('Copying data with no compression')
+        print('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
+        print('Copying data with no compression')
+        print('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
+        print('Copying data with no compression')
+        print('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
+        print('Copying data with no compression')
+        print('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
+        print('Copying data with no compression')
+        print('❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌')
         target_data = (
             target["data"]
             if "data" in target
@@ -243,6 +254,7 @@ class ZarrCopier:
                 chunks=self.data_chunks,
                 dtype=source_data.dtype,
                 fill_value=source_data.fill_value,
+                compressor=None,  # No compression
             )
         )
 
