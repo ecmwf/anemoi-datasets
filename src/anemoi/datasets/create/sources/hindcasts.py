@@ -15,7 +15,7 @@ from typing import Union
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.create.functions.sources.mars import mars
+from anemoi.datasets.create.sources.mars import mars
 
 LOGGER = logging.getLogger(__name__)
 

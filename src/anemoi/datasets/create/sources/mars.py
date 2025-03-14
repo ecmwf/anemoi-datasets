@@ -22,6 +22,9 @@ from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from ..source import Source
+from . import source_registry
+
 DEBUG = False
 
 
@@ -457,6 +460,17 @@ def mars(
             if "File is empty:" not in str(e):
                 raise
     return ds
+
+
+@source_registry.register("mars")
+class MarsSource(Source):
+
+    def __init__(self, context, **request):
+        super().__init__(context)
+        self.request = request
+
+    def execute(self, context, dates):
+        return mars(context, dates, self.request)
 
 
 execute = mars

@@ -15,10 +15,9 @@ from typing import List
 
 import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo.wind.array import xy_to_polar
-
-from anemoi.datasets.create.functions.filters.speeddir_to_uv import NewDataField
 
 
 def execute(
@@ -86,7 +85,7 @@ def execute(
         if in_radians:
             direction = np.deg2rad(direction)
 
-        result.append(NewDataField(u, magnitude, wind_speed))
-        result.append(NewDataField(v, direction, wind_dir))
+        result.append(new_field_from_numpy(u, magnitude, params=wind_speed))
+        result.append(new_field_from_numpy(v, direction, params=wind_dir))
 
     return result

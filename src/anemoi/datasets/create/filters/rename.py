@@ -15,6 +15,9 @@ from typing import Optional
 import earthkit.data as ekd
 from earthkit.data.indexing.fieldlist import FieldArray
 
+from ..filter import Filter
+from . import filter_registry
+
 
 class RenamedFieldMapping:
     """Rename a field based on the value of another field.
@@ -199,3 +202,12 @@ def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: A
         return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
 
     return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])
+
+
+@filter_registry.register("rename")
+class RenameFilter(Filter):
+    def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
+        super().__init__(context, *args, **kwargs)
+
+    def execute(self, *args: Any, **kwargs: Any) -> Any:
+        return execute(*args, **kwargs)

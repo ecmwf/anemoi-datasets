@@ -17,7 +17,6 @@ from typing import Tuple
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.functions import assert_is_fieldlist
 from anemoi.datasets.create.utils import to_datetime_list
 
 
@@ -163,7 +162,6 @@ def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: An
     from earthkit.data import from_source
 
     ds = from_source("file", path)
-    assert_is_fieldlist(ds)
     # save a reference to the tmp file so it is deleted
     # only when the dataset is not used anymore
     ds._tmp = tmp

@@ -18,7 +18,6 @@ from typing import Type
 from .action import Action
 from .action import ActionContext
 from .context import Context
-from .misc import is_function
 from .result import Result
 from .template import notify_result
 from .trace import trace_datasource
@@ -163,9 +162,14 @@ def step_factory(config: Dict[str, Any], context: ActionContext, action_path: Li
         args, kwargs = [config[key]], {}
 
     if cls is None:
-        if not is_function(key, "filters"):
-            raise ValueError(f"Unknown step {key}")
-        cls = FunctionStepAction
-        args = [key] + args
+        from ..filters import create_filter
+
+        filter = create_filter(None, config)
+        return FunctionStepAction(context, action_path + [key], previous_step, key, filter)
+
+        # if not is_function(key, "filters"):
+        #     raise ValueError(f"Unknown step {key}")
+        # cls = FunctionStepAction
+        # args = [key] + args
 
     return cls(context, action_path, previous_step, *args, **kwargs)

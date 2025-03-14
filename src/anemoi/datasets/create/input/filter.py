@@ -14,7 +14,6 @@ from typing import Type
 
 from earthkit.data import FieldList
 
-from ..functions import import_function
 from .function import FunctionContext
 from .misc import _tidy
 from .misc import assert_fieldlist
@@ -53,7 +52,7 @@ class StepFunctionResult(StepResult):
         """Returns the datasource after applying the function."""
         try:
             return _tidy(
-                self.action.function(
+                self.action.filter.execute(
                     FunctionContext(self),
                     self.upstream_result.datasource,
                     *self.action.args[1:],
@@ -93,6 +92,8 @@ class FunctionStepAction(StepAction):
         context: object,
         action_path: list,
         previous_step: StepAction,
+        name: str,
+        filter: Any,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -112,5 +113,5 @@ class FunctionStepAction(StepAction):
             Additional keyword arguments.
         """
         super().__init__(context, action_path, previous_step, *args, **kwargs)
-        self.name = args[0]
-        self.function = import_function(self.name, "filters")
+        self.name = name
+        self.filter = filter

@@ -16,7 +16,7 @@ from typing import Optional
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from . import iterate_patterns
+from .patterns import iterate_patterns
 from .xarray import load_one
 
 

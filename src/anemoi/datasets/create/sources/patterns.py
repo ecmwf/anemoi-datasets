@@ -9,15 +9,12 @@
 
 import datetime
 import glob
-import logging
 from typing import Any
 from typing import Generator
 from typing import List
 from typing import Tuple
 
 from earthkit.data.utils.patterns import Pattern
-
-LOG = logging.getLogger(__name__)
 
 
 def _expand(paths: List[str]) -> Generator[str, None, None]:

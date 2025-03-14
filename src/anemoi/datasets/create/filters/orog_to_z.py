@@ -12,6 +12,7 @@ from typing import Any
 from typing import Dict
 
 import earthkit.data as ekd
+from anemoi.transform.field import new_field_from_numpy
 from earthkit.data.indexing.fieldlist import FieldArray
 
 
@@ -131,7 +132,7 @@ def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.
                 raise ValueError(f"Duplicate field {param} for {key}")
 
             output = f.to_numpy(flatten=True) * 9.80665
-            result.append(NewDataField(f, output, z))
+            result.append(new_field_from_numpy(f, output, param=z))
         else:
             result.append(f)
 
