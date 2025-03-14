@@ -12,9 +12,9 @@ from typing import Any
 
 import earthkit.data as ekd
 from anemoi.transform.field import new_field_from_numpy
+from anemoi.transform.field import new_fieldlist_from_list
 
 # import numpy as np
-from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import unrotate_vector
 
 
@@ -37,7 +37,7 @@ def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> ekd.FieldList
     ekd.FieldList
         The resulting field array with unrotated wind components.
     """
-    result = FieldArray()
+    result = []
 
     wind_params = (u, v)
     wind_pairs = defaultdict(dict)
@@ -83,7 +83,7 @@ def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> ekd.FieldList
         result.append(new_field_from_numpy(x, u_new))
         result.append(new_field_from_numpy(y, v_new))
 
-    return result
+    return new_fieldlist_from_list(result)
 
 
 if __name__ == "__main__":

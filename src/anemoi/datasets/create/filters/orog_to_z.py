@@ -13,7 +13,7 @@ from typing import Dict
 
 import earthkit.data as ekd
 from anemoi.transform.field import new_field_from_numpy
-from earthkit.data.indexing.fieldlist import FieldArray
+from anemoi.transform.field import new_fieldlist_from_list
 
 
 def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.FieldList:
@@ -35,7 +35,7 @@ def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.
     FieldList
         List of fields with geopotential height.
     """
-    result = FieldArray()
+    result = []
     processed_fields: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
     for f in input:
@@ -52,4 +52,4 @@ def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.
         else:
             result.append(f)
 
-    return result
+    return new_fieldlist_from_list(result)

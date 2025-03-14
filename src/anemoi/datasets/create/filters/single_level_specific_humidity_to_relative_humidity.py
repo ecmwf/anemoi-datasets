@@ -17,7 +17,7 @@ from typing import Union
 import earthkit.data as ekd
 import numpy as np
 from anemoi.transform.field import new_field_from_numpy
-from earthkit.data.indexing.fieldlist import FieldArray
+from anemoi.transform.field import new_fieldlist_from_list
 from earthkit.meteo import constants
 from earthkit.meteo import thermo
 from numpy.typing import NDArray
@@ -276,7 +276,7 @@ def execute(
     ekd.FieldList
         The resulting field array with relative humidity.
     """
-    result = FieldArray()
+    result = []
 
     MANDATORY_KEYS = ["A", "B"]
     OPTIONAL_KEYS = ["t_ml", "q_ml"]
@@ -374,7 +374,7 @@ def execute(
 
         result.append(new_field_from_numpy(values["sfc"][q], rh_sl, param=new_name))
 
-    return result
+    return new_fieldlist_from_list(result)
 
 
 def test() -> None:

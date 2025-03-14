@@ -16,8 +16,8 @@ from typing import Optional
 import earthkit.data as ekd
 import tqdm
 from anemoi.transform.field import new_field_from_numpy
+from anemoi.transform.field import new_fieldlist_from_list
 from anemoi.utils.humanize import plural
-from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.geo.rotate import rotate_vector
 
 
@@ -55,7 +55,7 @@ def execute(
 
     context.trace("🔄", "Rotating winds (extracting winds from ", plural(len(input), "field"))
 
-    result = FieldArray()
+    result = []
 
     wind_params: tuple[str, str] = (x_wind, y_wind)
     wind_pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
@@ -99,4 +99,4 @@ def execute(
         result.append(new_field_from_numpy(x, x_new))
         result.append(new_field_from_numpy(y, y_new))
 
-    return result
+    return new_fieldlist_from_list(result)

@@ -15,7 +15,7 @@ from typing import List
 import earthkit.data as ekd
 import numpy as np
 from anemoi.transform.field import new_field_from_numpy
-from earthkit.data.indexing.fieldlist import FieldArray
+from anemoi.transform.field import new_fieldlist_from_list
 from earthkit.meteo.wind.array import polar_to_xy
 
 
@@ -53,7 +53,7 @@ def execute(
         The resulting field array with u and v components.
     """
 
-    result = FieldArray()
+    result = []
 
     wind_params = (wind_speed, wind_dir)
     wind_pairs = defaultdict(dict)
@@ -89,4 +89,4 @@ def execute(
         result.append(new_field_from_numpy(magnitude, u, param=u_component))
         result.append(new_field_from_numpy(direction, v, param=v_component))
 
-    return result
+    return new_fieldlist_from_list(result)

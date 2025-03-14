@@ -14,6 +14,7 @@ from typing import Dict
 
 import earthkit.data as ekd
 from anemoi.transform.field import new_field_from_numpy
+from anemoi.transform.field import new_fieldlist_from_list
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
@@ -39,7 +40,7 @@ def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -
     ekd.FieldList
         Array of fields with relative humidity.
     """
-    result = FieldArray()
+    result = []
     params: tuple[str, str] = (t, q)
     pairs: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
 
@@ -75,4 +76,4 @@ def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -
         rh_pl = thermo.relative_humidity_from_specific_humidity(t_pl, q_pl, pressure)
         result.append(new_field_from_numpy(values[q], rh_pl, param=rh))
 
-    return result
+    return new_fieldlist_from_list(result)

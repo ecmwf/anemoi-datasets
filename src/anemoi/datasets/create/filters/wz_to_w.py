@@ -12,7 +12,7 @@ from typing import Any
 
 import earthkit.data as ekd
 from anemoi.transform.field import new_field_from_numpy
-from earthkit.data.indexing.fieldlist import FieldArray
+from anemoi.transform.field import new_fieldlist_from_list
 
 
 def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -> ekd.FieldList:
@@ -36,7 +36,7 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
     ekd.FieldList
         The resulting FieldArray with converted vertical velocity fields.
     """
-    result = FieldArray()
+    result = []
 
     params = (wz, t)
     pairs = defaultdict(dict)
@@ -68,7 +68,7 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
         w_pl = wz_to_w(wz_pl, t_pl, pressure)
         result.append(new_field_from_numpy(values[wz], w_pl, param=w))
 
-    return result
+    return new_fieldlist_from_list(result)
 
 
 def wz_to_w(wz: Any, t: Any, pressure: float) -> Any:

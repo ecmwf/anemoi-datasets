@@ -16,7 +16,7 @@ from typing import Tuple
 
 import earthkit.data as ekd
 from anemoi.transform.field import new_field_from_numpy
-from earthkit.data.indexing.fieldlist import FieldArray
+from anemoi.transform.field import new_fieldlist_from_list
 
 
 def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) -> ekd.FieldList:
@@ -31,7 +31,7 @@ def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) 
     Returns:
         ekd.FieldList: The resulting FieldArray with summed fields.
     """
-    result = FieldArray()
+    result = []
 
     needed_fields: Dict[Tuple[Hashable, ...], Dict[str, ekd.Field]] = defaultdict(dict)
 
@@ -62,4 +62,4 @@ def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) 
                 s += c
         result.append(new_field_from_numpy(values[list(values.keys())[0]], s, param=output))
 
-    return result
+    return new_fieldlist_from_list(result)

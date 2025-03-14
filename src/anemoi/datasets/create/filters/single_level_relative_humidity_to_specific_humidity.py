@@ -15,7 +15,7 @@ from typing import List
 import earthkit.data as ekd
 import numpy as np
 from anemoi.transform.field import new_field_from_numpy
-from earthkit.data.indexing.fieldlist import FieldArray
+from anemoi.transform.field import new_fieldlist_from_list
 from earthkit.meteo import thermo
 
 from .single_level_specific_humidity_to_relative_humidity import AutoDict
@@ -65,7 +65,7 @@ def execute(
     ValueError
         If there are duplicate fields or missing fields.
     """
-    result = FieldArray()
+    result = []
 
     MANDATORY_KEYS = ["A", "B"]
     OPTIONAL_KEYS = ["t_ml", "q_ml"]
@@ -158,4 +158,4 @@ def execute(
 
         result.append(new_field_from_numpy(values["sfc"][rh], q_sl, param=new_name))
 
-    return result
+    return new_fieldlist_from_list(result)
