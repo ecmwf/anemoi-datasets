@@ -90,6 +90,7 @@ optional-dependencies.remote = [
 ]
 
 optional-dependencies.tests = [
+  "anemoi-datasets[xarray]",
   "pytest",
 ]
 
