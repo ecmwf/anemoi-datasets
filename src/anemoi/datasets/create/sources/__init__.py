@@ -19,4 +19,18 @@ source_registry = Registry(__name__)
 
 
 def create_source(context: Any, config: Any) -> Any:
+    """Create a source based on the provided configuration.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the source is created.
+    config : Any
+        The configuration for the source.
+
+    Returns
+    -------
+    Any
+        The created source.
+    """
     return source_registry.from_config(config, context)

@@ -16,6 +16,17 @@ from ..filter import Filter
 
 
 class TransformFilter(Filter):
+    """A filter that applies a transformation.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the filter is created.
+    name : str
+        The name of the filter.
+    config : Dict[str, Any]
+        The configuration for the filter.
+    """
 
     def __init__(self, context: Any, name: str, config: Dict[str, Any]) -> None:
 
@@ -25,4 +36,18 @@ class TransformFilter(Filter):
         self.transform_filter = create_filter(self, config)
 
     def execute(self, context: Any, input: ekd.FieldList) -> ekd.FieldList:
+        """Execute the transformation filter.
+
+        Parameters
+        ----------
+        context : Any
+            The context in which the execution occurs.
+        input : ekd.FieldList
+            The input data to be transformed.
+
+        Returns
+        -------
+        ekd.FieldList
+            The transformed data.
+        """
         return self.transform_filter.forward(input)

@@ -8,27 +8,60 @@
 # nor does it submit to any jurisdiction.
 
 
+from typing import Any
+from typing import Callable
+
 from ..source import Source
 from . import source_registry
 
 
 class LegacySource(Source):
+    """A legacy source class.
 
-    def __init__(self, context, *args, **kwargs):
+    Parameters
+    ----------
+    context : Any
+        The context in which the source is created.
+    *args : tuple
+        Positional arguments.
+    **kwargs : dict
+        Keyword arguments.
+    """
+
+    def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, *args, **kwargs)
         self.args = args
         self.kwargs = kwargs
 
 
 class legacy_source:
-    def __init__(self, name):
+    """A decorator class for legacy sources.
+
+    Parameters
+    ----------
+    name : str
+        The name of the legacy source.
+    """
+
+    def __init__(self, name: str) -> None:
         self.name = name
 
-    def __call__(self, execute):
+    def __call__(self, execute: Callable) -> Callable:
+        """Call method to wrap the execute function.
 
+        Parameters
+        ----------
+        execute : function
+            The execute function to be wrapped.
+
+        Returns
+        -------
+        function
+            The wrapped execute function.
+        """
         name = f"Legacy{self.name.title()}Source"
 
-        def execute_wrapper(self, *args, **kwargs):
+        def execute_wrapper(self, *args: Any, **kwargs: Any) -> Any:
             """Wrapper method to call the execute function.
 
             Parameters

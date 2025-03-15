@@ -16,5 +16,24 @@ from .xarray import load_many
 
 
 def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Execute the data loading process.
 
+    Parameters
+    ----------
+    context : Any
+        The context in which the execution occurs.
+    dates : List[str]
+        List of dates for which data is to be loaded.
+    url : str
+        The URL from which data is to be loaded.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments.
+
+    Returns
+    -------
+    ekd.FieldList
+        The loaded data.
+    """
     return load_many("🇿", context, url, *args, **kwargs).execute(dates)

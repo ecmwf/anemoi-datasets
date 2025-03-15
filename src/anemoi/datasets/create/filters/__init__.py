@@ -16,4 +16,18 @@ filter_registry = Registry(__name__)
 
 
 def create_filter(context: Any, config: Any) -> Any:
+    """Create a filter based on the provided configuration.
+
+    Parameters
+    ----------
+    context : Any
+        The context in which the filter is created.
+    config : Any
+        The configuration for the filter.
+
+    Returns
+    -------
+    Any
+        The created filter.
+    """
     return filter_registry.from_config(config, context)
