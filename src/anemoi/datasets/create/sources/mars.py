@@ -466,7 +466,7 @@ def mars(
 class MarsSource(Source):
 
     def __init__(self, context, **request):
-        super().__init__(context)
+
         self.request = request
 
     def execute(self, context, dates):

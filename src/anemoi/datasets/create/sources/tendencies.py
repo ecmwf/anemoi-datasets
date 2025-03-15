@@ -108,7 +108,7 @@ def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: An
     all_dates = sorted(list(set(dates + shifted_dates)))
 
     # from .mars import execute as mars
-    from anemoi.datasets.create.functions.mars import execute as mars
+    from anemoi.datasets.create.mars import execute as mars
 
     ds = mars(dates=all_dates, **kwargs)
 

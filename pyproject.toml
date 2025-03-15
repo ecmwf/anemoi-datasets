@@ -94,6 +94,7 @@ optional-dependencies.tests = [
 ]
 
 optional-dependencies.xarray = [
+  "adlfs",
   "gcsfs",
   "kerchunk",
   "pandas",
@@ -121,7 +122,7 @@ version_file = "src/anemoi/datasets/_version.py"
 profile = "black"
 
 [tool.mypy]
-strict = false
+strict = true
 exclude = [
   "docs/**",
 ]

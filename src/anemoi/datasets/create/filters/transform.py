@@ -18,11 +18,11 @@ from ..filter import Filter
 class TransformFilter(Filter):
 
     def __init__(self, context: Any, name: str, config: Dict[str, Any]) -> None:
-        super().__init__(context)
+
         from anemoi.transform.filters import create_filter
 
         self.name = name
-        self.transform_filter = create_filter(config)
+        self.transform_filter = create_filter(self, config)
 
     def execute(self, context: Any, input: ekd.FieldList) -> ekd.FieldList:
         return self.transform_filter.forward(input)

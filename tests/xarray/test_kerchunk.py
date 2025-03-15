@@ -10,7 +10,7 @@
 
 import xarray as xr
 
-from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
+from anemoi.datasets.create.sources.xarray import XarrayFieldList
 
 
 def dont_test_kerchunk() -> None:
