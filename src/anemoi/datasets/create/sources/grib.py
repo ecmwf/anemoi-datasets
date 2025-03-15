@@ -21,6 +21,8 @@ from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
 
+from .legacy import legacy_source
+
 LOG = logging.getLogger(__name__)
 
 
@@ -235,6 +237,7 @@ def _expand(paths: List[str]) -> Any:
             yield path
 
 
+@legacy_source(__file__)
 def execute(
     context: Any,
     dates: List[Any],

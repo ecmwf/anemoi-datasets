@@ -11,7 +11,10 @@ from typing import Any
 
 import earthkit.data as ekd
 
+from .legacy import legacy_filter
 
+
+@legacy_filter(__file__)
 def execute(context: Any, input: ekd.FieldList, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """No operation filter that returns the input as is.
 

@@ -178,7 +178,7 @@ class RenamedFieldFormat:
         return repr(self.field)
 
 
-@legacy_filter("rename")
+@legacy_filter(__file__)
 def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: Any) -> ekd.FieldList:
     """Rename fields based on the value of another field or a format string.
 
@@ -198,6 +198,7 @@ def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: A
     ekd.FieldList
         Array of renamed fields.
     """
+
     if what in kwargs and isinstance(kwargs[what], str):
         return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
 

@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import os
 from typing import Any
 from typing import Callable
 
@@ -32,6 +33,7 @@ class LegacySource(Source):
         super().__init__(context, *args, **kwargs)
         self.args = args
         self.kwargs = kwargs
+        print(self.__class__.__name__, self.context, self.args, self.kwargs)
 
 
 class legacy_source:
@@ -44,6 +46,7 @@ class legacy_source:
     """
 
     def __init__(self, name: str) -> None:
+        name, _ = os.path.splitext(os.path.basename(name))
         self.name = name
 
     def __call__(self, execute: Callable) -> Callable:
@@ -61,17 +64,9 @@ class legacy_source:
         """
         name = f"Legacy{self.name.title()}Source"
 
-        def execute_wrapper(self, *args: Any, **kwargs: Any) -> Any:
-            """Wrapper method to call the execute function.
-
-            Parameters
-            ----------
-            *args : tuple
-            Positional arguments to pass to the execute function.
-            **kwargs : dict
-            Keyword arguments to pass to the execute function.
-            """
-            return execute(self.context, *args, **kwargs)
+        def execute_wrapper(self, dates) -> Any:
+            """Wrapper method to call the execute function."""
+            return execute(self.context, dates, *self.args, **self.kwargs)
 
         klass = type(name, (LegacySource,), {})
         klass.execute = execute_wrapper

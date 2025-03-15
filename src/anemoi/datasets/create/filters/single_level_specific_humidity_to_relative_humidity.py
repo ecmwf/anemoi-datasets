@@ -22,6 +22,8 @@ from earthkit.meteo import constants
 from earthkit.meteo import thermo
 from numpy.typing import NDArray
 
+from .legacy import legacy_filter
+
 
 # Alternative proposed by Baudouin Raoult
 class AutoDict(dict):
@@ -230,6 +232,7 @@ def pressure_at_height_level(
     return p_height
 
 
+@legacy_filter(__file__)
 def execute(
     context: Any,
     input: List[Any],

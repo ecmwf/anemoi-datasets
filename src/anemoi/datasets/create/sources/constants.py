@@ -13,7 +13,10 @@ from typing import List
 
 from earthkit.data import from_source
 
+from .legacy import legacy_source
 
+
+@legacy_source(__file__)
 def constants(context: Any, dates: List[str], template: Dict[str, Any], param: str) -> Any:
     """Deprecated function to retrieve constants data.
 

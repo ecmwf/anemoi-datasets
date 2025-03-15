@@ -27,6 +27,7 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from .legacy import legacy_source
 from .mars import mars
 
 LOG = logging.getLogger(__name__)
@@ -613,6 +614,7 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
     return request
 
 
+@legacy_source(__file__)
 def accumulations(
     context: Any, dates: List[datetime.datetime], use_cdsapi_dataset: Optional[str] = None, **request: Any
 ) -> Any:

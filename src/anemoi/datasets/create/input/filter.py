@@ -50,10 +50,11 @@ class StepFunctionResult(StepResult):
     @trace_datasource
     def datasource(self) -> FieldList:
         """Returns the datasource after applying the function."""
+
+        self.action.filter.context = FunctionContext(self)
         try:
             return _tidy(
                 self.action.filter.execute(
-                    FunctionContext(self),
                     self.upstream_result.datasource,
                     *self.action.args[1:],
                     **self.action.kwargs,

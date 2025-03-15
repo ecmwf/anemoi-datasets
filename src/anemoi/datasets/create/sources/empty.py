@@ -13,7 +13,10 @@ from typing import List
 
 import earthkit.data as ekd
 
+from .legacy import legacy_source
 
+
+@legacy_source(__file__)
 def execute(context: Any, dates: List[str], **kwargs: Any) -> ekd.FieldList:
     """Executes the loading of an empty data source.
 

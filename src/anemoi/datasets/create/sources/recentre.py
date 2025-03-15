@@ -15,6 +15,7 @@ from typing import Union
 
 from anemoi.datasets.compute.recentre import recentre as _recentre
 
+from .legacy import legacy_source
 from .mars import mars
 
 
@@ -107,6 +108,7 @@ def load_if_needed(context: Any, dates: Any, dict_or_dataset: Union[Dict, Any]) 
     return dict_or_dataset
 
 
+@legacy_source(__file__)
 def recentre(
     context: Any,
     dates: Any,

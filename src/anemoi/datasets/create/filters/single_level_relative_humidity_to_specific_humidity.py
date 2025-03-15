@@ -18,10 +18,12 @@ from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.meteo import thermo
 
+from .legacy import legacy_filter
 from .single_level_specific_humidity_to_relative_humidity import AutoDict
 from .single_level_specific_humidity_to_relative_humidity import pressure_at_height_level
 
 
+@legacy_filter(__file__)
 def execute(
     context: Any,
     input: List[Any],

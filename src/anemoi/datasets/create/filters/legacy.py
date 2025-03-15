@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import os
 from typing import Any
 from typing import Callable
 
@@ -44,6 +45,7 @@ class legacy_filter:
     """
 
     def __init__(self, name: str) -> None:
+        name, _ = os.path.splitext(os.path.basename(name))
         self.name = name
 
     def __call__(self, execute: Callable) -> Callable:
@@ -61,17 +63,9 @@ class legacy_filter:
         """
         name = f"Legacy{self.name.title()}Filter"
 
-        def execute_wrapper(self, *args: Any, **kwargs: Any) -> Any:
-            """Wrapper method to call the execute function.
-
-            Parameters
-            ----------
-            *args : tuple
-                Positional arguments to pass to the execute function.
-            **kwargs : dict
-                Keyword arguments to pass to the execute function.
-            """
-            return execute(self.context, *args, **kwargs)
+        def execute_wrapper(self, input) -> Any:
+            """Wrapper method to call the execute function."""
+            return execute(self.context, input, *self.args, **self.kwargs)
 
         klass = type(name, (LegacyFilter,), {})
         klass.execute = execute_wrapper

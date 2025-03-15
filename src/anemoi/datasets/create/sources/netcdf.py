@@ -13,9 +13,11 @@ from typing import List
 
 import earthkit.data as ekd
 
+from .legacy import legacy_source
 from .xarray import load_many
 
 
+@legacy_source(__file__)
 def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the loading of multiple NetCDF files.
 

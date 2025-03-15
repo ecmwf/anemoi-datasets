@@ -16,10 +16,12 @@ import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.sources.url import download_and_cache
 
+from .legacy import legacy_source
 from .patterns import iterate_patterns
 from .xarray import load_one
 
 
+@legacy_source(__file__)
 def execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Executes the download and processing of files from Zenodo.
 

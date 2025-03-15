@@ -18,9 +18,12 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.meteo import thermo
 
+from .legacy import legacy_filter
+
 EPS = 1.0e-4
 
 
+@legacy_filter(__file__)
 def execute(context: Any, input: ekd.FieldList, t: str, rh: str, td: str = "d") -> FieldArray:
     """Convert relative humidity on single levels to dewpoint.
 

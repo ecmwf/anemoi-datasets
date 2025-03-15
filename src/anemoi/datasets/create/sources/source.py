@@ -17,9 +17,10 @@ from earthkit.data import from_source
 
 from anemoi.datasets.create.utils import to_datetime_list
 
-DEBUG = True
+from .legacy import legacy_source
 
 
+@legacy_source(__file__)
 def source(context: Optional[Any], dates: List[datetime], **kwargs: Any) -> Any:
     """Generates a source based on the provided context, dates, and additional keyword arguments.
 
@@ -67,6 +68,5 @@ if __name__ == "__main__":
     dates: List[str] = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
     dates = to_datetime_list(dates)
 
-    DEBUG = True
     for f in source(None, dates, **config):
         print(f, f.to_numpy().mean())

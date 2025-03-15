@@ -20,7 +20,10 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.humanize import plural
 from earthkit.geo.rotate import rotate_vector
 
+from .legacy import legacy_filter
 
+
+@legacy_filter(__file__)
 def execute(
     context: Any,
     input: ekd.FieldList,

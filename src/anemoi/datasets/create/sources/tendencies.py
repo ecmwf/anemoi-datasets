@@ -19,6 +19,8 @@ from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from .legacy import legacy_source
+
 
 def _date_to_datetime(d: Any) -> Any:
     """Converts a date string or a list/tuple of date strings to datetime objects.
@@ -84,6 +86,7 @@ def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
     return d
 
 
+@legacy_source(__file__)
 def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
     """Computes tendencies for the given dates and time increment.
 

@@ -17,7 +17,10 @@ from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.meteo import thermo
 
+from .legacy import legacy_filter
 
+
+@legacy_filter(__file__)
 def execute(context: Any, input: ekd.FieldList, t: str, td: str, rh: str = "d") -> ekd.FieldList:
     """Convert dewpoint on single levels to relative humidity.
 

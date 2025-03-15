@@ -18,7 +18,10 @@ import earthkit.data as ekd
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_fieldlist_from_list
 
+from .legacy import legacy_filter
 
+
+@legacy_filter(__file__)
 def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) -> ekd.FieldList:
     """Computes the sum over a set of variables.
 

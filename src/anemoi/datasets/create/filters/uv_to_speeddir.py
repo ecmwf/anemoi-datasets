@@ -19,7 +19,10 @@ from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.meteo.wind.array import xy_to_polar
 
+from .legacy import legacy_filter
 
+
+@legacy_filter(__file__)
 def execute(
     context: Any,
     input: List[Any],

@@ -22,6 +22,7 @@ from earthkit.data.core.fieldlist import MultiFieldList
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 from anemoi.datasets.data.stores import name_to_zarr_store
 
+from ..legacy import legacy_source
 from .fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
@@ -164,6 +165,7 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
     return MultiFieldList(result)
 
 
+@legacy_source("xarray")
 def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Executes the loading of datasets.
 

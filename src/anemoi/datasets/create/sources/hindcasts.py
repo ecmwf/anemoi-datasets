@@ -17,6 +17,8 @@ from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.create.sources.mars import mars
 
+from .legacy import legacy_source
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -38,6 +40,7 @@ def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
     return [x]
 
 
+@legacy_source(__file__)
 def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
     """Generates hindcast requests based on the provided dates and request parameters.
 

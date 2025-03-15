@@ -16,6 +16,7 @@ from typing import Optional
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 
+from .legacy import legacy_source
 from .patterns import iterate_patterns
 from .xarray import load_one
 
@@ -68,6 +69,7 @@ def load_many(
     return MultiFieldList(result)
 
 
+@legacy_source(__file__)
 def execute(
     context: Any, dates: List[str], json: str, options: Optional[Dict[str, Any]] = None, **kwargs: Any
 ) -> ekd.FieldList:

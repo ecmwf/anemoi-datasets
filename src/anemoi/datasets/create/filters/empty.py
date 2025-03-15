@@ -13,7 +13,10 @@ from typing import Any
 import earthkit.data as ekd
 from anemoi.transform.fields import new_empty_fieldlist
 
+from .legacy import legacy_filter
 
+
+@legacy_filter(__file__)
 def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
     """Create a pipeline that returns an empty result.
 

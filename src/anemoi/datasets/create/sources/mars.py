@@ -362,7 +362,7 @@ MARS_KEYS = [
 ]
 
 
-@legacy_source("mars")
+@legacy_source(__file__)
 def mars(
     context: Any,
     dates: List[datetime.datetime],
@@ -397,7 +397,7 @@ def mars(
         The resulting dataset.
     """
 
-    print("mars", context, dates, requests, kwargs)
+    print("mars", use_cdsapi_dataset, context, dates, requests, kwargs)
     if not requests:
         requests = [kwargs]
 
