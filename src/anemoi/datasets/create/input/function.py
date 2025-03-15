@@ -204,11 +204,11 @@ class FunctionResult(Result):
     def datasource(self) -> FieldList:
         """Returns the datasource for the function result."""
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
+        self.action.source.context = FunctionContext(self)
 
         # try:
         return _tidy(
             self.action.source.execute(
-                FunctionContext(self),
                 list(self.group_of_dates),  # Will provide a list of datetime objects
                 *args,
                 **kwargs,

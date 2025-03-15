@@ -22,8 +22,7 @@ from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.utils import to_datetime_list
 
-from ..source import Source
-from . import source_registry
+from .legacy import legacy_source
 
 DEBUG = False
 
@@ -363,6 +362,7 @@ MARS_KEYS = [
 ]
 
 
+@legacy_source("mars")
 def mars(
     context: Any,
     dates: List[datetime.datetime],
@@ -396,6 +396,8 @@ def mars(
     Any
         The resulting dataset.
     """
+
+    print("mars", context, dates, requests, kwargs)
     if not requests:
         requests = [kwargs]
 
@@ -462,18 +464,8 @@ def mars(
     return ds
 
 
-@source_registry.register("mars")
-class MarsSource(Source):
-
-    def __init__(self, context, **request):
-
-        self.request = request
-
-    def execute(self, context, dates):
-        return mars(context, dates, self.request)
-
-
 execute = mars
+
 
 if __name__ == "__main__":
     import yaml
