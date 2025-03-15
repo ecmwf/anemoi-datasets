@@ -397,7 +397,6 @@ def mars(
         The resulting dataset.
     """
 
-    print("mars", use_cdsapi_dataset, context, dates, requests, kwargs)
     if not requests:
         requests = [kwargs]
 

@@ -8,12 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 
+import inspect
+import logging
 import os
 from typing import Any
 from typing import Callable
 
 from ..source import Source
 from . import source_registry
+
+LOG = logging.getLogger(__name__)
 
 
 class LegacySource(Source):
@@ -33,7 +37,6 @@ class LegacySource(Source):
         super().__init__(context, *args, **kwargs)
         self.args = args
         self.kwargs = kwargs
-        print(self.__class__.__name__, self.context, self.args, self.kwargs)
 
 
 class legacy_source:
@@ -62,14 +65,23 @@ class legacy_source:
         function
             The wrapped execute function.
         """
+        this = self
         name = f"Legacy{self.name.title()}Source"
+        source = ".".join([execute.__module__, execute.__name__])
 
         def execute_wrapper(self, dates) -> Any:
             """Wrapper method to call the execute function."""
-            return execute(self.context, dates, *self.args, **self.kwargs)
+            try:
+                return execute(self.context, dates, *self.args, **self.kwargs)
+            except TypeError:
+                LOG.error(f"Error executing source {this.name} from {source}")
+                LOG.error(f"Function signature is: {inspect.signature(execute)}")
+                LOG.error(f"Arguments are: {self.args=}, {self.kwargs=}")
+                raise
 
         klass = type(name, (LegacySource,), {})
         klass.execute = execute_wrapper
+        klass._source = source
 
         source_registry.register(self.name)(klass)
 

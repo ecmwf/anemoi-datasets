@@ -8,12 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 
+import inspect
+import logging
 import os
 from typing import Any
 from typing import Callable
 
 from ..filter import Filter
 from . import filter_registry
+
+LOG = logging.getLogger(__name__)
 
 
 class LegacyFilter(Filter):
@@ -61,14 +65,23 @@ class legacy_filter:
         Callable
             The wrapped execute function.
         """
+        this = self
         name = f"Legacy{self.name.title()}Filter"
+        source = ".".join([execute.__module__, execute.__name__])
 
         def execute_wrapper(self, input) -> Any:
             """Wrapper method to call the execute function."""
-            return execute(self.context, input, *self.args, **self.kwargs)
+            try:
+                return execute(self.context, input, *self.args, **self.kwargs)
+            except TypeError:
+                LOG.error(f"Error executing filter {this.name} from {source}")
+                LOG.error(f"Function signature is: {inspect.signature(execute)}")
+                LOG.error(f"Arguments are: {self.args=}, {self.kwargs=}")
+                raise
 
         klass = type(name, (LegacyFilter,), {})
         klass.execute = execute_wrapper
+        klass._source = source
 
         filter_registry.register(self.name)(klass)
 

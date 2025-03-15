@@ -206,7 +206,6 @@ class FunctionResult(Result):
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
         self.action.source.context = FunctionContext(self)
 
-        # try:
         return _tidy(
             self.action.source.execute(
                 list(self.group_of_dates),  # Will provide a list of datetime objects
@@ -214,9 +213,6 @@ class FunctionResult(Result):
                 **kwargs,
             )
         )
-        # except Exception:
-        #     LOG.error(f"Error in {self.action.function.__name__}", exc_info=True)
-        #     raise
 
     def __repr__(self) -> str:
         """Returns a string representation of the FunctionResult instance."""

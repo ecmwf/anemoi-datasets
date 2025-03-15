@@ -16,7 +16,7 @@ from ..filter import Filter
 
 
 class TransformFilter(Filter):
-    """A filter that applies a transformation.
+    """Calls filters from anemoi.transform.filters
 
     Parameters
     ----------
