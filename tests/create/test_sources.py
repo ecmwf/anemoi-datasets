@@ -71,10 +71,7 @@ def test_netcdf() -> None:
 
 @pytest.mark.skipif(not packages_installed("fstd", "rpnpy.librmn"), reason="Package 'fstd' is not installed")
 def test_eccs_fstd() -> None:
-    """Test for 'fstd' files from ECCC.
-
-    This function tests the creation of a dataset from a NetCDF file.
-    """
+    """Test for 'fstd' files from ECCC."""
     # See https://github.com/neishm/fstd2nc
 
     data = get_test_data("anemoi-datasets/create/2025031000_000_TT.fstd", gzipped=True)
