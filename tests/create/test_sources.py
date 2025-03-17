@@ -28,9 +28,15 @@ def test_grib() -> None:
     path = os.path.dirname(data1)
 
     config = {
-        "dates": {"start": "2010-01-01T00:00:00", "end": "2010-01-02T18:00:00", "frequency": "6h"},
+        "dates": {
+            "start": "2010-01-01T00:00:00",
+            "end": "2010-01-02T18:00:00",
+            "frequency": "6h",
+        },
         "input": {
-            "grib": {"path": os.path.join(path, "grib-{date:strftime(%Y%m%d)}.grib")},
+            "grib": {
+                "path": os.path.join(path, "grib-{date:strftime(%Y%m%d)}.grib"),
+            },
         },
     }
 
@@ -40,12 +46,25 @@ def test_grib() -> None:
 
 
 def test_netcdf() -> None:
-    """Placeholder test for NetCDF files.
+    """Test for NetCDF files.
 
-    This function is a placeholder for testing the creation of a dataset
-    using NetCDF files.
+    This function tests the creation of a dataset from a NetCDF file.
     """
-    pass
+    data = get_test_data("anemoi-datasets/create/netcdf.nc")
+    config = {
+        "dates": {
+            "start": "2023-01-01",
+            "end": "2023-01-02",
+            "frequency": "1d",
+        },
+        "input": {
+            "netcdf": {"path": data},
+        },
+    }
+
+    created = create_dataset(config=config, output=None)
+    ds = open_dataset(created)
+    assert ds.shape == (2, 2, 1, 162)
 
 
 if __name__ == "__main__":
