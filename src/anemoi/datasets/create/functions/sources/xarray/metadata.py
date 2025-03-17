@@ -46,6 +46,7 @@ class _MDMapping:
         """
         self.variable = variable
         self.time = variable.time
+        self.mapping = dict()
         # Aliases
 
     def _from_user(self, key: str) -> str:
