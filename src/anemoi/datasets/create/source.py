@@ -7,8 +7,15 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from abc import ABC
+from abc import abstractmethod
+from typing import Any
+from typing import List
 
-class Source:
+import earthkit.data as ekd
+
+
+class Source(ABC):
     """Represents a data source with a given context."""
 
     def __init__(self, context: any, *args: tuple, **kwargs: dict):
@@ -23,3 +30,20 @@ class Source:
             Additional keyword arguments.
         """
         self.context = context
+
+    @abstractmethod
+    def execute(self, dates: List[Any]) -> ekd.FieldList:
+        """Execute the filter.
+
+        Parameters
+        ----------
+        dates : List[Any]
+            The input dates.
+
+        Returns
+        -------
+        ekd.FieldList
+            The output data.
+        """
+
+        pass

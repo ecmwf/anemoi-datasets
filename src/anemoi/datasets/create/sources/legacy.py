@@ -79,9 +79,14 @@ class legacy_source:
                 LOG.error(f"Arguments are: {self.args=}, {self.kwargs=}")
                 raise
 
-        klass = type(name, (LegacySource,), {})
-        klass.execute = execute_wrapper
-        klass._source = source
+        klass = type(
+            name,
+            (LegacySource,),
+            {
+                "execute": execute_wrapper,
+                "_source": source,
+            },
+        )
 
         source_registry.register(self.name)(klass)
 

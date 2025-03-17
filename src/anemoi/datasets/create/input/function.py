@@ -208,7 +208,7 @@ class FunctionResult(Result):
 
         return _tidy(
             self.action.source.execute(
-                list(self.group_of_dates),  # Will provide a list of datetime objects
+                self.group_of_dates,  # Will provide a list of datetime objects
                 *args,
                 **kwargs,
             )

@@ -21,7 +21,7 @@ from earthkit.data import from_source as original_from_source
 from multiurl import download
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create import creator_factory
+from anemoi.datasets.create.testing import create_dataset
 from anemoi.datasets.data.stores import open_zarr
 
 TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
@@ -399,16 +399,7 @@ def test_run(name: str) -> None:
     output = os.path.join(HERE, name + ".zarr")
     is_test = False
 
-    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
-    creator_factory("load", path=output).run()
-    creator_factory("finalise", path=output).run()
-    creator_factory("patch", path=output).run()
-    creator_factory("init_additions", path=output, delta=["12h"]).run()
-    creator_factory("run_additions", path=output, delta=["12h"]).run()
-    creator_factory("finalise_additions", path=output, delta=["12h"]).run()
-    creator_factory("cleanup", path=output).run()
-    creator_factory("cleanup", path=output, delta=["12h"]).run()
-    creator_factory("verify", path=output).run()
+    create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
 
     # reference_path = os.path.join(HERE, name + "-reference.zarr")
     s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"

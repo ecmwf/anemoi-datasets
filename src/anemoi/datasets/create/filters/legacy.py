@@ -79,9 +79,14 @@ class legacy_filter:
                 LOG.error(f"Arguments are: {self.args=}, {self.kwargs=}")
                 raise
 
-        klass = type(name, (LegacyFilter,), {})
-        klass.execute = execute_wrapper
-        klass._source = source
+        klass = type(
+            name,
+            (LegacyFilter,),
+            {
+                "execute": execute_wrapper,
+                "_source": source,
+            },
+        )
 
         filter_registry.register(self.name)(klass)
 

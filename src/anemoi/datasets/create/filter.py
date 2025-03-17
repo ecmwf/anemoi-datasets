@@ -7,10 +7,14 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
 
+import earthkit.data as ekd
 
-class Filter:
+
+class Filter(ABC):
     """A base class for filters."""
 
     def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
@@ -27,3 +31,20 @@ class Filter:
         """
 
         self.context = context
+
+    @abstractmethod
+    def execute(self, data: ekd.FieldList) -> ekd.FieldList:
+        """Execute the filter.
+
+        Parameters
+        ----------
+        data : ekd.FieldList
+            The input data.
+
+        Returns
+        -------
+        ekd.FieldList
+            The output data.
+        """
+
+        pass
