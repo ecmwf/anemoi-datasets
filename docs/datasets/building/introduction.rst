@@ -1,8 +1,8 @@
 .. _building-introduction:
 
-##############
+############################
  Building your own datasets
-##############
+############################
 
 The `anemoi-datasets` package allows you to create datasets for training
 data-driven weather models. The datasets are built using a `recipe`
@@ -79,7 +79,6 @@ concat
 
 Each operation is considered as a :ref:`source <sources>`, therefore
 operations can be combined to build complex datasets.
-
 
 .. toctree::
    :maxdepth: 1

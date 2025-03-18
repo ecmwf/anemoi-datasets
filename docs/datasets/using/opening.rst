@@ -81,13 +81,12 @@ The dictionary can be as complex as needed, for example:
 .. literalinclude:: ../code/open_complex.py
    :language: python
 
-
 The `open_dataset` function returns an object that wraps around
-`numpy.ndarray`, so it is possible to inspect the dataset and visualise it
-with standard Python tools. For example:
+`numpy.ndarray`, so it is possible to inspect the dataset and visualise
+it with standard Python tools. For example:
 
-.. code-block:: python
-   
+.. code:: python
+
    from anemoi.datasets import open_dataset
    import matplotlib.pyplot as plt
    import cartopy.crs as ccrs

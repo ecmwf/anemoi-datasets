@@ -1,8 +1,8 @@
 .. _using-introduction:
 
-##################################
+###################################
  Using an already existing dataset
-##################################
+###################################
 
 An *Anemoi* dataset is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models. It is
