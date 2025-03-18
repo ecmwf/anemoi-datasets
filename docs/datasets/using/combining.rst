@@ -52,7 +52,7 @@ chronological order with no gaps between them. If you want to
 concatenate datasets that have gaps between them, check the
 :ref:`fill_missing_gaps <fill_missing_gaps>` option.
 
-.. code-block:: python
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
@@ -65,7 +65,6 @@ concatenate datasets that have gaps between them, check the
    # or
 
    ds = open_dataset(concat=["dataset-1979-2000", "dataset-2001-2022"])
-
 
 .. image:: ../../_static/concat.png
    :align: center
@@ -87,7 +86,7 @@ Please note that you can pass more than two datasets to the function.
 You can join two datasets that have the same dates, combining their
 variables.
 
-.. code-block:: python
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
@@ -100,7 +99,6 @@ variables.
    # or
 
    ds = open_dataset(join=["dataset1-1979-2022", "dataset2-1979-2022"])
-
 
 .. image:: ../../_static/join.png
    :align: center
@@ -126,7 +124,7 @@ You can combine two or more datasets that have the same dates,
 variables, grids, etc. along the ensemble dimension. The package will
 check that all datasets are compatible.
 
-.. code-block:: python
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
@@ -138,12 +136,11 @@ check that all datasets are compatible.
  grids
 *******
 
-.. code-block:: python
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
    ds = open_dataset(grids=[dataset1, dataset2, ...])
-
 
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
@@ -152,12 +149,11 @@ All the grid points are concatenated, in the order they are given. The
  cutout
 ********
 
-.. code-block:: python
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
    ds = open_dataset(cutout=[lam_dataset, global_dataset])
-
 
 The `cutout` combination only supports two datasets. The first dataset
 is considered to be a limited area model (LAM), while the second one is
@@ -231,13 +227,13 @@ That feature will interpolate the variables of `dataset2` that are not
 in `dataset1` to the grid of `dataset1` , add them to the list of
 variable of `dataset1` and return the result.
 
-.. code-block:: python
+.. code:: python
 
    open_dataset(
-      complement=dataset1,
-      source=dataset2,
-      what="variables",
-      interpolate="nearest",
+       complement=dataset1,
+       source=dataset2,
+       what="variables",
+       interpolate="nearest",
    )
 
 Currently ``what`` can only be ``variables`` and can be omitted.
@@ -250,24 +246,23 @@ This feature was originally designed to be used in conjunction with
 ``cutout``, where `dataset1` is the lam, and `dataset2` is the global
 dataset.
 
-.. code-block:: python
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
    ds = open_dataset(
-      combine=[
-         {"dataset": dataset1, "option1": value1, "option2": ...},
-         {"dataset": dataset2, "option3": value3, "option4": ...},
-      ]
+       combine=[
+           {"dataset": dataset1, "option1": value1, "option2": ...},
+           {"dataset": dataset2, "option3": value3, "option4": ...},
+       ]
    )
 
 Another use case is to simply bring all non-overlapping variables of a
 dataset into an other:
 
-.. code-block:: python
+.. code:: python
 
    open_dataset(
-      complement=dataset1,
-      source=dataset2,
+       complement=dataset1,
+       source=dataset2,
    )
-
