@@ -26,7 +26,7 @@ To install the package, you can use the following command:
 
 .. code:: bash
 
-   git clone ...
+   git clone git@github.com:ecmwf/anemoi-datasets.git
    cd anemoi-datasets
    pip install .[dev]
    pip install -r docs/requirements.txt
