@@ -82,6 +82,4 @@ To install the package, you can use the following command:
 
 .. __: http://www.apache.org/licenses/LICENSE-2.0.html
 
-.. _ecml-tools: https://github.com/ecmwf-lab/ecml-tools
-
 .. _zarr: https://zarr.readthedocs.io/
