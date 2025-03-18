@@ -55,17 +55,33 @@ This package provides the *Anemoi* datasets functionality.
    :maxdepth: 1
    :caption: User Guide
 
-   datasets/introduction
-   datasets/operations
-   datasets/sources
-   datasets/filters
-   datasets/naming-variables
-   datasets/handling-missing-dates
-   datasets/handling-missing-values
-   datasets/statistics
-   datasets/incremental
-   datasets/advanced-options
-   datasets/naming-conventions
+
+   datasets/building/introduction
+   datasets/building/operations
+   datasets/building/sources
+   datasets/building/filters
+   datasets/building/naming-variables
+   datasets/building/handling-missing-dates
+   datasets/building/handling-missing-values
+   datasets/building/statistics
+   datasets/building/incremental
+   datasets/building/advanced-options
+
+   datasets/using/introduction
+   datasets/using/opening
+   datasets/using/methods
+   datasets/using/subsetting
+   datasets/using/combining
+   datasets/using/selecting
+   datasets/using/ensembles
+   datasets/using/grids
+   datasets/using/zip
+   datasets/using/statistics
+   datasets/using/missing
+   datasets/using/other
+   datasets/using/matching
+   datasets/using/miscellaneous
+   datasets/using/configuration
 
 .. toctree::
    :maxdepth: 1
@@ -76,6 +92,7 @@ This package provides the *Anemoi* datasets functionality.
    cli/inspect
    cli/compare
    cli/copy
+   cli/scan
 
 .. toctree::
    :maxdepth: 1

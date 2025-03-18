@@ -1,0 +1,5 @@
+input:
+  grib:
+    path: /path/to/data.grib
+    param: [u, v]
+    levelist: [1000,  850, 500]

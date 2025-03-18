@@ -1,0 +1,10 @@
+dates:
+  start: 2024-03-24T00:00:00
+  end: 2024-03-24T03:00:00
+  frequency: 1h
+
+input:
+  xarray-kerchunk:
+    json: combined.json
+    param: T
+    level: [1000, 50]
