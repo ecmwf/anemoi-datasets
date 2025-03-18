@@ -1,7 +1,7 @@
 .. _datasets-introduction:
 
 ##############
-Introduction
+ Introduction
 ##############
 
 TODO
@@ -12,7 +12,6 @@ TODO
    :caption: Building you own datasets
 
    building/introduction
-
 
 .. toctree::
    :maxdepth: 1
