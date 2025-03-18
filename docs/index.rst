@@ -21,6 +21,7 @@ An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models. It is
 organised in such a way that I/O operations are minimised.
 
+
 **************
  About Anemoi
 **************
@@ -39,6 +40,67 @@ models from existing recipes but with their own data.
 ****************
 
 #!TODO
+
+This package provides the *Anemoi* datasets functionality.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Introduction
+
+   overview
+   cli/introduction
+   installing
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Recipe examples
+
+   usage/getting_started
+
+.. toctree::
+   :maxdepth: 1
+   :caption: User Guide
+
+   usage/introduction
+   usage/operations
+   usage/sources
+   usage/filters
+   usage/naming-variables
+   usage/handling-missing-dates
+   usage/handling-missing-values
+   usage/statistics
+   usage/incremental
+   usage/advanced-options
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: CLI
+
+   cli/create
+   cli/inspect
+   cli/compare
+   cli/copy
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+   :caption: Api Reference
+
+   modules/*
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developing Anemoi Datasets
+
+   dev/contributing
+   dev/code-structure
+   dev/testing
+
 
 ############
  Installing
@@ -59,11 +121,11 @@ To install the package, you can use the following command:
    git clone ...
    cd anemoi-datasets
    pip install .[dev]
-   pip install -r docs/requirements.txt
+   pip install -r docs/requirements.txt 
 
-***********************
+*****************
  Other Anemoi packages
-***********************
+*****************
 
 -  :ref:`anemoi-utils <anemoi-utils:index-page>`
 -  :ref:`anemoi-transform <anemoi-transform:index-page>`
