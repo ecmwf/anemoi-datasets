@@ -95,3 +95,4 @@ operations can be combined to build complex datasets.
    statistics
    incremental
    advanced-options
+   naming-conventions

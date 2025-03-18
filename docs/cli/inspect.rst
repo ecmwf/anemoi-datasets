@@ -1,5 +1,5 @@
 Inspect Command
-=======
+===============
 
 
 Anemoi datasets are stored in a zarr format and can be located on a local file system or on a remote server.
@@ -13,7 +13,7 @@ This command will output the metadata of the dataset, including the variables, d
 
 which will output something like the following. The output should be self-explanatory.
 
-.. literalinclude:: ../building/yaml/building1.txt
+.. literalinclude:: ../datasets/yaml/building1.txt
    :language: console
 
 *********************

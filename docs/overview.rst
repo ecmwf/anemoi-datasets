@@ -35,15 +35,15 @@ better.
 **What can you learn from this documentation?** This documentation
 provides an overview of the structure of a anemoi-dataset,
 
-********************************
+*******************************
  Structure of an anemoi-dataset
-********************************
+*******************************
 
 Training datasets are large array-like objects encoded in Zarr_ format.
 
 The array has the following dimensions:
 
-.. figure:: schemas/overview.png
+.. figure:: _static/schemas/overview.png
    :alt: Data layout
    :align: center
 
