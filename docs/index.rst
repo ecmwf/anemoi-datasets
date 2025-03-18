@@ -9,11 +9,10 @@
    This documentation is work in progress.
 
 An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
-optimised for training data-driven weather forecasting models. anemoi-datasets are
-organised in such a way that I/O operations are minimised. It is one
-of the packages within the `anemoi framework
+optimised for training data-driven weather forecasting models.
+anemoi-datasets are organised in such a way that I/O operations are
+minimised. It is one of the packages within the `anemoi framework
 <https://anemoi-docs.readthedocs.io/en/latest/>`_.
-
 
 **************
  About Anemoi
