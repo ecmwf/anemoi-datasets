@@ -55,16 +55,16 @@ This package provides the *Anemoi* datasets functionality.
    :maxdepth: 1
    :caption: User Guide
 
-   usage/introduction
-   usage/operations
-   usage/sources
-   usage/filters
-   usage/naming-variables
-   usage/handling-missing-dates
-   usage/handling-missing-values
-   usage/statistics
-   usage/incremental
-   usage/advanced-options
+   datasets/introduction
+   datasets/operations
+   datasets/sources
+   datasets/filters
+   datasets/naming-variables
+   datasets/handling-missing-dates
+   datasets/handling-missing-values
+   datasets/statistics
+   datasets/incremental
+   datasets/advanced-options
 
 .. toctree::
    :maxdepth: 1
