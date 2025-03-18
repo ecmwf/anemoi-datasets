@@ -6,7 +6,8 @@
  Using datasets
 ****************
 
-To install the latest stable release of the package with its dependencies, you can use the following command:
+To install the latest stable release of the package with its
+dependencies, you can use the following command:
 
 .. code:: bash
 
@@ -37,12 +38,14 @@ You may also have to install pandoc on MacOS:
 
    brew install pandoc
 
-For an editable install of anemoi-datasets, you can use the following command. In this case, changes that you make to the anemoi-datasets code will be reflected in the installed package without having to reinstall it.
+For an editable install of anemoi-datasets, you can use the following
+command. In this case, changes that you make to the anemoi-datasets code
+will be reflected in the installed package without having to reinstall
+it.
 
 .. code:: bash
 
    pip install -e .
-
 
 ..
    TODO: Make sure to update `setup.py`
