@@ -21,107 +21,50 @@ An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models. It is
 organised in such a way that I/O operations are minimised.
 
-This documentation is divided into two main sections: :ref:`how to use
-existing datasets <using-introduction>` and :ref:`how to build new
-datasets <building-introduction>`.
 
--  :doc:`overview`
--  :doc:`installing`
--  :doc:`naming_conventions`
+**************
+ About Anemoi
+**************
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
+*Anemoi* is a framework for developing machine learning weather
+forecasting models. It comprises of components or packages for preparing
+training datasets, conducting ML model training and a registry for
+datasets and trained models. *Anemoi* provides tools for operational
+inference, including interfacing to verification software. As a
+framework it seeks to handle many of the complexities that
+meteorological organisations will share, allowing them to easily train
+models from existing recipes but with their own data.
 
-   overview
-   installing
-   naming_conventions
+****************
+ Quick overview
+****************
 
-**Using training datasets**
+#!TODO
 
--  :doc:`using/introduction`
--  :doc:`using/opening`
--  :doc:`using/methods`
--  :doc:`using/subsetting`
--  :doc:`using/combining`
--  :doc:`using/selecting`
--  :doc:`using/ensembles`
--  :doc:`using/grids`
--  :doc:`using/zip`
--  :doc:`using/statistics`
--  :doc:`using/missing`
--  :doc:`using/other`
--  :doc:`using/matching`
--  :doc:`using/miscellaneous`
--  :doc:`using/configuration`
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Using datasets
+############
+ Installing
+############
 
-   using/introduction
-   using/opening
-   using/methods
-   using/subsetting
-   using/combining
-   using/selecting
-   using/ensembles
-   using/grids
-   using/zip
-   using/statistics
-   using/missing
-   using/other
-   using/matching
-   using/miscellaneous
-   using/configuration
+To install the package, you can use the following command:
 
-**Building training datasets**
+.. code:: bash
 
--  :doc:`building/introduction`
--  :doc:`building/operations`
--  :doc:`building/sources`
--  :doc:`building/filters`
--  :doc:`building/statistics`
--  :doc:`building/incremental`
+   pip install anemoi-datasets
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Building datasets
+**************
+ Contributing
+**************
 
-   building/introduction
-   building/operations
-   building/sources
-   building/filters
-   building/naming-variables
-   building/handling-missing-dates
-   building/handling-missing-values
-   building/statistics
-   building/incremental
-   building/advanced-options
+.. code:: bash
 
-**Command line tool**
-
--  :doc:`cli/introduction`
--  :doc:`cli/create`
--  :doc:`cli/inspect`
--  :doc:`cli/compare`
--  :doc:`cli/copy`
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Command line tool
-
-   cli/introduction
-   cli/create
-   cli/inspect
-   cli/compare
-   cli/copy
+   git clone ...
+   cd anemoi-datasets
+   pip install .[dev]
+   pip install -r docs/requirements.txt 
 
 *****************
- Anemoi packages
+ Other Anemoi packages
 *****************
 
 -  :ref:`anemoi-utils <anemoi-utils:index-page>`
