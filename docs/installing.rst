@@ -1,4 +1,3 @@
-
 ############
  Installing
 ############
@@ -79,6 +78,6 @@ To install the most recent development version, install from github:
  Testing
 *********
 
-To run the test suite after installing anemoi-datasets, install (via pypi)
-`py.test <https://pytest.org>`__ and run ``pytest`` in the ``datasets``
-directory of the anemoi-datasets repository.
+To run the test suite after installing anemoi-datasets, install (via
+pypi) `py.test <https://pytest.org>`__ and run ``pytest`` in the
+``datasets`` directory of the anemoi-datasets repository.
