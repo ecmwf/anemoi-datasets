@@ -1,7 +1,0 @@
-input:
-    mars:
-        use_cdsapi_dataset: "reanalysis-era5-complete"
-        class: ea
-        levtype: sfc
-        param: [10u, 10v, 2t, msl]
-        grid: n320

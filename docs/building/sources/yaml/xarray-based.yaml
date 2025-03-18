@@ -1,3 +1,0 @@
-input:
-   xarray-based-source: # netcdf, zarr, opendap, etc.
-      group: mygroup

@@ -1,3 +1,0 @@
-input:
-  grib:
-    path: /path/to/{date:strftime(%Y)}/{date:strftime(%m)}/{date:strftime(%Y%m%d%H)}.grib

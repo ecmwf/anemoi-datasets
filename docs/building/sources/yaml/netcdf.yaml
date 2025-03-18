@@ -1,3 +1,0 @@
-input:
-  netcdf:
-    path: /path/to/data.nc

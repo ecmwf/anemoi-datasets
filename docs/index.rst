@@ -51,37 +51,37 @@ This package provides the *Anemoi* datasets functionality.
 
    usage/getting_started
 
-.. toctree::
-   :maxdepth: 1
-   :caption: User Guide
+.. .. toctree::
+..    :maxdepth: 1
+..    :caption: User Guide
 
 
-   datasets/building/introduction
-   datasets/building/operations
-   datasets/building/sources
-   datasets/building/filters
-   datasets/building/naming-variables
-   datasets/building/handling-missing-dates
-   datasets/building/handling-missing-values
-   datasets/building/statistics
-   datasets/building/incremental
-   datasets/building/advanced-options
+..    datasets/building/introduction
+..    datasets/building/operations
+..    datasets/building/sources
+..    datasets/building/filters
+..    datasets/building/naming-variables
+..    datasets/building/handling-missing-dates
+..    datasets/building/handling-missing-values
+..    datasets/building/statistics
+..    datasets/building/incremental
+..    datasets/building/advanced-options
 
-   datasets/using/introduction
-   datasets/using/opening
-   datasets/using/methods
-   datasets/using/subsetting
-   datasets/using/combining
-   datasets/using/selecting
-   datasets/using/ensembles
-   datasets/using/grids
-   datasets/using/zip
-   datasets/using/statistics
-   datasets/using/missing
-   datasets/using/other
-   datasets/using/matching
-   datasets/using/miscellaneous
-   datasets/using/configuration
+..    datasets/using/introduction
+..    datasets/using/opening
+..    datasets/using/methods
+..    datasets/using/subsetting
+..    datasets/using/combining
+..    datasets/using/selecting
+..    datasets/using/ensembles
+..    datasets/using/grids
+..    datasets/using/zip
+..    datasets/using/statistics
+..    datasets/using/missing
+..    datasets/using/other
+..    datasets/using/matching
+..    datasets/using/miscellaneous
+..    datasets/using/configuration
 
 .. toctree::
    :maxdepth: 1
