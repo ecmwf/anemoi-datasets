@@ -81,6 +81,23 @@ The dictionary can be as complex as needed, for example:
 .. literalinclude:: code/open_complex.py
    :language: python
 
+
+The `open_dataset` function returns an object that wraps around
+`numpy.ndarray`, so it is possible to inspect the dataset and visualise it
+with standard Python tools. For example:
+
+.. code:: python
+   from anemoi.datasets import open_dataset
+   import matplotlib.pyplot as plt
+   import cartopy.crs as ccrs
+
+   ds = open_dataset("aifs-ea-an-oper-0001-mars-o48-2020-2021-6h-v1.zarr", select="2t")
+   fig, ax = plt.subplots(subplot_kw={"projection": ccrs.PlateCarree()})
+   p = ax.scatter(x=ds.longitudes, y=ds.latitudes, c=ds[0, 0, 0, :])
+   ax.coastlines()
+   ax.gridlines(draw_labels=True)
+   plt.colorbar(p, label="K", orientation="horizontal")
+
 ..
    TODO:
    When opening a complex dataset the user can use the `adjust` keyword to
