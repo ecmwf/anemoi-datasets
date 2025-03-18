@@ -42,6 +42,8 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
     tuple
         A tuple containing the data as a numpy array and the UUID of the HGrid.
     """
+    from earthkit.data.readers.netcdf import NetCDFReader
+
     ds = None
 
     param = record["param"]
@@ -54,7 +56,7 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
         context.info(f"Using {name} from {record['url']} (param={param})")
         ds = from_source("url", record["url"])
 
-    if param in ["latitudes", "longitudes"]:
+    if isinstance(ds._reader, NetCDFReader):
         ds = ds.to_xarray()
         if ds[param].attrs["units"] == "radian":
             values = ds[param].values * 180 / math.pi
