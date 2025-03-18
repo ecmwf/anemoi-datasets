@@ -21,7 +21,6 @@ An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models. It is
 organised in such a way that I/O operations are minimised.
 
-
 **************
  About Anemoi
 **************
@@ -74,7 +73,6 @@ This package provides the *Anemoi* datasets functionality.
    usage/incremental
    usage/advanced-options
 
-
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -92,7 +90,6 @@ This package provides the *Anemoi* datasets functionality.
 
    modules/*
 
-
 .. toctree::
    :maxdepth: 1
    :caption: Developing Anemoi Datasets
@@ -100,7 +97,6 @@ This package provides the *Anemoi* datasets functionality.
    dev/contributing
    dev/code-structure
    dev/testing
-
 
 ############
  Installing
@@ -121,11 +117,11 @@ To install the package, you can use the following command:
    git clone ...
    cd anemoi-datasets
    pip install .[dev]
-   pip install -r docs/requirements.txt 
+   pip install -r docs/requirements.txt
 
-*****************
+***********************
  Other Anemoi packages
-*****************
+***********************
 
 -  :ref:`anemoi-utils <anemoi-utils:index-page>`
 -  :ref:`anemoi-transform <anemoi-transform:index-page>`
