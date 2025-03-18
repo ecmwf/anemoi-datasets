@@ -17,8 +17,9 @@ in the time series. The missing dates will be filled ``np.nan`` values.
 You can retrieve the list indices corresponding to the missing dates by
 accessing the ``missing`` attribute of the dataset object.
 
-.. literalinclude:: ../code/missing_.py
-   :language: python
+.. code-block:: python
+
+    print(ds.missing)
 
 If you access a missing index, the dataset will throw a
 ``MissingDateError``.

@@ -7,54 +7,89 @@
 The simplest way to open a dataset is to use the `open_dataset`
 function:
 
-.. literalinclude:: ../code/open_first_.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset(dataset, option1=value1, option2=...)
 
 In that example, `dataset` can be:
 
 -  a local path to a dataset on disk:
 
-.. literalinclude:: ../code/open_path.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset("/path/to/dataset.zarr")
 
 -  a URL to a dataset in the cloud:
 
-.. literalinclude:: ../code/open_cloud.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds1 = open_dataset("https://path/to/dataset.zarr")
+
+   ds2 = open_dataset("s3://path/to/dataset.zarr")
 
 -  a dataset name, which is a string that identifies a dataset in the
    `anemoi` :ref:`configuration file <configuration>`.
 
-.. literalinclude:: ../code/open_name.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset("dataset_name")
 
 -  an already opened dataset. In that case, the function uses the
    options to return a modified dataset, for example with a different
    time range or frequency.
 
-.. literalinclude:: ../code/open_other.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds1 = open_dataset("/path/to/dataset.zarr")
+
+   ds2 = open_dataset(ds1, frequency="24h", start="2000", end="2010")
 
 -  a dictionary with a ``dataset`` key that can be any of the above, and
    the remaining keys being the options. The purpose of this option is
    to allow the user to open a dataset based on a configuration file.
    See :ref:`an example <open_with_config>` below:
 
-.. literalinclude:: ../code/open_dict_.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset({"dataset": dataset, "option1": value1, "option2": ...})
+
 
 -  a list of any of the above that will be combined either by
    concatenation or joining, based on their compatibility.
 
-.. literalinclude:: ../code/open_list_.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset([dataset1, dataset2, ...])
+
 
 -  a combining keyword, such as `join`, `concat`, `ensembles`, etc.
    followed by a list of the above. See :ref:`combining-datasets` for
    more information.
 
-.. literalinclude:: ../code/open_combine1_.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset(
+      ensemble=[dataset1, dataset2],
+      option1=value1,
+      option2=...,
+   )
+
 
 .. note::
 
@@ -64,8 +99,16 @@ In that example, `dataset` can be:
    apply to the first dataset, and `option3`, `option4`, to the second
    dataset, etc.
 
-.. literalinclude:: ../code/open_combine2_.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   ds = open_dataset(
+      combine=[
+         {"dataset": dataset1, "option1": value1, "option2": ...},
+         {"dataset": dataset2, "option3": value3, "option4": ...},
+      ]
+   )
 
 .. _open_with_config:
 
@@ -73,13 +116,33 @@ As mentioned above, using the dictionary to open a dataset can be useful
 for software that provides users with the ability to define their
 requirements in a configuration file:
 
-.. literalinclude:: ../code/open_yaml_.py
-   :language: python
+.. code:: python
+
+   with open("config.yaml") as file:
+      config = yaml.safe_load(file)
+
+   ds = open_dataset(config)
+
 
 The dictionary can be as complex as needed, for example:
 
-.. literalinclude:: ../code/open_complex.py
-   :language: python
+.. code:: python
+
+   from anemoi.datasets import open_dataset
+
+   config = {
+      "dataset": {
+         "ensemble": [
+               "/path/to/dataset1.zarr",
+               {"dataset": "dataset_name", "end": 2010},
+               {"dataset": "s3://path/to/dataset3.zarr", "start": 2000, "end": 2010},
+         ],
+         "frequency": "24h",
+      },
+      "select": ["2t", "msl"],
+   }
+
+   ds = open_dataset(config)
 
 The `open_dataset` function returns an object that wraps around
 `numpy.ndarray`, so it is possible to inspect the dataset and visualise

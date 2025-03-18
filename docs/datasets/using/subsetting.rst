@@ -16,7 +16,10 @@ dimension (dates).
 This option lets you subset the dataset by time. You can pass a date or
 a string:
 
-.. literalinclude:: ../code/start_.py
+.. code-block:: python
+
+   open_dataset(dataset, start=1980)
+
 
 .. _end:
 
@@ -26,8 +29,10 @@ a string:
 
 As for the start option, you can pass a date or a string:
 
-.. literalinclude:: ../code/end_.py
-   :language: python
+.. code-block:: python
+
+   open_dataset(dataset, end="2020-12-31")
+
 
 The following are equivalent ways of describing ``start`` or ``end``:
 
@@ -52,8 +57,9 @@ with a ``frequency`` of 6 hours is equivalent to ``end="2020-12-31
 
 You can change the frequency of the dataset by passing a string with:
 
-.. literalinclude:: ../code/frequency1_.py
-   :language: python
+.. code-block:: python
+
+   ds = open_dataset(dataset, frequency="6h")
 
 The new frequency must be a multiple of the original frequency.
 
@@ -62,5 +68,6 @@ To artificially increase the frequency, you can use the
 dataset by linearly interpolating the data values between the original
 dates.
 
-.. literalinclude:: ../code/frequency2_.py
-   :language: python
+.. code-block:: python
+
+   ds = open_dataset(dataset, interpolate_frequency="10m")

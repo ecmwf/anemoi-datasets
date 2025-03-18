@@ -22,11 +22,16 @@ When you have missing dates in a dataset, you can fill them with
 artificial values. You can either fill them with values that are the
 result of a linear interpolation between the two closest dates:
 
-.. literalinclude:: ../code/fill_missing_dates1_.py
+.. code-block:: python
+
+    ds = open_dataset(dataset, fill_missing_dates="interpolate")
+
 
 Or you can select the copy the value of the closest date:
 
-.. literalinclude:: ../code/fill_missing_dates2_.py
+.. code-block:: python
+
+    ds = open_dataset(dataset, fill_missing_dates="closest")
 
 if the missing date is exactly in the middle of two dates, the library
 will choose that value of the largest date. You can change this behavior
@@ -45,7 +50,13 @@ This code below will throw an exception if ``ds[i]`` or ``ds[i+1]`` are
 missing dates. Because we iterate over the whole dataset, we are
 guaranteed to fail if there are any missing dates.
 
-.. literalinclude:: ../code/iterating_missing_dates1_.py
+.. code-block:: python
+
+    ds = open_dataset(dataset)
+
+    for i in range(len(ds) - 1):
+       ds = ds[i + 1] - ds[i]
+
 
 You can skip missing dates by setting the ``skip_missing_dates`` option
 to ``True``. You will have to also provide a hint about how you intent
@@ -65,7 +76,17 @@ dates of a group is guaranteed to be constant across all groups.
 .. image:: ../../_static/skip-missing.png
    :align: center
 
-.. literalinclude:: ../code/iterating_missing_dates2_.py
+.. code-block:: python
+
+    ds = open_dataset(
+    dataset,
+    skip_missing_dates=True,
+    expected_access=slice(0, 2),
+   )
+
+   for i in range(len(ds)):
+      xi, xi_1 = ds[i]
+      dx = xi_1 - xi
 
 The code above will not raise an exception, even if there are missing
 dates. The ``slice(0, 2)`` represents the ``i`` and ``i+1`` indices in
@@ -76,7 +97,11 @@ is excluded).
 You can also provide a single integer to the ```expected_access``
 parameter. The two forms below are identical:
 
-.. literalinclude:: ../code/iterating_missing_dates3_.py
+.. code-block:: python
+
+    expected_access = slice(0, 2)
+    expected_access = 2
+
 
 .. _fill_missing_gaps:
 
@@ -91,7 +116,9 @@ the dates are contiguous, i.e. that the last date of a dataset is one
 If the dates are not contiguous, the library will raise an error. You
 can force the concatenation by setting the ``fill_missing_gaps`` option:
 
-.. literalinclude:: ../code/fill_missing_gaps_.py
+.. code-block:: python
+
+    ds = open_dataset(concat=[dataset1, dataset2, ...], fill_missing_gaps=True)
 
 If there is a gap between the datasets, the library will fill the gap by
 creating a virtual dataset with only missing dates, and add it between
@@ -104,4 +131,7 @@ the datasets to make the dates contiguous.
 You can set missing dates using the ``set_missing_dates`` option. This
 option is for debugging purposes only.
 
-.. literalinclude:: ../code/set_missing_dates_.py
+.. code-block:: python
+
+    ds = open_dataset(dataset, set_missing_dates=["2010-01-01T12:00:00", "2010-02-01T12:00:00"])
+
