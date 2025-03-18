@@ -14,7 +14,7 @@ You can thin a dataset by specifying the ``thinning`` parameter in the
 will mask out all but every Nth point, with N specified by the
 ``thinning`` parameter.
 
-.. literalinclude:: code/thinning_.py
+.. literalinclude:: ../code/thinning_.py
    :language: python
 
 Please note that the thinning will apply to all dimensions of the
@@ -25,14 +25,14 @@ the thinning will apply to the only dimension.
 The following example shows the effect of thinning a dataset with a 1
 degree resolution:
 
-.. image:: images/thinning-before.png
+.. image:: ../../_static/thinning-before.png
    :width: 75%
    :align: center
 
 Thinning the dataset with ``thinning=4`` will result in the following
 dataset:
 
-.. image:: images/thinning-after.png
+.. image:: ../../_static/thinning-after.png
    :width: 75%
    :align: center
 
@@ -46,17 +46,17 @@ numbers in the order ``(north, west, south, east)``. For example, to
 crop a dataset to the area between 60N and 20N and 50W and 0E, you can
 use:
 
-.. literalinclude:: code/area1_.py
+.. literalinclude:: ../code/area1_.py
    :language: python
 
 Which will result in the following dataset:
 
-.. image:: images/area-1.png
+.. image:: ../../_static/area-1.png
    :width: 75%
    :align: center
 
 Alternatively, you can specify another dataset as the area. In this
 case, the bounding box of the dataset will be used.
 
-.. literalinclude:: code/area2_.py
+.. literalinclude:: ../code/area2_.py
    :language: python

@@ -13,7 +13,7 @@ package searches for datasets:
 
 .. _add_dataset_path:
 
-.. literalinclude:: code/misc1.py
+.. literalinclude:: ../code/misc1.py
    :language: python
 
 Use ``add_named_dataset`` to add a named dataset to the list of named
@@ -21,5 +21,5 @@ datasets:
 
 .. _add_named_dataset:
 
-.. literalinclude:: code/misc2.py
+.. literalinclude:: ../code/misc2.py
    :language: python

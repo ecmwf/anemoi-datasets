@@ -23,11 +23,11 @@ In machine learning, you often need to iterate over two datasets at the
 same time. One representing the input ``x`` and the other the output
 ``y``.
 
-.. literalinclude:: code/xy1_.py
+.. literalinclude:: ../code/xy1_.py
 
 You will then be able to iterate over the datasets as follows:
 
-.. literalinclude:: code/xy2_.py
+.. literalinclude:: ../code/xy2_.py
 
 **Note:** `xy` is currently a shortcut for `zip` below, and is intended
 to make the code more readable.
@@ -39,11 +39,11 @@ to make the code more readable.
 The `zip` option is used to combine multiple datasets into a single
 dataset, that can be iterated over or indexed simultaneously.
 
-.. literalinclude:: code/zip1_.py
+.. literalinclude:: ../code/zip1_.py
 
 The dataset can then be indexed as follows:
 
-.. literalinclude:: code/zip2_.py
+.. literalinclude:: ../code/zip2_.py
 
 .. note::
 
@@ -61,4 +61,4 @@ Both options can be combined. The example below is based on a model that
 is trained to upscale a dataset. The input is the low resolution and a
 high resolution orography. The output is the high resolution dataset.
 
-.. literalinclude:: code/zip_xy_.py
+.. literalinclude:: ../code/zip_xy_.py

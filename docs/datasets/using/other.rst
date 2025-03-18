@@ -13,7 +13,7 @@
  chain
 *******
 
-.. literalinclude:: code/chain_.py
+.. literalinclude:: ../code/chain_.py
 
 The `chain` operation is used to combine multiple datasets into a single
 dataset. The datasets are combined by concatenating the data arrays
@@ -29,7 +29,7 @@ function.
  shuffle
 *********
 
-.. literalinclude:: code/shuffle_.py
+.. literalinclude:: ../code/shuffle_.py
 
 The `shuffle` operation is used to shuffle the data in the dataset along
 the first dimension (dates).

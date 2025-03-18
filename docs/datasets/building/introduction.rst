@@ -14,7 +14,7 @@ computed as the dataset is built, and stored in the metadata, with other
 information such as the the locations of the grid points, the list of
 variables, etc.
 
-.. figure:: ../schemas/recipe.png
+.. figure:: ../../_static/schemas/recipe.png
    :alt: Building datasets
    :align: center
 

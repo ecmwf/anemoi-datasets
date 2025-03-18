@@ -16,5 +16,5 @@ accurately compute statistics based on them, you can include the
 
 Here's an example of how to implement it:
 
-.. literalinclude:: yaml/nan.yaml
+.. literalinclude:: ../yaml/nan.yaml
    :language: yaml

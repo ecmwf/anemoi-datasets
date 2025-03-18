@@ -52,10 +52,10 @@ chronological order with no gaps between them. If you want to
 concatenate datasets that have gaps between them, check the
 :ref:`fill_missing_gaps <fill_missing_gaps>` option.
 
-.. literalinclude:: code/concat1.py
+.. literalinclude:: ../code/concat1.py
    :language: python
 
-.. image:: images/concat.png
+.. image:: ../../_static/concat.png
    :align: center
    :alt: Concatenation
 
@@ -75,10 +75,10 @@ Please note that you can pass more than two datasets to the function.
 You can join two datasets that have the same dates, combining their
 variables.
 
-.. literalinclude:: code/join1.py
+.. literalinclude:: ../code/join1.py
    :language: python
 
-.. image:: images/join.png
+.. image:: ../../_static/join.png
    :align: center
    :alt: Join
 
@@ -86,7 +86,7 @@ If a variable is present in more than one file, the last occurrence of
 that variable will be used, and will be at the position of the first
 occurrence of that name.
 
-.. image:: images/overlay.png
+.. image:: ../../_static//overlay.png
    :align: center
    :alt: Overlay
 
@@ -102,7 +102,7 @@ You can combine two or more datasets that have the same dates,
 variables, grids, etc. along the ensemble dimension. The package will
 check that all datasets are compatible.
 
-.. literalinclude:: code/ensembles1_.py
+.. literalinclude:: ../code/ensembles1_.py
 
 .. _grids:
 
@@ -110,7 +110,7 @@ check that all datasets are compatible.
  grids
 *******
 
-.. literalinclude:: code/grids1_.py
+.. literalinclude:: ../code/grids1_.py
 
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
@@ -119,7 +119,7 @@ All the grid points are concatenated, in the order they are given. The
  cutout
 ********
 
-.. literalinclude:: code/cutout_.py
+.. literalinclude:: ../code/cutout_.py
 
 The `cutout` combination only supports two datasets. The first dataset
 is considered to be a limited area model (LAM), while the second one is
@@ -129,14 +129,14 @@ the bounding box of the second dataset.
 
 The image below shows the global dataset:
 
-.. image:: images/cutout-1.png
+.. image:: ../../_static/cutout-1.png
    :width: 75%
    :align: center
    :alt: Cutout
 
 The image below shows the LAM dataset:
 
-.. image:: images/cutout-2.png
+.. image:: ../../_static//cutout-2.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -145,7 +145,7 @@ A 'cutout' is performed by removing the grid points from the global
 dataset that are contained in the LAM dataset. The result is shown
 below:
 
-.. image:: images/cutout-3.png
+.. image:: ../../_static//cutout-3.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -153,7 +153,7 @@ below:
 The final dataset is the concatenation of the LAM dataset and the
 cutout:
 
-.. image:: images/cutout-4.png
+.. image:: ../../_static//cutout-4.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -171,11 +171,11 @@ The plots below illustrate how the cutout differs if `min_distance_km`
 is not given (top) or if `min_distance_km` is is set to `0` (bottom).
 The difference can be seen at the boundary between the two grids:
 
-.. image:: images/cutout-5.png
+.. image:: ../../_static//cutout-5.png
    :align: center
    :alt: Cutout
 
-.. image:: images/cutout-6.png
+.. image:: ../../_static//cutout-6.png
    :align: center
    :alt: Cutout
 
@@ -193,7 +193,7 @@ That feature will interpolate the variables of `dataset2` that are not
 in `dataset1` to the grid of `dataset1` , add them to the list of
 variable of `dataset1` and return the result.
 
-.. literalinclude:: code/complement1_.py
+.. literalinclude:: ../code/complement1_.py
 
 Currently ``what`` can only be ``variables`` and can be omitted.
 
@@ -205,9 +205,9 @@ This feature was originally designed to be used in conjunction with
 ``cutout``, where `dataset1` is the lam, and `dataset2` is the global
 dataset.
 
-.. literalinclude:: code/complement2_.py
+.. literalinclude:: ../code/complement2_.py
 
 Another use case is to simply bring all non-overlapping variables of a
 dataset into an other:
 
-.. literalinclude:: code/complement3_.py
+.. literalinclude:: ../code/complement3_.py

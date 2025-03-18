@@ -15,13 +15,13 @@ Selecting is the action of filtering the dataset by its second dimension
 
 Select '2t' and 'tp' in that order:
 
-.. literalinclude:: code/select1_.py
+.. literalinclude:: ../code/select1_.py
    :language: python
 
 Select '2t' and 'tp', but preserve the order in which they are in the
 dataset
 
-.. literalinclude:: code/select2_.py
+.. literalinclude:: ../code/select2_.py
    :language: python
 
 .. _drop:
@@ -32,7 +32,7 @@ dataset
 
 You can also drop some variables:
 
-.. literalinclude:: code/drop_.py
+.. literalinclude:: ../code/drop_.py
    :language: python
 
 .. _reorder:
@@ -45,12 +45,12 @@ and reorder them:
 
 ... using a list
 
-.. literalinclude:: code/reorder1_.py
+.. literalinclude:: ../code/reorder1_.py
    :language: python
 
 ... or using a dictionary
 
-.. literalinclude:: code/reorder2_.py
+.. literalinclude:: ../code/reorder2_.py
    :language: python
 
 .. _rename:
@@ -61,7 +61,7 @@ and reorder them:
 
 You can also rename variables:
 
-.. literalinclude:: code/rename_.py
+.. literalinclude:: ../code/rename_.py
    :language: python
 
 This will be useful when you join datasets and do not want variables
@@ -79,12 +79,12 @@ between the two is that ``number`` is **1-based**, while ``member`` is
 
 Select a single element:
 
-.. literalinclude:: code/number1_.py
+.. literalinclude:: ../code/number1_.py
    :language: python
 
 ... or a list:
 
-.. literalinclude:: code/number2_.py
+.. literalinclude:: ../code/number2_.py
    :language: python
 
 .. _rescale:
@@ -96,7 +96,7 @@ Select a single element:
 When combining datasets, you may want to rescale the variables so that
 their have matching units. This can be done with the `rescale` option:
 
-.. literalinclude:: code/rescale_.py
+.. literalinclude:: ../code/rescale_.py
    :language: python
 
 The `rescale` option will also rescale the statistics. The rescaling is
