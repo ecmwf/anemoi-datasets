@@ -1,4 +1,4 @@
-compare
+Compare Command
 =======
 
 Use this command to compare two datasets.

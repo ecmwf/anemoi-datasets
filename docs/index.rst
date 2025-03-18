@@ -36,7 +36,7 @@ models from existing recipes but with their own data.
 This package provides the *Anemoi* datasets functionality.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :hidden:
    :caption: Introduction
 
@@ -51,40 +51,16 @@ This package provides the *Anemoi* datasets functionality.
 
    usage/getting_started
 
-.. .. toctree::
-..    :maxdepth: 1
-..    :caption: User Guide
+.. toctree::
+   :maxdepth: 3
+   :caption: User Guide
 
-
-..    datasets/building/introduction
-..    datasets/building/operations
-..    datasets/building/sources
-..    datasets/building/filters
-..    datasets/building/naming-variables
-..    datasets/building/handling-missing-dates
-..    datasets/building/handling-missing-values
-..    datasets/building/statistics
-..    datasets/building/incremental
-..    datasets/building/advanced-options
-
-..    datasets/using/introduction
-..    datasets/using/opening
-..    datasets/using/methods
-..    datasets/using/subsetting
-..    datasets/using/combining
-..    datasets/using/selecting
-..    datasets/using/ensembles
-..    datasets/using/grids
-..    datasets/using/zip
-..    datasets/using/statistics
-..    datasets/using/missing
-..    datasets/using/other
-..    datasets/using/matching
-..    datasets/using/miscellaneous
-..    datasets/using/configuration
+   datasets/introduction
+   datasets/building/introduction
+   datasets/using/introduction
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 5
    :hidden:
    :caption: CLI
 
@@ -102,33 +78,12 @@ This package provides the *Anemoi* datasets functionality.
    modules/*
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :caption: Developing Anemoi Datasets
 
    dev/contributing
-   dev/code-structure
+   dev/code_structure
    dev/testing
-
-############
- Installing
-############
-
-To install the package, you can use the following command:
-
-.. code:: bash
-
-   pip install anemoi-datasets
-
-**************
- Contributing
-**************
-
-.. code:: bash
-
-   git clone ...
-   cd anemoi-datasets
-   pip install .[dev]
-   pip install -r docs/requirements.txt
 
 ***********************
  Other Anemoi packages

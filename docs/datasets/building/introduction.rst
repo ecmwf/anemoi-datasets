@@ -1,7 +1,7 @@
 .. _building-introduction:
 
 ##############
- Introduction
+ Building your own datasets
 ##############
 
 The `anemoi-datasets` package allows you to create datasets for training
@@ -80,76 +80,18 @@ concat
 Each operation is considered as a :ref:`source <sources>`, therefore
 operations can be combined to build complex datasets.
 
-*****************
- Getting started
-*****************
 
-First recipe
-============
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Building datasets
 
-The simplest `recipe` file must contain a ``dates`` section and an
-``input`` section. The latter must contain a `source`. In that case, the
-source is ``mars``
-
-.. literalinclude:: yaml/building1.yaml
-   :language: yaml
-
-To create the dataset, run the following command:
-
-.. code:: console
-
-   $ anemoi-datasets create recipe.yaml dataset.zarr
-
-Once the build is complete, you can inspect the dataset using the
-following command:
-
-.. code:: console
-
-   $ anemoi-datasets inspect dataset.zarr
-
-.. literalinclude:: yaml/building1.txt
-   :language: console
-
-Adding a second source
-======================
-
-To add a second source, you need to use the ``join`` operation. In that
-example, we add pressure level variables to the previous example:
-
-.. literalinclude:: yaml/building2.yaml
-   :language: yaml
-
-This will build the following dataset:
-
-.. literalinclude:: yaml/building2.txt
-   :language: console
-
-.. note::
-
-   Please note that the pressure levels parameters are named
-   `param_level`. This is the default behaviour. See
-   :ref:`remapping_option` for more information.
-
-Adding some forcing variables
-=============================
-
-When training a data-driven model, some forcing variables may be
-required such as the solar radiation, the time of day, the day in the
-year, etc.
-
-These are provided by the ``forcings`` source. Let us add a few of them
-to the above example. The `template` option is used to point to another
-source, in that case the first instance of ``mars``. This source is used
-to get information about the grid points, as some of the forcing
-variables are grid dependent.
-
-.. literalinclude:: yaml/building3.yaml
-   :language: yaml
-
-This will build the following dataset:
-
-.. literalinclude:: yaml/building3.txt
-   :language: console
-
-See :ref:`forcing_variables` for more information about forcing
-variables.
+   operations
+   sources
+   filters
+   naming-variables
+   handling-missing-dates
+   handling-missing-values
+   statistics
+   incremental
+   advanced-options

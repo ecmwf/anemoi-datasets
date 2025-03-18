@@ -1,7 +1,7 @@
 .. _using-introduction:
 
 ##############
- Introduction
+ Using an already existing dataset
 ##############
 
 An *Anemoi* dataset is a thin wrapper around a zarr_ store that is
@@ -34,3 +34,24 @@ the `open_dataset` function:
 
 In the latter case, the datasets are combined along the time dimension
 or the variable dimension depending on the dataset's structure.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Using datasets
+
+   introduction
+   opening
+   methods
+   subsetting
+   combining
+   selecting
+   ensembles
+   grids
+   zip
+   statistics
+   missing
+   other
+   matching
+   miscellaneous
+   configuration

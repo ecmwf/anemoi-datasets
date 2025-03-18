@@ -1,42 +1,48 @@
+
 ############
  Installing
 ############
 
 ****************
- Using datasets
+ Python Version
 ****************
 
-To install the latest stable release of the package with its
-dependencies, you can use the following command:
+-  Python (> 3.9)
+
+We require at least Python 3.9.
+
+**************
+ Installation
+**************
+
+Environments
+============
+
+We currently do not provide a conda build of anemoi-datasets so the
+suggested installation is through Python virtual environments.
+
+For linux the process to make and use a venv is as follows,
 
 .. code:: bash
 
-   pip install anemoi-datasets
+   python -m venv /path/to/my/venv
+   source /path/to/my/venv/bin/activate
 
-*******************
- Creating datasets
-*******************
+Instructions
+============
+
+To install the package, you can use the following command:
+
+.. code:: bash
+
+   python -m pip install anemoi-datasets
+
+If you are interested in creating datasets, you can install the package
+with the following command:
 
 .. code:: bash
 
    pip install anemoi-datasets[create]
-
-**************
- Contributing
-**************
-
-.. code:: bash
-
-   git clone git@github.com:ecmwf/anemoi-datasets.git
-   cd anemoi-datasets
-   pip install .[dev]
-   pip install -r docs/requirements.txt
-
-You may also have to install pandoc on MacOS:
-
-.. code:: bash
-
-   brew install pandoc
 
 For an editable install of anemoi-datasets, you can use the following
 command. In this case, changes that you make to the anemoi-datasets code
@@ -47,6 +53,32 @@ it.
 
    pip install -e .
 
-..
-   TODO: Make sure to update `setup.py`
-   to reflect these options
+We also maintain other dependency sets for different subsets of
+functionality:
+
+.. code:: bash
+
+   python -m pip install "anemoi-datasets[docs]" # Install optional dependencies for generating docs
+
+.. literalinclude:: ../../pyproject.toml
+   :language: toml
+   :start-at: [project.optional-dependencies.all]
+   :end-before: [project.urls.Changelog]
+
+**********************
+ Development versions
+**********************
+
+To install the most recent development version, install from github:
+
+.. code::
+
+   $ python -m pip install git@github.com:ecmwf/anemoi-datasets.git
+
+*********
+ Testing
+*********
+
+To run the test suite after installing anemoi-datasets, install (via pypi)
+`py.test <https://pytest.org>`__ and run ``pytest`` in the ``datasets``
+directory of the anemoi-datasets repository.

@@ -1,4 +1,4 @@
-inspect
+Inspect Command
 =======
 
 
