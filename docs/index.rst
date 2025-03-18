@@ -65,6 +65,7 @@ This package provides the *Anemoi* datasets functionality.
    datasets/statistics
    datasets/incremental
    datasets/advanced-options
+   datasets/naming-conventions
 
 .. toctree::
    :maxdepth: 1
