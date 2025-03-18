@@ -13,13 +13,28 @@ package searches for datasets:
 
 .. _add_dataset_path:
 
-.. literalinclude:: ../code/misc1.py
-   :language: python
+.. code-block:: python
+
+   from anemoi.datasets import add_dataset_path
+   from anemoi.datasets import open_dataset
+
+   add_dataset_path("https://object-store.os-api.cci1.ecmwf.int/ml-examples/")
+
+   ds = open_dataset("an-oper-2023-2023-2p5-6h-v1")
 
 Use ``add_named_dataset`` to add a named dataset to the list of named
 datasets:
 
 .. _add_named_dataset:
 
-.. literalinclude:: ../code/misc2.py
-   :language: python
+.. code-block:: python
+
+   from anemoi.datasets import add_named_dataset
+   from anemoi.datasets import open_dataset
+
+   add_named_dataset(
+      "example-dataset",
+      "https://object-store.os-api.cci1.ecmwf.int/ml-examples/an-oper-2023-2023-2p5-6h-v1.zarr",
+   )
+
+   ds = open_dataset("example-dataset")

@@ -14,8 +14,10 @@ You can thin a dataset by specifying the ``thinning`` parameter in the
 will mask out all but every Nth point, with N specified by the
 ``thinning`` parameter.
 
-.. literalinclude:: ../code/thinning_.py
-   :language: python
+.. code-block:: python
+
+    ds = open_dataset(dataset, thinning=N, method="every-nth")
+
 
 Please note that the thinning will apply to all dimensions of the
 fields. So for 2D fields, the thinning will apply to both the latitude
@@ -46,8 +48,9 @@ numbers in the order ``(north, west, south, east)``. For example, to
 crop a dataset to the area between 60N and 20N and 50W and 0E, you can
 use:
 
-.. literalinclude:: ../code/area1_.py
-   :language: python
+.. code-block:: python
+
+    ds = open_dataset(dataset, area=(60, -50, 20, 0))
 
 Which will result in the following dataset:
 
@@ -58,5 +61,7 @@ Which will result in the following dataset:
 Alternatively, you can specify another dataset as the area. In this
 case, the bounding box of the dataset will be used.
 
-.. literalinclude:: ../code/area2_.py
-   :language: python
+.. code-block:: python
+
+    ds = open_dataset(dataset1, area=dataset2)
+

@@ -13,7 +13,10 @@
  chain
 *******
 
-.. literalinclude:: ../code/chain_.py
+.. code-block:: python
+
+    ds = open_dataset(chain=[dataset1, dataset2, ...])
+
 
 The `chain` operation is used to combine multiple datasets into a single
 dataset. The datasets are combined by concatenating the data arrays
@@ -29,7 +32,10 @@ function.
  shuffle
 *********
 
-.. literalinclude:: ../code/shuffle_.py
+.. code-block:: python
+
+    ds = open_dataset(dataset, shuffle=True)
+
 
 The `shuffle` operation is used to shuffle the data in the dataset along
 the first dimension (dates).

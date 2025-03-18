@@ -18,10 +18,20 @@ between the two is that ``number`` is **1-based**, while ``member`` is
 
 Select a single element:
 
-.. literalinclude:: ../code/number1_.py
-   :language: python
+.. code-block:: python
+
+   ds = open_dataset(
+      dataset,
+      number=1,
+   )
+
 
 ... or a list:
 
-.. literalinclude:: ../code/number2_.py
-   :language: python
+.. code-block:: python
+
+   ds = open_dataset(
+      dataset,
+      number=[1, 3, 5],
+   )
+
