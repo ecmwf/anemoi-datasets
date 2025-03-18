@@ -65,7 +65,6 @@ In that example, `dataset` can be:
 
    ds = open_dataset({"dataset": dataset, "option1": value1, "option2": ...})
 
-
 -  a list of any of the above that will be combined either by
    concatenation or joining, based on their compatibility.
 
@@ -74,7 +73,6 @@ In that example, `dataset` can be:
    from anemoi.datasets import open_dataset
 
    ds = open_dataset([dataset1, dataset2, ...])
-
 
 -  a combining keyword, such as `join`, `concat`, `ensembles`, etc.
    followed by a list of the above. See :ref:`combining-datasets` for
@@ -89,7 +87,6 @@ In that example, `dataset` can be:
       option1=value1,
       option2=...,
    )
-
 
 .. note::
 
@@ -122,7 +119,6 @@ requirements in a configuration file:
       config = yaml.safe_load(file)
 
    ds = open_dataset(config)
-
 
 The dictionary can be as complex as needed, for example:
 

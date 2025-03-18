@@ -23,7 +23,7 @@ In machine learning, you often need to iterate over two datasets at the
 same time. One representing the input ``x`` and the other the output
 ``y``.
 
-.. code-block:: python
+.. code:: python
 
    ds = open_dataset(x=dataset1, y=dataset2)
 
@@ -33,13 +33,13 @@ same time. One representing the input ``x`` and the other the output
 
 You will then be able to iterate over the datasets as follows:
 
-.. code-block:: python
+.. code:: python
 
    for x, y in ds:
-      y_hat = model(x)
-      loss = criterion(y_hat, y)
-      loss.backward()
-      
+       y_hat = model(x)
+       loss = criterion(y_hat, y)
+       loss.backward()
+
 **Note:** `xy` is currently a shortcut for `zip` below, and is intended
 to make the code more readable.
 
@@ -50,13 +50,13 @@ to make the code more readable.
 The `zip` option is used to combine multiple datasets into a single
 dataset, that can be iterated over or indexed simultaneously.
 
-.. code-block:: python
+.. code:: python
 
    ds = open_dataset(zip=[dataset1, dataset2, ...])
 
 The dataset can then be indexed as follows:
 
-.. code-block:: python
+.. code:: python
 
    print(ds[0])
    # (dataset1[0], dataset2[0], ...)
@@ -83,7 +83,7 @@ Both options can be combined. The example below is based on a model that
 is trained to upscale a dataset. The input is the low resolution and a
 high resolution orography. The output is the high resolution dataset.
 
-.. code-block:: python
+.. code:: python
 
    input = open_dataset(zip=[low_res_dataset, high_res_orography_dataset])
    output = open_dataset(high_res_dataset)
@@ -91,6 +91,6 @@ high resolution orography. The output is the high resolution dataset.
    ds = open_dataset(x=input, y=output)
 
    for (x, orography), y in ds:
-      y_hat = model(x, orography)
-      loss = criterion(y_hat, y)
-      loss.backward()
+       y_hat = model(x, orography)
+       loss = criterion(y_hat, y)
+       loss.backward()
