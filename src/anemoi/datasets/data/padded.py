@@ -123,7 +123,6 @@ class Padded(Forwards):
         return self.forward.empty_item()
 
     def __len__(self) -> int:
-        print("len", len(self._dates))
         return len(self._dates)
 
     @property
