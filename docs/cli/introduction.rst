@@ -13,7 +13,7 @@ The tool can provide help with the ``--help`` options:
 
     % anemoi-datasets --help
 
-The commands are: 
+The commands are:
 
 - :ref:`Create Command <create_command>`
 - :ref:`Copy Command <copy_command>`
