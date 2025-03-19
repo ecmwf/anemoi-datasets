@@ -86,7 +86,6 @@ This is illustrated in the following video:
      <source src="https://anemoi.ecmwf.int/static/images/datasets.mp4" type="video/mp4">
    </video>
 
-.. _zarr: https://zarr.readthedocs.io/
-
 .. _xarray: https://docs.xarray.dev/en/stable/index.html
 
+.. _zarr: https://zarr.readthedocs.io/
