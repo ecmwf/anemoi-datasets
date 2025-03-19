@@ -30,6 +30,7 @@ from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
+from anemoi.datasets.data.padded import Padded
 from anemoi.datasets.data.select import Rename
 from anemoi.datasets.data.select import Select
 from anemoi.datasets.data.statistics import Statistics
@@ -388,6 +389,7 @@ class DatasetTester:
         time_increment: datetime.timedelta,
         statistics_reference_dataset: Optional[Union[str, list]],
         statistics_reference_variables: Optional[Union[str, list]],
+        regular_shape: bool = True,
     ) -> None:
         """Run the dataset tests.
 
@@ -413,6 +415,8 @@ class DatasetTester:
             Reference dataset for statistics.
         statistics_reference_variables : Optional[Union[str, list]]
             Reference variables for statistics.
+        regular_shape : bool, optional
+            Whether the dataset has a regular shape, by default True.
         """
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
@@ -451,7 +455,8 @@ class DatasetTester:
                 statistics_reference_variables,
             )
 
-        self.indexing(self.ds)
+        if regular_shape:
+            self.indexing(self.ds)
         self.metadata(self.ds)
 
         self.ds.tree()
@@ -701,6 +706,25 @@ def test_subset_2() -> None:
         time_increment=datetime.timedelta(hours=1),
         statistics_reference_dataset="test-2021-2023-1h-o96-abcd",
         statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_subset_2_padding() -> None:
+    """Test subsetting a dataset (case 2)."""
+    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00", padding=True)
+    test.run(
+        expected_class=Padded,
+        expected_length=365 * 24 * 3,
+        expected_shape=(365 * 24 * 3, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd") if date.year == 2022 else np.zeros((4, 1, 0)),
+        start_date=datetime.datetime(2021, 1, 1),
+        time_increment=datetime.timedelta(hours=1),
+        statistics_reference_dataset="test-2022-2022-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        regular_shape=False,
     )
 
 
