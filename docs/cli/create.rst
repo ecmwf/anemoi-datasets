@@ -1,3 +1,5 @@
+.. _create_command:
+
 Create Command
 ==============
 

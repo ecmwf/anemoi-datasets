@@ -1,3 +1,5 @@
+.. _inspect_command:
+
 Inspect Command
 ===============
 
@@ -15,10 +17,6 @@ which will output something like the following. The output should be self-explan
 
 .. literalinclude:: ../datasets/yaml/building1.txt
    :language: console
-
-*********************
- Command line usage
-*********************
 
 .. argparse::
     :module: anemoi.datasets.__main__

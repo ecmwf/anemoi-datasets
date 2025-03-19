@@ -13,73 +13,10 @@ The tool can provide help with the ``--help`` options:
 
     % anemoi-datasets --help
 
-The commands are:
+The commands are: 
 
-.. toctree::
-    :maxdepth: 1
-
-    compare
-    copy
-    create
-    inspect
-    scan
-
-.. argparse::
-    :module: anemoi.datasets.__main__
-    :func: create_parser
-    :prog: anemoi-datasets
-    :nosubcommands:
-
-
-.. Create Command
-.. --------------
-
-.. .. toctree::
-..     :maxdepth: 1
-..     create
-
-
-.. .. argparse::
-..     :module: anemoi.datasets.__main__
-..     :func: create_parser
-..     :prog: anemoi-datasets
-..     :path: create
-
-.. Inspect Command
-.. ----------------
-
-.. .. toctree::
-..     :maxdepth: 1
-..     inspect
-
-.. .. argparse::
-..     :module: anemoi.datasets.__main__
-..     :func: inspect_parser
-..     :prog: anemoi-datasets
-..     :path: inspect
-
-.. Compare Command
-.. ---------------
-
-.. .. toctree::
-..     :maxdepth: 1
-..     compare
-
-.. .. argparse::
-..     :module: anemoi.datasets.__main__
-..     :func: compare_parser
-..     :prog: anemoi-datasets
-..     :path: compare
-
-.. Copy Command
-.. ---------------
-
-.. .. toctree::
-..     :maxdepth: 1
-..     copy
-
-.. .. argparse::
-..     :module: anemoi.datasets.__main__
-..     :func: copy_parser
-..     :prog: anemoi-datasets
-..     :path: copy
+- :ref:`Create Command <create_command>`
+- :ref:`Copy Command <copy_command>`
+- :ref:`Inspect Command <Inspect_command>`
+- :ref:`Compare Command <compare_command>`
+- :ref:`Scan Command <scan_command>`

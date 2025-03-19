@@ -1,5 +1,7 @@
+.. _copy_command:
+
 Copy Command
-====
+============
 
 
 Copying a dataset from one location to another can be error-prone and
