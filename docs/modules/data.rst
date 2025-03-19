@@ -1,5 +1,4 @@
-..
-   data-autodoc:
+.. _data-autodoc:
 
 ######
  Data
