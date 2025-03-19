@@ -1,5 +1,6 @@
-This source uses Xarray_ internally to access the data, and assumes that
-it follows the `CF conventions`_.
+The netcdf source uses Xarray_ internally to access the data, and assumes that
+the netcdf files follow the `CF conventions`_. You can also read a collection of 
+GRIB files, using Unix’ shell wildcards:
 
 You specify any valid xarray.open_dataset_ arguments in the source.
 

@@ -87,3 +87,6 @@ This is illustrated in the following video:
    </video>
 
 .. _zarr: https://zarr.readthedocs.io/
+
+.. _xarray: https://docs.xarray.dev/en/stable/index.html
+

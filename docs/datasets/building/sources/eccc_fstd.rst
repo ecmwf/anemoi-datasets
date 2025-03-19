@@ -2,7 +2,7 @@
  eccc-fstd
 ###########
 
-To read files in ECCC standard format, use the following source:
+To read files in the standard format used at Environment and Climate Change Canada (ECCC), the following source can be used:
 
 .. literalinclude:: yaml/eccc_fstd.yaml
    :language: yaml
