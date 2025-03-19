@@ -26,10 +26,12 @@ The following `sources` are currently available:
    sources/grib
    sources/hindcasts
    sources/mars
+   sources/cds
    sources/netcdf
    sources/opendap
    sources/recentre
    sources/repeated_dates
    sources/xarray-kerchunk
    sources/xarray-zarr
+   sources/xarray-based
    sources/zenodo

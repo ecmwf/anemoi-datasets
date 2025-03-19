@@ -1,3 +1,8 @@
+#############
+ xarray-based
+#############
+
+
 The netcdf source uses Xarray_ internally to access the data, and
 assumes that the netcdf files follow the `CF conventions`_. You can also
 read a collection of GRIB files, using Unix’ shell wildcards:

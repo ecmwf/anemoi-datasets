@@ -83,4 +83,4 @@ Example configuration gathering statistics using only 2020 data :
 If the dataset contains missing values (known as `NaNs`), an error will
 be raised when trying to compute the statistics. To allow `NaNs` in the
 dataset, you can set the `allow_nans` as described :doc:`here
-</building/handling-missing-values>`.
+<handling-missing-values>`.
