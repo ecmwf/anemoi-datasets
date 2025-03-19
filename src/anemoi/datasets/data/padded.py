@@ -142,8 +142,7 @@ class Padded(Forwards):
     @cached_property
     def missing(self) -> Set[int]:
         raise NotImplementedError("Need to decide whether to include the added dates as missing or not")
-
-        return self.forward.missing
+        # return self.forward.missing
 
     def tree(self) -> Node:
         """Get the tree representation of the subset.
