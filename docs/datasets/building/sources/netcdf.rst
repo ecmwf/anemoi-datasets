@@ -23,7 +23,7 @@ read a collection of netCDF files, using Unix’ shell wildcards_:
    repository.
 
 ######################
- xarray-based-sources
+ xarray-based-source
 ######################
 
 More in general, you can specify any valid xarray.open_dataset_
