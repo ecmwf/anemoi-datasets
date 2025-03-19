@@ -15,7 +15,8 @@ The statistics are stored in the :doc:`statistics attribute
 Statistics about the tendencies are returned by calling the
 statistics_tendencies() method. .
 
-For exampe: .. code:: python
+For exampe:
+.. code:: python
 
    from anemoi.datasets import open_dataset
 
