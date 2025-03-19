@@ -94,4 +94,15 @@ operations can be combined to build complex datasets.
    statistics
    incremental
    advanced-options
+
+
+*******************
+ Naming Conventions
+*******************
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Naming Conventions
+   
    naming-conventions
