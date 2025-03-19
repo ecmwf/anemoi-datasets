@@ -1,6 +1,6 @@
-####
-cds
-####
+#####
+ cds
+#####
 
 For users outside of ECMWF organisation, it is possible to access ERA5
 data through the Copernicus Climate Data Store ``cdsapi`` instead.
