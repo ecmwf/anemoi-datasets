@@ -2,8 +2,10 @@
  Methods and attributes
 ########################
 
-The following methods and attributes are available for the objects
-returned by ``open_dataset``.
+For a complete list of methods and attributes available for the objects
+returned by ``open_dataset``, please see :ref:`data-autodoc`. Here, a
+sub-set of stable and commonly used methods and attributes are described
+in more detail.
 
 .. warning::
 
