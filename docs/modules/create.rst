@@ -1,6 +1,6 @@
-#########
+########
  Create
-#########
+########
 
 .. automodule:: anemoi.datasets.create
    :members:

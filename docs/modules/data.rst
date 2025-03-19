@@ -1,6 +1,6 @@
-####
-Data
-####
+######
+ Data
+######
 
 .. automodule:: anemoi.datasets.data.__init__
    :members:
