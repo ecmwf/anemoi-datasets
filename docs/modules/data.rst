@@ -1,15 +1,11 @@
-##############
- Open Dataset
-##############
+####
+Data
+####
 
-.. automodule:: anemoi.datasets.open_dataset
+.. automodule:: anemoi.datasets.data.__init__
    :members:
    :no-undoc-members:
    :show-inheritance:
-
-#########
- Dataset
-#########
 
 .. automodule:: anemoi.datasets.data.dataset
    :members:
