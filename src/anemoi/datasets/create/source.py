@@ -9,14 +9,16 @@
 
 from abc import ABC
 from abc import abstractmethod
-from typing import Any
-from typing import List
 
 import earthkit.data as ekd
+
+from anemoi.datasets.create.typing import DateList
 
 
 class Source(ABC):
     """Represents a data source with a given context."""
+
+    emoji = "📦"  # For tracing
 
     def __init__(self, context: any, *args: tuple, **kwargs: dict):
         """Initialise the source.
@@ -32,12 +34,12 @@ class Source(ABC):
         self.context = context
 
     @abstractmethod
-    def execute(self, dates: List[Any]) -> ekd.FieldList:
+    def execute(self, dates: DateList) -> ekd.FieldList:
         """Execute the filter.
 
         Parameters
         ----------
-        dates : List[Any]
+        dates : DateList
             The input dates.
 
         Returns
