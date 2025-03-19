@@ -1,5 +1,5 @@
 ########
- netCDF
+ netcdf
 ########
 
 In the examples below we explain how to create an anemoi dataset from
@@ -22,9 +22,9 @@ read a collection of netCDF files, using Unix’ shell wildcards_:
    this or similar issues, please open an issue in the anemoi-datasets
    repository.
 
-######################
- Xarray-based Sources
-######################
+########
+ xarray-based-sources
+########
 
 More in general, you can specify any valid xarray.open_dataset_
 arguments as the source and anemoi-dataset will try to build a dataset
