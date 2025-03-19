@@ -46,7 +46,7 @@ Training datasets are large array-like objects encoded in Zarr_ format.
 
 The array has the following dimensions:
 
-.. figure:: schemas/overview.png
+.. figure:: _static/schemas/overview.png
    :alt: Data layout
    :align: center
 
@@ -64,7 +64,7 @@ is the granularity at which data is read from disk.
 By default, the array is chunked along the time dimension so the whole
 state of the atmosphere at a given time is loaded in one go:
 
-.. figure:: schemas/matrix.png
+.. figure:: _static/schemas/matrix.png
    :alt: Data chunking
    :align: center
 

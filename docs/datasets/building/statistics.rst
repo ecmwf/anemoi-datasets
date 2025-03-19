@@ -17,6 +17,7 @@ Statistics about the tendencies are returned by calling the statistics_tendencie
 
 For exampe:
 .. code:: python
+
    from anemoi.datasets import open_dataset
 
    ds = open_dataset("aifs-ea-an-oper-0001-mars-o48-2020-2021-6h-v1.zarr", select="2t")
@@ -32,7 +33,7 @@ For exampe:
 
    {'mean': array([0.00164934]),
    'stdev': array([2.80699639]),
-    'maximum': array([27.10545349]),
+   'maximum': array([27.10545349]),
    'minimum': array([-29.63409424])}
 
 ************************
