@@ -141,7 +141,7 @@ class Padded(Forwards):
 
     @cached_property
     def missing(self) -> Set[int]:
-        raise NotImplementedError
+        raise NotImplementedError("Need to decide whether to include the added dates as missing or not")
 
         return self.forward.missing
 
