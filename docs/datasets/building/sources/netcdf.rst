@@ -8,9 +8,10 @@ one or more netCDF files.
 .. literalinclude:: yaml/netcdf.yaml
    :language: yaml
 
-The netCDF source uses Xarray_ internally to access the data, and
-assumes that the netcdf files follow the `CF conventions`_. You can also
-read a collection of netCDF files, using Unix’ shell wildcards_:
+The netCDF source uses `Xarray <https://docs.xarray.dev/en/stable/index.html>`_
+internally to access the data, and
+assumes that the netcdf files follow the `CF conventions <https://cfconventions.org/>`_. You can also
+read a collection of netCDF files, using Unix’ shell `wildcards <https://en.wikipedia.org/wiki/Glob_(programming)>`_
 
 .. warning::
 
