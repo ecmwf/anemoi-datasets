@@ -7,10 +7,9 @@ attribution: ECMWF/C3S
 licence: CC-BY-4.0
 
 dates:
+  start: '2020-01-01T00:00:00'
   end: '2021-12-31T23:00:00'
   frequency: 6h
-  group_by: monthly
-  start: '2020-01-01T00:00:00'
 
 input:
   join:
@@ -34,6 +33,7 @@ input:
       - tcw
       - z
   - mars:
+      use_cdsapi_dataset: "reanalysis-era5-complete"
       class: ea
       expver: '0001'
       grid: o48
@@ -50,6 +50,7 @@ input:
       - t
       - z
   - accumulations:
+      use_cdsapi_dataset: "reanalysis-era5-complete"
       accumulation_period: 6
       class: ea
       expver: '0001'
@@ -69,32 +70,3 @@ input:
       - sin_local_time
       - insolation
       template: ${input.join.0.mars}
-
-output:
-  chunking:
-    dates: 1
-    ensembles: 1
-  dtype: float32
-  ensemble_dimension: 2
-  flatten_grid: true
-  order_by:
-  - valid_datetime: ascending
-  - param_level: ascending
-  - number: ascending
-  remapping:
-    param_level: '{param}_{levelist}'
-  statistics: param_level
-
-statistics:
-  allow_nans: []
-
-build:
-  group_by: monthly
-  use_grib_paramid: false
-  variable_naming: default
-
-common:
-  mars_request:
-    class: ea
-    expver: '0001'
-    grid: o48
