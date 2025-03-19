@@ -4,37 +4,34 @@
  Gathering statistics
 ######################
 
-*Anemoi* will collect statistics about each variable and its tendencies in the dataset as
-it is created. These statistics are intended to be used to normalise the
-data during training.
+*Anemoi* will collect statistics about each variable and its tendencies
+in the dataset as it is created. These statistics are intended to be
+used to normalise the data during training.
 
 The statistics are stored in the :doc:`statistics attribute
 <../using/statistics>` of the dataset. The computed statistics include
 `minimum, maximum, mean, standard deviation`.
 
-Statistics about the tendencies are returned by calling the statistics_tendencies() method.
-.
+Statistics about the tendencies are returned by calling the
+statistics_tendencies() method. .
 
-For exampe:
-.. code:: python
+For exampe: .. code:: python
 
    from anemoi.datasets import open_dataset
 
-   ds = open_dataset("aifs-ea-an-oper-0001-mars-o48-2020-2021-6h-v1.zarr", select="2t")
+   ds =
+   open_dataset("aifs-ea-an-oper-0001-mars-o48-2020-2021-6h-v1.zarr",
+   select="2t")
 
    ds.statistics
 
-   {'mean': array([287.82987893]),
-   'stdev': array([16.139444]),
-   'maximum': array([325.78491211]),
-   'minimum': array([195.36195374])}
+   {'mean': array([287.82987893]), 'stdev': array([16.139444]),
+   'maximum': array([325.78491211]), 'minimum': array([195.36195374])}
 
    ds.statistics_tendencies()
 
-   {'mean': array([0.00164934]),
-   'stdev': array([2.80699639]),
-   'maximum': array([27.10545349]),
-   'minimum': array([-29.63409424])}
+   {'mean': array([0.00164934]), 'stdev': array([2.80699639]),
+   'maximum': array([27.10545349]), 'minimum': array([-29.63409424])}
 
 ************************
  Statistics dates range
