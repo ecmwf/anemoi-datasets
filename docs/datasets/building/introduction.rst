@@ -95,9 +95,9 @@ operations can be combined to build complex datasets.
    incremental
    advanced-options
 
-*******************
+********************
  Naming Conventions
-*******************
+********************
 
 .. toctree::
    :maxdepth: 1
