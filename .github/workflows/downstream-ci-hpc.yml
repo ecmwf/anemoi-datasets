@@ -1,5 +1,5 @@
 # This workflow triggers tests on dependent packages.
-# The dependency tree itself is defined in ecmwf-actions/downstream-ci/
+# The dependency tree itself is defined in ecmwf/downstream-ci/
 name: Test downstream dependent packages on HPC
 
 on:
@@ -38,7 +38,7 @@ jobs:
   downstream-ci:
     name: downstream-ci
     if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
-    uses: ecmwf-actions/downstream-ci/.github/workflows/downstream-ci.yml@main
+    uses: ecmwf/downstream-ci/.github/workflows/downstream-ci.yml@main
     with:
       anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
       codecov_upload: true
@@ -54,7 +54,7 @@ jobs:
   # downstream-ci-hpc:
   #   name: downstream-ci-hpc
   #   if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
-  #   uses: ecmwf-actions/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
+  #   uses: ecmwf/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
   #   with:
   #     anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
   #   secrets: inherit
