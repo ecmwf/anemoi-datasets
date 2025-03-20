@@ -19,6 +19,7 @@ from typing import Union
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -1413,6 +1414,16 @@ def test_cropping() -> None:
         area=(18, 11, 11, 18),
     )
     assert test.ds.shape == (365 * 4, 4, 1, 8)
+
+
+@mockup_open_zarr
+def test_invalid_trim_edge() -> None:
+    """Test that exception raised when attempting to trim a 1D dataset"""
+    with pytest.raises(ValueError):
+        DatasetTester(
+            "test-2021-2021-6h-o96-abcd",
+            trim_edge=(1, 2, 3, 4),
+        )
 
 
 if __name__ == "__main__":
