@@ -69,6 +69,8 @@ This package provides the *Anemoi* datasets functionality.
    cli/compare
    cli/copy
    cli/scan
+   cli/patch
+   cli/requests
 
 .. toctree::
    :maxdepth: 1
