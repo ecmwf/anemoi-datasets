@@ -31,22 +31,35 @@ models from existing recipes but with their own data.
  Quick overview
 ****************
 
-The anemoi-datasets package provides a structured approach to preparing datasets for data-driven weather forecasting models, particularly those using deep learning. By optimizing data access patterns, anemoi-datasets minimizes I/O operations, improving efficiency when training machine learning models.
+The anemoi-datasets package provides a structured approach to preparing
+datasets for data-driven weather forecasting models, particularly those
+using deep learning. By optimizing data access patterns, anemoi-datasets
+minimizes I/O operations, improving efficiency when training machine
+learning models.
 
-anemoi-datasets offers a simple high-level interface based on a YAML recipe file, which defines how datasets are processed and structured. The package allows you to:
+anemoi-datasets offers a simple high-level interface based on a YAML
+recipe file, which defines how datasets are processed and structured.
+The package allows you to:
 
-- Load and transform datasets from sources such as reanalyses or forecasts.
-- Interpolate data to a desired spatial resolution and temporal frequency to match model requirements.
-- Select and preprocess relevant meteorological variables for use in machine learning workflows.
-- Structure datasets for efficient access in training and inference, reducing unnecessary data operations.
+-  Load and transform datasets from sources such as reanalyses or
+   forecasts.
+-  Interpolate data to a desired spatial resolution and temporal
+   frequency to match model requirements.
+-  Select and preprocess relevant meteorological variables for use in
+   machine learning workflows.
+-  Structure datasets for efficient access in training and inference,
+   reducing unnecessary data operations.
 
+The dataset definition is specified in a YAML file, which is then used
+to generate the dataset using the command-line tool :ref:`create command
+<create_command>` The command-line tool also allow users to inspect
+datasets for compatibility with machine learning models.
 
-The dataset definition is specified in a YAML file, which is then used to generate the dataset using the command-line tool :ref:`create command <create_command>`
-The command-line tool also allow users to inspect datasets for compatibility with machine learning models.
-
-In the rest of this documentation, you will learn how to configure and create anemoi datasets using YAML files, as well as how to load and read existing ones.
-A full example of a dataset preparation process can be found in the :ref:`Create Your First Dataset <usage-getting-started>` section.
-
+In the rest of this documentation, you will learn how to configure and
+create anemoi datasets using YAML files, as well as how to load and read
+existing ones. A full example of a dataset preparation process can be
+found in the :ref:`Create Your First Dataset <usage-getting-started>`
+section.
 
 ************
  Installing
