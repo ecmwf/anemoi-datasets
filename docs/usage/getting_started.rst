@@ -95,7 +95,7 @@ the output is stored in ``era5-o48-2020-2021-6h-v1.zarr``.
 
    Note that running the recipe requires that the access to the CDS is
    correctly set up. For this, please refer to the :ref:`CDS page
-   <_cds_source>`.
+   <cds_source>`.
 
 Once the build is complete, you can inspect the dataset using the
 following command:

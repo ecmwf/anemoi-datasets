@@ -31,61 +31,50 @@ models from existing recipes but with their own data.
  Quick overview
 ****************
 
-#!TODO
+The anemoi-datasets package provides a structured approach to preparing datasets for data-driven weather forecasting models, particularly those using deep learning. By optimizing data access patterns, anemoi-datasets minimizes I/O operations, improving efficiency when training machine learning models.
 
-This package provides the *Anemoi* datasets functionality.
+anemoi-datasets offers a simple high-level interface based on a YAML recipe file, which defines how datasets are processed and structured. The package allows you to:
 
-.. toctree::
-   :maxdepth: 3
-   :hidden:
-   :caption: Introduction
+- Load and transform datasets from sources such as reanalyses or forecasts.
+- Interpolate data to a desired spatial resolution and temporal frequency to match model requirements.
+- Select and preprocess relevant meteorological variables for use in machine learning workflows.
+- Structure datasets for efficient access in training and inference, reducing unnecessary data operations.
 
-   overview
-   cli/introduction
-   installing
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Recipe examples
+The dataset definition is specified in a YAML file, which is then used to generate the dataset using the command-line tool :ref:`create command <create_command>`
+The command-line tool also allow users to inspect datasets for compatibility with machine learning models.
 
-   usage/getting_started
+In the rest of this documentation, you will learn how to configure and create anemoi datasets using YAML files, as well as how to load and read existing ones.
+A full example of a dataset preparation process can be found in the :ref:`Create Your First Dataset <usage-getting-started>` section.
 
-.. toctree::
-   :maxdepth: 3
-   :caption: User Guide
 
-   datasets/introduction
-   datasets/building/introduction
-   datasets/using/introduction
+************
+ Installing
+************
 
-.. toctree::
-   :maxdepth: 5
-   :hidden:
-   :caption: CLI
+To install the package, you can use the following command:
 
-   cli/create
-   cli/inspect
-   cli/compare
-   cli/copy
-   cli/scan
-   cli/patch
-   cli/requests
+.. code:: bash
 
-.. toctree::
-   :maxdepth: 1
-   :glob:
-   :caption: Api Reference
+   pip install anemoi-datasets
 
-   modules/*
+Get more information in the :ref:`installing <installing>` section.
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Developing Anemoi Datasets
+**************
+ Contributing
+**************
 
-   dev/contributing
-   dev/code_structure
-   dev/testing
+.. code:: bash
+
+   git clone ...
+   cd anemoi-datasets
+   pip install .[dev]
+
+You may also have to install pandoc on MacOS:
+
+.. code:: bash
+
+   brew install pandoc
 
 ***********************
  Other Anemoi packages
@@ -109,3 +98,63 @@ This package provides the *Anemoi* datasets functionality.
 .. __: http://www.apache.org/licenses/LICENSE-2.0.html
 
 .. _zarr: https://zarr.readthedocs.io/
+
+..
+   ..................................................................................
+
+..
+   From here defines the TOC in the sidebar, but is not rendered directly on the page.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Introduction
+
+   overview
+   cli/introduction
+   installing
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Recipe examples
+
+   usage/getting_started
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: User Guide
+
+   datasets/introduction
+   datasets/building/introduction
+   datasets/using/introduction
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: CLI
+
+   cli/create
+   cli/inspect
+   cli/compare
+   cli/copy
+   cli/scan
+   cli/patch
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+   :hidden:
+   :caption: Api Reference
+
+   modules/*
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Developing Anemoi Datasets
+
+   dev/contributing
+   dev/code_structure
+   dev/testing
