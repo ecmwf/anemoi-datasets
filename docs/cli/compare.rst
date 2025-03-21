@@ -1,5 +1,7 @@
-compare
-=======
+.. _compare_command:
+
+Compare Command
+===============
 
 Use this command to compare two datasets.
 

@@ -8,6 +8,16 @@
 
    This documentation is work in progress.
 
+An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
+optimised for training data-driven weather forecasting models.
+anemoi-datasets are organised in such a way that I/O operations are
+minimised. It is one of the packages within the `anemoi framework
+<https://anemoi-docs.readthedocs.io/en/latest/>`_.
+
+**************
+ About Anemoi
+**************
+
 *Anemoi* is a framework for developing machine learning weather
 forecasting models. It comprises of components or packages for preparing
 training datasets, conducting ML model training and a registry for
@@ -17,112 +27,71 @@ framework it seeks to handle many of the complexities that
 meteorological organisations will share, allowing them to easily train
 models from existing recipes but with their own data.
 
-An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
-optimised for training data-driven weather forecasting models. It is
-organised in such a way that I/O operations are minimised.
+****************
+ Quick overview
+****************
 
-This documentation is divided into two main sections: :ref:`how to use
-existing datasets <using-introduction>` and :ref:`how to build new
-datasets <building-introduction>`.
+The anemoi-datasets package provides a structured approach to preparing
+datasets for data-driven weather forecasting models, particularly those
+using deep learning. By optimizing data access patterns, anemoi-datasets
+minimizes I/O operations, improving efficiency when training machine
+learning models.
 
--  :doc:`overview`
--  :doc:`installing`
--  :doc:`naming_conventions`
+anemoi-datasets offers a simple high-level interface based on a YAML
+recipe file, which defines how datasets are processed and structured.
+The package allows you to:
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
+-  Load and transform datasets from sources such as reanalyses or
+   forecasts.
+-  Interpolate data to a desired spatial resolution and temporal
+   frequency to match model requirements.
+-  Select and preprocess relevant meteorological variables for use in
+   machine learning workflows.
+-  Structure datasets for efficient access in training and inference,
+   reducing unnecessary data operations.
 
-   overview
-   installing
-   naming_conventions
+The dataset definition is specified in a YAML file, which is then used
+to generate the dataset using the command-line tool :ref:`create command
+<create_command>` The command-line tool also allow users to inspect
+datasets for compatibility with machine learning models.
 
-**Using training datasets**
+In the rest of this documentation, you will learn how to configure and
+create anemoi datasets using YAML files, as well as how to load and read
+existing ones. A full example of a dataset preparation process can be
+found in the :ref:`Create Your First Dataset <usage-getting-started>`
+section.
 
--  :doc:`using/introduction`
--  :doc:`using/opening`
--  :doc:`using/methods`
--  :doc:`using/subsetting`
--  :doc:`using/combining`
--  :doc:`using/selecting`
--  :doc:`using/ensembles`
--  :doc:`using/grids`
--  :doc:`using/zip`
--  :doc:`using/statistics`
--  :doc:`using/missing`
--  :doc:`using/other`
--  :doc:`using/matching`
--  :doc:`using/miscellaneous`
--  :doc:`using/configuration`
+************
+ Installing
+************
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Using datasets
+To install the package, you can use the following command:
 
-   using/introduction
-   using/opening
-   using/methods
-   using/subsetting
-   using/combining
-   using/selecting
-   using/ensembles
-   using/grids
-   using/zip
-   using/statistics
-   using/missing
-   using/other
-   using/matching
-   using/miscellaneous
-   using/configuration
+.. code:: bash
 
-**Building training datasets**
+   pip install anemoi-datasets
 
--  :doc:`building/introduction`
--  :doc:`building/operations`
--  :doc:`building/sources`
--  :doc:`building/filters`
--  :doc:`building/statistics`
--  :doc:`building/incremental`
+Get more information in the :ref:`installing <installing>` section.
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Building datasets
+**************
+ Contributing
+**************
 
-   building/introduction
-   building/operations
-   building/sources
-   building/filters
-   building/naming-variables
-   building/handling-missing-dates
-   building/handling-missing-values
-   building/statistics
-   building/incremental
-   building/advanced-options
+.. code:: bash
 
-**Command line tool**
+   git clone ...
+   cd anemoi-datasets
+   pip install .[dev]
 
--  :doc:`cli/introduction`
--  :doc:`cli/create`
--  :doc:`cli/inspect`
--  :doc:`cli/compare`
--  :doc:`cli/copy`
+You may also have to install pandoc on MacOS:
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Command line tool
+.. code:: bash
 
-   cli/introduction
-   cli/create
-   cli/inspect
-   cli/compare
-   cli/copy
+   brew install pandoc
 
-*****************
- Anemoi packages
-*****************
+***********************
+ Other Anemoi packages
+***********************
 
 -  :ref:`anemoi-utils <anemoi-utils:index-page>`
 -  :ref:`anemoi-transform <anemoi-transform:index-page>`
@@ -141,6 +110,64 @@ datasets <building-introduction>`.
 
 .. __: http://www.apache.org/licenses/LICENSE-2.0.html
 
-.. _ecml-tools: https://github.com/ecmwf-lab/ecml-tools
-
 .. _zarr: https://zarr.readthedocs.io/
+
+..
+   ..................................................................................
+
+..
+   From here defines the TOC in the sidebar, but is not rendered directly on the page.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Introduction
+
+   overview
+   cli/introduction
+   installing
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Recipe examples
+
+   usage/getting_started
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: User Guide
+
+   datasets/introduction
+   datasets/building/introduction
+   datasets/using/introduction
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: CLI
+
+   cli/create
+   cli/inspect
+   cli/compare
+   cli/copy
+   cli/scan
+   cli/patch
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+   :hidden:
+   :caption: Api Reference
+
+   modules/*
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Developing Anemoi Datasets
+
+   dev/contributing
+   dev/code_structure
+   dev/testing

@@ -1,5 +1,7 @@
-scan
-====
+.. _scan_command:
+
+Scan Command
+============
 
 Use this command to scan for GRIB files
 

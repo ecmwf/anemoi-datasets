@@ -1,0 +1,72 @@
+name: era5-o48-2020-2021-6h-v1
+
+description: Low resolution reduced dataset for documentation purposes
+
+attribution: ECMWF/C3S
+
+licence: CC-BY-4.0
+
+dates:
+  start: '2020-01-01T00:00:00'
+  end: '2021-12-31T23:00:00'
+  frequency: 6h
+
+input:
+  join:
+  - mars:
+      use_cdsapi_dataset: "reanalysis-era5-complete"
+      class: ea
+      expver: '0001'
+      grid: o48
+      levtype: sfc
+      param:
+      - 10u
+      - 10v
+      - 2d
+      - 2t
+      - lsm
+      - msl
+      - sdor
+      - skt
+      - slor
+      - sp
+      - tcw
+      - z
+  - mars:
+      use_cdsapi_dataset: "reanalysis-era5-complete"
+      class: ea
+      expver: '0001'
+      grid: o48
+      level:
+      - 250
+      - 500
+      - 850
+      - 1000
+      levtype: pl
+      param:
+      - u
+      - v
+      - q
+      - t
+      - z
+  - accumulations:
+      use_cdsapi_dataset: "reanalysis-era5-complete"
+      accumulation_period: 6
+      class: ea
+      expver: '0001'
+      grid: o48
+      param:
+      - cp
+      - tp
+  - constants:
+      param:
+      - cos_latitude
+      - cos_longitude
+      - sin_latitude
+      - sin_longitude
+      - cos_julian_day
+      - cos_local_time
+      - sin_julian_day
+      - sin_local_time
+      - insolation
+      template: ${input.join.0.mars}
