@@ -103,7 +103,10 @@ def test_kerchunk() -> None:
     """Test for Kerchunk JSON files.
 
     This function tests the creation of a dataset from a Kerchunk JSON file.
+
     """
+    # Note: last version of kerchunk compatible with zarr 2 is 0.2.7
+
     data = get_test_data("anemoi-datasets/create/kerchunck.json", gzipped=True)
 
     config = {
