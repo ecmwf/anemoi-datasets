@@ -70,7 +70,10 @@ def test_netcdf() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
-@pytest.mark.skipif(not packages_installed("fstd", "rpnpy.librmn"), reason="Package 'fstd' is not installed")
+@pytest.mark.skipif(
+    not packages_installed("fstd", "rpnpy.librmn"),
+    reason="Package 'fstd' is not installed",
+)
 def test_eccs_fstd() -> None:
     """Test for 'fstd' files from ECCC."""
     # See https://github.com/neishm/fstd2nc
@@ -92,6 +95,10 @@ def test_eccs_fstd() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
+@pytest.mark.skipif(
+    not packages_installed("kerchunk", "s3fs", "h5py"),
+    reason="Package 'kerchunk', 's3fs' or 'h5py' is not installed",
+)
 def test_kerchunk() -> None:
     """Test for Kerchunk JSON files.
 
