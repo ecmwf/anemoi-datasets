@@ -32,9 +32,7 @@ class XarraySource(Source):
     flavour: Optional[Dict[str, Any]] = None
     patch: Optional[Dict[str, Any]] = None
 
-    path_is_pattern: bool = True
-
-    def __init__(self, context: Any, *args: tuple, **kwargs: dict):
+    def __init__(self, context: Any, **kwargs: dict):
         """Initialise the source.
 
         Parameters
@@ -46,13 +44,33 @@ class XarraySource(Source):
         **kwargs : dict
             Additional keyword arguments.
         """
-        super().__init__(context, *args, **kwargs)
+        super().__init__(context, **kwargs)
+        self.kwargs = kwargs
 
     def execute(self, dates: DateList) -> ekd.FieldList:
+        """Execute the data loading process for the given dates.
+
+        Parameters
+        ----------
+        dates : DateList
+            List of dates for which data needs to be loaded.
+
+        Returns
+        -------
+        ekd.FieldList
+            The loaded data fields.
+        """
+
         # For now, just a simple wrapper around load_many
         # TODO: move the implementation here
 
-        if self.pattern:
-            return load_many(self.emoji, self.context, dates, pattern=self.pattern)
-
-        return load_one(self.emoji, self.context, dates, self.path, self.options)
+        return load_many(
+            self.emoji,
+            self.context,
+            dates,
+            pattern=self.path_or_url,
+            options=self.options,
+            flavour=self.flavour,
+            patch=self.patch,
+            **self.kwargs,
+        )

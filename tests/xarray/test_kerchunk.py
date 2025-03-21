@@ -13,7 +13,7 @@ import xarray as xr
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
 
 
-def dont_test_kerchunk() -> None:
+def test_kerchunk() -> None:
     """Test loading and validating the kerchunk dataset."""
     ds = xr.open_dataset(
         "reference://",

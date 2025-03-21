@@ -116,6 +116,7 @@ def load_one(
     if len(dates) == 0:
         result = fs.sel(**kwargs)
     else:
+        print("dates", dates, kwargs)
         result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:

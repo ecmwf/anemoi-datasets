@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import logging
 import os
 
 import pytest
@@ -91,7 +92,37 @@ def test_eccs_fstd() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
+def test_kerchunk() -> None:
+    """Test for Kerchunk JSON files.
+
+    This function tests the creation of a dataset from a Kerchunk JSON file.
+    """
+    data = get_test_data("anemoi-datasets/create/kerchunck.json", gzipped=True)
+
+    config = {
+        "dates": {
+            "start": "2024-03-01T00:00:00",
+            "end": "2024-03-01T18:00:00",
+            "frequency": "6h",
+        },
+        "input": {
+            "xarray-kerchunk": {
+                "json": data,
+                "param": ["T"],
+                "level": [1000],
+            },
+        },
+    }
+
+    created = create_dataset(config=config, output=None)
+    ds = open_dataset(created)
+    assert ds.shape == (4, 1, 1, 1038240)
+
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    test_kerchunk()
+    exit()
     """Run all test functions that start with 'test_'."""
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):

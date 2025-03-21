@@ -8,89 +8,29 @@
 # nor does it submit to any jurisdiction.
 
 
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-
-import earthkit.data as ekd
-from earthkit.data.core.fieldlist import MultiFieldList
-
-from .legacy import legacy_source
-from .patterns import iterate_patterns
-from .xarray import load_one
+from . import source_registry
+from .xarray import XarraySource
 
 
-def load_many(
-    emoji: str, context: Any, dates: List[str], pattern: str, options: Optional[Dict[str, Any]], **kwargs: Any
-) -> ekd.FieldList:
-    """Loads multiple datasets based on the provided pattern and dates.
+@source_registry.register("xarray_kerchunk")
+class XarrayKerchunkSource(XarraySource):
+    """An Xarray data source that uses the `kerchunk` engine."""
 
-    Parameters
-    ----------
-    emoji : str
-        An emoji representing the dataset type.
-    context : object
-        The context in which the datasets are loaded.
-    dates : list
-        List of dates for which the datasets are to be loaded.
-    pattern : str
-        The pattern to match the dataset paths.
-    options : dict, optional
-        Additional options for loading the datasets.
-    **kwargs : dict
-        Additional keyword arguments.
+    emoji = "🧱"
 
-    Returns
-    -------
-    ekd.FieldList
-        A list of loaded datasets.
-    """
+    def __init__(self, context, json, **kwargs: dict):
+        super().__init__(context, **kwargs)
 
-    result = []
-    options = options.copy() if options is not None else {}
+        self.path_or_url = "reference://"
 
-    options.setdefault("engine", "zarr")
-    options.setdefault("backend_kwargs", {})
-
-    backend_kwargs = options["backend_kwargs"]
-    backend_kwargs.setdefault("consolidated", False)
-    backend_kwargs.setdefault("storage_options", {})
-
-    storage_options = backend_kwargs["storage_options"]
-    storage_options.setdefault("remote_protocol", "s3")
-    storage_options.setdefault("remote_options", {"anon": True})
-
-    for path, dates in iterate_patterns(pattern, dates, **kwargs):
-        storage_options["fo"] = path
-
-        result.append(load_one(emoji, context, dates, "reference://", options=options, **kwargs))
-
-    return MultiFieldList(result)
-
-
-@legacy_source(__file__)
-def execute(
-    context: Any, dates: List[str], json: str, options: Optional[Dict[str, Any]] = None, **kwargs: Any
-) -> ekd.FieldList:
-    """Executes the loading of datasets using the provided context and dates.
-
-    Parameters
-    ----------
-    context : object
-        The context in which the datasets are loaded.
-    dates : list
-        List of dates for which the datasets are to be loaded.
-    json : str
-        The JSON pattern to match the dataset paths.
-    options : dict, optional
-        Additional options for loading the datasets.
-    **kwargs : dict
-        Additional keyword arguments.
-
-    Returns
-    -------
-    MultiFieldList
-        A list of loaded datasets.
-    """
-    return load_many("🧱", context, dates, json, options, **kwargs)
+        self.options = {
+            "engine": "zarr",
+            "backend_kwargs": {
+                "consolidated": False,
+                "storage_options": {
+                    "fo": json,
+                    "remote_protocol": "s3",
+                    "remote_options": {"anon": True},
+                },
+            },
+        }
