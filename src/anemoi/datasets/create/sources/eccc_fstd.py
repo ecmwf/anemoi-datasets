@@ -8,36 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 
-from typing import Any
-from typing import List
-
-import earthkit.data as ekd
-
-from .legacy import legacy_source
-from .xarray import load_many
+from . import source_registry
+from .xarray import XarraySourceBase
 
 
-@legacy_source(__file__)
-def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Execute the loading of data using the specified context, dates, and path.
+@source_registry.register("eccc_fstd")
+class XarrayECCCSource(XarraySourceBase):
+    """An Xarray data source that uses the `fstd` engine."""
 
-    Parameters
-    ----------
-    context : object
-        The context in which the data loading is executed.
-    dates : list
-        List of dates for which data is to be loaded.
-    path : str
-        The path to the data source.
-    *args : tuple
-        Additional positional arguments.
-    **kwargs : dict
-        Additional keyword arguments.
-
-    Returns
-    -------
-    xarray.Dataset
-        The loaded dataset.
-    """
+    emoji = "🍁"
     options = {"engine": "fstd"}
-    return load_many("🍁", context, dates, path, *args, options=options, **kwargs)

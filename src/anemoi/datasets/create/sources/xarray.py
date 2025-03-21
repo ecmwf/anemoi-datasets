@@ -23,7 +23,7 @@ from .xarray_support import load_one
 __all__ = ["load_many", "load_one", "XarrayFieldList"]
 
 
-class XarraySource(Source):
+class XarraySourceBase(Source):
     """An Xarray base data source, intended to be subclassed."""
 
     emoji = "✖️"  # For tracing
@@ -32,19 +32,31 @@ class XarraySource(Source):
     flavour: Optional[Dict[str, Any]] = None
     patch: Optional[Dict[str, Any]] = None
 
-    def __init__(self, context: Any, **kwargs: dict):
+    path_or_url: Optional[str] = None
+
+    def __init__(self, context: Any, path: str = None, url: str = None, *args: Any, **kwargs: Any):
         """Initialise the source.
 
         Parameters
         ----------
         context : Any
             The context for the data source.
-        *args : tuple
+        *args : Any
             Additional positional arguments.
-        **kwargs : dict
+        **kwargs : Any
             Additional keyword arguments.
         """
-        super().__init__(context, **kwargs)
+        super().__init__(context, *args, **kwargs)
+
+        if path is not None and url is not None:
+            raise ValueError("Cannot specify both path and url")
+
+        if path is not None:
+            self.path_or_url = path
+        else:
+            self.path_or_url = url
+
+        self.args = args
         self.kwargs = kwargs
 
     def execute(self, dates: DateList) -> ekd.FieldList:
@@ -74,3 +86,7 @@ class XarraySource(Source):
             patch=self.patch,
             **self.kwargs,
         )
+
+
+class XarraySource(XarraySourceBase):
+    pass

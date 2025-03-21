@@ -9,17 +9,17 @@
 
 
 from . import source_registry
-from .xarray import XarraySource
+from .xarray import XarraySourceBase
 
 
 @source_registry.register("xarray_kerchunk")
-class XarrayKerchunkSource(XarraySource):
+class XarrayKerchunkSource(XarraySourceBase):
     """An Xarray data source that uses the `kerchunk` engine."""
 
     emoji = "🧱"
 
-    def __init__(self, context, json, **kwargs: dict):
-        super().__init__(context, **kwargs)
+    def __init__(self, context, json, *args, **kwargs: dict):
+        super().__init__(context, *args, **kwargs)
 
         self.path_or_url = "reference://"
 

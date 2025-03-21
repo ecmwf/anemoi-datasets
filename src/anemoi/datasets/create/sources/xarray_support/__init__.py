@@ -57,7 +57,7 @@ def load_one(
     dates: List[str],
     dataset: Union[str, xr.Dataset],
     *,
-    options: Dict[str, Any] = {},
+    options: Optional[Dict[str, Any]] = None,
     flavour: Optional[str] = None,
     patch: Optional[Any] = None,
     **kwargs: Any,
@@ -97,6 +97,9 @@ def load_one(
 
     We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
     """
+
+    if options is None:
+        options = {}
 
     context.trace(emoji, dataset, options, kwargs)
 
