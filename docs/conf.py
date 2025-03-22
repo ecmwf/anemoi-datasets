@@ -111,6 +111,10 @@ intersphinx_mapping = {
         "https://anemoi-transform.readthedocs.io/en/latest/",
         ("../../anemoi-transform/docs/_build/html/objects.inv", None),
     ),
+    "anemoi-plugins": (
+        "https://anemoi-plugins.readthedocs.io/en/latest/",
+        ("../../anemoi-plugins/docs/_build/html/objects.inv", None),
+    ),
 }
 
 
