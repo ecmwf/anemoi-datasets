@@ -17,8 +17,6 @@ from typing import Union
 from earthkit.data import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from ..functions import import_function
-
 LOG = logging.getLogger(__name__)
 
 
@@ -53,30 +51,6 @@ def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
         return name, delta
 
     return name, None
-
-
-def is_function(name: str, kind: str) -> bool:
-    """Checks if a function with the given name and kind exists.
-
-    Parameters
-    ----------
-    name : str
-        The name of the function.
-    kind : str
-        The kind of the function.
-
-    Returns
-    -------
-    bool
-        True if the function exists, False otherwise.
-    """
-    name, _ = parse_function_name(name)
-    try:
-        import_function(name, kind)
-        return True
-    except ImportError as e:
-        print(e)
-        return False
 
 
 def assert_fieldlist(method: Callable[..., Any]) -> Callable[..., Any]:

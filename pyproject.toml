@@ -50,7 +50,7 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.1",
-  "anemoi-utils[provenance]>=0.4.11",
+  "anemoi-utils[provenance]>=0.4.15",
   "cfunits",
   "numpy",
   "pyyaml",
@@ -90,10 +90,12 @@ optional-dependencies.remote = [
 ]
 
 optional-dependencies.tests = [
+  "anemoi-datasets[xarray]",
   "pytest",
 ]
 
 optional-dependencies.xarray = [
+  "adlfs",
   "gcsfs",
   "kerchunk",
   "pandas",
@@ -121,7 +123,7 @@ version_file = "src/anemoi/datasets/_version.py"
 profile = "black"
 
 [tool.mypy]
-strict = false
+strict = true
 exclude = [
   "docs/**",
 ]

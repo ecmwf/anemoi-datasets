@@ -11,7 +11,7 @@
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
+from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
 

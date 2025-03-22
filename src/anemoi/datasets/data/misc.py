@@ -455,24 +455,28 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
         sets.append(_open(a))
 
     if "xy" in kwargs:
+        # Experimental feature, may be removed
         from .xy import xy_factory
 
         assert not sets, sets
         return xy_factory(args, kwargs).mutate()
 
     if "x" in kwargs and "y" in kwargs:
+        # Experimental feature, may be removed
         from .xy import xy_factory
 
         assert not sets, sets
         return xy_factory(args, kwargs).mutate()
 
     if "zip" in kwargs:
+        # Experimental feature, may be removed
         from .xy import zip_factory
 
         assert not sets, sets
         return zip_factory(args, kwargs).mutate()
 
     if "chain" in kwargs:
+        # Experimental feature, may be removed
         from .unchecked import chain_factory
 
         assert not sets, sets

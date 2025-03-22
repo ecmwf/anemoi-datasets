@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import warnings
 from copy import deepcopy
 from typing import Any
 from typing import Dict
@@ -18,7 +19,6 @@ from typing import Type
 from .action import Action
 from .action import ActionContext
 from .context import Context
-from .misc import is_function
 from .result import Result
 from .template import notify_result
 from .trace import trace_datasource
@@ -162,10 +162,30 @@ def step_factory(config: Dict[str, Any], context: ActionContext, action_path: Li
     if isinstance(config[key], str):
         args, kwargs = [config[key]], {}
 
-    if cls is None:
-        if not is_function(key, "filters"):
-            raise ValueError(f"Unknown step {key}")
-        cls = FunctionStepAction
-        args = [key] + args
+    if cls is not None:
+        return cls(context, action_path, previous_step, *args, **kwargs)
 
-    return cls(context, action_path, previous_step, *args, **kwargs)
+    # Try filters from datasets filter registry
+    from anemoi.transform.filters import filter_registry as transform_filter_registry
+
+    from ..filters import create_filter as create_datasets_filter
+    from ..filters import filter_registry as datasets_filter_registry
+
+    if datasets_filter_registry.is_registered(key):
+
+        if transform_filter_registry.is_registered(key):
+            warnings.warn(f"Filter `{key}` is registered in both datasets and transform filter registries")
+
+        filter = create_datasets_filter(None, config)
+        return FunctionStepAction(context, action_path + [key], previous_step, key, filter)
+
+    # Use filters from transform registry
+
+    if transform_filter_registry.is_registered(key):
+        from ..filters.transform import TransformFilter
+
+        return FunctionStepAction(
+            context, action_path + [key], previous_step, key, TransformFilter(context, key, config)
+        )
+
+    raise ValueError(f"Unknown step action `{key}`")

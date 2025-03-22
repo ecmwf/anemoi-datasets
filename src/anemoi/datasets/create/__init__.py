@@ -545,7 +545,7 @@ class HasElementForDataMixin:
         self.output = build_output(config.output, parent=self)
 
         self.input = build_input_(main_config=config, output_config=self.output)
-        LOG.info("%s", self.input)
+        # LOG.info("%s", self.input)
 
 
 def build_input_(main_config: Any, output_config: Any) -> Any:
