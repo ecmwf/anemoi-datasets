@@ -101,6 +101,7 @@ You may also have to install pandoc on MacOS:
 -  :ref:`anemoi-training <anemoi-training:index-page>`
 -  :ref:`anemoi-inference <anemoi-inference:index-page>`
 -  :ref:`anemoi-registry <anemoi-registry:index-page>`
+-  :ref:`anemoi-plugins <anemoi-plugins:index-page>`
 
 *********
  License
