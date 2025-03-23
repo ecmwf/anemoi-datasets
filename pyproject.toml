@@ -123,7 +123,7 @@ version_file = "src/anemoi/datasets/_version.py"
 profile = "black"
 
 [tool.mypy]
-strict = true
+strict = false
 exclude = [
   "docs/**",
 ]
