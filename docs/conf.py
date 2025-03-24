@@ -32,7 +32,7 @@ html_logo = "_static/logo.png"
 
 # -- Project information -----------------------------------------------------
 
-project = "Anemoi"
+project = "Anemoi Datasets"
 
 author = "Anemoi contributors"
 
