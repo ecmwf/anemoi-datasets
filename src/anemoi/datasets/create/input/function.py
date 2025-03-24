@@ -10,13 +10,11 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Callable
 from typing import Dict
 
 from earthkit.data import FieldList
 
 from ...dates.groups import GroupOfDates
-from ..functions import import_function
 from .action import Action
 from .misc import _tidy
 from .misc import assert_fieldlist
@@ -91,7 +89,7 @@ class FunctionAction(Action):
         The name of the function.
     """
 
-    def __init__(self, context: object, action_path: list, _name: str, **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, context: object, action_path: list, _name: str, source, **kwargs: Dict[str, Any]) -> None:
         """Initializes a FunctionAction instance.
 
         Parameters
@@ -107,6 +105,7 @@ class FunctionAction(Action):
         """
         super().__init__(context, action_path, **kwargs)
         self.name: str = _name
+        self.source = source
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":
@@ -123,11 +122,6 @@ class FunctionAction(Action):
             The function result instance.
         """
         return FunctionResult(self.context, self.action_path, group_of_dates, action=self)
-
-    @property
-    def function(self) -> Callable[..., Any]:
-        """Returns the function to be executed."""
-        return import_function(self.name, "sources")
 
     def __repr__(self) -> str:
         """Returns a string representation of the FunctionAction instance."""
@@ -210,19 +204,15 @@ class FunctionResult(Result):
     def datasource(self) -> FieldList:
         """Returns the datasource for the function result."""
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
+        self.action.source.context = FunctionContext(self)
 
-        try:
-            return _tidy(
-                self.action.function(
-                    FunctionContext(self),
-                    list(self.group_of_dates),  # Will provide a list of datetime objects
-                    *args,
-                    **kwargs,
-                )
+        return _tidy(
+            self.action.source.execute(
+                self.group_of_dates,  # Will provide a list of datetime objects
+                *args,
+                **kwargs,
             )
-        except Exception:
-            LOG.error(f"Error in {self.action.function.__name__}", exc_info=True)
-            raise
+        )
 
     def __repr__(self) -> str:
         """Returns a string representation of the FunctionResult instance."""

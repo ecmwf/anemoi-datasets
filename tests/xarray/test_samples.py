@@ -14,7 +14,7 @@ import pytest
 import requests
 import xarray as xr
 
-from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
+from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
 
 URL = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/samples/anemoi-datasets/"

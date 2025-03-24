@@ -18,8 +18,6 @@ import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.functions import assert_is_fieldlist
-
 LOG = logging.getLogger(__name__)
 
 CLIP_VARIABLES = (
@@ -196,7 +194,7 @@ def recentre(
     from earthkit.data import from_source
 
     ds = from_source("file", path)
-    assert_is_fieldlist(ds)
+
     # save a reference to the tmp file so it is deleted
     # only when the dataset is not used anymore
     ds._tmp = tmp

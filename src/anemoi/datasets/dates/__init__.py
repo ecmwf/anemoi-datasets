@@ -209,6 +209,10 @@ class StartEndDates(DatesProvider):
         **kwargs (Any): Additional arguments.
     """
 
+    def __repr__(self) -> str:
+        """Get a string representation of the StartEndDates instance."""
+        return f"{self.__class__.__name__}({self.start}..{self.end} every {self.frequency})"
+
     def __init__(
         self,
         start: Union[str, datetime.datetime],
