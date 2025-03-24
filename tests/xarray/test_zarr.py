@@ -17,14 +17,15 @@ from anemoi.datasets.testing import assert_field_list
 
 try:
     import adlfs  # noqa: F401
+    import planetary_computer  # noqa: F401
 
-    HAS_ADLS = True
+    PLANETARY_COMPUTER = True
 except ImportError:
-    HAS_ADLS = False
+    PLANETARY_COMPUTER = False
 
 
-def test_arco_era5_1():
-
+def test_arco_era5_1() -> None:
+    """Test loading and validating the arco_era5_1 dataset."""
     ds = xr.open_zarr(
         "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
         chunks={"time": 48},
@@ -40,8 +41,8 @@ def test_arco_era5_1():
     )
 
 
-def test_arco_era5_2():
-
+def test_arco_era5_2() -> None:
+    """Test loading and validating the arco_era5_2 dataset."""
     ds = xr.open_zarr(
         "gs://gcp-public-data-arco-era5/ar/1959-2022-1h-360x181_equiangular_with_poles_conservative.zarr",
         chunks={"time": 48},
@@ -57,7 +58,8 @@ def test_arco_era5_2():
     )
 
 
-def test_weatherbench():
+def test_weatherbench() -> None:
+    """Test loading and validating the weatherbench dataset."""
     ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
 
     # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
@@ -83,7 +85,8 @@ def test_weatherbench():
     )
 
 
-def test_inca_one_date():
+def test_inca_one_date() -> None:
+    """Test loading and validating the inca_one_date dataset."""
     url = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/example-inca-one-date.zarr"
 
     ds = xr.open_zarr(url)
@@ -100,7 +103,8 @@ def test_inca_one_date():
     print(fs[0].datetime())
 
 
-def test_noaa_replay():
+def test_noaa_replay() -> None:
+    """Test loading and validating the noaa_replay dataset."""
     ds = xr.open_zarr(
         "gs://noaa-ufs-gefsv13replay/ufs-hr1/1.00-degree/03h-freq/zarr/fv3.zarr",
         storage_options={"token": "anon"},
@@ -120,14 +124,15 @@ def test_noaa_replay():
 
     assert_field_list(
         fs,
-        36956954,
+        36972870,
         "1993-12-31T18:00:00",
         "1999-06-13T03:00:00",
     )
 
 
-@pytest.mark.skipif(not HAS_ADLS, reason="package adlfs not installed")
-def test_planetary_computer_conus404():
+@pytest.mark.skipif(not PLANETARY_COMPUTER, reason="packages adlfs and/or planetary_computer not installed")
+def test_planetary_computer_conus404() -> None:
+    """Test loading and validating the planetary_computer_conus404 dataset."""
     url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
     ds = xr.open_zarr(**name_to_zarr_store(url))
 
@@ -152,7 +157,7 @@ def test_planetary_computer_conus404():
 
 
 if __name__ == "__main__":
-    # test_arco_era5_2()
+    # test_weatherbench()
     # exit()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):

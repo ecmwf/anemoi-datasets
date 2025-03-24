@@ -7,16 +7,32 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import glob
 import logging
+from typing import Any
+from typing import Generator
+from typing import List
+from typing import Tuple
 
 from earthkit.data.utils.patterns import Pattern
 
 LOG = logging.getLogger(__name__)
 
 
-def _expand(paths):
+def _expand(paths: List[str]) -> Generator[str, None, None]:
+    """Expand the given paths to include all matching file paths.
 
+    Parameters
+    ----------
+    paths : List[str]
+        List of paths to expand.
+
+    Returns
+    -------
+    Generator[str]
+        Expanded file paths.
+    """
     if not isinstance(paths, list):
         paths = [paths]
 
@@ -40,7 +56,25 @@ def _expand(paths):
             yield path
 
 
-def iterate_patterns(path, dates, **kwargs):
+def iterate_patterns(
+    path: str, dates: List[datetime.datetime], **kwargs: Any
+) -> Generator[Tuple[str, List[str]], None, None]:
+    """Iterate over patterns and expand them with given dates and additional keyword arguments.
+
+    Parameters
+    ----------
+    path : str
+        The pattern path to iterate over.
+    dates : List[datetime.datetime]
+        List of datetime objects to substitute in the pattern.
+    **kwargs : Any
+        Additional keyword arguments to substitute in the pattern.
+
+    Returns
+    -------
+    Generator[Tuple[str, List[str]]]
+        The expanded path and list of ISO formatted dates.
+    """
     given_paths = path if isinstance(path, list) else [path]
 
     dates = [d.isoformat() for d in dates]

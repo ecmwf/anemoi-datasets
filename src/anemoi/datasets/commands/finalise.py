@@ -9,6 +9,7 @@
 
 import logging
 import time
+from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
@@ -25,11 +26,25 @@ class Finalise(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
+        """Add arguments to the command parser.
+
+        Parameters
+        ----------
+        command_parser : Any
+            The command parser to which arguments will be added.
+        """
         command_parser.add_argument("path", help="Path to store the created data.")
         command_parser.add_argument("--trace", action="store_true")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
+        """Execute the finalise command.
+
+        Parameters
+        ----------
+        args : Any
+            The arguments passed to the command.
+        """
         options = vars(args)
         options.pop("command")
         now = time.time()
