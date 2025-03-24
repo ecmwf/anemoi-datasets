@@ -32,7 +32,7 @@ html_logo = "_static/logo.png"
 
 # -- Project information -----------------------------------------------------
 
-project = "Anemoi"
+project = "Anemoi Datasets"
 
 author = "Anemoi contributors"
 
@@ -110,6 +110,10 @@ intersphinx_mapping = {
     "anemoi-transform": (
         "https://anemoi-transform.readthedocs.io/en/latest/",
         ("../../anemoi-transform/docs/_build/html/objects.inv", None),
+    ),
+    "anemoi-plugins": (
+        "https://anemoi-plugins.readthedocs.io/en/latest/",
+        ("../../anemoi-plugins/docs/_build/html/objects.inv", None),
     ),
 }
 
