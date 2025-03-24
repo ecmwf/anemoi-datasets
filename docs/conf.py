@@ -138,3 +138,16 @@ html_css_files = ["style.css"]
 todo_include_todos = not read_the_docs_build
 
 autodoc_member_order = "bysource"  # Keep file order
+
+# https://autodoc-pydantic.readthedocs.io/en/stable/users/configuration.html
+
+autodoc_pydantic_model_show_json = True
+autodoc_pydantic_model_show_field_summary = False
+autodoc_pydantic_model_member_order = "bysource"
+
+html_context = {
+    "display_github": True,
+    "github_user": "ecmwf",
+    "github_repo": "anemoi-datasets",
+    "github_version": "main/docs/",
+}
