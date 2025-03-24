@@ -90,7 +90,7 @@ class Number(Forwards):
             result = result[:, :, self.mask, :]
             return result
 
-        index, changes = index_to_slices(index, self.shape)
+        index, changes = index_to_slices(index, self.forward.shape)
         result = self.forward[index]
         result = result[:, :, self.mask, :]
         return apply_index_to_slices_changes(result, changes)
