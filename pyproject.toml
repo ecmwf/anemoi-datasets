@@ -77,12 +77,12 @@ optional-dependencies.dev = [
 ]
 
 optional-dependencies.docs = [
+  "anemoi-datasets[all]",
   "nbsphinx",
   "pandoc",
   "sphinx",
   "sphinx-argparse",
   "sphinx-rtd-theme",
-  "anemoi-datasets[all]",
 ]
 
 optional-dependencies.remote = [
