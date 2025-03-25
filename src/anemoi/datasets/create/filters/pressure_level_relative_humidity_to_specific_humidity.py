@@ -71,7 +71,9 @@ def execute(context: Any, input: ekd.FieldList, t: str, rh: str, q: str = "q") -
 
         t_pl = values[t].to_numpy(flatten=True)
         rh_pl = values[rh].to_numpy(flatten=True)
-        pressure = next(float(v) * 100 for k, v in keys if k in ["level", "levelist"]) # Looks first for "level" then "levelist" value
+        pressure = next(
+            float(v) * 100 for k, v in keys if k in ["level", "levelist"]
+        )  # Looks first for "level" then "levelist" value
         # print(f"Handling fields for pressure level {pressure}...")
 
         # actual conversion from rh --> q_v
