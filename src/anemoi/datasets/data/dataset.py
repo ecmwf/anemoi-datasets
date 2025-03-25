@@ -310,7 +310,12 @@ class Dataset(ABC, Sized):
         """
         requested_frequency = frequency_to_seconds(frequency)
         dataset_frequency = frequency_to_seconds(self.frequency)
-        assert requested_frequency % dataset_frequency == 0
+
+        if requested_frequency % dataset_frequency != 0:
+            raise ValueError(
+                f"Requested frequency {frequency} is not a multiple of the dataset frequency {self.frequency}. Did you mean to use `interpolate_frequency`?"
+            )
+
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
         step = requested_frequency // dataset_frequency
 
