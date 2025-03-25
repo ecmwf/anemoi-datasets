@@ -88,12 +88,12 @@ class MeshedGrid(LatLonGrid):
     def grid_points(self) -> Tuple[Any, Any]:
         """Get the grid points for the meshed grid."""
 
-        if self.variable_dims == ("longitude", "latitude"):
+        if self.variable_dims == (self.lon.variable.name, self.lat.variable.name):
             lat, lon = np.meshgrid(
                 self.lat.variable.values,
                 self.lon.variable.values,
             )
-        elif self.variable_dims == ("latitude", "longitude"):
+        elif self.variable_dims == (self.lat.variable.name, self.lon.variable.name):
             lon, lat = np.meshgrid(
                 self.lon.variable.values,
                 self.lat.variable.values,
