@@ -192,6 +192,12 @@ class Dataset:
             interpolate_frequency = kwargs.pop("interpolate_frequency")
             return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
+        if "interpolate_variables" in kwargs:
+            from .interpolate import InterpolateNearest
+
+            interpolate_variables = kwargs.pop("interpolate_variables")
+            return InterpolateNearest(self, interpolate_variables)._subset(**kwargs).mutate()
+
         # Keep last
         if "shuffle" in kwargs:
             from .subset import Subset

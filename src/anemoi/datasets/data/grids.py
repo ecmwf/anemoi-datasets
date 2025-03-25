@@ -28,6 +28,31 @@ from .misc import _open
 
 LOG = logging.getLogger(__name__)
 
+def xyz_to_latlon(x, y, z):
+    return (
+        np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
+        np.rad2deg(np.arctan2(y, x)),
+    )
+
+
+def latlon_to_xyz(lat, lon, radius=1.0):
+    # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
+    # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
+    # We assume h = 0
+    #
+    phi = np.deg2rad(lat)
+    lda = np.deg2rad(lon)
+
+    cos_phi = np.cos(phi)
+    cos_lda = np.cos(lda)
+    sin_phi = np.sin(phi)
+    sin_lda = np.sin(lda)
+
+    x = cos_phi * cos_lda * radius
+    y = cos_phi * sin_lda * radius
+    z = sin_phi * radius
+
+    return x, y, z
 
 class Concat(Combined):
     def __len__(self):
@@ -431,3 +456,13 @@ def cutout_factory(args, kwargs):
         cropping_distance=cropping_distance,
         plot=plot,
     )._subset(**kwargs)
+
+def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, target_longitudes):
+    source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
+    source_points = np.array(source_xyz).transpose()
+
+    target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
+    target_points = np.array(target_xyz).transpose()
+    _, indices = cKDTree(source_points).query(target_points, k=1)
+        
+    return indices

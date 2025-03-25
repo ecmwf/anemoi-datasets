@@ -63,10 +63,14 @@ class Complement(Combined):
     
     @property
     def statistics(self):
-        datasets = [self.target, self.source]
+        datasets = [self.source, self.target]   
         return {
-            k: np.concatenate([d.statistics[k] for d in datasets], axis=0) for k in datasets[0].statistics
-        }
+                    k: [d.statistics[k][d.name_to_index[i]] 
+                        for d in datasets 
+                        for i in d.variables if i in self.variables
+                    ]
+                    for k in datasets[0].statistics
+                } 
 
     def check_same_variables(self, d1, d2):
         pass
@@ -119,6 +123,11 @@ class ComplementNearest(Complement):
 
     def check_compatibility(self, d1, d2):
         pass
+    
+    @staticmethod
+    def slice_len(slice_obj):
+        # Compute the length of the slice
+        return max(0, (slice_obj.stop - slice_obj.start + (slice_obj.step or 1) - 1) // (slice_obj.step or 1))
 
     def _get_tuple(self, index):
         variable_index = 1
@@ -126,8 +135,9 @@ class ComplementNearest(Complement):
         index, previous = update_tuple(index, variable_index, slice(None))
         source_index = [self.source.name_to_index[x] for x in self.variables[previous]]
         source_data = self.source[index[0], source_index, index[2], ...]
-        target_data = source_data[..., self._nearest_grid_points]
-
+        valid = np.where(self._nearest_grid_points<source_data.shape[-1])[0]
+        target_data = np.full((self.slice_len(index[0]), len(source_index), self.slice_len(index[2]), self.shape[-1]), np.nan)
+        target_data[..., valid] = source_data[..., self._nearest_grid_points[valid]]
         result = target_data[..., index[3]]
 
         return apply_index_to_slices_changes(result, changes)
