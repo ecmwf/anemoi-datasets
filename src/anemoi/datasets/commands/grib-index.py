@@ -9,11 +9,8 @@
 
 import fnmatch
 import os
-import sqlite3
 from typing import Any
-from typing import List
 
-import earthkit.data as ekd
 import tqdm
 
 from . import Command
@@ -24,124 +21,7 @@ KEYS2 = ("shortName", "paramId", "level", "step", "number", "date", "time", "val
 KEYS = KEYS1 + KEYS2
 
 
-def open_database(path: str, metadata_keys: List[str]) -> sqlite3.Connection:
-    """Open a connection to a sqlite3 database.
-
-    Parameters
-    ----------
-    path : str
-        The path to the database.
-    metadata_keys : List[str]
-        The list of metadata keys to be used in the database.
-
-    Returns
-    -------
-    sqlite3.Connection
-        The connection to the database.
-    """
-    conn = sqlite3.connect(path)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-    CREATE TABLE IF NOT EXISTS paths (
-        id INTEGER PRIMARY KEY,
-        path TEXT not null
-    )
-    """
-    )
-
-    cursor.execute(
-        f"""
-    CREATE TABLE IF NOT EXISTS grib_index (
-        id INTEGER PRIMARY KEY,
-        path_id INTEGER not null,
-        offset INTEGER not null,
-        length INTEGER not null,
-        {', '.join(f'{key} TEXT' for key in metadata_keys)},
-        FOREIGN KEY(path_id) REFERENCES paths(id))
-    """
-    )
-
-    cursor.execute(
-        """
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_path_offset
-    ON grib_index (path_id, offset)
-    """
-    )
-
-    cursor.execute(
-        f"""
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-    ON grib_index ({', '.join(metadata_keys)})
-    """
-    )
-
-    for key in metadata_keys:
-        cursor.execute(
-            f"""
-        CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
-        ON grib_index ({key})
-        """
-        )
-
-    conn.commit()
-
-    return conn
-
-
-def path_id(conn: sqlite3.Connection, path: str) -> int:
-    """Get the id of a path in the database.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        The connection to the database.
-    path : str
-        The path to look up.
-
-    Returns
-    -------
-    int
-        The id of the path.
-    """
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM paths WHERE path = ?", (path,))
-    row = cursor.fetchone()
-    if row is None:
-        cursor.execute("INSERT INTO paths (path) VALUES (?)", (path,))
-        conn.commit()
-        return cursor.lastrowid
-    return row[0]
-
-
-def add_grib(conn: sqlite3.Connection, commit: bool = True, **kwargs: Any) -> None:
-    """Add a grib record to the database.
-
-    Parameters
-    ----------
-    conn : sqlite3.Connection
-        The connection to the database.
-    commit : bool, optional
-        Whether to commit the transaction immediately, by default True.
-    **kwargs : Any
-        The metadata fields and their values to be added to the database.
-    """
-    cursor = conn.cursor()
-
-    cursor.execute(
-        f"""
-    INSERT INTO grib_index ({', '.join(kwargs.keys())})
-    VALUES ({', '.join('?' for _ in kwargs)})
-    """,
-        tuple(kwargs.values()),
-    )
-
-    if commit:
-        conn.commit()
-
-
-class GribIndex(Command):
+class GribIndexCmd(Command):
     internal = True
     timestamp = True
 
@@ -197,12 +77,17 @@ class GribIndex(Command):
             """
             return fnmatch.fnmatch(path, args.match)
 
-        if args.overwrite:
-            if os.path.exists(args.index):
-                os.remove(args.index)
+        from anemoi.datasets.create.sources.grib_index import GribIndex
 
         # Remove namespace if present
-        conn = open_database(args.index, [k.split(".")[-1] for k in KEYS])
+        keys = [k.split(".")[-1] for k in KEYS]
+
+        index = GribIndex(
+            args.index,
+            keys=keys,
+            update=True,
+            overwrite=args.overwrite,
+        )
 
         paths = []
         for path in args.paths:
@@ -215,25 +100,8 @@ class GribIndex(Command):
                         paths.append(full)
 
         for path in tqdm.tqdm(paths, leave=False):
-            if not match(path):
-                continue
-
-            path_id_ = path_id(conn, path)
-
-            for field in tqdm.tqdm(ekd.from_source("file", path), leave=False):
-
-                keys = {k.split(".")[-1]: field.metadata(k, default=None) for k in KEYS}
-
-                add_grib(
-                    conn,
-                    commit=False,
-                    path_id=path_id_,
-                    offset=field.metadata("offset"),
-                    length=field.metadata("totalLength"),
-                    **keys,
-                )
-
-        conn.commit()
+            if match(path):
+                index.add_grib_file(path)
 
 
-command = GribIndex
+command = GribIndexCmd
