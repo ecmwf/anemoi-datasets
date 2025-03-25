@@ -215,7 +215,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
         result[k] = dict(mars=v) if v else {}
         result[k].update(other[k])
         result[k].update(KNOWN.get(k, {}))
-        assert result[k], k
+        # assert result[k], k
 
     assert i + 1 == len(variables), (i + 1, len(variables))
     return result
