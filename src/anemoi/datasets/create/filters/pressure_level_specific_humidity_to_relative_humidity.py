@@ -72,7 +72,7 @@ def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -
 
         t_pl = values[t].to_numpy(flatten=True)
         q_pl = values[q].to_numpy(flatten=True)
-        pressure = keys[4][1] * 100  # TODO: REMOVE HARDCODED INDICES
+        pressure = next(float(v) * 100 for k, v in keys if k in ["level", "levelist"]) # Looks first for "level" then "levelist" value
         # print(f"Handling fields for pressure level {pressure}...")
 
         # actual conversion from rh --> q_v
