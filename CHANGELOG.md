@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.18](https://github.com/ecmwf/anemoi-datasets/compare/0.5.17...0.5.18) (2025-03-25)
+
+
+### Features
+
+* better error message ([#252](https://github.com/ecmwf/anemoi-datasets/issues/252)) ([e74cbe9](https://github.com/ecmwf/anemoi-datasets/commit/e74cbe9a6eac8a15c65c477f24106c97b4ce1b54))
+
+
+### Bug Fixes
+
+* modify execute function signature ([#253](https://github.com/ecmwf/anemoi-datasets/issues/253)) ([e4ad1a4](https://github.com/ecmwf/anemoi-datasets/commit/e4ad1a4244387853529d112996071f720d673b1a))
+
 ## [0.5.17](https://github.com/ecmwf/anemoi-datasets/compare/0.5.16...0.5.17) (2025-03-24)
 
 
