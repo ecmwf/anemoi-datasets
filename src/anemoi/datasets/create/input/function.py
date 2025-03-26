@@ -177,9 +177,7 @@ class FunctionResult(Result):
         super().__init__(context, action_path, group_of_dates)
         assert isinstance(action, Action), type(action)
         self.action: Action = action
-
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
-
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
         """Traces the datasource for the given arguments.
 
@@ -205,12 +203,11 @@ class FunctionResult(Result):
         """Returns the datasource for the function result."""
         args, kwargs = resolve(self.context, (self.args, self.kwargs))
         self.action.source.context = FunctionContext(self)
-
+        self.action.source.args = args
+        self.action.source.kwargs = kwargs
         return _tidy(
             self.action.source.execute(
                 self.group_of_dates,  # Will provide a list of datetime objects
-                *args,
-                **kwargs,
             )
         )
 

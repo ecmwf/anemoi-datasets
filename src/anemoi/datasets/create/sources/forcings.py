@@ -9,14 +9,14 @@
 
 from typing import Any
 from typing import List
-
+from anemoi.datasets.dates.groups import GroupOfDates
 from earthkit.data import from_source
 
 from .legacy import legacy_source
 
 
 @legacy_source(__file__)
-def forcings(context: Any, dates: List[str], template: str, param: str) -> Any:
+def forcings(context: Any, dates: GroupOfDates, template: str, param: str) -> Any:
     """Loads forcing data from a specified source.
 
     Parameters
@@ -36,7 +36,7 @@ def forcings(context: Any, dates: List[str], template: str, param: str) -> Any:
         Loaded forcing data.
     """
     context.trace("✅", f"from_source(forcings, {template}, {param}")
-    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
+    return from_source("forcings", source_or_dataset=template, date=dates.dates, param=param)
 
 
 execute = forcings

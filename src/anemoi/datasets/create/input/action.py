@@ -247,8 +247,9 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
 
     if cls is None:
         from ..sources import create_source
-
+        
         source = create_source(None, config)
-        return FunctionAction(context, action_path + [key], key, source)
+        
+        return FunctionAction(context=context, action_path=(action_path + [key]),_name=key,source=source,**kwargs)
 
     return cls(context, action_path + [key], *args, **kwargs)
