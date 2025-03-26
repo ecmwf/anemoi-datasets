@@ -288,7 +288,8 @@ class Dataset(ABC, Sized):
             from .interpolate import InterpolateNearest
 
             interpolate_variables = kwargs.pop("interpolate_variables")
-            return InterpolateNearest(self, interpolate_variables)._subset(**kwargs).mutate()
+            max_distance = kwargs.pop("max_distance", None)
+            return InterpolateNearest(self, interpolate_variables, max_distance=max_distance)._subset(**kwargs).mutate()
 
         # Keep last
         if "shuffle" in kwargs:
