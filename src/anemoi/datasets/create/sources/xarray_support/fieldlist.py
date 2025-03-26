@@ -165,7 +165,7 @@ class XarrayFieldList(FieldList):
                     c.is_dim = False
                 coordinates.append(c)
 
-            grid_coords: int = sum(1 for c in coordinates if c.is_grid and c.is_dim)
+            grid_coords: int = sum(1 for c in coordinates if c.is_grid)
             assert grid_coords <= 2
 
             if grid_coords < 2:
