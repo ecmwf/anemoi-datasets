@@ -1,8 +1,8 @@
 .. _dev-contributing:
 
-##############
- Contributing
-##############
+####################
+ General guidelines
+####################
 
 Thank you for your interest in Anemoi Datasets! Please follow the
 :ref:`general Anemoi contributing guidelines
