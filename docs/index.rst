@@ -170,5 +170,3 @@ You may also have to install pandoc on MacOS:
    :caption: Developing Anemoi Datasets
 
    dev/contributing
-   dev/code_structure
-   dev/testing
