@@ -12,7 +12,7 @@ import os
 import xarray as xr
 from multiurl import download
 
-from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
+from anemoi.datasets.create.sources.xarray import XarrayFieldList
 
 URLS = {
     "https://get.ecmwf.int/repository/test-data/earthkit-data/examples/efas.nc": dict(length=3),
@@ -45,8 +45,8 @@ URLS = {
 }
 
 
-def skip_test_netcdf():
-
+def skip_test_netcdf() -> None:
+    """Test loading and validating various NetCDF datasets."""
     for url, checks in URLS.items():
         print(url)
         path = os.path.join(os.path.dirname(__file__), os.path.basename(url))

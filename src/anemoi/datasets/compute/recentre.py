@@ -9,12 +9,14 @@
 
 
 import logging
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
-
-from anemoi.datasets.create.functions import assert_is_fieldlist
 
 LOG = logging.getLogger(__name__)
 
@@ -33,7 +35,22 @@ CLIP_VARIABLES = (
 SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset", "time", "date", "step")
 
 
-def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
+def check_compatible(
+    f1: Any, f2: Any, centre_field_as_mars: Dict[str, Any], ensemble_field_as_mars: Dict[str, Any]
+) -> None:
+    """Check if two fields are compatible.
+
+    Parameters
+    ----------
+    f1 : Any
+        The first field.
+    f2 : Any
+        The second field.
+    centre_field_as_mars : Dict[str, Any]
+        Metadata of the centre field.
+    ensemble_field_as_mars : Dict[str, Any]
+        Metadata of the ensemble field.
+    """
     assert f1.mars_grid == f2.mars_grid, (f1.mars_grid, f2.mars_grid)
     assert f1.mars_area == f2.mars_area, (f1.mars_area, f2.mars_area)
     assert f1.shape == f2.shape, (f1.shape, f2.shape)
@@ -56,13 +73,32 @@ def check_compatible(f1, f2, centre_field_as_mars, ensemble_field_as_mars):
 
 def recentre(
     *,
-    members,
-    centre,
-    clip_variables=CLIP_VARIABLES,
-    alpha=1.0,
-    output=None,
-):
+    members: Any,
+    centre: Any,
+    clip_variables: Tuple[str, ...] = CLIP_VARIABLES,
+    alpha: float = 1.0,
+    output: Optional[str] = None,
+) -> Any:
+    """Recentre ensemble members around the centre field.
 
+    Parameters
+    ----------
+    members : Any
+        The ensemble members.
+    centre : Any
+        The centre field.
+    clip_variables : Tuple[str, ...], optional
+        Variables to clip. Defaults to CLIP_VARIABLES.
+    alpha : float, optional
+        Scaling factor. Defaults to 1.0.
+    output : Optional[str], optional
+        Output path. Defaults to None.
+
+    Returns
+    -------
+    Any
+        The recentred dataset or output path.
+    """
     keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
 
     number_list = members.unique_values("number", progress_bar=False)["number"]
@@ -158,7 +194,7 @@ def recentre(
     from earthkit.data import from_source
 
     ds = from_source("file", path)
-    assert_is_fieldlist(ds)
+
     # save a reference to the tmp file so it is deleted
     # only when the dataset is not used anymore
     ds._tmp = tmp

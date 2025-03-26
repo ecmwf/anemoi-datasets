@@ -1,0 +1,60 @@
+# This workflow triggers tests on dependent packages.
+# The dependency tree itself is defined in ecmwf/downstream-ci/
+name: Test downstream dependent packages on HPC
+
+on:
+  # Trigger the workflow on push to main or develop, except tag creation
+  push:
+    branches:
+      - 'main'
+      - 'develop'
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - "docs/**"
+      - "CHANGELOG.md"
+      - "README.md"
+
+  # Trigger the workflow on pull request
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "CHANGELOG.md"
+      - "README.md"
+
+  # Trigger the workflow manually
+  workflow_dispatch: ~
+
+  # Trigger after public PR approved for CI
+  pull_request_target:
+    types: [labeled]
+    paths-ignore:
+      - "docs/**"
+      - "CHANGELOG.md"
+      - "README.md"
+
+jobs:
+  # Run CI including downstream packages on self-hosted runners
+  downstream-ci:
+    name: downstream-ci
+    if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
+    uses: ecmwf/downstream-ci/.github/workflows/downstream-ci.yml@main
+    with:
+      anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
+      codecov_upload: true
+      # Only run on fedora
+      skip_matrix_jobs: |
+        gnu@debian-11
+        gnu@rocky-8.6
+        clang@rocky-8.6
+        gnu@ubuntu-22.04
+    secrets: inherit
+
+  # # Build downstream packages on HPC
+  # downstream-ci-hpc:
+  #   name: downstream-ci-hpc
+  #   if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
+  #   uses: ecmwf/downstream-ci/.github/workflows/downstream-ci-hpc.yml@main
+  #   with:
+  #     anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
+  #   secrets: inherit

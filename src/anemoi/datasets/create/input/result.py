@@ -13,22 +13,44 @@ import math
 import time
 from collections import defaultdict
 from functools import cached_property
+from typing import Any
+from typing import DefaultDict
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
+from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
+from .action import ActionContext
 from .trace import trace
 from .trace import trace_datasource
 
 LOG = logging.getLogger(__name__)
 
 
-def _fields_metatata(variables, cube):
+def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
+    """Retrieve metadata for the given variables and cube.
+
+    Parameters
+    ----------
+    variables : tuple of str
+        The variables to retrieve metadata for.
+    cube : Any
+        The data cube.
+
+    Returns
+    -------
+    dict
+        The metadata dictionary.
+    """
     assert isinstance(variables, tuple), variables
 
-    KNOWN = {
+    KNOWN: Dict[str, Dict[str, bool]] = {
         "cos_julian_day": dict(computed_forcing=True, constant_in_time=False),
         "cos_latitude": dict(computed_forcing=True, constant_in_time=True),
         "cos_local_time": dict(computed_forcing=True, constant_in_time=False),
@@ -43,9 +65,9 @@ def _fields_metatata(variables, cube):
         "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
     }
 
-    def _merge(md1, md2):
+    def _merge(md1: Dict[str, Any], md2: Dict[str, Any]) -> Dict[str, Any]:
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
-        result = {}
+        result: Dict[str, Any] = {}
         for k in md1.keys():
             v1 = md1[k]
             v2 = md2[k]
@@ -68,10 +90,10 @@ def _fields_metatata(variables, cube):
 
         return result
 
-    mars = {}
-    other = defaultdict(dict)
-    i = -1
-    date = None
+    mars: Dict[str, Any] = {}
+    other: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
+    i: int = -1
+    date: Optional[str] = None
     for c in cube.iterate_cubelets():
 
         if date is None:
@@ -97,10 +119,12 @@ def _fields_metatata(variables, cube):
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
         startStep = f.metadata("startStep", default=None)
-        assert startStep is None or isinstance(startStep, int), (startStep, type(f))
+        if startStep is not None:
+            startStep = as_timedelta(startStep)
 
         endStep = f.metadata("endStep", default=None)
-        assert endStep is None or isinstance(endStep, int), endStep
+        if endStep is not None:
+            endStep = as_timedelta(endStep)
 
         stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
         typeOfStatisticalProcessing = f.metadata("typeOfStatisticalProcessing", default=None)
@@ -112,7 +136,7 @@ def _fields_metatata(variables, cube):
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
-            TYPE_OF_STATISTICAL_PROCESSING = {
+            TYPE_OF_STATISTICAL_PROCESSING: Dict[Optional[int], Optional[str]] = {
                 None: None,
                 0: "average",
                 1: "accumulation",
@@ -132,12 +156,12 @@ def _fields_metatata(variables, cube):
 
             # https://codes.ecmwf.int/grib/format/grib1/ctable/5/
 
-            TIME_RANGE_INDICATOR = {
+            TIME_RANGE_INDICATOR: Dict[int, str] = {
                 4: "accumulation",
                 3: "average",
             }
 
-            STEP_TYPE_FOR_CONVERSION = {
+            STEP_TYPE_FOR_CONVERSION: Dict[str, str] = {
                 "min": "minimum",
                 "max": "maximum",
                 "accum": "accumulation",
@@ -147,7 +171,7 @@ def _fields_metatata(variables, cube):
             # A few patches
             #
 
-            PATCHES = {
+            PATCHES: Dict[str, str] = {
                 "10fg6": "maximum",
                 "mntpr3": "minimum",  # Not in param db
                 "mntpr6": "minimum",  # Not in param db
@@ -186,7 +210,7 @@ def _fields_metatata(variables, cube):
         else:
             mars[variables[i]] = md
 
-    result = {}
+    result: Dict[str, Dict[str, Any]] = {}
     for k, v in mars.items():
         result[k] = dict(mars=v) if v else {}
         result[k].update(other[k])
@@ -197,12 +221,25 @@ def _fields_metatata(variables, cube):
     return result
 
 
-def _data_request(data):
-    date = None
-    params_levels = defaultdict(set)
-    params_steps = defaultdict(set)
+def _data_request(data: Any) -> Dict[str, Any]:
+    """Build a data request dictionary from the given data.
 
-    area = grid = None
+    Parameters
+    ----------
+    data : Any
+        The data to build the request from.
+
+    Returns
+    -------
+    dict
+        The data request dictionary.
+    """
+    date: Optional[Any] = None
+    params_levels: DefaultDict[str, set] = defaultdict(set)
+    params_steps: DefaultDict[str, set] = defaultdict(set)
+
+    area: Optional[Any] = None
+    grid: Optional[Any] = None
 
     for field in data:
         try:
@@ -232,8 +269,8 @@ def _data_request(data):
         except Exception:
             LOG.error(f"Error in retrieving metadata (cannot build data request info) for {field}", exc_info=True)
 
-    def sort(old_dic):
-        new_dic = {}
+    def sort(old_dic: DefaultDict[str, set]) -> Dict[str, List[Any]]:
+        new_dic: Dict[str, List[Any]] = {}
         for k, v in old_dic.items():
             new_dic[k] = sorted(list(v))
         return new_dic
@@ -245,48 +282,67 @@ def _data_request(data):
 
 
 class Result:
-    empty = False
-    _coords_already_built = False
+    """Class to represent the result of an action in the dataset creation process."""
 
-    def __init__(self, context, action_path, dates):
+    empty: bool = False
+    _coords_already_built: bool = False
+
+    def __init__(self, context: ActionContext, action_path: List[str], dates: Any) -> None:
+        """Initialize a Result instance.
+
+        Parameters
+        ----------
+        context : ActionContext
+            The context in which the result exists.
+        action_path : list of str
+            The action path.
+        dates : Any
+            The dates associated with the result.
+        """
         from anemoi.datasets.dates.groups import GroupOfDates
-
-        from .action import ActionContext
 
         assert isinstance(dates, GroupOfDates), dates
 
         assert isinstance(context, ActionContext), type(context)
         assert isinstance(action_path, list), action_path
 
-        self.context = context
-        self.group_of_dates = dates
-        self.action_path = action_path
+        self.context: Any = context
+        self.group_of_dates: Any = dates
+        self.action_path: List[str] = action_path
 
     @property
     @trace_datasource
-    def datasource(self):
+    def datasource(self) -> Any:
+        """Retrieve the data source for the result."""
         self._raise_not_implemented()
 
     @property
-    def data_request(self):
+    def data_request(self) -> Dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
 
-    def get_cube(self):
-        trace("🧊", f"getting cube from {self.__class__.__name__}")
-        ds = self.datasource
+    def get_cube(self) -> Any:
+        """Retrieve the data cube for the result.
 
-        remapping = self.context.remapping
-        order_by = self.context.order_by
-        flatten_grid = self.context.flatten_grid
-        start = time.time()
+        Returns
+        -------
+        Any
+            The data cube.
+        """
+        trace("🧊", f"getting cube from {self.__class__.__name__}")
+        ds: Any = self.datasource
+
+        remapping: Any = self.context.remapping
+        order_by: Any = self.context.order_by
+        flatten_grid: Any = self.context.flatten_grid
+        start: float = time.time()
         LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
         assert order_by, order_by
 
-        patches = {"number": {None: 0}}
+        patches: Dict[str, Dict[Optional[Any], int]] = {"number": {None: 0}}
 
         try:
-            cube = ds.cube(
+            cube: Any = ds.cube(
                 order_by,
                 remapping=remapping,
                 flatten_values=flatten_grid,
@@ -306,9 +362,21 @@ class Result:
 
         return cube
 
-    def explain(self, ds, *args, remapping, patches):
+    def explain(self, ds: Any, *args: Any, remapping: Any, patches: Any) -> None:
+        """Explain the data cube creation process.
 
-        METADATA = (
+        Parameters
+        ----------
+        ds : Any
+            The data source.
+        args : Any
+            Additional arguments.
+        remapping : Any
+            The remapping configuration.
+        patches : Any
+            The patches configuration.
+        """
+        METADATA: Tuple[str, ...] = (
             "date",
             "time",
             "step",
@@ -333,7 +401,7 @@ class Result:
         # print("Executing", self.action_path)
         # print("Dates:", compress_dates(self.dates))
 
-        names = []
+        names: List[str] = []
         for a in args:
             if isinstance(a, str):
                 names.append(a)
@@ -349,7 +417,7 @@ class Result:
         for k, v in user_coords.items():
             print(f"  {k:20}:", len(v), shorten_list(v, max_length=10))
         print()
-        user_shape = tuple(len(v) for k, v in user_coords.items())
+        user_shape: Tuple[int, ...] = tuple(len(v) for k, v in user_coords.items())
         print("Shape of the hypercube           :", user_shape)
         print(
             "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
@@ -451,46 +519,82 @@ class Result:
         print()
         exit(1)
 
-    def __repr__(self, *args, _indent_="\n", **kwargs):
-        more = ",".join([str(a)[:5000] for a in args])
+    def _repr(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
+        """Return the string representation of the Result instance.
+
+        Parameters
+        ----------
+        args : Any
+            Additional positional arguments.
+        _indent_ : str
+            Indentation string.
+        kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        str
+            The string representation.
+        """
+        more: str = ",".join([str(a)[:5000] for a in args])
         more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
 
-        dates = " no-dates"
+        dates: str = " no-dates"
         if self.group_of_dates is not None:
             dates = f" {len(self.group_of_dates)} dates"
             dates += " ("
-            dates += "/".join(d.strftime("%Y-%m-%d:%H") for d in self.group_of_dates)
+            dates += "/".join(d.strftime("%Y-%m-%dT%H:%M") for d in self.group_of_dates)
             if len(dates) > 100:
                 dates = dates[:100] + "..."
             dates += ")"
 
         more = more[:5000]
-        txt = f"{self.__class__.__name__}:{dates}{_indent_}{more}"
+        txt: str = f"{self.__class__.__name__}:{dates}{_indent_}{more}"
         if _indent_:
             txt = txt.replace("\n", "\n  ")
         return txt
 
-    def _raise_not_implemented(self):
+    def __repr__(self) -> str:
+        """Return the string representation of the Result instance."""
+        return self._repr()
+
+    def _raise_not_implemented(self) -> None:
+        """Raise a NotImplementedError indicating the method is not implemented."""
         raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
 
-    def _trace_datasource(self, *args, **kwargs):
+    def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
+        """Trace the data source for the result.
+
+        Parameters
+        ----------
+        args : Any
+            Additional positional arguments.
+        kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        str
+            The trace string.
+        """
         return f"{self.__class__.__name__}({self.group_of_dates})"
 
-    def build_coords(self):
+    def build_coords(self) -> None:
+        """Build the coordinates for the result."""
         if self._coords_already_built:
             return
 
-        cube = self.get_cube()
+        cube: Any = self.get_cube()
 
-        from_data = cube.user_coords
-        from_config = self.context.order_by
+        from_data: Any = cube.user_coords
+        from_config: Any = self.context.order_by
 
-        keys_from_config = list(from_config.keys())
-        keys_from_data = list(from_data.keys())
+        keys_from_config: list = list(from_config.keys())
+        keys_from_data: list = list(from_data.keys())
         assert keys_from_data == keys_from_config, f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
 
-        variables_key = list(from_config.keys())[1]
-        ensembles_key = list(from_config.keys())[2]
+        variables_key: str = list(from_config.keys())[1]
+        ensembles_key: str = list(from_config.keys())[2]
 
         if isinstance(from_config[variables_key], (list, tuple)):
             assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
@@ -498,21 +602,22 @@ class Result:
                 from_config[variables_key],
             )
 
-        self._variables = from_data[variables_key]  # "param_level"
-        self._ensembles = from_data[ensembles_key]  # "number"
+        self._variables: Any = from_data[variables_key]  # "param_level"
+        self._ensembles: Any = from_data[ensembles_key]  # "number"
 
-        first_field = self.datasource[0]
-        grid_points = first_field.grid_points()
+        first_field: Any = self.datasource[0]
+        grid_points: Any = first_field.grid_points()
 
-        lats, lons = grid_points
+        lats: Any = grid_points[0]
+        lons: Any = grid_points[1]
 
         assert len(lats) == len(lons), (len(lats), len(lons), first_field)
         assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
 
-        north = np.amax(lats)
-        south = np.amin(lats)
-        east = np.amax(lons)
-        west = np.amin(lons)
+        north: float = np.amax(lats)
+        south: float = np.amin(lats)
+        east: float = np.amax(lons)
+        west: float = np.amin(lons)
 
         assert -90 <= south <= north <= 90, (south, north, first_field)
         assert (-180 <= west <= east <= 180) or (0 <= west <= east <= 360), (
@@ -521,59 +626,68 @@ class Result:
             first_field,
         )
 
-        grid_values = list(range(len(grid_points[0])))
+        grid_values: list = list(range(len(grid_points[0])))
 
-        self._grid_points = grid_points
-        self._resolution = first_field.resolution
-        self._grid_values = grid_values
-        self._field_shape = first_field.shape
-        self._proj_string = first_field.proj_string if hasattr(first_field, "proj_string") else None
+        self._grid_points: Any = grid_points
+        self._resolution: Any = first_field.resolution
+        self._grid_values: Any = grid_values
+        self._field_shape: Any = first_field.shape
+        self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
-        self._cube = cube
+        self._cube: Any = cube
 
-        self._coords_already_built = True
+        self._coords_already_built: bool = True
 
     @property
-    def variables(self):
+    def variables(self) -> List[str]:
+        """Retrieve the variables for the result."""
         self.build_coords()
         return self._variables
 
     @property
-    def variables_metadata(self):
+    def variables_metadata(self) -> Dict[str, Any]:
+        """Retrieve the metadata for the variables."""
         return _fields_metatata(self.variables, self._cube)
 
     @property
-    def ensembles(self):
+    def ensembles(self) -> Any:
+        """Retrieve the ensembles for the result."""
         self.build_coords()
         return self._ensembles
 
     @property
-    def resolution(self):
+    def resolution(self) -> Any:
+        """Retrieve the resolution for the result."""
         self.build_coords()
         return self._resolution
 
     @property
-    def grid_values(self):
+    def grid_values(self) -> Any:
+        """Retrieve the grid values for the result."""
         self.build_coords()
         return self._grid_values
 
     @property
-    def grid_points(self):
+    def grid_points(self) -> Any:
+        """Retrieve the grid points for the result."""
         self.build_coords()
         return self._grid_points
 
     @property
-    def field_shape(self):
+    def field_shape(self) -> Any:
+        """Retrieve the field shape for the result."""
         self.build_coords()
         return self._field_shape
 
     @property
-    def proj_string(self):
+    def proj_string(self) -> Any:
+        """Retrieve the projection string for the result."""
         self.build_coords()
         return self._proj_string
 
     @cached_property
-    def shape(self):
+    def shape(self) -> List[int]:
+        """Retrieve the shape of the result."""
         return [
             len(self.group_of_dates),
             len(self.variables),
@@ -582,7 +696,8 @@ class Result:
         ]
 
     @cached_property
-    def coords(self):
+    def coords(self) -> Dict[str, Any]:
+        """Retrieve the coordinates of the result."""
         return {
             "dates": list(self.group_of_dates),
             "variables": self.variables,

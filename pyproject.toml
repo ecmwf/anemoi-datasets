@@ -49,14 +49,14 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1",
-  "anemoi-utils[provenance]>=0.4.9",
+  "anemoi-transform>=0.1.4",
+  "anemoi-utils[provenance]>=0.4.16",
   "cfunits",
   "numpy",
   "pyyaml",
   "semantic-version",
   "tqdm",
-  "zarr<=2.17",
+  "zarr<=2.18.4",
 ]
 
 optional-dependencies.all = [
@@ -64,12 +64,12 @@ optional-dependencies.all = [
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.10.7",
-  "earthkit-geo>=0.2",
-  "earthkit-meteo",
-  "eccodes>=2.38.1",
+  "earthkit-data[mars]>=0.12.4",
+  "earthkit-geo>=0.3",
+  "earthkit-meteo>=0.3",
+  "eccodes>=2.39.1",
   "entrypoints",
-  "pyproj",
+  "pyproj>=3",
 ]
 
 optional-dependencies.dev = [
@@ -90,10 +90,12 @@ optional-dependencies.remote = [
 ]
 
 optional-dependencies.tests = [
+  "anemoi-datasets[xarray]",
   "pytest",
 ]
 
 optional-dependencies.xarray = [
+  "adlfs",
   "gcsfs",
   "kerchunk",
   "pandas",
@@ -119,3 +121,14 @@ version_file = "src/anemoi/datasets/_version.py"
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+strict = false
+exclude = [
+  "docs/**",
+]
+
+[tool.pydocstringformatter]
+write = true
+exclude = "docs/**"
+style = "numpydoc"

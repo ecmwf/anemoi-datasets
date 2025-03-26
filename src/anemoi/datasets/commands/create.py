@@ -13,6 +13,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+from typing import Any
 
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
@@ -22,9 +23,25 @@ from . import Command
 LOG = logging.getLogger(__name__)
 
 
-def task(what, options, *args, **kwargs):
-    """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
+def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
+    """Make sure `import Creator` is done in the sub-processes, and not in the main one.
 
+    Parameters
+    ----------
+    what : str
+        The task to be executed.
+    options : dict
+        Options for the task.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    Any
+        The result of the task.
+    """
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
@@ -45,7 +62,14 @@ class Create(Command):
     internal = True
     timestamp = True
 
-    def add_arguments(self, command_parser):
+    def add_arguments(self, command_parser: Any) -> None:
+        """Add command line arguments to the parser.
+
+        Parameters
+        ----------
+        command_parser : Any
+            The command line argument parser.
+        """
         command_parser.add_argument(
             "--overwrite",
             action="store_true",
@@ -63,8 +87,14 @@ class Create(Command):
         group.add_argument("--processes", help="Use `n` parallel process workers.", type=int, default=0)
         command_parser.add_argument("--trace", action="store_true")
 
-    def run(self, args):
+    def run(self, args: Any) -> None:
+        """Execute the create command.
 
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
+        """
         now = time.time()
         if args.threads + args.processes:
             self.parallel_create(args)
@@ -72,8 +102,14 @@ class Create(Command):
             self.serial_create(args)
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
 
-    def serial_create(self, args):
+    def serial_create(self, args: Any) -> None:
+        """Create the dataset in serial mode.
 
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
+        """
         options = vars(args)
         options.pop("command")
         options.pop("threads")
@@ -83,15 +119,23 @@ class Create(Command):
         task("load", options)
         task("finalise", options)
 
-        task("patch", options)
-
         task("init_additions", options)
         task("run_additions", options)
         task("finalise_additions", options)
+
+        task("patch", options)
+
         task("cleanup", options)
         task("verify", options)
 
-    def parallel_create(self, args):
+    def parallel_create(self, args: Any) -> None:
+        """Create the dataset in parallel mode.
+
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
+        """
         """Some modules, like fsspec do not work well with fork()
         Other modules may not be thread safe. So we implement
         parallel loadining using multiprocessing before any
@@ -153,6 +197,7 @@ class Create(Command):
 
         with ExecutorClass(max_workers=1) as executor:
             executor.submit(task, "finalise-additions", options).result()
+            executor.submit(task, "patch", options).result()
             executor.submit(task, "cleanup", options).result()
             executor.submit(task, "verify", options).result()
 
