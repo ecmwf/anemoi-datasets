@@ -40,8 +40,6 @@ class TransformFilter(Filter):
 
         Parameters
         ----------
-        context : Any
-            The context in which the execution occurs.
         input : ekd.FieldList
             The input data to be transformed.
 

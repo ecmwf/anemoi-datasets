@@ -38,6 +38,7 @@ from .misc import _open
 
 LOG = logging.getLogger(__name__)
 
+
 def xyz_to_latlon(x, y, z):
     return (
         np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
@@ -63,6 +64,7 @@ def latlon_to_xyz(lat, lon, radius=1.0):
     z = sin_phi * radius
 
     return x, y, z
+
 
 class Concat(Combined):
     """A class to represent concatenated datasets."""
@@ -683,6 +685,7 @@ def cutout_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dataset:
         plot=plot,
     )._subset(**kwargs)
 
+
 def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, target_longitudes):
     source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
     source_points = np.array(source_xyz).transpose()
@@ -690,5 +693,5 @@ def nearest_grid_points(source_latitudes, source_longitudes, target_latitudes, t
     target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
     target_points = np.array(target_xyz).transpose()
     _, indices = cKDTree(source_points).query(target_points, k=1)
-        
+
     return indices
