@@ -8,9 +8,10 @@
 # nor does it submit to any jurisdiction.
 
 from typing import Any
-from typing import List
-from anemoi.datasets.dates.groups import GroupOfDates
+
 from earthkit.data import from_source
+
+from anemoi.datasets.dates.groups import GroupOfDates
 
 from .legacy import legacy_source
 

@@ -178,6 +178,7 @@ class FunctionResult(Result):
         assert isinstance(action, Action), type(action)
         self.action: Action = action
         self.args, self.kwargs = substitute(context, (self.action.args, self.action.kwargs))
+
     def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
         """Traces the datasource for the given arguments.
 
