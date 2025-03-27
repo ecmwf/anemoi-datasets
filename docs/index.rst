@@ -11,8 +11,8 @@
 An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
 optimised for training data-driven weather forecasting models.
 anemoi-datasets are organised in such a way that I/O operations are
-minimised. It is one of the packages within the `anemoi framework
-<https://anemoi-docs.readthedocs.io/en/latest/>`_.
+minimised. It is one of the packages within the :ref:`anemoi framework
+<anemoi-docs:index>`.
 
 **************
  About Anemoi
@@ -167,8 +167,6 @@ You may also have to install pandoc on MacOS:
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Developing Anemoi Datasets
+   :caption: Contributing
 
    dev/contributing
-   dev/code_structure
-   dev/testing
