@@ -1,0 +1,20 @@
+dates:
+  start: 2021-01-10 18:00:00
+  #start: 2021-01-10 19:00:00
+  end: 2021-01-12 12:00:00
+  frequency: 6h
+
+input:
+    accumulations:
+        expver: "0001"
+        class: ea
+
+        stream: oper
+        #stream: enda
+
+        grid: 20./20.
+        #grid: o96
+        levtype: sfc
+        param: [ tp , cp]
+        # accumulation_period: [0, 6]
+        accumulation_period: 24
