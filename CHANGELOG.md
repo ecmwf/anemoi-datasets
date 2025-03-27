@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.19](https://github.com/ecmwf/anemoi-datasets/compare/0.5.18...0.5.19) (2025-03-27)
+
+
+### Features
+
+* 24h accumulations for era5 ([#266](https://github.com/ecmwf/anemoi-datasets/issues/266)) ([33f7919](https://github.com/ecmwf/anemoi-datasets/commit/33f791961649de287f7900fb5c7b340ebc6fb32c))
+* add environment variables in recipe ([#228](https://github.com/ecmwf/anemoi-datasets/issues/228)) ([6d898aa](https://github.com/ecmwf/anemoi-datasets/commit/6d898aa681b052bb3444614f643ab14eaf6fdc62))
+
+
+### Bug Fixes
+
+* broken references in recipes ([#269](https://github.com/ecmwf/anemoi-datasets/issues/269)) ([bbdf339](https://github.com/ecmwf/anemoi-datasets/commit/bbdf3393dfd07755fbc424079e0a9072d823362b))
+* fix typo ([#268](https://github.com/ecmwf/anemoi-datasets/issues/268)) ([a12f58f](https://github.com/ecmwf/anemoi-datasets/commit/a12f58fb7e379b75baf8063a02f3938ff29303ba))
+* swap meshgrid dimension ordering in xarray grid creation ([#249](https://github.com/ecmwf/anemoi-datasets/issues/249)) ([938f3c9](https://github.com/ecmwf/anemoi-datasets/commit/938f3c926e6d8083db5e00a515301f79bac5637d))
+
+
+### Documentation
+
+* add reference to anemoi contributing guidelines  ([#265](https://github.com/ecmwf/anemoi-datasets/issues/265)) ([7322e8a](https://github.com/ecmwf/anemoi-datasets/commit/7322e8a04b631e15c0d424f4cf73e6ee8b7bc199))
+
 ## [0.5.18](https://github.com/ecmwf/anemoi-datasets/compare/0.5.17...0.5.18) (2025-03-25)
 
 
