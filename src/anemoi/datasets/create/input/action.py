@@ -250,6 +250,6 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
         from ..sources import create_source
 
         source = create_source(None, substitute(context, config))
-        return FunctionAction(context, action_path, key, source)
+        return FunctionAction(context, action_path + [key], key, source)
 
     return cls(context, action_path + [key], *args, **kwargs)
