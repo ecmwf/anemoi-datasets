@@ -14,6 +14,8 @@ import os
 from typing import Any
 from typing import Callable
 
+from anemoi.datasets.create.input.template import resolve
+
 from ..source import Source
 from . import source_registry
 
@@ -71,12 +73,15 @@ class legacy_source:
 
         def execute_wrapper(self, dates) -> Any:
             """Wrapper method to call the execute function."""
+
+            args, kwargs = resolve(self.context, (self.args, self.kwargs))
+
             try:
-                return execute(self.context, dates, *self.args, **self.kwargs)
+                return execute(self.context, dates, *args, **kwargs)
             except TypeError:
                 LOG.error(f"Error executing source {this.name} from {source}")
                 LOG.error(f"Function signature is: {inspect.signature(execute)}")
-                LOG.error(f"Arguments are: {self.args=}, {self.kwargs=}")
+                LOG.error(f"Arguments are: {args=}, {kwargs=}")
                 raise
 
         klass = type(

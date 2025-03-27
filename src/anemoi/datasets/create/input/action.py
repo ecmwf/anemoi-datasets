@@ -17,6 +17,7 @@ from earthkit.data.core.order import build_remapping
 
 from ...dates.groups import GroupOfDates
 from .context import Context
+from .template import substitute
 
 LOG = logging.getLogger(__name__)
 
@@ -248,7 +249,7 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
     if cls is None:
         from ..sources import create_source
 
-        source = create_source(None, config)
-        return FunctionAction(context, action_path + [key], key, source)
+        source = create_source(None, substitute(context, config))
+        return FunctionAction(context, action_path, key, source)
 
     return cls(context, action_path + [key], *args, **kwargs)
