@@ -51,6 +51,11 @@ class GribIndexCmd(Command):
             default="*.grib",
         )
 
+        command_parser.add_argument(
+            "--flavour",
+            help="GRIB flavour file (yaml or json)",
+        )
+
         command_parser.add_argument("paths", nargs="+", help="Paths to scan")
 
     def run(self, args: Any) -> None:

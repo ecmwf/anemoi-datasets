@@ -41,19 +41,21 @@ class GribIndex:
 
         self.conn = sqlite3.connect(database)
         self.cursor = self.conn.cursor()
-        self.keys = keys
+
         self.update = update
         self.cache = None
+        self.keys = keys
+        self._columns = None
 
         if update:
             assert keys is not None
-            self._create_tables(keys)
+            self._create_tables()
         else:
             assert keys is None
-            self.keys = self._get_metadata_keys()
+            self.keys = self._all_columns()
             self.cache = LRUCache(maxsize=50)
 
-    def _create_tables(self, metadata_keys: List[str]) -> None:
+    def _create_tables(self) -> None:
         assert self.update
 
         self.cursor.execute(
@@ -65,36 +67,26 @@ class GribIndex:
         """
         )
 
-        self.cursor.execute(
-            """
-        CREATE TABLE IF NOT EXISTS metadata_keys (
-            id INTEGER PRIMARY KEY,
-            key TEXT NOT NULL UNIQUE
-        )
-        """
-        )
-
-        for key in metadata_keys:
-            self.cursor.execute("INSERT OR IGNORE INTO metadata_keys (key) VALUES (?)", (key,))
-
-        columns = [key.split(".")[-1] for key in metadata_keys]
+        columns = ("valid_datetime",)
+        # We don't use NULL as a default because NULL is considered a different value
+        # in UNIQUE INDEX constraints (https://www.sqlite.org/lang_createindex.html)
 
         self.cursor.execute(
             f"""
         CREATE TABLE IF NOT EXISTS grib_index (
-            id INTEGER PRIMARY KEY,
-            path_id INTEGER not null,
-            offset INTEGER not null,
-            length INTEGER not null,
-            {', '.join(f'{key} TEXT' for key in columns)},
-            FOREIGN KEY(path_id) REFERENCES paths(id))
+            _id INTEGER PRIMARY KEY,
+            _path_id INTEGER not null,
+            _offset INTEGER not null,
+            _length INTEGER not null,
+            {', '.join(f"{key} TEXT not null default ''" for key in columns)},
+            FOREIGN KEY(_path_id) REFERENCES paths(id))
         """
-        )
+        )  # ,
 
         self.cursor.execute(
             """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_path_offset
-        ON grib_index (path_id, offset)
+        ON grib_index (_path_id, _offset)
         """
         )
 
@@ -145,25 +137,90 @@ class GribIndex:
 
         assert self.update
 
+        try:
+
+            self.cursor.execute(
+                f"""
+            INSERT INTO grib_index ({', '.join(kwargs.keys())})
+            VALUES ({', '.join('?' for _ in kwargs)})
+            """,
+                tuple(kwargs.values()),
+            )
+
+        except sqlite3.IntegrityError:
+            LOG.error(f"Error adding grib record: {kwargs}")
+            LOG.error("Record already exists")
+            LOG.info(f"Path: {self._get_path(kwargs['_path_id'])}")
+            for n in ("_path_id", "_offset", "_length"):
+                kwargs.pop(n)
+            self.cursor.execute(
+                "SELECT * FROM grib_index WHERE " + " AND ".join(f"{key} = ?" for key in kwargs.keys()),
+                tuple(kwargs.values()),
+            )
+            existing_record = self.cursor.fetchone()
+            if existing_record:
+                LOG.info(f"Existing record found: {existing_record}")
+                LOG.info(f"Path: {self._get_path(existing_record[1])}")
+            raise
+
+    def _all_columns(self) -> List[str]:
+
+        if self._columns is not None:
+            return self._columns
+
+        self.cursor.execute("PRAGMA table_info(grib_index)")
+        columns = {row[1] for row in self.cursor.fetchall()}
+        self._columns = [col for col in columns if not col.startswith("_")]
+        return self._columns
+
+    def _ensure_columns(self, columns: List[str]) -> None:
+        """Add columns to the grib_index table."""
+
+        assert self.update
+
+        existing_columns = self._all_columns()
+        new_columns = [column for column in columns if column not in existing_columns]
+
+        if not new_columns:
+            return
+
+        self._columns = None
+
+        for column in new_columns:
+            self.cursor.execute(f"ALTER TABLE grib_index ADD COLUMN {column} TEXT not null default ''")
+
+        self.cursor.execute("""DROP INDEX IF EXISTS idx_grib_index_all_keys""")
+        all_columns = self._all_columns()
+
         self.cursor.execute(
             f"""
-        INSERT INTO grib_index ({', '.join(kwargs.keys())})
-        VALUES ({', '.join('?' for _ in kwargs)})
-        """,
-            tuple(kwargs.values()),
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
+        ON grib_index ({', '.join(all_columns)})
+        """
         )
+
+        for key in all_columns:
+            self.cursor.execute(
+                f"""
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
+            ON grib_index ({key})
+            """
+            )
 
     def add_grib_file(self, path: str) -> None:
         path_id = self._path_id(path)
 
         for field in tqdm.tqdm(ekd.from_source("file", path), leave=False):
 
-            keys = {k.split(".")[-1]: field.metadata(k, default=None) for k in self.keys}
+            keys = {k: field.metadata(k, default=None) for k in self.keys}
+            keys = {k: v for k, v in keys.items() if v is not None}
+
+            self._ensure_columns(list(keys.keys()))
 
             self._add_grib(
-                path_id=path_id,
-                offset=field.metadata("offset"),
-                length=field.metadata("totalLength"),
+                _path_id=path_id,
+                _offset=field.metadata("offset"),
+                _length=field.metadata("totalLength"),
                 **keys,
             )
 
@@ -198,17 +255,18 @@ class GribIndex:
 
         dates = [d.isoformat() for d in dates]
 
-        if kwargs:
-            query = f"SELECT path_id, offset, length FROM grib_index WHERE {' AND '.join(f'{key} = ?' for key in kwargs.keys())}"
-            params = list(kwargs.values())
+        query = "SELECT path_id, offset, length FROM grib_index WHERE valid_datetime IN ({})".format(
+            ", ".join("?" for _ in dates)
+        )
+        params = dates
 
-            query += " AND valid_datetime IN ({})".format(", ".join("?" for _ in dates))
-            params.extend(dates)
-        else:
-            query = "SELECT path_id, offset, length FROM grib_index WHERE valid_datetime IN ({})".format(
-                ", ".join("?" for _ in dates)
-            )
-            params = dates
+        for k, v in kwargs.items():
+            if isinstance(v, list):
+                query += f" AND {k} IN ({', '.join('?' for _ in v)})"
+                params.extend([str(_) for _ in v])
+            else:
+                query += f" AND {k} = ?"
+                params.append(str(v))
 
         print("SELECT", query)
         print("SELECT", params)
