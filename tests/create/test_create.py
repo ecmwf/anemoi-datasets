@@ -102,7 +102,8 @@ class LoadSource:
         print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
         print()
         print("⚠️ To upload the test data, run this:")
-        print(f"scp {upload_path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
+        name = os.path.basename(upload_path).replace(".to_upload", "")
+        print(f"scp {upload_path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/{name}")
         print()
         exit(1)
         raise ValueError("Test data is missing")
@@ -124,7 +125,11 @@ class LoadSource:
         """
 
         name = self.filename(args, kwargs)
-        return original_from_source("file", get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+
+        try:
+            return original_from_source("file", get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+        except Exception:
+            self.get_data(args, kwargs, name)
 
     def __call__(self, name: str, *args: tuple, **kwargs: dict) -> object:
         """Call the appropriate method based on the data source name.
