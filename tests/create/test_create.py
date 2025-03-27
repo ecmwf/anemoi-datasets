@@ -260,7 +260,9 @@ def compare_datasets(a: object, b: object) -> None:
 
             delta = a_ - b_
             max_delta = np.max(np.abs(delta))
-            assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta)
+            abs_error = np.abs(a_ - b_)
+            rel_error = np.abs(a_ - b_) / (np.abs(b_) + 1e-10)  # Avoid division by zero
+            assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta, np.max(abs_error), np.max(rel_error))
 
 
 def compare_statistics(ds1: object, ds2: object) -> None:
