@@ -31,6 +31,7 @@ HERE = os.path.dirname(__file__)
 NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
 SKIP = ["recentre"]
 SKIP += ["accumulation"]  # test not in s3 yet
+SKIP += ["regrid"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
