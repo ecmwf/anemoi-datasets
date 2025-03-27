@@ -177,13 +177,15 @@ def step_factory(config: Dict[str, Any], context: ActionContext, action_path: Li
             warnings.warn(f"Filter `{key}` is registered in both datasets and transform filter registries")
 
         filter = create_datasets_filter(None, config)
-        return FunctionStepAction(context, action_path, previous_step, key, filter)
+        return FunctionStepAction(context, action_path + [key], previous_step, key, filter)
 
     # Use filters from transform registry
 
     if transform_filter_registry.is_registered(key):
         from ..filters.transform import TransformFilter
 
-        return FunctionStepAction(context, action_path, previous_step, key, TransformFilter(context, key, config))
+        return FunctionStepAction(
+            context, action_path + [key], previous_step, key, TransformFilter(context, key, config)
+        )
 
     raise ValueError(f"Unknown step action `{key}`")

@@ -10,6 +10,7 @@
 import glob
 import hashlib
 import json
+import logging
 import os
 from functools import wraps
 from unittest.mock import patch
@@ -33,7 +34,7 @@ HERE = os.path.dirname(__file__)
 # find_yamls
 NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
 SKIP = ["recentre"]
-SKIP += ["accumulations"]  # test not in s3 yet
+SKIP += ["accumulation"]  # test not in s3 yet
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
@@ -378,9 +379,6 @@ class Comparer:
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
-# it would be nice to use a @pytest.mark.slow and configure this globally
-# this could be done when refactoring the tests, and setting up canary/nightly builds
-@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name: str) -> None:
@@ -413,9 +411,10 @@ def test_run(name: str) -> None:
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("name", help="Name of the test case")
-    args = parser.parse_args()
-    test_run(args.name)
+    logging.basicConfig(level=logging.INFO)
+    for name in NAMES:
+        logging.info(f"Running test for {name}")
+        try:
+            test_run(name)
+        except AssertionError:
+            pass
