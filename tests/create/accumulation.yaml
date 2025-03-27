@@ -5,7 +5,7 @@ dates:
   frequency: 6h
 
 input:
-    accumulations2:
+    accumulations:
         expver: "0001"
         class: ea
 

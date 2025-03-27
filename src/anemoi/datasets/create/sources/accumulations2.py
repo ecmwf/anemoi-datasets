@@ -7,10 +7,10 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from abc import abstractmethod
 import datetime
 import logging
 import warnings
+from abc import abstractmethod
 from copy import deepcopy
 from typing import Any
 from typing import Dict
@@ -25,9 +25,13 @@ from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.sources.mars import mars
 from anemoi.datasets.create.utils import to_datetime_list
+
 from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
+
+
+xprint = print
 
 
 def _member(field: Any) -> int:
@@ -171,7 +175,7 @@ class Periods:
         flags = np.zeros_like(timeline, dtype=int)
         for p in self._periods:
             segment = np.where((timeline >= p.start_datetime) & (timeline < p.end_datetime))
-            print(segment)
+            xprint(segment)
             flags[segment] += p.sign
         assert np.all(flags == 1), flags
 
@@ -221,7 +225,7 @@ class EraPeriods(Periods):
         for base_time, steps in self.available_steps(start, end).items():
             for step1, step2 in steps:
                 if debug:
-                    print(f"❌ tring: {base_time=} {step1=} {step2=}")
+                    xprint(f"❌ tring: {base_time=} {step1=} {step2=}")
 
                 if ((base_time + step1) % 24) != start.hour:
                     continue
@@ -264,7 +268,7 @@ class EraPeriods(Periods):
 
             found = self.search_periods(start, end)
             if not found:
-                print(f"❌❌❌ Cannot find accumulation for {start} {end}")
+                xprint(f"❌❌❌ Cannot find accumulation for {start} {end}")
                 self.search_periods(start, end, debug=True)
                 raise ValueError(f"Cannot find accumulation for {start} {end}")
 
@@ -272,10 +276,10 @@ class EraPeriods(Periods):
             chosen = found[0]
 
             if len(found) > 1:
-                print(f"  Found more than one period for {start} {end}")
+                xprint(f"  Found more than one period for {start} {end}")
                 for f in found:
-                    print(f"    {f}")
-                print(f"    Chosing {chosen}")
+                    xprint(f"    {f}")
+                xprint(f"    Chosing {chosen}")
 
             chosen.sign = 1
 
@@ -409,14 +413,14 @@ class Accumulator:
 
         period.check(field)
 
-        print(f"{self}  field ✅ ({period.sign}){field} for {period}")
+        xprint(f"{self}  field ✅ ({period.sign}){field} for {period}")
 
         self.values = period.apply(self.values, values)
         self.periods.set_done(period)
 
         if self.periods.all_done():
             self.write(field)
-            print("accumulator", self, " : data written ✅ ")
+            xprint("accumulator", self, " : data written ✅ ")
 
     def check(self, field: Any) -> None:
         if self._check is None:
@@ -449,7 +453,7 @@ class Accumulator:
 
         startStep = 0
         endStep = self.periods.accumulation_period.total_seconds() // 3600
-        assert int(endStep) == endStep, f"only full hours accumulation is supported"
+        assert int(endStep) == endStep, "only full hours accumulation is supported"
         endStep = int(endStep)
         fake_base_date = self.valid_date - self.periods.accumulation_period
         date = int(fake_base_date.strftime("%Y%m%d"))
@@ -526,14 +530,14 @@ def _compute_accumulations(
                     )
                 )
 
-    print("accumulators", len(accumulators))
+    xprint("accumulators", len(accumulators))
 
     # get all needed data requests (mars)
     requests = []
     for a in accumulators:
-        print("accumulator", a)
+        xprint("accumulator", a)
         for r in a.requests:
-            print(" ", r)
+            xprint(" ", r)
             requests.append(r)
 
     # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
