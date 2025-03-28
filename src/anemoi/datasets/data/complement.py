@@ -207,7 +207,7 @@ class ComplementNone(Complement):
 class ComplementNearest(Complement):
     """A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation."""
 
-    def __init__(self, target: Any, source: Any) -> None:
+    def __init__(self, target: Any, source: Any, max_distance: float = None) -> None:
         """Initializes the ComplementNearest class.
 
         Parameters
@@ -216,6 +216,8 @@ class ComplementNearest(Complement):
             The target dataset.
         source : Any
             The source dataset.
+        max_distance : float, optional
+            The maximum distance for nearest neighbor interpolation, default is None.
         """
         super().__init__(target, source)
 
@@ -224,6 +226,7 @@ class ComplementNearest(Complement):
             self._source.longitudes,
             self._target.latitudes,
             self._target.longitudes,
+            max_distance=max_distance,
         )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:

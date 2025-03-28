@@ -13,7 +13,11 @@ import logging
 from functools import cached_property
 from typing import Any
 from typing import Dict
+from typing import List
+from typing import Optional
 from typing import Set
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -213,4 +217,76 @@ class InterpolateFrequency(Forwards):
         """
         return {
             # "frequency": frequency_to_string(self._frequency),
+        }
+
+
+class InterpolateNearest(Forwards):
+    def __init__(
+        self, dataset: Dataset, interpolate_variables: List[str], max_distance: Optional[float] = None
+    ) -> None:
+        """Initialize the InterpolateNearest class.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset to be interpolated.
+        interpolate_variables : List[str]
+            The variables to be interpolated.
+        max_distance : Optional[float], optional
+            The maximum distance for nearest neighbor search, by default None.
+        """
+        from ..grids import nearest_grid_points
+
+        super().__init__(dataset)
+        self.vars = interpolate_variables
+        self.var_mask = {
+            v: np.where(~np.isnan(dataset[0, dataset.name_to_index[v]].squeeze()))[0] for v in interpolate_variables
+        }
+        self.dataset = dataset
+        self.ngp_var = {
+            v: nearest_grid_points(
+                dataset.latitudes[self.var_mask[v]],
+                dataset.longitudes[self.var_mask[v]],
+                dataset.latitudes,
+                dataset.longitudes,
+                max_distance=max_distance,
+            )
+            for v in interpolate_variables
+        }
+
+    def tree(self) -> Node:
+        return Node(self, [self.forward.tree()], interpolate_variables=self.vars)
+
+    @property
+    def shape(self) -> Shape:
+        return self.forward.shape
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return self.forward.metadata()
+
+    @staticmethod
+    def slice_len(slice_obj: slice) -> int:
+        # Compute the length of the slice
+        return max(0, (slice_obj.stop - slice_obj.start + (slice_obj.step or 1) - 1) // (slice_obj.step or 1))
+
+    @expand_list_indexing
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        index, changes = index_to_slices(index, self.shape)
+        source_data = self.forward[index[0]]
+        target_data = source_data.copy()
+        vars_to_interpolate = [self.forward.name_to_index[v] for v in self.vars]
+        for v, i in zip(self.vars, vars_to_interpolate):
+            target_data[:, i, ...] = source_data[:, i][..., self.var_mask[v][self.ngp_var[v]]]
+        result = target_data[(slice(None),) + index[1:]]
+        return apply_index_to_slices_changes(result, changes)
+
+    def __getitem__(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> NDArray[Any]:
+        if isinstance(index, (int, slice)):
+            index = (index, slice(None), slice(None), slice(None))
+        return self._get_tuple(index)
+
+    def subclass_metadata_specific(self) -> Dict[str, Any]:
+        return {
+            "interpolate_variables": self.vars,
         }
