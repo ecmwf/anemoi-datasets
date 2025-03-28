@@ -20,7 +20,6 @@ from .misc import _tidy
 from .misc import assert_fieldlist
 from .result import Result
 from .template import notify_result
-from .template import resolve
 from .template import substitute
 from .trace import trace
 from .trace import trace_datasource
@@ -78,6 +77,9 @@ class FunctionContext:
     def partial_ok(self) -> bool:
         """Returns whether partial results are acceptable."""
         return self.owner.group_of_dates.partial_ok
+
+    def get_result(self, *args, **kwargs) -> Any:
+        return self.owner.context.get_result(*args, **kwargs)
 
 
 class FunctionAction(Action):
@@ -203,14 +205,12 @@ class FunctionResult(Result):
     @trace_datasource
     def datasource(self) -> FieldList:
         """Returns the datasource for the function result."""
-        args, kwargs = resolve(self.context, (self.args, self.kwargs))
+        # args, kwargs = resolve(self.context, (self.args, self.kwargs))
         self.action.source.context = FunctionContext(self)
 
         return _tidy(
             self.action.source.execute(
-                self.group_of_dates,  # Will provide a list of datetime objects
-                *args,
-                **kwargs,
+                list(self.group_of_dates),  # Will provide a list of datetime objects
             )
         )
 
