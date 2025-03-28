@@ -36,14 +36,7 @@ def forcings(context: Any, dates: List[str], template: str, param: str) -> Any:
         Loaded forcing data.
     """
     context.trace("✅", f"from_source(forcings, {template}, {param}")
-
-    try:
-        request = template.to_latlon()
-        request["latitude"] = request.pop("lat")
-        request["longitude"] = request.pop("lon")
-    except Exception:
-        request = {"latitude": template[0]._latitudes, "longitude": template[0]._longitudes}
-    return from_source("forcings", request=request, date=dates, param=param)
+    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
 
 
 execute = forcings
