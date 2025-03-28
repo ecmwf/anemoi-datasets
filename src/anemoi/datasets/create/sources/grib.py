@@ -10,7 +10,6 @@
 
 import glob
 import logging
-import math
 from typing import Any
 from typing import Dict
 from typing import List
@@ -46,7 +45,6 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
     tuple
         A tuple containing the data as a numpy array and the UUID of the HGrid.
     """
-    from earthkit.data.readers.netcdf import NetCDFReader
 
     ds = None
 
@@ -59,14 +57,6 @@ def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
     if "url" in record:
         context.info(f"Using {name} from {record['url']} (param={param})")
         ds = from_source("url", record["url"])
-
-    if isinstance(ds._reader, NetCDFReader):
-        ds = ds.to_xarray()
-        if ds[param].attrs["units"] == "radian":
-            values = ds[param].values * 180 / math.pi
-        else:
-            values = ds[param].values
-        return values, ds.attrs["uuidOfHGrid"].replace("-", "")
 
     ds = ds.sel(param=param)
     assert len(ds) == 1, f"{name} {param}, expected one field, got {len(ds)}"
