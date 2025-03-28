@@ -1,0 +1,36 @@
+#########
+ How-Tos
+#########
+
+How-Tos are a collection of guides that help you to use anemoi-datasets
+in different ways. They are not exhaustive, but they should give you a
+good starting point.
+
+**************************
+ Creating anemoi-datasets
+**************************
+
+-  :ref:`create-grib-data`
+-  :ref:`create-cf-data`
+
+***********************
+ Using anemoi-datasets
+***********************
+
+(To be added)
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+   :hidden:
+   :caption: Creating anemoi-datasets
+
+   create/*
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+   :hidden:
+   :caption: Using anemoi-datasets
+
+   usage/*

@@ -145,6 +145,13 @@ You may also have to install pandoc on MacOS:
    datasets/using/introduction
 
 .. toctree::
+   :maxdepth: 3
+   :hidden:
+   :caption: How-Tos
+
+   howtos/introduction
+
+.. toctree::
    :maxdepth: 1
    :hidden:
    :caption: CLI
