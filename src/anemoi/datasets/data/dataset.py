@@ -237,6 +237,13 @@ class Dataset(ABC, Sized):
 
             return Statistics(self, open_dataset(statistics))._subset(**kwargs).mutate()
 
+        # Note: trim_edge should go before thinning
+        if "trim_edge" in kwargs:
+            from .masked import TrimEdge
+
+            edge = kwargs.pop("trim_edge")
+            return TrimEdge(self, edge)._subset(**kwargs).mutate()
+
         if "thinning" in kwargs:
             from .masked import Thinning
 
@@ -284,6 +291,13 @@ class Dataset(ABC, Sized):
             interpolate_frequency = kwargs.pop("interpolate_frequency")
             return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
+        if "interpolate_variables" in kwargs:
+            from .interpolate import InterpolateNearest
+
+            interpolate_variables = kwargs.pop("interpolate_variables")
+            max_distance = kwargs.pop("max_distance", None)
+            return InterpolateNearest(self, interpolate_variables, max_distance=max_distance)._subset(**kwargs).mutate()
+
         # Keep last
         if "shuffle" in kwargs:
             from .subset import Subset
@@ -310,7 +324,12 @@ class Dataset(ABC, Sized):
         """
         requested_frequency = frequency_to_seconds(frequency)
         dataset_frequency = frequency_to_seconds(self.frequency)
-        assert requested_frequency % dataset_frequency == 0
+
+        if requested_frequency % dataset_frequency != 0:
+            raise ValueError(
+                f"Requested frequency {frequency} is not a multiple of the dataset frequency {self.frequency}. Did you mean to use `interpolate_frequency`?"
+            )
+
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
         step = requested_frequency // dataset_frequency
 

@@ -33,15 +33,13 @@ class TransformFilter(Filter):
         from anemoi.transform.filters import create_filter
 
         self.name = name
-        self.transform_filter = create_filter(self, config)
+        self.transform_filter = create_filter(context, config)
 
-    def execute(self, context: Any, input: ekd.FieldList) -> ekd.FieldList:
+    def execute(self, input: ekd.FieldList) -> ekd.FieldList:
         """Execute the transformation filter.
 
         Parameters
         ----------
-        context : Any
-            The context in which the execution occurs.
         input : ekd.FieldList
             The input data to be transformed.
 
