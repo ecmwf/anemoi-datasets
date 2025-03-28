@@ -19,6 +19,8 @@ import tqdm
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
+from anemoi.datasets.create.sources.grib_support.flavour import RuleBasedFlavour
+
 from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
@@ -255,7 +257,8 @@ class GribIndex:
 
         dates = [d.isoformat() for d in dates]
 
-        query = "SELECT path_id, offset, length FROM grib_index WHERE valid_datetime IN ({})".format(
+        query = """SELECT _path_id, _offset, _length
+                   FROM grib_index WHERE valid_datetime IN ({})""".format(
             ", ".join("?" for _ in dates)
         )
         params = dates
@@ -287,10 +290,17 @@ class GribIndex:
 
 
 @legacy_source(__file__)
-def execute(context, dates, indexdb, **kwargs):
+def execute(context, dates, indexdb, flavour=None, **kwargs):
     index = GribIndex(indexdb)
     result = []
+
+    if flavour is not None:
+        flavour = RuleBasedFlavour(flavour)
+
     for grib in index.retrieve(dates, **kwargs):
-        result.append(ekd.from_source("memory", grib)[0])
+        field = ekd.from_source("memory", grib)[0]
+        if flavour:
+            field = flavour.apply(field)
+        result.append(field)
 
     return FieldArray(result)
