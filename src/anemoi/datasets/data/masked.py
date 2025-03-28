@@ -254,3 +254,80 @@ class Cropping(Masked):
             The metadata specific to the Cropping subclass.
         """
         return dict(area=self.area)
+
+
+class TrimEdge(Masked):
+    """A class that removes the boundary of a dataset."""
+
+    def __init__(self, forward, edge):
+        if isinstance(edge, int):
+            self.edge = [edge] * 4
+        elif isinstance(edge, (list, tuple)) and len(edge) == 4:
+            self.edge = edge
+        else:
+            raise ValueError("'edge' must be an integer or a list of 4 integers")
+
+        for e in self.edge:
+            if not isinstance(e, int) or e < 0:
+                raise ValueError("'edge' must be integer(s) 0 or greater")
+
+        shape = forward.field_shape
+        if len(shape) != 2:
+            raise ValueError("TrimEdge only works on regular grids")
+
+        if self.edge[0] + self.edge[1] >= shape[0]:
+            raise ValueError("Too much triming of the first grid dimension, resulting in an empty dataset")
+        if self.edge[2] + self.edge[3] >= shape[1]:
+            raise ValueError("Too much triming of the second grid dimension, resulting in an empty dataset")
+
+        mask = np.full(shape, True, dtype=bool)
+        mask[0 : self.edge[0], :] = False
+        mask[:, 0 : self.edge[2]] = False
+        if self.edge[1] != 0:
+            mask[-self.edge[1] :, :] = False
+        if self.edge[3] != 0:
+            mask[:, -self.edge[3] :] = False
+
+        mask = mask.flatten()
+
+        super().__init__(forward, mask)
+
+    def mutate(self) -> Dataset:
+        """Mutate the dataset.
+
+        Returns
+        -------
+        Dataset
+            The mutated dataset.
+        """
+        if self.edge is None:
+            return self.forward.mutate()
+        return super().mutate()
+
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
+        return Node(self, [self.forward.tree()], edge=self.edge)
+
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Get the metadata specific to the TrimEdge subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the TrimEdge subclass.
+        """
+        return dict(edge=self.edge)
+
+    @property
+    def field_shape(self) -> Shape:
+        """Returns the field shape of the dataset."""
+        x, y = self.forward.field_shape
+        x -= self.edge[0] + self.edge[1]
+        y -= self.edge[2] + self.edge[3]
+        return x, y
