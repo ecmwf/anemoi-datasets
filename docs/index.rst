@@ -151,6 +151,7 @@ You may also have to install pandoc on MacOS:
 
    cli/create
    cli/inspect
+   cli/grib-index
    cli/compare
    cli/copy
    cli/scan

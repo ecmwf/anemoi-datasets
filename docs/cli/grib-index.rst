@@ -1,4 +1,4 @@
-.. _scan_command:
+.. _grib-index_command:
 
 Grib-index Command
 ============
