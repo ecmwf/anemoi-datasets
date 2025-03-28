@@ -66,8 +66,9 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
 
         wz_pl = values[wz].to_numpy(flatten=True)
         t_pl = values[t].to_numpy(flatten=True)
-        pressure = keys[4][1] * 100  # TODO: REMOVE HARDCODED INDICES
-
+        pressure = next(
+            float(v) * 100 for k, v in keys if k in ["level", "levelist"]
+        )  # Looks first for "level" then "levelist" value
         w_pl = wz_to_w(wz_pl, t_pl, pressure)
         result.append(new_field_from_numpy(values[wz], w_pl, param=w))
 
