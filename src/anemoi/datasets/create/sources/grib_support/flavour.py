@@ -9,6 +9,7 @@
 
 from collections import defaultdict
 
+from anemoi.transform.fields import MISSING_METADATA
 from anemoi.transform.fields import Flavour
 from anemoi.transform.fields import new_flavoured_field
 
@@ -51,4 +52,4 @@ class RuleBasedFlavour(Flavour):
             if rule.match(field):
                 return rule.value
 
-        return field.metadata(key)
+        return MISSING_METADATA
