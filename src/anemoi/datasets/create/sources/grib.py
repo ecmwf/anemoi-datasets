@@ -18,8 +18,10 @@ from typing import Optional
 from typing import Union
 
 import earthkit.data as ekd
+from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
-from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
 
 from .legacy import legacy_source
@@ -252,8 +254,7 @@ def execute(
     context: Any,
     dates: List[Any],
     path: Union[str, List[str]],
-    latitudes: Optional[Dict[str, Any]] = None,
-    longitudes: Optional[Dict[str, Any]] = None,
+    grid_definition: Optional[Dict[str, Any]] = None,
     *args: Any,
     **kwargs: Any,
 ) -> ekd.FieldList:
@@ -263,8 +264,7 @@ def execute(
         context (Any): The context in which the function is executed.
         dates (List[Any]): List of dates.
         path (Union[str, List[str]]): Path or list of paths to the GRIB files.
-        latitudes (Optional[Dict[str, Any]], optional): Latitude information. Defaults to None.
-        longitudes (Optional[Dict[str, Any]], optional): Longitude information. Defaults to None.
+        grid_definition (Optional[Dict[str, Any]]): Grid definition config to create a Grid object.
         *args (Any): Additional arguments.
         **kwargs (Any): Additional keyword arguments.
 
@@ -275,9 +275,10 @@ def execute(
     """
     given_paths = path if isinstance(path, list) else [path]
 
-    geography = None
-    if latitudes is not None and longitudes is not None:
-        geography = Geography(context, latitudes, longitudes)
+    if grid_definition is not None:
+        grid = grid_registry.from_config(grid_definition)
+    else:
+        grid = None
 
     ds = from_source("empty")
     dates = [d.isoformat() for d in dates]
@@ -298,8 +299,8 @@ def execute(
     if kwargs and not context.partial_ok:
         check(ds, given_paths, valid_datetime=dates, **kwargs)
 
-    if geography is not None:
-        ds = FieldArray([AddGrid(_, geography) for _ in ds])
+    if grid is not None:
+        ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
 
     if len(ds) == 0:
         LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={kwargs})")
