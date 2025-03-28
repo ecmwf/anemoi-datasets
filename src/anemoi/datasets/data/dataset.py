@@ -237,6 +237,13 @@ class Dataset(ABC, Sized):
 
             return Statistics(self, open_dataset(statistics))._subset(**kwargs).mutate()
 
+        # Note: trim_edge should go before thinning
+        if "trim_edge" in kwargs:
+            from .masked import TrimEdge
+
+            edge = kwargs.pop("trim_edge")
+            return TrimEdge(self, edge)._subset(**kwargs).mutate()
+
         if "thinning" in kwargs:
             from .masked import Thinning
 

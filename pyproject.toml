@@ -60,7 +60,12 @@ dependencies = [
 ]
 
 optional-dependencies.all = [
-  "anemoi-datasets[create,remote,xarray]",
+  "anemoi-datasets[create,remote,xarray,comparelam]",
+]
+
+optional-dependencies.comparelam = [
+  "prettytable",
+  "termcolor",
 ]
 
 optional-dependencies.create = [
