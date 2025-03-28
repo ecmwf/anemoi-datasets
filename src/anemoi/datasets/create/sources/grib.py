@@ -288,7 +288,7 @@ def execute(
             context.trace("📁", "PATH", path)
             s = from_source("file", path)
             if flavour is not None:
-                s = s.map(flavour)
+                s = flavour.map(s)
             s = s.sel(valid_datetime=dates, **kwargs)
             ds = ds + s
 
