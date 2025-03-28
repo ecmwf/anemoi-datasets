@@ -16,10 +16,9 @@ from typing import Optional
 
 import earthkit.data as ekd
 import tqdm
+from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
-
-from anemoi.datasets.create.sources.grib_support.flavour import RuleBasedFlavour
 
 from .legacy import legacy_source
 
