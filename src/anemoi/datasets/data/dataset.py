@@ -284,6 +284,13 @@ class Dataset(ABC, Sized):
             interpolate_frequency = kwargs.pop("interpolate_frequency")
             return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
+        if "interpolate_variables" in kwargs:
+            from .interpolate import InterpolateNearest
+
+            interpolate_variables = kwargs.pop("interpolate_variables")
+            max_distance = kwargs.pop("max_distance", None)
+            return InterpolateNearest(self, interpolate_variables, max_distance=max_distance)._subset(**kwargs).mutate()
+
         # Keep last
         if "shuffle" in kwargs:
             from .subset import Subset
