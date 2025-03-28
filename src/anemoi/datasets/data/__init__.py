@@ -16,6 +16,7 @@ from typing import Set
 # from .dataset import Shape
 # from .dataset import TupleIndex
 from .misc import _open_dataset
+from .misc import _save_dataset
 from .misc import add_dataset_path
 from .misc import add_named_dataset
 
@@ -90,6 +91,21 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
     return ds
+
+
+def save_dataset(recipe: dict, zarr_path: str, n_workers: int = 1) -> None:
+    """Open a dataset and save it to disk.
+
+    Parameters
+    ----------
+    recipe : dict
+        Recipe used with open_dataset (not a dataset creation recipe).
+    zarr_path : str
+        Path to store the obtained anemoi dataset to disk.
+    n_workers : int
+        Number of workers to use for parallel processing. If none, sequential processing will be performed.
+    """
+    _save_dataset(recipe, zarr_path, n_workers)
 
 
 def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
