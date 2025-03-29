@@ -13,12 +13,6 @@ good starting point.
 -  :ref:`create-grib-data`
 -  :ref:`create-cf-data`
 
-***********************
- Using anemoi-datasets
-***********************
-
-(To be added)
-
 .. toctree::
    :maxdepth: 1
    :glob:
@@ -26,6 +20,12 @@ good starting point.
    :caption: Creating anemoi-datasets
 
    create/*
+
+***********************
+ Using anemoi-datasets
+***********************
+
+(To be added)
 
 .. toctree::
    :maxdepth: 1
