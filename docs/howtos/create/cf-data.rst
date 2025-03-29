@@ -27,8 +27,7 @@ datasets are accessed by `anemoi-datasets` using the xarray_ library.
 
 (Coming soon)
 
-..
-   _ CF conventions: https://cfconventions.org/
+.. _cf conventions: https://cfconventions.org/
 
 .. _netcdf: https://www.unidata.ucar.edu/software/netcdf/
 
