@@ -4,4 +4,9 @@
  Data
 ######
 
-.. include:: ../_api/datasets.data.rst
+.. automodule:: anemoi.datasets.data.__init__ :members: :no-undoc-members: :show-inheritance:
+
+   .. automodule:: anemoi.datasets.data.dataset
+      :members:
+      :no-undoc-members:
+      :show-inheritance:
