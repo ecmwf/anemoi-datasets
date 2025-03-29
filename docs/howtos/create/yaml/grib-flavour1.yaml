@@ -1,5 +1,5 @@
 - - levtype: sfc
-  - { levelist: null, level: null }
+  - levelist: null
 
 - - { discipline: 0, parameterCategory: 1, parameterNumber: 201 }
   - param: csf
