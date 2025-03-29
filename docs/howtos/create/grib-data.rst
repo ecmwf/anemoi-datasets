@@ -29,8 +29,11 @@ example, the files may be named with a date pattern, such as
 
 .. literalinclude:: yaml/grib-recipe2.yaml
 
-Using an index file
-===================
+Please note that the ``path`` keyword can also be a list.
+
+*********************
+ Using an index file
+*********************
 
 If you have a large number of GRIB files, it may be useful to create an
 index file. This file contains the list of all the GRIB messages in the
@@ -40,17 +43,25 @@ the entire file. The index file is created using the ``grib-index``
 
 .. literalinclude:: yaml/grib-recipe3.yaml
 
-Selecting GRIB messages
-=======================
+*************************
+ Selecting GRIB messages
+*************************
 
 You can select GRIB messages using the MARS language. For example, to
 select all the GRIB messages with a specific parameter, you can use the
 ``param`` keyword. For example, to select all the GRIB messages with the
 parameter ``2t`` (2m temperature), you can use the following
 
+.. literalinclude:: yaml/grib-recipe4.yaml
+
+It is recommended to have several sources to differentiate between
+single-levels and multi-levels fields.
+
+.. literalinclude:: yaml/grib-recipe5.yaml
+
 Using a `flavour`
 =================
 
-GRIB from different organisations often have slighlty different
-`flavours` such as organisation-specfifi naming conventions, or
+GRIB from different organisations often have slightly different
+`flavours` such as organisation-specific naming conventions, or
 different ways of understanding single-levels and multi-levels fields.
