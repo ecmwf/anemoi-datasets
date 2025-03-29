@@ -2,4 +2,4 @@
  Filters
 #########
 
-.. include:: ../_api/datasets.create.filters.rst
+.. include:: ../_api/anemoi.datasets.create.filters.rst
