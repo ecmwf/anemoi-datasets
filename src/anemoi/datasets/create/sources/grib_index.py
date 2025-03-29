@@ -11,6 +11,7 @@ import logging
 import os
 import sqlite3
 from typing import Any
+from typing import Iterator
 from typing import List
 from typing import Optional
 
@@ -31,16 +32,30 @@ KEYS = KEYS1 + KEYS2
 
 
 class GribIndex:
-
     def __init__(
         self,
-        database,
+        database: str,
         *,
         keys: Optional[List[str] | str] = None,
         flavour: Optional[str] = None,
         update: bool = False,
         overwrite: bool = False,
     ) -> None:
+        """Initialize the GribIndex object.
+
+        Parameters
+        ----------
+        database : str
+            Path to the SQLite database file.
+        keys : Optional[List[str] | str], optional
+            List of keys or a string of keys to use for indexing, by default None.
+        flavour : Optional[str], optional
+            Flavour configuration for mapping fields, by default None.
+        update : bool, optional
+            Whether to update the database, by default False.
+        overwrite : bool, optional
+            Whether to overwrite the database if it exists, by default False.
+        """
         self.database = database
         if overwrite:
             assert update
@@ -86,6 +101,7 @@ class GribIndex:
         self.cache = {}
 
     def _create_tables(self) -> None:
+        """Create the necessary tables in the database."""
         assert self.update
 
         self.cursor.execute(
@@ -137,7 +153,8 @@ class GribIndex:
 
         self._commit()
 
-    def _commit(self):
+    def _commit(self) -> None:
+        """Commit the current transaction to the database."""
         self.conn.commit()
 
     def _get_metadata_keys(self) -> List[str]:
@@ -152,8 +169,18 @@ class GribIndex:
         return [row[0] for row in self.cursor.fetchall()]
 
     def _path_id(self, path: str) -> int:
-        """Get the id of a path in the database."""
+        """Get the id of a path in the database.
 
+        Parameters
+        ----------
+        path : str
+            The file path to retrieve or insert.
+
+        Returns
+        -------
+        int
+            The ID of the path in the database.
+        """
         self.cursor.execute("SELECT id FROM paths WHERE path = ?", (path,))
         row = self.cursor.fetchone()
         if row is None:
@@ -163,8 +190,13 @@ class GribIndex:
         return row[0]
 
     def _add_grib(self, **kwargs: Any) -> None:
-        """Add a grib record to the database."""
+        """Add a GRIB record to the database.
 
+        Parameters
+        ----------
+        **kwargs : Any
+            Key-value pairs representing the GRIB record fields.
+        """
         assert self.update
 
         try:
@@ -194,7 +226,13 @@ class GribIndex:
             raise
 
     def _all_columns(self) -> List[str]:
+        """Retrieve all column names from the grib_index table.
 
+        Returns
+        -------
+        List[str]
+            A list of column names.
+        """
         if self._columns is not None:
             return self._columns
 
@@ -204,8 +242,13 @@ class GribIndex:
         return self._columns
 
     def _ensure_columns(self, columns: List[str]) -> None:
-        """Add columns to the grib_index table."""
+        """Add missing columns to the grib_index table.
 
+        Parameters
+        ----------
+        columns : List[str]
+            List of column names to ensure in the table.
+        """
         assert self.update
 
         existing_columns = self._all_columns()
@@ -238,6 +281,13 @@ class GribIndex:
             )
 
     def add_grib_file(self, path: str) -> None:
+        """Add a GRIB file to the database.
+
+        Parameters
+        ----------
+        path : str
+            Path to the GRIB file to add.
+        """
         path_id = self._path_id(path)
 
         fields = ekd.from_source("file", path)
@@ -274,8 +324,21 @@ class GribIndex:
 
         self._commit()
 
-    def _paramdb(self, category: int, discipline: int):
-        """Fetch parameter information from the parameter database."""
+    def _paramdb(self, category: int, discipline: int) -> Optional[dict]:
+        """Fetch parameter information from the parameter database.
+
+        Parameters
+        ----------
+        category : int
+            The parameter category.
+        discipline : int
+            The parameter discipline.
+
+        Returns
+        -------
+        Optional[dict]
+            The parameter information, or None if unavailable.
+        """
         if (category, discipline) in self.cache:
             return self.cache[(category, discipline)]
 
@@ -292,7 +355,19 @@ class GribIndex:
         except Exception as e:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
 
-    def _param_grib2_info(self, paramId: int):
+    def _param_grib2_info(self, paramId: int) -> List[dict]:
+        """Fetch GRIB2 parameter information for a given parameter ID.
+
+        Parameters
+        ----------
+        paramId : int
+            The parameter ID.
+
+        Returns
+        -------
+        List[dict]
+            A list of GRIB2 parameter information.
+        """
         if ("grib2", paramId) in self.cache:
             return self.cache[("grib2", paramId)]
 
@@ -308,7 +383,19 @@ class GribIndex:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
         return []
 
-    def _param_id_info(self, paramId: int):
+    def _param_id_info(self, paramId: int) -> Optional[dict]:
+        """Fetch detailed information for a given parameter ID.
+
+        Parameters
+        ----------
+        paramId : int
+            The parameter ID.
+
+        Returns
+        -------
+        Optional[dict]
+            The parameter information, or None if unavailable.
+        """
         if ("info", paramId) in self.cache:
             return self.cache[("info", paramId)]
 
@@ -325,7 +412,19 @@ class GribIndex:
 
         return None
 
-    def _param_id_unit(self, unitId: int):
+    def _param_id_unit(self, unitId: int) -> Optional[dict]:
+        """Fetch unit information for a given unit ID.
+
+        Parameters
+        ----------
+        unitId : int
+            The unit ID.
+
+        Returns
+        -------
+        Optional[dict]
+            The unit information, or None if unavailable.
+        """
         if ("unit", unitId) in self.cache:
             return self.cache[("unit", unitId)]
 
@@ -343,6 +442,19 @@ class GribIndex:
         return None
 
     def _unknown(self, path: str, field: ekd.Field, i: int, param: tuple) -> None:
+        """Log information about unknown parameters.
+
+        Parameters
+        ----------
+        path : str
+            Path to the GRIB file.
+        field : ekd.Field
+            The GRIB field object.
+        i : int
+            The index of the field in the file.
+        param : tuple
+            The parameter tuple (discipline, category, parameterNumber).
+        """
 
         def _(s):
             try:
@@ -408,7 +520,21 @@ class GribIndex:
             raise ValueError(f"No path found for path_id {path_id}")
         return row[0]
 
-    def retrieve(self, dates, **kwargs):
+    def retrieve(self, dates: List[Any], **kwargs: Any) -> Iterator[Any]:
+        """Retrieve GRIB data from the database.
+
+        Parameters
+        ----------
+        dates : List[Any]
+            List of dates to retrieve data for.
+        **kwargs : Any
+            Additional filtering criteria.
+
+        Returns
+        ------
+        Iterator[Any]
+            The GRIB data matching the criteria.
+        """
         assert not self.update
 
         dates = [d.isoformat() for d in dates]
@@ -446,7 +572,33 @@ class GribIndex:
 
 
 @legacy_source(__file__)
-def execute(context, dates, indexdb, flavour=None, **kwargs):
+def execute(
+    context: Any,
+    dates: List[Any],
+    indexdb: str,
+    flavour: Optional[str] = None,
+    **kwargs: Any,
+) -> FieldArray:
+    """Execute the GRIB data retrieval process.
+
+    Parameters
+    ----------
+    context : Any
+        The execution context.
+    dates : List[Any]
+        List of dates to retrieve data for.
+    indexdb : str
+        Path to the GRIB index database.
+    flavour : Optional[str], optional
+        Flavour configuration for mapping fields, by default None.
+    **kwargs : Any
+        Additional filtering criteria.
+
+    Returns
+    -------
+    FieldArray
+        An array of retrieved GRIB fields.
+    """
     index = GribIndex(indexdb)
     result = []
 
