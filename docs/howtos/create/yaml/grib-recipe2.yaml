@@ -1,0 +1,9 @@
+dates:
+  start: 2023-01-01
+  end: 2023-01-02
+  frequency: 6h
+
+
+input:
+  grib:
+    /path/to/input.grib
