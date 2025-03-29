@@ -36,7 +36,7 @@ class GribIndex:
         self,
         database,
         *,
-        keys: Optional[List[str]] = None,
+        keys: Optional[List[str] | str] = None,
         flavour: Optional[str] = None,
         update: bool = False,
         overwrite: bool = False,
@@ -50,6 +50,14 @@ class GribIndex:
         if not update:
             if not os.path.exists(database):
                 raise FileNotFoundError(f"Database {database} does not exist")
+
+        if keys is not None:
+            if isinstance(keys, str):
+                if keys.startswith("+"):
+                    keys = set(KEYS) | set(keys[1:].split(","))
+                else:
+                    keys = set(",".split(keys.split(",")))
+                keys = list(keys)
 
         self.conn = sqlite3.connect(database)
         self.cursor = self.conn.cursor()
@@ -65,12 +73,17 @@ class GribIndex:
         self._columns = None
 
         if update:
-            assert keys is not None
+            if self.keys is None:
+                self.keys = KEYS
+            LOG.info(f"Using keys: {sorted(self.keys)}")
             self._create_tables()
         else:
             assert keys is None
             self.keys = self._all_columns()
             self.cache = LRUCache(maxsize=50)
+
+        self.warnings = {}
+        self.cache = {}
 
     def _create_tables(self) -> None:
         assert self.update
@@ -231,11 +244,24 @@ class GribIndex:
         if self.flavour is not None:
             fields = self.flavour.map(fields)
 
-        for field in tqdm.tqdm(fields, leave=False):
+        for i, field in enumerate(tqdm.tqdm(fields, leave=False)):
 
             keys = field.metadata(namespace="mars").copy()
             keys.update({k: field.metadata(k, default=None) for k in self.keys})
+
+            keys.setdefault("param", keys.get("shortName", keys.get("paramId")))
+
             keys = {k: v for k, v in keys.items() if v is not None}
+
+            if keys.get("param") in (0, "unknown"):
+                param = (
+                    field.metadata("discipline", default=None),
+                    field.metadata("parameterCategory", default=None),
+                    field.metadata("parameterNumber", default=None),
+                )
+                if param not in self.warnings:
+                    self._unknown(path, field, i, param)
+                    self.warnings[param] = True
 
             self._ensure_columns(list(keys.keys()))
 
@@ -247,6 +273,116 @@ class GribIndex:
             )
 
         self._commit()
+
+    def _paramdb(self, category: int, discipline: int):
+        """Fetch parameter information from the parameter database."""
+        if (category, discipline) in self.cache:
+            return self.cache[(category, discipline)]
+
+        try:
+            import requests
+
+            r = requests.get(
+                f"https://codes.ecmwf.int/parameter-database/api/v1/param?category={category}&discipline={discipline}"
+            )
+            r.raise_for_status()
+            self.cache[(category, discipline)] = r.json()
+            return self.cache[(category, discipline)]
+
+        except Exception as e:
+            LOG.warning(f"Failed to fetch information from parameter database: {e}")
+
+    def _param_grib2_info(self, paramId: int):
+        if ("grib2", paramId) in self.cache:
+            return self.cache[("grib2", paramId)]
+
+        try:
+            import requests
+
+            r = requests.get(f"https://codes.ecmwf.int/parameter-database/api/v1/param/{paramId}/grib2/")
+            r.raise_for_status()
+            self.cache[("grib2", paramId)] = r.json()
+            return self.cache[("grib2", paramId)]
+
+        except Exception as e:
+            LOG.warning(f"Failed to fetch information from parameter database: {e}")
+        return []
+
+    def _param_id_info(self, paramId: int):
+        if ("info", paramId) in self.cache:
+            return self.cache[("info", paramId)]
+
+        try:
+            import requests
+
+            r = requests.get(f"https://codes.ecmwf.int/parameter-database/api/v1/param/{paramId}/")
+            r.raise_for_status()
+            self.cache[("info", paramId)] = r.json()
+            return self.cache[("info", paramId)]
+
+        except Exception as e:
+            LOG.warning(f"Failed to fetch information from parameter database: {e}")
+
+        return None
+
+    def _param_id_unit(self, unitId: int):
+        if ("unit", unitId) in self.cache:
+            return self.cache[("unit", unitId)]
+
+        try:
+            import requests
+
+            r = requests.get(f"https://codes.ecmwf.int/parameter-database/api/v1/unit/{unitId}/")
+            r.raise_for_status()
+            self.cache[("unit", unitId)] = r.json()
+            return self.cache[("unit", unitId)]
+
+        except Exception as e:
+            LOG.warning(f"Failed to fetch information from parameter database: {e}")
+
+        return None
+
+    def _unknown(self, path: str, field: ekd.Field, i: int, param: tuple) -> None:
+
+        def _(s):
+            try:
+                return int(s)
+            except ValueError:
+                return s
+
+        LOG.warning(
+            f"Unknown param for message {i+1} in {path} at offset {int(field.metadata('offset', default=None))}"
+        )
+        LOG.warning(
+            f"shortName/paramId: {field.metadata('shortName', default=None)}/{field.metadata('paramId', default=None)}"
+        )
+        name = field.metadata("parameterName", default=None)
+        units = field.metadata("parameterUnits", default=None)
+        LOG.warning(f"Discipline/category/parameter: {param} ({name}, {units})")
+        LOG.warning(f"grib_copy -w count={i+1} {path} tmp.grib")
+
+        info = self._paramdb(discipline=param[0], category=param[1])
+        found = set()
+        if info is not None:
+            for n in tqdm.tqdm(info, desc="Scanning parameter database"):
+
+                for p in self._param_grib2_info(n["id"]):
+
+                    keys = {k["name"]: _(k["value"]) for k in p["keys"]}
+                    if keys.get("parameterNumber") == param[2]:
+                        found.add(n["id"])
+
+        for n in found:
+            info = self._param_id_info(n)
+            if "unit_id" in info:
+                info["unit_id"] = self._param_id_unit(info["unit_id"])["name"]
+
+            LOG.info("%s", f"Possible match: {n}")
+            LOG.info("%s", f"     Name:        {info.get('name')}")
+            LOG.info("%s", f"     Short name:  {info.get('shortname')}")
+            LOG.info("%s", f"     Units:       {info.get('unit_id')}")
+            LOG.info("%s", f"     Description: {info.get('description')}")
+            LOG.info("")
 
     def _get_path(self, path_id: int) -> str:
         """Retrieve the path corresponding to a given path_id.
