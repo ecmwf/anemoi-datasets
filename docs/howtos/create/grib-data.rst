@@ -26,3 +26,27 @@ Often, GRIB files are stored in a directory with a specific pattern. For
 example, the files may be named with a date pattern, such as
 ``YYYYMMDD_HHMM.grib``. In this case, you can use the :ref:`grib
 <grib_source>`
+
+Using an index file
+===================
+
+If you have a large number of GRIB files, it may be useful to create an
+index file. This file contains the list of all the GRIB messages in the
+files, and allows to quickly access the messages without having to read
+the entire file. The index file is created using the ``grib-index``
+:ref:`command <grib-index_command>`
+
+Selecting GRIB messages
+=======================
+
+You can select GRIB messages using the MARS language. For example, to
+select all the GRIB messages with a specific parameter, you can use the
+``param`` keyword. For example, to select all the GRIB messages with the
+parameter ``2t`` (2m temperature), you can use the following
+
+Using a `flavour`
+=================
+
+GRIB from different organisations often have slighlty different
+`flavours` such as organisation-specfifi naming conventions, or
+different ways of understanding single-levels and multi-levels fields.
