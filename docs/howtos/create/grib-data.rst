@@ -76,3 +76,5 @@ single-levels and multi-levels fields.
 GRIB from different organisations often have slightly different
 `flavours` such as organisation-specific naming conventions, or
 different ways of understanding single-levels and multi-levels fields.
+
+.. literalinclude:: yaml/grib-flavour1.yaml
