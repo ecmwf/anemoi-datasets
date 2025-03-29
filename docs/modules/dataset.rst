@@ -1,8 +1,8 @@
-.. _data-autodoc:
+.. _dataset-autodoc:
 
-######
- Data
-######
+#########
+ Dataset
+#########
 
 .. automodule:: anemoi.datasets.data.dataset
    :members:
