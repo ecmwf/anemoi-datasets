@@ -84,13 +84,19 @@ dictionary is a matching rule (condition) and the second one an action
 When looking up fields metadata, like the parameter name (``param``) or
 the level (``level``), the first rule that matches the existing field
 metadata is applied. The values listed in its second dictionary are then
-used to override the actual metadata values of the field. For example,
-the first rule in the example below will clear the ``levelist`` metadata
-fields, that have a ``levtype`` of ``sfc``. This is useful because the
-default naming of the variables in the resulting dataset are the
-concatenation of the ``param`` and ``levelist`` fields. If the ``level``
-field is empty, the resulting variable name will be just the ``param``.
-This is useful to avoid having a variable name like ``2t_2``, or
-``10u_10``.
+used to override the actual metadata values of the field.
+
+For example, the first rule in the example below will clear the
+``levelist`` metadata fields, that have a ``levtype`` of ``sfc``. This
+is useful because the default naming of the variables in the resulting
+dataset are the concatenation of the ``param`` and ``levelist`` fields.
+If the ``level`` field is empty, the resulting variable name will be
+just the ``param``. This is useful to avoid having a variable name like
+``2t_2``, or ``10u_10``.
 
 .. literalinclude:: yaml/grib-flavour1.yaml
+
+The second and third rules will allow a user to define a ``param`` name
+if the field is not recognised be eccodes_.
+
+.. _eccodes: https://github.com/ecmwf/eccodes

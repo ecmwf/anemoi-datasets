@@ -4,4 +4,22 @@
  Create a dataset from CF-compliant data
 #########################################
 
-(Comming soon)
+(Coming soon)
+
+********
+ NetCDF
+********
+
+(Coming soon)
+
+*********
+ OpenDAP
+*********
+
+(Coming soon)
+
+******
+ Zarr
+******
+
+(Coming soon)
