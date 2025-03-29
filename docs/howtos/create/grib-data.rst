@@ -4,6 +4,10 @@
  Create a dataset from GRIB data
 #################################
 
+***********************************
+ Reading GRIB messages from a file
+***********************************
+
 To create a dataset from GRIB files, use the :ref:`grib <grib_source>`
 source.
 
@@ -13,3 +17,12 @@ This recipe will create a dataset with all the GRIB messages present in
 the file, whose *valid date* match the requested dates. This means that
 for forecast data, the date at which the data are valid is usually the
 reference date of the forecast (starting date) plus the forecast step.
+
+**********************************************************
+ Reading GRIB messages from a files that follow a pattern
+**********************************************************
+
+Often, GRIB files are stored in a directory with a specific pattern. For
+example, the files may be named with a date pattern, such as
+``YYYYMMDD_HHMM.grib``. In this case, you can use the :ref:`grib
+<grib_source>`
