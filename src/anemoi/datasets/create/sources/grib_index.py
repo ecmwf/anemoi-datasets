@@ -24,11 +24,22 @@ from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
 
+KEYS1 = ("class", "type", "stream", "expver", "levtype")
+KEYS2 = ("shortName", "paramId", "level", "step", "number", "date", "time", "valid_datetime", "levelist")
+
+KEYS = KEYS1 + KEYS2
+
 
 class GribIndex:
 
     def __init__(
-        self, database, *, keys: Optional[List[str]] = None, update: bool = False, overwrite: bool = False
+        self,
+        database,
+        *,
+        keys: Optional[List[str]] = None,
+        flavour: Optional[str] = None,
+        update: bool = False,
+        overwrite: bool = False,
     ) -> None:
         self.database = database
         if overwrite:
@@ -42,6 +53,11 @@ class GribIndex:
 
         self.conn = sqlite3.connect(database)
         self.cursor = self.conn.cursor()
+
+        if flavour is not None:
+            self.flavour = RuleBasedFlavour(flavour)
+        else:
+            self.flavour = None
 
         self.update = update
         self.cache = None
@@ -211,9 +227,14 @@ class GribIndex:
     def add_grib_file(self, path: str) -> None:
         path_id = self._path_id(path)
 
-        for field in tqdm.tqdm(ekd.from_source("file", path), leave=False):
+        fields = ekd.from_source("file", path)
+        if self.flavour is not None:
+            fields = self.flavour.map(fields)
 
-            keys = {k: field.metadata(k, default=None) for k in self.keys}
+        for field in tqdm.tqdm(fields, leave=False):
+
+            keys = field.metadata(namespace="mars").copy()
+            keys.update({k: field.metadata(k, default=None) for k in self.keys})
             keys = {k: v for k, v in keys.items() if v is not None}
 
             self._ensure_columns(list(keys.keys()))

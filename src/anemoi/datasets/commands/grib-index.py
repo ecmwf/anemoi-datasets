@@ -15,11 +15,6 @@ import tqdm
 
 from . import Command
 
-KEYS1 = ("class", "type", "stream", "expver", "levtype")
-KEYS2 = ("shortName", "paramId", "level", "step", "number", "date", "time", "valid_datetime", "levelist")
-
-KEYS = KEYS1 + KEYS2
-
 
 class GribIndexCmd(Command):
     internal = True
@@ -49,6 +44,11 @@ class GribIndexCmd(Command):
             "--match",
             help="Give a glob pattern to match files (default: *.grib)",
             default="*.grib",
+        )
+
+        command_parser.add_argument(
+            "--keys",
+            help="GRIB keys to add to the index",
         )
 
         command_parser.add_argument(
@@ -84,14 +84,12 @@ class GribIndexCmd(Command):
 
         from anemoi.datasets.create.sources.grib_index import GribIndex
 
-        # Remove namespace if present
-        keys = [k.split(".")[-1] for k in KEYS]
-
         index = GribIndex(
             args.index,
-            keys=keys,
+            keys=args.keys,
             update=True,
             overwrite=args.overwrite,
+            flavour=args.flavour,
         )
 
         paths = []

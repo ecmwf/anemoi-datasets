@@ -18,6 +18,8 @@ the file, whose *valid date* match the requested dates. This means that
 for forecast data, the date at which the data are valid is usually the
 reference date of the forecast (starting date) plus the forecast step.
 
+Please note that the ``path`` keyword can also be a list.
+
 **********************************************************
  Reading GRIB messages from a files that follow a pattern
 **********************************************************
@@ -30,6 +32,9 @@ example, the files may be named with a date pattern, such as
 .. literalinclude:: yaml/grib-recipe2.yaml
 
 Please note that the ``path`` keyword can also be a list.
+
+You can also use ``strftimedelta`` to specify a date that is not the
+current requested date.
 
 *********************
  Using an index file
@@ -59,8 +64,9 @@ single-levels and multi-levels fields.
 
 .. literalinclude:: yaml/grib-recipe5.yaml
 
-Using a `flavour`
-=================
+*******************
+ Using a `flavour`
+*******************
 
 GRIB from different organisations often have slightly different
 `flavours` such as organisation-specific naming conventions, or
