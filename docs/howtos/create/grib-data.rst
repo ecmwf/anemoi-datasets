@@ -27,6 +27,8 @@ example, the files may be named with a date pattern, such as
 ``YYYYMMDD_HHMM.grib``. In this case, you can use the :ref:`grib
 <grib_source>`
 
+.. literalinclude:: yaml/grib-recipe2.yaml
+
 Using an index file
 ===================
 
@@ -34,7 +36,9 @@ If you have a large number of GRIB files, it may be useful to create an
 index file. This file contains the list of all the GRIB messages in the
 files, and allows to quickly access the messages without having to read
 the entire file. The index file is created using the ``grib-index``
-:ref:`command <grib-index_command>`
+:ref:`command <grib-index_command>` and use the `grib-index` source.
+
+.. literalinclude:: yaml/grib-recipe3.yaml
 
 Selecting GRIB messages
 =======================
