@@ -1,3 +1,5 @@
+.. _grib_source:
+
 ######
  grib
 ######

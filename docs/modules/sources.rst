@@ -2,4 +2,4 @@
  Sources
 #########
 
-.. include:: ../_api/datasets.create.sources.rst
+.. include:: ../_api/anemoi.datasets.create.sources.rst

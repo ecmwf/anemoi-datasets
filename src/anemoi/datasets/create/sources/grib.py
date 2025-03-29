@@ -17,6 +17,7 @@ from typing import Optional
 from typing import Union
 
 import earthkit.data as ekd
+from anemoi.transform.flavour import RuleBasedFlavour
 from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
@@ -244,6 +245,7 @@ def execute(
     path: Union[str, List[str]],
     latitudes: Optional[Dict[str, Any]] = None,
     longitudes: Optional[Dict[str, Any]] = None,
+    flavour: Optional[Union[str, Dict[str, Any]]] = None,
     *args: Any,
     **kwargs: Any,
 ) -> ekd.FieldList:
@@ -255,6 +257,7 @@ def execute(
         path (Union[str, List[str]]): Path or list of paths to the GRIB files.
         latitudes (Optional[Dict[str, Any]], optional): Latitude information. Defaults to None.
         longitudes (Optional[Dict[str, Any]], optional): Longitude information. Defaults to None.
+        flavour (Optional[Union[str, Dict[str, Any]]], optional): Flavour information. Defaults to None.
         *args (Any): Additional arguments.
         **kwargs (Any): Additional keyword arguments.
 
@@ -264,6 +267,8 @@ def execute(
         The loaded dataset.
     """
     given_paths = path if isinstance(path, list) else [path]
+    if flavour is not None:
+        flavour = RuleBasedFlavour(flavour)
 
     geography = None
     if latitudes is not None and longitudes is not None:
@@ -282,6 +287,8 @@ def execute(
         for path in _expand(paths):
             context.trace("📁", "PATH", path)
             s = from_source("file", path)
+            if flavour is not None:
+                s = flavour.map(s)
             s = s.sel(valid_datetime=dates, **kwargs)
             ds = ds + s
 

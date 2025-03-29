@@ -60,8 +60,9 @@ Which will result in the following dataset:
 Alternatively, you can specify another dataset as the area. In this
 case, the bounding box of the dataset will be used.
 
-.. literalinclude:: code/area2_.py
-   :language: python
+.. code:: python
+
+   ds = open_dataset(dataset1, area=dataset2)
 
 ***********
  trim_edge
@@ -75,8 +76,9 @@ upper_dim0, lower_dim1, upper_dim1)``.
 
 That is, the following
 
-.. literalinclude:: code/trimedge1_.py
-   :language: python
+.. code:: python
+
+   ds = open_dataset(dataset1, trim_edge=(3, 10, 4, 2))
 
 will remove the first 3 and last 10 rows of the domain, and the first 4
 and last 2 columns of the domain. If the first dimension of the grid is
