@@ -46,6 +46,11 @@ files, and allows to quickly access the messages without having to read
 the entire file. The index file is created using the ``grib-index``
 :ref:`command <grib-index_command>` and use the `grib-index` source.
 
+..
+   code: :: bash
+
+   anemoi-datasets grib-index --index index.db /path/to/grib-file --match '*pattern*'
+
 .. literalinclude:: yaml/grib-recipe3.yaml
 
 *************************
