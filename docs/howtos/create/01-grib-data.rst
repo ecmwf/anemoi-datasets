@@ -110,6 +110,8 @@ single-level and multi-level fields.
    using an index, the keys must be present in the index file, and
    should have been provided at index creation time.
 
+.. _grib_flavour:
+
 *******************
  Using a `flavour`
 *******************
