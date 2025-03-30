@@ -99,4 +99,18 @@ just the ``param``. This is useful to avoid having a variable name like
 The second and third rules will allow a user to define a ``param`` name
 if the field is not recognised be eccodes_.
 
+In a recipe file, the `flavour` can be either defined by giving a path
+to a YAML or JSON file:
+
+.. literalinclude:: yaml/grib-flavour2.yaml
+
+or can given inline in the recipe file.
+
+.. literalinclude:: yaml/grib-flavour3.yaml
+
+You can make use of YAML anchors to avoid repeating the same rules in
+multiple places:
+
+.. literalinclude:: yaml/grib-flavour4.yaml
+
 .. _eccodes: https://github.com/ecmwf/eccodes

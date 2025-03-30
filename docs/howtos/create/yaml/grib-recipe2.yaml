@@ -6,8 +6,4 @@ dates:
 
 input:
   grib:
-    /path/to/data-{date:strftime(%Y%m%d%H)}.grib
-dates:
-  start: '2020-10-03T12:00:00'
-  end: '2020-10-03T12:00:00'
-  frequency: 3h
+    path: /path/to/data-{date:strftime(%Y%m%d%H)}.grib

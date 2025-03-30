@@ -7,7 +7,7 @@
 A CF-compliant dataset is a dataset that follows the `CF conventions`_.
 These dataset are usually stored in a format that is compatible with the
 CF conventions, such as NetCDF_, OpenDAP_, or Zarr_. Internally, these
-datasets are accessed by `anemoi-datasets` using the xarray_ library.
+datasets are accessed by `anemoi-datasets` using the Xarray_ library.
 
 ********
  NetCDF
