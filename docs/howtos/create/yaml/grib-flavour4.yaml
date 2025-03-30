@@ -3,8 +3,21 @@ dates:
   end: 2023-01-02T18:00:00
   frequency: 6h
 
+flavour: &flavour
+  - - levtype: sfc
+    - levelist: null
 
 input:
-  grib:
-    path: /path/to/input.grib
-    flavour: /path/to/flavour.yaml
+  join:
+  - grib:
+      path: /path/to/input.grib
+      flavour: *flavour
+      param: [ z, t, u, v ]
+      levelist: [ 1000, 850, 500 ]
+      levtype: pl
+
+  - grib:
+      path: /path/to/input2.grib
+      flavour: *flavour
+      param: [ 2t, msl ]
+      levtype: sfc

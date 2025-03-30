@@ -7,4 +7,6 @@ dates:
 input:
   grib:
     path: /path/to/input.grib
-    flavour: /path/to/flavour.yaml
+    flavour:
+      - - levtype: sfc
+        - levelist: null
