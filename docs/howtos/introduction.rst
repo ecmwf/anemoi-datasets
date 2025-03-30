@@ -19,8 +19,7 @@ good starting point.
    :hidden:
    :caption: Creating anemoi-datasets
 
-   create/create-grib-data
-   create/create-cf-data
+   create/*
 
 ***********************
  Using anemoi-datasets

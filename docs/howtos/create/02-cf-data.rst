@@ -20,8 +20,8 @@ datasets are accessed by `anemoi-datasets` using the Xarray_ library.
 
 .. admonition:: Note
 
-   For all Xarray-based sources, the ``param`` and ``variable`` are
-   considered synonymous. This is also true for the ``level`` and
+   For all Xarray-based sources, the ``param`` and ``variable`` keywords
+   are considered synonymous. This is also true for the ``level`` and
    ``levelist`` keywords.
 
 Please note that the ``path`` keyword can also be a list, and that paths
