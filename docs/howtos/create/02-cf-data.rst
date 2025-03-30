@@ -61,11 +61,15 @@ can contain patterns. See :ref:`file-pattern` for more information.
 
 (Coming soon)
 
+You can see examples of the `flavour` in the following tests_.
+
 .. _cf conventions: https://cfconventions.org/
 
 .. _netcdf: https://www.unidata.ucar.edu/software/netcdf/
 
 .. _opendap: https://www.opendap.org/
+
+.. _tests: https://github.com/ecmwf/anemoi-datasets/blob/main/tests/xarray/test_zarr.py
 
 .. _xarray: https://xarray.pydata.org/en/stable/
 
