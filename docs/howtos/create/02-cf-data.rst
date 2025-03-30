@@ -61,6 +61,8 @@ can contain patterns. See :ref:`file-pattern` for more information.
 
 (Coming soon)
 
+.. literalinclude:: yaml/xarray-flavour1.yaml
+
 You can see examples of the `flavour` in the following tests_.
 
 .. _cf conventions: https://cfconventions.org/

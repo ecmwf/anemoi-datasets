@@ -90,7 +90,7 @@ def load_one(
     """
 
     """
-    We manage the S3 client ourselve, bypassing fsspec and s3fs layers, because sometimes something on the stack
+    We manage the S3 client ourselves, bypassing fsspec and s3fs layers, because sometimes something on the stack
     zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
     connection error). In that case,  Zarr will silently fill the chunks that could not be downloaded with NaNs.
     See https://github.com/pydata/xarray/issues/8842
