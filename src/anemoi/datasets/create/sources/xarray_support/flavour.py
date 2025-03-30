@@ -565,6 +565,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         Optional[LongitudeCoordinate]
             The LongitudeCoordinate if matched, else None.
         """
+
+        # https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#longitude-coordinate
+
         if attributes.standard_name == "longitude":
             return LongitudeCoordinate(c)
 
@@ -591,6 +594,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         Optional[LatitudeCoordinate]
             The LatitudeCoordinate if matched, else None.
         """
+
+        # https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#latitude-coordinate
+
         if attributes.standard_name == "latitude":
             return LatitudeCoordinate(c)
 
