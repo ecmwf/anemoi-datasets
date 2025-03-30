@@ -4,11 +4,11 @@
 
 The `repeated-dates` source is used to repeat a single source multiple
 times, so that its data is present at multiple dates. A simple example
-of this is when you have source that contains a constant field, such as
-orography or bathymetry, that you want to have repeated at all the dates
-of the dataset.
+of this is when you have a source that contains a constant field, such
+as orography or bathymetry, that you want to have repeated at all the
+dates of the dataset.
 
-The generale format of the `repeated-dates` source is:
+The general format of the `repeated-dates` source is:
 
 .. literalinclude:: yaml/repeated_dates1.yaml
    :language: yaml

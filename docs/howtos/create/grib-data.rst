@@ -4,6 +4,10 @@
  Create a dataset from GRIB data
 #################################
 
+A GRIB file is a file that contains several GRIB `messages`. Each
+message is a single 2D field. `anemoi-datasets` relies earthkit-data_ to
+read GRIB files, which itself relies on eccodes_.
+
 ***********************************
  Reading GRIB messages from a file
 ***********************************
@@ -34,8 +38,31 @@ example, the files may be named with a date pattern, such as
 
 Please note that the ``path`` keyword can also be a list.
 
-You can also use ``strftimedelta`` to specify a date that is not the
-current requested date.
+Every pattern in the ``path`` that is enclosed in curly brackets
+(``{}``) is replaced by the requested value. For example, The path
+``/path/to/files/{param}_{level}.grib`` will be replaced by
+``/path/to/files/z_500.grib`` if the requested parameter is ``z`` and
+the level is ``500``.
+
+There is a special syntax for the ``date`` keyword:
+
+The construct ``{date:strftime(%Y%m%d%H)}`` is replaced by the requested
+date formatted according to the Python strftime_ method. For example, if
+the requested date is ``2023-01-01 00:00:00``, the pattern will be
+``2023010100.grib``.
+
+You can also use ``strftimedelta`` to specify a date that is shifted by
+an offset from the requested date. For example, if you want to read a
+file that is one hour before the requested date, you can use the
+following pattern ``{date:strftimedelta(-1h,%Y%m%d%H)}``. This will be
+replaced by ``2023010113`` if the requested date is ``2023-01-01
+14:00:00``.
+
+You can also use Unix wildcards_ to specify a pattern for the files. For
+example, if the files are named with a date pattern, such as
+``YYYYMMDD_HHMM.grib``, you can use the following pattern:
+``/path/to/files/*{date:strftime(%Y%m%d%H)}*.grib``. The ``*`` wildcard
+will match any number of characters, including none.
 
 *********************
  Using an index file
@@ -44,15 +71,20 @@ current requested date.
 If you have a large number of GRIB files, it may be useful to create an
 index file. This file contains the list of all the GRIB messages in the
 files and allows quick access to the messages without having to read the
-entire file. The index file is created using the ``grib-index``
-:ref:`command <grib-index_command>` and uses the `grib-index` source.
+entire file. The index file is created using the `grib-index`
+:ref:`command <grib-index_command>` and uses the `grib-index`
+:ref:`source <grib-source_command>`.
 
-..
-   code: :: bash
+.. code:: bash
 
-   anemoi-datasets grib-index --index index.db /path/to/grib-file --match '*pattern*'
+   anemoi-datasets grib-index --index index.db /path/to/grib-files --match '*pattern*'
+
+The index file can then be used in the recipe file. For example, if the
+index file is named ``index.db``, you can use the following recipe:
 
 .. literalinclude:: yaml/grib-recipe3.yaml
+
+after that, the parameters are the same as for the `grib` source.
 
 *************************
  Selecting GRIB messages
@@ -61,7 +93,7 @@ entire file. The index file is created using the ``grib-index``
 You can select GRIB messages using the MARS language. For example, to
 select all the GRIB messages with a specific parameter, you can use the
 ``param`` keyword. For example, to select all the GRIB messages with the
-parameter ``2t`` (2m temperature), you can use the following:
+parameters ``2t``, ``10u`` and ``10v``, you can use the following:
 
 .. literalinclude:: yaml/grib-recipe4.yaml
 
@@ -69,6 +101,12 @@ It is recommended to have several sources to differentiate between
 single-level and multi-level fields.
 
 .. literalinclude:: yaml/grib-recipe5.yaml
+
+.. note::
+
+   You can use any eccodes_ keys to select the GRIB messages. If you are
+   using an index, the keys must be present in the index file, and
+   should have been provided at index creation time.
 
 *******************
  Using a `flavour`
@@ -114,4 +152,10 @@ multiple places:
 
 .. literalinclude:: yaml/grib-flavour4.yaml
 
+.. _earthkit-data: https://earthkit-data.readthedocs.io/en/latest/
+
 .. _eccodes: https://github.com/ecmwf/eccodes
+
+.. _strftime: https://python.readthedocs.io/en/latest/library/datetime.html#strftime-and-strptime-behavior
+
+.. _wildcards: https://en.wikipedia.org/wiki/Glob_(programming)

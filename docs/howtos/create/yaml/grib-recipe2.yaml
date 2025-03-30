@@ -6,4 +6,5 @@ dates:
 
 input:
   grib:
-    path: /path/to/data-{date:strftime(%Y%m%d%H)}.grib
+    path: /path/to/data-{param}-{date:strftime(%Y%m%d%H)}.grib
+    param: [2t, 10u, 10v]

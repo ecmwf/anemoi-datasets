@@ -7,3 +7,4 @@ dates:
 input:
   grib-index:
     index: /path/to/index.db
+    param: [2t, 10u, 10v]
