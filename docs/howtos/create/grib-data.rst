@@ -25,6 +25,8 @@ step.
 
 Please note that the ``path`` keyword can also be a list.
 
+.. _file-pattern:
+
 ********************************************************
  Reading GRIB messages from files that follow a pattern
 ********************************************************

@@ -24,6 +24,10 @@ datasets are accessed by `anemoi-datasets` using the Xarray_ library.
    considered synonymous. This is also true for the ``level`` and
    ``levelist`` keywords.
 
+Please note that the ``path`` keyword can also be a list, and that paths
+can contain wildcards and patterns. See :ref:`file-pattern` for more
+information.
+
 *********
  OpenDAP
 *********
@@ -34,6 +38,9 @@ only difference is that a URL is used instead of a file path.
 
 .. literalinclude:: yaml/opendap1.yaml
    :language: yaml
+
+Please note that the ``url`` keyword can also be a list, and that URLs
+can contain patterns. See :ref:`file-pattern` for more information.
 
 ******
  Zarr
