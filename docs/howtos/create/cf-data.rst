@@ -15,15 +15,42 @@ datasets are accessed by `anemoi-datasets` using the Xarray_ library.
 
 (Coming soon)
 
+.. literalinclude:: yaml/netcdf1.yaml
+   :language: yaml
+
+.. admonition:: Note
+
+   For all Xarray-based sources, the ``param`` and ``variable`` are
+   considered synonymous. This is also true for the ``level`` and
+   ``levelist`` keywords.
+
 *********
  OpenDAP
 *********
 
-(Coming soon)
+OpenDAP is a protocol that allows you to access remote datasets over the
+internet. The OpenDAP source is identical toe the NetCDF source. The
+only difference is that a URL is used instead of a file path.
+
+.. literalinclude:: yaml/opendap1.yaml
+   :language: yaml
 
 ******
  Zarr
 ******
+
+.. literalinclude:: yaml/zarr1.yaml
+   :language: yaml
+
+**********
+ Patching
+**********
+
+(Coming soon)
+
+*******************
+ Using a `flavour`
+*******************
 
 (Coming soon)
 
