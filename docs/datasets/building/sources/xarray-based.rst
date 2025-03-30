@@ -10,6 +10,8 @@ OpenDAP, etc.
 .. literalinclude:: yaml/xarray-based.yaml
    :language: yaml
 
+See :ref:`create-cf-data` for more information.
+
 .. _cf conventions: http://cfconventions.org/
 
 .. _wildcards: https://en.wikipedia.org/wiki/Glob_(programming)

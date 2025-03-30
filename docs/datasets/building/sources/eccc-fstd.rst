@@ -14,3 +14,5 @@ The recipe will build a dataset from a standard file using the
 The ``fstd2nc`` dependency is not part of the default anemoi-datasets
 installation and has to be install following the `fstd2nc project
 description <https://github.com/neishm/fstd2nc>`_.
+
+See :ref:`create-cf-data` for more information.

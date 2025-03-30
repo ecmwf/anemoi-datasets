@@ -5,10 +5,10 @@ data_sources:
       expver: "0001"
       grid: 20.0/20.0
       levtype: sfc
-      param: [10u, 10v, 2t]
+      param: [ 10u, 10v, 2t ]
       type: an
       stream: enda
-      number: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      number: [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
 
   center_source:
     mars:
@@ -16,7 +16,7 @@ data_sources:
       expver: "0001"
       grid: 20.0/20.0
       levtype: sfc
-      param: [10u, 10v, 2t]
+      param: [ 10u, 10v, 2t ]
       type: an
       stream: oper
 

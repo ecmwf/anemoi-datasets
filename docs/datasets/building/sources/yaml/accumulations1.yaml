@@ -2,5 +2,5 @@ input:
   accumulations:
     accumulation_period: 6
     class: ea
-    param: [tp, cp, sf]
+    param: [ tp, cp, sf ]
     levtype: sfc
