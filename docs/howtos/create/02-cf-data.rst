@@ -49,15 +49,54 @@ can contain patterns. See :ref:`file-pattern` for more information.
 .. literalinclude:: yaml/zarr1.yaml
    :language: yaml
 
-**********
- Patching
-**********
+*********************************************
+ Handling data that is not 100% CF-compliant
+*********************************************
 
 (Coming soon)
 
-*******************
- Using a `flavour`
-*******************
+Patching
+========
+
+Consider the following dataset:
+
+.. code:: console
+
+   <xarray.Dataset> Size: 21MB
+   Dimensions:   (y: 1207, x: 1442)
+   Dimensions without coordinates: y, x
+   Data variables:
+      nav_lat   (y, x) float32 7MB ...
+      nav_lon   (y, x) float32 7MB ...
+      mask      (y, x) float32 7MB ...
+
+Although the variables ``nav_lat`` and ``nav_lon`` are coordinates,
+there are not marked as such. This can be fixed by using the ``patch``
+keyword in the recipe file:
+
+.. literalinclude:: yaml/xarray-patch1.yaml
+   :language: yaml
+
+The resulting dataset will look like this:
+
+.. code:: console
+
+   <xarray.Dataset> Size: 21MB
+   Dimensions:   (y: 1207, x: 1442)
+   Coordinates:
+      nav_lat   (y, x) float32 7MB ...
+      nav_lon   (y, x) float32 7MB ...
+   Dimensions without coordinates: y, x
+   Data variables:
+      mask      (y, x) float32 7MB ...
+
+.. note::
+
+   Patching only happens in memory. The patched dataset is not saved and
+   the original dataset is not modified.
+
+Using a `flavour`
+=================
 
 (Coming soon)
 
