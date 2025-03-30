@@ -3,7 +3,9 @@
 Grib-index Command
 ============
 
-Use this command to index GRIB files
+The `grib-index` command is used to create an index file for GRIB files. The index file is then used
+by the `grib-index` :ref:`source <grib-index_source>`.
+
 
 .. argparse::
     :module: anemoi.datasets.__main__
