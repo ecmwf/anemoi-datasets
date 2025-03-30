@@ -1,4 +1,4 @@
-repeated_dates:
+repeated-dates:
     mode: climatology
     year: 2019
     day: 15

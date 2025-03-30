@@ -1,4 +1,4 @@
-repeated_dates:
+repeated-dates:
   mode: constant
   source:
       xarray-zarr:

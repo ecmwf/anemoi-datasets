@@ -1,5 +1,5 @@
 
-repeated_dates:
+repeated-dates:
     mode: mode
     # ... parameters related to the mode ...
     source:

@@ -239,11 +239,13 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
 
     cls = {
         "data_sources": DataSourcesAction,
+        "data-sources": DataSourcesAction,
         "concat": ConcatAction,
         "join": JoinAction,
         "pipe": PipeAction,
         "function": FunctionAction,
         "repeated_dates": RepeatedDatesAction,
+        "repeated-dates": RepeatedDatesAction,
     }.get(key)
 
     if cls is None:
