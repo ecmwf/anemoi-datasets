@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.20](https://github.com/ecmwf/anemoi-datasets/compare/0.5.19...0.5.20) (2025-03-31)
+
+
+### Features
+
+* interpolate nearest spatial ([#260](https://github.com/ecmwf/anemoi-datasets/issues/260)) ([e6c9af4](https://github.com/ecmwf/anemoi-datasets/commit/e6c9af48dca7292940a8b10f2804e9d456b6bccc))
+* new data sources ([#258](https://github.com/ecmwf/anemoi-datasets/issues/258)) ([708c816](https://github.com/ecmwf/anemoi-datasets/commit/708c816b80ae30781f42442e0e9d8d70fed2371c))
+* save opened anemoi_dataset ([#259](https://github.com/ecmwf/anemoi-datasets/issues/259)) ([4759dd9](https://github.com/ecmwf/anemoi-datasets/commit/4759dd9da67ece246e691eb6be4637ef6bc0b157))
+
+
+### Bug Fixes
+
+* Remove hardcoded indices and get pressure levels from keys directly ([#257](https://github.com/ecmwf/anemoi-datasets/issues/257)) ([777fbac](https://github.com/ecmwf/anemoi-datasets/commit/777fbac9fb09afd6e77ee13f8442ccbb3efb73f8))
+
+
+### Documentation
+
+* Add API Docs ([#255](https://github.com/ecmwf/anemoi-datasets/issues/255)) ([be13424](https://github.com/ecmwf/anemoi-datasets/commit/be1342400552f520b64f4f0fdb29d39ee51d81fe))
+
 ## [0.5.19](https://github.com/ecmwf/anemoi-datasets/compare/0.5.18...0.5.19) (2025-03-27)
 
 
