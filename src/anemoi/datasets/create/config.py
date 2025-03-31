@@ -243,8 +243,10 @@ class LoadersConfig(Config):
         self.setdefault("licence", "unknown")
         self.setdefault("attribution", "unknown")
 
+
         self.setdefault("build", Config())
-        self.build.setdefault("group_by", "monthly")
+        config["dates"].setdefault("group_by","monthly")
+        self.build["group_by"] = config["dates"]["group_by"]
         self.build.setdefault("use_grib_paramid", False)
         self.build.setdefault("variable_naming", "default")
         variable_naming = dict(
@@ -352,8 +354,9 @@ def set_to_test_mode(cfg: dict) -> None:
     NUMBER_OF_DATES = 4
 
     LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    
     groups = Groups(**LoadersConfig(cfg).dates)
-
+    
     dates = groups.provider.values
     cfg["dates"] = dict(
         start=dates[0],
@@ -406,7 +409,6 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     if is_test:
         set_to_test_mode(config)
     obj = LoadersConfig(config)
-
     # yaml round trip to check that serialisation works as expected
     copy = obj.get_serialisable_dict()
     copy = yaml.load(yaml.dump(copy), Loader=yaml.SafeLoader)
