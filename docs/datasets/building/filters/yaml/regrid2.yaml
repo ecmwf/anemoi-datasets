@@ -1,8 +1,9 @@
 input:
   pipe:
-    - source: # mars, grib, netcdf, etc.
+  - source:
+      # mars, grib, netcdf, etc.
       # source attributes here
       # ...
 
-    - regrid:
-        matrix: /path/to/regrid/matrix.npz
+  - regrid:
+      matrix: /path/to/regrid/matrix.npz

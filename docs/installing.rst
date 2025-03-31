@@ -63,8 +63,8 @@ functionality:
 
 .. literalinclude:: ../pyproject.toml
    :language: toml
-   :start-at: [project.optional-dependencies.all]
-   :end-before: [project.urls.Changelog]
+   :start-at: optional-dependencies.all
+   :end-before: urls.Changelog
 
 **********************
  Development versions

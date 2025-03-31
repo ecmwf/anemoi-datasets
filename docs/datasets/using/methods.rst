@@ -3,7 +3,7 @@
 ########################
 
 For a complete list of methods and attributes available for the objects
-returned by ``open_dataset``, please see :ref:`data-autodoc`. Here, a
+returned by ``open_dataset``, please see :ref:`dataset-autodoc`. Here, a
 sub-set of stable and commonly used methods and attributes are described
 in more detail.
 

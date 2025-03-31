@@ -2,13 +2,15 @@
  xarray-based-sources
 ######################
 
-More in general, you can specify any valid xarray.open_dataset_
-arguments as the source and anemoi-dataset will try to build a dataset
-from it. Examples of valid xarray.open_dataset_ arguments are: netCDF,
-zarr, opendap, etc.
+More generally, you can specify any valid xarray.open_dataset_ arguments
+as the source, and anemoi-dataset will try to build a dataset from it.
+Examples of valid xarray.open_dataset_ arguments include: netCDF, Zarr,
+OpenDAP, etc.
 
 .. literalinclude:: yaml/xarray-based.yaml
    :language: yaml
+
+See :ref:`create-cf-data` for more information.
 
 .. _cf conventions: http://cfconventions.org/
 

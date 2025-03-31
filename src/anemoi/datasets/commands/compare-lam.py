@@ -11,10 +11,6 @@ import logging
 import math
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
-from termcolor import colored  # For coloring text in the terminal
-
 from anemoi.datasets import open_dataset
 
 from . import Command
@@ -128,6 +124,7 @@ class HTML_Writer:
 def plot_coordinates_on_map(lats, lons):
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    import matplotlib.pyplot as plt
 
     """
     Plots the given latitude and longitude coordinates on a map using Cartopy and Matplotlib.
@@ -237,7 +234,10 @@ class CompareLAM(Command):
         )
 
     def run(self, args):
+        import matplotlib.pyplot as plt
+        import numpy as np
         from prettytable import PrettyTable
+        from termcolor import colored  # For coloring text in the terminal
 
         # Unpack args
         date_idx = args.number_of_dates

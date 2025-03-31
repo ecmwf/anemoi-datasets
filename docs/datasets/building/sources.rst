@@ -21,17 +21,19 @@ The following `sources` are currently available:
    :maxdepth: 1
 
    sources/accumulations
-   sources/eccc_fstd
+   sources/anemoi-dataset
+   sources/cds
+   sources/eccc-fstd
    sources/forcings
    sources/grib
+   sources/grib-index
    sources/hindcasts
    sources/mars
-   sources/cds
    sources/netcdf
    sources/opendap
    sources/recentre
-   sources/repeated_dates
+   sources/repeated-dates
+   sources/xarray-based
    sources/xarray-kerchunk
    sources/xarray-zarr
-   sources/xarray-based
    sources/zenodo

@@ -1,3 +1,5 @@
+.. _grib_source:
+
 ######
  grib
 ######
@@ -31,6 +33,8 @@ hour, you can use the following configuration:
 
 The patterns in between the curly brackets are replaced by the values of
 the `date` and formatted according to the Python strftime_ method.
+
+See :ref:`create-grib-data` for more information.
 
 .. note::
 

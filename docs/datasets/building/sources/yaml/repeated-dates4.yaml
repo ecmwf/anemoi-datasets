@@ -1,0 +1,9 @@
+repeated-dates:
+  mode: closest
+  frequency: 24h
+  maximum: 30d
+  skip_all_nans: true
+  source:
+    grib:
+      path: path/to/data.grib
+      param: [ some_param ]
