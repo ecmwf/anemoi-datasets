@@ -1,0 +1,11 @@
+training:
+  dataset:
+    join:
+    - dataset: dataset1
+      frequency: 3h
+    - dataset: dataset2
+      interpolate_frequency: 3h
+    adjust: dates
+  start: 2003
+  end: 2020
+  

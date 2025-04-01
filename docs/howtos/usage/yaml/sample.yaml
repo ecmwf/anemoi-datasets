@@ -1,0 +1,8 @@
+training:
+  dataset:
+    join:
+    - dataset: dataset1
+      frequency: 24h
+    - dataset: dataset2
+  start: 2003
+  end: 2020
