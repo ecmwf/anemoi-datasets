@@ -8,9 +8,9 @@
  Managing missing dates with anemoi-training
 *********************************************
 
-Anemoi-training has internal handling of missing dates, and will
+Anemoi-training has internal handling of missing dates and will
 calculate the valid date indices used during training using the
-``missing`` property. Consequenctly, when training a model with
+``missing`` property. Consequently, when training a model with
 anemoi-training, you should `not` specify a method to deal with missing
 dates in the dataloader configuration file.
 
@@ -26,14 +26,14 @@ result of a linear interpolation between the two closest dates:
 
    ds = open_dataset(dataset, fill_missing_dates="interpolate")
 
-Or you can select the copy the value of the closest date:
+Or you can copy the value of the closest date:
 
 .. code:: python
 
    ds = open_dataset(dataset, fill_missing_dates="closest")
 
-if the missing date is exactly in the middle of two dates, the library
-will choose that value of the largest date. You can change this behavior
+If the missing date is exactly in the middle of two dates, the library
+will choose the value of the largest date. You can change this behaviour
 by setting the ``closest`` parameter to ``'down'`` or ``'up'``
 explicitly.
 
@@ -45,7 +45,7 @@ If you iterate over a dataset that has missing dates, the library will
 raise a ``MissingDatesError`` exception if you attempt to access a
 missing date.
 
-This code below will throw an exception if ``ds[i]`` or ``ds[i+1]`` are
+The code below will throw an exception if ``ds[i]`` or ``ds[i+1]`` are
 missing dates. Because we iterate over the whole dataset, we are
 guaranteed to fail if there are any missing dates.
 
@@ -57,19 +57,19 @@ guaranteed to fail if there are any missing dates.
        ds = ds[i + 1] - ds[i]
 
 You can skip missing dates by setting the ``skip_missing_dates`` option
-to ``True``. You will have to also provide a hint about how you intent
+to ``True``. You will also have to provide a hint about how you intend
 to iterate over the dataset. The hint is given using the parameter
-``expected_access`` which takes a ``slice`` as argument.
+``expected_access``, which takes a ``slice`` as an argument.
 
-The library will check the slice against the missing dates and insure
+The library will check the slice against the missing dates and ensure
 that, when iterating over the dataset with that slice, no missing dates
 are accessed.
 
-The algorithm is illustrated in the picture below. The cells represents
+The algorithm is illustrated in the picture below. The cells represent
 the dates in the dataset, and the red cells are the missing dates. Given
 ``expected_access=slice(0, 2)``, the library will consider each group of
 matching dates that are not missing (in blue). The interval between each
-dates of a group is guaranteed to be constant across all groups.
+date of a group is guaranteed to be constant across all groups.
 
 .. image:: ../../_static/skip-missing.png
    :align: center
@@ -89,10 +89,10 @@ dates of a group is guaranteed to be constant across all groups.
 The code above will not raise an exception, even if there are missing
 dates. The ``slice(0, 2)`` represents the ``i`` and ``i+1`` indices in
 the loop (the Python :py:class:`slice` is similar to Python's
-:py:class:`range`, as the first bound in included while the last bound
+:py:class:`range`, as the first bound is included while the last bound
 is excluded).
 
-You can also provide a single integer to the ```expected_access``
+You can also provide a single integer to the ``expected_access``
 parameter. The two forms below are identical:
 
 .. code:: python
@@ -118,7 +118,7 @@ can force the concatenation by setting the ``fill_missing_gaps`` option:
    ds = open_dataset(concat=[dataset1, dataset2, ...], fill_missing_gaps=True)
 
 If there is a gap between the datasets, the library will fill the gap by
-creating a virtual dataset with only missing dates, and add it between
+creating a virtual dataset with only missing dates and adding it between
 the datasets to make the dates contiguous.
 
 ***********

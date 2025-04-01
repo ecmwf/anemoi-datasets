@@ -39,7 +39,7 @@ To use the common set of variables, use:
 
 .. code:: python
 
-   ds = open_dataset(concat=[dataset1, dataset2], ajust="variables")
+   ds = open_dataset(concat=[dataset1, dataset2], adjust="variables")
 
 To match all the attributes:
 

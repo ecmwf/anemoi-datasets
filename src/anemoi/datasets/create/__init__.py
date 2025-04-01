@@ -1215,7 +1215,7 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=True)
         self.tmp_storage.delete()
         self.tmp_storage.create()
-        LOG.info(f"Dataset {self.tmp_storage_path} additions initialized.")
+        LOG.info(f"Dataset {self.tmp_storage_path} additions initialised.")
 
     def cleanup(self) -> None:
         """Clean up the temporary storage."""

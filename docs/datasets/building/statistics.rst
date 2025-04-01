@@ -13,7 +13,7 @@ The statistics are stored in the :doc:`statistics attribute
 `minimum, maximum, mean, standard deviation`.
 
 Statistics about the tendencies are returned by calling the
-statistics_tendencies() method. .
+statistics_tendencies() method.
 
 For example:
 
@@ -21,9 +21,8 @@ For example:
 
    from anemoi.datasets import open_dataset
 
-   ds =
-   open_dataset("aifs-ea-an-oper-0001-mars-o48-2020-2021-6h-v1.zarr",
-   select="2t")
+   ds = open_dataset("aifs-ea-an-oper-0001-mars-o48-2020-2021-6h-v1.zarr",
+                     select="2t")
 
    ds.statistics
 
@@ -39,9 +38,9 @@ For example:
  Statistics dates range
 ************************
 
-By defaults, the statistics are not computed on the whole dataset, but
-on a subset of dates. This usually is done to avoid any data leakage
-from the validation and test sets to the training set.
+By default, the statistics are not computed on the whole dataset, but on
+a subset of dates. This is usually done to avoid any data leakage from
+the validation and test sets to the training set.
 
 The dates subset used to compute the statistics is defined using the
 following algorithm:
@@ -52,9 +51,9 @@ following algorithm:
    -  Otherwise, 80% of the dataset is used.
 
 You can override this behaviour by setting either the `start` parameter
-or the `end` parameters in the `statistics` config.
+or the `end` parameter in the `statistics` config.
 
-Example configuration gathering statistics from 2000 to 2020 :
+Example configuration gathering statistics from 2000 to 2020:
 
 .. code:: yaml
 
@@ -63,14 +62,14 @@ Example configuration gathering statistics from 2000 to 2020 :
        end: 2020
 
 Example configuration gathering statistics from the beginning of the
-dataset period to 2020 :
+dataset period to 2020:
 
 .. code:: yaml
 
    statistics:
        end: 2020
 
-Example configuration gathering statistics using only 2020 data :
+Example configuration gathering statistics using only 2020 data:
 
 .. code:: yaml
 

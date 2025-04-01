@@ -677,7 +677,7 @@ def _save_dataset(recipe: Dict[str, Any], zarr_path: str, n_workers: int = 1) ->
     # Workers return (date, subset) tuples.
     root = zarr.open(zarr_path, mode="a")
     initialize_zarr_store(root, full_ds, recipe)
-    print("Zarr store initialized.", flush=True)
+    print("Zarr store initialised.", flush=True)
 
     existing_dates = np.array(sorted(root["dates"]), dtype="datetime64[s]")
     all_dates = full_ds.dates

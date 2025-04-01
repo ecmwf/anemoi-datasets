@@ -18,7 +18,7 @@ To open a dataset, you can use the `open_dataset` function.
    print(ds.missing)
 
 You can then access the data in the dataset using the `ds` object as if
-it was a NumPy array.
+it were a NumPy array.
 
 .. code:: python
 

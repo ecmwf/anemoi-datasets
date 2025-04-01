@@ -6,7 +6,7 @@
 
 .. warning::
 
-   This is still a work in progress. Some of the filters may be renamed
+   This is still a work-in-progress. Some of the filters may be renamed
    later.
 
 Filters are used to modify the data or metadata in a dataset.

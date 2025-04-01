@@ -4,10 +4,10 @@
  cds
 #####
 
-For users outside of ECMWF organisation, it is possible to access ERA5
-data through the Copernicus Climate Data Store ``cdsapi`` instead.
+For users outside of the ECMWF organisation, it is possible to access
+ERA5 data through the Copernicus Climate Data Store ``cdsapi`` instead.
 
-The steps to setup a CDS API account are detailed `here
+The steps to set up a CDS API account are detailed `here
 <https://cds.climate.copernicus.eu/how-to-api>`_.
 
 The only difference with the previous MARS recipes is the addition of

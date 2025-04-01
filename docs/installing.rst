@@ -19,10 +19,10 @@ We require at least Python 3.9.
 Environments
 ============
 
-We currently do not provide a conda build of anemoi-datasets so the
+We currently do not provide a conda build of anemoi-datasets, so the
 suggested installation is through Python virtual environments.
 
-For linux the process to make and use a venv is as follows,
+For Linux, the process to make and use a venv is as follows:
 
 .. code:: bash
 
@@ -70,7 +70,7 @@ functionality:
  Development versions
 **********************
 
-To install the most recent development version, install from github:
+To install the most recent development version, install from GitHub:
 
 .. code::
 
@@ -81,5 +81,5 @@ To install the most recent development version, install from github:
 *********
 
 To run the test suite after installing anemoi-datasets, install (via
-pypi) `py.test <https://pytest.org>`__ and run ``pytest`` in the
+PyPI) `py.test <https://pytest.org>`__ and run ``pytest`` in the
 ``datasets`` directory of the anemoi-datasets repository.

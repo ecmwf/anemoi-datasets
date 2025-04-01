@@ -11,9 +11,9 @@ The following functions will help you with that.
 
    When iterating over several datasets, most of the functions and
    properties of the dataset object returned by :py:func:`open_dataset`
-   will not return a :py:class:`tuple` instead of a single value. The
-   tuple will contain the values of the corresponding datasets. There
-   are a few exceptions, such as `dates` or `missing`.
+   will return a :py:class:`tuple` instead of a single value. The tuple
+   will contain the values of the corresponding datasets. There are a
+   few exceptions, such as `dates` or `missing`.
 
 **************
  x=..., y=...
@@ -70,10 +70,10 @@ The dataset can then be indexed as follows:
 .. note::
 
    The `zip` option is similar to Python's :py:func:`zip` function. The
-   main difference the datasets are checked to be compatible before
-   being combined (same ranges of dates, same frequency, etc.). Also,
-   Python's :py:func:`zip` only allows iteration, while the `zip` option
-   allows indexing as well.
+   main difference is that the datasets are checked to be compatible
+   before being combined (same ranges of dates, same frequency, etc.).
+   Also, Python's :py:func:`zip` only allows iteration, while the `zip`
+   option allows indexing as well.
 
 ****************
  Combining both

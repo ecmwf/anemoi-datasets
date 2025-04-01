@@ -54,7 +54,7 @@ concurrent writes.
 
 Once you have loaded all the parts, you can finalise the dataset with
 the `finalise` command. This will write the metadata and the attributes
-to the dataset, and consolidate the statistics and cleanup some
+to the dataset, and consolidate the statistics and clean up some
 temporary files.
 
 .. code:: bash
