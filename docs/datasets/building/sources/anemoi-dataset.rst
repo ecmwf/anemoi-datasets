@@ -14,6 +14,6 @@ An anemoi-dataset can be a source for a dataset:
 .. literalinclude:: yaml/anemoi-dataset.yaml
    :language: yaml
 
-The parameters are the same as the ones used in the ``open_dataset``
+The parameters are the same as those used in the ``open_dataset``
 function, which allows you to subset and combine datasets. See
 :ref:`opening-datasets` for more information.

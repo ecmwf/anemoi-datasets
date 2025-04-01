@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 class ViewCacheArray:
     """A class that provides a caching mechanism for writing to a NumPy-like array.
 
-    The is initialized with a NumPy-like array, a shape and a list to reindex the first
+    The is initialised with a NumPy-like array, a shape and a list to reindex the first
     dimension. The array is used to store the final data, while the cache is used to
     temporarily store the data before flushing it to the array.
 

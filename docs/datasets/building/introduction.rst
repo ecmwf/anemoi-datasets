@@ -11,7 +11,7 @@ fields as well as the operations to perform on them, before they are
 written to a zarr file. The input of the process is a range of dates and
 some options to control the layout of the output. Statistics will be
 computed as the dataset is built, and stored in the metadata, with other
-information such as the the locations of the grid points, the list of
+information such as the locations of the grid points, the list of
 variables, etc.
 
 .. figure:: ../../_static/schemas/recipe.png
@@ -27,7 +27,7 @@ date
    not just a date. A training dataset covers a continuous range of
    dates with a given frequency. Missing dates are still part of the
    dataset, but missing data are marked as such using NaNs. Dates are
-   always in UTC, and refer to date at which the data is valid. For
+   always in UTC, and refer to the date at which the data is valid. For
    accumulations and fluxes, that would be the end of the accumulation
    period.
 
@@ -44,9 +44,9 @@ field
 
 source
    The `source` is a software component that, given a list of dates and
-   variables will return the corresponding fields. An example of source
-   is ECMWF's MARS archive, a collection of GRIB or NetCDF files, a
-   database, etc. See :ref:`sources` for more information.
+   variables, will return the corresponding fields. An example of a
+   source is ECMWF's MARS archive, a collection of GRIB or NetCDF files,
+   a database, etc. See :ref:`sources` for more information.
 
 filter
    A `filter` is a software component that takes as input the output of
@@ -69,13 +69,13 @@ join
 pipe
    The pipe is the process of transforming fields using filters. The
    first step of a pipe is typically a source, a join, or another pipe.
-   This can subsequently followed by more filters.
+   This can subsequently be followed by more filters.
 
 concat
    The concatenation is the process of combining different sets of
    operations that handle different dates. This is typically used to
    build a dataset that spans several years, when several sources are
-   involved, each providing data for different period.
+   involved, each providing data for a different period.
 
 Each operation is considered as a :ref:`source <sources>`, therefore
 operations can be combined to build complex datasets.

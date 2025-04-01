@@ -2,7 +2,7 @@
  netcdf
 ########
 
-In the examples below we explain how to create an anemoi dataset from
+In the examples below, we explain how to create an anemoi dataset from
 one or more netCDF files.
 
 .. literalinclude:: yaml/netcdf.yaml

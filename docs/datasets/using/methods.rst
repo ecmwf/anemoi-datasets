@@ -10,7 +10,7 @@ in more detail.
 .. warning::
 
    All methods and attributes will take into account any subsetting,
-   selecting or combining used to construct the final dataset, with the
+   selecting, or combining used to construct the final dataset, with the
    exception of ``statistics``, which will return the values of the
    first dataset encountered. See :ref:`selecting-statistics` for more
    details.
@@ -78,7 +78,7 @@ dates:
    The dataset's dates, as a NumPy vector of datetime64_ objects.
 
 frequency:
-   The dataset's frequency (i.e. the delta between two consecutive
+   The dataset's frequency (i.e., the delta between two consecutive
    dates) in hours.
 
 latitudes:

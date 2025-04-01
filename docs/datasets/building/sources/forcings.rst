@@ -8,8 +8,8 @@ The purpose of `forcings` is to provide fields with values that only
 depend on the grid cell and/or the time.
 
 Because the source needs to generate fields on the same grids as the
-other, it requires a template field. This is provided in the recipe with
-the ``template`` keyword:
+others, it requires a template field. This is provided in the recipe
+with the ``template`` keyword:
 
 .. literalinclude:: yaml/forcings.yaml
    :language: yaml
@@ -17,19 +17,19 @@ the ``template`` keyword:
 .. _yaml-reference:
 
 The value ``${input.join.0.source1}`` is the "path" to the first source,
-starting from the root of the recipe. The path is composed of the of the
-nodes in the recipe, separated by dots. If a node contains a list, the
-index of the next node is added after the node name, starting from 0.
-This is called a `reference`.
+starting from the root of the recipe. The path is composed of the nodes
+in the recipe, separated by dots. If a node contains a list, the index
+of the next node is added after the node name, starting from 0. This is
+called a `reference`.
 
 .. warning::
 
-   If you use the :ref:`concat <building-concat>` contruct to have
-   different inputs for different time ranges, the template field point
+   If you use the :ref:`concat <building-concat>` construct to have
+   different inputs for different time ranges, the template field points
    to a source in the same block of the concat where the `forcing` is
    mentioned.
 
-The is a mean to provide the model with with space and time information
+This is a means to provide the model with space and time information
 during training and inference.
 
 The following fields are available:
@@ -53,8 +53,8 @@ sin_latitude
 
 longitude
    Each grid point has the value of its longitude in degrees. Currently,
-   the longitude are not normalised and the values are the ones provided
-   by the source used as template.
+   the longitude is not normalised, and the values are the ones provided
+   by the source used as a template.
 
    Range of values: :math:`[-180, 360)`
 
@@ -72,29 +72,29 @@ sin_longitude
 
 ecef_x
    Each grid point has the value of the **x** coordinate of the
-   `Earth-Centered, Earth-Fixed (ECEF) coordinate system <ECEF>`_. The
+   `Earth-Centred, Earth-Fixed (ECEF) coordinate system <ECEF>`_. The
    Earth is assumed to be a perfect sphere with a radius of 1.
 
    Range of values: :math:`[-1, 1]`
 
 ecef_y
    Each grid point has the value of the **y** coordinate of the
-   `Earth-Centered, Earth-Fixed (ECEF) coordinate system <ECEF>`_. The
+   `Earth-Centred, Earth-Fixed (ECEF) coordinate system <ECEF>`_. The
    Earth is assumed to be a perfect sphere with a radius of 1.
 
    Range of values: :math:`[-1, 1]`
 
 ecef_z
    Each grid point has the value of the **z** coordinate of the
-   `Earth-Centered, Earth-Fixed (ECEF) coordinate system <ECEF>`_. The
+   `Earth-Centred, Earth-Fixed (ECEF) coordinate system <ECEF>`_. The
    Earth is assumed to be a perfect sphere with a radius of 1.
 
    Range of values: :math:`[-1, 1]`
 
 julian_day
-   The Julian day is the fractional number of days since the 1st or
+   The Julian day is the fractional number of days since the 1st of
    January at 00:00 of the current year. For example, the Julian day of
-   1st or January at 12:00 is 0.5. Every grid point has the same value
+   1st of January at 12:00 is 0.5. Every grid point has the same value
    of the Julian day at the given date.
 
    Range of values: :math:`[0, 365)` on a non-leap year and :math:`[0,
@@ -155,4 +155,4 @@ toa_incident_solar_radiation
 
 .. _earthkit.meteo: https://github.com/ecmwf/earthkit-meteo/blob/74654e0b188e5a201d8268e93376246c925e3172/earthkit/meteo/solar/__init__.py#L49C4-L49C27
 
-.. _ecef: https://en.wikipedia.org/wiki/Earth-centered,_Earth-fixed_coordinate_system
+.. _ecef: https://en.wikipedia.org/wiki/Earth-centred,_Earth-fixed_coordinate_system

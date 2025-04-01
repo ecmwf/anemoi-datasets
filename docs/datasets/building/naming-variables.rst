@@ -1,11 +1,11 @@
 .. _naming-variables:
 
 ##################
- Naming variables
+ Naming Variables
 ##################
 
 ***************
- rename filter
+ Rename Filter
 ***************
 
 The rename filter is used to rename variables in a dataset.
@@ -13,7 +13,7 @@ The rename filter is used to rename variables in a dataset.
 .. _remapping_option:
 
 ******************
- remapping option
+ Remapping Option
 ******************
 
 TODO.

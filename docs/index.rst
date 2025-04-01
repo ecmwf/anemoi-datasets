@@ -6,9 +6,9 @@
 
 .. warning::
 
-   This documentation is work in progress.
+   This documentation is a work in progress.
 
-An *Anemoi dataset* is a thin wrapper around a zarr_ store that is
+An *Anemoi dataset* is a thin wrapper around a Zarr_ store that is
 optimised for training data-driven weather forecasting models.
 anemoi-datasets are organised in such a way that I/O operations are
 minimised. It is one of the packages within the :ref:`anemoi framework
@@ -19,11 +19,11 @@ minimised. It is one of the packages within the :ref:`anemoi framework
 **************
 
 *Anemoi* is a framework for developing machine learning weather
-forecasting models. It comprises of components or packages for preparing
-training datasets, conducting ML model training and a registry for
+forecasting models. It comprises components or packages for preparing
+training datasets, conducting ML model training, and a registry for
 datasets and trained models. *Anemoi* provides tools for operational
 inference, including interfacing to verification software. As a
-framework it seeks to handle many of the complexities that
+framework, it seeks to handle many of the complexities that
 meteorological organisations will share, allowing them to easily train
 models from existing recipes but with their own data.
 
@@ -33,8 +33,8 @@ models from existing recipes but with their own data.
 
 The anemoi-datasets package provides a structured approach to preparing
 datasets for data-driven weather forecasting models, particularly those
-using deep learning. By optimizing data access patterns, anemoi-datasets
-minimizes I/O operations, improving efficiency when training machine
+using deep learning. By optimising data access patterns, anemoi-datasets
+minimises I/O operations, improving efficiency when training machine
 learning models.
 
 anemoi-datasets offers a simple high-level interface based on a YAML
@@ -52,7 +52,7 @@ The package allows you to:
 
 The dataset definition is specified in a YAML file, which is then used
 to generate the dataset using the command-line tool :ref:`create command
-<create_command>` The command-line tool also allow users to inspect
+<create_command>`. The command-line tool also allows users to inspect
 datasets for compatibility with machine learning models.
 
 In the rest of this documentation, you will learn how to configure and
@@ -83,7 +83,7 @@ Get more information in the :ref:`installing <installing>` section.
    cd anemoi-datasets
    pip install .[dev]
 
-You may also have to install pandoc on MacOS:
+You may also have to install pandoc on macOS:
 
 .. code:: bash
 
@@ -169,7 +169,7 @@ You may also have to install pandoc on MacOS:
    :maxdepth: 1
    :glob:
    :hidden:
-   :caption: Api Reference
+   :caption: API Reference
 
    modules/*
 

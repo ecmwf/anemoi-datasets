@@ -1,5 +1,5 @@
 ######################
- xarray-based-sources
+ xarray-based Sources
 ######################
 
 More generally, you can specify any valid xarray.open_dataset_ arguments

@@ -20,7 +20,7 @@ Select '2t' and 'tp' in that order:
    ds = open_dataset(dataset, select=["2t", "tp"])
 
 Select '2t' and 'tp', but preserve the order in which they are in the
-dataset
+dataset:
 
 .. code:: python
 
@@ -46,7 +46,7 @@ You can also drop some variables:
 
 and reorder them:
 
-... using a list
+... using a list:
 
 .. code:: python
 
@@ -55,7 +55,7 @@ and reorder them:
        reorder=["2t", "msl", "sp", "10u", "10v"],
    )
 
-... or using a dictionary
+... or using a dictionary:
 
 .. code:: python
 
@@ -120,18 +120,18 @@ Select a single element:
 *********
 
 When combining datasets, you may want to rescale the variables so that
-their have matching units. This can be done with the `rescale` option:
+they have matching units. This can be done with the `rescale` option:
 
 .. code:: python
 
-   # Scale and offset can be passed as a dictionnary...
+   # Scale and offset can be passed as a dictionary...
 
    ds = open_dataset(
        dataset,
        rescale={"2t": {"scale": 1.0, "offset": -273.15}},
    )
 
-   # ... a tuple of floating points ....
+   # ... a tuple of floating points ...
 
    ds = open_dataset(
        dataset,
@@ -159,8 +159,8 @@ The `rescale` option will also rescale the statistics. The rescaling is
 currently limited to simple linear conversions.
 
 When provided with units, the `rescale` option uses the cfunits_ package
-find the `scale` and `offset` attributes of the units and uses these to
-rescale the data.
+to find the `scale` and `offset` attributes of the units and uses these
+to rescale the data.
 
 .. warning::
 
