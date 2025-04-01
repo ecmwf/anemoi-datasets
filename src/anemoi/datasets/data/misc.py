@@ -108,7 +108,10 @@ def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) ->
 
 
 def _as_date(
-    d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[np.datetime64], last: bool
+    d: Union[int, str, np.datetime64, datetime.date],
+    dates: NDArray[np.datetime64],
+    last: bool,
+    frequency: Optional[datetime.timedelta] = None,
 ) -> np.datetime64:
     """Convert a date to a numpy datetime64 object, rounding to the nearest date in a list of dates.
 
@@ -120,6 +123,8 @@ def _as_date(
         The list of dates.
     last : bool
         Whether to round to the last date.
+    frequency : Optional[datetime.timedelta]
+        The frequency of the dataset.
 
     Returns
     -------
@@ -142,10 +147,16 @@ def _as_date(
         pass
 
     if isinstance(d, int):
+        delta = frequency
+        if delta is None:
+            delta = np.timedelta64(1, "s")
+        delta = np.timedelta64(delta, 's')
+
         if len(str(d)) == 4:
             year = d
             if last:
-                return _as_date(np.datetime64(f"{year:04}-12-31T23:59:59"), dates, last)
+                npdate = np.datetime64(f"{year:04}-01-01T00:00:00")
+                return _as_date(npdate - delta, dates, last)
             else:
                 return _as_date(np.datetime64(f"{year:04}-01-01T00:00:00"), dates, last)
 
@@ -153,8 +164,8 @@ def _as_date(
             year = d // 100
             month = d % 100
             if last:
-                _, last_day = calendar.monthrange(year, month)
-                return _as_date(np.datetime64(f"{year:04}-{month:02}-{last_day:02}T23:59:59"), dates, last)
+                npdate = np.datetime64(f"{year:04}-{month:02}-01T00:00:00")
+                return _as_date(npdate - delta, dates, last)
             else:
                 return _as_date(np.datetime64(f"{year:04}-{month:02}-01T00:00:00"), dates, last)
 
@@ -163,7 +174,8 @@ def _as_date(
             month = (d % 10000) // 100
             day = d % 100
             if last:
-                return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T23:59:59"), dates, last)
+                npdate = np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00")
+                return _as_date(npdate - delta, dates, last)
             else:
                 return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00"), dates, last)
 
@@ -230,7 +242,11 @@ def _as_date(
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
 
-def as_first_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[np.datetime64]) -> np.datetime64:
+def as_first_date(
+    d: Union[int, str, np.datetime64, datetime.date],
+    dates: NDArray[np.datetime64],
+    frequency: Optional[datetime.timedelta] = None,
+) -> np.datetime64:
     """Convert a date to the first date in a list of dates.
 
     Parameters
@@ -239,16 +255,22 @@ def as_first_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArr
         The date to convert.
     dates : NDArray[np.datetime64]
         The list of dates.
+    frequency : Optional[datetime.timedelta]
+        The frequency of the dataset.
 
     Returns
     -------
     np.datetime64
         The first date.
     """
-    return _as_date(d, dates, last=False)
+    return _as_date(d, dates, last=False, frequency=frequency)
 
 
-def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArray[np.datetime64]) -> np.datetime64:
+def as_last_date(
+    d: Union[int, str, np.datetime64, datetime.date],
+    dates: NDArray[np.datetime64],
+    frequency: Optional[datetime.timedelta] = None,
+) -> np.datetime64:
     """Convert a date to the last date in a list of dates.
 
     Parameters
@@ -257,13 +279,15 @@ def as_last_date(d: Union[int, str, np.datetime64, datetime.date], dates: NDArra
         The date to convert.
     dates : NDArray[np.datetime64]
         The list of dates.
+    frequency : Optional[datetime.timedelta]
+        The frequency of the dataset.
 
     Returns
     -------
     np.datetime64
         The last date.
     """
-    return _as_date(d, dates, last=True)
+    return _as_date(d, dates, last=True, frequency=frequency)
 
 
 def _concat_or_join(datasets: List["Dataset"], kwargs: Dict[str, Any]) -> Tuple["Dataset", Dict[str, Any]]:

@@ -60,13 +60,13 @@ class Padded(Forwards):
             # default is to start at the first date
             start = dataset.dates[0]
         else:
-            start = as_first_date(start, None)
+            start = as_first_date(start, None, frequency=self._frequency)
 
         if end is None:
             # default is to end at the last date
             end = dataset.dates[-1]
         else:
-            end = as_last_date(end, None)
+            end = as_last_date(end, None, frequency=self._frequency)
 
         assert isinstance(dataset.dates[0], np.datetime64), (dataset.dates[0], type(dataset.dates[0]))
 
@@ -79,14 +79,18 @@ class Padded(Forwards):
 
         timedelta = np.array([frequency], dtype="timedelta64[s]")[0]
 
+        parts = []
         before_end = min(end + timedelta, first)
         before_part = np.arange(start, before_end, timedelta)
         if start < first:
             # if the start date is before the first date of the dataset, there is a "before" part
             assert len(before_part) > 0, (start, first, before_end)
-        if start == first:
+            parts.append(before_part)
+            self._before = len(before_part)
+        if start >= first:
             # if the start date is the first date of the dataset, there is no "before" part
             assert len(before_part) == 0, (start, first, before_end)
+            self._before = 0
 
         # if the start date is before the last date of the dataset
         # and the end date is after the first date of the dataset
@@ -96,19 +100,24 @@ class Padded(Forwards):
             inside_end = min(end, last)
             self.dataset = dataset._subset(start=inside_start, end=inside_end)
             inside_part = self.dataset.dates
+            parts.append(inside_part)
+            self._inside = len(inside_part)
+        else:
+            self.dataset = dataset # still needed to get the empty_item
+            self._inside = 0
 
-        after_start = max(start, last) + timedelta
+        after_start = max(start, last + timedelta)
         after_part = np.arange(after_start, end + timedelta, timedelta)
         if end > last:
             # if the end date is after the last date of the dataset, there is an "after" part
             assert len(after_part) > 0, (end, last, after_start)
-        if end == last:
+            parts.append(after_part)
+            self._after = len(after_part)
+        if end <= last:
             assert len(after_part) == 0, (end, last, after_start)
+            self._after = 0
 
-        self._dates = np.hstack([before_part, inside_part, after_part])
-        self._before = len(before_part)
-        self._inside = len(inside_part)
-        self._after = len(after_part)
+        self._dates = np.hstack(parts)
 
         assert len(self._dates) == self._before + self._inside + self._after, (
             len(self._dates),
