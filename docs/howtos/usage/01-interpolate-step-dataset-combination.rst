@@ -1,8 +1,8 @@
 .. _usage_interpolate_step_dataset_combination:
 
-########################################################
- # Combine datasets with different timestep frequencies
-########################################################
+######################################################
+ Combine datasets with different timestep frequencies
+######################################################
 
 Here we explain how to combine two existing datasets with different
 timestep frequencies. In this example we consider two datasets :
@@ -20,7 +20,8 @@ smaller timestep dataset to the larger timestep dataset.
 In this case we will use the `interpolate_frequency` option to bring
 `dataset2` to the 3h timestep of dataset1.
 
-.. literalinclude:: yaml/interpolate_frequency
+.. literalinclude:: yaml/interpolate_frequency.zaml
+   :language: yaml
 
 The `adjust_dates` is in case the end or start dates do not exactly
 match.
@@ -32,4 +33,5 @@ match.
 This case is straightforward, we will can just specify the required 24h
 frequency for datset1.
 
-.. literalinclude:: yaml/sample
+.. literalinclude:: yaml/sample.yaml
+   :language: yaml
