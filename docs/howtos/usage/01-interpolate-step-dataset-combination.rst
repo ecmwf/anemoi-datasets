@@ -42,7 +42,7 @@ In this case we will use the ``interpolate_frequency`` option to bring
 
 or in the config file
 
-.. literalinclude:: yaml/interpolate_frequencies.yaml
+.. literalinclude:: yaml/interpolate.yaml
    :language: yaml
 
 The ``adjust`` option is in case the end or start dates do not exactly
