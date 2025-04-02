@@ -26,7 +26,7 @@ good starting point.
  Using anemoi-datasets
 ***********************
 
--  :ref:`usage-interpolate-step-dataset-combination`
+-  :ref:`usage_interpolate_step_dataset_combination`
 
 .. toctree::
    :maxdepth: 1
