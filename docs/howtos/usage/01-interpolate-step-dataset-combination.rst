@@ -6,16 +6,17 @@
 
 Here we explain how to combine two existing datasets with different
 timestep frequencies. In this example we consider two datasets :
-``dataset1`` with a te,mporal frequency of 3h and ``dataset2`` with a
-temporal frequency of 24h. The goal is to combine the two datasets into
-a single dataset with a temporal frequency of either both 3h or 24h.
+``dataset-3h`` with an inherent temporal frequency of 3h and
+``dataset-24h`` with an inherent temporal frequency of 24h. The goal is
+to combine the two datasets into a dataset with a temporal frequency of
+either 3h or 24h.
 
 *********************************
  Interpolate to higher frequency
 *********************************
 
 In this case we will use the ``interpolate_frequency`` option to bring
-``dataset2`` to the 3h timestep of dataset1.
+``dataset-24h`` to the 3h timestep of ``dataset-3h``.
 
 .. code:: python
 
@@ -25,11 +26,11 @@ In this case we will use the ``interpolate_frequency`` option to bring
       dataset={
          "join": [
                {
-                  "dataset": "dataset1",
+                  "dataset": "dataset-3h",
                   "frequency": "3h",
                },
                {
-                  "dataset": "dataset2",
+                  "dataset": "dataset-24h",
                   "interpolate_frequency": "3h",
                },
          ],
@@ -52,7 +53,7 @@ match.
 ***************************
 
 This case is straightforward, we will can just specify the required 24h
-frequency for datset1.
+frequency for ``dataset-3h``.
 
 .. code:: python
 
@@ -62,11 +63,11 @@ frequency for datset1.
       dataset={
          "join": [
                {
-                  "dataset": "dataset1",
+                  "dataset": "dataset-3h",
                   "frequency": "24h",
                },
                {
-                  "dataset": "dataset2",
+                  "dataset": "dataset-24h",
                   "frequency": "24h",
                },
          ],

@@ -1,8 +1,8 @@
 dataset:
   join:
-  - dataset: dataset1
+  - dataset: dataset-3h
     frequency: 3h
-  - dataset: dataset2
+  - dataset: dataset-24h
     interpolate_frequency: 3h
   adjust: dates
 start: 2004-01-01
