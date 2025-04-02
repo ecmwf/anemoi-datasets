@@ -8,10 +8,7 @@ Here we explain how to combine two existing datasets with different
 timestep frequencies. In this example we consider two datasets :
 ``dataset1`` with a te,mporal frequency of 3h and ``dataset2`` with a
 temporal frequency of 24h. The goal is to combine the two datasets into
-a single dataset with a temporal frequency of 3h or 24h. We consider two
-cases, in case one we would like to bring the larger timestep dataset to
-the smaller timestep dataset, in case two we would like to bring the
-smaller timestep dataset to the larger timestep dataset.
+a single dataset with a temporal frequency of either both 3h or 24h.
 
 *********************************
  Interpolate to higher frequency
@@ -44,7 +41,7 @@ In this case we will use the ``interpolate_frequency`` option to bring
 
 or in the config file
 
-.. literalinclude:: yaml/interpolate_frequencies.zaml
+.. literalinclude:: yaml/interpolate_frequencies.yaml
    :language: yaml
 
 The ``adjust`` option is in case the end or start dates do not exactly
