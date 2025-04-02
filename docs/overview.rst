@@ -8,7 +8,7 @@
 training data-driven weather forecasting models efficiently within the
 anemoi framework. By focusing on a specific use-case, anemoi-datasets
 can make assumptions about the dominant access pattern of the data and
-can be optimized to minimize the number of I/O operations – improving
+can be optimised to minimise the number of I/O operations – improving
 data throughput for this task. Under the hood, anemoi datasets are
 implemented as a thin wrapper around a Zarr store. However, we recommend
 that users do not rely on this feature as the underlying storage format
@@ -18,7 +18,7 @@ In practice, anemoi datasets are copies of existing datasets
 (reanalyses, forecasts, climate simulations, etc.) that have been
 processed to be used as input for machine learning models based on a
 recipe. For example, let us assume we want to train a data-driven model
-with a resolution of 1° spatial resolution and 6-hour timestep based on
+with a resolution of 1° spatial resolution and 6-hour timesteps based on
 a subset of variables from the ERA5 reanalysis. To accommodate this, we
 will create an anemoi-dataset by interpolating the chosen ERA5 variables
 to the desired resolution (1°) and at the right frequency (6h or
@@ -50,9 +50,9 @@ The array has the following dimensions:
    :alt: Data layout
    :align: center
 
-The first dimension is the time dimension, the second dimension are the
-variables (e.g. temperature, pressure, etc), the third dimension is the
-ensemble, and fourth dimension are the grid points values.
+The first dimension is the time dimension, the second dimension is the
+variables (e.g., temperature, pressure, etc.), the third dimension is
+the ensemble, and the fourth dimension is the grid points values.
 
 *******************************
  Chunking of an anemoi dataset

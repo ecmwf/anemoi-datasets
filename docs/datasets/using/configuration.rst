@@ -19,8 +19,8 @@ Then, the name passed to ``open_dataset`` is used to look for a possible
 path or URL:
 
 -  If the name is listed in the ``[datasets.named]``, the corresponding
-   path is used
--  Otherwise suffix ``.zarr`` is added to the name and the file is
+   path is used.
+-  Otherwise, the suffix ``.zarr`` is added to the name, and the file is
    searched at every location listed in the ``path`` list.
 
 See :ref:`miscellaneous` to modify the list of named datasets and the

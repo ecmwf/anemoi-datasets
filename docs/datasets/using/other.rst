@@ -20,8 +20,8 @@
 The `chain` operation is used to combine multiple datasets into a single
 dataset. The datasets are combined by concatenating the data arrays
 along the first dimension (dates). This is similar to the :ref:`concat`
-operation, but no checks are done to see if the datasets are compatible,
-this means that the shape of the arrays returned when iterating or
+operation, but no checks are done to see if the datasets are compatible.
+This means that the shape of the arrays returned when iterating or
 indexing may be different.
 
 This operation is identical to Python's :py:func:`itertools.chain`
