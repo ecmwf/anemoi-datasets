@@ -75,7 +75,7 @@ index file. This file contains the list of all the GRIB messages in the
 files and allows quick access to the messages without having to read the
 entire file. The index file is created using the `grib-index`
 :ref:`command <grib-index_command>` and uses the `grib-index`
-:ref:`source <grib-source_command>`.
+:ref:`source <grib-index_source>`.
 
 .. code:: bash
 

@@ -29,8 +29,6 @@ class GribIndexCmd(Command):
             The command parser to which arguments are added.
         """
 
-        from anemoi.datasets.create.sources.grib_index import KEYS
-
         command_parser.add_argument(
             "--index",
             help="Path to the index file to create or update",
@@ -52,7 +50,6 @@ class GribIndexCmd(Command):
         command_parser.add_argument(
             "--keys",
             help="GRIB keys to add to the index, separated by commas. If the list starts with a +, the keys are added to default list.",
-            default=",".join(KEYS),
         )
 
         command_parser.add_argument(
