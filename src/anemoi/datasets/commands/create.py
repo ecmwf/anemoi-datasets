@@ -14,9 +14,7 @@ LOG = logging.getLogger(__name__)
 
 
 def task(what, options, *args, **kwargs):
-    """
-    Make sure `import Creator` is done in the sub-processes, and not in the main one.
-    """
+    """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
 
     now = datetime.datetime.now()
     LOG.info(f"Task {what}({args},{kwargs}) starting")

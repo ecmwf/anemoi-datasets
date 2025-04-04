@@ -314,7 +314,7 @@ class Subset(Forward):
     def getitem(self, i):
         i = self._indices[i]
         return self.forward[i]
-    
+
     def supporting_arrays(self):
         return dict()
 
@@ -390,7 +390,7 @@ class Padded(Forward):
             # print(f"❌Requested {i} {self.dates[i]}: No data in {self.forward} ")
             return self.empty_item()
         j = self._indices[i]
-        #print(f"  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}")
+        # print(f"  Padding from {i} {self.dates[i]} -> {j} {self.forward.dates[j]}")
         return self.forward[j]
 
     def tree(self):
@@ -496,7 +496,7 @@ class Observations(ObservationsBase):
         #    # this should get directly the numpy array
         #    data = self.forward.get_data_from_dates_interval(start, end)
         data = self.forward[i]
-        #print(f"      reading from {self.path} {i} {self.dates[i]}")
+        # print(f"      reading from {self.path} {i} {self.dates[i]}")
 
         ##########################
         data = data.numpy().astype(np.float32)
