@@ -8,22 +8,17 @@
 # nor does it submit to any jurisdiction.
 
 
-import pytest
 import xarray as xr
+from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
 
-try:
-    import adlfs  # noqa: F401
-    import planetary_computer  # noqa: F401
 
-    PLANETARY_COMPUTER = True
-except ImportError:
-    PLANETARY_COMPUTER = False
-
-
+@skip_if_offline
+@skip_missing_packages("gcsfs")
 def test_arco_era5_1() -> None:
     """Test loading and validating the arco_era5_1 dataset."""
     ds = xr.open_zarr(
@@ -41,6 +36,8 @@ def test_arco_era5_1() -> None:
     )
 
 
+@skip_if_offline
+@skip_missing_packages("gcsfs")
 def test_arco_era5_2() -> None:
     """Test loading and validating the arco_era5_2 dataset."""
     ds = xr.open_zarr(
@@ -58,6 +55,8 @@ def test_arco_era5_2() -> None:
     )
 
 
+@skip_if_offline
+@skip_missing_packages("gcsfs")
 def test_weatherbench() -> None:
     """Test loading and validating the weatherbench dataset."""
     ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
@@ -85,6 +84,8 @@ def test_weatherbench() -> None:
     )
 
 
+@skip_if_offline
+@skip_missing_packages("aiohttp")
 def test_inca_one_date() -> None:
     """Test loading and validating the inca_one_date dataset."""
     url = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/example-inca-one-date.zarr"
@@ -103,6 +104,8 @@ def test_inca_one_date() -> None:
     print(fs[0].datetime())
 
 
+@skip_if_offline
+@skip_missing_packages("gcsfs")
 def test_noaa_replay() -> None:
     """Test loading and validating the noaa_replay dataset."""
     ds = xr.open_zarr(
@@ -130,7 +133,8 @@ def test_noaa_replay() -> None:
     )
 
 
-@pytest.mark.skipif(not PLANETARY_COMPUTER, reason="packages adlfs and/or planetary_computer not installed")
+@skip_if_offline
+@skip_missing_packages("planetary_computer", "adlfs")
 def test_planetary_computer_conus404() -> None:
     """Test loading and validating the planetary_computer_conus404 dataset."""
     url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
@@ -157,8 +161,6 @@ def test_planetary_computer_conus404() -> None:
 
 
 if __name__ == "__main__":
-    # test_weatherbench()
-    # exit()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")
