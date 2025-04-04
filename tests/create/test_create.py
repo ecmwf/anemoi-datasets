@@ -20,6 +20,7 @@ import numpy as np
 import pytest
 from anemoi.utils.testing import get_test_archive
 from anemoi.utils.testing import get_test_data
+from anemoi.utils.testing import skip_if_offline
 from earthkit.data import from_source as original_from_source
 
 from anemoi.datasets import open_dataset
@@ -130,6 +131,8 @@ class LoadSource:
 
         try:
             return original_from_source("file", get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+        except RuntimeError:
+            raise  # If offline
         except Exception:
             self.get_data(args, kwargs, name)
 
@@ -367,6 +370,7 @@ class Comparer:
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
+@skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name: str) -> None:

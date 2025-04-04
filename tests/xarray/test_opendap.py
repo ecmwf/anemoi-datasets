@@ -7,18 +7,17 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import os
 
-import pytest
 import xarray as xr
+from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
 
 
-# when the opendap server is under maintainance, this test will fail
-# it is skipped by default, and is only run when the SLOW_TESTS env var is set
-@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
+@skip_if_offline
+@skip_slow_tests
 def test_opendap() -> None:
     """Test loading and validating the opendap dataset."""
     ds = xr.open_dataset(

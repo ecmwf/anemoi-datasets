@@ -10,14 +10,16 @@
 import logging
 import os
 
-import pytest
 from anemoi.utils.testing import get_test_data
-from anemoi.utils.testing import packages_installed
+from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import skip_missing_packages
+from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.testing import create_dataset
 
 
+@skip_if_offline
 def test_grib() -> None:
     """Test the creation of a dataset from GRIB files.
 
@@ -48,6 +50,7 @@ def test_grib() -> None:
     assert ds.shape == (8, 12, 1, 162)
 
 
+@skip_if_offline
 def test_netcdf() -> None:
     """Test for NetCDF files.
 
@@ -70,10 +73,7 @@ def test_netcdf() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
-@pytest.mark.skipif(
-    not packages_installed("fstd", "rpnpy.librmn"),
-    reason="Package 'fstd' is not installed",
-)
+@skip_missing_packages("fstd", "rpnpy.librmn")
 def test_eccs_fstd() -> None:
     """Test for 'fstd' files from ECCC."""
     # See https://github.com/neishm/fstd2nc
@@ -95,10 +95,9 @@ def test_eccs_fstd() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
-@pytest.mark.skipif(
-    not packages_installed("kerchunk", "s3fs", "h5py"),
-    reason="Package 'kerchunk', 's3fs' or 'h5py' is not installed",
-)
+@skip_slow_tests
+@skip_if_offline
+@skip_missing_packages("kerchunk", "s3fs", "h5py")
 def test_kerchunk() -> None:
     """Test for Kerchunk JSON files.
 

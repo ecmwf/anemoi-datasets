@@ -8,11 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
-import os
-
 import pytest
 import requests
 import xarray as xr
+from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
@@ -60,10 +60,9 @@ def _test_samples(n: int, check_skip: bool = True) -> None:
     assert_field_list(fs, **kwargs)
 
 
+@skip_if_offline
+@skip_slow_tests
 @pytest.mark.parametrize("n", SAMPLES)
-# it would be nice to use a @pytest.mark.slow and configure this globally
-# this could be done when refactoring the tests, and setting up canary/nightly builds
-@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 def test_samples(n: int) -> None:
     """Parametrized test for sample datasets.
 
