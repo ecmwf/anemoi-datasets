@@ -27,6 +27,8 @@ class Verify(Command):
         command_parser : Any
             The command parser.
         """
+
+        command_parser.add_argument("--callable", metavar="DATASET", default="anemoi.datasets.open_dataset")
         command_parser.add_argument("path", metavar="DATASET")
 
     def run(self, args: Any) -> None:
@@ -37,7 +39,12 @@ class Verify(Command):
         args : Any
             The command arguments.
         """
-        pass
+
+        package = args.callable.split(".")
+        module = __import__(".".join(package[:-1]), fromlist=[package[-1]])
+        callable_func = getattr(module, package[-1])
+        dataset = callable_func(args.path)
+        print(dataset)
 
 
 command = Verify
