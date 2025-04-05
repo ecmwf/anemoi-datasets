@@ -8,6 +8,8 @@ def ignore(*args, **kwargs):
 
 def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
 
+    print(f"Verifying {name}...")
+
     try:
         getattr(Dataset, name)
     except AttributeError:
@@ -20,6 +22,9 @@ def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
             result = result(**kwargs)
         if callable(result):
             raise ValueError(f"{name} is a callable method, not an attribute. Please pass kwargs.")
+
+        print(f"...{name} result: {result}")
+
         validate(dataset, name, result)
         print(f"✅ Dataset verification passed for {name}.")
     except Exception as e:
@@ -27,18 +32,7 @@ def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
 
 
 def verify_dataset(dataset):
-    """Verify the dataset.
-
-    Parameters
-    ----------
-    dataset : Dataset
-        The dataset to verify.
-
-    Raises
-    ------
-    ValueError
-        If the dataset is not valid.
-    """
+    """Verify the dataset."""
 
     verify(dataset, "__len__", kwargs={})
     verify(dataset, "__getitem__", kwargs={"index": 0})
