@@ -11,6 +11,8 @@
 import logging
 from typing import Any
 
+from anemoi.datasets.verify import verify_dataset
+
 from . import Command
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class Verify(Command):
         module = __import__(".".join(package[:-1]), fromlist=[package[-1]])
         callable_func = getattr(module, package[-1])
         dataset = callable_func(args.path)
-        print(dataset)
+        verify_dataset(dataset)
 
 
 command = Verify
