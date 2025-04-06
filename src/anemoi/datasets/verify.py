@@ -23,14 +23,14 @@ def ignore(*args, **kwargs):
     pass
 
 
-def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
+def verify(results, dataset, name, kwargs=None, validate=ignore, optional=False):
 
     print(f"Verifying {name}...")
 
     try:
         getattr(Dataset, name)
     except AttributeError:
-        print(f"❌ Attribute {name} not found in Dataset class.")
+        results[name] = f"❌ Attribute {name} not found in Dataset class."
         return
 
     try:
@@ -43,13 +43,15 @@ def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
         print(f"...{name} result: {result}")
 
         validate(dataset, name, result)
-        print(f"✅ Dataset verification passed for {name}.")
+        results[name] = f"✅ Dataset verification passed for {name}."
     except Exception as e:
-        print(f"❌ Dataset verification failed for {name}: {e}")
+        results[name] = f"❌ Dataset verification failed for {name}: {e}"
 
 
 def verify_dataset(dataset, costly_checks=False):
     """Verify the dataset."""
+
+    results = {}
 
     if costly_checks:
         # This check is expensive as it loads the entire dataset into memory
@@ -60,45 +62,48 @@ def verify_dataset(dataset, costly_checks=False):
             y = dataset[i]
             assert (x == y).all(), f"Dataset indexing failed at index {i}: {x} != {y}"
 
-    verify(dataset, "__len__", kwargs={})
-    verify(dataset, "__getitem__", kwargs={"index": 0})
+    verify(results, dataset, "__len__", kwargs={})
+    verify(results, dataset, "__getitem__", kwargs={"index": 0})
 
-    verify(dataset, "arguments")
-    verify(dataset, "collect_input_sources")
-    verify(dataset, "collect_supporting_arrays")
-    verify(dataset, "computed_constant_fields")
-    verify(dataset, "constant_fields")
-    verify(dataset, "dataset_metadata")
-    verify(dataset, "dates")
-    verify(dataset, "dates_interval_to_indices")
-    verify(dataset, "dtype")
-    verify(dataset, "end_date")
-    verify(dataset, "field_shape")
-    verify(dataset, "frequency")
-    verify(dataset, "get_dataset_names", kwargs={"names": set()})
-    verify(dataset, "grids")
-    verify(dataset, "label")
-    verify(dataset, "latitudes")
-    verify(dataset, "longitudes")
-    verify(dataset, "metadata", kwargs={})
-    verify(dataset, "metadata_specific", kwargs={})
-    verify(dataset, "missing")
-    verify(dataset, "mutate", kwargs={})
-    verify(dataset, "name")
-    verify(dataset, "name_to_index")
-    # verify(dataset,'plot', kwargs={'date':0, 'variable':0})
-    verify(dataset, "provenance", kwargs={})
-    verify(dataset, "resolution")
-    verify(dataset, "shape")
-    verify(dataset, "source", kwargs={"index": 0})
-    verify(dataset, "start_date")
-    verify(dataset, "statistics")
-    verify(dataset, "statistics_tendencies", kwargs={})
-    verify(dataset, "sub_shape", kwargs={})
-    verify(dataset, "supporting_arrays", kwargs={})
-    verify(dataset, "swap_with_parent", kwargs={})
-    verify(dataset, "to_index", kwargs={"date": 0, "variable": 0})
-    verify(dataset, "tree", kwargs={})
-    verify(dataset, "typed_variables")
-    verify(dataset, "variables")
-    verify(dataset, "variables_metadata")
+    verify(results, dataset, "arguments")
+    verify(results, dataset, "collect_input_sources")
+    verify(results, dataset, "collect_supporting_arrays")
+    verify(results, dataset, "computed_constant_fields")
+    verify(results, dataset, "constant_fields")
+    verify(results, dataset, "dataset_metadata")
+    verify(results, dataset, "dates")
+    verify(results, dataset, "dates_interval_to_indices")
+    verify(results, dataset, "dtype")
+    verify(results, dataset, "end_date")
+    verify(results, dataset, "field_shape")
+    verify(results, dataset, "frequency")
+    verify(results, dataset, "get_dataset_names", kwargs={"names": set()})
+    verify(results, dataset, "grids")
+    verify(results, dataset, "label")
+    verify(results, dataset, "latitudes")
+    verify(results, dataset, "longitudes")
+    verify(results, dataset, "metadata", kwargs={})
+    verify(results, dataset, "metadata_specific", kwargs={})
+    verify(results, dataset, "missing")
+    verify(results, dataset, "mutate", kwargs={})
+    verify(results, dataset, "name")
+    verify(results, dataset, "name_to_index")
+    # verify(results, dataset,'plot', kwargs={'date':0, 'variable':0})
+    verify(results, dataset, "provenance", kwargs={})
+    verify(results, dataset, "resolution")
+    verify(results, dataset, "shape")
+    verify(results, dataset, "source", kwargs={"index": 0})
+    verify(results, dataset, "start_date")
+    verify(results, dataset, "statistics")
+    verify(results, dataset, "statistics_tendencies", kwargs={})
+    verify(results, dataset, "sub_shape", kwargs={})
+    verify(results, dataset, "supporting_arrays", kwargs={})
+    verify(results, dataset, "swap_with_parent", kwargs={})
+    verify(results, dataset, "to_index", kwargs={"date": 0, "variable": 0})
+    verify(results, dataset, "tree", kwargs={})
+    verify(results, dataset, "typed_variables")
+    verify(results, dataset, "variables")
+    verify(results, dataset, "variables_metadata")
+
+    for k, v in results.items():
+        print(f"{k}: {v}")
