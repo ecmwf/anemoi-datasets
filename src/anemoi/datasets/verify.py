@@ -32,10 +32,17 @@ def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
         print(f"❌ Dataset verification failed for {name}: {e}")
 
 
-def verify_dataset(dataset):
+def verify_dataset(dataset, costly_checks=False):
     """Verify the dataset."""
 
-    default_test_indexing(dataset)
+    if costly_checks:
+        # This check is expensive as it loads the entire dataset into memory
+        # so we make it optional
+        default_test_indexing(dataset)
+
+        for i, x in enumerate(dataset):
+            y = dataset[i]
+            assert (x == y).all(), f"Dataset indexing failed at index {i}: {x} != {y}"
 
     verify(dataset, "__len__", kwargs={})
     verify(dataset, "__getitem__", kwargs={"index": 0})

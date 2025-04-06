@@ -27,14 +27,14 @@ class DummyDataset:
     def __init__(self, ds: xr.Dataset):
         self.ds = ds
 
-        self._variables = {}
+        self._xarray_variables = {}
 
         for name in ds.data_vars:
             if "level" in ds[name].dims:
                 for level in ds[name].level.values:
-                    self._variables[f"{name}_{level}"] = ds[name].sel(level=level)
+                    self._xarray_variables[f"{name}_{level}"] = ds[name].sel(level=level)
             else:
-                self._variables[name] = ds[name]
+                self._xarray_variables[name] = ds[name]
 
         self._latitudes, self._longitudes = np.meshgrid(ds.latitude.values, ds.longitude.values)
         assert len(self._latitudes) == len(self._longitudes)
@@ -44,14 +44,14 @@ class DummyDataset:
 
         self._number_of_dates = len(ds.time)
 
-        self._names = list(self._variables)
+        self._variables = list(self._xarray_variables)
         self._number_of_variables = len(self._variables)
         self._number_of_grid_points = len(self._latitudes)
         self._number_of_members = 1  # For now, we assume it is not an ensemble
 
         self._shape = (
             self._number_of_dates,
-            len(self._variables),
+            self._number_of_variables,
             self._number_of_members,
             self._number_of_grid_points,
         )
@@ -63,17 +63,17 @@ class DummyDataset:
 
         if isinstance(index, int):
             result = np.concatenate(
-                [self._variables[name].isel(time=index).values.flatten() for name in self._variables]
+                [self._xarray_variables[name].isel(time=index).values.flatten() for name in self._xarray_variables]
             )
             return result.reshape(-1, self._number_of_members, self._number_of_grid_points)
 
         if isinstance(index, slice):
             result = np.concatenate(
                 [
-                    self._variables[name]
+                    self._xarray_variables[name]
                     .isel(time=index)
                     .values.reshape(-1, 1, self._number_of_members, self._number_of_grid_points)
-                    for name in self._variables
+                    for name in self._xarray_variables
                 ],
                 axis=1,
             )
@@ -94,18 +94,18 @@ class DummyDataset:
 
         time_slice = index[0]
         if isinstance(index[1], int):
-            variables = [self._names[index[1]]]
+            variables = [self._variables[index[1]]]
         elif isinstance(index[1], slice):
-            variables = self._names[index[1]]
+            variables = self._variables[index[1]]
         else:
-            variables = [self._names[i] for i in index[1]]
+            variables = [self._variables[i] for i in index[1]]
             print(f"Variables: {variables}")
 
         data_slices = index[3]
 
         result = np.concatenate(
             [
-                self._variables[name]
+                self._xarray_variables[name]
                 .isel(time=time_slice)
                 .values.reshape(-1, 1, self._number_of_members, self._number_of_grid_points)
                 for name in variables
@@ -131,7 +131,7 @@ class DummyDataset:
     @property
     def variables(self):
         # Return the variables in the dataset
-        return self._names
+        return self._variables
 
     @property
     def latitudes(self):
@@ -150,7 +150,7 @@ class DummyDataset:
 
 def _open_dataset():
 
-    cache = "anemoi-datasets-test-verify.nc"
+    cache = "anemoi-datasets-test-verify-cache-file.nc"
 
     if os.path.exists(cache):
         return xr.open_dataset(cache)
@@ -177,7 +177,8 @@ def _open_dataset():
 
     ds = ds.sel(level=[1000, 850, 500])
 
-    ds.to_netcdf(cache, format="NETCDF4", mode="w")
+    if int(os.environ.get("ANEMOI_DATASETS_TEST_VERIFY_CACHE_FILE", 0)):
+        ds.to_netcdf(cache, format="NETCDF4", mode="w")
 
     return ds
 
@@ -188,7 +189,7 @@ def test_validate() -> None:
 
     dummy = DummyDataset(_open_dataset())
 
-    result = verify_dataset(dummy)
+    result = verify_dataset(dummy, costly_checks=True)
     assert result is None, "Dataset verification failed"
 
 

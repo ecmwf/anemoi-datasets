@@ -112,21 +112,17 @@ class IndexTester:
         index : Any
             Index.
         """
-        print("INDEX", type(self.ds), index)
+        LOG.info("IndexTester: %s", index)
         if self.ds[index] is None:
             assert False, (self.ds, index)
 
         if not (self.ds[index] == self.np[index]).all():
-            # print("DS", self.ds[index])
-            # print("NP", self.np[index])
             assert (self.ds[index] == self.np[index]).all()
 
 
 def default_test_indexing(ds):
 
     t = IndexTester(ds)
-
-    print("INDEXING", ds.shape)
 
     t[0:10, :, 0]
     t[:, 0:3, 0]

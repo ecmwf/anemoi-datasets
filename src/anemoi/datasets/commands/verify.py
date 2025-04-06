@@ -31,6 +31,7 @@ class Verify(Command):
         """
 
         command_parser.add_argument("--callable", metavar="DATASET", default="anemoi.datasets.open_dataset")
+        command_parser.add_argument("--costly-checks", action="store_true", help="Run costly checks")
         command_parser.add_argument("path", metavar="DATASET")
 
     def run(self, args: Any) -> None:
@@ -46,7 +47,7 @@ class Verify(Command):
         module = __import__(".".join(package[:-1]), fromlist=[package[-1]])
         callable_func = getattr(module, package[-1])
         dataset = callable_func(args.path)
-        verify_dataset(dataset)
+        verify_dataset(dataset, costly_checks=args.costly_checks)
 
 
 command = Verify
