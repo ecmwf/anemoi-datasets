@@ -153,3 +153,23 @@ def default_test_indexing(ds):
         t[start:]
         t[:end]
         t[::step]
+
+
+class Trace:
+
+    def __init__(self, ds):
+        self.ds = ds
+        self.f = open("trace.txt", "a")
+
+    def __getattr__(self, name: str) -> Any:
+
+        print(name, file=self.f, flush=True)
+        return getattr(self.ds, name)
+
+    def __len__(self) -> int:
+        print("__len__", file=self.f, flush=True)
+        return len(self.ds)
+
+    def __getitem__(self, index: Any) -> Any:
+        print("__getitem__", file=self.f, flush=True)
+        return self.ds[index]

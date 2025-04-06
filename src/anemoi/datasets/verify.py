@@ -1,6 +1,22 @@
 from anemoi.datasets.data.dataset import Dataset
 from anemoi.datasets.testing import default_test_indexing
 
+# List of methods called during training. To update the list, run training with ANEMOI_DATASETS_TRACE=1
+
+TRAINING_METHODS = {
+    "__getitem__",
+    "__len__",
+    "latitudes",
+    "longitudes",
+    "metadata",  # Accessed when checkpointing
+    "missing",
+    "name_to_index",
+    "shape",
+    "statistics",
+    "supporting_arrays",  # Accessed when checkpointing
+    "variables",
+}
+
 
 def ignore(*args, **kwargs):
     """Ignore function to be used as a default for the verify function."""
