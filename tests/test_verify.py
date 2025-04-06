@@ -19,6 +19,8 @@ from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets.verify import verify_dataset
 
+LOG = logging.getLogger(__name__)
+
 # https://github.com/google-research/arco-era5
 
 
@@ -153,7 +155,10 @@ def _open_dataset():
     cache = "anemoi-datasets-test-verify-cache-file.nc"
 
     if os.path.exists(cache):
+        LOG.info("Loading dataset from %s", cache)
         return xr.open_dataset(cache)
+
+    LOG.info("Loading dataset from the Internet")
 
     ds = xr.open_zarr(
         "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
@@ -178,6 +183,7 @@ def _open_dataset():
     ds = ds.sel(level=[1000, 850, 500])
 
     if int(os.environ.get("ANEMOI_DATASETS_TEST_VERIFY_CACHE_FILE", 0)):
+        LOG.info("Caching dataset to %s", cache)
         ds.to_netcdf(cache, format="NETCDF4", mode="w")
 
     return ds
