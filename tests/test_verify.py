@@ -10,6 +10,7 @@
 
 import logging
 import os
+from functools import cached_property
 
 import numpy as np
 import xarray as xr
@@ -36,12 +37,93 @@ class DummyDataset:
                 self._variables[name] = ds[name]
 
         self._latitudes, self._longitudes = np.meshgrid(ds.latitude.values, ds.longitude.values)
+        assert len(self._latitudes) == len(self._longitudes)
+
+        self._latitudes = self._latitudes.flatten()
+        self._longitudes = self._longitudes.flatten()
+
+        self._number_of_dates = len(ds.time)
+
+        self._names = list(self._variables)
+        self._number_of_variables = len(self._variables)
+        self._number_of_grid_points = len(self._latitudes)
+        self._number_of_members = 1  # For now, we assume it is not an ensemble
+
+        self._shape = (
+            self._number_of_dates,
+            len(self._variables),
+            self._number_of_members,
+            self._number_of_grid_points,
+        )
 
     def __len__(self):
-        # The length of the dataset is the number of dates
-        return len(self.ds.time)
+        return self._number_of_dates
 
-    @property
+    def __getitem__(self, index):
+
+        if isinstance(index, int):
+            result = np.concatenate(
+                [self._variables[name].isel(time=index).values.flatten() for name in self._variables]
+            )
+            return result.reshape(-1, self._number_of_members, self._number_of_grid_points)
+
+        if isinstance(index, slice):
+            result = np.concatenate(
+                [
+                    self._variables[name]
+                    .isel(time=index)
+                    .values.reshape(-1, 1, self._number_of_members, self._number_of_grid_points)
+                    for name in self._variables
+                ],
+                axis=1,
+            )
+            return result
+
+        # First, handle Ellipsis
+        if Ellipsis in index:
+            assert index.count(Ellipsis) == 1, "Only one Ellipsis is allowed in the index"
+            size = len(self._shape) - len(index)
+            assert size >= 1, "Invalid index: Ellipsis must be at least one dimension"
+            index = index[: index.index(Ellipsis)] + (slice(None),) * size + index[index.index(Ellipsis) + 1 :]
+
+        # Complete the index with slices
+        while len(index) < len(self._shape):
+            index = index + (slice(None),)
+
+        # Ignore the member index for now
+
+        time_slice = index[0]
+        if isinstance(index[1], int):
+            variables = [self._names[index[1]]]
+        elif isinstance(index[1], slice):
+            variables = self._names[index[1]]
+        else:
+            variables = [self._names[i] for i in index[1]]
+            print(f"Variables: {variables}")
+
+        data_slices = index[3]
+
+        result = np.concatenate(
+            [
+                self._variables[name]
+                .isel(time=time_slice)
+                .values.reshape(-1, 1, self._number_of_members, self._number_of_grid_points)
+                for name in variables
+            ],
+            axis=1,
+        )
+
+        result = result[..., data_slices]
+
+        # Squeeze non-slice dimensions
+
+        for i in reversed(range(len(index))):
+            if isinstance(index[i], int):
+                result = result.squeeze(i)
+
+        return result
+
+    @cached_property
     def dates(self):
         # Return the dates in the dataset
         return self.ds.time.values
@@ -49,7 +131,7 @@ class DummyDataset:
     @property
     def variables(self):
         # Return the variables in the dataset
-        return list(self._variables.keys())
+        return self._names
 
     @property
     def latitudes(self):
@@ -63,7 +145,7 @@ class DummyDataset:
 
     @property
     def shape(self):
-        return (len(self), len(self.variables), 1, len(self.latitudes))
+        return self._shape
 
 
 def _open_dataset():

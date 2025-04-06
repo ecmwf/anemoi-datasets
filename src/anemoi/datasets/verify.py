@@ -1,4 +1,5 @@
 from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.testing import default_test_indexing
 
 
 def ignore(*args, **kwargs):
@@ -33,6 +34,8 @@ def verify(dataset, name, kwargs=None, validate=ignore, optional=False):
 
 def verify_dataset(dataset):
     """Verify the dataset."""
+
+    default_test_indexing(dataset)
 
     verify(dataset, "__len__", kwargs={})
     verify(dataset, "__getitem__", kwargs={"index": 0})
