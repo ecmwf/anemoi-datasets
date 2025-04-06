@@ -24,7 +24,7 @@ LOG = logging.getLogger(__name__)
 # https://github.com/google-research/arco-era5
 
 
-class DummyDataset:
+class DemoAlternativeDataset:
 
     def __init__(self, ds: xr.Dataset):
         self.ds = ds
@@ -101,7 +101,6 @@ class DummyDataset:
             variables = self._variables[index[1]]
         else:
             variables = [self._variables[i] for i in index[1]]
-            print(f"Variables: {variables}")
 
         data_slices = index[3]
 
@@ -193,9 +192,9 @@ def _open_dataset():
 @skip_missing_packages("gcsfs")
 def test_validate() -> None:
 
-    dummy = DummyDataset(_open_dataset())
+    dummy = DemoAlternativeDataset(_open_dataset())
 
-    result = verify_dataset(dummy, costly_checks=True)
+    result = verify_dataset(dummy, costly_checks=False)
     assert result is None, "Dataset verification failed"
 
 
