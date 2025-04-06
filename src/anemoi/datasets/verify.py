@@ -406,8 +406,8 @@ def validate_missing(report, dataset, name, result):
         if min(result) < 0:
             raise ValueError("Result contains negative values")
 
-    if max(result) >= len(dataset):
-        raise ValueError(f"Result contains values greater than {len(dataset)}")
+        if max(result) >= len(dataset):
+            raise ValueError(f"Result contains values greater than {len(dataset)}")
 
 
 def validate_name_to_index(report, dataset, name, result):
