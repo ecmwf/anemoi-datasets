@@ -148,6 +148,66 @@ class DemoAlternativeDataset:
     def shape(self):
         return self._shape
 
+    @property
+    def name_to_index(self):
+        # Return the mapping from variable name to index
+        return {name: i for i, name in enumerate(self._variables)}
+
+    @cached_property
+    def statistics(self):
+        # Return the statistics of the dataset
+
+        mean = np.array([self._xarray_variables[name].mean().values for name in self._variables])
+        stdev = np.array([self._xarray_variables[name].std().values for name in self._variables])
+        minimum = np.array([self._xarray_variables[name].min().values for name in self._variables])
+        maximum = np.array([self._xarray_variables[name].max().values for name in self._variables])
+
+        assert len(mean.shape) == 1, mean.shape
+
+        return {
+            "mean": mean,
+            "stdev": stdev,
+            "minimum": minimum,
+            "maximum": maximum,
+        }
+
+    @property
+    def missing(self):
+        # Return the index of the missing dates in the dataset
+        # This is a dummy implementation for the sake of the example
+        return {1, 9}
+
+    def metadata(self):
+        # This will be stored in the model's checkpoint
+        # to be used by `anemoi-inference`
+        return {}
+
+    def supporting_arrays(self):
+        # This will be stored in the model's checkpoint
+        # to be used by `anemoi-inference`
+        return {
+            "latitudes": self.latitudes,
+            "longitudes": self.longitudes,
+        }
+
+    # Below are the methods that are not used during training
+
+    @property
+    def start_date(self):
+        # Return the start date of the dataset
+        return self.dates[0]
+
+    @property
+    def end_date(self):
+        # Return the end date of the dataset
+        return self.dates[-1]
+
+    @cached_property
+    def frequency(self):
+        frequency = np.diff(self.dates).astype("timedelta64[s]")
+        assert np.all(frequency == frequency[0])
+        return frequency[0]
+
 
 def _open_dataset():
 
@@ -194,7 +254,7 @@ def test_validate() -> None:
 
     dummy = DemoAlternativeDataset(_open_dataset())
 
-    result = verify_dataset(dummy, costly_checks=False)
+    result = verify_dataset(dummy, costly_checks=True, detailed=True)
     assert result is None, "Dataset verification failed"
 
 
