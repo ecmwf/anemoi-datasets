@@ -9,6 +9,7 @@
 
 
 import calendar
+import contextlib
 import datetime
 import logging
 from pathlib import PurePath
@@ -73,6 +74,24 @@ def add_dataset_path(path: str) -> None:
 
     if path not in config["datasets"]["path"]:
         config["datasets"]["path"].append(path)
+
+
+@contextlib.contextmanager
+def prepend_dataset_paths(*paths: str) -> None:
+    """Prepend a dataset path to the configuration.
+
+    Parameters
+    ----------
+    *paths : str
+        The paths to prepend.
+    """
+    config = load_config()
+    save = config["datasets"]["path"].copy()
+    config["datasets"]["path"] = list(paths) + config["datasets"]["path"]
+    try:
+        yield
+    finally:
+        config["datasets"]["path"] = save
 
 
 def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) -> np.datetime64:
