@@ -13,6 +13,7 @@ import logging
 from .action import Action
 from .action import action_factory
 from .step import step_factory
+from .trace import check_fake_support
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class PipeAction(Action):
         self.last_step = current
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         return self.last_step.select(group_of_dates)
 

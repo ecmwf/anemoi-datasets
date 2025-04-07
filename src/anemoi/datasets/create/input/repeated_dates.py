@@ -21,6 +21,7 @@ from .action import Action
 from .action import action_factory
 from .join import JoinResult
 from .result import Result
+from .trace import check_fake_support
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
@@ -221,6 +222,7 @@ class RepeatedDatesAction(Action):
         self.mapper = DateMapper.from_mode(mode, self.source, kwargs)
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         results = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):

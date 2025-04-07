@@ -12,23 +12,26 @@ from collections import defaultdict
 
 from earthkit.data import from_source
 
+from anemoi.datasets.create.input.trace import support_fake_dates
 
-def _fake_forcings(context, dates, template, param):
+
+def _fake_forcings(context, fake_dates, template, param):
     from anemoi.transform.fields import new_field_with_metadata
 
     provider = context.dates_provider
-    newdates = defaultdict(list)
-    for date in dates:
-        hindcast = provider.mapping[date]
-        newdates[hindcast.hdate + datetime.timedelta(hours=hindcast.step)].append(hindcast)
+    real_dates = defaultdict(list)
+    for date in fake_dates:
+        real_date = provider.mapping[date]
+        real_dates[real_date.valid_datetime].append(real_date)
 
     context.trace("✅", f"from_source(forcings, {template}, {param}")
-    ds = from_source("forcings", source_or_dataset=template, date=sorted(newdates.keys()), param=param)
+    ds = from_source("forcings", source_or_dataset=template, date=sorted(real_dates.keys()), param=param)
     for f in ds:
         date = datetime.datetime.fromisoformat(f.metadata("valid_datetime"))
-        hindcasts = newdates[date]
-        for hindcast in hindcasts:
-            yield new_field_with_metadata(f, hdate=hindcast.hdate, date=hindcast.refdate, step=hindcast.step, time=0)
+        assert date.year != 1900
+        hindcasts = real_dates[date]
+        for real_date in hindcasts:
+            yield new_field_with_metadata(f, **real_date.metadata)
 
 
 def fake_forcings(context, dates, template, param):
@@ -41,13 +44,14 @@ def fake_forcings(context, dates, template, param):
     return new_fieldlist_from_list(result)
 
 
+@support_fake_dates(fake_forcings)
 def forcings(context, dates, template, param):
 
-    from anemoi.datasets.dates import FakeHindcastsDates
+    # from anemoi.datasets.dates import FakeDateProvider
 
-    provider = context.dates_provider
-    if isinstance(provider, FakeHindcastsDates):
-        return fake_forcings(context, dates, template, param)
+    # provider = context.dates_provider
+    # if isinstance(provider, FakeDateProvider):
+    #     return fake_forcings(context, dates, template, param)
 
     context.trace("✅", f"from_source(forcings, {template}, {param}")
     return from_source("forcings", source_or_dataset=template, date=dates, param=param)

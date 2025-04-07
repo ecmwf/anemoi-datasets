@@ -459,7 +459,7 @@ class Result:
         if self.group_of_dates is not None:
             dates = f" {len(self.group_of_dates)} dates"
             dates += " ("
-            dates += "/".join(d.strftime("%Y-%m-%d:%H") for d in self.group_of_dates)
+            dates += "/".join(d.strftime("%Y-%m-%dT%H:%M") for d in self.group_of_dates)
             if len(dates) > 100:
                 dates = dates[:100] + "..."
             dates += ")"

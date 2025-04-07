@@ -131,8 +131,6 @@ class Join(Combined):
                 if v not in result:
                     LOG.error("Missing metadata for %r.", v)
 
-            raise ValueError("Some variables are missing metadata.")
-
         return result
 
     @cached_property

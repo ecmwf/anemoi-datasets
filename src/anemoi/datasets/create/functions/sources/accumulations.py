@@ -10,6 +10,7 @@
 import datetime
 import logging
 import warnings
+from collections import defaultdict
 from copy import deepcopy
 
 import earthkit.data as ekd
@@ -17,7 +18,7 @@ import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.datasets.create.input.trace import support_fake_dates
 
 from .mars import mars
 
@@ -253,6 +254,7 @@ def _compute_accumulations(
     data_accumulation_period=None,
     patch=_identity,
     base_times=None,
+    use_cdsapi_dataset=None,
 ):
     adjust_step = isinstance(user_accumulation_period, int)
 
@@ -311,7 +313,9 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-    ds = mars(context, dates, *requests, request_already_using_valid_datetime=True)
+    ds = mars(
+        context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
+    )
 
     accumulations = {}
     for a in [AccumulationClass(out, frequency=frequency, **r) for r in requests]:
@@ -366,7 +370,33 @@ def _scda(request):
     return request
 
 
-def accumulations(context, dates, **request):
+def fake_accumulations(context, fake_dates, **request):
+    user_accumulation_period = request.pop("accumulation_period", 6)
+    assert isinstance(user_accumulation_period, int), user_accumulation_period
+
+    provider = context.dates_provider
+    real_dates = defaultdict(lambda: defaultdict(list))
+    for date in fake_dates:
+        real_date = provider.mapping[date]
+        period = (real_date.step - user_accumulation_period, real_date.step)
+        real_dates[period][real_date.valid_datetime].append(real_date)
+
+    ds = ekd.from_source("empty")
+
+    for period, dates in real_dates.items():
+
+        ds = ds + _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=period,
+        )
+
+    return ds
+
+
+@support_fake_dates(fake_accumulations)
+def accumulations(context, dates, use_cdsapi_dataset=None, **request):
     _to_list(request["param"])
     class_ = request.get("class", "od")
     stream = request.get("stream", "oper")
@@ -395,29 +425,9 @@ def accumulations(context, dates, **request):
         dates,
         request,
         user_accumulation_period=user_accumulation_period,
+        use_cdsapi_dataset=use_cdsapi_dataset,
         **kwargs,
     )
 
 
 execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
-        """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    for f in accumulations(None, dates, **config):
-        print(f, f.to_numpy().mean())

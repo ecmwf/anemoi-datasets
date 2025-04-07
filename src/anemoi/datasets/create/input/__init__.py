@@ -10,12 +10,17 @@
 import logging
 from copy import deepcopy
 
+from anemoi.datasets.dates.groups import GroupOfDates as GroupOfDates
+
+from .trace import check_fake_support
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
 
 
 class InputBuilder:
+    supports_fake_dates = True
+
     def __init__(self, config, data_sources, **kwargs):
         self.kwargs = kwargs
 
@@ -31,6 +36,7 @@ class InputBuilder:
         self.action_path = ["input"]
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         from .action import ActionContext
         from .action import action_factory
@@ -38,6 +44,7 @@ class InputBuilder:
         """This changes the context."""
         context = ActionContext(**self.kwargs)
         action = action_factory(self.config, context, self.action_path)
+
         return action.select(group_of_dates)
 
     def __repr__(self):

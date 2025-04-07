@@ -7,12 +7,18 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import os
+
+import pytest
 import xarray as xr
 
 from anemoi.datasets.create.functions.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
 
 
+# when the opendap server is under maintainance, this test will fail
+# it is skipped by default, and is only run when the SLOW_TESTS env var is set
+@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
 def test_opendap():
 
     ds = xr.open_dataset(

@@ -206,6 +206,9 @@ class Zarr(Dataset):
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
         self.missing = set()
+        self._has_fake_dates = ("fake_hindcasts" in self.z.attrs) or (
+            "fake_forecasts" in self.z.attrs
+        )
 
     @classmethod
     def from_name(cls, name):
@@ -257,7 +260,20 @@ class Zarr(Dataset):
 
     @cached_property
     def dates(self):
+
+        # if  "fake_hindcasts" in self.z.attrs:
+        #     return self._fake_hindcasts()
+
+        # if  "fake_forecasts" in self.z.attrs:
+        #     return self._fake_forecasts()
+
+        # if self._has_fake_dates:
+        #    raise NotImplementedError("Cannot read dates from a dataset with fake dates")
+
         return self.z.dates[:]  # Convert to numpy
+
+    def encoded_dates(self):
+        return self.z.dates[:]
 
     @property
     def latitudes(self):
@@ -389,17 +405,29 @@ class Zarr(Dataset):
     def collect_input_sources(self, collected):
         pass
 
-    @cached_property
-    def fake_hindcasts(self):
-
+    def _fake_dates(self, key):
         from earthkit.data.utils.dates import to_datetime
 
-        fake_hindcasts = sorted(self.z.attrs.get("fake_hindcasts", {}).items())
+        fake_hindcasts = sorted(self.z.attrs.get(key, {}).items())
 
         def __(x):
             return tuple(to_datetime(_) if isinstance(_, str) else _ for _ in x)
 
         return {to_datetime(k): __(v) for k, v in fake_hindcasts}
+
+    @cached_property
+    def fake_hindcasts(self):
+        return self._fake_dates("fake_hindcasts")
+
+    @cached_property
+    def fake_forecasts(self):
+        return self._fake_dates("fake_forecasts")
+
+    def _fake_hindcasts(self):
+        return sorted(self._fake_dates("fake_hindcasts").values())
+
+    def _fake_forecasts(self):
+        return sorted(self._fake_dates("fake_forecasts").values())
 
 
 class ZarrWithMissingDates(Zarr):
@@ -410,7 +438,9 @@ class ZarrWithMissingDates(Zarr):
 
         missing_dates = self.z.attrs.get("missing_dates", [])
         missing_dates = set([np.datetime64(x, "s") for x in missing_dates])
-        self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
+        self.missing_to_dates = {
+            i: d for i, d in enumerate(self.dates) if d in missing_dates
+        }
         self.missing = set(self.missing_to_dates)
 
     def mutate(self):
@@ -452,7 +482,9 @@ class ZarrWithMissingDates(Zarr):
         raise TypeError(f"Unsupported index {n} {type(n)}")
 
     def _report_missing(self, n):
-        raise MissingDateError(f"Date {self.missing_to_dates[n]} is missing (index={n})")
+        raise MissingDateError(
+            f"Date {self.missing_to_dates[n]} is missing (index={n})"
+        )
 
     def tree(self):
         return Node(self, [], path=self.path, missing=sorted(self.missing))

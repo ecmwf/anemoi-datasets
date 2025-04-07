@@ -17,6 +17,7 @@ from .misc import _tidy
 from .misc import assert_fieldlist
 from .result import Result
 from .template import notify_result
+from .trace import check_fake_support
 from .trace import trace_datasource
 from .trace import trace_select
 
@@ -44,6 +45,8 @@ class JoinResult(Result):
 
 
 class JoinAction(Action):
+    supports_fake_dates = True
+
     def __init__(self, context, action_path, *configs):
         super().__init__(context, action_path, *configs)
         self.actions = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
@@ -53,6 +56,7 @@ class JoinAction(Action):
         return super().__repr__(content)
 
     @trace_select
+    @check_fake_support
     def select(self, group_of_dates):
         results = [a.select(group_of_dates) for a in self.actions]
         return JoinResult(self.context, self.action_path, group_of_dates, results)

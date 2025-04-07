@@ -79,7 +79,10 @@ def json_tidy(o):
         )
         return o.isoformat()
 
-    raise TypeError(repr(o) + " is not JSON serializable")
+    if isinstance(o, (np.float32, np.float64)):
+        return float(o)
+
+    raise TypeError(f"{repr(o)} is not JSON serializable {type(o)}")
 
 
 def build_statistics_dates(dates, start, end):
@@ -180,7 +183,14 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode="r")
-        return loader_config(z.attrs.get("_create_yaml_config"))
+        config = loader_config(z.attrs.get("_create_yaml_config"))
+
+        if "env" in config:
+            for k, v in config["env"].items():
+                LOG.info(f"Setting env variable {k}={v}")
+                os.environ[k] = str(v)
+
+        return config
 
 
 class WritableDataset(Dataset):
@@ -242,7 +252,7 @@ class Actor:  # TODO: rename to Creator
         self.dataset_shape = ds.shape
         self.variables_names = ds.variables
         assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
+        self.dates = ds.encoded_dates()
 
         self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
 
@@ -577,6 +587,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
+            LOG.info("Selecting group %s", group)
             result = self.input.select(group_of_dates=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
@@ -596,6 +607,8 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def load_result(self, result):
         # There is one cube to load for each result.
         dates = list(result.group_of_dates)
+
+        LOG.debug(f"Loading cube for {len(dates)} dates")
 
         cube = result.get_cube()
         shape = cube.extended_user_shape
@@ -643,12 +656,14 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         indexes = dates_to_indexes(self.dates, dates_in_data)
 
         array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
+        LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
         self.load_cube(cube, array)
 
         stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
         self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
-
+        LOG.info("Flush data array")
         array.flush()
+        LOG.info("Flushed data array")
 
     def _get_allow_nans(self):
         config = self.main_config
@@ -743,6 +758,11 @@ class AdditionsMixin:
         if not self.delta.total_seconds() % frequency.total_seconds() == 0:
             LOG.debug(f"Delta {self.delta} is not a multiple of frequency {frequency}. Skipping.")
             return True
+
+        if self.dataset.zarr_metadata.get("build", {}).get("additions", None) is False:
+            LOG.warning(f"Additions are disabled for {self.path} in the recipe.")
+            return True
+
         return False
 
     @cached_property
@@ -1004,7 +1024,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
             self.dataset.zarr_metadata["statistics_end_date"],
         )
         start, end = np.datetime64(start), np.datetime64(end)
-        dates = self.dataset.anemoi_dataset.dates
+        dates = self.dataset.anemoi_dataset.encoded_dates()
 
         assert type(dates[0]) is type(start), (type(dates[0]), type(start))
 

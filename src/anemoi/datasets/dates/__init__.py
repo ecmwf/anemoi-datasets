@@ -81,6 +81,9 @@ class DatesProvider:
     @classmethod
     def from_config(cls, **kwargs):
 
+        if kwargs.pop("fake_forecasts", False):
+            return FakeForecastsDates(**kwargs)
+
         if kwargs.pop("fake_hindcasts", False):
             return FakeHindcastsDates(**kwargs)
 
@@ -108,6 +111,12 @@ class DatesProvider:
     def patch_result(self, result):
         # Give an opportunity to patch the result (e.g. change the valid_time)
         return result
+
+    def check_fake_support(self, action):
+        pass
+
+    def check_fake_support_function(self, function, fake_function):
+        return function
 
     def metadata(self):
         return {}
@@ -167,13 +176,44 @@ class StartEndDates(DatesProvider):
         }.update(self.kwargs)
 
 
+class Forecast:
+
+    def __init__(self, fakedate, date, step):
+        self.fakedate = fakedate
+        self.date = date
+        self.step = step
+        self.valid_datetime = date + datetime.timedelta(hours=step)
+        self.metadata = dict(
+            date=int(self.date.strftime("%Y%m%d")), step=self.step, time=int(self.date.strftime("%H%M"))
+        )
+
+        # For best group_by, we use the  date
+        self.group_by = self.date
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.metadata})"
+
+
 class Hindcast:
 
-    def __init__(self, date, refdate, hdate, step):
-        self.date = date
+    def __init__(self, fakedate, refdate, hdate, step):
+        self.fakedate = fakedate
         self.refdate = refdate
         self.hdate = hdate
         self.step = step
+        self.valid_datetime = hdate + datetime.timedelta(hours=step)
+        self.metadata = dict(
+            hdate=int(self.hdate.strftime("%Y%m%d")),
+            date=int(self.refdate.strftime("%Y%m%d")),
+            step=self.step,
+            time=0,
+        )
+
+        # For best group_by, we use the reference date
+        self.group_by = self.refdate
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.metadata})"
 
 
 class HindcastsDates(DatesProvider):
@@ -250,7 +290,19 @@ class HindcastsDates(DatesProvider):
         return {"hindcasts": self.hindcasts}
 
 
-class FakeHindcastsDates(DatesProvider):
+class FakeDateProvider(DatesProvider):
+
+    def check_fake_support(self, action):
+        assert action.supports_fake_dates, action
+
+    def check_fake_support_function(self, function, fake_function):
+        assert fake_function, function
+        if callable(fake_function):
+            return fake_function
+        return function
+
+
+class FakeHindcastsDates(FakeDateProvider):
     def __init__(self, start, end, steps, years=20, **kwargs):
         dates = datetimes_factory(
             name="hindcast", reference_dates=dict(start=start, end=end, day_of_week=["monday", "thursday"]), years=years
@@ -303,6 +355,65 @@ class FakeHindcastsDates(DatesProvider):
 
     def metadata(self):
         return {"fake_hindcasts": {v.isoformat(): k for k, v in self.date_mapping.items()}}
+
+
+class FakeForecastsDates(FakeDateProvider):
+    def __init__(self, start, end, steps, frequency=24, **kwargs):
+        dates = datetimes_factory(
+            start=start,
+            end=end,
+            frequency=frequency,
+        )
+        all_dates = {}
+        ref = datetime.datetime(1900, 1, 1, 0, 0)
+        for date in dates:
+            for s in steps:
+                all_dates[(date, s)] = ref + datetime.timedelta(hours=len(all_dates))
+
+        self.frequency = datetime.timedelta(hours=1)
+
+        self.values = sorted(all_dates.values())
+        self.mapping = {v: Forecast(v, *k) for k, v in all_dates.items()}
+        self.date_mapping = all_dates
+
+        super().__init__(missing=[])
+
+    def actual_dates(self, dates):
+        return [self.date_mapping[d] for d in dates]
+
+    def patch_result(self, result):
+        from anemoi.transform.fields import new_field_with_valid_datetime
+        from anemoi.transform.fields import new_fieldlist_from_list
+        from earthkit.data.utils.dates import to_datetime
+
+        from ..create.input.result import Result
+
+        ds = result.datasource
+        data = []
+        for field in ds:
+            # We get them one at a time because wrappers do not support lists
+            date, step, time = (
+                field.metadata("date"),
+                field.metadata("step"),
+                field.metadata("time"),
+            )
+            assert time == 0, time
+            newdate = self.date_mapping[(to_datetime(date), step)]
+            data.append(new_field_with_valid_datetime(field, newdate))
+
+        class PatchedResult(Result):
+            def __init__(self, data):
+                super().__init__(result.context, result.action_path, result.group_of_dates)
+                self._datasource = new_fieldlist_from_list(data)
+
+            @property
+            def datasource(self):
+                return self._datasource
+
+        return PatchedResult(data)
+
+    def metadata(self):
+        return {"fake_forecasts": {v.isoformat(): k for k, v in self.date_mapping.items()}}
 
 
 if __name__ == "__main__":

@@ -270,6 +270,11 @@ def loader_config(config, is_test=False):
         print(b)
         raise ValueError("Serialisation failed")
 
+    if "env" in copy:
+        for k, v in copy["env"].items():
+            LOG.info(f"Setting env variable {k}={v}")
+            os.environ[k] = str(v)
+
     return copy
 
 

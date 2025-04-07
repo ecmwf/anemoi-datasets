@@ -14,12 +14,13 @@ from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
+from anemoi.datasets.create.input.trace import support_fake_dates
 from anemoi.datasets.create.utils import to_datetime_list
 
 DEBUG = False
 
 
-def to_list(x):
+def _to_list(x):
     if isinstance(x, (list, tuple)):
         return x
     return [x]
@@ -73,14 +74,14 @@ def _normalise_time(t):
 def _expand_mars_request(request, date, request_already_using_valid_datetime=False, date_key="date"):
     requests = []
 
-    user_step = to_list(expand_to_by(request.get("step", [0])))
+    user_step = _to_list(expand_to_by(request.get("step", [0])))
     user_time = None
     user_date = None
 
     if not request_already_using_valid_datetime:
         user_time = request.get("time")
         if user_time is not None:
-            user_time = to_list(user_time)
+            user_time = _to_list(user_time)
             user_time = [_normalise_time(t) for t in user_time]
 
         user_date = request.get(date_key)
@@ -240,12 +241,54 @@ MARS_KEYS = [
 ]
 
 
+def fake_mars(
+    context,
+    dates,
+    *requests,
+    request_already_using_valid_datetime=False,
+    date_key="date",
+    **kwargs,
+):
+    from earthkit.data.core.fieldlist import MultiFieldList
+
+    provider = context.dates_provider
+
+    if not requests:
+        requests = [kwargs]
+
+    result = []
+    for request in requests:
+        # assert 'step' not in request, request
+        for d in dates:
+            r = request.copy()
+            forecast = provider.mapping[d]
+            r["date"] = forecast.date.strftime("%Y-%m-%d")
+            r["time"] = forecast.date.strftime("%H")
+            r["step"] = forecast.step
+            r.setdefault("type", "fc")
+            result.append(r)
+
+    requests = result
+
+    if len(requests) == 0:
+        return MultiFieldList([])
+
+    return mars(
+        context,
+        dates,
+        *requests,
+        request_already_using_valid_datetime=True,
+    )
+
+
+@support_fake_dates(fake_mars)
 def mars(
     context,
     dates,
     *requests,
     request_already_using_valid_datetime=False,
     date_key="date",
+    use_cdsapi_dataset=None,
     **kwargs,
 ):
 
@@ -305,7 +348,10 @@ def mars(
                     f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
                 )
         try:
-            ds = ds + from_source("mars", **r)
+            if use_cdsapi_dataset:
+                ds = ds + from_source("cds", use_cdsapi_dataset, r)
+            else:
+                ds = ds + from_source("mars", **r)
         except Exception as e:
             if "File is empty:" not in str(e):
                 raise

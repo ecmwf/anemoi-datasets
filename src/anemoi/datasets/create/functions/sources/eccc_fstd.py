@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2025 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,11 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 
-import earthkit.data as ekd
-
-from anemoi.datasets.create.input.trace import support_fake_dates
+from .xarray import load_many
 
 
-@support_fake_dates(True)
-def execute(context, dates, **kwargs):
-    return ekd.from_source("empty")
+def execute(context, dates, path, *args, **kwargs):
+    options = {"engine": "fstd"}
+    return load_many("🍁", context, dates, path, *args, options=options, **kwargs)
