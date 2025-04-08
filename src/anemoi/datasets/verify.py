@@ -9,6 +9,7 @@
 
 
 import logging
+import math
 from collections import defaultdict
 
 import numpy as np
@@ -463,6 +464,36 @@ def validate___len__(report, dataset, name, result):
         raise ValueError(f"Result has wrong length: {result} != {len(dataset.dates)}")
 
 
+def validate_start_date(report, dataset, name, result):
+    """Validate the start date of the dataset."""
+
+    if not isinstance(result, np.datetime64):
+        raise ValueError(f"Result is not a datetime64 {type(result)}")
+
+    if result != dataset.dates[0]:
+        raise ValueError(f"Result has wrong start date: {result} != {dataset.dates[0]}")
+
+
+def validate_end_date(report, dataset, name, result):
+    """Validate the end date of the dataset."""
+
+    if not isinstance(result, np.datetime64):
+        raise ValueError(f"Result is not a datetime64 {type(result)}")
+
+    if result != dataset.dates[-1]:
+        raise ValueError(f"Result has wrong end date: {result} != {dataset.dates[-1]}")
+
+
+def validate_field_shape(report, dataset, name, result):
+    """Validate the field shape of the dataset."""
+
+    if not isinstance(result, tuple):
+        raise ValueError(f"Result is not a tuple {type(result)}")
+
+    if math.prod(result) != dataset.shape[-1]:
+        raise ValueError(f"Result has wrong shape: {result} != {dataset.shape[-1]}")
+
+
 def verify(report, dataset, name, kwargs=None):
 
     try:
@@ -512,6 +543,13 @@ def verify(report, dataset, name, kwargs=None):
 
     except Exception as e:
         report.failure(name, e)
+
+
+def validate_dtype(report, dataset, name, result):
+    """Validate the dtype of the dataset."""
+
+    if not isinstance(result, np.dtype):
+        raise ValueError(f"Result is not a np.dtype {type(result)}")
 
 
 def verify_dataset(dataset, costly_checks=False, detailed=False):
