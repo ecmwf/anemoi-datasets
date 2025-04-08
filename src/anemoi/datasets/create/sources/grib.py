@@ -17,177 +17,16 @@ from typing import Optional
 from typing import Union
 
 import earthkit.data as ekd
+from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
+from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
-from earthkit.data.indexing.fieldlist import FieldArray
 from earthkit.data.utils.patterns import Pattern
 
 from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
-
-
-def _load(context: Any, name: str, record: Dict[str, Any]) -> tuple:
-    """Load data from a given source.
-
-    Parameters
-    ----------
-    context : Any
-        The context in which the function is executed.
-    name : str
-        The name of the data source.
-    record : dict of str to Any
-        The record containing source information.
-
-    Returns
-    -------
-    tuple
-        A tuple containing the data as a numpy array and the UUID of the HGrid.
-    """
-    ds = None
-
-    param = record["param"]
-
-    if "path" in record:
-        context.info(f"Using {name} from {record['path']} (param={param})")
-        ds = from_source("file", record["path"])
-
-    if "url" in record:
-        context.info(f"Using {name} from {record['url']} (param={param})")
-        ds = from_source("url", record["url"])
-
-    ds = ds.sel(param=param)
-
-    assert len(ds) == 1, f"{name} {param}, expected one field, got {len(ds)}"
-    ds = ds[0]
-
-    return ds.to_numpy(flatten=True), ds.metadata("uuidOfHGrid")
-
-
-class Geography:
-    """This class retrieves the latitudes and longitudes of unstructured grids,
-    and checks if the fields are compatible with the grid.
-
-    Parameters
-    ----------
-    context : Any
-        The context in which the function is executed.
-    latitudes : dict of str to Any
-        Latitude information.
-    longitudes : dict of str to Any
-        Longitude information.
-    """
-
-    def __init__(self, context: Any, latitudes: Dict[str, Any], longitudes: Dict[str, Any]) -> None:
-        """Initialize the Geography class.
-
-        Parameters
-        ----------
-        context : Any
-            The context in which the function is executed.
-        latitudes : dict of str to Any
-            Latitude information.
-        longitudes : dict of str to Any
-            Longitude information.
-        """
-        latitudes, uuidOfHGrid_lat = _load(context, "latitudes", latitudes)
-        longitudes, uuidOfHGrid_lon = _load(context, "longitudes", longitudes)
-
-        assert (
-            uuidOfHGrid_lat == uuidOfHGrid_lon
-        ), f"uuidOfHGrid mismatch: lat={uuidOfHGrid_lat} != lon={uuidOfHGrid_lon}"
-
-        context.info(f"Latitudes: {len(latitudes)}, Longitudes: {len(longitudes)}")
-        assert len(latitudes) == len(longitudes)
-
-        self.uuidOfHGrid = uuidOfHGrid_lat
-        self.latitudes = latitudes
-        self.longitudes = longitudes
-        self.first = True
-
-    def check(self, field: Any) -> None:
-        """Check if the field is compatible with the grid.
-
-        Parameters
-        ----------
-        field : Any
-            The field to check.
-        """
-        if self.first:
-            # We only check the first field, for performance reasons
-            assert (
-                field.metadata("uuidOfHGrid") == self.uuidOfHGrid
-            ), f"uuidOfHGrid mismatch: {field.metadata('uuidOfHGrid')} != {self.uuidOfHGrid}"
-            self.first = False
-
-
-class AddGrid:
-    """An earth-kit.data.Field wrapper that adds grid information.
-
-    Parameters
-    ----------
-    field : Any
-        The field to wrap.
-    geography : Geography
-        The geography information.
-    """
-
-    def __init__(self, field: Any, geography: Geography) -> None:
-        """Initialize the AddGrid class.
-
-        Parameters
-        ----------
-        field : Any
-            The field to wrap.
-        geography : Geography
-            The geography information.
-        """
-        self._field = field
-
-        geography.check(field)
-
-        self._latitudes = geography.latitudes
-        self._longitudes = geography.longitudes
-
-    def __getattr__(self, name: str) -> Any:
-        """Get an attribute from the wrapped field.
-
-        Parameters
-        ----------
-        name : str
-            The name of the attribute.
-
-        Returns
-        -------
-        Any
-            The attribute value.
-        """
-        return getattr(self._field, name)
-
-    def __repr__(self) -> str:
-        """Get the string representation of the wrapped field.
-
-        Returns
-        -------
-        str
-            The string representation.
-        """
-        return repr(self._field)
-
-    def grid_points(self) -> tuple:
-        """Get the grid points (latitudes and longitudes).
-
-        Returns
-        -------
-        tuple
-            The latitudes and longitudes.
-        """
-        return self._latitudes, self._longitudes
-
-    @property
-    def resolution(self) -> str:
-        """Get the resolution of the grid."""
-        return "unknown"
 
 
 def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
@@ -243,9 +82,8 @@ def execute(
     context: Any,
     dates: List[Any],
     path: Union[str, List[str]],
-    latitudes: Optional[Dict[str, Any]] = None,
-    longitudes: Optional[Dict[str, Any]] = None,
     flavour: Optional[Union[str, Dict[str, Any]]] = None,
+    grid_definition: Optional[Dict[str, Any]] = None,
     *args: Any,
     **kwargs: Any,
 ) -> ekd.FieldList:
@@ -255,9 +93,8 @@ def execute(
         context (Any): The context in which the function is executed.
         dates (List[Any]): List of dates.
         path (Union[str, List[str]]): Path or list of paths to the GRIB files.
-        latitudes (Optional[Dict[str, Any]], optional): Latitude information. Defaults to None.
-        longitudes (Optional[Dict[str, Any]], optional): Longitude information. Defaults to None.
         flavour (Optional[Union[str, Dict[str, Any]]], optional): Flavour information. Defaults to None.
+        grid_definition (Optional[Dict[str, Any]]): Grid definition config to create a Grid object.
         *args (Any): Additional arguments.
         **kwargs (Any): Additional keyword arguments.
 
@@ -270,9 +107,10 @@ def execute(
     if flavour is not None:
         flavour = RuleBasedFlavour(flavour)
 
-    geography = None
-    if latitudes is not None and longitudes is not None:
-        geography = Geography(context, latitudes, longitudes)
+    if grid_definition is not None:
+        grid = grid_registry.from_config(grid_definition)
+    else:
+        grid = None
 
     ds = from_source("empty")
     dates = [d.isoformat() for d in dates]
@@ -295,8 +133,8 @@ def execute(
     if kwargs and not context.partial_ok:
         check(ds, given_paths, valid_datetime=dates, **kwargs)
 
-    if geography is not None:
-        ds = FieldArray([AddGrid(_, geography) for _ in ds])
+    if grid is not None:
+        ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
 
     if len(ds) == 0:
         LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={kwargs})")
