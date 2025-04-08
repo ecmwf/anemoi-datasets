@@ -540,10 +540,21 @@ QUIET = set()
 
 def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
     """Look up a zarr dataset by name."""
-    if name.endswith(".zarr") or name.endswith(".zip"):
-        return name
 
     config = load_config()["datasets"]
+    use_search_path_not_found = config.get("use_search_path_not_found", False)
+
+    if name.endswith(".zarr") or name.endswith(".zip"):
+
+        if os.path.exists(name):
+            return name
+
+        if not use_search_path_not_found:
+            # There will be an error triggered by the open_zarr
+            return name
+
+        LOG.warning("File %s not found, trying to search in the search path", name)
+        name = os.path.splitext(os.path.basename(name))[0]
 
     if name in config["named"]:
         if name not in QUIET:
