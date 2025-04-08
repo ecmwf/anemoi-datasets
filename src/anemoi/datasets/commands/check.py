@@ -51,7 +51,7 @@ class Check(Command):
             if recipe_name != in_recipe_name:
                 print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
 
-            name = recipe_name
+            name = in_recipe_name
             DatasetName(name=name).raise_if_not_valid()
 
         if args.name:
