@@ -87,16 +87,24 @@ def execute(
     *args: Any,
     **kwargs: Any,
 ) -> ekd.FieldList:
-    """Execute the function to load data from GRIB files.
+    """Executes the function to load data from GRIB files.
 
-    Args:
-        context (Any): The context in which the function is executed.
-        dates (List[Any]): List of dates.
-        path (Union[str, List[str]]): Path or list of paths to the GRIB files.
-        flavour (Optional[Union[str, Dict[str, Any]]], optional): Flavour information. Defaults to None.
-        grid_definition (Optional[Dict[str, Any]]): Grid definition config to create a Grid object.
-        *args (Any): Additional arguments.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    dates : list of Any
+        List of dates.
+    path : str or list of str
+        Path or list of paths to the GRIB files.
+    flavour : str or dict of str to Any, optional
+        Flavour information, by default None.
+    grid_definition : dict of str to Any, optional
+        Grid definition configuration to create a Grid object, by default None.
+    *args : Any
+        Additional positional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
 
     Returns
     -------
