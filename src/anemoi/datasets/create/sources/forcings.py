@@ -25,7 +25,7 @@ def forcings(context: Any, dates: List[str], template: str, param: str) -> Any:
         The context in which the function is executed.
     dates : list
         List of dates for which data is to be loaded.
-    template : str
+    template : FieldList
         Template for the data source.
     param : str
         Parameter for the data source.

@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.21](https://github.com/ecmwf/anemoi-datasets/compare/0.5.20...0.5.21) (2025-04-08)
+
+
+### Features
+
+* more tests ([#277](https://github.com/ecmwf/anemoi-datasets/issues/277)) ([0ea7d46](https://github.com/ecmwf/anemoi-datasets/commit/0ea7d46a61aaa4381f8eb75b2623033bd404da5b))
+
+
+### Bug Fixes
+
+* grib-index command default ([#275](https://github.com/ecmwf/anemoi-datasets/issues/275)) ([04a37d8](https://github.com/ecmwf/anemoi-datasets/commit/04a37d8a046dc6b314e9f2376c69f1824cbfa43d))
+* pin version of numcodecs ([#285](https://github.com/ecmwf/anemoi-datasets/issues/285)) ([d86f317](https://github.com/ecmwf/anemoi-datasets/commit/d86f317981a312438a19323d5d67e1b31f80cf23))
+* update version of transform ([#284](https://github.com/ecmwf/anemoi-datasets/issues/284)) ([e72cdde](https://github.com/ecmwf/anemoi-datasets/commit/e72cddedd8160a27a9e63e2581f4fcc1a91cd8b6))
+
+
+### Documentation
+
+* some cleanup ([#276](https://github.com/ecmwf/anemoi-datasets/issues/276)) ([496b82a](https://github.com/ecmwf/anemoi-datasets/commit/496b82a5e10119c1fd27a58a85d5964fcad3c7bb))
+* time interpolation example ([#274](https://github.com/ecmwf/anemoi-datasets/issues/274)) ([9d19bd6](https://github.com/ecmwf/anemoi-datasets/commit/9d19bd6bc3c8e0c25718a05d670357936ec99a8b))
+* update documentation ([#271](https://github.com/ecmwf/anemoi-datasets/issues/271)) ([85ea386](https://github.com/ecmwf/anemoi-datasets/commit/85ea38690e7e8fab4dbac5c5b4d10eafdabde766))
+
 ## [0.5.20](https://github.com/ecmwf/anemoi-datasets/compare/0.5.19...0.5.20) (2025-03-31)
 
 
