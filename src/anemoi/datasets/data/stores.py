@@ -11,6 +11,7 @@
 import datetime
 import logging
 import os
+import tempfile
 import warnings
 from functools import cached_property
 from typing import Any
@@ -185,10 +186,30 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
     store = path_or_url
 
     if store.startswith("s3://"):
-        store = S3Store(store)
+        return S3Store(store)
 
-    elif store.startswith("http://") or store.startswith("https://"):
+    if store.startswith("http://") or store.startswith("https://"):
+
         parsed = urlparse(store)
+
+        if store.endswith(".zip"):
+            import multiurl
+
+            # Zarr cannot handle zip files over HTTP
+            tmpdir = tempfile.gettempdir()
+            name = os.path.basename(parsed.path)
+            path = os.path.join(tmpdir, name)
+            LOG.warning("Zarr does not support zip files over HTTP, downloading to %s", path)
+            if os.path.exists(path):
+                LOG.warning("File %s already exists, reusing it", path)
+                return name_to_zarr_store(path)
+
+            LOG.warning("Downloading %s", store)
+
+            multiurl.download(store, path + ".tmp")
+            os.rename(path + ".tmp", path)
+            return name_to_zarr_store(path)
+
         bits = parsed.netloc.split(".")
         if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
             s3_url = f"s3://{bits[0]}{parsed.path}"
