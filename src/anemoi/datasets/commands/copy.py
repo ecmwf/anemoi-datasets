@@ -488,8 +488,8 @@ class CopyMixin:
                 if args.source.startswith("s3://") and not args.source.endswith("/"):
                     args.source = args.source + "/"
                 copier = Transfer(
-                    args.source,
-                    args.target,
+                    source=args.source,
+                    target=args.target,
                     overwrite=args.overwrite,
                     resume=args.resume,
                     verbosity=args.verbosity,
