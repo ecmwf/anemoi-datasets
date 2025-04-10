@@ -18,6 +18,7 @@ from typing import Optional
 from typing import Union
 
 import numpy as np
+from anemoi.utils.config import load_config
 from anemoi.utils.dates import frequency_to_string
 from numpy.typing import NDArray
 
@@ -25,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DatasetName:
-    """Class to validate and parse dataset names according to naming conventions."""
+    """Validate and parse dataset names according to naming conventions."""
 
     def __init__(
         self,
@@ -58,6 +59,14 @@ class DatasetName:
 
         self.messages = []
 
+        config = load_config().get("datasets", {})
+
+        if config.get("ignore_naming_conventions", False):
+            # setting the env variable ANEMOI_CONFIG_DATASETS_IGNORE_NAMING_CONVENTIONS=1
+            # will ignore the naming conventions
+            return
+
+        self.check_characters()
         self.check_parsed()
         self.check_resolution(resolution)
         self.check_frequency(frequency)
@@ -156,6 +165,15 @@ class DatasetName:
         resolution_str = str(resolution).replace(".", "p").lower()
         self._check_missing("resolution", resolution_str)
         self._check_mismatch("resolution", resolution_str)
+
+    def check_characters(self) -> None:
+        if not self.name.islower():
+            self.messages.append(f"the {self.name} should be in lower case.")
+        if "_" in self.name:
+            self.messages.append(f"the {self.name} should use '-' instead of '_'.")
+        for c in self.name:
+            if not c.isalnum() and c not in "-":
+                self.messages.append(f"the {self.name} should only contain alphanumeric characters and '-'.")
 
     def check_frequency(self, frequency: Optional[datetime.timedelta]) -> None:
         """Check if the frequency matches the expected format.
