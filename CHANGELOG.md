@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.22](https://github.com/ecmwf/anemoi-datasets/compare/0.5.21...0.5.22) (2025-04-10)
+
+
+### Features
+
+* downloading zip files if needed ([#288](https://github.com/ecmwf/anemoi-datasets/issues/288)) ([3024099](https://github.com/ecmwf/anemoi-datasets/commit/30240999a380b6d9087e5203d356f6770361ffbb))
+* optionally search for zarr files at various location if not found ([#281](https://github.com/ecmwf/anemoi-datasets/issues/281)) ([8bd174c](https://github.com/ecmwf/anemoi-datasets/commit/8bd174ca4457ee57fc111df91e02f6b515d84c0c))
+
+
+### Bug Fixes
+
+* fix copy ([#289](https://github.com/ecmwf/anemoi-datasets/issues/289)) ([a79759f](https://github.com/ecmwf/anemoi-datasets/commit/a79759fb7ca0d019f03768b56cc7e807fa21f3d4))
+
 ## [0.5.21](https://github.com/ecmwf/anemoi-datasets/compare/0.5.20...0.5.21) (2025-04-08)
 
 
