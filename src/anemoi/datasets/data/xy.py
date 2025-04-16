@@ -33,12 +33,26 @@ class ZipBase(Combined):
         return self.__class__(datasets, check_compatibility=self._check_compatibility)
 
     def tree(self):
-        return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
+        return Node(
+            self,
+            [d.tree() for d in self.datasets],
+            check_compatibility=self._check_compatibility,
+        )
 
     def __len__(self):
         return min(len(d) for d in self.datasets)
 
     def __getitem__(self, n):
+        if isinstance(n, tuple) and len(n) == 2:
+            sample_idx = n[0]
+            slices = n[1]
+            if len(slices) != len(self.datasets):
+                raise IndexError(
+                    f"Number of slices {len(slices)} does not match number of datasets {len(self.datasets)}"
+                )
+
+            return tuple(d[sample_idx, :, :, s] for d, s in zip(self.datasets, slices))
+
         return tuple(d[n] for d in self.datasets)
 
     def check_same_resolution(self, d1, d2):
