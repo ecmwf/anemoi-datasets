@@ -124,11 +124,6 @@ class DemoAlternativeDataset:
 
         return result
 
-    @cached_property
-    def dates(self):
-        # Return the dates in the dataset
-        return self.ds.time.values
-
     @property
     def variables(self):
         # Return the variables in the dataset
@@ -177,6 +172,8 @@ class DemoAlternativeDataset:
         # This is a dummy implementation for the sake of the example
         return {1, 9}
 
+    # Below are the methods that are used to add metadata in the checkpoint
+
     def metadata(self):
         # This will be stored in the model's checkpoint
         # to be used by `anemoi-inference`
@@ -191,6 +188,11 @@ class DemoAlternativeDataset:
         }
 
     # Below are the methods that are not used during training
+
+    @cached_property
+    def dates(self):
+        # Return the dates in the dataset
+        return self.ds.time.values
 
     @property
     def start_date(self):
