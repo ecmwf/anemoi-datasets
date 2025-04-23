@@ -105,11 +105,11 @@ optional-dependencies.tests = [
 optional-dependencies.xarray = [
   "adlfs",
   "gcsfs",
-  "s3fs>=0.5",
   "kerchunk",
   "pandas",
   "planetary-computer",
   "pystac-client",
+  "s3fs>=0.5",
 ]
 
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
