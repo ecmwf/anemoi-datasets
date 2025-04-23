@@ -170,6 +170,16 @@ class Complement(Combined):
         """
         pass
 
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the forwards subclass.
+
+        Returns
+        -------
+        dict[str, Any]
+            The metadata specific to the forwards subclass.
+        """
+        return dict(complement=self._source.dataset_metadata())
+
 
 class ComplementNone(Complement):
     """A class to complement a target dataset with variables from a source dataset without interpolation."""
@@ -313,6 +323,7 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     reorder = source.variables
     complemented = _open([target, complement])
     ordered = (
-        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate(),
+        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
     )
+
     return ordered
