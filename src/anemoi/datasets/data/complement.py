@@ -323,7 +323,15 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     reorder = source.variables
     complemented = _open([target, complement])
     ordered = (
-        Select(complemented, complemented._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+        Select(
+            complemented,
+            complemented._reorder_to_columns(reorder),
+            {
+                "reoder": reorder,
+            },
+        )
+        ._subset(**kwargs)
+        .mutate()
     )
 
     return ordered
