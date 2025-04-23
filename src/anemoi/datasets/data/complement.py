@@ -30,7 +30,7 @@ from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
 from .indexing import update_tuple
 from .misc import _auto_adjust
-from .misc import _open
+from .misc import _open_dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -91,6 +91,12 @@ class Complement(Combined):
     def variables(self) -> List[str]:
         """Returns the list of variables to be added to the target dataset."""
         return self._variables
+
+    @property
+    def statistics(self) -> Dict[str, NDArray[Any]]:
+        """Returns the statistics of the complemented dataset."""
+        index = [self._source.name_to_index[v] for v in self._variables]
+        return {k: v[index] for k, v in self._source.statistics.items()}
 
     @property
     def name_to_index(self) -> Dict[str, int]:
@@ -291,7 +297,6 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     Dataset
         The complemented dataset.
     """
-    from .select import Select
 
     assert len(args) == 0, args
 
@@ -306,8 +311,8 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     if interpolation not in ("none", "nearest"):
         raise NotImplementedError(f"Complement method={interpolation} not implemented")
 
-    source = _open(source)
-    target = _open(target)
+    source = _open_dataset(source)
+    target = _open_dataset(target)
     # `select` is the same as `variables`
     (source, target), kwargs = _auto_adjust([source, target], kwargs, exclude=["select"])
 
@@ -319,19 +324,4 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
 
     complement = Class(target=target, source=source)._subset(**kwargs)
 
-    # Will join the datasets along the variables axis
-    reorder = source.variables
-    complemented = _open([target, complement])
-    ordered = (
-        Select(
-            complemented,
-            complemented._reorder_to_columns(reorder),
-            {
-                "reoder": reorder,
-            },
-        )
-        ._subset(**kwargs)
-        .mutate()
-    )
-
-    return ordered
+    return _open_dataset([target, complement], reorder=source.variables)
