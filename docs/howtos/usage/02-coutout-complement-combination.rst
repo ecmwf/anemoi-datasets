@@ -6,9 +6,9 @@
 
 Here we explain how to combine a cutout with a complementing dataset.
 
-*************************
- Interpolate to LAM grid
-*************************
+****************************
+ Interpolate to cutout grid
+****************************
 
 In this case, we will use the a ``lam-dataset`` in a different grid that
 contains just one variable and a ``global-dataset``. What we want to do
