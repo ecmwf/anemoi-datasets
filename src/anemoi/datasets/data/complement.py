@@ -8,12 +8,14 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from abc import abstractmethod
 from functools import cached_property
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Set
 from typing import Tuple
 
@@ -97,6 +99,12 @@ class Complement(Combined):
         """Returns the statistics of the complemented dataset."""
         index = [self._source.name_to_index[v] for v in self._variables]
         return {k: v[index] for k, v in self._source.statistics.items()}
+
+    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+        index = [self._source.name_to_index[v] for v in self._variables]
+        if delta is None:
+            delta = self.frequency
+        return {k: v[index] for k, v in self._source.statistics_tendencies(delta).items()}
 
     @property
     def name_to_index(self) -> Dict[str, int]:
