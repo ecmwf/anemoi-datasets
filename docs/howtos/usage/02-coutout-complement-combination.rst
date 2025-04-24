@@ -19,7 +19,7 @@ the cutout grid operation.
 
 or for the config file:
 
-.. literalinclude:: code/cutout-complement1.yaml
+.. literalinclude:: yaml/cutout-complement1.yaml
 
 The ``adjust`` option is in case the end or start dates do not exactly
 match.
