@@ -169,14 +169,28 @@ class Accumulation:
                 f"Negative values when computing accumutation for {self.param} ({self.date} {self.time}): min={np.amin(self.values)} max={np.amax(self.values)}"
             )
 
-        self.out.write(
-            self.values,
-            template=template,
-            stepType="accum",
-            startStep=self.startStep,
-            endStep=self.endStep,
-            check_nans=True,
-        )
+        # In GRIB1, is the step is greater that 254 (one byte), we cannot use a range, because both P1 and P2 values
+        # are used to store the end step
+
+        edition = template.metadata("edition")
+
+        if edition == 1 and self.endStep > 254:
+            self.out.write(
+                self.values,
+                template=template,
+                stepType="instant",
+                step=self.endStep,
+                check_nans=True,
+            )
+        else:
+            self.out.write(
+                self.values,
+                template=template,
+                stepType="accum",
+                startStep=self.startStep,
+                endStep=self.endStep,
+                check_nans=True,
+            )
         self.values = None
         self.done = True
 
@@ -597,6 +611,8 @@ class AccumulationFromLastReset(Accumulation):
                 self.values = self.values - values
                 self.startStep = endStep
 
+            assert self.endStep - self.startStep <= self.accumulations_reset_frequency, (self.startStep, startStep)
+
             # if not np.all(self.values >= 0):
             #     warnings.warn(f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}")
             #     self.values = np.maximum(self.values, 0)
@@ -650,8 +666,9 @@ class AccumulationFromLastReset(Accumulation):
             )
         )
 
-        # for step in range(step1 + frequency, step2 + frequency, frequency):
-        #     steps.append(step + add_step)
+        assert 0 < len(steps) <= 2, (valid_date, base_date, frequency, accumulations_reset_frequency)
+        if len(steps) == 2:
+            assert steps[1] - steps[0] <= accumulations_reset_frequency, (steps, accumulations_reset_frequency)
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
