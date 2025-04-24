@@ -1,0 +1,11 @@
+dataset:
+   complement:
+      dataset:
+         cutout:
+          - dataset: lam-dataset
+          - dataset: global-dataset
+         min_distance_km: 1
+         adjust: dates
+      source:
+       - dataset: global-dataset
+      interpolation: nearest
