@@ -9,8 +9,6 @@
 
 from typing import List
 
-from .create import filters
-from .create import sources
 from .data import MissingDateError
 from .data import add_dataset_path
 from .data import add_named_dataset
@@ -31,5 +29,5 @@ __all__: List[str] = [
     "list_dataset_names",
     "MissingDateError",
     "open_dataset",
-    "__version__"
+    "__version__",
 ]
