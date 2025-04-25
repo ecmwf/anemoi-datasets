@@ -2,10 +2,10 @@ dataset:
    complement:
       dataset:
          cutout:
-          - dataset: lam-dataset
+          - lam-dataset
           - dataset: global-dataset
+            select: [ tp ]
          min_distance_km: 1
          adjust: dates
-      source:
-       - dataset: global-dataset
+      source: global-dataset
       interpolation: nearest
