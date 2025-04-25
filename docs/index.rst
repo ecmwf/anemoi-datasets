@@ -172,6 +172,8 @@ You may also have to install pandoc on macOS:
    :caption: API Reference
 
    modules/*
+   _api/datasets.create.filters
+   _api/datasets.create.sources
 
 .. toctree::
    :maxdepth: 1
