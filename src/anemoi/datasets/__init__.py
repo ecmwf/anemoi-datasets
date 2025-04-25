@@ -31,7 +31,5 @@ __all__: List[str] = [
     "list_dataset_names",
     "MissingDateError",
     "open_dataset",
-    "__version__",
-    "filters",
-    "sources",
+    "__version__"
 ]
