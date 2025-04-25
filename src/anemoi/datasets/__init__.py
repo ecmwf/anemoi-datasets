@@ -9,13 +9,13 @@
 
 from typing import List
 
+from .create import filters
+from .create import sources
 from .data import MissingDateError
 from .data import add_dataset_path
 from .data import add_named_dataset
 from .data import list_dataset_names
 from .data import open_dataset
-from .create import filters
-from .create import sources
 
 try:
     # NOTE: the `_version.py` file must not be present in the git repository
