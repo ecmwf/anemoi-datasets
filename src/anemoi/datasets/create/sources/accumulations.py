@@ -219,8 +219,8 @@ class Accumulation:
         startStep = field.metadata("startStep")
         endStep = field.metadata("endStep")
 
-        if self.buggy_steps and startStep == endStep:
-            startStep = 0
+        if startStep == endStep:
+            startStep, endStep = self.adjust_steps(startStep, endStep)
 
         assert step == endStep, (startStep, endStep, step)
 
@@ -234,6 +234,7 @@ class Accumulation:
     @classmethod
     def mars_date_time_steps(
         cls,
+        *,
         dates: List[datetime.datetime],
         step1: int,
         step2: int,
@@ -294,7 +295,14 @@ class Accumulation:
                     add_step += 1
 
             yield cls._mars_date_time_step(
-                base_date, step1, step2, add_step, frequency, accumulations_reset_frequency, user_date
+                base_date=base_date,
+                step1=step1,
+                step2=step2,
+                add_step=add_step,
+                frequency=frequency,
+                accumulations_reset_frequency=accumulations_reset_frequency,
+                user_date=user_date,
+                requested_date=valid_date,
             )
 
     def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
@@ -314,6 +322,7 @@ class Accumulation:
     @classmethod
     def _mars_date_time_step(
         cls,
+        *,
         base_date: datetime.datetime,
         step1: int,
         step2: int,
@@ -321,6 +330,7 @@ class Accumulation:
         frequency: Optional[int],
         accumulations_reset_frequency: Optional[int],
         user_date: Optional[str],
+        requested_date: Optional[datetime.datetime] = None,
     ) -> Tuple[int, int, Tuple[int, ...]]:
         """Generates a MARS date-time step.
 
@@ -340,6 +350,8 @@ class Accumulation:
             Frequency at which accumulations reset. Defaults to None.
         user_date : Optional[str], optional
             User-defined date. Defaults to None.
+        requested_date : Optional[datetime.datetime], optional
+            Requested date. Defaults to None.
 
         Returns
         -------
@@ -352,7 +364,23 @@ class Accumulation:
 class AccumulationFromStart(Accumulation):
     """Class to handle data accumulation from the start of the forecast."""
 
-    buggy_steps = True
+    def adjust_steps(self, startStep: int, endStep: int) -> Tuple[int, int]:
+        """Adjusts the start and end steps.
+
+        Parameters
+        ----------
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
+
+        Returns
+        -------
+        Tuple[int, int]
+            The adjusted start and end steps.
+        """
+        assert endStep == startStep
+        return (0, endStep)
 
     def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the start.
@@ -394,6 +422,7 @@ class AccumulationFromStart(Accumulation):
     @classmethod
     def _mars_date_time_step(
         cls,
+        *,
         base_date: datetime.datetime,
         step1: int,
         step2: int,
@@ -401,6 +430,7 @@ class AccumulationFromStart(Accumulation):
         frequency: Optional[int],
         accumulations_reset_frequency: Optional[int],
         user_date: Optional[str],
+        requested_date: Optional[datetime.datetime] = None,
     ) -> Tuple[int, int, Tuple[int, ...]]:
         """Generates a MARS date-time step.
 
@@ -420,6 +450,8 @@ class AccumulationFromStart(Accumulation):
             Frequency at which accumulations reset. Defaults to None.
         user_date : Optional[str], optional
             User-defined date. Defaults to None.
+        requested_date : Optional[datetime.datetime], optional
+            Requested date. Defaults to None.
 
         Returns
         -------
@@ -442,8 +474,6 @@ class AccumulationFromStart(Accumulation):
 
 class AccumulationFromLastStep(Accumulation):
     """Class to handle data accumulation from the last step of the forecast."""
-
-    buggy_steps = False
 
     def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the last step.
@@ -481,6 +511,7 @@ class AccumulationFromLastStep(Accumulation):
     @classmethod
     def _mars_date_time_step(
         cls,
+        *,
         base_date: datetime.datetime,
         step1: int,
         step2: int,
@@ -488,6 +519,7 @@ class AccumulationFromLastStep(Accumulation):
         frequency: int,
         accumulations_reset_frequency: Optional[int],
         user_date: Optional[str] = None,
+        requested_date: Optional[datetime.datetime] = None,
     ) -> Tuple[int, int, Tuple[int, ...]]:
         """Generates a MARS date-time step.
 
@@ -507,6 +539,8 @@ class AccumulationFromLastStep(Accumulation):
             Frequency at which accumulations reset. Defaults to None.
         user_date : Optional[str], optional
             User-defined date. Defaults to None.
+        requested_date : Optional[datetime.datetime], optional
+            Requested date. Defaults to None.
 
         Returns
         -------
@@ -533,7 +567,58 @@ class AccumulationFromLastStep(Accumulation):
 class AccumulationFromLastReset(Accumulation):
     """Class to handle data accumulation from the last step of the forecast."""
 
-    buggy_steps = False
+    def adjust_steps(self, startStep: int, endStep: int) -> Tuple[int, int]:
+        """Adjusts the start and end steps.
+
+        Parameters
+        ----------
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
+
+        Returns
+        -------
+        Tuple[int, int]
+            The adjusted start and end steps.
+        """
+        return self.__class__._adjust_steps(startStep, endStep, self.frequency, self.accumulations_reset_frequency)
+
+    @classmethod
+    def _adjust_steps(
+        self, startStep: int, endStep: int, frequency: int, accumulations_reset_frequency: int
+    ) -> Tuple[int, int]:
+        """Adjusts the start and end steps.
+
+        Parameters
+        ----------
+        startStep : int
+            The start step.
+        endStep : int
+            The end step.
+        frequency : int
+            Frequency of accumulation.
+        accumulations_reset_frequency : int
+            Frequency at which accumulations reset.
+
+        Returns
+        -------
+        Tuple[int, int]
+            The adjusted start and end steps.
+        """
+
+        assert frequency == 1, (frequency, startStep, endStep)
+        assert endStep - startStep <= accumulations_reset_frequency, (startStep, endStep)
+
+        return ((startStep // accumulations_reset_frequency) * accumulations_reset_frequency, endStep)
+
+        # # TODO: Rewrite with modulo
+        interval = (0, accumulations_reset_frequency)
+        while True:
+            if startStep >= interval[0] and endStep <= interval[1]:
+                LOG.info(f"ADJUST 🍓🍓🍓🍓🍓🍓 {interval[0]}-{endStep}")
+                return (interval[0], endStep)
+            interval = (interval[1], interval[1] + accumulations_reset_frequency)
 
     @classmethod
     def _steps(
@@ -561,11 +646,17 @@ class AccumulationFromLastReset(Accumulation):
         Tuple[int, int]
             A tuple representing the steps for accumulation.
         """
-        step = valid_date - base_date
-        step = int(step.total_seconds() // 3600)
 
-        start = (step - frequency) - (step - frequency) % accumulations_reset_frequency + frequency
-        return (step, start)
+        assert base_date.day == 1, (base_date, valid_date)
+
+        print("🤓🤓🤓🤓🤓🤓🤓🤓🤓🤓", base_date.isoformat(), valid_date.isoformat(), valid_date - base_date)
+        step = (valid_date - base_date).total_seconds()
+        assert int(step) == step, (valid_date, base_date, step)
+        assert int(step) % 3600 == 0, (valid_date, base_date, step)
+        step = int(step // 3600)
+        start, end = cls._adjust_steps(step, step, frequency, accumulations_reset_frequency)
+
+        return start + frequency, end
 
     def compute(self, values: NDArray[Any], startStep: int, endStep: int) -> None:
         """Computes the accumulation from the last step.
@@ -582,14 +673,12 @@ class AccumulationFromLastReset(Accumulation):
 
         assert self.frequency == 1
 
-        if endStep == startStep:
-            # LOG.warning(f"AccumulationFromLastReset: endStep ({endStep})== startStep ({startStep})")
-            startStep = endStep - self.frequency
+        LOG.info(f"⚽⚽⚽⚽⚽⚽⚽⚽ COMPUTE {startStep=} {endStep=} {self.frequency=}")
 
-        assert endStep - startStep == self.frequency, (
+        assert startStep % self.accumulations_reset_frequency == 0, (
             startStep,
             endStep,
-            self.frequency,
+            self.accumulations_reset_frequency,
         )
 
         if self.values is None:
@@ -597,6 +686,9 @@ class AccumulationFromLastReset(Accumulation):
             self.values = np.copy(values)
             self.startStep = startStep
             self.endStep = endStep
+
+            if len(self.steps) == 1:
+                assert self.startStep == self.endStep - self.frequency, (self.startStep, self.endStep)
 
         else:
             assert endStep != self.endStep, (self.endStep, endStep)
@@ -612,6 +704,7 @@ class AccumulationFromLastReset(Accumulation):
                 self.startStep = endStep
 
             assert self.endStep - self.startStep <= self.accumulations_reset_frequency, (self.startStep, startStep)
+            print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", self.startStep, self.endStep)
 
             # if not np.all(self.values >= 0):
             #     warnings.warn(f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}")
@@ -620,6 +713,7 @@ class AccumulationFromLastReset(Accumulation):
     @classmethod
     def _mars_date_time_step(
         cls,
+        *,
         base_date: datetime.datetime,
         step1: int,
         step2: int,
@@ -627,6 +721,7 @@ class AccumulationFromLastReset(Accumulation):
         frequency: int,
         accumulations_reset_frequency: Optional[int],
         user_date: Optional[str],
+        requested_date: Optional[datetime.datetime] = None,
     ) -> Tuple[int, int, Tuple[int, ...]]:
         """Generates a MARS date-time step.
 
@@ -646,6 +741,8 @@ class AccumulationFromLastReset(Accumulation):
             Frequency at which accumulations reset.
         user_date : Optional[str]
             User-defined date.
+        requested_date : Optional[datetime.datetime], optional
+            Requested date. Defaults to None.
 
         Returns
         -------
@@ -655,20 +752,24 @@ class AccumulationFromLastReset(Accumulation):
         # assert frequency > 0, frequency
         # assert step1 > 0, (step1, step2, frequency, add_step, base_date)
 
-        valid_date = base_date + datetime.timedelta(hours=step2 + add_step)
+        step1 += add_step
+        step2 += add_step
+
+        print("🤓🤓🤓🤓🤓🤓🤓🤓🤓🤓", step1, step2, requested_date.isoformat(), base_date.isoformat())
+
         assert step2 - step1 == frequency, (step1, step2, frequency)
 
-        steps = sorted(
-            set(
-                cls._steps(
-                    valid_date, base_date, frequency, accumulations_reset_frequency=accumulations_reset_frequency
-                )
-            )
-        )
+        adjust_step1 = cls._adjust_steps(step1, step1, frequency, accumulations_reset_frequency)
+        adjust_step2 = cls._adjust_steps(step2, step2, frequency, accumulations_reset_frequency)
 
-        assert 0 < len(steps) <= 2, (valid_date, base_date, frequency, accumulations_reset_frequency)
-        if len(steps) == 2:
-            assert steps[1] - steps[0] <= accumulations_reset_frequency, (steps, accumulations_reset_frequency)
+        if adjust_step1[1] % accumulations_reset_frequency == 0:
+            # First step of a new accumulation
+            steps = (adjust_step2[1],)
+        else:
+            steps = (adjust_step1[1], adjust_step2[1])
+        # assert adjust_step1[1] % accumulations_reset_frequency != 0, (adjust_step1, adjust_step2)
+
+        LOG.info(f"🍏🍏🍏🍏🍏🍏🍏🍏🍏 STEPS {steps}")
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
@@ -766,14 +867,14 @@ def _compute_accumulations(
     LOG.info(f"XXXXXXXXXXX {step1=}, {step2=}, {data_accumulation_period=}, {base_times=}, {adjust_step=}")
 
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
-        dates,
-        step1,
-        step2,
-        data_accumulation_period,
-        base_times,
-        adjust_step,
-        accumulations_reset_frequency,
-        user_date,
+        dates=dates,
+        step1=step1,
+        step2=step2,
+        frequency=data_accumulation_period,
+        base_times=base_times,
+        adjust_step=adjust_step,
+        accumulations_reset_frequency=accumulations_reset_frequency,
+        user_date=user_date,
     )
 
     request = deepcopy(request)
