@@ -180,10 +180,9 @@ class Create(Command):
             executor.submit(task, "init-additions", options).result()
 
         with ExecutorClass(max_workers=parallel) as executor:
-            opt = options.copy()
-            opt["parts"] = f"{n+1}/{total}"
-            futures.append(executor.submit(task, "load", opt))
             for n in range(total):
+                opt = options.copy()
+                opt["parts"] = f"{n+1}/{total}"
                 futures.append(executor.submit(task, "load-additions", opt))
 
             for future in tqdm.tqdm(
