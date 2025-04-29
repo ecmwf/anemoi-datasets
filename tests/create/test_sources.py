@@ -51,6 +51,44 @@ def test_grib() -> None:
 
 
 @skip_if_offline
+def test_grib_gridfile() -> None:
+    """Test the creation of a dataset from GRIB files with an unstructured grid.
+
+    This function tests the creation of a dataset using GRIB files from
+    specific dates and verifies the shape of the resulting dataset.
+    This GRIB data is defined on an unstructured grid and therefore requires
+    specifying a grid file.
+    """
+
+    data1 = get_test_data("anemoi-datasets/create/grib-iconch1-20250101.grib")
+    data2 = get_test_data("anemoi-datasets/create/grib-iconch1-20250102.grib")
+    gridfile = get_test_data("anemoi-datasets/create/icon_grid_0001_R19B08_mch.nc")
+    assert os.path.dirname(data1) == os.path.dirname(data2)
+
+    path = os.path.dirname(data1)
+
+    config = {
+        "dates": {
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-01-02T18:00:00",
+            "frequency": "6h",
+        },
+        "input": {
+            "grib": {
+                "path": os.path.join(path, "grib-iconch1-{date:strftime(%Y%m%d)}.grib"),
+                "grid_definition": {"icon": {"path": gridfile}},
+                "flavour": [[{"levtype": "sfc"}, {"levelist": None}]],
+            },
+        },
+    }
+
+    created = create_dataset(config=config, output=None)
+    ds = open_dataset(created)
+    assert ds.shape == (8, 1, 1, 1147980)
+    assert ds.variables == ["T_2M"]
+
+
+@skip_if_offline
 def test_netcdf() -> None:
     """Test for NetCDF files.
 
