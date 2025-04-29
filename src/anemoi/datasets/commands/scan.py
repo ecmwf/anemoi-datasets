@@ -23,6 +23,16 @@ KEYS = ("class", "type", "stream", "expver", "levtype", "domain")
 
 
 class Scan(Command):
+    """Command to scan files and generate a configuration file.
+
+    Attributes
+    ----------
+    internal : bool
+        Indicates whether the command is internal.
+    timestamp : bool
+        Indicates whether to include a timestamp.
+    """
+
     internal = True
     timestamp = True
 
@@ -32,8 +42,9 @@ class Scan(Command):
         Parameters
         ----------
         command_parser : Any
-            The command parser to which arguments are added.
+            The command-line argument parser.
         """
+
         command_parser.add_argument(
             "--match",
             help="Give a glob pattern to match files (default: *.grib)",
@@ -51,22 +62,23 @@ class Scan(Command):
         Parameters
         ----------
         args : Any
-            The arguments passed to the command.
+            Parsed command-line arguments.
         """
 
         def match(path: str) -> bool:
-            """Check if a path matches the given pattern.
+            """Check if a file path matches the given glob pattern.
 
             Parameters
             ----------
             path : str
-                The path to check.
+                The file path to check.
 
             Returns
             -------
             bool
-                True if the path matches, False otherwise.
+                True if the path matches the pattern, False otherwise.
             """
+
             return fnmatch.fnmatch(path, args.match)
 
         paths = []
