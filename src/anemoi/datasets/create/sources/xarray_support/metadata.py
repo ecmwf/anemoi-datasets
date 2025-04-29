@@ -209,6 +209,12 @@ class XArrayMetadata(RawMetadata):
         Any
             The value for the specified key, optionally cast to the specified type.
         """
+
+        if key == "levelist":
+            # Special case for levelist, for compatibility with GRIB
+            if key not in self._d and "level" in self._d:
+                key = "level"
+
         if key in self._d:
             if astype is not None:
                 return astype(self._d[key])
