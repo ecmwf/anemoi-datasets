@@ -38,4 +38,4 @@ def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any)
     ekd.FieldList
         The loaded data.
     """
-    return load_many("🇿", context, url, *args, **kwargs).execute(dates)
+    return load_many("🇿", context, dates, url, *args, **kwargs)
