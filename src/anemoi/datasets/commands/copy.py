@@ -332,7 +332,7 @@ class ZarrCopier:
         source_keys = list(source.keys())
 
         if not source_keys:
-            raise ValueError(f"Source group {source} is empty. Maybe use zarr.consolidate_metadata(store)")
+            raise ValueError(f"Source group {source} is empty.")
 
         if self.verbosity > 1:
             LOG.info(f"Keys {source_keys}")
