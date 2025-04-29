@@ -612,14 +612,6 @@ class AccumulationFromLastReset(Accumulation):
 
         return ((startStep // accumulations_reset_frequency) * accumulations_reset_frequency, endStep)
 
-        # # TODO: Rewrite with modulo
-        interval = (0, accumulations_reset_frequency)
-        while True:
-            if startStep >= interval[0] and endStep <= interval[1]:
-                LOG.info(f"ADJUST 🍓🍓🍓🍓🍓🍓 {interval[0]}-{endStep}")
-                return (interval[0], endStep)
-            interval = (interval[1], interval[1] + accumulations_reset_frequency)
-
     @classmethod
     def _steps(
         cls,
@@ -649,7 +641,6 @@ class AccumulationFromLastReset(Accumulation):
 
         assert base_date.day == 1, (base_date, valid_date)
 
-        print("🤓🤓🤓🤓🤓🤓🤓🤓🤓🤓", base_date.isoformat(), valid_date.isoformat(), valid_date - base_date)
         step = (valid_date - base_date).total_seconds()
         assert int(step) == step, (valid_date, base_date, step)
         assert int(step) % 3600 == 0, (valid_date, base_date, step)
@@ -672,8 +663,6 @@ class AccumulationFromLastReset(Accumulation):
         """
 
         assert self.frequency == 1
-
-        LOG.info(f"⚽⚽⚽⚽⚽⚽⚽⚽ COMPUTE {startStep=} {endStep=} {self.frequency=}")
 
         assert startStep % self.accumulations_reset_frequency == 0, (
             startStep,
@@ -704,11 +693,6 @@ class AccumulationFromLastReset(Accumulation):
                 self.startStep = endStep
 
             assert self.endStep - self.startStep <= self.accumulations_reset_frequency, (self.startStep, startStep)
-            print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", self.startStep, self.endStep)
-
-            # if not np.all(self.values >= 0):
-            #     warnings.warn(f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}")
-            #     self.values = np.maximum(self.values, 0)
 
     @classmethod
     def _mars_date_time_step(
@@ -755,8 +739,6 @@ class AccumulationFromLastReset(Accumulation):
         step1 += add_step
         step2 += add_step
 
-        print("🤓🤓🤓🤓🤓🤓🤓🤓🤓🤓", step1, step2, requested_date.isoformat(), base_date.isoformat())
-
         assert step2 - step1 == frequency, (step1, step2, frequency)
 
         adjust_step1 = cls._adjust_steps(step1, step1, frequency, accumulations_reset_frequency)
@@ -767,9 +749,6 @@ class AccumulationFromLastReset(Accumulation):
             steps = (adjust_step2[1],)
         else:
             steps = (adjust_step1[1], adjust_step2[1])
-        # assert adjust_step1[1] % accumulations_reset_frequency != 0, (adjust_step1, adjust_step2)
-
-        LOG.info(f"🍏🍏🍏🍏🍏🍏🍏🍏🍏 STEPS {steps}")
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
