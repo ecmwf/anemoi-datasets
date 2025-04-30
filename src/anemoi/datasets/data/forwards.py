@@ -290,6 +290,10 @@ class Combined(Forwards):
         ValueError
             If the resolutions are not the same.
         """
+        if d1.resolution is None or d2.resolution is None:
+            LOG.warning("One of the datasets has no resolution, cannot check compatibility")
+            return
+
         if d1.resolution != d2.resolution:
             raise ValueError(f"Incompatible resolutions: {d1.resolution} and {d2.resolution} ({d1} {d2})")
 
