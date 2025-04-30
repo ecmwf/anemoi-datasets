@@ -132,7 +132,8 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
-            startStep = 0
+            endStep = f.metadata("P1")
+            startStep = f.metadata("P2")
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
@@ -415,7 +416,10 @@ class Result:
         print()
         print("Number of unique values found for each coordinate:")
         for k, v in user_coords.items():
-            print(f"  {k:20}:", len(v), shorten_list(v, max_length=10))
+            print(f"  {k:20}:", len(v))
+            for n in sorted(v):
+                print("     ", n)
+
         print()
         user_shape: Tuple[int, ...] = tuple(len(v) for k, v in user_coords.items())
         print("Shape of the hypercube           :", user_shape)
