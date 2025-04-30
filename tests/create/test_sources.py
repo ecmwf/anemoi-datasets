@@ -10,6 +10,8 @@
 import logging
 import os
 
+import eccodes
+import eccodes_cosmo_resources
 import numpy as np
 import pytest
 from anemoi.utils.testing import get_test_data
@@ -19,6 +21,11 @@ from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.testing import create_dataset
+
+vendor = eccodes.codes_definition_path()
+cosmo = eccodes_cosmo_resources.get_definitions_path()
+eccodes.codes_set_definitions_path(f"{cosmo}:{vendor}")
+os.environ["ECCODES_DEFINITION_PATH"] = f"{cosmo}:{vendor}"
 
 
 @skip_if_offline
