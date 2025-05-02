@@ -88,7 +88,7 @@ optional-dependencies.docs = [
   "nbsphinx",
   "pandoc",
   "sphinx>=8.2",
-  "sphinx-argparse",
+  "sphinx-argparse<0.5",
   "sphinx-rtd-theme",
 ]
 
