@@ -1096,3 +1096,16 @@ class Dataset(ABC, Sized):
             The dataset names.
         """
         pass
+
+    def get_latitudes(self, i):
+        return self.get_aux(i)[0]
+
+    def get_longitudes(self, i):
+        return self.get_aux(i)[1]
+
+    def get_timedeltas(self, i):
+        return self.get_aux(i)[2]
+
+    def get_aux(self, i):
+        # need to decide if Fields datasets need to implement this
+        raise NotImplementedError(f"get_aux is not implemented for this dataset, {type(self)}")

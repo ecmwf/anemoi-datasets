@@ -83,7 +83,7 @@ class ObservationsBase(Dataset):
 
         raise ValueError(
             (
-                f"Expected int, got {i} of type {type(i)}. For now, only int is supported to index "
+                f"Expected int, got {i} of type {type(i)}. Only int is supported to index "
                 "observations datasets. Please use a second [] to select part of the data [i][a,b,c]"
             )
         )
@@ -221,16 +221,27 @@ class ObservationsZarr(ObservationsBase):
         z = zarr.open(self.path, mode="r")
         return dict(z.data.attrs)
 
-    def getitem(self, i):
-        ##########################
-        # TODO when the forward is ready
-        #    end = self.dates[i]
-        #    start = end - datetime.timedelta(hours=self.frequency)
-        #    # this should get directly the numpy array
-        #    data = self.forward.get_data_from_dates_interval(start, end)
+    def get_aux(self, i):
         data = self.forward[i]
-        # print(f"      reading from {self.path} {i} {self.dates[i]}")
-        ##########################
+
+        latitudes = data[:, self.name_to_index["__latitudes"]].numpy()
+        longitudes = data[:, self.name_to_index["__longitudes"]].numpy()
+
+        reference = self.dates[i]
+        times = self.forward.get_dates(i)
+        if str(times.dtype) != "datetime64[s]":
+            LOG.warning(f"Expected np.datetime64[s], got {times.dtype}. ")
+            times = times.astype("datetime64[s]")
+        assert str(reference.dtype) == "datetime64[s]", f"Expected np.datetime64[s], got {type(reference)}"
+        timedeltas = times - reference
+
+        assert latitudes.shape == longitudes.shape, f"Expected {latitudes.shape}, got {longitudes.shape}"
+        assert timedeltas.shape == latitudes.shape, f"Expected {timedeltas.shape}, got {latitudes.shape}"
+
+        return latitudes, longitudes, timedeltas
+
+    def getitem(self, i):
+        data = self.forward[i]
 
         data = data.numpy().astype(np.float32)
         assert len(data.shape) == 2, f"Expected 2D array, got {data.shape}"
@@ -238,7 +249,9 @@ class ObservationsZarr(ObservationsBase):
 
         if not data.size:
             data = self.empty_item()
-        assert data.shape[0] == self.shape[1], f"Data shape {data.shape} does not match {self.shape}"
+        assert (
+            data.shape[0] == self.shape[1]
+        ), f"Data shape {data.shape} does not match {self.shape} :  {data.shape[0]} != {self.shape[1]}"
         return data
 
     @cached_property
@@ -248,6 +261,15 @@ class ObservationsZarr(ObservationsBase):
         for n in colnames:
             if n.startswith("obsvalue_"):
                 n = n.replace("obsvalue_", "")
+            if n == "latitude" or n == "lat":
+                assert "latitudes" not in variables, f"Duplicate latitudes found in {variables}"
+                variables.append("__latitudes")
+                continue
+            if n == "longitude" or n == "lon":
+                assert "longitudes" not in variables, f"Duplicate longitudes found in {variables}"
+                variables.append("__longitudes")
+                continue
+            assert not n.startswith("__"), f"Invalid name {n} found in {colnames}"
             variables.append(n)
         return variables
 

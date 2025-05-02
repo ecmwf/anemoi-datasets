@@ -68,6 +68,23 @@ class ObsDataset(Dataset):
 
         return len(self.indices_start)
 
+    def get_dates(
+        self,
+        idx: int,
+    ) -> np.ndarray:
+
+        start_row = self.indices_start[idx]
+        end_row = self.indices_end[idx]
+        dates = self.dt.oindex[start_row:end_row]
+
+        assert len(dates.shape) == 2, dates.shape
+        dates = dates[:, 0]
+
+        if len(dates) and dates[0].dtype != np.dtype("datetime64[s]"):
+            dates = dates.astype("datetime64[s]")
+
+        return dates
+
     def get_df(self, idx: int) -> pd.DataFrame:
         """Convenience function to return data for sample idx packaged in a pandas DataFrame"""
 

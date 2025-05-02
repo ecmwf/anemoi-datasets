@@ -140,13 +140,19 @@ class Padded(Forwards):
         if isinstance(n, slice):
             return self._get_slice(n)
 
-        if 0 <= n < self._before:
-            return self.empty_item()
-
-        if (self._before + self._inside) <= n < (self._before + self._inside + self._after):
+        if self._i_out_of_range(n):
             return self.empty_item()
 
         return self.dataset[n - self._before]
+
+    def _i_out_of_range(self, n: FullIndex) -> bool:
+        """Check if the index is out of range."""
+        if 0 <= n < self._before:
+            return True
+
+        if (self._before + self._inside) <= n < (self._before + self._inside + self._after):
+            return True
+        return False
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
@@ -161,6 +167,16 @@ class Padded(Forwards):
 
     def empty_item(self):
         return self.dataset.empty_item()
+
+    def get_aux(self, i: FullIndex) -> NDArray[np.timedelta64]:
+        if self._i_out_of_range(i):
+            arr = np.array([], dtype=np.float32)
+            aux = arr, arr, arr
+        else:
+            aux = self.dataset.get_aux(i - self._before)
+
+        assert len(aux) == 3, (aux, i)
+        return aux
 
     def __len__(self) -> int:
         return len(self._dates)

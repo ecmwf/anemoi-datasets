@@ -677,7 +677,7 @@ def test_join_3() -> None:
 @mockup_open_zarr
 def test_padding_1() -> None:
     """Test subsetting a dataset (case 2)."""
-    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00:00", padding=True)
+    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00:00", padding="empty")
     test.run(
         expected_class=Padded,
         expected_length=365 * 24 * 3,
