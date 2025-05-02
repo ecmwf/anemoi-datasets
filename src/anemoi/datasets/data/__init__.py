@@ -95,7 +95,7 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
 
-    if True or trace:
+    if trace:
         from anemoi.datasets.testing import Trace
 
         ds = Trace(ds)
