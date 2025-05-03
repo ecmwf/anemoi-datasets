@@ -90,10 +90,12 @@ class Check(Command):
 
     def _check_zarr(self, zarr: str) -> None:
 
-        import xarray as xr
+        from anemoi.datasets.check import check_zarr
 
-        ds = xr.open_dataset(zarr)
-        print(ds)
+        check_zarr(zarr)
+
+        # ds = xr.open_dataset(zarr)
+        # print(ds)
 
 
 command = Check
