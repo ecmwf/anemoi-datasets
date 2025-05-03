@@ -23,12 +23,12 @@ def _check_group(group, verbosity: int, *path) -> None:
 
     group_keys = sorted(group.keys())
     if not group_keys:
-        raise ValueError(f"Group {group} is empty.")
+        raise ValueError(f"Check group: {group} is empty.")
 
     for name in sorted(group_keys):
         if name.startswith("."):
             if verbosity > 1:
-                LOG.info(f"Skipping {name}")
+                LOG.info(f"Check group: skipping {name}")
             continue
 
         if isinstance(group[name], zarr.hierarchy.Group):
@@ -49,9 +49,12 @@ def _check_array(array, verbosity: int, *path) -> None:
 
     count = 0
     for f in os.listdir(full):
+        if verbosity > 1:
+            LOG.info(f"Check array: checking {f}")
+
         if f.startswith("."):
             if verbosity > 1:
-                LOG.info(f"Skipping {f}")
+                LOG.info(f"Check array: skipping {f}")
             continue
 
         bits = f.split(".")
@@ -79,6 +82,9 @@ def check_zarr(path: str, verbosity: int = 0) -> None:
         Verbosity level for logging. Default is 0 (no logging).
     """
     import zarr
+
+    if verbosity > 0:
+        LOG.info(f"Checking Zarr archive {path}")
 
     if not os.path.exists(path) and not os.path.isdir(path):
         # This does not work with non-directory Zarr archives

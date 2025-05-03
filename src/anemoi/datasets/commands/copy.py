@@ -458,8 +458,11 @@ class ZarrCopier:
         # zarr.consolidate_metadata(source)
 
         self.copy(source, target, self.verbosity)
-        if os.path.exists(target) and os.path.isdir(target):
-            check_zarr(target, self.verbosity)
+        if os.path.exists(self.target) and os.path.isdir(self.target):
+            LOG.info(f"Checking target: {self.target}")
+            check_zarr(self.target, self.verbosity)
+        else:
+            LOG.info(f"Target {self.target} is not a local directory, skipping check.")
 
 
 class CopyMixin:
