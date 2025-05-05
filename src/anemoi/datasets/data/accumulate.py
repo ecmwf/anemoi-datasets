@@ -325,6 +325,28 @@ class Accumulate(Dataset):
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
     
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Get the metadata specific to the Accumulate subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the InterpolateFrequency subclass.
+        """
+        return {
+            # "frequency": frequency_to_string(self._frequency),
+        }
+    
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
+        return Node(self, [self.forward.tree()], frequency=self.frequency)
+    
 def accumulate_factory(args: tuple, kwargs: dict) -> Dataset:
     """Create a accumulated dataset.
 
