@@ -340,7 +340,7 @@ def accumulate_factory(args: tuple, kwargs: dict) -> Dataset:
         The joined dataset.
     """
     datasets = kwargs.pop("accumulate")
-    assert isinstance(datasets, str)
+    
     assert len(args) == 0
 
     forward = _open(datasets.pop('forward'))
