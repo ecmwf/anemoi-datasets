@@ -26,6 +26,7 @@ from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape
 from .dataset import TupleIndex
+from .debug import Node
 from .debug import debug_indexing
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
