@@ -323,3 +323,32 @@ class Accumulate(Dataset):
     def constant_fields(self) -> List[str]:
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
+    
+def accumulate_factory(args: tuple, kwargs: dict) -> Dataset:
+    """Create a accumulated dataset.
+
+    Parameters
+    ----------
+    args : tuple
+        The positional arguments.
+    kwargs : dict
+        The keyword arguments.
+
+    Returns
+    -------
+    Dataset
+        The joined dataset.
+    """
+    datasets = kwargs.pop("accumulate")
+    assert isinstance(datasets, (list, tuple))
+    assert len(args) == 0
+
+    assert isinstance(datasets, (list, tuple))
+
+    forward = _open(datasets.pop('forward'))
+
+    accum_steps = datasets.pop('accum_steps')
+    
+    param = datasets.pop('param')
+
+    return Accumulate(forward, accum_steps=accum_steps, param=param)

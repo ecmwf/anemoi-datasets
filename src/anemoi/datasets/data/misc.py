@@ -474,6 +474,13 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
 
         assert not sets, sets
         return zip_factory(args, kwargs).mutate()
+    
+    if "accumulate" in kwargs:
+        # Experimental feature, may be removed
+        from .accumulate import accumulate_factory
+
+        assert not sets, sets
+        return accumulate_factory(args, kwargs).mutate()
 
     if "chain" in kwargs:
         # Experimental feature, may be removed
