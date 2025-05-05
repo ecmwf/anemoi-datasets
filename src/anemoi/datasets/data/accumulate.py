@@ -34,6 +34,7 @@ from .indexing import length_to_slices
 from .indexing import update_tuple
 from .indexing import index_to_slices
 from .indexing import make_slice_or_index_from_list_or_tuple
+from .misc import _open
 
 from anemoi.utils.dates import frequency_to_timedelta, frequency_to_string
 
