@@ -108,7 +108,7 @@ class Accumulate(Dataset):
         
         return accum
 
-        @debug_indexing
+    @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Get the interpolated data for a tuple index.
