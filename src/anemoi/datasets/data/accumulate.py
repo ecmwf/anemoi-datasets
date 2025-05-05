@@ -372,4 +372,4 @@ def accumulate_factory(args: tuple, kwargs: dict) -> Dataset:
     accum_steps = datasets.pop('accum_steps')
     
 
-    return Accumulate(forward.__subset(select=param), accum_steps=accum_steps, param=param)
+    return Accumulate(forward._subset(select=param), accum_steps=accum_steps, param=param)
