@@ -57,12 +57,7 @@ class Accumulate(Dataset):
         accum_steps : int
             Number of accumulation steps
         """
-        super().__init__(forward)
-        if isinstance(param,str):
-            param = [param]
-        
-        for p in param:
-            assert p in forward.variables, f"Missing parameter {p} in original dataset, cannot accumulate"
+        super().__init__()
         
         self.forward = forward
         assert accum_steps > 0, f"Accumulation steps should be larger than 0, but accum_steps={accum_steps}"
@@ -105,7 +100,10 @@ class Accumulate(Dataset):
             index_in_forward = self.accum_steps - 1 + n * self.accum_steps
             steps = [index_in_forward - i for i in range(self.accum_steps)]
         
-            accum = np.nansum(self.forward[steps])
+            accum = self.forward[index_in_forward]
+            
+            for s in steps:
+                accum+=self.forward[s]
         
         return accum
 
