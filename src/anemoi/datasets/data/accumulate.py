@@ -57,13 +57,12 @@ class Accumulate(Dataset):
         accum_steps : int
             Number of accumulation steps
         """
+        super().__init__(forward)
         if isinstance(param,str):
             param = [param]
         
         for p in param:
             assert p in forward.variables, f"Missing parameter {p} in original dataset, cannot accumulate"
-                
-        super().__init__(forward.__subset({"select": param}))
         
         self.forward = forward
         assert accum_steps > 0, f"Accumulation steps should be larger than 0, but accum_steps={accum_steps}"
@@ -368,9 +367,9 @@ def accumulate_factory(args: tuple, kwargs: dict) -> Dataset:
     assert len(args) == 0
 
     forward = _open(datasets.pop('forward'))
+    param = datasets.pop('param')
 
     accum_steps = datasets.pop('accum_steps')
     
-    param = datasets.pop('param')
 
-    return Accumulate(forward, accum_steps=accum_steps, param=param)
+    return Accumulate(forward.__subset(select=param), accum_steps=accum_steps, param=param)
