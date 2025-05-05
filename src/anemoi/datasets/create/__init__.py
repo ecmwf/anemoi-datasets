@@ -1085,6 +1085,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
 
     def run(self) -> None:
         """Run the cleanup."""
+
         self.tmp_statistics.delete()
         self.registry.clean()
         for actor in self.actors:
