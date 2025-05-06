@@ -53,10 +53,10 @@ def open_multi_datasets(*datasets, **kwargs):
 def open_vz_dataset(dataset, **kwargs):
     if not dataset.endswith(".vz"):
         raise ValueError("dataset must be a .vz file")
-    return VzDatasets(dataset, **kwargs)
+    return RecordsDataset(dataset, **kwargs)
 
 
-class DictDataset:
+class BaseRecordsDataset:
 
     def __getitem__(self, i):
         if isinstance(i, str):
@@ -107,7 +107,7 @@ class DictDataset:
 
                 return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
-            return Subset(
+            return RecordsSubset(
                 self, _dates_to_indices(start, end), {"start": start, "end": end, "frequency": frequency}
             )._subset(**kwargs)
 
@@ -128,7 +128,7 @@ class DictDataset:
         raise NotImplementedError("Must be implemented in subclass")
 
 
-class Forward(DictDataset):
+class RecordsForward(BaseRecordsDataset):
     def __init__(self, dataset):
         self.forward = dataset
 
@@ -183,7 +183,7 @@ def match_variable(lst, group, name):
     return False
 
 
-class Select(Forward):
+class Select(RecordsForward):
     def __init__(self, dataset, select):
         super().__init__(dataset)
 
@@ -256,7 +256,7 @@ class Select(Forward):
         return dic
 
 
-class Subset(Forward):
+class RecordsSubset(RecordsForward):
     def __init__(self, dataset, indices, reason):
         super().__init__(dataset)
         self.dataset = dataset
@@ -274,14 +274,14 @@ class Subset(Forward):
         return len(self._indices)
 
 
-class VzDatasets(DictDataset):
+class RecordsDataset(BaseRecordsDataset):
 
-    def __init__(self, path, **kwargs):
+    def __init__(self, path, backend="npz1", **kwargs):
         if kwargs:
-            print("Warning: ignoring kwargs", kwargs)
+            print("Warning: ignoring additional kwargs", kwargs)
         self.path = path
+        self.backend = BACKENDS[backend](path, **kwargs)
         self.keys = self.metadata["sources"].keys
-        self.backend = VzBackend(path, **kwargs)
 
     @property
     def frequency(self):
@@ -292,15 +292,6 @@ class VzDatasets(DictDataset):
     @property
     def name_to_index(self):
         return self.metadata["name_to_index"]
-        # todo : update this and write directly the correct nested index in the metadata
-        dic = defaultdict(dict)
-        for name, i in self.metadata["name_to_index"].items():
-            group, k = name.split(".")
-            assert isinstance(k, str), f"Invalid name_to_index {name}: {i}"
-            assert i[0] == group, f"Invalid name_to_index {name}: {i}"
-            assert isinstance(i[1], int), f"Invalid name_to_index {name}: {i}"
-            dic[group][k] = i[1]
-        return dic
 
     @property
     def variables(self):
@@ -308,8 +299,7 @@ class VzDatasets(DictDataset):
 
     @cached_property
     def metadata(self):
-        with open(os.path.join(self.path, "metadata.json"), "r") as f:
-            return json.load(f)
+        return self.backend.read_metadata()
 
     @property
     def shapes(self):
@@ -320,14 +310,7 @@ class VzDatasets(DictDataset):
 
     @cached_property
     def statistics(self):
-        path = os.path.join(self.path, "statistics.npz")
-        dic = {}
-        for k, v in dict(np.load(path)).items():
-            key, group = k.split(":")
-            if group not in dic:
-                dic[group] = {}
-            dic[group][key] = v
-        return dic
+        return self.backend.read_statistics()
 
     def __len__(self):
         return len(self.dates)
@@ -354,19 +337,16 @@ class VzDatasets(DictDataset):
 
     @counter
     def _load_data(self, i):
-        payload = self.backend.read(i)
-        check_payload(payload)
-        return payload
+        return self.backend.read(i)
 
-
-def check_payload(payload):
-    dict_of_sets = defaultdict(set)
-    for key in payload.keys():
-        kind, group = key.split(":")
-        dict_of_sets[group].add(kind)
-    for group, s in dict_of_sets.items():
-        assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
-    return payload
+    def check(self, i=None):
+        if i is not None:
+            dict_of_sets = defaultdict(set)
+            for key in self._load_data(i).keys():
+                kind, group = key.split(":")
+                dict_of_sets[group].add(kind)
+            for group, s in dict_of_sets.items():
+                assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
 
 
 class Backend:
@@ -377,12 +357,37 @@ class Backend:
     def read(self, i, **kwargs):
         raise NotImplementedError("Must be implemented in subclass")
 
+    def read_metadata(self):
+        raise NotImplementedError("Must be implemented in subclass")
+
+    def read_statistics(self):
+        raise NotImplementedError("Must be implemented in subclass")
+
 
 class VzBackend(Backend):
     def read(self, i, **kwargs):
         path = os.path.join(self.path, "data", str(int(i / 10)), f"{i}.npz")
         with open(path, "rb") as f:
             return dict(np.load(f))
+
+    def read_metadata(self):
+        with open(os.path.join(self.path, "metadata.json"), "r") as f:
+            return json.load(f)
+
+    def read_statistics(self):
+        path = os.path.join(self.path, "statistics.npz")
+        dic = {}
+        for k, v in dict(np.load(path)).items():
+            key, group = k.split(":")
+            if group not in dic:
+                dic[group] = {}
+            dic[group][key] = v
+        return dic
+
+
+BACKENDS = dict(
+    npz1=VzBackend,
+)
 
 
 class Record(dict):
