@@ -220,8 +220,6 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
     from .pipe import PipeAction
     from .repeated_dates import RepeatedDatesAction
 
-    # from .data_sources import DataSourcesAction
-
     assert isinstance(context, Context), (type, context)
     if not isinstance(config, dict):
         raise ValueError(f"Invalid input config {config}")

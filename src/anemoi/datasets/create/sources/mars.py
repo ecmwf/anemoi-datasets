@@ -465,6 +465,7 @@ def mars(
 
 execute = mars
 
+accumulation_datasource = mars
 
 if __name__ == "__main__":
     import yaml
