@@ -9,8 +9,8 @@
 import numpy as np
 
 from anemoi.datasets.data import open_dataset
-from anemoi.datasets.data.multi import LazyMultiElement
-from anemoi.datasets.data.multi import OneGroup
+from anemoi.datasets.data.multi import Record
+from anemoi.datasets.data.multi import Tabular
 
 
 def check_numpy(x, y):
@@ -32,11 +32,11 @@ def _test(ds, nb_dates=None):
     # Order does not matter too much [i] and [grp] are exchangeable
 
     elt = ds[index_i]
-    assert isinstance(elt, LazyMultiElement), (type(ds), type(elt))
+    assert isinstance(elt, Record), (type(ds), type(elt))
     assert ds[index_i].dataset == ds, (type(ds[index_i].dataset), type(ds))
 
     group = ds[grp]
-    assert isinstance(group, OneGroup), type(group)
+    assert isinstance(group, Tabular), type(group)
 
     x = ds[grp][index_i]
     y = ds[index_i][grp]

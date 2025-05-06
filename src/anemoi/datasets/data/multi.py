@@ -15,7 +15,6 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
-import yaml
 from anemoi.utils.dates import frequency_to_timedelta
 
 LOG = logging.getLogger(__name__)
@@ -64,15 +63,15 @@ class DictDataset:
             return self._getgroup(i)
 
         if isinstance(i, int):
-            return self._getelement(i)
+            return self._getrecord(i)
 
         raise ValueError(f"Invalid index {i}, must be int or str")
 
     def _getgroup(self, i):
-        return OneGroup(self, i)
+        return Tabular(self, i)
 
-    def _getelement(self, i):
-        return LazyMultiElement(self, i)
+    def _getrecord(self, i):
+        return Record(self, i)
 
     def _load_data(self, i):
         raise NotImplementedError("Must be implemented in subclass")
@@ -83,6 +82,10 @@ class DictDataset:
 
     @property
     def end_date(self):
+        if len(self.dates) == 0:
+            return None
+        if len(self.dates) == 1:
+            return self.dates[0]
         return self.dates[-1]
 
     def _subset(self, **kwargs):
@@ -121,26 +124,8 @@ class DictDataset:
         pass
 
     @property
-    def variables_dict(self):
-        dic = defaultdict(list)
-        for v in self.variables:
-            if v in dic:
-                raise ValueError(f"Duplicate variable name {v} in {self.variables}")
-            k, v = v.split(".")
-            dic[k].append(v)
-        return dic
-
-    @property
     def name_to_index(self):
         raise NotImplementedError("Must be implemented in subclass")
-
-    @property
-    def name_to_index_dict(self):
-        dic = defaultdict(dict)
-        for name, i in self.name_to_index.items():
-            group, k = name.split(".")
-            dic[group][k] = i
-        return dic
 
 
 class Forward(DictDataset):
@@ -163,10 +148,6 @@ class Forward(DictDataset):
         return self.forward.dates
 
     @property
-    def name_to_index_dict(self):
-        return self.forward.name_to_index_dict
-
-    @property
     def name_to_index(self):
         return self.forward.name_to_index
 
@@ -182,33 +163,23 @@ class Forward(DictDataset):
         return len(self.forward)
 
 
-def match_variable(lst, name, group=None):
-    # lst can be :
-    # - a list of strings with dots
+def match_variable(lst, group, name):
+    # lst must be a list of strings with dots
     # - a dict with keys as group and values as list of strings
-    if isinstance(lst, dict):
-        lst = [f"{k}.{v}" for k, v in lst.items()]
 
-    if not isinstance(lst, list):
-        raise ValueError(f"Expecting a list or dict, not {type(lst)}")
-    for v in lst:
-        if not isinstance(v, str):
-            raise ValueError(f"Expecting a list of strings, not '{v}' : {type(v)}")
-
-    if name.endswith(".__latitudes") or name.endswith(".__longitudes"):
+    if name == "__latitudes" or name == "__longitudes":
         # This should disappear in the future, when we stop saving a duplicate of lat/lon in the data
         return False
 
-    if name in lst:
+    key = f"{group}.{name}"
+    if key in lst:
+        return True
+    if f"{group}.*" in lst:
         return True
     if f"*.{name}" in lst:
         return True
-
-    if group is not None:
-        if f"{group}.{name}" in lst:
-            return True
-        if f"{group}.*" in lst:
-            return True
+    if "*" in lst:
+        return True
     return False
 
 
@@ -217,6 +188,15 @@ class Select(Forward):
         super().__init__(dataset)
 
         self.dataset = dataset
+
+        if isinstance(select, dict):
+            # if a dict is provided, make it a list of strings with '.'
+            sel = []
+            for group, d in select.items():
+                for name in d:
+                    sel.append(f"{group}.{name}")
+            select = sel
+
         self._select = select
 
         self.reason = {"select": select}
@@ -225,25 +205,27 @@ class Select(Forward):
     def _build_indices_and_name_to_index(self):
         indices = {}
         name_to_index = {}
-        for group in self.dataset.keys():
-            variables = self.dataset.variables_dict[group]
-            ind = np.zeros(len(variables), dtype=bool)
+
+        # this should be revisited to take into account the order requested by the user
+        # see what is done in the fields datasets
+        for group, names in self.dataset.variables.items():
+            ind = np.zeros(len(names), dtype=bool)
             count = 0
-            for j, v in enumerate(variables):
-                if self.match_variable(v, group):
-                    ind[variables.index(v)] = True
+            for j, name in enumerate(names):
+                if self.match_variable(group, name):
+                    assert j == names.index(name), f"Invalid index {j} for {name} in {group}"
+                    ind[j] = True
                     indices[group] = ind
                     if group not in name_to_index:
                         name_to_index[group] = {}
-                    name_to_index[group][v] = count
+                    name_to_index[group][name] = count
                     count += 1
-            assert np.sum(ind) == count, f"Mismatch in {group}: {variables}, {ind}"
-
+            assert np.sum(ind) == count, f"Mismatch in {group}: {names}, {ind}"
         self._indices = indices
         self._name_to_index = name_to_index
 
-    def match_variable(self, name, group):
-        return match_variable(self._select, name, group)
+    def match_variable(self, *args, **kwargs):
+        return match_variable(self._select, *args, **kwargs)
 
     def keys(self):
         return self._indices.keys()
@@ -277,16 +259,13 @@ class Select(Forward):
 class Subset(Forward):
     def __init__(self, dataset, indices, reason):
         super().__init__(dataset)
-
         self.dataset = dataset
+        self.reason = reason
         self._indices = indices
 
-        self.reason = reason
-        self._dates = dataset.dates[indices]
-
-    @property
+    @cached_property
     def dates(self):
-        return self._dates
+        return self.dataset.dates[self._indices]
 
     def _load_data(self, i):
         return self.dataset._load_data(self._indices[i])
@@ -296,13 +275,13 @@ class Subset(Forward):
 
 
 class VzDatasets(DictDataset):
-    _metadata = None
 
     def __init__(self, path, **kwargs):
         if kwargs:
             print("Warning: ignoring kwargs", kwargs)
         self.path = path
         self.keys = self.metadata["sources"].keys
+        self.backend = VzBackend(path, **kwargs)
 
     @property
     def frequency(self):
@@ -312,6 +291,7 @@ class VzDatasets(DictDataset):
 
     @property
     def name_to_index(self):
+        return self.metadata["name_to_index"]
         # todo : update this and write directly the correct nested index in the metadata
         dic = defaultdict(dict)
         for name, i in self.metadata["name_to_index"].items():
@@ -326,18 +306,17 @@ class VzDatasets(DictDataset):
     def variables(self):
         return self.metadata["variables"]
 
-    @property
+    @cached_property
     def metadata(self):
-        if self._metadata is None:
-            self._load_metadata()
-        return self._metadata
+        with open(os.path.join(self.path, "metadata.json"), "r") as f:
+            return json.load(f)
 
     @property
     def shapes(self):
         return self.metadata["shapes"]
 
     def items(self, *args, **kwargs):
-        return {k: OneGroup(self, k) for k in self.keys()}.items(*args, **kwargs)
+        return {k: Tabular(self, k) for k in self.keys()}.items(*args, **kwargs)
 
     @cached_property
     def statistics(self):
@@ -350,25 +329,17 @@ class VzDatasets(DictDataset):
             dic[group][key] = v
         return dic
 
-    def _load_metadata(self):
-        if os.path.exists(os.path.join(self.path, "metadata.json")):
-            with open(os.path.join(self.path, "metadata.json"), "r") as f:
-                self._metadata = json.load(f)
-            return
-        with open(os.path.join(self.path, "metadata.yaml"), "r") as f:
-            self._metadata = yaml.safe_load(f)
-
     def __len__(self):
         return len(self.dates)
 
     @property
     def start_date(self):
-        date = self._metadata["start_date"]
+        date = self.metadata["start_date"]
         return datetime.datetime.fromisoformat(date)
 
     @property
     def end_date(self):
-        date = self._metadata["end_date"]
+        date = self.metadata["end_date"]
         return datetime.datetime.fromisoformat(date)
 
     @cached_property
@@ -383,12 +354,38 @@ class VzDatasets(DictDataset):
 
     @counter
     def _load_data(self, i):
+        payload = self.backend.read(i)
+        check_payload(payload)
+        return payload
+
+
+def check_payload(payload):
+    dict_of_sets = defaultdict(set)
+    for key in payload.keys():
+        kind, group = key.split(":")
+        dict_of_sets[group].add(kind)
+    for group, s in dict_of_sets.items():
+        assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
+    return payload
+
+
+class Backend:
+    def __init__(self, path, **kwargs):
+        self.path = path
+        self.kwargs = kwargs
+
+    def read(self, i, **kwargs):
+        raise NotImplementedError("Must be implemented in subclass")
+
+
+class VzBackend(Backend):
+    def read(self, i, **kwargs):
         path = os.path.join(self.path, "data", str(int(i / 10)), f"{i}.npz")
         with open(path, "rb") as f:
             return dict(np.load(f))
 
 
-class LazyMultiElement(dict):
+class Record(dict):
     def __init__(self, dataset, n):
         self.dataset = dataset
         self.n = n
@@ -404,15 +401,12 @@ class LazyMultiElement(dict):
     def name_to_index(self):
         return self.dataset.name_to_index
 
-    @property
-    def name_to_index_dict(self):
-        return self.dataset.name_to_index_dict
-
     @cached_property
     def _payload(self):
-        for k in self.dataset._load_data(self.n):
+        payload = self.dataset._load_data(self.n)
+        for k in payload.keys():
             assert len(k.split(":")) == 2, f"Invalid key {k}"
-        return self.dataset._load_data(self.n)
+        return payload
 
     def keys(self):
         return self.dataset.keys()
@@ -444,7 +438,7 @@ class LazyMultiElement(dict):
         return self.dataset.statistics
 
 
-class OneGroup:
+class Tabular:
     def __init__(self, dataset, name):
         self.dataset = dataset
         self.name = name
