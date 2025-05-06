@@ -210,8 +210,8 @@ class Accumulation:
         if step not in self.steps:
             return
 
-        # if not np.all(values >= 0):
-        #     warnings.warn(f"Negative values for {field}: {np.nanmin(values)} {np.nanmax(values)}")
+        if not np.all(values >= 0):
+            warnings.warn(f"Negative values for {field}: {np.nanmin(values)} {np.nanmax(values)}")
 
         assert not self.done, (self.key, step)
         assert step not in self.seen, (self.key, step)
@@ -612,14 +612,6 @@ class AccumulationFromLastReset(Accumulation):
 
         return ((startStep // accumulations_reset_frequency) * accumulations_reset_frequency, endStep)
 
-        # # TODO: Rewrite with modulo
-        interval = (0, accumulations_reset_frequency)
-        while True:
-            if startStep >= interval[0] and endStep <= interval[1]:
-                LOG.info(f"ADJUST 🍓🍓🍓🍓🍓🍓 {interval[0]}-{endStep}")
-                return (interval[0], endStep)
-            interval = (interval[1], interval[1] + accumulations_reset_frequency)
-
     @classmethod
     def _steps(
         cls,
@@ -649,7 +641,6 @@ class AccumulationFromLastReset(Accumulation):
 
         assert base_date.day == 1, (base_date, valid_date)
 
-        print("🤓🤓🤓🤓🤓🤓🤓🤓🤓🤓", base_date.isoformat(), valid_date.isoformat(), valid_date - base_date)
         step = (valid_date - base_date).total_seconds()
         assert int(step) == step, (valid_date, base_date, step)
         assert int(step) % 3600 == 0, (valid_date, base_date, step)
@@ -758,7 +749,6 @@ class AccumulationFromLastReset(Accumulation):
             steps = (adjust_step2[1],)
         else:
             steps = (adjust_step1[1], adjust_step2[1])
-        # assert adjust_step1[1] % accumulations_reset_frequency != 0, (adjust_step1, adjust_step2)
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
@@ -890,15 +880,13 @@ def _compute_accumulations(
     accumulations = {}
 
     for date, time, steps in mars_date_time_steps:
-        # LOG.info(f"Accumulation request: { date, time, steps}")
         for p in param:
             for n in number:
                 r = dict(request, param=p, date=date, time=time, step=sorted(steps), number=n)
 
                 requests.append(patch(r))
 
-    # for r in requests:
-    #     LOG.info(f"Accumulation request: {r}")
+
 
     ds = mars(
         context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset

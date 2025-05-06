@@ -109,6 +109,7 @@ optional-dependencies.xarray = [
   "pandas",
   "planetary-computer",
   "pystac-client",
+  "s3fs>=0.5",
 ]
 
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"

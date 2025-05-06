@@ -134,12 +134,6 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
         if startStep == endStep and stepTypeForConversion == "accum":
             endStep = f.metadata("P1")
             startStep = f.metadata("P2")
-            # print('P1', md["param"], f.metadata("P1", default=None))
-            # print('P2',md["param"], f.metadata("P2", default=None))
-            # raise ValueError(
-            #     f"Accumulation with startStep == endStep for {md['param']}:"
-            #     f" {startStep=} ({as_timedelta(startStep)}), {endStep=} ({as_timedelta(endStep)})"
-            # )
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
