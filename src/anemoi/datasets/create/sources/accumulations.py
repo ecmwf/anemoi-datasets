@@ -886,8 +886,6 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-
-
     ds = mars(
         context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
     )
