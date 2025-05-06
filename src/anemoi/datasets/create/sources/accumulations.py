@@ -210,8 +210,8 @@ class Accumulation:
         if step not in self.steps:
             return
 
-        if not np.all(values >= 0):
-            warnings.warn(f"Negative values for {field}: {np.nanmin(values)} {np.nanmax(values)}")
+        # if not np.all(values >= 0):
+        #     warnings.warn(f"Negative values for {field}: {np.nanmin(values)} {np.nanmax(values)}")
 
         assert not self.done, (self.key, step)
         assert step not in self.seen, (self.key, step)
@@ -673,8 +673,6 @@ class AccumulationFromLastReset(Accumulation):
 
         assert self.frequency == 1
 
-        LOG.info(f"⚽⚽⚽⚽⚽⚽⚽⚽ COMPUTE {startStep=} {endStep=} {self.frequency=}")
-
         assert startStep % self.accumulations_reset_frequency == 0, (
             startStep,
             endStep,
@@ -704,11 +702,6 @@ class AccumulationFromLastReset(Accumulation):
                 self.startStep = endStep
 
             assert self.endStep - self.startStep <= self.accumulations_reset_frequency, (self.startStep, startStep)
-            print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", self.startStep, self.endStep)
-
-            # if not np.all(self.values >= 0):
-            #     warnings.warn(f"Negative values for {self.param}: {np.amin(self.values)} {np.amax(self.values)}")
-            #     self.values = np.maximum(self.values, 0)
 
     @classmethod
     def _mars_date_time_step(
@@ -755,8 +748,6 @@ class AccumulationFromLastReset(Accumulation):
         step1 += add_step
         step2 += add_step
 
-        print("🤓🤓🤓🤓🤓🤓🤓🤓🤓🤓", step1, step2, requested_date.isoformat(), base_date.isoformat())
-
         assert step2 - step1 == frequency, (step1, step2, frequency)
 
         adjust_step1 = cls._adjust_steps(step1, step1, frequency, accumulations_reset_frequency)
@@ -768,8 +759,6 @@ class AccumulationFromLastReset(Accumulation):
         else:
             steps = (adjust_step1[1], adjust_step2[1])
         # assert adjust_step1[1] % accumulations_reset_frequency != 0, (adjust_step1, adjust_step2)
-
-        LOG.info(f"🍏🍏🍏🍏🍏🍏🍏🍏🍏 STEPS {steps}")
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
@@ -864,8 +853,6 @@ def _compute_accumulations(
     else:
         AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
 
-    LOG.info(f"XXXXXXXXXXX {step1=}, {step2=}, {data_accumulation_period=}, {base_times=}, {adjust_step=}")
-
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates=dates,
         step1=step1,
@@ -903,15 +890,15 @@ def _compute_accumulations(
     accumulations = {}
 
     for date, time, steps in mars_date_time_steps:
-        LOG.info(f"Accumulation request: { date, time, steps}")
+        # LOG.info(f"Accumulation request: { date, time, steps}")
         for p in param:
             for n in number:
                 r = dict(request, param=p, date=date, time=time, step=sorted(steps), number=n)
 
                 requests.append(patch(r))
 
-    for r in requests:
-        LOG.info(f"Accumulation request: {r}")
+    # for r in requests:
+    #     LOG.info(f"Accumulation request: {r}")
 
     ds = mars(
         context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
