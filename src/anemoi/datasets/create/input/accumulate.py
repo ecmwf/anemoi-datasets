@@ -10,6 +10,7 @@
 import logging
 from functools import cached_property
 from typing import Any
+from typing import Dict
 from typing import List
 
 from earthkit.data import FieldList
@@ -45,7 +46,7 @@ class AccumulationResult(Result):
     """
 
     def __init__(
-        self, context: object, action_path: list, group_of_dates: GroupOfDates, source: Any, accumulate: Any, **kwargs: Any
+        self, context: object, action_path: list, group_of_dates: GroupOfDates, source: Any, request: Dict[str,Any], **kwargs: Any
     ) -> None:
         """Initializes a AccumulationResult instance.
 
@@ -64,7 +65,7 @@ class AccumulationResult(Result):
         """
         super().__init__(context, action_path, group_of_dates)
         self.source: Any = source
-        self.accumulate: Any = accumulate
+        self.request: Dict[str,Any] = request
         
     @cached_property
     @assert_fieldlist
@@ -72,20 +73,20 @@ class AccumulationResult(Result):
     @trace_datasource
     def datasource(self) -> FieldList:
         """Returns the combined datasource from all results."""
-        
-        ds = accumulations(self.context, self.group_of_dates, self.source, self.accumulate['accumulations'])
+        print(self.source)
+        ds = accumulations(self.context, self.group_of_dates, self.source, **self.request)
         
         return _tidy(ds)
 
     def __repr__(self) -> str:
         """Returns a string representation of the JoinResult instance."""
-        content: str = "\n".join([str(i) for i in self.results])
+        content: str = f"AccumulationAction({self.source})"
         return self._repr(content)
 
 class AccumulationAction(Action):
     """An Action implementation that selects and transforms a group of dates."""
 
-    def __init__(self, context: Any, action_path: List[str], source: Any, **kwargs: Any) -> None:
+    def __init__(self, context: Any, action_path: List[str], source: Dict[str,Any], **kwargs: Any) -> None:
         """Initialize RepeatedDatesAction.
 
         Args:
@@ -97,11 +98,12 @@ class AccumulationAction(Action):
         """
         super().__init__(context, action_path, source)
 
+
         self.source: Any = action_factory(source, context, action_path + ["source"])
-        self.accumulate: Any = action_factory({'accumulations' : kwargs}, context, action_path)
+        self.request = source[list(source.keys())[0]]
 
     @trace_select
-    def select(self, group_of_dates: Any) -> AccumulateResult:
+    def select(self, group_of_dates: Any) -> AccumulationResult:
         """Select and transform the group of dates.
 
         Args:
@@ -113,4 +115,4 @@ class AccumulationAction(Action):
             The result of the accumulate operation.
         """
         
-        return AccumulationResult(self.context, self.action_path, group_of_dates, self.source, self.accumulate)
+        return AccumulationResult(self.context, self.action_path, group_of_dates, self.source, self.request)

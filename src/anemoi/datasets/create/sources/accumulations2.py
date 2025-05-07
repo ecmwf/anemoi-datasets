@@ -478,7 +478,7 @@ class Accumulator:
 def _compute_accumulations(
     context: Any,
     dates: List[datetime.datetime],
-    source: Any,
+    action: Any,
     request: Dict[str, Any],
     user_accumulation_period: datetime.timedelta,
     # data_accumulation_period: Optional[int] = None,
@@ -541,8 +541,10 @@ def _compute_accumulations(
             requests.append(r)
 
     # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
-    
-    ds = source.accumulation_datasource(context, dates, request_already_using_valid_datetime=True, *requests)
+    action.source.kwargs = {'request_already_using_valid_datetime': True}
+    action.source.args = requests
+    action.source.context = context
+    ds = action.source.execute(dates)
 
     # send each field to the each accumulator, the accumulatore will use the field to the accumulation
     # if the accumulator has requested it
@@ -606,7 +608,7 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @legacy_source(__file__)
-def accumulations(context, dates, source, **request):
+def accumulations(context, dates, action, **request):
     _to_list(request["param"])
     user_accumulation_period = request.pop("accumulation_period", 6)
     user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
@@ -616,7 +618,7 @@ def accumulations(context, dates, source, **request):
     return _compute_accumulations(
         context,
         dates,
-        source,
+        action,
         request,
         user_accumulation_period=user_accumulation_period,
     )
