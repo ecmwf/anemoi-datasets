@@ -24,23 +24,29 @@ as a second step of the pipe, after gathering the data.
 **********************
 
 In order to create a new filter the recommendation is to define it under the package anemoi-transform. 
-Available filters can be found under `anemoi/transform/filters`. We have a base class that should be used to define 
-any filter, called `Filter` under `src/anemoi/transform/filter.py`. This is a placeholder class intended to be used to expand it
+Available filters can be found in ``anemoi/transform/filters``. We have a base class that should be used to define 
+any filter, called  ``Filter`` in  ``src/anemoi/transform/filter.py``. This is a placeholder class intended to be used to expand it
 with logic specific for each filter. For the majority of the use cases what we need is a filter that convert part of the fields variables, 
-required a match between the updated variable and its metadata. For those use cases, we have defined a `MatchingFieldsFilter`, which can 
-be found in `src/anemoi/transform/filters/matching.py`. A filter should have two main methods:
+required a match between the updated variable and its metadata. For those use cases, we have defined a  ``MatchingFieldsFilter``, which can 
+be found in  ``src/anemoi/transform/filters/matching.py``. A filter should have two main methods:
 - forward_transform: function to apply the transform to the raw data
 - backward_transform: function to reverse the transform and recover the raw data
 
-In order to be able to use a filter we need to register it. We do that using a decorator called `@filter_registry`. To look at these pieces together, let's look at an example where
+In order to be able to use a filter we need to register it. We do that using a decorator called  ``@filter_registry``. To look at these pieces together, let's look at an example where
 we have a field with 5 variables and out of those we want to convert wind speed from m/s to vertical to vertical wind speed expressed in Pa/s using the hydrostatic hypothesis,
 and back. 
 
 .. literalinclude:: code/filter.py
 
+
+In the example below we can see how we need to make sure that the  ``@matching`` decorator is consistent with the inputs defined both for the forward and backward transform.  
+
 .. warning::
-    Please note: there are additional filters that can be found under `anemoi/datasets/create/filters`. These filters have a legacy
-design pattern and we are in the process of migrating and updating those to anemoi-transform. 
+    Please note: there are additional filters that can be found under  ``anemoi/datasets/create/filters``. These filters have a legacy design pattern and we are in the process of migrating and updating those to anemoi-transform. 
 
+************************
+ Using multiple filters
+***********************
 
-#    https://github.com/ecmwf/anemoi-datasets-configs/blob/main/datasets/metno-meps-archive-det-opendap-2p5km-2020-2023-6h-v1.yaml
+It's possible to stack multiple filter one after the other. Below you can see an updated version
+of the dataset creation we had where we now create a dataset and apply a rename filter and our newly defined ``VerticalVelocity`` filter.
