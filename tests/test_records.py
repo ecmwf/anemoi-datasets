@@ -6,7 +6,10 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+import os
+
 import numpy as np
+import pytest
 
 from anemoi.datasets.data import open_dataset
 from anemoi.datasets.data.records import Record
@@ -117,11 +120,13 @@ def _test(ds, nb_dates=None):
         assert np.all(statistics[grp][key] == v), (key, statistics[grp][key], v)
 
 
+@pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
 def test_open():
     ds = open_dataset("../../data/vz/obs-2018-11.vz")
     _test(ds)
 
 
+@pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
 def test_open_with_subset_dates():
     ds = open_dataset(
         "../../data/vz/obs-2018-11.vz",
@@ -135,6 +140,7 @@ def test_open_with_subset_dates():
     _test(ds, nb_dates=8)
 
 
+@pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
 def test_open_with_subset_select():
     ds = open_dataset(
         "../../data/vz/obs-2018-11.vz",
