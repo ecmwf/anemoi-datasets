@@ -9,8 +9,8 @@
 import numpy as np
 
 from anemoi.datasets.data import open_dataset
-from anemoi.datasets.data.multi import Record
-from anemoi.datasets.data.multi import Tabular
+from anemoi.datasets.data.records import Record
+from anemoi.datasets.data.records import Tabular
 
 
 def check_numpy(x, y):
@@ -101,7 +101,8 @@ def _test(ds, nb_dates=None):
     assert isinstance(statistics_, dict), type(statistics_)
     assert "mean" in statistics_, "statistics does not contain mean"
 
-    # ! here, the meaning could be ambigous, this is the statistics of the whole dataset. Remove ?
+    # ! here, the meaning could be ambigous, this is the statistics of the whole dataset.
+    # Do not document this, and maybe remove it.
     _statistics = ds[index_i].statistics
     assert isinstance(_statistics, dict), type(_statistics)
     assert grp in _statistics, f"statistics does not contain {grp}"

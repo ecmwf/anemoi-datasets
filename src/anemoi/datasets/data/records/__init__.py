@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2025 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import json
 import logging
 import os
 from collections import defaultdict
@@ -16,6 +15,8 @@ from functools import cached_property
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
+
+from anemoi.datasets.data.records.backends import backend_factory
 
 LOG = logging.getLogger(__name__)
 
@@ -37,20 +38,7 @@ else:
         return func
 
 
-def open_multi_datasets(*datasets, **kwargs):
-
-    if len(datasets) == 1 and datasets[0].endswith(".vz"):
-        return open_vz_dataset(datasets[0], **kwargs)
-
-    for d in datasets:
-        assert not d.endswith(".vz"), f"mixing datasets type not implemented yet. {datasets}"
-
-    from anemoi.datasets.data.observations.multi import LegacyDatasets
-
-    return LegacyDatasets(datasets, **kwargs)
-
-
-def open_vz_dataset(dataset, **kwargs):
+def open_records_dataset(dataset, **kwargs):
     if not dataset.endswith(".vz"):
         raise ValueError("dataset must be a .vz file")
     return RecordsDataset(dataset, **kwargs)
@@ -99,8 +87,8 @@ class BaseRecordsDataset:
         if start is not None or end is not None:
 
             def _dates_to_indices(start, end):
-                from .misc import as_first_date
-                from .misc import as_last_date
+                from anemoi.datasets.data.misc import as_first_date
+                from anemoi.datasets.data.misc import as_last_date
 
                 start = self.dates[0] if start is None else as_first_date(start, self.dates)
                 end = self.dates[-1] if end is None else as_last_date(end, self.dates)
@@ -280,7 +268,7 @@ class RecordsDataset(BaseRecordsDataset):
         if kwargs:
             print("Warning: ignoring additional kwargs", kwargs)
         self.path = path
-        self.backend = BACKENDS[backend](path, **kwargs)
+        self.backend = backend_factory(backend, path, **kwargs)
         self.keys = self.metadata["sources"].keys
 
     @property
@@ -347,47 +335,6 @@ class RecordsDataset(BaseRecordsDataset):
                 dict_of_sets[group].add(kind)
             for group, s in dict_of_sets.items():
                 assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
-
-
-class Backend:
-    def __init__(self, path, **kwargs):
-        self.path = path
-        self.kwargs = kwargs
-
-    def read(self, i, **kwargs):
-        raise NotImplementedError("Must be implemented in subclass")
-
-    def read_metadata(self):
-        raise NotImplementedError("Must be implemented in subclass")
-
-    def read_statistics(self):
-        raise NotImplementedError("Must be implemented in subclass")
-
-
-class VzBackend(Backend):
-    def read(self, i, **kwargs):
-        path = os.path.join(self.path, "data", str(int(i / 10)), f"{i}.npz")
-        with open(path, "rb") as f:
-            return dict(np.load(f))
-
-    def read_metadata(self):
-        with open(os.path.join(self.path, "metadata.json"), "r") as f:
-            return json.load(f)
-
-    def read_statistics(self):
-        path = os.path.join(self.path, "statistics.npz")
-        dic = {}
-        for k, v in dict(np.load(path)).items():
-            key, group = k.split(":")
-            if group not in dic:
-                dic[group] = {}
-            dic[group][key] = v
-        return dic
-
-
-BACKENDS = dict(
-    npz1=VzBackend,
-)
 
 
 class Record(dict):
