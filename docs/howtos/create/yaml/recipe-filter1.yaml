@@ -1,0 +1,35 @@
+dates:
+  start: 2020-12-30 00:00:00
+  end: 2021-01-03 12:00:00
+  frequency: 12h
+
+input:
+  pipe:
+    - join:
+      - mars:
+          expver: "0001"
+          class: ea
+          grid: 20./20.
+          param: [2t]
+          levtype: sfc
+
+      - pipe:
+          - mars:
+              expver: "0001"
+              class: ea
+              grid: 20./20.
+              param: [q, t]
+              levtype: pl
+              level: [50, 100]
+              stream: oper
+              type: an
+          - filter:
+              param: [q]
+          - filter:
+              level: [50]
+    - rename-filter:
+        tp: tp_era5
+
+        interpolation: grid-box-statistics
+        interpolation-statistics: mean
+        grid: 10./10.
