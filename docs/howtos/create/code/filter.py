@@ -7,7 +7,6 @@ from .matching import MatchingFieldsFilter
 from .matching import matching
 
 
-
 @filter_registry.register("w_2_wz", VerticalVelocity)
 @filter_registry.register("wz_2_w", VerticalVelocity.reversed)
 class VerticalVelocity(MatchingFieldsFilter):
