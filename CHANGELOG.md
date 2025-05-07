@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.23](https://github.com/ecmwf/anemoi-datasets/compare/0.5.22...0.5.23) (2025-05-07)
+
+
+### Features
+
+* support accumulations that resets regularly (e.g. every 24h) ([#314](https://github.com/ecmwf/anemoi-datasets/issues/314)) ([0cd772b](https://github.com/ecmwf/anemoi-datasets/commit/0cd772b168ea6a3eb2113a9b3de0ddd9e964a6de))
+
 ## [0.5.22](https://github.com/ecmwf/anemoi-datasets/compare/0.5.21...0.5.22) (2025-05-05)
 
 
