@@ -97,7 +97,7 @@ def test_eccs_fstd() -> None:
 
 @skip_slow_tests
 @skip_if_offline
-@skip_missing_packages("kerchunk", "s3fs")
+@skip_missing_packages("kerchunk", "s3fs", "h5py")
 def test_kerchunk() -> None:
     """Test for Kerchunk JSON files.
 
