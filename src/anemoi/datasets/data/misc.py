@@ -355,9 +355,9 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     from .stores import zarr_lookup
 
     if isinstance(a, str) and a.endswith(".vz"):
-        from .multi import open_multi_datasets
+        from anemoi.datasets.data.records import open_records_dataset
 
-        return open_multi_datasets(a)
+        return open_records_dataset(a)
 
     if isinstance(a, Dataset):
         return a.mutate()
