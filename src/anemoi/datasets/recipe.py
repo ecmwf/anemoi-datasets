@@ -18,6 +18,14 @@ from anemoi.datasets.create.sources import source_registry
 LOG = logging.getLogger(__name__)
 
 
+class Index:
+    def __init__(self, index):
+        self.name = str(index)
+
+    def __repr__(self):
+        return f"Index({self.name})"
+
+
 class Step:
 
     def __or__(self, other):
@@ -33,14 +41,22 @@ class Chain(Step):
             args = args[0].steps + args[1:]
 
         self.steps = args
+        self.index = [Index(i) for i in range(len(self.steps))]
 
-    def as_dict(self):
+    def as_dict(self, recipe):
         if len(self.steps) == 1:
-            return self.steps[0].as_dict()
-        return {self.name: [s.as_dict() for s in self.steps]}
+            return self.steps[0].as_dict(recipe)
+        return {self.name: [s.as_dict(recipe) for s in self.steps]}
 
     def __repr__(self):
         return f"{self.__class__.name}({','.join([str(s) for s in self.steps])})"
+
+    def path(self, target, result, *path):
+        for i, s in enumerate(self.steps):
+            s.path(target, result, *path, self, self.index[i])
+
+    def collocated(self, a, b):
+        return True
 
 
 class Pipe(Chain):
@@ -51,20 +67,70 @@ class Join(Chain):
     name = "join"
 
 
+class Concat(Step):
+    name = "concat"
+
+    def __init__(self, args):
+        assert isinstance(args, dict), f"Invalid argument {args}"
+        self.params = args
+
+    def __setitem__(self, key, value):
+        self.params[key] = value
+
+    def as_dict(self, recipe):
+
+        result = []
+
+        for k, v in sorted(self.params.items()):
+            result.append({"dates": dict(start=k[0], end=k[1]), **v.as_dict(recipe)})
+
+        return {"concat": result}
+
+    def collocated(self, a, b):
+        return a[0] is b[0]
+
+    def path(self, target, result, *path):
+
+        for i, (k, v) in enumerate(sorted(self.params.items())):
+            v.path(target, result, *path, self, Index(i))
+
+
 class Base(Step):
     def __init__(self, owner, *args, **kwargs):
         self.owner = owner
+        self.name = owner.name
         self.params = {}
         for a in args:
             assert isinstance(a, dict), f"Invalid argument {a}"
             self.params.update(a)
         self.params.update(kwargs)
 
-    def as_dict(self):
-        return {self.owner.name: self.params}
+    def as_dict(self, recipe):
+
+        def resolve(params, recipe):
+            if isinstance(params, dict):
+                return {k: resolve(v, recipe) for k, v in params.items()}
+
+            if isinstance(params, (list, tuple)):
+                return [resolve(v, recipe) for v in params]
+
+            if isinstance(params, list):
+                return [resolve(v, recipe) for v in params]
+
+            if isinstance(params, Step):
+                return recipe.resolve(self, params)
+
+            return params
+
+        return {self.owner.name: resolve(self.params, recipe)}
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.owner.name}, {','.join([f'{k}={v}' for k, v in self.params.items()])})"
+
+    def path(self, target, result, *path):
+
+        if self is target:
+            result.append([*path, self])
 
 
 class Source(Base):
@@ -101,7 +167,7 @@ class Recipe:
 
     def __init__(self):
         self.description = None
-        self._steps = []
+        self.input = Join()
 
         sources = source_registry.factories.copy()
         filters = transform_filter_registry.factories.copy()
@@ -130,59 +196,82 @@ class Recipe:
             assert not hasattr(self, key)
             setattr(self, key, FilterMaker(key, factory))
 
-    def add(self, step):
-        self._steps.append(step)
-
     def dump(self):
         result = {
             "description": self.description,
-            "input": Join(*self._steps).as_dict(),
+            "input": self.input.as_dict(self),
         }
 
         print(yaml.safe_dump(result))
+
+    def concat(self, *args, **kwargs):
+        return Concat(*args, **kwargs)
+
+    def resolve(self, source, target):
+        assert isinstance(target, Source), f"Only sources can be used as template {target}"
+
+        top = Index("input")  # So we have 'input' first in the path
+
+        path_to_source = []
+        self.input.path(source, path_to_source, top)
+        if len(path_to_source) == 0:
+            raise ValueError(f"Source {source} not found in recipe")
+        if len(path_to_source) > 1:
+            raise ValueError(f"Source {source} found in multiple locations {path_to_source}")
+        path_to_source = path_to_source[0]
+
+        path_to_target = []
+        self.input.path(target, path_to_target, top)
+        if len(path_to_target) == 0:
+            raise ValueError(f"Target {target} not found in recipe")
+        if len(path_to_target) > 1:
+            raise ValueError(f"Target {target} found in multiple locations {path_to_target}")
+        path_to_target = path_to_target[0]
+
+        a = [s for s in path_to_target]
+        b = [s for s in path_to_source]
+        common_ancestor = None
+        while a[0] is b[0]:
+            common_ancestor = a[0]
+            a = a[1:]
+            b = b[1:]
+
+        assert common_ancestor is not None, f"Common ancestor not found between {source} and {target}"
+
+        if not common_ancestor.collocated(a, b):
+            source = ".".join(s.name for s in path_to_source)
+            target = ".".join(s.name for s in path_to_target)
+            raise ValueError(
+                f"Source ${{{source}}} and target ${{{target}}} are not collocated (i.e. they are not branch of a 'concat')"
+            )
+
+        target = ".".join(s.name for s in path_to_target)
+        return f"${{{target}}}"
 
 
 if __name__ == "__main__":
     r = Recipe()
     r.description = "test"
 
-    # r.add(
-    #     r.mars(
-    #         expver="0001",
-    #         levtype="sfc",
-    #         param=["2t"],
-    #         number=[0, 1],
-    #     )
-    # )
+    m1 = r.mars(expver="0001")
+    m2 = r.mars(expver="0002")
+    m3 = r.mars(expver="0003")
 
-    # r.add(
-    #     r.rescale(
-    #         r.rename(
-    #             r.mars(
-    #                 expver="0002",
-    #                 levtype="sfc",
-    #                 param=["2t"],
-    #                 number=[0, 1],
-    #             ),
-    #             param={"2t": "2t_0002"},
-    #         ),
-    #         {"2t_0002": ["mm", "m"]},
-    #     )
-    # )
+    r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"}) | r.rescale(tp=["mm", "m"])
 
-    m1 = r.mars(expver="0001", levtype="sfc", param=["2t"], number=[0, 1])
-    m2 = r.mars(expver="0002", levtype="sfc", param=["2t"], number=[0, 1])
+    r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
 
-    m3 = r.mars(expver="0003", levtype="sfc", param=["2t"], number=[0, 1])
-
-    r.add(
-        (m1 + m2 + m3)
-        | r.rename(
-            param={"2t": "2t_0002"},
-        )
-        | r.rescale(
-            {"2t_0002": ["mm", "m"]},
-        )
+    m0 = r.mars(expver="0000")
+    c = r.concat(
+        {
+            ("1900", "2000"): m0,
+            ("2001", "2020"): r.mars(expver="0002"),
+            ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
+        },
     )
+
+    c[("2031", "2033")] = r.mars(expver="0005")
+
+    r.input += c
 
     r.dump()
