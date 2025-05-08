@@ -51,7 +51,7 @@ def execute(context: Any, input: ekd.FieldList, orog: str, z: str = "z") -> ekd.
                 raise ValueError(f"Duplicate field {param} for {key}")
 
             output = f.to_numpy(flatten=True) * 9.80665
-            result.append(new_field_from_numpy(f, output, param=z))
+            result.append(new_field_from_numpy(output, template=f, param=z))
         else:
             result.append(f)
 

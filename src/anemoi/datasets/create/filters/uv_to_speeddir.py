@@ -88,7 +88,7 @@ def execute(
         if in_radians:
             direction = np.deg2rad(direction)
 
-        result.append(new_field_from_numpy(u, magnitude, params=wind_speed))
-        result.append(new_field_from_numpy(v, direction, params=wind_dir))
+        result.append(new_field_from_numpy(magnitude, template=u, params=wind_speed))
+        result.append(new_field_from_numpy(direction, template=v, params=wind_dir))
 
     return new_fieldlist_from_list(result)

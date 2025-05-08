@@ -81,8 +81,8 @@ def execute(context: Any, input: ekd.FieldList, u: str, v: str) -> ekd.FieldList
             lon_unrotated=raw_longs,
         )
 
-        result.append(new_field_from_numpy(x, u_new))
-        result.append(new_field_from_numpy(y, v_new))
+        result.append(new_field_from_numpy(u_new, template=x))
+        result.append(new_field_from_numpy(v_new, template=y))
 
     return new_fieldlist_from_list(result)
 
