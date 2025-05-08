@@ -29,11 +29,23 @@ class Step:
 
 
 class Source(Step):
-    pass
+    def __init__(self, owner, **kwargs):
+        super().__init__(owner, **kwargs)
+        self._source = None
 
 
 class Filter(Step):
-    pass
+    def __init__(self, owner, previous, **kwargs):
+        super().__init__(owner, **kwargs)
+        self.previous = previous
+
+    def as_dict(self):
+        prev = self.previous.as_dict()
+        if isinstance(prev, dict) and "pipe" in prev:
+            prev = prev.copy()
+            prev["pipe"] = prev["pipe"].copy() + [super().as_dict()]
+            return prev
+        return {"pipe": [prev, super().as_dict()]}
 
 
 class SourceMaker:
@@ -109,6 +121,6 @@ if __name__ == "__main__":
     r.description = "test"
 
     r.add(r.mars())
-    r.add(r.rename(r.mars()))
+    r.add(r.rescale(r.rename(r.mars())))
 
     r.dump()
