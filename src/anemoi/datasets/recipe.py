@@ -19,33 +19,60 @@ LOG = logging.getLogger(__name__)
 
 
 class Step:
+
+    def __or__(self, other):
+        return Pipe(self, other)
+
+    def __add__(self, other):
+        return Join(self, other)
+
+
+class Chain(Step):
+    def __init__(self, *args):
+        if len(args) > 0 and isinstance(args[0], self.__class__):
+            args = args[0].steps + args[1:]
+
+        self.steps = args
+
+    def as_dict(self):
+        if len(self.steps) == 1:
+            return self.steps[0].as_dict()
+        return {self.name: [s.as_dict() for s in self.steps]}
+
+    def __repr__(self):
+        return f"{self.__class__.name}({','.join([str(s) for s in self.steps])})"
+
+
+class Pipe(Chain):
+    name = "pipe"
+
+
+class Join(Chain):
+    name = "join"
+
+
+class Base(Step):
     def __init__(self, owner, *args, **kwargs):
         self.owner = owner
-        self.args = args
-        self.kwargs = kwargs
+        self.params = {}
+        for a in args:
+            assert isinstance(a, dict), f"Invalid argument {a}"
+            self.params.update(a)
+        self.params.update(kwargs)
 
     def as_dict(self):
-        return {self.owner.name: self.kwargs}
+        return {self.owner.name: self.params}
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.owner.name}, {','.join([f'{k}={v}' for k, v in self.params.items()])})"
 
 
-class Source(Step):
-    def __init__(self, owner, **kwargs):
-        super().__init__(owner, **kwargs)
-        self._source = None
+class Source(Base):
+    pass
 
 
-class Filter(Step):
-    def __init__(self, owner, previous, **kwargs):
-        super().__init__(owner, **kwargs)
-        self.previous = previous
-
-    def as_dict(self):
-        prev = self.previous.as_dict()
-        if isinstance(prev, dict) and "pipe" in prev:
-            prev = prev.copy()
-            prev["pipe"] = prev["pipe"].copy() + [super().as_dict()]
-            return prev
-        return {"pipe": [prev, super().as_dict()]}
+class Filter(Base):
+    pass
 
 
 class SourceMaker:
@@ -63,6 +90,10 @@ class FilterMaker:
         self.factory = factory
 
     def __call__(self, *args, **kwargs):
+        if len(args) > 0 and isinstance(args[0], Step):
+            prev = args[0]
+            args = args[1:]
+            return Pipe(prev, Filter(self, *args, **kwargs))
         return Filter(self, *args, **kwargs)
 
 
@@ -105,13 +136,8 @@ class Recipe:
     def dump(self):
         result = {
             "description": self.description,
-            "input": [s.as_dict() for s in self._steps],
+            "input": Join(*self._steps).as_dict(),
         }
-
-        if len(result["input"]) == 1:
-            result = result["input"][0]
-        else:
-            result["input"] = {"join": result["input"]}
 
         print(yaml.safe_dump(result))
 
@@ -120,7 +146,43 @@ if __name__ == "__main__":
     r = Recipe()
     r.description = "test"
 
-    r.add(r.mars())
-    r.add(r.rescale(r.rename(r.mars())))
+    # r.add(
+    #     r.mars(
+    #         expver="0001",
+    #         levtype="sfc",
+    #         param=["2t"],
+    #         number=[0, 1],
+    #     )
+    # )
+
+    # r.add(
+    #     r.rescale(
+    #         r.rename(
+    #             r.mars(
+    #                 expver="0002",
+    #                 levtype="sfc",
+    #                 param=["2t"],
+    #                 number=[0, 1],
+    #             ),
+    #             param={"2t": "2t_0002"},
+    #         ),
+    #         {"2t_0002": ["mm", "m"]},
+    #     )
+    # )
+
+    m1 = r.mars(expver="0001", levtype="sfc", param=["2t"], number=[0, 1])
+    m2 = r.mars(expver="0002", levtype="sfc", param=["2t"], number=[0, 1])
+
+    m3 = r.mars(expver="0003", levtype="sfc", param=["2t"], number=[0, 1])
+
+    r.add(
+        (m1 + m2 + m3)
+        | r.rename(
+            param={"2t": "2t_0002"},
+        )
+        | r.rescale(
+            {"2t_0002": ["mm", "m"]},
+        )
+    )
 
     r.dump()
