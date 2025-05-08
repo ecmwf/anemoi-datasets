@@ -1,6 +1,6 @@
 dates:
-  start: 2020-12-30 00:00:00
-  end: 2021-01-03 12:00:00
+  start: 2020-12-12 00:00:00
+  end: 2020-12-14 12:00:00
   frequency: 12h
 
 input:
@@ -12,15 +12,28 @@ input:
           grid: 20./20.
           param: [2t]
           levtype: sfc
+     # - pipe:
       - mars:
           expver: "0001"
           class: ea
           grid: 20./20.
-          param: [q, t, w]
+          param: [q, t,w]
           levtype: pl
           level: [50, 100]
           stream: oper
           type: an
-
-    - rename-filter:
-        tp: tp_era5
+          # - filter:
+          #     param: [q,t,w]
+          # - filter:
+          #     level: [50,100]
+      - accumulations:
+          expver: "0001"
+          class: ea
+          grid: 20./20.
+          param: [cp, tp]
+    - rename:
+        param:
+          tp: tp_era5
+          # q_50: q
+          # w_50: w
+          # t_50: t
