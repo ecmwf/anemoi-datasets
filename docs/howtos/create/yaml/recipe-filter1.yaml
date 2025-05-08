@@ -12,7 +12,6 @@ input:
           grid: 20./20.
           param: [2t]
           levtype: sfc
-     # - pipe:
       - mars:
           expver: "0001"
           class: ea
@@ -22,10 +21,6 @@ input:
           level: [50, 100]
           stream: oper
           type: an
-          # - filter:
-          #     param: [q,t,w]
-          # - filter:
-          #     level: [50,100]
       - accumulations:
           expver: "0001"
           class: ea
@@ -34,6 +29,4 @@ input:
     - rename:
         param:
           tp: tp_era5
-          # q_50: q
-          # w_50: w
-          # t_50: t
+
