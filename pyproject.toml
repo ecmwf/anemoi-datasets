@@ -87,8 +87,8 @@ optional-dependencies.docs = [
   "anemoi-datasets[all]",
   "nbsphinx",
   "pandoc",
-  "sphinx",
-  "sphinx-argparse",
+  "sphinx>=8.2",
+  "sphinx-argparse<0.5",
   "sphinx-rtd-theme",
 ]
 
