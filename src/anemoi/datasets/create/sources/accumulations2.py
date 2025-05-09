@@ -56,7 +56,7 @@ def _member(field: Any) -> int:
 class Period:
     value = None
 
-    def __init__(self, start_datetime, end_datetime, base_datetime):
+    def __init__(self, start_datetime, end_datetime, base_datetime, validity_at_end=False):
         assert isinstance(start_datetime, datetime.datetime)
         assert isinstance(end_datetime, datetime.datetime)
         assert isinstance(base_datetime, datetime.datetime)
@@ -65,9 +65,22 @@ class Period:
         self.end_datetime = end_datetime
 
         self.base_datetime = base_datetime
+        
+        self.validity_at_end = validity_at_end
 
     @property
     def time_request(self):
+        date = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%Y%m%d")) + (self.validity_at_end) * int(self.end_datetime.strftime("%Y%m%d"))
+        time = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%H%M")) + (self.validity_at_end) * int(self.end_datetime.strftime("%H%M"))
+
+        end_step = self.end_datetime - self.base_datetime
+        assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported
+        end_step = int(end_step.total_seconds() // 3600)
+
+        return (("date", date), ("time", time), ("step", end_step))
+    
+    @property
+    def time_check(self):
         date = int(self.base_datetime.strftime("%Y%m%d"))
         time = int(self.base_datetime.strftime("%H%M"))
 
@@ -90,7 +103,7 @@ class Period:
         endStep = field.metadata("endStep")
         date = field.metadata("date")
         time = field.metadata("time")
-
+        
         assert stepType == "accum", stepType
 
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
@@ -102,7 +115,7 @@ class Period:
         assert end == self.end_datetime, (end, self.end_datetime)
 
     def is_matching_field(self, field):
-        return self.field_to_key(field) == self.time_request
+        return self.field_to_key(field) == self.time_check
 
     def __repr__(self):
         return f"Period({self.start_datetime} to {self.end_datetime} -> {self.time_request})"
@@ -111,7 +124,6 @@ class Period:
         return self.end_datetime - self.start_datetime
 
     def apply(self, accumulated, values):
-
         if accumulated is None:
             accumulated = np.zeros_like(values)
 
@@ -119,7 +131,6 @@ class Period:
 
         # if not np.all(values >= 0):
         #     warnings.warn(f"Negative values for {values}: {np.amin(values)} {np.amax(values)}")
-
         return accumulated + self.sign * values
 
 
@@ -212,6 +223,110 @@ class Periods:
     def build_periods(self):
         pass
 
+class DefaultPeriods(Periods):
+    def __init__(self, valid_date, accumulation_period, **kwargs):
+        # one Periods object for each accumulated field in the output
+        self.base_datetime = lambda x : x
+        
+        # base datetime can either be user-defined or default to the starting step of accumulation
+        if 'base_datetime' in kwargs.keys():
+            base = int(kwargs['base_datetime'])
+            self.base_datetime = lambda x : base
+            
+        self.validity_at_end = kwargs.get('validity_at_end',False)
+                
+        super().__init__(valid_date, accumulation_period,**kwargs)
+        
+            
+        
+    def available_steps(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime) -> Dict[int,List[int]]:
+        """
+        Return the steps available to build/search an available period
+        
+        Arguments:
+            base (int): start of the forecast producing accumulations
+            start (int): step (=leadtime) from the forecast where accumulation begins
+            end (int): step (=leadtime) from the forecast where accumulation ends
+        Returns:
+            _ (Dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+        
+        """
+        
+        start_base_delta = int((start - base).total_seconds() // 3600)
+        end_start_delta = int((end - start).total_seconds() // 3600)
+        return {
+            base: [[i, i + 1] for i in range(start_base_delta, start_base_delta + end_start_delta , 1)],
+        }
+    
+    def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
+        # find candidate periods that can be used to accumulate the data
+        # to get the accumulation between the two dates 'start' and 'end'
+        found = []
+
+
+        for base_time, steps in self.available_steps(base, start, end).items():
+  
+            for step1, step2 in steps:
+                if debug:
+                    xprint(f"❌ tring: {base_time=} {step1=} {step2=}")
+                    
+                base_datetime = start - datetime.timedelta(hours=step1)
+  
+                period = Period(start, end, base_datetime, self.validity_at_end)
+                found.append(period)
+
+                assert base_datetime.hour == base_time.hour, (base_datetime, base_time)
+
+                assert period.start_datetime - period.base_datetime == datetime.timedelta(hours=step1), (
+                    period.end_datetime,
+                    period.base_datetime,
+                    step1,
+                )
+                assert period.end_datetime - period.base_datetime == datetime.timedelta(hours=step2), (
+                    period.start_datetime,
+                    period.base_datetime,
+                    step2,
+                )
+
+        return found
+
+    def build_periods(self):
+        # build the list of periods to accumulate the data
+
+        hours = self.accumulation_period.total_seconds() / 3600
+        assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
+        hours = int(hours)
+        
+        assert self.base_datetime is not None, f"DefaultPeriods needs a base_datetime function, but base_datetime is None"
+        
+        lst = []
+        for wanted in [[i, i + 1] for i in range(0, hours, 1)]:
+
+            start = self.valid_date - datetime.timedelta(hours=wanted[1])
+            end = self.valid_date - datetime.timedelta(hours=wanted[0])
+            
+            if not end - start == datetime.timedelta(hours=1):
+                raise NotImplementedError("Only 1 hour period is supported")
+        
+            found = self.search_periods(self.base_datetime(start), start, end)
+            if not found:
+                xprint(f"❌❌❌ Cannot find accumulation for {start} {end}")
+                self.search_periods(self.base_datetime(start), wanted[0],  wanted[1], debug=True)
+                raise ValueError(f"Cannot find accumulation for {start} {end}")
+
+            found = sorted(found, key=lambda x: x.base_datetime, reverse=True)
+            chosen = found[0]
+
+            if len(found) > 1:
+                xprint(f"  Found more than one period for {start} {end}")
+                for f in found:
+                    xprint(f"    {f}")
+                xprint(f"    Chosing {chosen}")
+
+            chosen.sign = 1
+
+            lst.append(chosen)
+        return lst    
 
 class EraPeriods(Periods):
     def search_periods(self, start, end, debug=False):
@@ -352,16 +467,21 @@ class OdEnfoPeriods(DiffPeriods):
         raise NotImplementedError("need to implement diff")
 
 
-def find_accumulator_class(class_: str, stream: str) -> Periods:
-    return {
-        ("ea", "oper"): EaOperPeriods,  # runs ok
-        ("ea", "enda"): EaEndaPeriods,
-        ("rr", "oper"): RrOperPeriods,
-        ("l5", "oper"): L5OperPeriods,
-        ("od", "oper"): OdOperPeriods,
-        ("od", "enfo"): OdEnfoPeriods,
-        ("od", "elda"): OdEldaPeriods,
-    }[class_, stream]
+def find_accumulator_class(request: Dict[str,Any]) -> Periods:
+    
+    try:
+        return {
+            ("ea", "oper"): EaOperPeriods,  # runs ok
+            ("ea", "enda"): EaEndaPeriods,
+            ("rr", "oper"): RrOperPeriods,
+            ("l5", "oper"): L5OperPeriods,
+            ("od", "oper"): OdOperPeriods,
+            ("od", "enfo"): OdEnfoPeriods,
+            ("od", "elda"): OdEldaPeriods,
+        }[request.get('class',None), request.get('stream',None)]
+    
+    except KeyError:
+        return DefaultPeriods
 
 
 class Accumulator:
@@ -395,8 +515,8 @@ class Accumulator:
 
     def is_field_needed(self, field):
         for k, v in self.key.items():
-            if field.metadata(k) != v:
-                LOG.debug(f"{self} does not need field {field} because of {k}={field.metadata(k)} not {v}")
+            if field.metadata(k,default=0) != v:
+                LOG.debug(f"{self} does not need field {field} because of {k}={field.metadata(k,default=0)} not {v}")
                 return False
         return True
 
@@ -416,7 +536,7 @@ class Accumulator:
 
         self.values = period.apply(self.values, values)
         self.periods.set_done(period)
-
+        
         if self.periods.all_done():
             self.write(field)
             xprint("accumulator", self, " : data written ✅ ")
@@ -507,7 +627,7 @@ def _compute_accumulations(
         # LOG.warning("'type' should be 'sfc', found %s", request['type'])
         raise NotImplementedError("Only sfc leveltype is supported")
 
-    period_class = find_accumulator_class(request["class"], request["stream"])
+    period_class = find_accumulator_class(request)
 
     tmp = temp_file()
     path = tmp.path
@@ -546,7 +666,7 @@ def _compute_accumulations(
     action.source.context = context
     ds = action.source.execute(dates)
 
-    # send each field to the each accumulator, the accumulatore will use the field to the accumulation
+    # send each field to the each accumulator, the accumulator will use the field to the accumulation
     # if the accumulator has requested it
     for field in ds:
         values = field.values  # optimisation
@@ -556,7 +676,7 @@ def _compute_accumulations(
     out.close()
 
     ds = ekd.from_source("file", path)
-
+    
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
         len(param),

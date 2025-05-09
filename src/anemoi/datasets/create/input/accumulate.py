@@ -73,7 +73,6 @@ class AccumulationResult(Result):
     @trace_datasource
     def datasource(self) -> FieldList:
         """Returns the combined datasource from all results."""
-        print(self.source)
         ds = accumulations(self.context, self.group_of_dates, self.source, **self.request)
         
         return _tidy(ds)

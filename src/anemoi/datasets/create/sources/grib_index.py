@@ -7,11 +7,14 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import logging
 import os
 import sqlite3
 from typing import Any
+from typing import Dict
 from typing import Iterator
+from typing import Generator
 from typing import List
 from typing import Optional
 
@@ -553,6 +556,9 @@ class GribIndex:
         params = dates
 
         for k, v in kwargs.items():
+            if k not in self._columns:
+                LOG.warning(f"Warning : {k} not in database columns, key discarded")
+                continue
             if isinstance(v, list):
                 query += f" AND {k} IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
@@ -560,11 +566,13 @@ class GribIndex:
                 query += f" AND {k} = ?"
                 params.append(str(v))
 
-        print("SELECT", query)
-        print("SELECT", params)
+        print("SELECT (query)", query)
+        print("SELECT (params)", params)
 
         self.cursor.execute(query, params)
+       
         for path_id, offset, length in self.cursor.fetchall():
+            print(path_id, offset, length)
             if path_id in self.cache:
                 file = self.cache[path_id]
             else:
@@ -577,13 +585,29 @@ class GribIndex:
             data = file.read(length)
             yield data
 
+def format_and_map_requests(requests: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
+    """
+    Keep in requests only what is needed to fetch data in grib-index
+    """
+
+    stripped_requests = []
+    to_keep = {'param', 'number', 'levtype', 'step', 'valid_datetime'}
+
+    for r in requests:
+        r_strip = { k : v for k,v in r.items() if k in to_keep }
+        stripped_requests.append(r_strip)
+        r['valid_datetime'] = datetime.datetime.strptime(str(r['date']),'%Y%m%d') + datetime.timedelta(hours=(r['time']//100))
+    
+    mapped_requests = {k : list(set([r[k] for r in requests])) for k in to_keep}
+    
+    return mapped_requests
 
 def grib_index_retrieve(
     context: Any,
     dates: List[Any],
     indexdb: str,
+    *requests: Dict[str,Any],
     flavour: Optional[str] = None,
-    requests: Optional[List] = None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
@@ -608,18 +632,17 @@ def grib_index_retrieve(
     FieldArray
         An array of retrieved GRIB fields.
     """
+    
+
     index = GribIndex(indexdb)
     result = []
 
-    if requests is not None:
-        assert not kwargs
-        raise NotImplementedError("requests not implemented")
-
-    if kwargs:
-        assert not requests
 
     if flavour is not None:
         flavour = RuleBasedFlavour(flavour)
+        
+    if 'valid_datetime' in kwargs.keys():
+        dates = kwargs.pop('valid_datetime')
 
     for grib in index.retrieve(dates, **kwargs):
         field = ekd.from_source("memory", grib)[0]
@@ -634,9 +657,9 @@ def grib_index_retrieve(
 def execute(
     context: Any,
     dates: List[Any],
-    indexdb: str,
+    *requests,
     flavour: Optional[str] = None,
-    **kwargs: Any,
+    **kwargs: Any
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
 
@@ -658,6 +681,14 @@ def execute(
     FieldArray
         An array of retrieved GRIB fields.
     """
+    indexdb = requests[0].pop('indexdb')
+    
+    assert all([(indexdb==r.pop('indexdb') for r in requests[1:])])
+    
+    if requests:
+        print('requests', requests)
+        kwargs = kwargs | format_and_map_requests(requests)
+        print(kwargs)
     return grib_index_retrieve(
         context,
         dates,

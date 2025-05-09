@@ -351,10 +351,9 @@ class Result:
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
-        except ValueError:
+        except ValueError as e:
             self.explain(ds, order_by, remapping=remapping, patches=patches)
-            # raise ValueError(f"Error in {self}")
-            exit(1)
+            raise ValueError(f"Error in {self}")
 
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug("Cube shape: %s", cube)
@@ -521,7 +520,6 @@ class Result:
         print()
         print("❌" * 40)
         print()
-        exit(1)
 
     def _repr(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
         """Return the string representation of the Result instance.
