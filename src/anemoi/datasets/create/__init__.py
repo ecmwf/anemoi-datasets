@@ -1628,3 +1628,21 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
+
+
+def config_to_python(config: Any) -> Any:
+    import sys
+
+    config = loader_config(config)
+    input = build_input_(config, build_output(config.output, None))
+    code = input.to_python()
+
+    code = f"from anemoi.datasets.recipe import Recipe;r = Recipe();r.input = {code}; r.dump()"
+
+    try:
+        import black
+
+        return black.format_str(code, mode=black.Mode())
+    except ImportError:
+        LOG.warning("Black not installed, skipping formatting")
+        return code

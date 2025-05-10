@@ -75,6 +75,14 @@ class InputBuilder:
         action = action_factory(self.config, context, self.action_path)
         return action.select(group_of_dates)
 
+    def to_python(self) -> str:
+        from .action import ActionContext
+        from .action import action_factory
+
+        context = ActionContext(**self.kwargs)
+        action = action_factory(self.config, context, self.action_path)
+        return action.to_python()
+
     def __repr__(self) -> str:
         """Return a string representation of the InputBuilder.
 

@@ -95,6 +95,7 @@ class FunctionStepAction(StepAction):
         previous_step: StepAction,
         name: str,
         filter: Any,
+        config: dict,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -116,3 +117,19 @@ class FunctionStepAction(StepAction):
         super().__init__(context, action_path, previous_step, *args, **kwargs)
         self.name = name
         self.filter = filter
+        self.config = config
+
+    def to_python(self) -> Any:
+        """Converts the action to Python code.
+
+        Parameters
+        ----------
+        file : str
+            The file to convert.
+
+        Returns
+        -------
+        Any
+            The converted Python code.
+        """
+        return self._to_python(self.name, self.config)

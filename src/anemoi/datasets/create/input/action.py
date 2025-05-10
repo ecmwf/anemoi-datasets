@@ -9,6 +9,7 @@
 
 import json
 import logging
+import re
 from copy import deepcopy
 from typing import Any
 from typing import Dict
@@ -159,6 +160,68 @@ class Action:
         """
         return f"{self.__class__.__name__}({group_of_dates})"
 
+    def _to_python(self, name, config):
+        """Convert the action to Python code.
+
+        Parameters
+        ----------
+        name : str
+            The name of the action.
+        config : dict
+            The configuration for the action.
+
+        Returns
+        -------
+        str
+            The Python code representation of the action.
+        """
+        import json
+
+        RESERVED_KEYWORDS = (
+            "and",
+            "or",
+            "not",
+            "is",
+            "in",
+            "if",
+            "else",
+            "elif",
+            "for",
+            "while",
+            "return",
+            "class",
+            "def",
+            "with",
+            "as",
+            "import",
+            "from",
+            "try",
+            "except",
+            "finally",
+            "raise",
+            "assert",
+            "break",
+            "continue",
+            "pass",
+        )
+
+        config = json.loads(json.dumps(config))
+
+        assert len(config) == 1, (name, config)
+        assert name in config, (name, config)
+
+        config = config[name]
+
+        params = []
+        for k, v in config.items():
+            if k in RESERVED_KEYWORDS or re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k) is None:
+                return f"r.{name}({config})"
+            params.append(f"{k}={repr(v)}")
+
+        params = ",".join(params)
+        return f"r.{name}({params})"
+        # return f"{name}({config})"
+
 
 class ActionContext(Context):
     """Represents the context in which an action is performed.
@@ -254,6 +317,6 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
         from ..sources import create_source
 
         source = create_source(None, substitute(context, config))
-        return FunctionAction(context, action_path + [key], key, source)
+        return FunctionAction(context, action_path + [key], key, source, config)
 
     return cls(context, action_path + [key], *args, **kwargs)
