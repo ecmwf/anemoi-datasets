@@ -197,11 +197,11 @@ def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
 
     for k, v in kwargs.items():
 
-        if not isinstance(v, dict):
+        if isinstance(v, dict):
             input = [RenamedFieldMapping(fs, k, v) for fs in input]
         elif isinstance(v, str):
             input = [RenamedFieldFormat(fs, k, v) for fs in input]
         else:
-            raise ValueError("Invalid renaming dictionary. Values must be strings or dictionaries.")
+            raise ValueError(f"Invalid renaming dictionary. Values must be strings or dictionaries. ({type(v)})")
 
     return FieldArray(input)
