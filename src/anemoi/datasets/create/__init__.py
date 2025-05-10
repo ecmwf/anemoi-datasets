@@ -1631,7 +1631,6 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
 
 
 def config_to_python(config: Any) -> Any:
-    import sys
 
     config = loader_config(config)
     input = build_input_(config, build_output(config.output, None))

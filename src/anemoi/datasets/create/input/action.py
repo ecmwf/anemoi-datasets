@@ -160,7 +160,7 @@ class Action:
         """
         return f"{self.__class__.__name__}({group_of_dates})"
 
-    def _to_python(self, name, config):
+    def _to_python(self, name: str, config: dict) -> str:
         """Convert the action to Python code.
 
         Parameters

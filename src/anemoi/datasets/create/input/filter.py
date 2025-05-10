@@ -119,17 +119,12 @@ class FunctionStepAction(StepAction):
         self.filter = filter
         self.config = config
 
-    def to_python(self) -> Any:
+    def to_python(self) -> str:
         """Converts the action to Python code.
-
-        Parameters
-        ----------
-        file : str
-            The file to convert.
 
         Returns
         -------
-        Any
+        str
             The converted Python code.
         """
         return self._to_python(self.name, self.config)

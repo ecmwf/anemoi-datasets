@@ -250,28 +250,34 @@ class Recipe:
 
 
 if __name__ == "__main__":
-    r = Recipe()
-    r.description = "test"
 
-    m1 = r.mars(expver="0001")
-    m2 = r.mars(expver="0002")
-    m3 = r.mars(expver="0003")
+    if False:
+        r = Recipe()
+        r.description = "test"
 
-    r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"}) | r.rescale(tp=["mm", "m"])
+        m1 = r.mars(expver="0001")
+        m2 = r.mars(expver="0002")
+        m3 = r.mars(expver="0003")
 
-    r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
+        r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"}) | r.rescale(tp=["mm", "m"])
 
-    m0 = r.mars(expver="0000")
-    c = r.concat(
-        {
-            ("1900", "2000"): m0,
-            ("2001", "2020"): r.mars(expver="0002"),
-            ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
-        },
-    )
+        r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
 
-    c[("2031", "2033")] = r.mars(expver="0005")
+        m0 = r.mars(expver="0000")
+        c = r.concat(
+            {
+                ("1900", "2000"): m0,
+                ("2001", "2020"): r.mars(expver="0002"),
+                ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
+            },
+        )
 
-    r.input += c
+        c[("2031", "2033")] = r.mars(expver="0005")
 
-    r.dump()
+        r.input += c
+
+        r.dump()
+    else:
+        from anemoi.datasets.create import config_to_python
+
+        print(config_to_python("x.yaml"))
