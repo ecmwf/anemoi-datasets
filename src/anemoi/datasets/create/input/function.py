@@ -91,7 +91,9 @@ class FunctionAction(Action):
         The name of the function.
     """
 
-    def __init__(self, context: object, action_path: list, _name: str, source, **kwargs: Dict[str, Any]) -> None:
+    def __init__(
+        self, context: object, action_path: list, _name: str, source, config: dict, **kwargs: Dict[str, Any]
+    ) -> None:
         """Initializes a FunctionAction instance.
 
         Parameters
@@ -108,6 +110,12 @@ class FunctionAction(Action):
         super().__init__(context, action_path, **kwargs)
         self.name: str = _name
         self.source = source
+        self.config = config
+
+    def to_python(self) -> str:
+        """Returns the Python representation of the function action."""
+
+        return self._to_python(self.name, self.config)
 
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":

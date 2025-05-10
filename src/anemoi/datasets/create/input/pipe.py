@@ -40,9 +40,13 @@ class PipeAction(Action):
                 f"PipeAction requires at least two actions, got {len(configs)}\n{json.dumps(configs, indent=2)}"
             )
 
+        self.actions: list = []
+
         current: Any = action_factory(configs[0], context, action_path + ["0"])
+        self.actions.append(current)
         for i, c in enumerate(configs[1:]):
             current = step_factory(c, context, action_path + [str(i + 1)], previous_step=current)
+            self.actions.append(current)
         self.last_step: Any = current
 
     @trace_select
@@ -64,3 +68,6 @@ class PipeAction(Action):
     def __repr__(self) -> str:
         """Return a string representation of the PipeAction."""
         return f"PipeAction({self.last_step})"
+
+    def to_python(self) -> str:
+        return "(" + " | ".join([i.to_python() for i in self.actions]) + ")"

@@ -9,6 +9,7 @@
 
 
 import logging
+import warnings
 from collections import defaultdict
 from typing import Any
 from typing import Dict
@@ -350,6 +351,11 @@ class RepeatedDatesAction(Action):
 
         self.source: Any = action_factory(source, context, action_path + ["source"])
         self.mapper: DateMapper = DateMapper.from_mode(mode, self.source, kwargs)
+
+    def to_python(self) -> str:
+        """Convert the action to Python code."""
+        warnings.warn("RepeatedDatesAction.to_python is still a work in progress")
+        return self.source.to_python()
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:

@@ -505,6 +505,7 @@ class CopyMixin:
             default=100,
             help="For optimisation purposes, data is transfered by blocks. Default is 100.",
         )
+        command_parser.add_argument("--workdir", help="Working directory for the copy operation.", default=".")
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
 
@@ -534,6 +535,7 @@ class CopyMixin:
                     resume=args.resume,
                     verbosity=args.verbosity,
                     threads=args.transfers,
+                    workdir=args.workdir,
                 )
                 copier.run()
                 return
