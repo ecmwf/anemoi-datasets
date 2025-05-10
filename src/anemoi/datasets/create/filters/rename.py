@@ -45,9 +45,7 @@ class RenamedFieldMapping:
         """
         self.field = field
         self.what = what
-        self.renaming = {}
-        for k, v in renaming.items():
-            self.renaming[k] = {str(a): str(b) for a, b in v.items()}
+        self.renaming = renaming.copy()
 
     def metadata(self, key: Optional[str] = None, **kwargs: Any) -> Any:
         """Get metadata from the original field, with the option to rename the parameter.
@@ -69,7 +67,7 @@ class RenamedFieldMapping:
 
         value = self.field.metadata(key, **kwargs)
         if key == self.what:
-            return self.renaming.get(self.what, {}).get(value, value)
+            return self.renaming.get(value, value)
 
         return value
 
@@ -179,7 +177,7 @@ class RenamedFieldFormat:
 
 
 @legacy_filter(__file__)
-def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: Any) -> ekd.FieldList:
+def execute(context: Any, input: ekd.FieldList, **kwargs: Any) -> ekd.FieldList:
     """Rename fields based on the value of another field or a format string.
 
     Parameters
@@ -188,8 +186,6 @@ def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: A
         The context in which the function is executed.
     input : List[Any]
         List of input fields.
-    what : str, optional
-        The field to be used for renaming. Defaults to "param".
     **kwargs : Any
         Additional keyword arguments for renaming.
 
@@ -199,7 +195,13 @@ def execute(context: Any, input: ekd.FieldList, what: str = "param", **kwargs: A
         Array of renamed fields.
     """
 
-    if what in kwargs and isinstance(kwargs[what], str):
-        return FieldArray([RenamedFieldFormat(fs, what, kwargs[what]) for fs in input])
+    for k, v in kwargs.items():
 
-    return FieldArray([RenamedFieldMapping(fs, what, kwargs) for fs in input])
+        if not isinstance(v, dict):
+            input = [RenamedFieldMapping(fs, k, v) for fs in input]
+        elif isinstance(v, str):
+            input = [RenamedFieldFormat(fs, k, v) for fs in input]
+        else:
+            raise ValueError("Invalid renaming dictionary. Values must be strings or dictionaries.")
+
+    return FieldArray(input)
