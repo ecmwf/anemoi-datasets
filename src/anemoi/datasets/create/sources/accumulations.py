@@ -27,6 +27,7 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 
+from .grib_index import grib_index_retrieve
 from .legacy import legacy_source
 from .mars import mars
 
@@ -784,6 +785,7 @@ def _compute_accumulations(
     patch: Any = _identity,
     base_times: Optional[List[int]] = None,
     use_cdsapi_dataset: Optional[str] = None,
+    use_grib_index: Optional[str] = None,
 ) -> Any:
     """Computes accumulations based on the provided parameters.
 
@@ -809,6 +811,8 @@ def _compute_accumulations(
         List of base times. Defaults to None.
     use_cdsapi_dataset : Optional[str], optional
         CDSAPI dataset to use. Defaults to None.
+    use_grib_index : Optional[str], optional
+        Grib index to use. Defaults to None.
 
     Returns
     -------
@@ -886,9 +890,23 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-    ds = mars(
-        context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
-    )
+    if use_grib_index:
+        ds = grib_index_retrieve(
+            context,
+            dates,
+            indexdb=use_grib_index,
+            flavour=None,
+            requests=requests,
+            request_already_using_valid_datetime=True,
+        )
+    else:
+        ds = mars(
+            context,
+            dates,
+            *requests,
+            request_already_using_valid_datetime=True,
+            use_cdsapi_dataset=use_cdsapi_dataset,
+        )
 
     accumulations = {}
     for a in [
@@ -972,7 +990,11 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
 
 @legacy_source(__file__)
 def accumulations(
-    context: Any, dates: List[datetime.datetime], use_cdsapi_dataset: Optional[str] = None, **request: Any
+    context: Any,
+    dates: List[datetime.datetime],
+    use_cdsapi_dataset: Optional[str] = None,
+    use_grib_index: Optional[str] = None,
+    **request: Any,
 ) -> Any:
     """Computes accumulations based on the provided context, dates, and request parameters.
 
@@ -984,6 +1006,8 @@ def accumulations(
         List of dates.
     use_cdsapi_dataset : Optional[str], optional
         CDSAPI dataset to use. Defaults to None.
+    use_grib_index : Optional[str], optional
+        Grib index to use. Defaults to None.
     **request : Any
         Additional request parameters.
 
@@ -1038,6 +1062,7 @@ def accumulations(
         accumulations_reset_frequency=accumulations_reset_frequency,
         use_cdsapi_dataset=use_cdsapi_dataset,
         user_date=user_date,
+        use_grib_index=use_grib_index,
         **kwargs,
     )
 
