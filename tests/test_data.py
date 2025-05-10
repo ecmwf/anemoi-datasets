@@ -36,6 +36,7 @@ from anemoi.datasets.data.select import Select
 from anemoi.datasets.data.statistics import Statistics
 from anemoi.datasets.data.stores import Zarr
 from anemoi.datasets.data.subset import Subset
+from anemoi.datasets.testing import default_test_indexing
 
 VALUES = 10
 
@@ -266,41 +267,6 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
     )
 
 
-class IndexTester:
-    """Class to test indexing of datasets."""
-
-    def __init__(self, ds: Any) -> None:
-        """Initialise the IndexTester.
-
-        Parameters
-        ----------
-        ds : Any
-            Dataset.
-        """
-        self.ds = ds
-        self.np = ds[:]  # Numpy array
-
-        assert self.ds.shape == self.np.shape
-        assert (self.ds == self.np).all()
-
-    def __getitem__(self, index: Any) -> None:
-        """Test indexing.
-
-        Parameters
-        ----------
-        index : Any
-            Index.
-        """
-        print("INDEX", type(self.ds), index)
-        if self.ds[index] is None:
-            assert False, (self.ds, index)
-
-        if not (self.ds[index] == self.np[index]).all():
-            # print("DS", self.ds[index])
-            # print("NP", self.np[index])
-            assert (self.ds[index] == self.np[index]).all()
-
-
 def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
     """Create a row of data.
 
@@ -495,7 +461,8 @@ class DatasetTester:
             assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
-    def indexing(self, ds: Any) -> None:
+    @classmethod
+    def indexing(cls, ds: Any) -> None:
         """Test indexing.
 
         Parameters
@@ -503,39 +470,7 @@ class DatasetTester:
         ds : Any
             Dataset.
         """
-        t = IndexTester(ds)
-
-        print("INDEXING", ds.shape)
-
-        t[0:10, :, 0]
-        t[:, 0:3, 0]
-        # t[:, :, 0]
-        t[0:10, 0:3, 0]
-        t[:, :, :]
-
-        if ds.shape[1] > 2:  # Variable dimension
-            t[:, (1, 2), :]
-            t[:, (1, 2)]
-
-        t[0]
-        t[0, :]
-        t[0, 0, :]
-        t[0, 0, 0, :]
-
-        if ds.shape[2] > 1:  # Ensemble dimension
-            t[0:10, :, (0, 1)]
-
-        for i in range(3):
-            t[i]
-            start = 5 * i
-            end = len(ds) - 5 * i
-            step = len(ds) // 10
-
-            t[start:end:step]
-            t[start:end]
-            t[start:]
-            t[:end]
-            t[::step]
+        default_test_indexing(ds)
 
 
 def simple_row(date: datetime.datetime, vars: str) -> np.ndarray:
