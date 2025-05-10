@@ -9,7 +9,6 @@
 
 import datetime
 import logging
-import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from typing import Any
@@ -118,8 +117,8 @@ class Period:
 
         assert accumulated.shape == values.shape, (accumulated.shape, values.shape)
 
-        if not np.all(values >= 0):
-            warnings.warn(f"Negative values for {values}: {np.amin(values)} {np.amax(values)}")
+        # if not np.all(values >= 0):
+        #     warnings.warn(f"Negative values for {values}: {np.amin(values)} {np.amax(values)}")
 
         return accumulated + self.sign * values
 
