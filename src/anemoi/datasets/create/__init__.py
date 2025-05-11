@@ -11,6 +11,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import time
 import uuid
 import warnings
@@ -1634,9 +1635,12 @@ def config_to_python(config: Any) -> Any:
 
     config = loader_config(config)
     input = build_input_(config, build_output(config.output, None))
-    code = input.to_python()
+    code1 = input.python_prelude()
+    code2 = input.to_python()
 
-    code = f"from anemoi.datasets.recipe import Recipe;r = Recipe();r.input = {code}; r.dump()"
+    code = f"from anemoi.datasets.recipe import Recipe;r = Recipe();{code1};r.input = {code2}; r.dump()"
+
+    code = re.sub(r"[\"\']?\${data_sources\.(\w+)}[\"\']?", r"\1", code)
 
     try:
         import black

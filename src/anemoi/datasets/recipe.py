@@ -11,6 +11,7 @@ import logging
 
 import yaml
 from anemoi.transform.filters import filter_registry as transform_filter_registry
+from anemoi.utils.config import DotDict
 
 from anemoi.datasets.create.filters import filter_registry as datasets_filter_registry
 from anemoi.datasets.create.sources import source_registry
@@ -165,9 +166,17 @@ class FilterMaker:
 
 class Recipe:
 
-    def __init__(self):
-        self.description = None
+    def __init__(self, name=None, description=None, attribution=None, licence=None):
+
+        self._description = description
+        self._attribution = attribution
+        self._licence = licence
+        self._name = name
+
         self.input = Join()
+        self.output = DotDict()
+        self.statistics = DotDict()
+        self.build = DotDict()
 
         sources = source_registry.factories.copy()
         filters = transform_filter_registry.factories.copy()
@@ -197,12 +206,25 @@ class Recipe:
             setattr(self, key, FilterMaker(key, factory))
 
     def dump(self):
-        result = {
-            "description": self.description,
-            "input": self.input.as_dict(self),
-        }
+        result = self.as_dict(self)
+        result["input"] = self.input.as_dict(self)
+        result["output"] = self.description
 
         print(yaml.safe_dump(result))
+
+    def as_dict(self):
+        result = {
+            "name": self.name,
+            "description": self.description,
+            "attribution": self.attribution,
+            "licence": self.licence,
+        }
+
+        for k, v in list(result.items()):
+            if v is None:
+                del result[k]
+
+        return result
 
     def concat(self, *args, **kwargs):
         return Concat(*args, **kwargs)
@@ -248,36 +270,63 @@ class Recipe:
         target = ".".join(s.name for s in path_to_target)
         return f"${{{target}}}"
 
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @property
+    def attribution(self):
+        return self._attribution
+
+    @attribution.setter
+    def attribution(self, value):
+        self._attribution = value
+
+    @property
+    def licence(self):
+        return self._licence
+
+    @licence.setter
+    def licence(self, value):
+        self._licence = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
 
 if __name__ == "__main__":
 
-    if False:
-        r = Recipe()
-        r.description = "test"
+    r = Recipe()
+    r.description = "test"
 
-        m1 = r.mars(expver="0001")
-        m2 = r.mars(expver="0002")
-        m3 = r.mars(expver="0003")
+    m1 = r.mars(expver="0001")
+    m2 = r.mars(expver="0002")
+    m3 = r.mars(expver="0003")
 
-        r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"}) | r.rescale(tp=["mm", "m"])
+    r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"}) | r.rescale(tp=["mm", "m"])
 
-        r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
+    r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
 
-        m0 = r.mars(expver="0000")
-        c = r.concat(
-            {
-                ("1900", "2000"): m0,
-                ("2001", "2020"): r.mars(expver="0002"),
-                ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
-            },
-        )
+    m0 = r.mars(expver="0000")
+    c = r.concat(
+        {
+            ("1900", "2000"): m0,
+            ("2001", "2020"): r.mars(expver="0002"),
+            ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
+        },
+    )
 
-        c[("2031", "2033")] = r.mars(expver="0005")
+    c[("2031", "2033")] = r.mars(expver="0005")
 
-        r.input += c
+    r.input += c
 
-        r.dump()
-    else:
-        from anemoi.datasets.create import config_to_python
-
-        print(config_to_python("x.yaml"))
+    r.dump()
