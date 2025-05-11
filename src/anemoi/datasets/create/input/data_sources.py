@@ -87,11 +87,10 @@ class DataSourcesAction(Action):
         content = "\n".join([str(i) for i in self.sources])
         return self._repr(content)
 
-    def python_prelude(self) -> str:
-        result = []
+    def python_prelude(self, prelude) -> str:
         for n, s in zip(self.names, self.sources):
-            result.append(f"{n}={s.to_python()}")
-        return ";".join(result)
+            self.sources.python_prelude(prelude)
+            prelude.append(f"{n}={s.to_python()}")
 
     def to_python(self) -> str:
         return self.input.to_python()

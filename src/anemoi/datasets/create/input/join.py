@@ -110,6 +110,10 @@ class JoinAction(Action):
     def to_python(self) -> None:
         return "(" + " + ".join([i.to_python() for i in self.actions]) + ")"
 
+    def python_prelude(self, prelude) -> None:
+        for i in self.actions:
+            i.python_prelude(prelude)
+
     def __repr__(self) -> str:
         """Returns a string representation of the JoinAction instance."""
         content: str = "\n".join([str(i) for i in self.actions])

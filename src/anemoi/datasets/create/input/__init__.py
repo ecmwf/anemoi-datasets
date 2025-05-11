@@ -84,13 +84,13 @@ class InputBuilder:
 
         return action.to_python()
 
-    def python_prelude(self) -> str:
+    def python_prelude(self, prelude) -> str:
         from .action import ActionContext
         from .action import action_factory
 
         context = ActionContext(**self.kwargs)
         action = action_factory(self.config, context, self.action_path)
-        return action.python_prelude()
+        return action.python_prelude(prelude)
 
     def __repr__(self) -> str:
         """Return a string representation of the InputBuilder.

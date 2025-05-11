@@ -1635,7 +1635,11 @@ def config_to_python(config: Any) -> Any:
 
     config = loader_config(config)
     input = build_input_(config, build_output(config.output, None))
-    code1 = input.python_prelude()
+
+    prelude = []
+    input.python_prelude(prelude)
+    code1 = "\n".join(prelude)
+
     code2 = input.to_python()
 
     code = f"from anemoi.datasets.recipe import Recipe\nr = Recipe()\n{code1}\nr.input = {code2}\n\nr.dump()"
@@ -1646,6 +1650,6 @@ def config_to_python(config: Any) -> Any:
         import black
 
         return black.format_str(code, mode=black.Mode())
-    except ImportError:
+    except Exception:
         LOG.warning("Black not installed, skipping formatting")
         return code

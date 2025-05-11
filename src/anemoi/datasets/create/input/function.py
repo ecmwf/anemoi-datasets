@@ -117,6 +117,9 @@ class FunctionAction(Action):
 
         return self._to_python(self.name, self.config)
 
+    def python_prelude(self, prelude) -> str:
+        pass
+
     @trace_select
     def select(self, group_of_dates: GroupOfDates) -> "FunctionResult":
         """Selects the function result for the given group of dates.

@@ -128,3 +128,6 @@ class FunctionStepAction(StepAction):
             The converted Python code.
         """
         return self._to_python(self.name, self.config)
+
+    def python_prelude(self, prelude) -> None:
+        pass

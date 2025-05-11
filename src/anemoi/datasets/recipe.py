@@ -8,10 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
+import sys
+from tempfile import TemporaryDirectory
 
 import yaml
 from anemoi.transform.filters import filter_registry as transform_filter_registry
 from anemoi.utils.config import DotDict
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.filters import filter_registry as datasets_filter_registry
 from anemoi.datasets.create.sources import source_registry
@@ -172,6 +178,7 @@ class Recipe:
         self._attribution = attribution
         self._licence = licence
         self._name = name
+        self._dates = None
 
         self.input = Join()
         self.output = DotDict()
@@ -205,19 +212,13 @@ class Recipe:
             assert not hasattr(self, key)
             setattr(self, key, FilterMaker(key, factory))
 
-    def dump(self):
-        result = self.as_dict()
-        result["input"] = self.input.as_dict(self)
-        # result["output"] = self.description
-
-        print(yaml.safe_dump(result))
-
     def as_dict(self):
         result = {
             "name": self.name,
             "description": self.description,
             "attribution": self.attribution,
             "licence": self.licence,
+            "dates": self.dates,
         }
 
         for k, v in list(result.items()):
@@ -302,31 +303,95 @@ class Recipe:
     def name(self, value):
         self._name = value
 
+    @property
+    def dates(self):
+        return self._dates
+
+    def _parse_dates(self, value):
+
+        start = None
+        end = None
+        frequency = 1
+
+        if isinstance(value, (list, tuple)):
+            if len(value) in [2, 3]:
+                start = value[0]
+                end = value[1]
+
+            if len(value) == 3:
+                frequency = frequency_to_string(frequency_to_timedelta(value[2]))
+                if isinstance(frequency, int):
+                    frequency = f"{frequency}h"
+
+        if start is None or end is None:
+            raise ValueError(f"Invalid dates {value}")
+
+        if isinstance(frequency, int):
+            frequency = f"{frequency}h"
+
+        return dict(
+            start=as_datetime(start),
+            end=as_datetime(end),
+            frequency=frequency,
+        )
+
+    @dates.setter
+    def dates(self, value):
+        self._dates = self._parse_dates(value)
+
+    def dump(self, file=sys.stdout):
+        result = self.as_dict()
+        result["input"] = self.input.as_dict(self)
+
+        yaml.safe_dump(result, sort_keys=False, indent=2, width=120, stream=file)
+
+    def test(self, output="recipe.zarr"):
+        from argparse import ArgumentParser
+
+        from anemoi.datasets.commands.create import command
+
+        parser = ArgumentParser()
+        parser.add_argument("command", help="Command to run")
+
+        cmd = command()
+        cmd.add_arguments(parser)
+
+        with TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "recipe.yaml")
+            with open(path, "w") as file:
+                self.dump(file)
+
+            args = parser.parse_args(["create", path, output, "--overwrite", "--test"])
+            cmd.run(args)
+
 
 if __name__ == "__main__":
 
     r = Recipe()
     r.description = "test"
 
+    r.dates = ("1900-01-01", "2023-12-31")
+
     m1 = r.mars(expver="0001")
     m2 = r.mars(expver="0002")
     m3 = r.mars(expver="0003")
 
-    r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"}) | r.rescale(tp=["mm", "m"])
+    r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"})  # | r.rescale(tp=["mm", "m"])
 
     r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
 
-    m0 = r.mars(expver="0000")
-    c = r.concat(
-        {
-            ("1900", "2000"): m0,
-            ("2001", "2020"): r.mars(expver="0002"),
-            ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
-        },
-    )
+    # m0 = r.mars(expver="0000")
+    # c = r.concat(
+    #     {
+    #         ("190", "2000"): m0,
+    #         ("2001", "2020"): r.mars(expver="0002"),
+    #         ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
+    #     },
+    # )
 
-    c[("2031", "2033")] = r.mars(expver="0005")
+    # c[("2031", "2033")] = r.mars(expver="0005")
 
-    r.input += c
+    # r.input += c
 
     r.dump()
+    r.test()

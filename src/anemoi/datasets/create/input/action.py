@@ -288,9 +288,15 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
     assert isinstance(context, Context), (type, context)
     if not isinstance(config, dict):
         raise ValueError(f"Invalid input config {config}")
+
     if len(config) != 1:
-        print(json.dumps(config, indent=2, default=str))
-        raise ValueError(f"Invalid input config. Expecting dict with only one key, got {list(config.keys())}")
+        if "label" in config:
+            config.pop("label")
+        if "name" in config:
+            config.pop("name")
+        if len(config) != 1:
+            print(json.dumps(config, indent=2, default=str))
+            raise ValueError(f"Invalid input config. Expecting dict with only one key, got {list(config.keys())}")
 
     config = deepcopy(config)
     key = list(config.keys())[0]
