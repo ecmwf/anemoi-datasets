@@ -1638,7 +1638,7 @@ def config_to_python(config: Any) -> Any:
     code1 = input.python_prelude()
     code2 = input.to_python()
 
-    code = f"from anemoi.datasets.recipe import Recipe;r = Recipe();{code1};r.input = {code2}; r.dump()"
+    code = f"from anemoi.datasets.recipe import Recipe\nr = Recipe()\n{code1}\nr.input = {code2}\n\nr.dump()"
 
     code = re.sub(r"[\"\']?\${data_sources\.(\w+)}[\"\']?", r"\1", code)
 

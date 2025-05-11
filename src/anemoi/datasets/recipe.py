@@ -206,9 +206,9 @@ class Recipe:
             setattr(self, key, FilterMaker(key, factory))
 
     def dump(self):
-        result = self.as_dict(self)
+        result = self.as_dict()
         result["input"] = self.input.as_dict(self)
-        result["output"] = self.description
+        # result["output"] = self.description
 
         print(yaml.safe_dump(result))
 
