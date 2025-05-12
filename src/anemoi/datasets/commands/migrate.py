@@ -35,11 +35,17 @@ MIGRATE = {
     "input.dates.join": "input.join",
     "input.dates": None,
     "has_nans": "statistics.allow_nans",
+    "loop.dates.group_by": "build.group_by",
     "loop.dates": "dates",
-    # 'copyright': 'citation',
+    "copyright": "attribution",
 }
 
-SOURCES = {"oper-accumulations": "accumulations", "constants": "forcings"}
+SOURCES = {
+    "oper-accumulations": "accumulations",
+    "era5-accumulations": "accumulations",
+    "constants": "forcings",
+    "ensemble-perturbations": "recentre",
+}
 
 
 def _move(config, path, new_path, result):
@@ -68,12 +74,13 @@ def _move(config, path, new_path, result):
     result[new_path[-1]] = value
 
 
-def _migrate(config: dict) -> dict:
+def _migrate(config: dict, n) -> dict:
     result = config.copy()
     for k, v in MIGRATE.items():
         _move(config, k, v, result)
 
     if isinstance(result["input"], list):
+        assert n == 0
         join = []
         prev = {}
         for n in result["input"]:
@@ -94,6 +101,34 @@ def _migrate(config: dict) -> dict:
 
         result["input"] = dict(join=join)
 
+    if "join" in result["input"] and n == 0:
+        join = result["input"].pop("join")
+        new_join = []
+
+        for j in join:
+
+            if "label" in j:
+                j = j["label"]
+
+            if "source" in j:
+                j = j["source"]
+
+            src = j.pop("name", "mars")
+            data = j
+            if "<<" in data:
+                data.update(data.pop("<<"))
+
+            for k, v in list(data.items()):
+                if k in ("date", "time"):
+                    if isinstance(v, str) and v.startswith("$"):
+                        del data[k]
+
+            new_join.append({SOURCES.get(src, src): data})
+
+        print(new_join)
+
+        result["input"]["join"] = new_join
+
     result = {k: v for k, v in sorted(result.items(), key=order) if v}
 
     return result
@@ -102,7 +137,7 @@ def _migrate(config: dict) -> dict:
 def migrate(old: dict) -> dict:
     # return _migrate(old)
     for i in range(10):
-        new = _migrate(old)
+        new = _migrate(old, i)
         if new == old:
             # print(json.dumps(new, indent=2, default=str))
             return new
