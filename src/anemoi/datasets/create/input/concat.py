@@ -177,7 +177,7 @@ class ConcatAction(Action):
         for i, (filtering_dates, action) in enumerate(self.parts):
             result.append(f"{filtering_dates.to_python()}:{action.to_python()}")
 
-        return f"r.concat({{{','.join(result)})"
+        return f"r.concat({{{','.join(result)}}})"
 
     def python_prelude(self, prelude) -> None:
         for filtering_dates, action in self.parts:

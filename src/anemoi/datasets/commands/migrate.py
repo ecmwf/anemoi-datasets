@@ -108,7 +108,12 @@ def _migrate(config: dict, n) -> dict:
         for j in join:
 
             if "label" in j:
-                j = j["label"]
+                if isinstance(j["label"], str):
+                    j.pop("label")
+                else:
+                    if j["label"] is not None:
+                        j = j["label"]
+                    j.pop("name", None)
 
             if "source" in j:
                 j = j["source"]
@@ -125,11 +130,20 @@ def _migrate(config: dict, n) -> dict:
 
             new_join.append({SOURCES.get(src, src): data})
 
-        print(new_join)
-
         result["input"]["join"] = new_join
 
+    if "join" in result["input"]:
+        for j in result["input"]["join"]:
+            k = list(j.keys())[0]
+            j[k].pop("name", None)
+
+            if "source_or_dataset" in j[k]:
+                j[k].pop("source_or_dataset", None)
+                j[k]["template"] = "${input.0.join.0.mars}"
+
     result = {k: v for k, v in sorted(result.items(), key=order) if v}
+
+    result.pop("loop", None)
 
     return result
 
