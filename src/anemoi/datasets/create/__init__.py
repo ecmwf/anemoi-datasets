@@ -1634,6 +1634,7 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
 def config_to_python(config: Any) -> Any:
 
     config = loader_config(config)
+
     input = build_input_(config, build_output(config.output, None))
 
     prelude = []
@@ -1650,6 +1651,6 @@ def config_to_python(config: Any) -> Any:
         import black
 
         return black.format_str(code, mode=black.Mode())
-    except Exception:
+    except ImportError:
         LOG.warning("Black not installed, skipping formatting")
         return code

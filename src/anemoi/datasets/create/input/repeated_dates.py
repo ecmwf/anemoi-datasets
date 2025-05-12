@@ -204,6 +204,21 @@ class DateMapperClimatology(DateMapper):
         self.day: int = day
         self.hour: Optional[int] = hour
 
+    def to_python(self) -> Dict[str, Any]:
+        """Convert the DateMapper to Python code.
+
+        Returns
+        -------
+        dict
+            The Python code representation of the DateMapper.
+        """
+        return {
+            "mode": "climatology",
+            "year": self.year,
+            "day": self.day,
+            "hour": self.hour,
+        }
+
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
@@ -351,11 +366,18 @@ class RepeatedDatesAction(Action):
 
         self.source: Any = action_factory(source, context, action_path + ["source"])
         self.mapper: DateMapper = DateMapper.from_mode(mode, self.source, kwargs)
+        self.mode = mode
+        self.kwargs = kwargs
 
     def to_python(self) -> str:
         """Convert the action to Python code."""
         warnings.warn("RepeatedDatesAction.to_python is still a work in progress")
-        return self.source.to_python()
+        args = {"mode": self.mode}
+        args.update(self.kwargs)
+        return self._to_python("repeated_dates", {"repeated_dates": args}, source=self.source.to_python())
+
+    def python_prelude(self, prelude: Any) -> None:
+        self.source.python_prelude(prelude)
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:

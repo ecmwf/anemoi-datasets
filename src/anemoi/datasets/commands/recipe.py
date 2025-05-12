@@ -11,7 +11,10 @@
 import logging
 from typing import Any
 
+import yaml
+
 from . import Command
+from .migrate import migrate
 
 LOG = logging.getLogger(__name__)
 
@@ -33,7 +36,11 @@ class Recipe(Command):
     def run(self, args: Any) -> None:
         from anemoi.datasets.create import config_to_python
 
-        print(config_to_python(args.path))
+        with open(args.path, "r") as file:
+            config = yaml.safe_load(file)
+            config = migrate(config)
+
+        print(config_to_python(config))
 
 
 command = Recipe

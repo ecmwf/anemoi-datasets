@@ -212,6 +212,8 @@ class Recipe:
             assert not hasattr(self, key)
             setattr(self, key, FilterMaker(key, factory))
 
+        self.repeated_dates = SourceMaker("repeated_dates", None)
+
     def as_dict(self):
         result = {
             "name": self.name,
@@ -341,7 +343,17 @@ class Recipe:
 
     def dump(self, file=sys.stdout):
         result = self.as_dict()
+
         result["input"] = self.input.as_dict(self)
+
+        if self.output:
+            result["output"] = self.output.as_dict()
+
+        if self.statistics:
+            result["statistics"] = self.statistics.as_dict()
+
+        if self.build:
+            result["build"] = self.build.as_dict()
 
         yaml.safe_dump(result, sort_keys=False, indent=2, width=120, stream=file)
 
@@ -370,15 +382,15 @@ if __name__ == "__main__":
     r = Recipe()
     r.description = "test"
 
-    r.dates = ("1900-01-01", "2023-12-31")
+    r.dates = ("2023-01-01 00:00:00", "2023-12-31 18:00:00", "6h")
 
-    m1 = r.mars(expver="0001")
+    m1 = r.mars(expver="0001", grid=[20, 20])
     m2 = r.mars(expver="0002")
     m3 = r.mars(expver="0003")
 
-    r.input = (m1 + m2 + m3) | r.rename(param={"2t": "2t_0002"})  # | r.rescale(tp=["mm", "m"])
+    r.input = m1
 
-    r.input += r.forcings(template=m1, param=["cos_lat", "sin_lat"])
+    r.input += r.forcings(template=m1, param=["cos_latitude", "sin_latitude"])
 
     # m0 = r.mars(expver="0000")
     # c = r.concat(
@@ -392,6 +404,10 @@ if __name__ == "__main__":
     # c[("2031", "2033")] = r.mars(expver="0005")
 
     # r.input += c
+
+    r.output.group_by = "day"
+    r.build.additions = True
+    r.statistics.end = "80%"
 
     r.dump()
     r.test()
