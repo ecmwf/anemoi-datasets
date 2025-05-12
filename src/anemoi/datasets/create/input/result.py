@@ -351,7 +351,7 @@ class Result:
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
-        except ValueError as e:
+        except ValueError:
             self.explain(ds, order_by, remapping=remapping, patches=patches)
             raise ValueError(f"Error in {self}")
 

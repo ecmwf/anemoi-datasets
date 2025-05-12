@@ -396,7 +396,7 @@ def mars(
     Any
         The resulting dataset.
     """
-    print('mars requests', requests)
+    print("mars requests", requests)
     if not requests:
         requests = [kwargs]
 

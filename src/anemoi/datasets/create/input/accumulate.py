@@ -15,11 +15,10 @@ from typing import List
 
 from earthkit.data import FieldList
 
-from ..sources.accumulations2 import accumulations
 from ...dates.groups import GroupOfDates
+from ..sources.accumulations2 import accumulations
 from .action import Action
 from .action import action_factory
-from .empty import EmptyResult
 from .misc import _tidy
 from .misc import assert_fieldlist
 from .result import Result
@@ -46,7 +45,13 @@ class AccumulationResult(Result):
     """
 
     def __init__(
-        self, context: object, action_path: list, group_of_dates: GroupOfDates, source: Any, request: Dict[str,Any], **kwargs: Any
+        self,
+        context: object,
+        action_path: list,
+        group_of_dates: GroupOfDates,
+        source: Any,
+        request: Dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """Initializes a AccumulationResult instance.
 
@@ -65,8 +70,8 @@ class AccumulationResult(Result):
         """
         super().__init__(context, action_path, group_of_dates)
         self.source: Any = source
-        self.request: Dict[str,Any] = request
-        
+        self.request: Dict[str, Any] = request
+
     @cached_property
     @assert_fieldlist
     @notify_result
@@ -74,7 +79,7 @@ class AccumulationResult(Result):
     def datasource(self) -> FieldList:
         """Returns the combined datasource from all results."""
         ds = accumulations(self.context, self.group_of_dates, self.source, **self.request)
-        
+
         return _tidy(ds)
 
     def __repr__(self) -> str:
@@ -82,10 +87,11 @@ class AccumulationResult(Result):
         content: str = f"AccumulationAction({self.source})"
         return self._repr(content)
 
+
 class AccumulationAction(Action):
     """An Action implementation that selects and transforms a group of dates."""
 
-    def __init__(self, context: Any, action_path: List[str], source: Dict[str,Any], **kwargs: Any) -> None:
+    def __init__(self, context: Any, action_path: List[str], source: Dict[str, Any], **kwargs: Any) -> None:
         """Initialize RepeatedDatesAction.
 
         Args:
@@ -96,7 +102,6 @@ class AccumulationAction(Action):
             **kwargs (Any): Additional arguments.
         """
         super().__init__(context, action_path, source)
-
 
         self.source: Any = action_factory(source, context, action_path + ["source"])
         self.request = source[list(source.keys())[0]]
@@ -113,5 +118,5 @@ class AccumulationAction(Action):
         AccumulationResult
             The result of the accumulate operation.
         """
-        
+
         return AccumulationResult(self.context, self.action_path, group_of_dates, self.source, self.request)

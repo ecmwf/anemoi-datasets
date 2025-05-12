@@ -14,7 +14,6 @@ import sqlite3
 from typing import Any
 from typing import Dict
 from typing import Iterator
-from typing import Generator
 from typing import List
 from typing import Optional
 
@@ -570,7 +569,7 @@ class GribIndex:
         print("SELECT (params)", params)
 
         self.cursor.execute(query, params)
-       
+
         for path_id, offset, length in self.cursor.fetchall():
             print(path_id, offset, length)
             if path_id in self.cache:
@@ -585,28 +584,30 @@ class GribIndex:
             data = file.read(length)
             yield data
 
-def format_and_map_requests(requests: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
-    """
-    Keep in requests only what is needed to fetch data in grib-index
-    """
+
+def format_and_map_requests(requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Keep in requests only what is needed to fetch data in grib-index"""
 
     stripped_requests = []
-    to_keep = {'param', 'number', 'levtype', 'step', 'valid_datetime'}
+    to_keep = {"param", "number", "levtype", "step", "valid_datetime"}
 
     for r in requests:
-        r_strip = { k : v for k,v in r.items() if k in to_keep }
+        r_strip = {k: v for k, v in r.items() if k in to_keep}
         stripped_requests.append(r_strip)
-        r['valid_datetime'] = datetime.datetime.strptime(str(r['date']),'%Y%m%d') + datetime.timedelta(hours=(r['time']//100))
-    
-    mapped_requests = {k : list(set([r[k] for r in requests])) for k in to_keep}
-    
+        r["valid_datetime"] = datetime.datetime.strptime(str(r["date"]), "%Y%m%d") + datetime.timedelta(
+            hours=(r["time"] // 100)
+        )
+
+    mapped_requests = {k: list(set([r[k] for r in requests])) for k in to_keep}
+
     return mapped_requests
+
 
 def grib_index_retrieve(
     context: Any,
     dates: List[Any],
     indexdb: str,
-    *requests: Dict[str,Any],
+    *requests: Dict[str, Any],
     flavour: Optional[str] = None,
     **kwargs: Any,
 ) -> FieldArray:
@@ -632,17 +633,15 @@ def grib_index_retrieve(
     FieldArray
         An array of retrieved GRIB fields.
     """
-    
 
     index = GribIndex(indexdb)
     result = []
 
-
     if flavour is not None:
         flavour = RuleBasedFlavour(flavour)
-        
-    if 'valid_datetime' in kwargs.keys():
-        dates = kwargs.pop('valid_datetime')
+
+    if "valid_datetime" in kwargs.keys():
+        dates = kwargs.pop("valid_datetime")
 
     for grib in index.retrieve(dates, **kwargs):
         field = ekd.from_source("memory", grib)[0]
@@ -654,13 +653,7 @@ def grib_index_retrieve(
 
 
 @legacy_source(__file__)
-def execute(
-    context: Any,
-    dates: List[Any],
-    *requests,
-    flavour: Optional[str] = None,
-    **kwargs: Any
-) -> FieldArray:
+def execute(context: Any, dates: List[Any], *requests, flavour: Optional[str] = None, **kwargs: Any) -> FieldArray:
     """Execute the GRIB data retrieval process.
 
     Parameters
@@ -681,12 +674,12 @@ def execute(
     FieldArray
         An array of retrieved GRIB fields.
     """
-    indexdb = requests[0].pop('indexdb')
-    
-    assert all([(indexdb==r.pop('indexdb') for r in requests[1:])])
-    
+    indexdb = requests[0].pop("indexdb")
+
+    assert all([(indexdb == r.pop("indexdb") for r in requests[1:])])
+
     if requests:
-        print('requests', requests)
+        print("requests", requests)
         kwargs = kwargs | format_and_map_requests(requests)
         print(kwargs)
     return grib_index_retrieve(

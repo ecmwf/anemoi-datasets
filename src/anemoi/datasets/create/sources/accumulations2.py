@@ -22,7 +22,6 @@ import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.sources.mars import mars
 from anemoi.datasets.create.utils import to_datetime_list
 
 from .legacy import legacy_source
@@ -65,20 +64,24 @@ class Period:
         self.end_datetime = end_datetime
 
         self.base_datetime = base_datetime
-        
+
         self.validity_at_end = validity_at_end
 
     @property
     def time_request(self):
-        date = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%Y%m%d")) + (self.validity_at_end) * int(self.end_datetime.strftime("%Y%m%d"))
-        time = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%H%M")) + (self.validity_at_end) * int(self.end_datetime.strftime("%H%M"))
+        date = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%Y%m%d")) + (self.validity_at_end) * int(
+            self.end_datetime.strftime("%Y%m%d")
+        )
+        time = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%H%M")) + (self.validity_at_end) * int(
+            self.end_datetime.strftime("%H%M")
+        )
 
         end_step = self.end_datetime - self.base_datetime
         assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported
         end_step = int(end_step.total_seconds() // 3600)
 
         return (("date", date), ("time", time), ("step", end_step))
-    
+
     @property
     def time_check(self):
         date = int(self.base_datetime.strftime("%Y%m%d"))
@@ -103,7 +106,7 @@ class Period:
         endStep = field.metadata("endStep")
         date = field.metadata("date")
         time = field.metadata("time")
-        
+
         assert stepType == "accum", stepType
 
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
@@ -223,55 +226,54 @@ class Periods:
     def build_periods(self):
         pass
 
+
 class DefaultPeriods(Periods):
     def __init__(self, valid_date, accumulation_period, **kwargs):
         # one Periods object for each accumulated field in the output
-        self.base_datetime = lambda x : x
-        
+        self.base_datetime = lambda x: x
+
         # base datetime can either be user-defined or default to the starting step of accumulation
-        if 'base_datetime' in kwargs.keys():
-            base = int(kwargs['base_datetime'])
-            self.base_datetime = lambda x : base
-            
-        self.validity_at_end = kwargs.get('validity_at_end',False)
-                
-        super().__init__(valid_date, accumulation_period,**kwargs)
-        
-            
-        
-    def available_steps(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime) -> Dict[int,List[int]]:
-        """
-        Return the steps available to build/search an available period
-        
+        if "base_datetime" in kwargs.keys():
+            base = int(kwargs["base_datetime"])
+            self.base_datetime = lambda x: base
+
+        self.validity_at_end = kwargs.get("validity_at_end", False)
+
+        super().__init__(valid_date, accumulation_period, **kwargs)
+
+    def available_steps(
+        self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime
+    ) -> Dict[int, List[int]]:
+        """Return the steps available to build/search an available period
+
         Arguments:
             base (int): start of the forecast producing accumulations
             start (int): step (=leadtime) from the forecast where accumulation begins
             end (int): step (=leadtime) from the forecast where accumulation ends
         Returns:
             _ (Dict[List[int]]) :  dictionary listing the available steps between start and end for each base
-        
+
         """
-        
+
         start_base_delta = int((start - base).total_seconds() // 3600)
         end_start_delta = int((end - start).total_seconds() // 3600)
         return {
-            base: [[i, i + 1] for i in range(start_base_delta, start_base_delta + end_start_delta , 1)],
+            base: [[i, i + 1] for i in range(start_base_delta, start_base_delta + end_start_delta, 1)],
         }
-    
+
     def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
         # find candidate periods that can be used to accumulate the data
         # to get the accumulation between the two dates 'start' and 'end'
         found = []
 
-
         for base_time, steps in self.available_steps(base, start, end).items():
-  
+
             for step1, step2 in steps:
                 if debug:
                     xprint(f"❌ tring: {base_time=} {step1=} {step2=}")
-                    
+
                 base_datetime = start - datetime.timedelta(hours=step1)
-  
+
                 period = Period(start, end, base_datetime, self.validity_at_end)
                 found.append(period)
 
@@ -296,22 +298,24 @@ class DefaultPeriods(Periods):
         hours = self.accumulation_period.total_seconds() / 3600
         assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
         hours = int(hours)
-        
-        assert self.base_datetime is not None, f"DefaultPeriods needs a base_datetime function, but base_datetime is None"
-        
+
+        assert (
+            self.base_datetime is not None
+        ), "DefaultPeriods needs a base_datetime function, but base_datetime is None"
+
         lst = []
         for wanted in [[i, i + 1] for i in range(0, hours, 1)]:
 
             start = self.valid_date - datetime.timedelta(hours=wanted[1])
             end = self.valid_date - datetime.timedelta(hours=wanted[0])
-            
+
             if not end - start == datetime.timedelta(hours=1):
                 raise NotImplementedError("Only 1 hour period is supported")
-        
+
             found = self.search_periods(self.base_datetime(start), start, end)
             if not found:
                 xprint(f"❌❌❌ Cannot find accumulation for {start} {end}")
-                self.search_periods(self.base_datetime(start), wanted[0],  wanted[1], debug=True)
+                self.search_periods(self.base_datetime(start), wanted[0], wanted[1], debug=True)
                 raise ValueError(f"Cannot find accumulation for {start} {end}")
 
             found = sorted(found, key=lambda x: x.base_datetime, reverse=True)
@@ -326,7 +330,8 @@ class DefaultPeriods(Periods):
             chosen.sign = 1
 
             lst.append(chosen)
-        return lst    
+        return lst
+
 
 class EraPeriods(Periods):
     def search_periods(self, start, end, debug=False):
@@ -467,8 +472,8 @@ class OdEnfoPeriods(DiffPeriods):
         raise NotImplementedError("need to implement diff")
 
 
-def find_accumulator_class(request: Dict[str,Any]) -> Periods:
-    
+def find_accumulator_class(request: Dict[str, Any]) -> Periods:
+
     try:
         return {
             ("ea", "oper"): EaOperPeriods,  # runs ok
@@ -478,8 +483,8 @@ def find_accumulator_class(request: Dict[str,Any]) -> Periods:
             ("od", "oper"): OdOperPeriods,
             ("od", "enfo"): OdEnfoPeriods,
             ("od", "elda"): OdEldaPeriods,
-        }[request.get('class',None), request.get('stream',None)]
-    
+        }[request.get("class", None), request.get("stream", None)]
+
     except KeyError:
         return DefaultPeriods
 
@@ -515,7 +520,7 @@ class Accumulator:
 
     def is_field_needed(self, field):
         for k, v in self.key.items():
-            if field.metadata(k,default=0) != v:
+            if field.metadata(k, default=0) != v:
                 LOG.debug(f"{self} does not need field {field} because of {k}={field.metadata(k,default=0)} not {v}")
                 return False
         return True
@@ -536,7 +541,7 @@ class Accumulator:
 
         self.values = period.apply(self.values, values)
         self.periods.set_done(period)
-        
+
         if self.periods.all_done():
             self.write(field)
             xprint("accumulator", self, " : data written ✅ ")
@@ -661,7 +666,7 @@ def _compute_accumulations(
             requests.append(r)
 
     # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
-    action.source.kwargs = {'request_already_using_valid_datetime': True}
+    action.source.kwargs = {"request_already_using_valid_datetime": True}
     action.source.args = requests
     action.source.context = context
     ds = action.source.execute(dates)
@@ -676,7 +681,7 @@ def _compute_accumulations(
     out.close()
 
     ds = ekd.from_source("file", path)
-    
+
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
         len(param),
