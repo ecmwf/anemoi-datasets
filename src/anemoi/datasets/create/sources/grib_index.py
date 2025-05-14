@@ -569,9 +569,10 @@ class GribIndex:
         print("SELECT (params)", params)
 
         self.cursor.execute(query, params)
-
-        for path_id, offset, length in self.cursor.fetchall():
-            print(path_id, offset, length)
+        
+        fetch = self.cursor.fetchall()
+               
+        for path_id, offset, length in fetch:
             if path_id in self.cache:
                 file = self.cache[path_id]
             else:
@@ -594,12 +595,9 @@ def format_and_map_requests(requests: List[Dict[str, Any]]) -> List[Dict[str, An
     for r in requests:
         r_strip = {k: v for k, v in r.items() if k in to_keep}
         stripped_requests.append(r_strip)
-        r["valid_datetime"] = datetime.datetime.strptime(str(r["date"]), "%Y%m%d") + datetime.timedelta(
-            hours=(r["time"] // 100)
-        )
-
-    mapped_requests = {k: list(set([r[k] for r in requests])) for k in to_keep}
-
+        r['valid_datetime'] = datetime.datetime.strptime(str(r['date']),'%Y%m%d') + datetime.timedelta(hours=(r['time']//100))
+    
+    mapped_requests = {k : list(set([r[k] for r in requests])) for k in to_keep}
     return mapped_requests
 
 
@@ -679,9 +677,8 @@ def execute(context: Any, dates: List[Any], *requests, flavour: Optional[str] = 
     assert all([(indexdb == r.pop("indexdb") for r in requests[1:])])
 
     if requests:
-        print("requests", requests)
         kwargs = kwargs | format_and_map_requests(requests)
-        print(kwargs)
+
     return grib_index_retrieve(
         context,
         dates,
