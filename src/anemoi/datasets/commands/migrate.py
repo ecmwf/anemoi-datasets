@@ -9,12 +9,14 @@
 
 
 import logging
+from copy import deepcopy
 from typing import Any
 
 import yaml
 
 from . import Command
 
+errors = []
 LOG = logging.getLogger(__name__)
 
 ORDER = ("name", "description", "licence", "input", "output", "statistics", "build")
@@ -31,9 +33,6 @@ def order(x: str) -> int:
 
 MIGRATE = {
     "output.statistics_end": "statistics.end",
-    "input.dates.<<": "dates",
-    "input.dates.join": "input.join",
-    "input.dates": None,
     "has_nans": "statistics.allow_nans",
     "loop.dates.group_by": "build.group_by",
     "loop.dates": "dates",
@@ -45,6 +44,9 @@ SOURCES = {
     "era5-accumulations": "accumulations",
     "constants": "forcings",
     "ensemble-perturbations": "recentre",
+    "ensemble_perturbations": "recentre",
+    "perturbations": "recentre",
+    "custom-regrid": "regrid",
 }
 
 
@@ -74,72 +76,238 @@ def _move(config, path, new_path, result):
     result[new_path[-1]] = value
 
 
+def _fix_dates(result, config):
+    dates = config["input"].pop("dates")
+    assert "join" in dates, dates
+    result["input"] = dates["join"]
+    config["input"] = result["input"].copy()
+
+
+def _fix_list(result, config):
+    result["input"] = dict(join=result["input"])
+    config["input"] = result["input"].copy()
+
+
+def _fix_join_0(result, config):
+
+    join = config["input"]["join"]
+
+    new_join = []
+    for n in join:
+
+        if "function" in n:
+            f = n["function"]
+            name = f.pop("name")
+            data = _tidy(f)
+            for k, v in list(data.items()):
+                if isinstance(v, dict):
+                    if "name" in v:
+                        p = v.pop("name")
+                        data[k] = {SOURCES.get(p, p): _tidy(v)}
+
+            new_join.append({SOURCES.get(name, name): data})
+            continue
+
+        new_join.append(n)  # {SOURCES.get(src, src): _tidy(data)})
+
+    result["input"] = dict(join=new_join)
+    config["input"] = result["input"].copy()
+
+
+def _fix_join_1(result, config):
+
+    join = config["input"].pop("join")
+    new_join = []
+    for n in join:
+        if isinstance(n, dict):
+            if len(n) == 1:
+                if "label" in n:
+                    n = n["label"]
+
+        if isinstance(n, dict):
+            if len(n) == 2:
+                if "name" in n and "source" in n:
+                    n.pop("name")
+
+        if isinstance(n, dict):
+            if len(n) == 1:
+                if "source" in n:
+                    n = n["source"]
+                    if "<<" in n:
+                        n.update(n.pop("<<"))
+                    name = n.pop("name", "mars")
+                    new_join.append({SOURCES.get(name, name): _tidy(n)})
+                    continue
+
+        new_join.append(n)
+
+    result["input"] = dict(join=new_join)
+    config["input"] = result["input"].copy()
+
+
+def _fix_join_3(result, config):
+
+    join = config["input"].pop("join")
+    new_join = []
+    for n in join:
+        if not isinstance(n, dict):
+            return
+        if len(n) != 1:
+            return
+
+        name = list(n.keys())[0]
+        data = n[name]
+
+        new_join.append({SOURCES.get(name, name): data})
+
+    result["input"] = dict(join=new_join)
+    config["input"] = result["input"].copy()
+
+
+def _tidy(data):
+    for k, v in list(data.items()):
+        if k in ("date", "time"):
+            if isinstance(v, str) and v.startswith("$"):
+                del data[k]
+
+    if "name" in data:
+        assert False, data
+        name = data.pop("name")
+        return {SOURCES.get(name, name): _tidy(data)}
+
+    return data
+
+
+def _fix_join_2(result, config):
+
+    join = config["input"]["join"]
+
+    previous = {}
+
+    new_join = []
+    for n in join:
+
+        if not isinstance(n, dict):
+            return
+
+        if len(n) != 1:
+            return
+
+        what = list(n.keys())[0]
+
+        if n[what] is None:
+            assert False, (n, what, config["input"])
+
+        if "kwargs" not in n[what]:
+            return
+
+        # assert False
+
+        previous[what] = deepcopy(n[what]["kwargs"])
+        if "inherit" in n[what]:
+            previous[what].update(deepcopy(previous[n[what]["inherit"]]))
+
+        data = previous[what].copy()
+        src = data.pop("name", "mars")
+
+        new_join.append({SOURCES.get(src, src): _tidy(data)})
+
+    result["input"] = dict(join=new_join)
+    config["input"] = result["input"].copy()
+
+
 def _migrate(config: dict, n) -> dict:
     result = config.copy()
     for k, v in MIGRATE.items():
         _move(config, k, v, result)
 
-    if isinstance(result["input"], list):
-        assert n == 0
-        join = []
-        prev = {}
-        for n in result["input"]:
-            assert isinstance(n, dict), (n, type(n))
-            assert len(n) == 1, (n, type(n))
-            name = list(n.keys())[0]
-            prev[name] = n[name]["kwargs"]
-            if "inherit" in n[name]:
-                i = n[name]["inherit"]
-                n[name]["kwargs"].update(prev[i])
-                n[name].pop("inherit")
+    if "dates" in config["input"]:
+        _fix_dates(result, config)
 
-            data = n[name]["kwargs"]
+    if isinstance(config["input"], list):
+        _fix_list(result, config)
 
-            src = data.pop("name", "mars")
+    if "join" in config["input"]:
+        _fix_join_0(result, config)
 
-            join.append({SOURCES.get(src, src): data})
+    if "join" in config["input"]:
+        _fix_join_1(result, config)
 
-        result["input"] = dict(join=join)
+    if "join" in config["input"]:
+        _fix_join_2(result, config)
 
-    if "join" in result["input"] and n == 0:
-        join = result["input"].pop("join")
-        new_join = []
+    if "join" in config["input"]:
+        _fix_join_3(result, config)
 
-        for j in join:
+    # _check(result, "1")
 
-            if "label" in j:
-                if isinstance(j["label"], str):
-                    j.pop("label")
-                else:
-                    if j["label"] is not None:
-                        j = j["label"]
-                    j.pop("name", None)
+    # if isinstance(result["input"], list):
+    #     assert n == 0
+    #     join = []
+    #     prev = {}
+    #     for n in result["input"]:
+    #         assert isinstance(n, dict), (n, type(n))
+    #         assert len(n) == 1, (n, type(n))
+    #         name = list(n.keys())[0]
+    #         prev[name] = n[name]["kwargs"]
+    #         if "inherit" in n[name]:
+    #             i = n[name]["inherit"]
+    #             n[name]["kwargs"].update(prev[i])
+    #             n[name].pop("inherit")
 
-            if "source" in j:
-                j = j["source"]
+    #         data = n[name]["kwargs"]
 
-            src = j.pop("name", "mars")
-            data = j
-            if "<<" in data:
-                data.update(data.pop("<<"))
+    #         src = data.pop("name", "mars")
 
-            for k, v in list(data.items()):
-                if k in ("date", "time"):
-                    if isinstance(v, str) and v.startswith("$"):
-                        del data[k]
+    #         join.append({SOURCES.get(src, src): data})
 
-            new_join.append({SOURCES.get(src, src): data})
+    #     result["input"] = dict(join=join)
+    #     _check(result, "2")
 
-        result["input"]["join"] = new_join
+    # if "join" in result["input"] and n == 0:
+    #     join = result["input"].pop("join")
+    #     new_join = []
 
-    if "join" in result["input"]:
-        for j in result["input"]["join"]:
-            k = list(j.keys())[0]
-            j[k].pop("name", None)
+    #     for j in join:
 
-            if "source_or_dataset" in j[k]:
-                j[k].pop("source_or_dataset", None)
-                j[k]["template"] = "${input.0.join.0.mars}"
+    #         if "label" in j:
+    #             if isinstance(j["label"], str):
+    #                 j.pop("label")
+    #             else:
+    #                 if j["label"] is not None:
+    #                     j = j["label"]
+    #                 j.pop("name", None)
+
+    #         if "source" in j:
+    #             j = j["source"]
+
+    #         src = j.pop("name", "mars")
+    #         data = j
+    #         if "<<" in data:
+    #             data.update(data.pop("<<"))
+
+    #         for k, v in list(data.items()):
+    #             if k in ("date", "time"):
+    #                 if isinstance(v, str) and v.startswith("$"):
+    #                     del data[k]
+
+    #         if "mars" in data:
+    #             new_join.append(data)
+    #         else:
+    #             new_join.append({SOURCES.get(src, src): data})
+
+    #     result["input"]["join"] = new_join
+    #     _check(result, "3")
+
+    # if "join" in result["input"]:
+    #     for j in result["input"]["join"]:
+    #         k = list(j.keys())[0]
+    #         j[k].pop("name", None)
+
+    #         if "source_or_dataset" in j[k]:
+    #             j[k].pop("source_or_dataset", None)
+    #             j[k]["template"] = "${input.0.join.0.mars}"
+    #     _check(result, "4")
 
     result = {k: v for k, v in sorted(result.items(), key=order) if v}
 
@@ -179,6 +347,8 @@ class Recipe(Command):
             config = yaml.safe_load(file)
 
         print(yaml.safe_dump(migrate(config), sort_keys=False, indent=2, width=120))
+
+        assert not errors, f"Errors: {errors}"
 
 
 command = Recipe
