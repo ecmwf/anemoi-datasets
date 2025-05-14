@@ -19,11 +19,12 @@ from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.fields import new_field_with_valid_datetime
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.utils import to_datetime_list
-from anemoi.transform.fields import new_field_with_valid_datetime
+
 from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
@@ -175,7 +176,7 @@ class Periods:
 
         self._periods = self.build_periods()
         self.check_merged_interval()
-        
+
         self.template_field = None
 
     def check_merged_interval(self):
@@ -202,11 +203,11 @@ class Periods:
         if len(found) > 1:
             raise ValueError(f"Found more than one period for {field}")
         return None
-    
+
     def update_template(self,field: Any):
         if self.template_field is None:
             self.template_field = field
-   
+
         field_date = datetime.datetime.strptime(
                         field.metadata()['valid_datetime'],
                         "%Y-%m-%dT%H:%M:%S"
@@ -214,9 +215,9 @@ class Periods:
         template_date = datetime.datetime.strptime(
                         self.template_field.metadata()['valid_datetime'],
                         "%Y-%m-%dT%H:%M:%S")
-        
+
         if field_date<template_date:
-            self.template_field = field        
+            self.template_field = field
 
     @property
     def todo(self):
@@ -528,7 +529,7 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
-        
+
     @property
     def requests(self):
         for period in self.periods:
@@ -543,21 +544,21 @@ class Accumulator:
         return True
 
     def compute(self, field, values):
-                    
+
         if not self.is_field_needed(field):
             return
 
-        period = self.periods.find_matching_period(field)       
+        period = self.periods.find_matching_period(field)
 
         if not period:
             return
-        
+
         assert self.periods.is_todo(period), (self.periods, period)
         assert not self.periods.is_done(period), f"Field {field} for period {period} already done"
 
         period.check(field)
         self.periods.update_template(field)
-        
+
         xprint(f"{self}  field ✅ ({period.sign}){field} for {period}")
 
         self.values = period.apply(self.values, values)
@@ -587,7 +588,7 @@ class Accumulator:
         for k in keys1:
             if k not in ("step",):
                 assert self._check[k] == mars[k], (k, self._check[k], mars[k])
-        
+
     def write(self) -> None:
         assert self.periods.all_done(), self.periods
 
@@ -689,9 +690,9 @@ def _compute_accumulations(
     action.source.args = requests
     action.source.context = context
     ds = action.source.execute(dates)
-    
-    overlapping_dates = 
-    
+
+    overlapping_dates =
+
     assert len(ds) / len(param) / len(number) == len(overlapping_dates), (
         len(ds),
         len(param),
