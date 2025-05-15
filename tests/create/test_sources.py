@@ -116,7 +116,7 @@ def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tup
 
     path = os.path.dirname(data1)
 
-    param = ["P", "T", "U", "V", "QV"]
+    param = ["p", "t", "u", "v", "qv"]
     level = [101, 119]
     forcings = ["cos_latitude", "sin_latitude", "cos_julian_day"]
     assert len(param) * len(level) + len(forcings) == shape[1]
@@ -152,8 +152,8 @@ def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tup
     ds = open_dataset(created)
     assert ds.shape == shape
     assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
-    assert np.all(ds.data[ds.to_index(date=0, variable="U_101", member=0)] == 42.0), "artificially constant data day 0"
-    assert np.all(ds.data[ds.to_index(date=1, variable="V_119", member=0)] == 21.0), "artificially constant data day 1"
+    assert np.all(ds.data[ds.to_index(date=0, variable="u_101", member=0)] == 42.0), "artificially constant data day 0"
+    assert np.all(ds.data[ds.to_index(date=1, variable="v_119", member=0)] == 21.0), "artificially constant data day 1"
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].max() > 0.9
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].min() >= 0
     assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].max() > 0.9
