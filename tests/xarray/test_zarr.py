@@ -25,7 +25,6 @@ def test_arco_era5_1() -> None:
         "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
         chunks={"time": 48},
         consolidated=True,
-        storage_options=dict(token="anon"),
     )
 
     fs = XarrayFieldList.from_xarray(ds)
@@ -45,7 +44,6 @@ def test_arco_era5_2() -> None:
         "gs://gcp-public-data-arco-era5/ar/1959-2022-1h-360x181_equiangular_with_poles_conservative.zarr",
         chunks={"time": 48},
         consolidated=True,
-        storage_options=dict(token="anon"),
     )
 
     fs = XarrayFieldList.from_xarray(ds)
@@ -61,10 +59,7 @@ def test_arco_era5_2() -> None:
 @skip_missing_packages("gcsfs")
 def test_weatherbench() -> None:
     """Test loading and validating the weatherbench dataset."""
-    ds = xr.open_zarr(
-        "gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr",
-        storage_options=dict(token="anon"),
-    )
+    ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
 
     # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
 
