@@ -115,7 +115,7 @@ def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tup
 
     path = os.path.dirname(data1)
 
-    param = ["p", "t", "u", "v", "qv"]
+    param = ["pres", "t", "u", "v", "q"]
     level = [101, 119]
     forcings = ["cos_latitude", "sin_latitude", "cos_julian_day"]
     assert len(param) * len(level) + len(forcings) == shape[1]
