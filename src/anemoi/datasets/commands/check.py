@@ -33,30 +33,69 @@ class Check(Command):
         command_parser : Any
             The command line argument parser.
         """
-        command_parser.add_argument(
-            "--recipe",
-            help="",
-        )
-        command_parser.add_argument(
+
+        exclusive_group = command_parser.add_mutually_exclusive_group(required=True)
+
+        exclusive_group.add_argument(
             "--name",
-            help="",
+            help="Check a dataset name.",
+        )
+
+        exclusive_group.add_argument(
+            "--recipe",
+            help="Specify the recipe file to check.",
+        )
+
+        exclusive_group.add_argument(
+            "--zarr",
+            help="Specify the Zarr archive to check.",
+        )
+
+        exclusive_group.add_argument(
+            "--metadata",
+            help="Specify the metadata file to check.",
         )
 
     def run(self, args: Any) -> None:
 
         if args.recipe:
-            recipe_filename = os.path.basename(args.recipe)
-            recipe_name = os.path.splitext(recipe_filename)[0]
-            in_recipe_name = yaml.safe_load(open(args.recipe, "r", encoding="utf-8"))["name"]
-            if recipe_name != in_recipe_name:
-                print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
+            self._check_recipe(args.recipe)
 
-            name = in_recipe_name
-            DatasetName(name=name).raise_if_not_valid()
+        if args.metadata:
+            self._check_metadata(args.metadata)
 
         if args.name:
-            name = args.name
-            DatasetName(name=name).raise_if_not_valid()
+            self._check_name(args.name)
+
+        if args.zarr:
+            self._check_zarr(args.zarr)
+
+    def _check_metadata(self, metadata: str) -> None:
+        pass
+
+    def _check_recipe(self, recipe: str) -> None:
+
+        recipe_filename = os.path.basename(recipe)
+        recipe_name = os.path.splitext(recipe_filename)[0]
+        in_recipe_name = yaml.safe_load(open(recipe, "r", encoding="utf-8"))["name"]
+        if recipe_name != in_recipe_name:
+            print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
+
+        name = in_recipe_name
+        DatasetName(name=name).raise_if_not_valid()
+
+    def _check_name(self, name: str) -> None:
+
+        DatasetName(name=name).raise_if_not_valid()
+
+    def _check_zarr(self, zarr: str) -> None:
+
+        from anemoi.datasets.check import check_zarr
+
+        check_zarr(zarr)
+
+        # ds = xr.open_dataset(zarr)
+        # print(ds)
 
 
 command = Check

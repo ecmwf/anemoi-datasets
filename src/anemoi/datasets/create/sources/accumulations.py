@@ -843,8 +843,6 @@ def _compute_accumulations(
     else:
         AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
 
-    LOG.info(f"XXXXXXXXXXX {step1=}, {step2=}, {data_accumulation_period=}, {base_times=}, {adjust_step=}")
-
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates=dates,
         step1=step1,
@@ -882,15 +880,11 @@ def _compute_accumulations(
     accumulations = {}
 
     for date, time, steps in mars_date_time_steps:
-        LOG.info(f"Accumulation request: { date, time, steps}")
         for p in param:
             for n in number:
                 r = dict(request, param=p, date=date, time=time, step=sorted(steps), number=n)
 
                 requests.append(patch(r))
-
-    for r in requests:
-        LOG.info(f"Accumulation request: {r}")
 
     ds = mars(
         context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
