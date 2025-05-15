@@ -99,7 +99,6 @@ optional-dependencies.remote = [
 
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
-  "eccodes-cosmo-resources",
   "pytest",
 ]
 
