@@ -59,13 +59,6 @@ def test_grib_gridfile() -> None:
     This GRIB data is defined on an unstructured grid and therefore requires
     specifying a grid file.
     """
-    import eccodes
-    import eccodes_cosmo_resources
-
-    vendor = eccodes.codes_definition_path()
-    cosmo = eccodes_cosmo_resources.get_definitions_path()
-    eccodes.codes_set_definitions_path(f"{cosmo}:{vendor}")
-
     data1 = get_test_data("anemoi-datasets/create/grib-iconch1-20250101.grib")
     data2 = get_test_data("anemoi-datasets/create/grib-iconch1-20250102.grib")
     gridfile = get_test_data("anemoi-datasets/create/icon_grid_0001_R19B08_mch.nc")
@@ -91,9 +84,7 @@ def test_grib_gridfile() -> None:
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 1, 1, 1147980)
-    assert ds.variables == ["T_2M"]
-
-    eccodes.codes_set_definitions_path(f"{vendor}")
+    assert ds.variables == ["2t"]
 
 
 @skip_if_offline
