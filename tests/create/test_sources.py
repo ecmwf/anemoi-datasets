@@ -9,6 +9,7 @@
 
 import logging
 import os
+import sys
 
 import numpy as np
 import pytest
@@ -52,6 +53,7 @@ def test_grib() -> None:
     assert ds.shape == (8, 12, 1, 162)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10))
 @skip_if_offline
 def test_grib_gridfile() -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
@@ -89,6 +91,7 @@ def test_grib_gridfile() -> None:
     assert ds.variables == ["2t"]
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10))
 @skip_if_offline
 @pytest.mark.parametrize(
     "refinement_level_c,shape",
