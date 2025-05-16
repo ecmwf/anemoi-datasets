@@ -39,6 +39,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.data.element import LazyElement
+
 from .debug import Node
 from .debug import Source
 
@@ -179,6 +181,19 @@ class Dataset(ABC, Sized):
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
             end = kwargs.pop("end", None)
+            padding = kwargs.pop("padding", None)
+
+            if padding:
+                if padding != "empty":
+                    raise ValueError(f"Only 'empty' padding is supported, got {padding=}")
+                from .padded import Padded
+
+                frequency = kwargs.pop("frequency", self.frequency)
+                return (
+                    Padded(self, start, end, frequency, dict(start=start, end=end, frequency=frequency))
+                    ._subset(**kwargs)
+                    .mutate()
+                )
 
             from .subset import Subset
 
@@ -724,6 +739,9 @@ class Dataset(ABC, Sized):
         """Return the grid shape of the dataset."""
         return (self.shape[-1],)
 
+    def empty_item(self) -> NDArray[Any]:
+        return np.zeros((*self.shape[1:-1], 0), dtype=self.dtype)
+
     def _check(self) -> None:
         """Check for overridden private methods in the dataset."""
         common = Dataset.__dict__.keys() & self.__class__.__dict__.keys()
@@ -917,6 +935,9 @@ class Dataset(ABC, Sized):
             Retrieved item.
         """
 
+    def __call__(self, n: int):
+        return LazyElement(self, n)
+
     @abstractmethod
     def __len__(self) -> int:
         """Return the length of the dataset.
@@ -1075,3 +1096,16 @@ class Dataset(ABC, Sized):
             The dataset names.
         """
         pass
+
+    def get_latitudes(self, i):
+        return self.get_aux(i)[0]
+
+    def get_longitudes(self, i):
+        return self.get_aux(i)[1]
+
+    def get_timedeltas(self, i):
+        return self.get_aux(i)[2]
+
+    def get_aux(self, i):
+        # need to decide if Fields datasets need to implement this
+        raise NotImplementedError(f"get_aux is not implemented for this dataset, {type(self)}")

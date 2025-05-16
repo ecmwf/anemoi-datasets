@@ -185,6 +185,11 @@ class Subset(Forwards):
         n = self.indices[n]
         return self.dataset[n]
 
+    def get_aux(self, n: FullIndex) -> NDArray[Any]:
+        assert n >= 0, n
+        n = self.indices[n]
+        return self.dataset.get_aux(n)
+
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
         """Get slice of data.
