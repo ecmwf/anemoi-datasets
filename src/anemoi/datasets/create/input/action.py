@@ -7,13 +7,16 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import json
 import logging
+import re
 from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
 
+from anemoi.utils.dates import frequency_to_string
 from earthkit.data.core.order import build_remapping
 
 from ...dates.groups import GroupOfDates
@@ -159,6 +162,82 @@ class Action:
         """
         return f"{self.__class__.__name__}({group_of_dates})"
 
+    def _to_python(self, name: str, config: dict, **extra: Any) -> str:
+        """Convert the action to Python code.
+
+        Parameters
+        ----------
+        name : str
+            The name of the action.
+        config : dict
+            The configuration for the action.
+        extra : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        str
+            The Python code representation of the action.
+        """
+        import json
+
+        RESERVED_KEYWORDS = (
+            "and",
+            "or",
+            "not",
+            "is",
+            "in",
+            "if",
+            "else",
+            "elif",
+            "for",
+            "while",
+            "return",
+            "class",
+            "def",
+            "with",
+            "as",
+            "import",
+            "from",
+            "try",
+            "except",
+            "finally",
+            "raise",
+            "assert",
+            "break",
+            "continue",
+            "pass",
+        )
+
+        def convert(obj):
+            if isinstance(obj, datetime.datetime):
+                return obj.isoformat()
+            if isinstance(obj, datetime.date):
+                return obj.isoformat()
+            if isinstance(obj, datetime.timedelta):
+                return frequency_to_string(obj)
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+        config = json.loads(json.dumps(config, default=convert))
+
+        assert len(config) == 1, (name, config)
+        assert name in config, (name, config)
+
+        config = config[name]
+
+        params = []
+        for k, v in config.items():
+            if k in RESERVED_KEYWORDS or re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k) is None:
+                return f"r.{name}({config})"
+            params.append(f"{k}={repr(v)}")
+
+        for k, v in extra.items():
+            params.append(f"{k}={v}")
+
+        params = ",".join(params)
+        return f"r.{name}({params})"
+        # return f"{name}({config})"
+
 
 class ActionContext(Context):
     """Represents the context in which an action is performed.
@@ -225,9 +304,15 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
     assert isinstance(context, Context), (type, context)
     if not isinstance(config, dict):
         raise ValueError(f"Invalid input config {config}")
+
     if len(config) != 1:
-        print(json.dumps(config, indent=2, default=str))
-        raise ValueError(f"Invalid input config. Expecting dict with only one key, got {list(config.keys())}")
+        if "label" in config:
+            config.pop("label")
+        if "name" in config:
+            config.pop("name")
+        if len(config) != 1:
+            print(json.dumps(config, indent=2, default=str))
+            raise ValueError(f"Invalid input config. Expecting dict with only one key, got {list(config.keys())}")
 
     config = deepcopy(config)
     key = list(config.keys())[0]
@@ -254,6 +339,6 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
         from ..sources import create_source
 
         source = create_source(None, substitute(context, config))
-        return FunctionAction(context, action_path + [key], key, source)
+        return FunctionAction(context, action_path + [key], key, source, config)
 
     return cls(context, action_path + [key], *args, **kwargs)

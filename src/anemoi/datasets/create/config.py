@@ -282,6 +282,8 @@ class LoadersConfig(Config):
 
         self.output.order_by = normalize_order_by(self.output.order_by)
 
+        self.setdefault("dates", Config())
+
         self.dates["group_by"] = self.build.group_by
 
         ###########
