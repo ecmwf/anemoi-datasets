@@ -19,7 +19,7 @@ from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
-from anemoi.transform.fields import new_field_with_valid_datetime
+from numpy.typing import NDArray
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
@@ -52,11 +52,35 @@ def _member(field: Any) -> int:
         number = 0
     return number
 
+def _prep_request(request: Dict[str,Any]) -> Dict[str,Any]:
+    request = deepcopy(request)
+    
+    param = request.pop("param")
+    assert isinstance(param, (list, tuple))
+    
+    number = request.pop("number", [0])
+    if not isinstance(number, (list, tuple)):
+        number = [number]
+    
+    assert isinstance(number, (list, tuple))
+    request["stream"] = request.get("stream", "oper")
+    
+    type_ = request.get("type", "an")
+    if type_ == "an":
+        type_ = "fc"
+    request["type"] = type_
+    request["levtype"] = request.get("levtype", "sfc")
+    if request["levtype"] != "sfc":
+        # LOG.warning("'type' should be 'sfc', found %s", request['type'])
+        raise NotImplementedError("Only sfc leveltype is supported")
+    
+    return request, param, number
+
 
 class Period:
     value = None
 
-    def __init__(self, start_datetime, end_datetime, base_datetime, validity_at_end=False):
+    def __init__(self, start_datetime, end_datetime, base_datetime):
         assert isinstance(start_datetime, datetime.datetime)
         assert isinstance(end_datetime, datetime.datetime)
         assert isinstance(base_datetime, datetime.datetime)
@@ -66,14 +90,21 @@ class Period:
 
         self.base_datetime = base_datetime
 
-        self.validity_at_end = validity_at_end
+
+    def __eq__(self,other):
+        if not isinstance(other,Period):
+            return False
+        return (self.start_datetime == other.start_datetime) and  (self.end_datetime == other.end_datetime) and  (self.base_datetime == other.base_datetime)
+    
+    def __hash__(self):   
+        return hash((self.start_datetime,self.end_datetime,self.base_datetime))
 
     @property
     def time_request(self):
-        date = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%Y%m%d")) + (self.validity_at_end) * int(
+        date = int(
             self.end_datetime.strftime("%Y%m%d")
         )
-        time = (1 - self.validity_at_end) * int(self.base_datetime.strftime("%H%M")) + (self.validity_at_end) * int(
+        time = int(
             self.end_datetime.strftime("%H%M")
         )
 
@@ -102,6 +133,7 @@ class Period:
         )
 
     def check(self, field):
+               
         stepType = field.metadata("stepType")
         startStep = field.metadata("startStep")
         endStep = field.metadata("endStep")
@@ -191,7 +223,6 @@ class Periods:
         flags = np.zeros_like(timeline, dtype=int)
         for p in self._periods:
             segment = np.where((timeline >= p.start_datetime) & (timeline < p.end_datetime))
-            xprint(segment)
             flags[segment] += p.sign
         assert np.all(flags == 1), flags
 
@@ -247,15 +278,20 @@ class Periods:
 
 class DefaultPeriods(Periods):
     def __init__(self, valid_date, accumulation_period, **kwargs):
-        # one Periods object for each accumulated field in the output
+        """
+        The default Periods object (as opposed to ERA5/MARS-like periods)
+        one Periods object for each accumulated field in the output
+        The base_datetime does depend on the valid time, and is not hard-coded
+        The default assumption is that the base datetime for one sample is the datetime of the previous sample in the dataset. 
+        It can be user-defined if different
+        """
+ 
         self.base_datetime = lambda x: x
-
+        
         # base datetime can either be user-defined or default to the starting step of accumulation
         if "base_datetime" in kwargs.keys():
             base = int(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
-
-        self.validity_at_end = kwargs.get("validity_at_end", False)
 
         super().__init__(valid_date, accumulation_period, **kwargs)
 
@@ -292,7 +328,7 @@ class DefaultPeriods(Periods):
 
                 base_datetime = start - datetime.timedelta(hours=step1)
 
-                period = Period(start, end, base_datetime, self.validity_at_end)
+                period = Period(start, end, base_datetime)
                 found.append(period)
 
                 assert base_datetime.hour == base_time.hour, (base_datetime, base_time)
@@ -529,9 +565,8 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
-
     @property
-    def requests(self):
+    def requests(self) -> Dict:
         for period in self.periods:
             # build the full data requests, merging the time requests with the key
             yield {**self.kwargs.copy(), **dict(period.time_request)}
@@ -543,13 +578,20 @@ class Accumulator:
                 return False
         return True
 
-    def compute(self, field, values):
+    def compute(self, field: Any, values: NDArray) -> None:
+        """
+        Verify the field time metadata, find the associated period
+         and perform accumulation with the given values
+        
+        in any case values have been exrtacted from field
 
+        """
+        
+        # check if field has correct parameters for the Accumulator (param, number)
         if not self.is_field_needed(field):
             return
 
         period = self.periods.find_matching_period(field)
-
         if not period:
             return
 
@@ -557,38 +599,22 @@ class Accumulator:
         assert not self.periods.is_done(period), f"Field {field} for period {period} already done"
 
         period.check(field)
+        
+        #template field for write must be updated with the oldest field encountered for the accumulator
         self.periods.update_template(field)
-
-        xprint(f"{self}  field ✅ ({period.sign}){field} for {period}")
+        
+        xprint(f"{self} field ✅ ({period.sign}){field} for {period}")
 
         self.values = period.apply(self.values, values)
         self.periods.set_done(period)
 
         if self.periods.all_done():
+            # all periods for accumulation have been processed
+            # template field is now the oldest
+            # temporary file can be written
             self.write()
             xprint("accumulator", self, " : data written ✅ ")
-
-    def check(self, field: Any) -> None:
-        if self._check is None:
-            self._check = field.metadata(namespace="mars")
-
-            assert self.param == field.metadata("param"), (self.param, field.metadata("param"))
-            assert self.date == field.metadata("date"), (self.date, field.metadata("date"))
-            assert self.time == field.metadata("time"), (self.time, field.metadata("time"))
-            assert self.step == field.metadata("step"), (self.step, field.metadata("step"))
-            assert self.number == _member(field), (self.number, _member(field))
-            return
-
-        mars = field.metadata(namespace="mars")
-        keys1 = sorted(self._check.keys())
-        keys2 = sorted(mars.keys())
-
-        assert keys1 == keys2, (keys1, keys2)
-
-        for k in keys1:
-            if k not in ("step",):
-                assert self._check[k] == mars[k], (k, self._check[k], mars[k])
-
+        
     def write(self) -> None:
         assert self.periods.all_done(), self.periods
 
@@ -632,36 +658,18 @@ def _compute_accumulations(
     # patch: Any = _identity,
 ) -> Any:
 
-    request = deepcopy(request)
-
-    param = request.pop("param")
-    assert isinstance(param, (list, tuple))
-
-    number = request.pop("number", [0])
-    if not isinstance(number, (list, tuple)):
-        number = [number]
-    assert isinstance(number, (list, tuple))
-
-    request["stream"] = request.get("stream", "oper")
-
-    type_ = request.get("type", "an")
-    if type_ == "an":
-        type_ = "fc"
-    request["type"] = type_
-
-    request["levtype"] = request.get("levtype", "sfc")
-    if request["levtype"] != "sfc":
-        # LOG.warning("'type' should be 'sfc', found %s", request['type'])
-        raise NotImplementedError("Only sfc leveltype is supported")
+    request, param, number = _prep_request(request)
 
     period_class = find_accumulator_class(request)
 
     tmp = temp_file()
     path = tmp.path
     out = new_grib_output(path)
-
+    
     # build one accumulator per output field
     accumulators = []
+    overlapping_periods = set()
+
     for valid_date in dates:
         for p in param:
             for n in number:
@@ -676,34 +684,33 @@ def _compute_accumulations(
                         **request,
                     )
                 )
+        
+        # this is the exact number of periods that should be retrieved from action.source
+        overlapping_periods.update({period for period in accumulators[-1].periods})
 
-    # get all needed data requests (mars)
+    # get all needed data requests
     requests = []
     for a in accumulators:
-        #xprint("accumulator", a)
         for r in a.requests:
-            #xprint(" ", r)
             requests.append(r)
 
     # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
-    action.source.kwargs = {"request_already_using_valid_datetime": True}
+    action.source.kwargs = {"request_already_using_valid_datetime": True, "shift_time_request" : True}
     action.source.args = requests
     action.source.context = context
     ds = action.source.execute(dates)
-
-    overlapping_dates =
-
-    assert len(ds) / len(param) / len(number) == len(overlapping_dates), (
-        len(ds),
-        len(param),
-        len(dates),
+         
+    assert len(ds) / len(param) / len(number) == len(overlapping_periods), (
+        f"retrieval yields {len(ds)} fields, {len(param)} params, {len(number)} members ",
+        f"but total number of periods requested is {len(overlapping_periods)}",
+        f"❌❌❌ error in {action.source}",
     )
 
     # send each field to the each accumulator, the accumulator will use the field to the accumulation
     # if the accumulator has requested it
 
     for field in ds:
-        values = field.values  # optimisation
+        values = field.values  # optimisation : reading values only once
         for a in accumulators:
             a.compute(field, values)
 
@@ -764,7 +771,11 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
 @legacy_source(__file__)
 def accumulations(context, dates, action, **request):
     _to_list(request["param"])
-    user_accumulation_period = request.pop("accumulation_period", 6)
+    try:
+        user_accumulation_period = request.pop("accumulation_period")
+    except KeyError:
+        raise ValueError("Accumulate action should provide 'accumulation_period', but none was found.")
+    
     user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
 
     context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
