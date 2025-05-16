@@ -19,9 +19,9 @@ from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
-from numpy.typing import NDArray
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
+from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 
@@ -52,19 +52,20 @@ def _member(field: Any) -> int:
         number = 0
     return number
 
-def _prep_request(request: Dict[str,Any]) -> Dict[str,Any]:
+
+def _prep_request(request: Dict[str, Any]) -> Dict[str, Any]:
     request = deepcopy(request)
-    
+
     param = request.pop("param")
     assert isinstance(param, (list, tuple))
-    
+
     number = request.pop("number", [0])
     if not isinstance(number, (list, tuple)):
         number = [number]
-    
+
     assert isinstance(number, (list, tuple))
     request["stream"] = request.get("stream", "oper")
-    
+
     type_ = request.get("type", "an")
     if type_ == "an":
         type_ = "fc"
@@ -73,7 +74,7 @@ def _prep_request(request: Dict[str,Any]) -> Dict[str,Any]:
     if request["levtype"] != "sfc":
         # LOG.warning("'type' should be 'sfc', found %s", request['type'])
         raise NotImplementedError("Only sfc leveltype is supported")
-    
+
     return request, param, number
 
 
@@ -90,23 +91,22 @@ class Period:
 
         self.base_datetime = base_datetime
 
-
-    def __eq__(self,other):
-        if not isinstance(other,Period):
+    def __eq__(self, other):
+        if not isinstance(other, Period):
             return False
-        return (self.start_datetime == other.start_datetime) and  (self.end_datetime == other.end_datetime) and  (self.base_datetime == other.base_datetime)
-    
-    def __hash__(self):   
-        return hash((self.start_datetime,self.end_datetime,self.base_datetime))
+        return (
+            (self.start_datetime == other.start_datetime)
+            and (self.end_datetime == other.end_datetime)
+            and (self.base_datetime == other.base_datetime)
+        )
+
+    def __hash__(self):
+        return hash((self.start_datetime, self.end_datetime, self.base_datetime))
 
     @property
     def time_request(self):
-        date = int(
-            self.end_datetime.strftime("%Y%m%d")
-        )
-        time = int(
-            self.end_datetime.strftime("%H%M")
-        )
+        date = int(self.end_datetime.strftime("%Y%m%d"))
+        time = int(self.end_datetime.strftime("%H%M"))
 
         end_step = self.end_datetime - self.base_datetime
         assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported
@@ -133,7 +133,7 @@ class Period:
         )
 
     def check(self, field):
-               
+
         stepType = field.metadata("stepType")
         startStep = field.metadata("startStep")
         endStep = field.metadata("endStep")
@@ -235,19 +235,16 @@ class Periods:
             raise ValueError(f"Found more than one period for {field}")
         return None
 
-    def update_template(self,field: Any):
+    def update_template(self, field: Any):
         if self.template_field is None:
             self.template_field = field
 
-        field_date = datetime.datetime.strptime(
-                        field.metadata()['valid_datetime'],
-                        "%Y-%m-%dT%H:%M:%S"
-                        )
+        field_date = datetime.datetime.strptime(field.metadata()["valid_datetime"], "%Y-%m-%dT%H:%M:%S")
         template_date = datetime.datetime.strptime(
-                        self.template_field.metadata()['valid_datetime'],
-                        "%Y-%m-%dT%H:%M:%S")
+            self.template_field.metadata()["valid_datetime"], "%Y-%m-%dT%H:%M:%S"
+        )
 
-        if field_date<template_date:
+        if field_date < template_date:
             self.template_field = field
 
     @property
@@ -278,16 +275,15 @@ class Periods:
 
 class DefaultPeriods(Periods):
     def __init__(self, valid_date, accumulation_period, **kwargs):
-        """
-        The default Periods object (as opposed to ERA5/MARS-like periods)
+        """The default Periods object (as opposed to ERA5/MARS-like periods)
         one Periods object for each accumulated field in the output
         The base_datetime does depend on the valid time, and is not hard-coded
-        The default assumption is that the base datetime for one sample is the datetime of the previous sample in the dataset. 
+        The default assumption is that the base datetime for one sample is the datetime of the previous sample in the dataset.
         It can be user-defined if different
         """
- 
+
         self.base_datetime = lambda x: x
-        
+
         # base datetime can either be user-defined or default to the starting step of accumulation
         if "base_datetime" in kwargs.keys():
             base = int(kwargs["base_datetime"])
@@ -565,6 +561,7 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
+
     @property
     def requests(self) -> Dict:
         for period in self.periods:
@@ -579,14 +576,13 @@ class Accumulator:
         return True
 
     def compute(self, field: Any, values: NDArray) -> None:
-        """
-        Verify the field time metadata, find the associated period
+        """Verify the field time metadata, find the associated period
          and perform accumulation with the given values
-        
+
         in any case values have been exrtacted from field
 
         """
-        
+
         # check if field has correct parameters for the Accumulator (param, number)
         if not self.is_field_needed(field):
             return
@@ -599,10 +595,10 @@ class Accumulator:
         assert not self.periods.is_done(period), f"Field {field} for period {period} already done"
 
         period.check(field)
-        
-        #template field for write must be updated with the oldest field encountered for the accumulator
+
+        # template field for write must be updated with the oldest field encountered for the accumulator
         self.periods.update_template(field)
-        
+
         xprint(f"{self} field ✅ ({period.sign}){field} for {period}")
 
         self.values = period.apply(self.values, values)
@@ -614,7 +610,7 @@ class Accumulator:
             # temporary file can be written
             self.write()
             xprint("accumulator", self, " : data written ✅ ")
-        
+
     def write(self) -> None:
         assert self.periods.all_done(), self.periods
 
@@ -665,7 +661,7 @@ def _compute_accumulations(
     tmp = temp_file()
     path = tmp.path
     out = new_grib_output(path)
-    
+
     # build one accumulator per output field
     accumulators = []
     overlapping_periods = set()
@@ -684,7 +680,7 @@ def _compute_accumulations(
                         **request,
                     )
                 )
-        
+
         # this is the exact number of periods that should be retrieved from action.source
         overlapping_periods.update({period for period in accumulators[-1].periods})
 
@@ -695,11 +691,11 @@ def _compute_accumulations(
             requests.append(r)
 
     # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
-    action.source.kwargs = {"request_already_using_valid_datetime": True, "shift_time_request" : True}
+    action.source.kwargs = {"request_already_using_valid_datetime": True, "shift_time_request": True}
     action.source.args = requests
     action.source.context = context
     ds = action.source.execute(dates)
-         
+
     assert len(ds) / len(param) / len(number) == len(overlapping_periods), (
         f"retrieval yields {len(ds)} fields, {len(param)} params, {len(number)} members ",
         f"but total number of periods requested is {len(overlapping_periods)}",
@@ -775,7 +771,7 @@ def accumulations(context, dates, action, **request):
         user_accumulation_period = request.pop("accumulation_period")
     except KeyError:
         raise ValueError("Accumulate action should provide 'accumulation_period', but none was found.")
-    
+
     user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
 
     context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")

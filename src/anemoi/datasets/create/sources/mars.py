@@ -138,18 +138,20 @@ def _normalise_time(t: Union[int, str]) -> str:
         t * 100
     return "{:04d}".format(t)
 
-def _shift_time_request(request: Dict[str, int]) -> Dict[str,int]:
-    date = request.get('date')
-    time = request.get('time')
-    step = request.get('step')
-    
+
+def _shift_time_request(request: Dict[str, int]) -> Dict[str, int]:
+    date = request.get("date")
+    time = request.get("time")
+    step = request.get("step")
+
     end_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
     base_datetime = end_datetime - datetime.timedelta(hours=step)
-    
-    request['date'] = int(base_datetime.strftime("%Y%m%d"))
-    request['time'] = int(base_datetime.strftime("%H%M"))
-    
+
+    request["date"] = int(base_datetime.strftime("%Y%m%d"))
+    request["time"] = int(base_datetime.strftime("%H%M"))
+
     return request
+
 
 def _expand_mars_request(
     request: Dict[str, Any],
@@ -194,7 +196,7 @@ def _expand_mars_request(
             elif isinstance(user_date, datetime.datetime):
                 user_date = user_date.strftime("%Y%m%d")
             else:
-                raise ValueError(f'Invalid type for {user_date}')
+                raise ValueError(f"Invalid type for {user_date}")
             user_date = re.compile("^{}$".format(user_date.replace("-", "").replace("?", ".")))
 
     for step in user_step:
@@ -447,7 +449,7 @@ def mars(
             dates,
             *requests,
             request_already_using_valid_datetime=request_already_using_valid_datetime,
-            shift_time_request = shift_time_request,
+            shift_time_request=shift_time_request,
             date_key=date_key,
         )
 
