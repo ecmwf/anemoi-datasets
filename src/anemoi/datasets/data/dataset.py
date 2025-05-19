@@ -39,8 +39,6 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.data.element import LazyElement
-
 from .debug import Node
 from .debug import Source
 
@@ -934,9 +932,6 @@ class Dataset(ABC, Sized):
         NDArray[Any]
             Retrieved item.
         """
-
-    def __call__(self, n: int):
-        return LazyElement(self, n)
 
     @abstractmethod
     def __len__(self) -> int:
