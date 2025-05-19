@@ -124,7 +124,7 @@ def execute(
     dates = [d.isoformat() for d in dates]
 
     for path in given_paths:
-        paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
+        paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
 
         for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
             if name in kwargs:

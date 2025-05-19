@@ -71,7 +71,7 @@ optional-dependencies.comparelam = [
 
 optional-dependencies.create = [
   "cachetools",
-  "earthkit-data[mars]>=0.12.4,<0.14",
+  "earthkit-data[mars]>=0.14",
   "earthkit-geo>=0.3",
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
