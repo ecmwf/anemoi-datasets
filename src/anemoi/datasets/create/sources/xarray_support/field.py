@@ -80,12 +80,21 @@ class XArrayField(Field):
         # Copy the metadata from the owner
         self._md = owner._metadata.copy()
 
+        aliases = {}
         for coord_name, coord_value in self.selection.coords.items():
             if is_scalar(coord_value):
                 # Extract the single value from the scalar dimension
                 # and store it in the metadata
                 coordinate = owner.by_name[coord_name]
-                self._md[coord_name] = coordinate.normalise(extract_single_value(coord_value))
+                normalised = coordinate.normalise(extract_single_value(coord_value))
+                self._md[coord_name] = normalised
+                for alias in coordinate.mars_names:
+                    aliases[alias] = normalised
+
+        # Add metadata aliases (e.g. levelist == level) only if they are not already present
+        for alias, value in aliases.items():
+            if alias not in self._md:
+                self._md[alias] = value
 
         # print(values.ndim, values.shape, selection.dims)
         # By now, the only dimensions should be latitude and longitude
@@ -188,7 +197,7 @@ class XArrayField(Field):
 
     def __repr__(self) -> str:
         """Return a string representation of the field."""
-        return repr(self._metadata)
+        return f"XArrayField({self._metadata})"
 
     def _values(self, dtype: Optional[type] = None) -> Any:
         """Return the values of the selection.

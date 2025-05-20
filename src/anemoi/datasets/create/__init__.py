@@ -11,6 +11,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import time
 import uuid
 import warnings
@@ -1628,3 +1629,28 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
+
+
+def config_to_python(config: Any) -> Any:
+
+    config = loader_config(config)
+
+    input = build_input_(config, build_output(config.output, None))
+
+    prelude = []
+    input.python_prelude(prelude)
+    code1 = "\n".join(prelude)
+
+    code2 = input.to_python()
+
+    code = f"from anemoi.datasets.recipe import Recipe\nr = Recipe()\n{code1}\nr.input = {code2}\n\nr.dump()"
+
+    code = re.sub(r"[\"\']?\${data_sources\.(\w+)}[\"\']?", r"\1", code)
+
+    try:
+        import black
+
+        return black.format_str(code, mode=black.Mode())
+    except ImportError:
+        LOG.warning("Black not installed, skipping formatting")
+        return code

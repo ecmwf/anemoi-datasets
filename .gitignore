@@ -140,3 +140,5 @@ Untitled-*.py
 *.db
 *.tgz
 _api/
+trace.txt
+?/

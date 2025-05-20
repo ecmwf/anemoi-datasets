@@ -58,6 +58,7 @@ class DataSourcesAction(Action):
 
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
+        self.names = [a_path for a_path, config in configs]
 
     def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
         """Selects the data sources result for the given group of dates.
@@ -85,6 +86,14 @@ class DataSourcesAction(Action):
         """Returns a string representation of the DataSourcesAction instance."""
         content = "\n".join([str(i) for i in self.sources])
         return self._repr(content)
+
+    def python_prelude(self, prelude) -> str:
+        for n, s in zip(self.names, self.sources):
+            s.python_prelude(prelude)
+            prelude.append(f"{n}={s.to_python()}")
+
+    def to_python(self) -> str:
+        return self.input.to_python()
 
 
 class DataSourcesResult(Result):

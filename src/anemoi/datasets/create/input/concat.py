@@ -162,3 +162,23 @@ class ConcatAction(Action):
             return EmptyResult(self.context, self.action_path, group_of_dates)
 
         return ConcatResult(self.context, self.action_path, group_of_dates, results)
+
+    def to_python(self) -> str:
+        """Returns the Python representation of the ConcatAction instance.
+
+        Returns
+        -------
+        str
+            The Python representation of the ConcatAction instance.
+        """
+
+        result = []
+
+        for i, (filtering_dates, action) in enumerate(self.parts):
+            result.append(f"{filtering_dates.to_python()}:{action.to_python()}")
+
+        return f"r.concat({{{','.join(result)}}})"
+
+    def python_prelude(self, prelude) -> None:
+        for filtering_dates, action in self.parts:
+            action.python_prelude(prelude)

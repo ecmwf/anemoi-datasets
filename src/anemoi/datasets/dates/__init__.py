@@ -273,6 +273,17 @@ class StartEndDates(DatesProvider):
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
 
+    def to_python(self) -> str:
+        """Convert the StartEndDates instance to a Python string.
+
+        Returns
+        -------
+        str
+            Python string representation of the instance.
+        """
+        # assert self.frequency == frequency_to_timedelta(1), self.frequency
+        return (self.start.isoformat(), self.end.isoformat(), frequency_to_string(self.frequency))
+
 
 class Hindcast:
     """Class representing a single hindcast date.
