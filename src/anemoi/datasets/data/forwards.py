@@ -330,8 +330,13 @@ class Combined(Forwards):
         ValueError
             If the grids are not the same.
         """
-        if (d1.latitudes != d2.latitudes).any() or (d1.longitudes != d2.longitudes).any():
-            raise ValueError(f"Incompatible grid ({d1} {d2})")
+
+        # note: not a proper implementation, should be handled
+        #       in a more consolidated way ...
+        rtol = 1.e-7
+        if (not np.allclose(d1.latitudes, d2.latitudes, rtol=rtol) or
+            not np.allclose(d1.longitudes, d2.longitudes, rtol=rtol)):
+            raise ValueError(f"Incompatible grid ({d1.longitudes} {d2.longitudes})")
 
     def check_same_shape(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the shapes of two datasets are the same.
