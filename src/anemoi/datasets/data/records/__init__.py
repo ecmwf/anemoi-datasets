@@ -76,6 +76,10 @@ class BaseRecordsDataset:
             return self.dates[0]
         return self.dates[-1]
 
+    @property
+    def groups(self):
+        return tuple(self.keys())
+
     def _subset(self, **kwargs):
         start = kwargs.pop("start", None)
         end = kwargs.pop("end", None)
@@ -152,12 +156,14 @@ class RecordsForward(BaseRecordsDataset):
 
 
 def match_variable(lst, group, name):
-    # lst must be a list of strings with dots
+    # lst must be a list of strings with dots (if there is no dot, it is automatically added at the end)
     # - a dict with keys as group and values as list of strings
 
     if name == "__latitudes" or name == "__longitudes":
         # This should disappear in the future, when we stop saving a duplicate of lat/lon in the data
         return False
+
+    lst = [k if "." in k else f"{k}.*" for k in lst]
 
     key = f"{group}.{name}"
     if key in lst:
@@ -193,6 +199,7 @@ class Select(RecordsForward):
     def _build_indices_and_name_to_index(self):
         indices = {}
         name_to_index = {}
+        variables = {}
 
         # this should be revisited to take into account the order requested by the user
         # see what is done in the fields datasets
@@ -206,11 +213,15 @@ class Select(RecordsForward):
                     indices[group] = ind
                     if group not in name_to_index:
                         name_to_index[group] = {}
+                        assert group not in variables, (group, j, name, variables, name_to_index)
+                        variables[group] = []
                     name_to_index[group][name] = count
+                    variables[group].append(name)
                     count += 1
             assert np.sum(ind) == count, f"Mismatch in {group}: {names}, {ind}"
         self._indices = indices
         self._name_to_index = name_to_index
+        self._variables = variables
 
     def match_variable(self, *args, **kwargs):
         return match_variable(self._select, *args, **kwargs)
@@ -233,6 +244,10 @@ class Select(RecordsForward):
     @property
     def name_to_index(self):
         return self._name_to_index
+
+    @property
+    def variables(self):
+        return self._variables
 
     @property
     def statistics(self):
@@ -389,11 +404,19 @@ class Record(dict):
     def statistics(self):
         return self.dataset.statistics
 
+    @property
+    def groups(self):
+        return tuple(self.keys())
+
 
 class Tabular:
     def __init__(self, dataset, name):
         self.dataset = dataset
         self.name = name
+
+    @property
+    def group(self):
+        return self.name
 
     def __getitem__(self, i):
         return self.__get(i, "data")
@@ -405,6 +428,14 @@ class Tabular:
         except KeyError:
             print(f"KeyError to retrieve {self.name} available groups are", payload.keys())
             raise
+
+    @property
+    def variables(self):
+        return self.dataset.variables[self.name]
+
+    @property
+    def name_to_index(self):
+        return self.dataset.name_to_index[self.name]
 
     @property
     def statistics(self):
