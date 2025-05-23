@@ -5,7 +5,7 @@ dates:
 
 input:
     accumulate:
-      source: 
+      source:
         mars:
           expver: "0001"
           class: ea
