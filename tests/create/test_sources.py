@@ -10,6 +10,8 @@
 import logging
 import os
 
+import tqdm
+
 from anemoi.utils.testing import get_test_data
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
@@ -63,9 +65,9 @@ def test_accumulate_grib_index() -> None:
         "2021-01-01_14h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_15h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_16h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-01_17h00/PAAROME_1S100_ECH1_SOL.grib"
-        "2021-01-01_18h00/PAAROME_1S100_ECH1_SOL.grib"
-        "2021-01-01_19h00/PAAROME_1S100_ECH1_SOL.grib"
+        "2021-01-01_17h00/PAAROME_1S100_ECH1_SOL.grib",
+        "2021-01-01_18h00/PAAROME_1S100_ECH1_SOL.grib",
+        "2021-01-01_19h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_20h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_21h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_22h00/PAAROME_1S100_ECH1_SOL.grib",
@@ -93,11 +95,11 @@ def test_accumulate_grib_index() -> None:
         ]
 
     data1 = []
-    path_db = os.path(__file__)
     for file in filelist:
-        data1.append(get_test_data(f"meteo-france/accumulate/grib/{file}"))
-    assert all([os.path.dirname(d)==os.path.dirname(data1[-1]) for d in data1])
-
+        data1.append(get_test_data(f"meteo-france/grib/{file}"))
+        parent = os.path.dirname(os.path.dirname(data1[-1]))
+    assert all([os.path.dirname(os.path.dirname(d))==parent for d in data1])
+    
     path_db = os.path.dirname(data1[-1])
     from anemoi.datasets.create.sources.grib_index import GribIndex
 
@@ -124,42 +126,41 @@ def test_accumulate_grib_index() -> None:
                     paths.append(full)
 
     for path in tqdm.tqdm(data1, leave=False):
-        if match(path):
-            index.add_grib_file(path)
+        index.add_grib_file(path)
 
-
-    # battery of tests
+    
+    # creating configuration
     config_grib_index = {
         "dates": {
             "start": "2021-01-01T18:00:00",
             "end": "2021-01-02T02:00:00",
             "frequency": "1h",
         },
-        "input": {
-            "accumulate": {
-                "source": {
-                    "grib-index": {
-                        "indexdb" : os.path.join(
-                                    path_db,
-                                    'grib-index-accumulate-tp.db'
-                                    ),
-                        "levtype" : "sfc",
-                        "param" : ["tp"],
-                        "accumulation_period" : 6,
-                        },
-                },
+        "input": 
+            {"pipe" : [{"accumulate": {"source": {
+                        "grib-index": {
+                            "indexdb" : os.path.join(
+                                        path_db,
+                                        'grib-index-accumulate-tp.db'
+                                        ),
+                            "levtype" : "sfc",
+                            "param" : ["tp"],
+                            "accumulation_period" : 6,
+                            },
+                    },
+                }},
+            {"remove-nans" : {}} # needed because data has Nans due to projection
+            ]
             },
-        },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
     print(ds.shape)
 
     # get a reference zarr
-    data2 = get_test_data("meteo-france/accumulate/zarr/tp-test.zarr")
-    path_zarr = os.path.dirname(data2)
-    ds2 = open_dataset(path_zarr)
+    data2 = get_test_data("meteo-france/zarr/tp-test.zarr")
+    ds2 = open_dataset(data2)
     print(ds2.shape)
 
     # shapes should be offset by 'accumulation_period' since frequency is 1h
@@ -170,56 +171,19 @@ def test_accumulate_grib_index() -> None:
     assert np.nansum(ds[5]) == np.nansum(ds2[5:11]), (np.nansum(ds[5]), np.nansum(ds2[5:11]))
 
     # this construction should fail because dates are missing
-    config_grib_index = {
-        "dates": {
-            "start": "2021-01-01T12:00:00",
-            "end": "2021-01-02T14:00:00",
-            "frequency": "1h",
-        },
-        "input": {
-            "accumulate": {
-                "source": {
-                    "grib-index": {
-                        "indexdb" : os.path.join(
-                                    path_db,
-                                    'grib-index-accumulate-tp.db'
-                                    )
-                        "levtype" : "sfc",
-                        "param" : ["tp"],
-                        "accumulation_period" : 24,
-                        },
-                },
-            },
-        },
-    }
+    config_grib_index['input']['pipe'][0]['source']['accumulation_period'] = 24
 
     try:
-        created = create_dataset(config=config, output=None)
+        created = create_dataset(config=config_grib_index, output=None)
     except AssertionError as e:
         print(f"Wrong dates correctly detected {e}")
         pass
-
-    config_grib_index = {
-        "dates": {
-            "start": "2021-01-01T18:00:00",
-            "end": "2021-01-02T02:00:00",
-            "frequency": "3h",
-        },
-        "input": {
-            "accumulate": {
-                "source": {
-                    "grib-index": {
-                        "indexdb" : path_db,
-                        "levtype" : "sfc",
-                        "param" : ["tp"],
-                        "accumulation_period" : 3,
-                        },
-                },
-            },
-        },
-    }
-
-    created = create_dataset(config=config, output=None)
+    
+    # this construction should fail because dates are missing
+    config_grib_index['input']['pipe'][0]['source']['accumulation_period'] = 3
+    config_grib_index['dates']['frequency'] = 3
+    
+    created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
     print(ds.shape)
 
