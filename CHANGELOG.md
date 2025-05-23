@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.24](https://github.com/ecmwf/anemoi-datasets/compare/0.5.23...0.5.24) (2025-05-23)
+
+
+### Features
+
+* verify command ([#279](https://github.com/ecmwf/anemoi-datasets/issues/279)) ([aed36d2](https://github.com/ecmwf/anemoi-datasets/commit/aed36d2ea7a39ea1ae6bbd5f8d01ef0ce7523cde))
+
+
+### Bug Fixes
+
+* adapt to earthkit 0.14 (ignore_keys issue) ([#331](https://github.com/ecmwf/anemoi-datasets/issues/331)) ([fb3ab8d](https://github.com/ecmwf/anemoi-datasets/commit/fb3ab8d46b8e00c62d8d7cbb1d1afae0efea2054))
+
 ## [0.5.23](https://github.com/ecmwf/anemoi-datasets/compare/0.5.22...0.5.23) (2025-05-07)
 
 
