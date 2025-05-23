@@ -114,7 +114,7 @@ def test_accumulate_grib_index() -> None:
         )
 
     paths = []
-    for path in data1
+    for path in data1:
         if os.path.isfile(path):
             paths.append(path)
         else:
