@@ -13,4 +13,4 @@ input:
           grid: 20./20.
           levtype: sfc
           param: [ tp , cp]
-          accumulation_period: 6
+          accumulation_period: 24
