@@ -51,7 +51,7 @@ def test_grib(get_test_data: callable) -> None:
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
-    
+
 @skip_if_offline
 def test_accumulate_grib_index() -> None:
     """Test the creation of a accumulation from grib index.
@@ -59,7 +59,7 @@ def test_accumulate_grib_index() -> None:
     This function tests the creation of a dataset using GRIB files from
     specific dates and verifies the shape of the resulting dataset.
     """
-    
+
     filelist = [
         "2021-01-01_12h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_13h00/PAAROME_1S100_ECH1_SOL.grib",
@@ -77,7 +77,7 @@ def test_accumulate_grib_index() -> None:
         "2021-01-02_01h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-02_02h00/PAAROME_1S100_ECH1_SOL.grib",
     ]
-    
+
     keys = [
         'class',
         'date',
@@ -100,7 +100,7 @@ def test_accumulate_grib_index() -> None:
     for file in filelist:
         data1.append(get_test_data(f"meteo-france/accumulate/grib/{file}"))
     assert all([os.path.dirname(d)==os.path.dirname(data1[-1]) for d in data1])
-    
+
     path_db = os.path.dirname(data1[-1])
     from anemoi.datasets.create.sources.grib_index import GribIndex
 
@@ -130,7 +130,7 @@ def test_accumulate_grib_index() -> None:
         if match(path):
             index.add_grib_file(path)
 
-    
+
     # battery of tests
     config_grib_index = {
         "dates": {
@@ -158,20 +158,20 @@ def test_accumulate_grib_index() -> None:
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     print(ds.shape)
-    
+
     # get a reference zarr
     data2 = get_test_data("meteo-france/accumulate/zarr/tp-test.zarr")
     path_zarr = os.path.dirname(data2)
     ds2 = open_dataset(path_zarr)
     print(ds2.shape)
-    
+
     # shapes should be offset by 'accumulation_period' since frequency is 1h
     assert ds.shape[0] == ds2.shape[0] - 6, (ds.shape, ds2.shape)
-    
+
     assert np.nansum(ds[0]) == np.nansum(ds2[:6]), (np.nansum(ds[0]), np.nansum(ds2[:6]))
     assert np.nansum(ds[2]) == np.nansum(ds2[2:8]), (np.nansum(ds[2]), np.nansum(ds2[2:8]))
     assert np.nansum(ds[5]) == np.nansum(ds2[5:11]), (np.nansum(ds[5]), np.nansum(ds2[5:11]))
-    
+
     # this construction should fail because dates are missing
     config_grib_index = {
         "dates": {
@@ -201,7 +201,7 @@ def test_accumulate_grib_index() -> None:
     except AssertionError as e:
         print(f"Wrong dates correctly detected {e}")
         pass
-    
+
     config_grib_index = {
         "dates": {
             "start": "2021-01-01T18:00:00",
@@ -221,17 +221,17 @@ def test_accumulate_grib_index() -> None:
             },
         },
     }
-    
+
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     print(ds.shape)
-    
+
     assert ds.shape == ds2.shape//3, (ds.shape, ds2.shape)
 
     assert np.nansum(ds[0]) == np.nansum(ds2[2:5]), (np.nansum(ds[0]), np.nansum(ds2[2:5]))
     assert np.nansum(ds[1]) == np.nansum(ds2[5:8]), (np.nansum(ds[1]), np.nansum(ds2[5:8]))
     assert np.nansum(ds[3]) == np.nansum(ds2[8:11]), (np.nansum(ds[3]), np.nansum(ds2[8:11]))
-    
+
 
 @skip_if_offline
 def test_accumulate_grib_index() -> None:
