@@ -1,5 +1,5 @@
 # This workflow runs pre-commit checks and pytest tests against multiple platforms and Python versions.
-name: Code Quality checks and Testing
+name: Code Quality and Testing
 
 on:
   pull_request:
