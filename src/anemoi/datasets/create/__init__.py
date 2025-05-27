@@ -35,7 +35,7 @@ from anemoi.datasets.dates.groups import Groups
 from .check import DatasetName, check_data_values
 from .chunks import ChunkFilter
 from .config import build_output, loader_config
-from .input import InputBuilder, build_input
+from .input import InputBuilder
 from .statistics import (
     Summary,
     TmpStatistics,
@@ -576,32 +576,32 @@ class HasElementForDataMixin:
         # LOG.info("%s", self.input)
 
 
-def build_input_(main_config: Any, output_config: Any) -> Any:
-    """Build the input for the dataset.
-
-    Parameters
-    ----------
-    main_config : Any
-        The main configuration.
-    output_config : Any
-        The output configuration.
-
-    Returns
-    -------
-    Any
-        The input builder.
-    """
-    builder = build_input(
-        main_config.input,
-        data_sources=main_config.get("data_sources", {}),
-        order_by=output_config.order_by,
-        flatten_grid=output_config.flatten_grid,
-        remapping=build_remapping(output_config.remapping),
-        use_grib_paramid=main_config.build.use_grib_paramid,
-    )
-    LOG.debug("✅ INPUT_BUILDER")
-    LOG.debug(builder)
-    return builder
+#  def build_input_(main_config: Any, output_config: Any) -> Any:
+#      """Build the input for the dataset.
+#
+#      Parameters
+#      ----------
+#      main_config : Any
+#          The main configuration.
+#      output_config : Any
+#          The output configuration.
+#
+#      Returns
+#      -------
+#      Any
+#          The input builder.
+#      """
+#      builder = build_input(
+#          main_config.input,
+#          data_sources=main_config.get("data_sources", {}),
+#          order_by=output_config.order_by,
+#          flatten_grid=output_config.flatten_grid,
+#          remapping=build_remapping(output_config.remapping),
+#          use_grib_paramid=main_config.build.use_grib_paramid,
+#      )
+#      LOG.debug("✅ INPUT_BUILDER")
+#      LOG.debug(builder)
+#      return builder
 
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
