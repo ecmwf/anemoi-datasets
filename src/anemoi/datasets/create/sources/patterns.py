@@ -79,6 +79,6 @@ def iterate_patterns(
         kwargs["date"] = dates
 
     for path in given_paths:
-        paths = Pattern(path, ignore_missing_keys=True).substitute(**kwargs)
+        paths = Pattern(path).substitute(allow_extra=True, **kwargs)
         for path in _expand(paths):
             yield path, dates

@@ -20,6 +20,8 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
+from anemoi.datasets.check import check_zarr
+
 from . import Command
 
 LOG = logging.getLogger(__name__)
@@ -456,6 +458,11 @@ class ZarrCopier:
         # zarr.consolidate_metadata(source)
 
         self.copy(source, target, self.verbosity)
+        if os.path.exists(self.target) and os.path.isdir(self.target):
+            LOG.info(f"Checking target: {self.target}")
+            check_zarr(self.target, self.verbosity)
+        else:
+            LOG.info(f"Target {self.target} is not a local directory, skipping check.")
 
 
 class CopyMixin:
