@@ -23,6 +23,7 @@ from typing import Union
 
 import numpy as np
 import zarr
+from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
@@ -356,15 +357,16 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     from .stores import zarr_lookup
 
     if isinstance(a, str) and len(a.split(".")) in [2, 3]:
-        from anemoi.utils.config import load_any_dict_format
 
-        from anemoi.datasets.data.records import open_records_dataset
+        metadata_path = os.path.join(a, "metadata.json")
+        if os.path.exists(metadata_path):
+            metadata = load_any_dict_format(metadata_path)
+            if "backend" not in metadata:
+                raise ValueError(f"Metadata for {a} does not contain 'backend' key")
 
-        metadata = load_any_dict_format(os.path.join(a, "metadata.json"))
-        if "backend" not in metadata:
-            raise ValueError(f"Metadata for {a} does not contain 'backend' key")
+            from anemoi.datasets.data.records import open_records_dataset
 
-        return open_records_dataset(a, backend=metadata["backend"])
+            return open_records_dataset(a, backend=metadata["backend"])
 
     if isinstance(a, Dataset):
         return a.mutate()
