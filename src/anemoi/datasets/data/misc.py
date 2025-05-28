@@ -11,6 +11,7 @@
 import calendar
 import datetime
 import logging
+import os
 from pathlib import PurePath
 from typing import TYPE_CHECKING
 from typing import Any
@@ -354,10 +355,16 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     from .stores import Zarr
     from .stores import zarr_lookup
 
-    if isinstance(a, str) and a.endswith(".vz"):
+    if isinstance(a, str) and len(a.split(".")) in [2, 3]:
+        from anemoi.utils.config import load_any_dict_format
+
         from anemoi.datasets.data.records import open_records_dataset
 
-        return open_records_dataset(a)
+        metadata = load_any_dict_format(os.path.join(a, "metadata.json"))
+        if "backend" not in metadata:
+            raise ValueError(f"Metadata for {a} does not contain 'backend' key")
+
+        return open_records_dataset(a, backend=metadata["backend"])
 
     if isinstance(a, Dataset):
         return a.mutate()
