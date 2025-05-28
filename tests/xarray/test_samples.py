@@ -60,6 +60,7 @@ def _test_samples(n: int, check_skip: bool = True) -> None:
     assert_field_list(fs, **kwargs)
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_slow_tests
 @pytest.mark.parametrize("n", SAMPLES)

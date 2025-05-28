@@ -97,6 +97,7 @@ def default_end(*args: Any, **kwargs: Any) -> datetime.datetime:
     return default_statistics_dates(date_list(*args, **kwargs))[1]
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("y", [2000, 2001, 2002, 2003, 2004, 2005, 1900, 2100])
 @pytest.mark.parametrize("as_numpy", [True, False])
 def test_default_statistics_dates(y: int, as_numpy: bool) -> None:
@@ -135,6 +136,7 @@ def test_default_statistics_dates(y: int, as_numpy: bool) -> None:
     assert default_end((y, 1, 1), (y + 11, 12, 23), 12, as_numpy=as_numpy) == datetime.datetime(y + 10, 12, 31, 12)
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("as_numpy", [True, False])
 def test_default_statistics_dates_80_percent(as_numpy: bool) -> None:
     """Test the default_statistics_dates function for datasets less than 10 years.

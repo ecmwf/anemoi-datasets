@@ -131,6 +131,17 @@ version_file = "src/anemoi/datasets/_version.py"
 [tool.isort]
 profile = "black"
 
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+]
+markers = [
+  "unit: unit tests",
+  "integration: integration tests",
+]
+
 [tool.mypy]
 strict = false
 exclude = [

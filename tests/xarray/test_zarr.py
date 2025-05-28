@@ -6,8 +6,7 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
-
+import pytest
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
@@ -17,6 +16,7 @@ from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_missing_packages("gcsfs")
 def test_arco_era5_1() -> None:
@@ -36,6 +36,7 @@ def test_arco_era5_1() -> None:
     )
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_missing_packages("gcsfs")
 def test_arco_era5_2() -> None:
@@ -55,6 +56,7 @@ def test_arco_era5_2() -> None:
     )
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_missing_packages("gcsfs")
 def test_weatherbench() -> None:
@@ -84,6 +86,7 @@ def test_weatherbench() -> None:
     )
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_missing_packages("aiohttp")
 def test_inca_one_date() -> None:
@@ -104,6 +107,7 @@ def test_inca_one_date() -> None:
     print(fs[0].datetime())
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_missing_packages("gcsfs")
 def test_noaa_replay() -> None:
@@ -133,6 +137,7 @@ def test_noaa_replay() -> None:
     )
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_missing_packages("planetary_computer", "adlfs")
 def test_planetary_computer_conus404() -> None:

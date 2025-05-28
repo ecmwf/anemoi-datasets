@@ -120,12 +120,14 @@ def _test(ds, nb_dates=None):
         assert np.all(statistics[grp][key] == v), (key, statistics[grp][key], v)
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
 def test_open():
     ds = open_dataset("../../data/vz/obs-2018-11.vz")
     _test(ds)
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
 def test_open_with_subset_dates():
     ds = open_dataset(
@@ -140,6 +142,7 @@ def test_open_with_subset_dates():
     _test(ds, nb_dates=8)
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
 def test_open_with_subset_select():
     ds = open_dataset(
