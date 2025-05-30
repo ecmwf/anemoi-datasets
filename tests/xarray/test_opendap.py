@@ -6,8 +6,7 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
-
+import pytest
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_slow_tests
@@ -16,6 +15,7 @@ from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
 
 
+@pytest.mark.unit
 @skip_if_offline
 @skip_slow_tests
 def test_opendap() -> None:

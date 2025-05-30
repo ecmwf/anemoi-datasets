@@ -22,6 +22,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.create.testing import create_dataset
 
 
+@pytest.mark.integration
 @skip_if_offline
 def test_grib() -> None:
     """Test the creation of a dataset from GRIB files.
@@ -53,6 +54,7 @@ def test_grib() -> None:
     assert ds.shape == (8, 12, 1, 162)
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(
     sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
 )
@@ -93,6 +95,7 @@ def test_grib_gridfile() -> None:
     assert ds.variables == ["2t"]
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(
     sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
 )
@@ -166,6 +169,7 @@ def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tup
     assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].min() < -0.9
 
 
+@pytest.mark.integration
 @skip_if_offline
 def test_netcdf() -> None:
     """Test for NetCDF files.
@@ -189,6 +193,7 @@ def test_netcdf() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
+@pytest.mark.integration
 @skip_missing_packages("fstd", "rpnpy.librmn")
 def test_eccs_fstd() -> None:
     """Test for 'fstd' files from ECCC."""
@@ -211,6 +216,7 @@ def test_eccs_fstd() -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
+@pytest.mark.integration
 @skip_slow_tests
 @skip_if_offline
 @skip_missing_packages("kerchunk", "s3fs")
