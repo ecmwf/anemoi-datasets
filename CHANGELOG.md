@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.25](https://github.com/ecmwf/anemoi-datasets/compare/0.5.24...0.5.25) (2025-05-30)
+
+
+### Features
+
+* integrating non-regular datasets in anemoi for observations. ([#306](https://github.com/ecmwf/anemoi-datasets/issues/306)) ([95a0fe4](https://github.com/ecmwf/anemoi-datasets/commit/95a0fe4bb10dc48469c0be0efad94f4d5e2a9fe8))
+
 ## [0.5.24](https://github.com/ecmwf/anemoi-datasets/compare/0.5.23...0.5.24) (2025-05-23)
 
 
