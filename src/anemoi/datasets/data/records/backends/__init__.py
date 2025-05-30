@@ -110,6 +110,7 @@ class Npz1WriteBackend(WriteBackend):
         flatten = {}
         for name, d in statistics.items():
             assert isinstance(d, dict), f"Statistics for {name} must be a dict, got {type(d)}"
+            assert "mean" in d, f"Statistics for {name} must contain 'mean' key but got {d.keys()}"
             for k, v in d.items():
                 assert isinstance(
                     v, (int, float, np.ndarray)
@@ -138,6 +139,7 @@ class Npz2WriteBackend(WriteBackend):
         flatten = {}
         for name, d in statistics.items():
             assert isinstance(d, dict), f"Statistics for {name} must be a dict, got {type(d)}"
+            assert "mean" in d, f"Statistics for {name} must contain 'mean' key but got {d.keys()}"
             for k, v in d.items():
                 assert isinstance(
                     v, (int, float, np.ndarray)
