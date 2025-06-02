@@ -14,6 +14,7 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.data.records.backends import backend_factory
@@ -44,6 +45,33 @@ def open_records_dataset(dataset, **kwargs):
     return RecordsDataset(dataset, **kwargs)
 
 
+def merge_data(list_of_dicts):
+    merged = defaultdict(list)
+    for d in list_of_dicts:
+        for key, value in d.items():
+            merged[key].append(value)
+    return {k: np.hstack(v) for k, v in merged.items()}
+
+
+def _to_numpy_timedelta(td):
+    if isinstance(td, np.timedelta64):
+        assert td.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {td.dtype}"
+        return td
+    return np.timedelta64(int(td.total_seconds()), "s")
+
+
+def _to_numpy_date(d):
+    if isinstance(d, np.datetime64):
+        assert d.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {d.dtype}"
+        return d
+    assert isinstance(d, datetime.datetime), f"date must be a datetime.datetime, got {type(d)}"
+    return _to_numpy_dates([d])[0]
+
+
+def _to_numpy_dates(d):
+    return np.array(d, dtype="datetime64[s]")
+
+
 class BaseRecordsDataset:
 
     def __getitem__(self, i):
@@ -54,6 +82,10 @@ class BaseRecordsDataset:
             return self._getrecord(i)
 
         raise ValueError(f"Invalid index {i}, must be int or str")
+
+    @cached_property
+    def window(self):
+        return str(self._window)
 
     def _getgroup(self, i):
         return Tabular(self, i)
@@ -107,6 +139,13 @@ class BaseRecordsDataset:
         if select is not None:
             return Select(self, select)._subset(**kwargs)
 
+        window = kwargs.pop("window", None)
+        if window is not None:
+            return Rewindowed(self, window)._subset(**kwargs)
+
+        if kwargs:
+            raise ValueError(f"Invalid kwargs {kwargs}, must be 'start', 'end', 'frequency' or 'select'")
+
         return self
 
     def mutate(self):
@@ -148,11 +187,15 @@ class RecordsForward(BaseRecordsDataset):
         return self.forward.frequency
 
     @property
+    def _window(self):
+        return self.forward._window
+
+    @property
     def shapes(self):
         return self.forward.shapes
 
     def __len__(self):
-        return len(self.forward)
+        return len(self.dates)
 
 
 def match_variable(lst, group, name):
@@ -175,6 +218,222 @@ def match_variable(lst, group, name):
     if "*" in lst:
         return True
     return False
+
+
+def window_from_str(txt):
+    """Parses a window string of the form '(-6h, 0h]' and returns a WindowsSpec object."""
+    if txt.startswith("["):
+        include_start = True
+    elif txt.startswith("("):
+        include_start = False
+    else:
+        raise ValueError(f"Invalid window {txt}, must start with '(' or '['")
+    txt = txt[1:]
+
+    if txt.endswith("]"):
+        include_end = True
+    elif txt.endswith(")"):
+        include_end = False
+    else:
+        raise ValueError(f"Invalid window {txt}, must end with ')' or ']'")
+    txt = txt[:-1]
+
+    txt = txt.strip()
+    if ";" in txt:
+        txt = txt.replace(";", ",")
+    lst = txt.split(",")
+    if len(lst) != 2:
+        raise ValueError(
+            f"Invalid window {txt}, must be of the form '(start, end)' or '[start, end]' or '[start, end)' or '(start, end]'"
+        )
+    start, end = lst
+    start = start.strip()
+    end = end.strip()
+
+    def _to_timedelta(t):
+        # This part should go into utils
+        from anemoi.utils.dates import as_timedelta
+
+        if t.startswith(" ") or t.endswith(" "):
+            t = t.strip()
+        if t.startswith("-"):
+            return -as_timedelta(t[1:])
+        if t.startswith("+"):
+            return as_timedelta(t[1:])
+        # end of : This part should go into utils
+        return as_timedelta(t)
+
+    start = _to_timedelta(start)
+    end = _to_timedelta(end)
+    return WindowsSpec(
+        start=start,
+        end=end,
+        include_start=include_start,
+        include_end=include_end,
+    )
+
+
+class WindowsSpec:
+    def __init__(self, *, start, end, include_start=False, include_end=True):
+        assert isinstance(start, (str, datetime.timedelta)), f"start must be a str or timedelta, got {type(start)}"
+        assert isinstance(end, (str, datetime.timedelta)), f"end must be a str or timedelta, got {type(end)}"
+        assert isinstance(include_start, bool), f"include_start must be a bool, got {type(include_start)}"
+        assert isinstance(include_end, bool), f"include_end must be a bool, got {type(include_end)}"
+        assert include_start in (True, False), f"Invalid include_start {include_start}"  # None is not allowed
+        assert include_end in (True, False), f"Invalid include_end {include_end}"  # None is not allowed
+        if start >= end:
+            raise ValueError(f"start {start} must be less than end {end}")
+        self.start = start
+        self.end = end
+        self.include_start = include_start
+        self.include_end = include_end
+
+        self._start_np = _to_numpy_timedelta(start)
+        self._end_np = _to_numpy_timedelta(end)
+
+    def __repr__(self):
+        first = "[" if self.include_start else "("
+        last = "]" if self.include_end else ")"
+
+        def _frequency_to_string(t):
+            if t < datetime.timedelta(0):
+                return f"-{frequency_to_string(-t)}"
+            elif t == datetime.timedelta(0):
+                return "0"
+            return frequency_to_string(t)
+
+        return f"{first}{_frequency_to_string(self.start)},{_frequency_to_string(self.end)}{last}"
+
+    def compute_mask(self, timedeltas):
+        if self.include_start:
+            lower_mask = timedeltas >= self._start_np
+        else:
+            lower_mask = timedeltas > self._start_np
+
+        if self.include_end:
+            upper_mask = timedeltas <= self._end_np
+        else:
+            upper_mask = timedeltas < self._end_np
+
+        return lower_mask & upper_mask
+
+    def starts_before(self, my_dates, other_dates, other_window):
+        assert my_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {my_dates.dtype}"
+        assert other_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {other_dates.dtype}"
+        assert isinstance(other_window, WindowsSpec), f"other_window must be a WindowsSpec, got {type(other_window)}"
+
+        my_start = my_dates[0] + self._start_np
+        other_start = other_dates[0] + other_window._start_np
+
+        if my_start == other_start:
+            return (not other_window.include_start) or self.include_start
+        return my_start <= other_start
+
+    def ends_after(self, my_dates, other_dates, other_window):
+        assert my_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {my_dates.dtype}"
+        assert other_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {other_dates.dtype}"
+        assert isinstance(other_window, WindowsSpec), f"other_window must be a WindowsSpec, got {type(other_window)}"
+
+        my_end = my_dates[-1] + self._end_np
+        other_end = other_dates[-1] + other_window._end_np
+
+        if my_end == other_end:
+            print(".", (not other_window.include_end) or self.include_end)
+            return (not other_window.include_end) or self.include_end
+        print(my_end >= other_end)
+        return my_end >= other_end
+
+
+class Rewindowed(RecordsForward):
+    def __init__(self, dataset, window):
+        super().__init__(dataset)
+        self.dataset = dataset
+
+        # in this class anything with 1 refers to the original window/dataset
+        # and anything with 2 refers to the new window/dataset
+        # and we use _Δ for timedeltas
+
+        self._window1 = self.forward._window
+        self._window2 = window_from_str(window)
+        self.reason = {"window": self.window}
+
+        self._dates1 = _to_numpy_dates(self.forward.dates)
+        dates = self._dates1
+        self.dates_offset = 0
+        while len(dates) > 0 and not self._window1.starts_before(self._dates1, dates, self._window2):
+            LOG.warning(f"Removing first date {dates[0]} because it is to early")
+            self.dates_offset += 1
+            dates = dates[1:]
+        while len(dates) > 0 and not self._window1.ends_after(self._dates1, dates, self._window2):
+            LOG.warning(f"Removing last date {dates[-1]} because it is to late")
+            dates = dates[:-1]
+
+        if len(dates) == 0:
+            raise ValueError(
+                f"No dates left after rewindowing {self._window1} -> {self._window2} (frequency={self.frequency}), check your window"
+            )
+        self._dates = dates
+
+        before_span1 = self._window1.start / self.frequency
+        before_span2 = self._window2.start / self.frequency
+        delta_before_span = before_span2 - before_span1
+        if delta_before_span == int(delta_before_span):
+            if not self._window1.include_start and self._window2.include_start:
+                # if the start of the window is not included, we need to read one more index
+                delta_before_span -= 1
+        delta_before_span = int(delta_before_span)
+        self.delta_before_span = delta_before_span
+
+        after_span1 = self._window1.end / self.frequency
+        after_span2 = self._window2.end / self.frequency
+        delta_after_span = after_span2 - after_span1
+        if delta_after_span == int(delta_after_span):
+            if not self._window1.include_end and self._window2.include_end:
+                # if the end of the window is not included, we need to read one more index
+                delta_after_span += 1
+        delta_after_span = int(delta_after_span)
+        self.delta_after_span = delta_after_span
+
+    @property
+    def window(self):
+        return self._window2
+
+    @property
+    def dates(self):
+        return self._dates
+
+    def __len__(self):
+        return len(self.dates)
+
+    @property
+    def frequency(self):
+        return self.forward.frequency
+
+    def _load_data(self, i):
+        print(f"Rewindowing data for i={i} (date={self.dates[i]}) : {self._window1} -> {self._window2}")
+
+        first_j = i + self.delta_before_span
+        last_j = i + self.delta_after_span
+
+        first_j = first_j + self.dates_offset
+        last_j = last_j + self.dates_offset
+        print(f"Requested ds({i}) : need to read {list(range(first_j, last_j + 1))} indices")
+
+        # _load_data could support a list of indices, but for now we merge the data ourselves
+        too_much_data = merge_data(self.forward._load_data(j) for j in range(first_j, last_j + 1))
+
+        out = {}
+        for group in self.groups:
+            timedeltas = too_much_data[f"timedeltas:{group}"]
+            mask = self._window.compute_mask(timedeltas)
+
+            out[f"data:{group}"] = too_much_data[f"data:{group}"][..., mask]
+            out[f"latitudes:{group}"] = too_much_data[f"latitudes:{group}"][..., mask]
+            out[f"longitudes:{group}"] = too_much_data[f"longitudes:{group}"][..., mask]
+            out[f"timedeltas:{group}"] = too_much_data[f"timedeltas:{group}"][..., mask]
+            out[f"metadata:{group}"] = too_much_data[f"metadata:{group}"]
+
+        return out
 
 
 class Select(RecordsForward):
@@ -285,6 +544,12 @@ class RecordsDataset(BaseRecordsDataset):
         self.path = path
         self.backend = backend_factory(backend, path, **kwargs)
         self.keys = self.metadata["sources"].keys
+        for k in self.keys():
+            assert k == self.normalise_key(k), k
+
+    @classmethod
+    def normalise_key(cls, k):
+        return "".join([x.lower() if x.isalnum() else "-" for x in k])
 
     @property
     def frequency(self):
@@ -299,6 +564,11 @@ class RecordsDataset(BaseRecordsDataset):
     @property
     def variables(self):
         return self.metadata["variables"]
+
+    @cached_property
+    def _window(self):
+        window = self.metadata["window"]
+        return window_from_str(window)
 
     @cached_property
     def metadata(self):
@@ -340,7 +610,9 @@ class RecordsDataset(BaseRecordsDataset):
 
     @counter
     def _load_data(self, i):
-        return self.backend.read(i)
+        data = self.backend.read(i)
+        self.backend._check_data(data)
+        return data
 
     def check(self, i=None):
         if i is not None:

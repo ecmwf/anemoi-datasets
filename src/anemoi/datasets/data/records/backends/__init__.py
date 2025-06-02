@@ -13,6 +13,10 @@ import os
 import numpy as np
 
 
+def normalise_key(k):
+    return "".join([x.lower() if x.isalnum() else "-" for x in k])
+
+
 class Backend:
     def __init__(self, path, **kwargs):
         self.path = path
@@ -27,10 +31,19 @@ class Backend:
     def read_statistics(self):
         raise NotImplementedError("Must be implemented in subclass")
 
+    def _check_data(self, data):
+        for k in list(data.keys()):
+            k = k.split(":")[-1]
+            if k != normalise_key(k):
+                raise ValueError(f"{k} must be alphanumerical and '-' only.")
+
 
 class Npz1Backend(Backend):
+    number_of_files_per_subdirectory = 10
+
     def read(self, i, **kwargs):
-        path = os.path.join(self.path, "data", str(int(i / 10)), f"{i}.npz")
+        d = str(int(i / self.number_of_files_per_subdirectory))
+        path = os.path.join(self.path, "data", d, f"{i}.npz")
         with open(path, "rb") as f:
             return dict(np.load(f))
 
@@ -51,7 +64,7 @@ class Npz1Backend(Backend):
 
 class Npz2Backend(Backend):
     def read(self, i, **kwargs):
-        path = os.path.join(self.path, "data_", str(int(i / 10)), f"{i}_.npz")
+        path = os.path.join(self.path, "data_", str(int(i / 100)), f"{i}_.npz")
         with open(path, "rb") as f:
             return dict(np.load(f))
 
@@ -70,12 +83,13 @@ class Npz2Backend(Backend):
         return dic
 
 
-def backend_factory(backend, *args, **kwargs):
+def backend_factory(name, *args, **kwargs):
     BACKENDS = dict(
         npz1=Npz1Backend,
         npz2=Npz2Backend,
     )
-    return BACKENDS[backend](*args, **kwargs)
+    cls = BACKENDS[name]
+    return cls(*args, **kwargs)
 
 
 class WriteBackend(Backend):
@@ -91,10 +105,20 @@ class WriteBackend(Backend):
     def write_statistics(self, statistics):
         raise NotImplementedError("Must be implemented in subclass")
 
+    def _check_data(self, data):
+        for k in list(data.keys()):
+            k = k.split(":")[-1]
+            if k != normalise_key(k):
+                raise ValueError(f"{k} must be alphanumerical and '-' only.")
+
 
 class Npz1WriteBackend(WriteBackend):
+    number_of_files_per_subdirectory = 10
+
     def write(self, i, data, **kwargs):
-        path = os.path.join(self.path, "data", str(int(i / 10)))
+        self._check_data(data)
+        d = str(int(i / self.number_of_files_per_subdirectory))
+        path = os.path.join(self.path, "data", d)
         os.makedirs(path, exist_ok=True)
         out_path = os.path.join(path, f"{i}.npz")
         np.savez(out_path, **data)
@@ -123,7 +147,8 @@ class Npz1WriteBackend(WriteBackend):
 
 class Npz2WriteBackend(WriteBackend):
     def write(self, i, data, **kwargs):
-        path = os.path.join(self.path, "data_", str(int(i / 10)))
+        self._check_data(data)
+        path = os.path.join(self.path, "data_", str(int(i / 100)))
         os.makedirs(path, exist_ok=True)
         out_path = os.path.join(path, f"{i}_.npz")
         np.savez(out_path, **data)
