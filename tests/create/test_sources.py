@@ -184,10 +184,19 @@ def test_accumulate_grib_index() -> None:
 
     # shapes should be offset by 'accumulation_period' since frequency is 1h
     assert ds.shape[0] == ds2.shape[0] - 6, (ds.shape, ds2.shape)
-    
-    assert (np.max(np.abs(ds[0] - np.sum(ds2[1:7], axis=(0,1,2))))<=1e-3), ("max of absolute difference, t=0", (np.max(np.abs(ds[0] - np.sum(ds2[1:7], axis=(0,1,2))))<=1e-3))
-    assert (np.max(np.abs(ds[2] - np.sum(ds2[3:9], axis=(0,1,2))))<=1e-3), ("max of absolute difference, t=2", (np.max(np.abs(ds[2] - np.sum(ds2[3:9], axis=(0,1,2))))<=1e-3))
-    assert (np.max(np.abs(ds[5] - np.sum(ds2[6:12], axis=(0,1,2))))<=1e-3), ("max of absolute difference, t=5", (np.max(np.abs(ds[5] - np.sum(ds2[6:12], axis=(0,1,2))))<=1e-3))
+
+    assert np.max(np.abs(ds[0] - np.sum(ds2[1:7], axis=(0, 1, 2)))) <= 1e-3, (
+        "max of absolute difference, t=0",
+        (np.max(np.abs(ds[0] - np.sum(ds2[1:7], axis=(0, 1, 2)))) <= 1e-3),
+    )
+    assert np.max(np.abs(ds[2] - np.sum(ds2[3:9], axis=(0, 1, 2)))) <= 1e-3, (
+        "max of absolute difference, t=2",
+        (np.max(np.abs(ds[2] - np.sum(ds2[3:9], axis=(0, 1, 2)))) <= 1e-3),
+    )
+    assert np.max(np.abs(ds[5] - np.sum(ds2[6:12], axis=(0, 1, 2)))) <= 1e-3, (
+        "max of absolute difference, t=5",
+        (np.max(np.abs(ds[5] - np.sum(ds2[6:12], axis=(0, 1, 2)))) <= 1e-3),
+    )
 
     # this construction should fail because dates are missing
     config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 24
@@ -204,9 +213,21 @@ def test_accumulate_grib_index() -> None:
 
     assert ds.shape[0] == 3, ("shape mismatch", ds.shape, ds2.shape)
 
-    assert np.allclose(np.max(ds[0]), np.max(np.sum(ds2[4:7], axis=(0,1,2))), rtol=1e-4), ("t=0",np.max(ds[0]), np.max(np.sum(ds2[4:7], axis=(0,1,2))))
-    assert np.allclose(np.max(ds[1]), np.max(np.sum(ds2[7:10], axis=(0,1,2))), rtol=1e-4), ("t=1",np.max(ds[1]), np.max(np.sum(ds2[7:10], axis=(0,1,2))))
-    assert np.allclose(np.max(ds[2]), np.max(np.sum(ds2[10:13], axis=(0,1,2))), rtol=1e-4), ("t=2",np.max(ds[2]), np.max(np.sum(ds2[10:13], axis=(0,1,2))))
+    assert np.allclose(np.max(ds[0]), np.max(np.sum(ds2[4:7], axis=(0, 1, 2))), rtol=1e-4), (
+        "t=0",
+        np.max(ds[0]),
+        np.max(np.sum(ds2[4:7], axis=(0, 1, 2))),
+    )
+    assert np.allclose(np.max(ds[1]), np.max(np.sum(ds2[7:10], axis=(0, 1, 2))), rtol=1e-4), (
+        "t=1",
+        np.max(ds[1]),
+        np.max(np.sum(ds2[7:10], axis=(0, 1, 2))),
+    )
+    assert np.allclose(np.max(ds[2]), np.max(np.sum(ds2[10:13], axis=(0, 1, 2))), rtol=1e-4), (
+        "t=2",
+        np.max(ds[2]),
+        np.max(np.sum(ds2[10:13], axis=(0, 1, 2))),
+    )
 
 
 @pytest.mark.skipif(
