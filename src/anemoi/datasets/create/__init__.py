@@ -797,10 +797,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         self.registry.add_to_history("init finished")
 
-        assert chunks == self.dataset.get_zarr_chunks(), (
-            chunks,
-            self.dataset.get_zarr_chunks(),
-        )
+        assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
 
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)
@@ -871,11 +868,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             result = self.input.select(group_of_dates=group)
-            assert result.group_of_dates == group, (
-                len(result.group_of_dates),
-                len(group),
-                group,
-            )
+            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
             # There is one result to load for each group.
@@ -1068,12 +1061,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
         self.statistics_temp_dir = statistics_temp_dir
         self.additinon_temp_dir = statistics_temp_dir
         self.actors = [
-            _InitAdditions(
-                path,
-                delta=d,
-                use_threads=use_threads,
-                statistics_temp_dir=statistics_temp_dir,
-            )
+            _InitAdditions(path, delta=d, use_threads=use_threads, statistics_temp_dir=statistics_temp_dir)
             for d in delta
         ]
 
@@ -1192,14 +1180,7 @@ class DeltaDataset:
 class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     """A class to initialize dataset additions."""
 
-    def __init__(
-        self,
-        path: str,
-        delta: str,
-        use_threads: bool = False,
-        progress: Any = None,
-        **kwargs: Any,
-    ):
+    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
         """Initialize an _InitAdditions instance.
 
         Parameters
@@ -1315,14 +1296,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
 class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     """A class to finalize dataset additions."""
 
-    def __init__(
-        self,
-        path: str,
-        delta: str,
-        use_threads: bool = False,
-        progress: Any = None,
-        **kwargs: Any,
-    ):
+    def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
         """Initialize a _FinaliseAdditions instance.
 
         Parameters
@@ -1425,13 +1399,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         # x[- 1e-15 < (x / (np.sqrt(squares / count) + np.abs(mean))) < 0] = 0
         # remove negative variance due to numerical errors
         for i, name in enumerate(self.variables):
-            x[i] = fix_variance(
-                x[i],
-                name,
-                agg["count"][i : i + 1],
-                agg["sums"][i : i + 1],
-                agg["squares"][i : i + 1],
-            )
+            x[i] = fix_variance(x[i], name, agg["count"][i : i + 1], agg["sums"][i : i + 1], agg["squares"][i : i + 1])
         check_variance(x, self.variables, minimum, maximum, mean, count, sums, squares)
 
         stdev = np.sqrt(x)
@@ -1461,16 +1429,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         summary : Summary
             The summary to write.
         """
-        for k in [
-            "mean",
-            "stdev",
-            "minimum",
-            "maximum",
-            "sums",
-            "squares",
-            "count",
-            "has_nans",
-        ]:
+        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
             name = f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
             self.dataset.add_dataset(name=name, array=summary[k], dimensions=("variable",))
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
