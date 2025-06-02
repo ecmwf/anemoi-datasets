@@ -242,7 +242,7 @@ def _expand_mars_request(
 
 def factorise_requests(
     dates: List[datetime.datetime],
-    *requests: Dict[str, Any],
+    *requests: List[Dict[str, Any]],
     request_already_using_valid_datetime: bool = False,
     shift_time_request: bool = False,
     date_key: str = "date",
@@ -253,10 +253,12 @@ def factorise_requests(
     ----------
     dates : List[datetime.datetime]
         The list of dates to be used in the requests.
-    requests : Dict[str, Any]
+    requests : List[Dict[str, Any]]
         The input requests to be factorized.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
+    shift_time_request: bool, optional
+        Flag to shift request valid time request from end to base time, default False
     date_key : str, optional
         The key for the date in the requests.
 
@@ -404,6 +406,8 @@ def mars(
         The input requests to be executed.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
+    shift_time_request: bool, optional
+        Flag to shift request valid time request from end to base time, default False
     date_key : str, optional
         The key for the date in the requests.
     use_cdsapi_dataset : Optional[str], optional

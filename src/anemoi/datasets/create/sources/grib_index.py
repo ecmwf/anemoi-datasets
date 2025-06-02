@@ -621,10 +621,10 @@ def grib_index_retrieve(
         List of dates to retrieve data for.
     indexdb : str
         Path to the GRIB index database.
-    flavour : Optional[str], optional
-        Flavour configuration for mapping fields, by default None.
     requests : Optional[List], optional
         List of requests to filter the data, by default None.
+    flavour : Optional[str], optional
+        Flavour configuration for mapping fields, by default None.
     **kwargs : Any
         Additional filtering criteria.
 
@@ -653,7 +653,7 @@ def grib_index_retrieve(
 
 
 @legacy_source(__file__)
-def execute(context: Any, dates: List[Any], *requests, flavour: Optional[str] = None, **kwargs: Any) -> FieldArray:
+def execute(context: Any, dates: List[Any], *requests: Optional[Tuple | List] = None, flavour: Optional[str] = None, **kwargs: Any) -> FieldArray:
     """Execute the GRIB data retrieval process.
 
     Parameters
@@ -662,12 +662,16 @@ def execute(context: Any, dates: List[Any], *requests, flavour: Optional[str] = 
         The execution context.
     dates : List[Any]
         List of dates to retrieve data for.
-    indexdb : str
-        Path to the GRIB index database.
+    requests : Optional[Tuple | List] = None
+        requests to the indexdb database
+        Either requests[0] or kwargs must have an indexdb key
+        referring to database path
     flavour : Optional[str], optional
         Flavour configuration for mapping fields, by default None.
     **kwargs : Any
-        Additional filtering criteria.
+        Additional filtering criteria or requests.
+        Either requests[0] or kwargs must have an indexdb key
+        referring to database path
 
     Returns
     -------

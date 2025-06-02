@@ -1,6 +1,6 @@
 dates:
   start: 2021-01-10 18:00:00
-  end: 2021-01-12 12:00:00
+  end: 2021-01-11 12:00:00
   frequency: 6h
 
 input:
@@ -13,4 +13,4 @@ input:
           grid: 20./20.
           levtype: sfc
           param: [ tp , cp]
-          accumulation_period: 24
+          accumulation_period: 6
