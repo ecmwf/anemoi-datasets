@@ -12,9 +12,7 @@ import logging
 import os
 import sqlite3
 from typing import Any
-from typing import Dict
 from typing import Iterator
-from typing import List
 from typing import Optional
 
 import earthkit.data as ekd
@@ -38,7 +36,7 @@ class GribIndex:
         self,
         database: str,
         *,
-        keys: Optional[List[str] | str] = None,
+        keys: Optional[list[str] | str] = None,
         flavour: Optional[str] = None,
         update: bool = False,
         overwrite: bool = False,
@@ -49,8 +47,8 @@ class GribIndex:
         ----------
         database : str
             Path to the SQLite database file.
-        keys : Optional[List[str] | str], optional
-            List of keys or a string of keys to use for indexing, by default None.
+        keys : Optional[list[str] | str], optional
+            list of keys or a string of keys to use for indexing, by default None.
         flavour : Optional[str], optional
             Flavour configuration for mapping fields, by default None.
         update : bool, optional
@@ -159,12 +157,12 @@ class GribIndex:
         """Commit the current transaction to the database."""
         self.conn.commit()
 
-    def _get_metadata_keys(self) -> List[str]:
+    def _get_metadata_keys(self) -> list[str]:
         """Retrieve the metadata keys from the database.
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of metadata keys stored in the database.
         """
         self.cursor.execute("SELECT key FROM metadata_keys")
@@ -227,12 +225,12 @@ class GribIndex:
                 LOG.info(f"Path: {self._get_path(existing_record[1])}")
             raise
 
-    def _all_columns(self) -> List[str]:
+    def _all_columns(self) -> list[str]:
         """Retrieve all column names from the grib_index table.
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of column names.
         """
         if self._columns is not None:
@@ -243,13 +241,13 @@ class GribIndex:
         self._columns = [col for col in columns if not col.startswith("_")]
         return self._columns
 
-    def _ensure_columns(self, columns: List[str]) -> None:
+    def _ensure_columns(self, columns: list[str]) -> None:
         """Add missing columns to the grib_index table.
 
         Parameters
         ----------
-        columns : List[str]
-            List of column names to ensure in the table.
+        columns : list[str]
+            list of column names to ensure in the table.
         """
         assert self.update
 
@@ -357,7 +355,7 @@ class GribIndex:
         except Exception as e:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
 
-    def _param_grib2_info(self, paramId: int) -> List[dict]:
+    def _param_grib2_info(self, paramId: int) -> list[dict]:
         """Fetch GRIB2 parameter information for a given parameter ID.
 
         Parameters
@@ -367,7 +365,7 @@ class GribIndex:
 
         Returns
         -------
-        List[dict]
+        list[dict]
             A list of GRIB2 parameter information.
         """
         if ("grib2", paramId) in self.cache:
@@ -524,7 +522,7 @@ class GribIndex:
 
     def retrieve(
         self,
-        dates: List[Any],
+        dates: list[Any],
         request_already_using_valid_datetime: bool = False,
         **kwargs: Any,
     ) -> Iterator[Any]:
@@ -532,8 +530,8 @@ class GribIndex:
 
         Parameters
         ----------
-        dates : List[Any]
-            List of dates to retrieve data for.
+        dates : list[Any]
+            list of dates to retrieve data for.
         request_already_using_valid_datetime : bool, optional
             Whether the request is already using valid_datetime, by default False.
         **kwargs : Any
@@ -586,7 +584,7 @@ class GribIndex:
             yield data
 
 
-def format_and_map_requests(requests: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def format_and_map_requests(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Keep in requests only what is needed to fetch data in grib-index"""
 
     stripped_requests = []
@@ -605,10 +603,10 @@ def format_and_map_requests(requests: List[Dict[str, Any]]) -> List[Dict[str, An
 
 def grib_index_retrieve(
     context: Any,
-    dates: List[Any],
+    dates: list[Any],
     indexdb: str,
-    *requests: Dict[str, Any],
-    flavour: Optional[str] = None,
+    *requests: dict[str, Any],
+    flavour: Optional[str]=None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
@@ -617,12 +615,12 @@ def grib_index_retrieve(
     ----------
     context : Any
         The execution context.
-    dates : List[Any]
-        List of dates to retrieve data for.
+    dates : list[Any]
+        list of dates to retrieve data for.
     indexdb : str
         Path to the GRIB index database.
-    requests : Optional[List], optional
-        List of requests to filter the data, by default None.
+    requests : Optional[list], optional
+        list of requests to filter the data, by default None.
     flavour : Optional[str], optional
         Flavour configuration for mapping fields, by default None.
     **kwargs : Any
@@ -655,9 +653,9 @@ def grib_index_retrieve(
 @legacy_source(__file__)
 def execute(
     context: Any,
-    dates: List[Any],
-    *requests: Optional[Tuple | List] = None,
-    flavour: Optional[str] = None,
+    dates: list[Any],
+    *requests: Optional[tuple | list],
+    flavour: Optional[str]=None,
     **kwargs: Any,
     ) -> FieldArray:
     """Execute the GRIB data retrieval process.
@@ -666,9 +664,9 @@ def execute(
     ----------
     context : Any
         The execution context.
-    dates : List[Any]
-        List of dates to retrieve data for.
-    requests : Optional[Tuple | List] = None
+    dates : list[Any]
+        list of dates to retrieve data for.
+    requests : Optional[Tuple | list] = None
         requests to the indexdb database
         Either requests[0] or kwargs must have an indexdb key
         referring to database path
