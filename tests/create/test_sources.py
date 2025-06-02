@@ -63,6 +63,7 @@ def test_accumulate_grib_index() -> None:
     """
 
     filelist = [
+        "2021-01-01_11h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_12h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_13h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_14h00/PAAROME_1S100_ECH1_SOL.grib",
@@ -151,9 +152,8 @@ def test_accumulate_grib_index() -> None:
     # get a reference daatset
     reference = create_dataset(config=reference_config, output=None)
     ds2 = open_dataset(reference)
-    print(ds2.shape)
 
-    # creating configuration
+    # creating configuration using the previously created grib-index
     config_grib_index = {
         "dates": {
             "start": "2021-01-01T18:00:00",
@@ -181,37 +181,32 @@ def test_accumulate_grib_index() -> None:
 
     created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
-    print(ds.shape)
 
     # shapes should be offset by 'accumulation_period' since frequency is 1h
     assert ds.shape[0] == ds2.shape[0] - 6, (ds.shape, ds2.shape)
-
-    assert np.nansum(ds[0]) == np.nansum(ds2[:6]), (np.nansum(ds[0]), np.nansum(ds2[:6]))
-    assert np.nansum(ds[2]) == np.nansum(ds2[2:8]), (np.nansum(ds[2]), np.nansum(ds2[2:8]))
-    assert np.nansum(ds[5]) == np.nansum(ds2[5:11]), (np.nansum(ds[5]), np.nansum(ds2[5:11]))
+    
+    assert (np.max(np.abs(ds[0] - np.sum(ds2[1:7], axis=(0,1,2))))<=1e-3), ("max of absolute difference, t=0", (np.max(np.abs(ds[0] - np.sum(ds2[1:7], axis=(0,1,2))))<=1e-3))
+    assert (np.max(np.abs(ds[2] - np.sum(ds2[3:9], axis=(0,1,2))))<=1e-3), ("max of absolute difference, t=2", (np.max(np.abs(ds[2] - np.sum(ds2[3:9], axis=(0,1,2))))<=1e-3))
+    assert (np.max(np.abs(ds[5] - np.sum(ds2[6:12], axis=(0,1,2))))<=1e-3), ("max of absolute difference, t=5", (np.max(np.abs(ds[5] - np.sum(ds2[6:12], axis=(0,1,2))))<=1e-3))
 
     # this construction should fail because dates are missing
-    config_grib_index["input"]["pipe"][0]["source"]["accumulation_period"] = 24
+    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 24
 
-    try:
+    with pytest.raises(Exception) as e_info:
         created = create_dataset(config=config_grib_index, output=None)
-    except AssertionError as e:
-        print(f"Wrong dates correctly detected {e}")
-        pass
 
     # this construction should fail because dates are missing
-    config_grib_index["input"]["pipe"][0]["source"]["accumulation_period"] = 3
+    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 3
     config_grib_index["dates"]["frequency"] = 3
 
     created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
-    print(ds.shape)
 
-    assert ds.shape == ds2.shape // 3, (ds.shape, ds2.shape)
+    assert ds.shape[0] == 3, ("shape mismatch", ds.shape, ds2.shape)
 
-    assert np.nansum(ds[0]) == np.nansum(ds2[2:5]), (np.nansum(ds[0]), np.nansum(ds2[2:5]))
-    assert np.nansum(ds[1]) == np.nansum(ds2[5:8]), (np.nansum(ds[1]), np.nansum(ds2[5:8]))
-    assert np.nansum(ds[3]) == np.nansum(ds2[8:11]), (np.nansum(ds[3]), np.nansum(ds2[8:11]))
+    assert np.allclose(np.max(ds[0]), np.max(np.sum(ds2[4:7], axis=(0,1,2))), rtol=1e-4), ("t=0",np.max(ds[0]), np.max(np.sum(ds2[4:7], axis=(0,1,2))))
+    assert np.allclose(np.max(ds[1]), np.max(np.sum(ds2[7:10], axis=(0,1,2))), rtol=1e-4), ("t=1",np.max(ds[1]), np.max(np.sum(ds2[7:10], axis=(0,1,2))))
+    assert np.allclose(np.max(ds[2]), np.max(np.sum(ds2[10:13], axis=(0,1,2))), rtol=1e-4), ("t=2",np.max(ds[2]), np.max(np.sum(ds2[10:13], axis=(0,1,2))))
 
 
 @pytest.mark.skipif(

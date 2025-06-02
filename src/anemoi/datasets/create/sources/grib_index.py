@@ -680,7 +680,7 @@ def execute(context: Any, dates: List[Any], *requests, flavour: Optional[str] = 
         assert all([(indexdb == r.pop("indexdb") for r in requests[1:])])
         kwargs = kwargs | format_and_map_requests(requests)
     else:
-        indexdb = kwargs["indexdb"]
+        indexdb = kwargs.pop("indexdb")
     return grib_index_retrieve(
         context,
         dates,
