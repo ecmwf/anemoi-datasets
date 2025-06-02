@@ -128,29 +128,30 @@ def test_accumulate_grib_index() -> None:
     for path in tqdm.tqdm(data1, leave=False):
         index.add_grib_file(path)
 
-      
     reference_config = {
         "dates": {
             "start": "2021-01-01T12:00:00",
             "end": "2021-01-02T02:00:00",
             "frequency": "1h",
         },
-        "input": 
-            {
-            "pipe" : [
+        "input": {
+            "pipe": [
                 {
-                "grib-index": 
-                    {"indexdb": os.path.join(path_db,'grib-index-accumulate-tp.db'),"levtype": "sfc", "param": ["tp"]}
+                    "grib-index": {
+                        "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
+                        "levtype": "sfc",
+                        "param": ["tp"],
+                    }
                 },
-                {"remove-nans" : {}}]
-            }
-        }
-    
+                {"remove-nans": {}},
+            ]
+        },
+    }
+
     # get a reference daatset
     reference = create_dataset(config=reference_config, output=None)
     ds2 = open_dataset(reference)
     print(ds2.shape)
-    
 
     # creating configuration
     config_grib_index = {
@@ -177,7 +178,7 @@ def test_accumulate_grib_index() -> None:
             ]
         },
     }
-    
+
     created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
     print(ds.shape)
