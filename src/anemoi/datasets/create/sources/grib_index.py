@@ -653,7 +653,13 @@ def grib_index_retrieve(
 
 
 @legacy_source(__file__)
-def execute(context: Any, dates: List[Any], *requests: Optional[Tuple | List] = None, flavour: Optional[str] = None, **kwargs: Any) -> FieldArray:
+def execute(
+    context: Any,
+    dates: List[Any],
+    *requests: Optional[Tuple | List] = None,
+    flavour: Optional[str] = None,
+    **kwargs: Any,
+    ) -> FieldArray:
     """Execute the GRIB data retrieval process.
 
     Parameters
@@ -690,5 +696,4 @@ def execute(context: Any, dates: List[Any], *requests: Optional[Tuple | List] = 
         dates,
         indexdb,
         flavour=flavour,
-        **kwargs,
-    )
+        **kwargs)
