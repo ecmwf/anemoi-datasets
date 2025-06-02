@@ -606,7 +606,7 @@ def grib_index_retrieve(
     dates: list[Any],
     indexdb: str,
     *requests: dict[str, Any],
-    flavour: Optional[str]=None,
+    flavour: Optional[str] = None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
@@ -655,9 +655,9 @@ def execute(
     context: Any,
     dates: list[Any],
     *requests: Optional[tuple | list],
-    flavour: Optional[str]=None,
+    flavour: Optional[str] = None,
     **kwargs: Any,
-    ) -> FieldArray:
+) -> FieldArray:
     """Execute the GRIB data retrieval process.
 
     Parameters
@@ -689,9 +689,4 @@ def execute(
         kwargs = kwargs | format_and_map_requests(requests)
     else:
         indexdb = kwargs.pop("indexdb")
-    return grib_index_retrieve(
-        context,
-        dates,
-        indexdb,
-        flavour=flavour,
-        **kwargs)
+    return grib_index_retrieve(context, dates, indexdb, flavour=flavour, **kwargs)
