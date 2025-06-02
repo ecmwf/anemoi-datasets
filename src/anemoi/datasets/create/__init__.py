@@ -15,35 +15,42 @@ import time
 import uuid
 import warnings
 from functools import cached_property
-from typing import Any, Optional, Union
+from typing import Any
+from typing import Optional
+from typing import Union
 
 import cftime
 import numpy as np
 import tqdm
 import zarr
-from anemoi.utils.dates import as_datetime, frequency_to_string, frequency_to_timedelta
-from anemoi.utils.humanize import compress_dates, seconds_to_human
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.humanize import compress_dates
+from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.sanitise import sanitise
 from earthkit.data.core.order import build_remapping
 
-from anemoi.datasets import MissingDateError, open_dataset
+from anemoi.datasets import MissingDateError
+from anemoi.datasets import open_dataset
 from anemoi.datasets.create.input.trace import enable_trace
 from anemoi.datasets.create.persistent import build_storage
-from anemoi.datasets.data.misc import as_first_date, as_last_date
+from anemoi.datasets.data.misc import as_first_date
+from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
 
-from .check import DatasetName, check_data_values
+from .check import DatasetName
+from .check import check_data_values
 from .chunks import ChunkFilter
-from .config import build_output, loader_config
+from .config import build_output
+from .config import loader_config
 from .input import InputBuilder
-from .statistics import (
-    Summary,
-    TmpStatistics,
-    check_variance,
-    compute_statistics,
-    default_statistics_dates,
-    fix_variance,
-)
+from .statistics import Summary
+from .statistics import TmpStatistics
+from .statistics import check_variance
+from .statistics import compute_statistics
+from .statistics import default_statistics_dates
+from .statistics import fix_variance
 from .utils import normalize_and_check_dates
 from .writer import ViewCacheArray
 
@@ -271,9 +278,7 @@ class Dataset:
         """
         basename, _ = os.path.splitext(os.path.basename(self.path))
         try:
-            DatasetName(
-                basename, resolution, dates[0], dates[-1], frequency
-            ).raise_if_not_valid()
+            DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
         except Exception as e:
             if raise_exception and not is_test:
                 raise e
@@ -444,18 +449,10 @@ class Actor:  # TODO: rename to Creator
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
-                LOG.warning(
-                    "Missing dates given in recipe do not match the actual missing dates in the dataset."
-                )
-                LOG.warning(
-                    f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}"
-                )
-                LOG.warning(
-                    f"Missing dates in dataset: {sorted(str(x) for x in  expected)}"
-                )
-                raise ValueError(
-                    "Missing dates given in recipe do not match the actual missing dates in the dataset."
-                )
+                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
 
         check_missing_dates(self.missing_dates)
 
@@ -507,15 +504,11 @@ class Size(Actor):
         ds = open_dataset(self.path)
         constants = ds.computed_constant_fields()
 
-        variables_metadata = self.dataset.zarr_metadata.get(
-            "variables_metadata", {}
-        ).copy()
+        variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
         for k in constants:
             variables_metadata[k]["constant_in_time"] = True
 
-        self.update_metadata(
-            constant_fields=constants, variables_metadata=variables_metadata
-        )
+        self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 
 
 class HasRegistryMixin:
@@ -535,9 +528,7 @@ class HasStatisticTempMixin:
     @cached_property
     def tmp_statistics(self) -> TmpStatistics:
         """Get the temporary statistics."""
-        directory = self.statistics_temp_dir or os.path.join(
-            self.path + ".storage_for_statistics.tmp"
-        )
+        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
         return TmpStatistics(directory)
 
 
@@ -661,9 +652,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         # self.registry.delete() ??
         self.tmp_statistics.delete()
 
-        assert isinstance(
-            self.main_config.output.order_by, dict
-        ), self.main_config.output.order_by
+        assert isinstance(self.main_config.output.order_by, dict), self.main_config.output.order_by
         self.create_elements(self.main_config)
 
         LOG.info(f"Groups: {self.groups}")
@@ -671,9 +660,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         one_date = self.groups.one_date()
         # assert False, (type(one_date), type(self.groups))
         self.minimal_input = self.input.select(one_date)
-        LOG.info(
-            f"Minimal input for 'init' step (using only the first date) : {one_date}"
-        )
+        LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
     def run(self) -> int:
@@ -720,9 +707,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         variables_with_nans = self.main_config.statistics.get("allow_nans", [])
 
         ensembles = self.minimal_input.ensembles
-        LOG.info(
-            f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}."
-        )
+        LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
 
         grid_points = self.minimal_input.grid_points
         LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
@@ -740,9 +725,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info(f"{chunks=}")
         dtype = self.output.dtype
 
-        LOG.info(
-            f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}"
-        )
+        LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
 
         metadata = {}
         metadata["uuid"] = str(uuid.uuid4())
@@ -809,9 +792,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 f"does not match data shape {total_shape[0]}. {total_shape=}"
             )
 
-        dates = normalize_and_check_dates(
-            dates, metadata["start_date"], metadata["end_date"], metadata["frequency"]
-        )
+        dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
 
         metadata.update(self.main_config.get("force_metadata", {}))
 
@@ -829,27 +810,19 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             dimensions=("time", "variable", "ensemble", "cell"),
         )
         self.dataset.add_dataset(name="dates", array=dates, dimensions=("time",))
-        self.dataset.add_dataset(
-            name="latitudes", array=grid_points[0], dimensions=("cell",)
-        )
-        self.dataset.add_dataset(
-            name="longitudes", array=grid_points[1], dimensions=("cell",)
-        )
+        self.dataset.add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
+        self.dataset.add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
 
         self.registry.create(lengths=lengths)
         self.tmp_statistics.create(exist_ok=False)
-        self.registry.add_to_history(
-            "tmp_statistics_initialised", version=self.tmp_statistics.version
-        )
+        self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
 
         statistics_start, statistics_end = build_statistics_dates(
             dates,
             self.main_config.statistics.get("start"),
             self.main_config.statistics.get("end"),
         )
-        self.update_metadata(
-            statistics_start_date=statistics_start, statistics_end_date=statistics_end
-        )
+        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
         LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
 
         self.registry.add_to_history("init finished")
@@ -921,9 +894,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             if not self.chunk_filter(igroup):
                 continue
             if self.registry.get_flag(igroup):
-                LOG.info(
-                    f" -> Skipping {igroup} total={len(self.groups)} (already done)"
-                )
+                LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
                 continue
 
             # assert isinstance(group[0], datetime.datetime), type(group[0])
@@ -942,9 +913,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             self.registry.set_flag(igroup)
 
         self.registry.add_provenance(name="provenance_load")
-        self.tmp_statistics.add_provenance(
-            name="provenance_load", config=self.main_config
-        )
+        self.tmp_statistics.add_provenance(name="provenance_load", config=self.main_config)
 
         self.dataset.print_info()
 
@@ -1020,9 +989,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
         self.load_cube(cube, array)
 
-        stats = compute_statistics(
-            array.cache, self.variables_names, allow_nans=self._get_allow_nans()
-        )
+        stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
         self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
         LOG.info("Flush data array")
         array.flush()
@@ -1181,9 +1148,7 @@ class AdditionsMixin:
         """
         frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
         if not self.delta.total_seconds() % frequency.total_seconds() == 0:
-            LOG.debug(
-                f"Delta {self.delta} is not a multiple of frequency {frequency}. Skipping."
-            )
+            LOG.debug(f"Delta {self.delta} is not a multiple of frequency {frequency}. Skipping.")
             return True
 
         if self.dataset.zarr_metadata.get("build", {}).get("additions", None) is False:
@@ -1352,9 +1317,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
             date = self.dates[i]
             try:
                 arr = self.ds[i]
-                stats = compute_statistics(
-                    arr, self.variables, allow_nans=self.allow_nans
-                )
+                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
                 self.tmp_storage.add([date, i, stats], key=date)
             except MissingDateError:
                 self.tmp_storage.add([date, i, "missing"], key=date)
@@ -1372,14 +1335,10 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         if self.dataset.anemoi_dataset.metadata.get("allow_nans", False):
             return True
 
-        variables_with_nans = self.dataset.anemoi_dataset.metadata.get(
-            "variables_with_nans", None
-        )
+        variables_with_nans = self.dataset.anemoi_dataset.metadata.get("variables_with_nans", None)
         if variables_with_nans is not None:
             return variables_with_nans
-        warnings.warn(
-            f"❗Cannot find 'variables_with_nans' in {self.path}, assuming nans allowed."
-        )
+        warnings.warn(f"❗Cannot find 'variables_with_nans' in {self.path}, assuming nans allowed.")
         return True
 
 
@@ -1432,9 +1391,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
             count=np.full(shape, -1, dtype=np.int64),
             has_nans=np.full(shape, False, dtype=np.bool_),
         )
-        LOG.debug(
-            f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}"
-        )
+        LOG.debug(f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}")
 
         found = set()
         ifound = set()
@@ -1464,9 +1421,7 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         )
 
         if len(ifound) < 2:
-            LOG.warning(
-                f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped."
-            )
+            LOG.warning(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
             self.tmp_storage.delete()
             return
 
@@ -1547,12 +1502,8 @@ class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
             "has_nans",
         ]:
             name = f"statistics_tendencies_{frequency_to_string(self.delta)}_{k}"
-            self.dataset.add_dataset(
-                name=name, array=summary[k], dimensions=("variable",)
-            )
-        self.registry.add_to_history(
-            f"compute_statistics_{self.__class__.__name__.lower()}_end"
-        )
+            self.dataset.add_dataset(name=name, array=summary[k], dimensions=("variable",))
+        self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
         LOG.debug(f"Wrote additions in {self.path}")
 
 
@@ -1634,20 +1585,14 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         assert type(dates[0]) is type(start), (type(dates[0]), type(start))
 
         dates = [d for d in dates if d >= start and d <= end]
-        dates = [
-            d
-            for i, d in enumerate(dates)
-            if i not in self.dataset.anemoi_dataset.missing
-        ]
+        dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
         variables = self.dataset.anemoi_dataset.variables
         stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
 
         LOG.info(stats)
 
         if not all(self.registry.get_flags(sync=False)):
-            raise Exception(
-                f"❗Zarr {self.path} is not fully built, not writing statistics into dataset."
-            )
+            raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
         for k in [
             "mean",
@@ -1676,9 +1621,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         if "variables_with_nans" in z.attrs:
             return z.attrs["variables_with_nans"]
 
-        warnings.warn(
-            f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}."
-        )
+        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
         return True
 
 
@@ -1743,9 +1686,7 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
         load_additions=RunAdditions,
         run_additions=RunAdditions,
         finalise_additions=chain([FinaliseAdditions, Size]),
-        additions=chain(
-            [InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]
-        ),
+        additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
