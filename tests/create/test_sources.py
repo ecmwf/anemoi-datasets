@@ -106,7 +106,7 @@ def test_accumulate_grib_index() -> None:
     path_db = os.path.dirname(data1[-1])
     from anemoi.datasets.create.sources.grib_index import GribIndex
 
-    # create a database with grib files
+    # create a GribIndex database with grib files
     index = GribIndex(
         os.path.join(path_db, "grib-index-accumulate-tp.db"),
         keys=keys,
@@ -127,6 +127,30 @@ def test_accumulate_grib_index() -> None:
 
     for path in tqdm.tqdm(data1, leave=False):
         index.add_grib_file(path)
+
+      
+    reference_config = {
+        "dates": {
+            "start": "2021-01-01T12:00:00",
+            "end": "2021-01-02T02:00:00",
+            "frequency": "1h",
+        },
+        "input": 
+            {
+            "pipe" : [
+                {
+                "grib-index": 
+                    {"indexdb": os.path.join(path_db,'grib-index-accumulate-tp.db'),"levtype": "sfc", "param": ["tp"]}
+                },
+                {"remove-nans" : {}}]
+            }
+        }
+    
+    # get a reference daatset
+    reference = create_dataset(config=reference_config, output=None)
+    ds2 = open_dataset(reference)
+    print(ds2.shape)
+    
 
     # creating configuration
     config_grib_index = {
@@ -153,15 +177,10 @@ def test_accumulate_grib_index() -> None:
             ]
         },
     }
-
+    
     created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
     print(ds.shape)
-
-    # get a reference zarr
-    data2 = get_test_data("meteo-france/zarr/tp-test.zarr")
-    ds2 = open_dataset(data2)
-    print(ds2.shape)
 
     # shapes should be offset by 'accumulation_period' since frequency is 1h
     assert ds.shape[0] == ds2.shape[0] - 6, (ds.shape, ds2.shape)

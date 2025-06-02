@@ -674,6 +674,7 @@ def execute(context: Any, dates: List[Any], *requests, flavour: Optional[str] = 
     FieldArray
         An array of retrieved GRIB fields.
     """
+    print("requests", requests)
     indexdb = requests[0].pop("indexdb")
 
     assert all([(indexdb == r.pop("indexdb") for r in requests[1:])])
