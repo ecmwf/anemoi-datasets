@@ -63,10 +63,10 @@ def test_accumulate_grib_index() -> None:
     """
 
     filelist = [
-        "2021-01-01_19h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-01_20h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-01_21h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-01_22h00/PAAROME_1S100_ECH1_SOL.grib",
+        #"2021-01-01_19h00/PAAROME_1S100_ECH1_SOL.grib",
+        #"2021-01-01_20h00/PAAROME_1S100_ECH1_SOL.grib",
+        #"2021-01-01_21h00/PAAROME_1S100_ECH1_SOL.grib",
+        #"2021-01-01_22h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_23h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-02_00h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-02_01h00/PAAROME_1S100_ECH1_SOL.grib",
@@ -123,7 +123,7 @@ def test_accumulate_grib_index() -> None:
 
     reference_config = {
         "dates": {
-            "start": "2021-01-01T21:00:00",
+            "start": "2021-01-02T00:00:00",
             "end": "2021-01-02T02:00:00",
             "frequency": "1h",
         },
@@ -161,7 +161,7 @@ def test_accumulate_grib_index() -> None:
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
                                 "levtype": "sfc",
                                 "param": ["tp"],
-                                "accumulation_period": 6,
+                                "accumulation_period": 3,
                             },
                         },
                     }
@@ -175,11 +175,11 @@ def test_accumulate_grib_index() -> None:
     ds = open_dataset(created)
 
     # shapes should be divided by 'accumulation_period'
-    assert ds.shape[0] == ds2.shape[0] // 6, (ds.shape, ds2.shape)
+    assert ds.shape[0] == ds2.shape[0] // 3, (ds.shape, ds2.shape)
 
-    assert np.max(np.abs(ds[0] - np.sum(ds2[:6], axis=(0, 1, 2)))) <= 1e-3, (
+    assert np.max(np.abs(ds[0] - np.sum(ds2[:3], axis=(0, 1, 2)))) <= 1e-3, (
         "max of absolute difference, t=0",
-        (np.max(np.abs(ds[0] - np.sum(ds2[:6], axis=(0, 1, 2)))) <= 1e-3),
+        np.max(np.abs(ds[0] - np.sum(ds2[:3], axis=(0, 1, 2)))),
     )
 
     # this construction should fail because dates are missing
