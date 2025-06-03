@@ -63,10 +63,10 @@ def test_accumulate_grib_index() -> None:
     """
 
     filelist = [
-        #"2021-01-01_19h00/PAAROME_1S100_ECH1_SOL.grib",
-        #"2021-01-01_20h00/PAAROME_1S100_ECH1_SOL.grib",
-        #"2021-01-01_21h00/PAAROME_1S100_ECH1_SOL.grib",
-        #"2021-01-01_22h00/PAAROME_1S100_ECH1_SOL.grib",
+        # "2021-01-01_19h00/PAAROME_1S100_ECH1_SOL.grib",
+        # "2021-01-01_20h00/PAAROME_1S100_ECH1_SOL.grib",
+        # "2021-01-01_21h00/PAAROME_1S100_ECH1_SOL.grib",
+        # "2021-01-01_22h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-01_23h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-02_00h00/PAAROME_1S100_ECH1_SOL.grib",
         "2021-01-02_01h00/PAAROME_1S100_ECH1_SOL.grib",

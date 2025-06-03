@@ -568,7 +568,7 @@ class Accumulator:
 
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
-        print('kwargs accum', kwargs)
+        print("kwargs accum", kwargs)
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
 
