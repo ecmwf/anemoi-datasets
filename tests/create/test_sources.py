@@ -189,6 +189,7 @@ def test_accumulate_grib_index() -> None:
         print(f"Caught {e_info}")
         created = create_dataset(config=config_grib_index, output=None)
 
+
 @pytest.mark.skipif(
     sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
 )

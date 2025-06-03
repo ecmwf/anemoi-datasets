@@ -313,10 +313,10 @@ class DefaultPeriods(Periods):
         start_base_delta = int((start - base).total_seconds() // 3600)
         end_start_delta = int((end - start).total_seconds() // 3600)
         return {
-            base: [[i, i + self.data_accumulation_period] for i in range(
-                start_base_delta, 
-                start_base_delta + end_start_delta,
-                self.data_accumulation_period)],
+            base: [
+                [i, i + self.data_accumulation_period]
+                for i in range(start_base_delta, start_base_delta + end_start_delta, self.data_accumulation_period)
+            ],
         }
 
     def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
@@ -362,13 +362,7 @@ class DefaultPeriods(Periods):
         ), "DefaultPeriods needs a base_datetime function, but base_datetime is None"
 
         lst = []
-        for wanted in [
-            [i, i + self.data_accumulation_period] for i in range(
-            0,
-            hours,
-            self.data_accumulation_period
-            )
-            ]:
+        for wanted in [[i, i + self.data_accumulation_period] for i in range(0, hours, self.data_accumulation_period)]:
 
             start = self.valid_date - datetime.timedelta(hours=wanted[1])
             end = self.valid_date - datetime.timedelta(hours=wanted[0])
