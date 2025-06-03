@@ -289,6 +289,11 @@ class DefaultPeriods(Periods):
             base = int(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
 
+        if "data_accumulation" in kwargs.keys():
+            self.data_accumulation_period = int(kwargs.pop("data_accumulation_period"))
+        else:
+            self.data_accumulation_period = 1
+
         super().__init__(valid_date, accumulation_period, **kwargs)
 
     def available_steps(
@@ -308,7 +313,10 @@ class DefaultPeriods(Periods):
         start_base_delta = int((start - base).total_seconds() // 3600)
         end_start_delta = int((end - start).total_seconds() // 3600)
         return {
-            base: [[i, i + 1] for i in range(start_base_delta, start_base_delta + end_start_delta, 1)],
+            base: [[i, i + self.data_accumulation_period] for i in range(
+                start_base_delta, 
+                start_base_delta + end_start_delta,
+                self.data_accumulation_period)],
         }
 
     def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
@@ -354,13 +362,19 @@ class DefaultPeriods(Periods):
         ), "DefaultPeriods needs a base_datetime function, but base_datetime is None"
 
         lst = []
-        for wanted in [[i, i + 1] for i in range(0, hours, 1)]:
+        for wanted in [
+            [i, i + self.data_accumulation_period] for i in range(
+            0,
+            hours,
+            self.data_accumulation_period
+            )
+            ]:
 
             start = self.valid_date - datetime.timedelta(hours=wanted[1])
             end = self.valid_date - datetime.timedelta(hours=wanted[0])
 
-            if not end - start == datetime.timedelta(hours=1):
-                raise NotImplementedError("Only 1 hour period is supported")
+            if not end - start == datetime.timedelta(hours=self.data_accumulation_period):
+                raise NotImplementedError(f"end and start must be {self.data_accumulation_period} hours apart")
 
             found = self.search_periods(self.base_datetime(start), start, end)
             if not found:
