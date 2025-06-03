@@ -289,7 +289,7 @@ class DefaultPeriods(Periods):
             base = int(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
 
-        if "data_accumulation" in kwargs.keys():
+        if "data_accumulation_period" in kwargs.keys():
             self.data_accumulation_period = int(kwargs.pop("data_accumulation_period"))
         else:
             self.data_accumulation_period = 1
@@ -568,6 +568,8 @@ class Accumulator:
 
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
+        print('kwargs accum', kwargs)
+
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
 
     @property
@@ -658,8 +660,6 @@ def _compute_accumulations(
     action: Any,
     request: Dict[str, Any],
     user_accumulation_period: datetime.timedelta,
-    # data_accumulation_period: Optional[int] = None,
-    # patch: Any = _identity,
 ) -> Any:
 
     request, param, number = _prep_request(request)
