@@ -357,6 +357,8 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     from .stores import zarr_lookup
 
     if isinstance(a, str) and len(a.split(".")[-1]) in [1, 2, 3]:
+        # This will do nothing if there is no "metadata.json" file
+        # .zarr datasets do not have "metadata.json"
 
         metadata_path = os.path.join(a, "metadata.json")
         if os.path.exists(metadata_path):
