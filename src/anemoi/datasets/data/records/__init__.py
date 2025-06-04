@@ -40,8 +40,6 @@ else:
 
 
 def open_records_dataset(dataset, **kwargs):
-    if not dataset.endswith(".vz"):
-        raise ValueError("dataset must be a .vz file")
     return RecordsDataset(dataset, **kwargs)
 
 
@@ -143,7 +141,9 @@ class BaseRecordsDataset:
         if window is not None:
             return Rewindowed(self, window)._subset(**kwargs)
 
-        if kwargs:
+        for k in kwargs:
+            if k in ["backend"]:
+                continue
             raise ValueError(f"Invalid kwargs {kwargs}, must be 'start', 'end', 'frequency' or 'select'")
 
         return self
