@@ -7,12 +7,13 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 import numpy as np
+import pytest
 
 from anemoi.datasets.data.indexing import length_to_slices
 
 
+@pytest.mark.unit
 def test_length_to_slices() -> None:
     """Test the length_to_slices function with various inputs."""
     lengths = [5, 7, 11, 13]

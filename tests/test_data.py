@@ -562,6 +562,7 @@ def simple_row(date: datetime.datetime, vars: str) -> np.ndarray:
     return make_row(*values)
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_simple() -> None:
     """Test a simple dataset."""
@@ -580,6 +581,7 @@ def test_simple() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_concat() -> None:
     """Test concatenating datasets."""
@@ -601,6 +603,7 @@ def test_concat() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_join_1() -> None:
     """Test joining datasets (case 1)."""
@@ -620,6 +623,7 @@ def test_join_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_join_2() -> None:
     """Test joining datasets (case 2)."""
@@ -648,6 +652,7 @@ def test_join_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_join_3() -> None:
     """Test joining datasets (case 3)."""
@@ -674,6 +679,7 @@ def test_join_3() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_padding_1() -> None:
     """Test subsetting a dataset (case 2)."""
@@ -693,6 +699,7 @@ def test_padding_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_1() -> None:
     """Test subsetting a dataset (case 1)."""
@@ -711,6 +718,7 @@ def test_subset_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_2() -> None:
     """Test subsetting a dataset (case 2)."""
@@ -729,6 +737,7 @@ def test_subset_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_3() -> None:
     """Test subsetting a dataset (case 3)."""
@@ -747,6 +756,7 @@ def test_subset_3() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_4() -> None:
     """Test subsetting a dataset (case 4)."""
@@ -765,6 +775,7 @@ def test_subset_4() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_5() -> None:
     """Test subsetting a dataset (case 5)."""
@@ -783,6 +794,7 @@ def test_subset_5() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_6() -> None:
     """Test subsetting a dataset (case 6)."""
@@ -801,6 +813,7 @@ def test_subset_6() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_7() -> None:
     """Test subsetting a dataset (case 7)."""
@@ -819,6 +832,7 @@ def test_subset_7() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_subset_8() -> None:
     """Test subsetting a dataset (case 8)."""
@@ -841,6 +855,7 @@ def test_subset_8() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_select_1() -> None:
     """Test selecting variables from a dataset (case 1)."""
@@ -859,6 +874,7 @@ def test_select_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_select_2() -> None:
     """Test selecting variables from a dataset (case 2)."""
@@ -877,6 +893,7 @@ def test_select_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_select_3() -> None:
     """Test selecting variables from a dataset (case 3)."""
@@ -895,6 +912,7 @@ def test_select_3() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_rename() -> None:
     """Test renaming variables in a dataset."""
@@ -915,6 +933,7 @@ def test_rename() -> None:
     test.same_stats(test.ds, open_dataset("test-2021-2021-6h-o96-abcd"), "xbyd", "abcd")
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_drop() -> None:
     """Test dropping variables from a dataset."""
@@ -933,6 +952,7 @@ def test_drop() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_reorder_1() -> None:
     """Test reordering variables in a dataset (case 1)."""
@@ -951,6 +971,7 @@ def test_reorder_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_reorder_2() -> None:
     """Test reordering variables in a dataset (case 2)."""
@@ -969,6 +990,7 @@ def test_reorder_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_constructor_1() -> None:
     """Test dataset constructor (case 1)."""
@@ -991,6 +1013,7 @@ def test_constructor_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_constructor_2() -> None:
     """Test dataset constructor (case 2)."""
@@ -1014,6 +1037,7 @@ def test_constructor_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_constructor_3() -> None:
     """Test dataset constructor (case 3)."""
@@ -1039,6 +1063,7 @@ def test_constructor_3() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_constructor_4() -> None:
     """Test dataset constructor (case 4)."""
@@ -1063,6 +1088,7 @@ def test_constructor_4() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_constructor_5() -> None:
     """Test dataset constructor (case 5)."""
@@ -1095,6 +1121,7 @@ def test_constructor_5() -> None:
     test.same_stats(test.ds, open_dataset("test-2021-2021-6h-o96-abcd-2"), "abzt", "abcd")
 
 
+@pytest.mark.unit
 @mockup_open_zarr
 def test_dates() -> None:
     """Test date handling functions."""
@@ -1119,6 +1146,7 @@ def test_dates() -> None:
     assert as_last_date("2021-01-01", dates) == np.datetime64("2021-01-01T23:59:59")
 
 
+@pytest.mark.unit
 @mockup_open_zarr
 def test_dates_using_list() -> None:
     """Test date handling functions using a list of dates."""
@@ -1132,6 +1160,7 @@ def test_dates_using_list() -> None:
     assert as_last_date("2021", dates) == np.datetime64("2021-12-31T06:00:00")
 
 
+@pytest.mark.unit
 @mockup_open_zarr
 def test_dates_using_list_2() -> None:
     """Test date handling functions using a list of dates (case 2)."""
@@ -1178,6 +1207,7 @@ def test_dates_using_list_2() -> None:
     assert dates[-1] == as_last_date("100%", dates)
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_slice_1() -> None:
     """Test slicing a dataset (case 1)."""
@@ -1196,6 +1226,7 @@ def test_slice_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_slice_2() -> None:
     """Test slicing a dataset (case 2)."""
@@ -1214,6 +1245,7 @@ def test_slice_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_slice_3() -> None:
     """Test slicing a dataset (case 3)."""
@@ -1234,6 +1266,7 @@ def test_slice_3() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_slice_4() -> None:
     """Test slicing a dataset (case 4)."""
@@ -1252,6 +1285,7 @@ def test_slice_4() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_slice_5() -> None:
     """Test slicing a dataset (case 5)."""
@@ -1273,6 +1307,7 @@ def test_slice_5() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_ensemble_1() -> None:
     """Test ensemble datasets (case 1)."""
@@ -1302,6 +1337,7 @@ def test_ensemble_1() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_ensemble_2() -> None:
     """Test ensemble datasets (case 2)."""
@@ -1332,6 +1368,7 @@ def test_ensemble_2() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_ensemble_3() -> None:
     """Test ensemble datasets (case 3)."""
@@ -1362,6 +1399,7 @@ def test_ensemble_3() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_grids() -> None:
     """Test datasets with different grids."""
@@ -1409,6 +1447,7 @@ def test_grids() -> None:
     assert (test.ds.latitudes == np.concatenate([ds1.latitudes, ds2.latitudes])).all()
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_statistics() -> None:
     """Test datasets with statistics."""
@@ -1430,6 +1469,7 @@ def test_statistics() -> None:
     )
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_cropping() -> None:
     """Test cropping a dataset."""
@@ -1440,6 +1480,7 @@ def test_cropping() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, 8)
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_invalid_trim_edge() -> None:
     """Test that exception raised when attempting to trim a 1D dataset"""
