@@ -39,7 +39,7 @@ class Backend:
 
 
 class Npz1Backend(Backend):
-    number_of_files_per_subdirectory = 10
+    number_of_files_per_subdirectory = 100
 
     def read(self, i, **kwargs):
         d = str(int(i / self.number_of_files_per_subdirectory))
@@ -64,7 +64,7 @@ class Npz1Backend(Backend):
 
 class Npz2Backend(Backend):
     def read(self, i, **kwargs):
-        path = os.path.join(self.path, "data_", str(int(i / 100)), f"{i}_.npz")
+        path = os.path.join(self.path, "data_", str(int(i / 10)), f"{i}_.npz")
         with open(path, "rb") as f:
             return dict(np.load(f))
 
@@ -176,7 +176,7 @@ class Npz1WriteBackend(WriteBackend):
 
 
 class Nc1WriteBackend(WriteBackend):
-    number_of_files_per_subdirectory = 10
+    number_of_files_per_subdirectory = 100
 
     def write(self, i, data, **kwargs):
         self._check_data(data)
@@ -224,7 +224,7 @@ class Nc1WriteBackend(WriteBackend):
 class Npz2WriteBackend(WriteBackend):
     def write(self, i, data, **kwargs):
         self._check_data(data)
-        path = os.path.join(self.path, "data_", str(int(i / 100)))
+        path = os.path.join(self.path, "data_", str(int(i / 10)))
         os.makedirs(path, exist_ok=True)
         out_path = os.path.join(path, f"{i}_.npz")
         np.savez(out_path, **data)
