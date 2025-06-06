@@ -25,7 +25,7 @@ def check_numpy(x, y):
 
 
 def _test(ds, nb_dates=None):
-    grp = "metop_a_ascat"
+    grp = "metop-a-ascat"
     index_i = 0
 
     if nb_dates is not None:
@@ -132,12 +132,56 @@ def test_open_with_subset_dates():
         "../../data/vz/obs-2018-11.vz",
         end="2018-11-30",
         select=[
-            "metop_a_ascat.*",
-            "amsr2_h180.rawbt_4",
-            "amsr2_h180.rawbt_3",
+            "metop-a-ascat.*",
+            "amsr2-h180.rawbt_4",
+            "amsr2-h180.rawbt_3",
         ],
     )
     _test(ds, nb_dates=8)
+
+
+@pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
+def test_open_with_window():
+    dates = dict(end="2018-11-30")
+    ds = open_dataset("../../data/vz/obs-2018-11.vz", window="(-6h, 0h]", **dates)
+    _test(ds, nb_dates=8)
+
+    ds = open_dataset("../../data/vz/obs-2018-11.vz", window="(-1h, 0)", **dates)
+    _test(ds, nb_dates=8)
+
+
+def test_open_bad_window():
+    subset = dict(end="2018-11-30")
+    with pytest.raises(ValueError, match="No dates left after rewindowing"):
+        open_dataset("../../data/vz/obs-2018-11.vz", window="(-48h, +48h)", **subset)
+
+
+@pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
+@pytest.mark.parametrize(
+    "window, missing_dates",
+    [
+        ("(-12h, 0)", -1),  # first window is incomplete
+        ("[-12h, 0)", -2),  # first two windows are incomplete
+        ("(-3h, +3h)", -1),  # last date is incomplete
+        ("[-6h, 0h)", -1),  # incomplete due to rounding
+        ("(-6h, 0h)", 0),
+        ("(-1h, 0h]", 0),
+        ("(-1h, 0)", 0),
+        ("(-6h, +6h)", -1),
+        ("(-6h, +5h)", -1),
+        ("(-12h, +12h)", -3),
+        ("(-1h, +15h]", -3),
+    ],
+)
+def test_open_with_window_parametrized(window, missing_dates):
+    subset = dict(end="2018-11-30")
+
+    ds = open_dataset("../../data/vz/obs-2018-11.vz", **subset)
+    assert len(ds) == 8
+    nb_dates = len(ds) + missing_dates
+
+    ds = open_dataset("../../data/vz/obs-2018-11.vz", window=window, **subset)
+    _test(ds, nb_dates=nb_dates)
 
 
 @pytest.mark.skipif(not os.path.exists("../../data/vz/obs-2018-11.vz"), reason="File not found")
@@ -145,9 +189,9 @@ def test_open_with_subset_select():
     ds = open_dataset(
         "../../data/vz/obs-2018-11.vz",
         select=[
-            "amsr2_h180.rawbt_4",
-            "amsr2_h180.rawbt_3",
-            "metop_a_ascat.*",
+            "amsr2-h180.rawbt_4",
+            "amsr2-h180.rawbt_3",
+            "metop-a-ascat.*",
         ],
     )
     _test(ds)
