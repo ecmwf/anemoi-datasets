@@ -39,7 +39,7 @@ class Backend:
 
 
 class Npz1Backend(Backend):
-    number_of_files_per_subdirectory = 100
+    number_of_files_per_subdirectory = 10
 
     def read(self, i, **kwargs):
         d = str(int(i / self.number_of_files_per_subdirectory))
