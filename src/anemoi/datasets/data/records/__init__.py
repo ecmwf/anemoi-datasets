@@ -305,6 +305,7 @@ class WindowsSpec:
         return f"{first}{_frequency_to_string(self.start)},{_frequency_to_string(self.end)}{last}"
 
     def compute_mask(self, timedeltas):
+        assert timedeltas.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {timedeltas.dtype}"
         if self.include_start:
             lower_mask = timedeltas >= self._start_np
         else:
@@ -425,6 +426,12 @@ class Rewindowed(RecordsForward):
         out = {}
         for group in self.groups:
             timedeltas = too_much_data[f"timedeltas:{group}"]
+            if timedeltas.dtype != "timedelta64[s]":
+                if len(timedeltas) != 0:
+                    raise ValueError(f"Wrong type for {group}")
+                else:
+                    LOG.warning(f"TODO: Fixing {group} on the fly")
+                    timedeltas = np.ones_like(timedeltas, dtype="timedelta64[s]") * 0
             mask = self._window.compute_mask(timedeltas)
 
             out[f"data:{group}"] = too_much_data[f"data:{group}"][..., mask]
