@@ -108,7 +108,7 @@ class BaseRecordsDataset:
 
     @property
     def groups(self):
-        return tuple(self.keys())
+        raise NotImplementedError("Must be implemented in subclass")
 
     def _subset(self, **kwargs):
         start = kwargs.pop("start", None)
@@ -179,8 +179,9 @@ class RecordsForward(BaseRecordsDataset):
     def variables(self):
         return self.forward.variables
 
-    def keys(self):
-        return self.forward.keys()
+    @property
+    def groups(self):
+        return self.forward.groups
 
     @property
     def dates(self):
@@ -206,6 +207,54 @@ class RecordsForward(BaseRecordsDataset):
         return len(self.dates)
 
 
+class FieldsRecords(RecordsForward):
+    """A wrapper around a FieldsDataset to provide a consistent interface for records datasets."""
+
+    def __init__(self, fields_dataset, name):
+        self.forward = fields_dataset
+        self._name = name
+        self._groups = [name]
+
+    def _nest_in_dict(self, obj):
+        """Helper to nest the object in a dict with the name as key."""
+        return {self._name: obj}
+
+    @property
+    def groups(self):
+        return self._groups
+
+    @property
+    def statistics(self):
+        return self._nest_in_dict(self.forward.statistics)
+
+    @property
+    def variables(self):
+        return self._nest_in_dict(self.forward.variables)
+
+    @property
+    def dates(self):
+        return self.forward.dates
+
+    @property
+    def name_to_index(self):
+        return self._nest_in_dict(self.forward.name_to_index)
+
+    @property
+    def frequency(self):
+        return self.forward.frequency
+
+    @property
+    def _window(self):
+        return self.forward._window
+
+    @property
+    def shapes(self):
+        return self._nest_in_dict(self.forward.shape)
+
+    def __len__(self):
+        return len(self.forward.dates)
+
+
 class Rename(RecordsForward):
     def __init__(self, dataset, rename):
         self.forward = dataset
@@ -228,8 +277,9 @@ class Rename(RecordsForward):
     def name_to_index(self):
         return {self.rename.get(k, k): v for k, v in self.forward.name_to_index.items()}
 
-    def keys(self):
-        return [self.rename.get(k, k) for k in self.forward.keys()]
+    @property
+    def groups(self):
+        return [self.rename.get(k, k) for k in self.forward.groups]
 
 
 class SetGroup(Rename):
@@ -315,6 +365,23 @@ def window_from_str(txt):
     )
 
 
+class AbsoluteWindow:
+    def __init__(self, start, end, include_start=True, include_end=True):
+        assert isinstance(start, datetime.datetime), f"start must be a datetime.datetime, got {type(start)}"
+        assert isinstance(end, datetime.datetime), f"end must be a datetime.datetime, got {type(end)}"
+        assert isinstance(include_start, bool), f"include_start must be a bool, got {type(include_start)}"
+        assert isinstance(include_end, bool), f"include_end must be a bool, got {type(include_end)}"
+        if start >= end:
+            raise ValueError(f"start {start} must be less than end {end}")
+        self.start = start
+        self.end = end
+        self.include_start = include_start
+        self.include_end = include_end
+
+    def __repr__(self):
+        return f"{'[' if self.include_start else '('}{self.start.isoformat()},{self.end.isoformat()}{']' if self.include_end else ')'}"
+
+
 class WindowsSpec:
     def __init__(self, *, start, end, include_start=False, include_end=True):
         assert isinstance(start, (str, datetime.timedelta)), f"start must be a str or timedelta, got {type(start)}"
@@ -332,6 +399,13 @@ class WindowsSpec:
 
         self._start_np = _to_numpy_timedelta(start)
         self._end_np = _to_numpy_timedelta(end)
+
+    def to_absolute_window(self, date):
+        """Convert the window to an absolute window based on a date."""
+        assert isinstance(date, datetime.datetime), f"date must be a datetime.datetime, got {type(date)}"
+        start = date + self.start
+        end = date + self.end
+        return AbsoluteWindow(start=start, end=end, include_start=self.include_start, include_end=self.include_end)
 
     def __repr__(self):
         first = "[" if self.include_start else "("
@@ -534,8 +608,9 @@ class Select(RecordsForward):
     def match_variable(self, *args, **kwargs):
         return match_variable(self._select, *args, **kwargs)
 
-    def keys(self):
-        return self._indices.keys()
+    @property
+    def groups(self):
+        return list(self._indices.keys())
 
     def _load_data(self, i):
         forward = self.dataset._load_data(i)
@@ -592,9 +667,13 @@ class RecordsDataset(BaseRecordsDataset):
             print("Warning: ignoring additional kwargs", kwargs)
         self.path = path
         self.backend = backend_factory(backend, path, **kwargs)
-        self.keys = self.metadata["sources"].keys
-        for k in self.keys():
+        self._groups = list(self.metadata["sources"].keys())
+        for k in self.groups:
             assert k == self.normalise_key(k), k
+
+    @property
+    def groups(self):
+        return self._groups
 
     @classmethod
     def normalise_key(cls, k):
@@ -628,7 +707,7 @@ class RecordsDataset(BaseRecordsDataset):
         return self.metadata["shapes"]
 
     def items(self, *args, **kwargs):
-        return {k: Tabular(self, k) for k in self.keys()}.items(*args, **kwargs)
+        return {k: Tabular(self, k) for k in self.groups}.items(*args, **kwargs)
 
     @cached_property
     def statistics(self):
@@ -673,13 +752,13 @@ class RecordsDataset(BaseRecordsDataset):
                 assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
 
 
-class Record(dict):
+class Record:
     def __init__(self, dataset, n):
         self.dataset = dataset
         self.n = n
 
     def __repr__(self):
-        d = {group: "<not-loaded>" for group in self.dataset.keys()}
+        d = {group: "<not-loaded>" for group in self.dataset.groups}
         return str(d)
 
     def items(self):
@@ -696,15 +775,16 @@ class Record(dict):
             assert len(k.split(":")) == 2, f"Invalid key {k}"
         return payload
 
-    def keys(self):
-        return self.dataset.keys()
+    @cached_property
+    def groups(self):
+        return self.dataset.groups
 
     def __getitem__(self, group):
         return self._payload["data:" + group]
 
     def _get_aux(self, name):
         try:
-            return {k: self._payload[name + ":" + k] for k in self.keys()}
+            return {k: self._payload[name + ":" + k] for k in self.groups}
         except KeyError as e:
             e.add_note(f"Available keys are {self._payload.keys()}")
             raise
@@ -724,10 +804,6 @@ class Record(dict):
     @property
     def statistics(self):
         return self.dataset.statistics
-
-    @property
-    def groups(self):
-        return tuple(self.keys())
 
 
 class Tabular:

@@ -109,7 +109,7 @@ def _test(ds, nb_dates=None):
     _statistics = ds[index_i].statistics
     assert isinstance(_statistics, dict), type(_statistics)
     assert grp in _statistics, f"statistics does not contain {grp}"
-    assert _statistics.keys() == ds.keys(), (_statistics.keys(), ds.keys())
+    assert list(_statistics.keys()) == ds.groups, (_statistics.keys(), ds.groups)
     for group_name, stats in _statistics.items():
         assert "mean" in stats, f"statistics does not contain mean for {group_name}"
         for key, v in stats.items():

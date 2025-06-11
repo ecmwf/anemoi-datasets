@@ -8,9 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 import json
+import logging
 import os
 
 import numpy as np
+from cachetools import LRUCache
+
+LOG = logging.getLogger(__name__)
 
 
 def normalise_key(k):
@@ -39,13 +43,24 @@ class Backend:
 
 
 class Npz1Backend(Backend):
-    number_of_files_per_subdirectory = 10
+    number_of_files_per_subdirectory = 100
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._cache = None
 
     def read(self, i, **kwargs):
+        if self._cache is None:
+            self._cache = LRUCache(maxsize=5)
+        if i in self._cache:
+            return self._cache[i]
+
         d = str(int(i / self.number_of_files_per_subdirectory))
         path = os.path.join(self.path, "data", d, f"{i}.npz")
         with open(path, "rb") as f:
-            return dict(np.load(f))
+            data = dict(np.load(f))
+            self._cache[i] = data
+            return data
 
     def read_metadata(self):
         with open(os.path.join(self.path, "metadata.json"), "r") as f:
@@ -141,26 +156,60 @@ class WriteBackend(Backend):
             if k != normalise_key(k):
                 raise ValueError(f"{k} must be alphanumerical and '-' only.")
 
+    def _dataframes_to_record(self, i, data, variables, **kwargs):
+
+        assert isinstance(data, (dict)), type(data)
+        if not data:
+            LOG.warning(f"Empty data for index {i}.")
+            return data
+        first = data[list(data.keys())[0]]
+        import pandas as pd
+
+        if isinstance(first, pd.DataFrame):
+            data = {name: self._dataframe_to_dict(name, df, **kwargs) for name, df in data.items()}
+        else:
+            assert False
+
+        return data
+
+    def _dataframe_to_dict(self, name, df, **kwargs):
+        d = {}
+        d["timedeltas:" + name] = df["timedeltas"]
+        d["latitudes:" + name] = df["latitudes"]
+        d["longitudes:" + name] = df["longitudes"]
+        d["data:" + name] = df["data"]
+        d["metadata:" + name] = df["metadata"]
+        return d
+
 
 class Npz1WriteBackend(WriteBackend):
-    number_of_files_per_subdirectory = 10
+    number_of_files_per_subdirectory = 100
 
     def write(self, i, data, **kwargs):
         self._check_data(data)
         d = str(int(i / self.number_of_files_per_subdirectory))
-        path = os.path.join(self.path, "data", d)
-        os.makedirs(path, exist_ok=True)
-        out_path = os.path.join(path, f"{i}.npz")
-        np.savez(out_path, **data)
+        dir_path = os.path.join(self.path, "data", d)
+
+        out_path = os.path.join(dir_path, f"{i}.npz")
+        tmp_path = os.path.join(dir_path, f"{i}.tmp.npz")
+
+        os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+        np.savez(tmp_path, **data)
+        os.rename(tmp_path, out_path)
 
     def write_metadata(self, metadata):
         from anemoi.datasets.create import json_tidy
 
         os.makedirs(self.path, exist_ok=True)
-        with open(os.path.join(self.path, "metadata.json"), "w") as f:
+
+        path = os.path.join(self.path, "metadata.json")
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w") as f:
             json.dump(metadata, f, indent=2, default=json_tidy)
+        os.rename(tmp_path, path)
 
     def write_statistics(self, statistics):
+        os.makedirs(self.path, exist_ok=True)
         flatten = {}
         for name, d in statistics.items():
             assert isinstance(d, dict), f"Statistics for {name} must be a dict, got {type(d)}"
@@ -200,6 +249,7 @@ class Nc1WriteBackend(WriteBackend):
             json.dump(metadata, f, indent=2, default=json_tidy)
 
     def write_statistics(self, statistics):
+        os.makedirs(self.path, exist_ok=True)
         flatten = {}
         for name, d in statistics.items():
             assert isinstance(d, dict), f"Statistics for {name} must be a dict, got {type(d)}"
