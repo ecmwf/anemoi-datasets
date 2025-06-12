@@ -2,7 +2,7 @@
  netcdf
 ########
 
-In the examples below we explain how to create an anemoi dataset from
+In the examples below, we explain how to create an anemoi dataset from
 one or more netCDF files.
 
 .. literalinclude:: yaml/netcdf.yaml
@@ -24,3 +24,5 @@ files, using Unix’ shell `wildcards
    information, but in some cases it is not possible. If you encounter
    this or similar issues, please open an issue in the anemoi-datasets
    repository.
+
+See :ref:`create-cf-data` for more information.

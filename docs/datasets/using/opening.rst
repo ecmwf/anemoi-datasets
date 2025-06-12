@@ -13,7 +13,7 @@ function:
 
    ds = open_dataset(dataset, option1=value1, option2=...)
 
-In that example, `dataset` can be:
+In this example, `dataset` can be:
 
 -  a local path to a dataset on disk:
 

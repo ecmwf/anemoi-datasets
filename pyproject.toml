@@ -49,9 +49,10 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.4",
-  "anemoi-utils[provenance]>=0.4.16",
+  "anemoi-transform>=0.1.10",
+  "anemoi-utils[provenance]>=0.4.21",
   "cfunits",
+  "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pyyaml",
   "semantic-version",
@@ -60,11 +61,17 @@ dependencies = [
 ]
 
 optional-dependencies.all = [
-  "anemoi-datasets[create,remote,xarray]",
+  "anemoi-datasets[create,remote,xarray,comparelam]",
+]
+
+optional-dependencies.comparelam = [
+  "prettytable",
+  "termcolor",
 ]
 
 optional-dependencies.create = [
-  "earthkit-data[mars]>=0.12.4",
+  "cachetools",
+  "earthkit-data[mars]>=0.14",
   "earthkit-geo>=0.3",
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
@@ -77,6 +84,7 @@ optional-dependencies.dev = [
 ]
 
 optional-dependencies.docs = [
+  "anemoi-datasets[all]",
   "nbsphinx",
   "pandoc",
   "sphinx",
@@ -101,14 +109,15 @@ optional-dependencies.xarray = [
   "pandas",
   "planetary-computer",
   "pystac-client",
+  "s3fs",
 ]
+
+urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
 
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
 urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
 urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
-# Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
-
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools.package-data]

@@ -33,7 +33,7 @@ class TransformFilter(Filter):
         from anemoi.transform.filters import create_filter
 
         self.name = name
-        self.transform_filter = create_filter(self, config)
+        self.transform_filter = create_filter(context, config)
 
     def execute(self, input: ekd.FieldList) -> ekd.FieldList:
         """Execute the transformation filter.

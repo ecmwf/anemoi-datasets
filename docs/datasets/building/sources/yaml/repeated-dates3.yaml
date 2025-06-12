@@ -1,0 +1,8 @@
+repeated-dates:
+  mode: climatology
+  year: 2019
+  day: 15
+  source:
+    grib:
+      path: some/path/to/data.grib
+      param: [ some_param ]

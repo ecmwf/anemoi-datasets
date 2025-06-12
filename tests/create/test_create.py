@@ -10,29 +10,29 @@
 import glob
 import hashlib
 import json
+import logging
 import os
+import sys
 from functools import wraps
 from unittest.mock import patch
 
 import numpy as np
 import pytest
-import requests
+from anemoi.utils.testing import get_test_archive
+from anemoi.utils.testing import get_test_data
+from anemoi.utils.testing import skip_if_offline
 from earthkit.data import from_source as original_from_source
-from multiurl import download
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.testing import create_dataset
 from anemoi.datasets.data.stores import open_zarr
 
-TEST_DATA_ROOT = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/anemoi-datasets/create"
-
-UPLOAD_EXE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../../tools/upload-sample-dataset.py"))
-
-
 HERE = os.path.dirname(__file__)
 # find_yamls
 NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
 SKIP = ["recentre"]
+SKIP += ["accumulation"]  # test not in s3 yet
+SKIP += ["regrid"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
@@ -104,7 +104,9 @@ class LoadSource:
         print(f"Mockup: Saving to {upload_path} for {args}, {kwargs}")
         print()
         print("⚠️ To upload the test data, run this:")
-        print(f"python3 {UPLOAD_EXE} {upload_path} anemoi-datasets/create/{os.path.basename(path)} --overwrite")
+        path = os.path.relpath(upload_path, os.getcwd())
+        name = os.path.basename(upload_path).replace(".to_upload", "")
+        print(f"scp {path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/{name}")
         print()
         exit(1)
         raise ValueError("Test data is missing")
@@ -124,25 +126,15 @@ class LoadSource:
         object
             The loaded data source.
         """
-        filename = self.filename(args, kwargs)
-        dirname = "."
-        path = os.path.join(dirname, filename)
-        url = TEST_DATA_ROOT + "/" + filename
 
-        assert url.startswith("http:") or url.startswith("https:")
+        name = self.filename(args, kwargs)
 
-        if not os.path.exists(path):
-            print(f"Mockup: Loading url {path} for {args}, {kwargs}")
-            try:
-                download(url, path + ".tmp")
-                os.rename(path + ".tmp", path)
-            except requests.exceptions.HTTPError as e:
-                print(e)
-                if e.response.status_code == 404:
-                    self.get_data(args, kwargs, path)
-                raise
-
-        return original_from_source("file", path)
+        try:
+            return original_from_source("file", get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+        except RuntimeError:
+            raise  # If offline
+        except Exception:
+            self.get_data(args, kwargs, name)
 
     def __call__(self, name: str, *args: tuple, **kwargs: dict) -> object:
         """Call the appropriate method based on the data source name.
@@ -278,7 +270,9 @@ def compare_datasets(a: object, b: object) -> None:
 
             delta = a_ - b_
             max_delta = np.max(np.abs(delta))
-            assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta)
+            abs_error = np.abs(a_ - b_)
+            rel_error = np.abs(a_ - b_) / (np.abs(b_) + 1e-10)  # Avoid division by zero
+            assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta, np.max(abs_error), np.max(rel_error))
 
 
 def compare_statistics(ds1: object, ds2: object) -> None:
@@ -361,14 +355,13 @@ class Comparer:
 
         if errors:
             print()
-            print("⚠️ To update the test reference metadata, run this:")
-            print(
-                f"python3 {UPLOAD_EXE} {self.output_path}/.zattrs anemoi-datasets/create/{self.name}.zarr/.zattrs --overwrite"
-            )
-            print()
+
             print()
             print("⚠️ To update the reference data, run this:")
-            print(f"anemoi-datasets copy {self.output_path} {self.reference_path} --overwrite")
+            print("cd " + os.path.dirname(self.output_path))
+            base = os.path.basename(self.output_path)
+            print(f"tar zcf {base}.tgz {base}")
+            print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
             print()
             raise AssertionError("Comparison failed")
 
@@ -377,9 +370,7 @@ class Comparer:
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
-# it would be nice to use a @pytest.mark.slow and configure this globally
-# this could be done when refactoring the tests, and setting up canary/nightly builds
-@pytest.mark.skipif(not os.environ.get("SLOW_TESTS"), reason="No SLOW_TESTS env var")
+@skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
 def test_run(name: str) -> None:
@@ -401,20 +392,23 @@ def test_run(name: str) -> None:
 
     create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
 
-    # reference_path = os.path.join(HERE, name + "-reference.zarr")
-    s3_uri = TEST_DATA_ROOT + "/" + name + ".zarr"
-    # if not os.path.exists(reference_path):
-    #    from anemoi.utils.remote import transfer
-    #    transfer(s3_uri + '/', reference_path, overwrite=True)
+    directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
+    reference = os.path.join(directory, name + ".zarr")
 
-    Comparer(name, output_path=output, reference_path=s3_uri).compare()
-    # Comparer(name, output_path=output, reference_path=reference_path).compare()
+    Comparer(name, output_path=output, reference_path=reference).compare()
 
 
 if __name__ == "__main__":
-    import argparse
+    logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("name", help="Name of the test case")
-    args = parser.parse_args()
-    test_run(args.name)
+    if len(sys.argv) > 1:
+        names = sys.argv[1:]
+    else:
+        names = NAMES
+
+    for name in names:
+        logging.info(f"Running test for {name}")
+        try:
+            test_run(name)
+        except AssertionError:
+            pass

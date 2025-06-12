@@ -166,7 +166,7 @@ class XarrayFieldList(FieldList):
                 coordinates.append(c)
 
             grid_coords: int = sum(1 for c in coordinates if c.is_grid)
-            assert grid_coords <= 2
+            # assert grid_coords <= 2, [c for c in coordinates if c.is_grid]
 
             if grid_coords < 2:
                 LOG.debug("Skipping %s (not 2D): %s", variable, [(c, c.is_grid, c.is_dim) for c in coordinates])

@@ -4,8 +4,8 @@
  Statistics
 ############
 
-When combining dataset, the statistics are not recomputed. Instead, the
-the statistics of first dataset encounter that are returned by the
+When combining datasets, the statistics are not recomputed. Instead, the
+statistics of the first dataset encountered are returned by the
 ``statistics`` property.
 
 You can change that behaviour by using the `statistics` option to select

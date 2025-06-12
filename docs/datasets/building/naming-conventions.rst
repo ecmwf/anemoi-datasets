@@ -5,17 +5,17 @@
 ############################
 
 A dataset name is a string used to identify a dataset. It is designed to
-be human readable and is *not* designed to be parsed and splitted into
+be human-readable and is *not* designed to be parsed and split into
 parts.
 
 To ensure consistency, a dataset name should follow the following rules:
 
    -  All lower case.
-   -  Only letters and numbers and dashes ``-`` are allowed.
-   -  No underscore ``_`` and no dot ``.`` and no upper case letter and
-      no other special character (``@``, ``#``, ``*`` etc.).
+   -  Only letters, numbers, and dashes ``-`` are allowed.
+   -  No underscores ``_``, no dots ``.``, no uppercase letters, and no
+      other special characters (``@``, ``#``, ``*``, etc.).
 
-Additionlly, a dataset name is built from different parts joined with
+Additionally, a dataset name is built from different parts joined with
 ``-`` as follows (each part can contain additional ``-``):
 
 .. code::
@@ -24,12 +24,12 @@ Additionlly, a dataset name is built from different parts joined with
 
 .. note::
 
-   This is the current naming conventions for datasets in the Anemoi
+   This is the current naming convention for datasets in the Anemoi
    registry. It will need to be updated and adapted as more datasets are
    added. The part **purpose** is especially difficult to define for
    some datasets and may be revisited.
 
-The tables below provides more details and some examples.
+The tables below provide more details and some examples.
 
 .. list-table:: Dataset naming conventions
    :widths: 20 80
@@ -41,7 +41,7 @@ The tables below provides more details and some examples.
    -  -  **purpose**
 
       -  Can be `aifs` because the data is used to train the AIFS model.
-         Is also sometime `metno` for data from the Norwegian
+         It is also sometimes `metno` for data from the Norwegian
          Meteorological Institute. This definition may need to be
          revisited.
 
@@ -69,7 +69,7 @@ The tables below provides more details and some examples.
    -  -  **end-year**
 
       -  2020 if the first validity time is in 2020. Notice that if the
-         dataset is from 18.04.2020 to 19.07.2020, the star-year and
+         dataset is from 18.04.2020 to 19.07.2020, the start-year and
          end-year are both 2020. For instance in
          aifs-od-an-oper-0001-mars-o96-2020-2020-6h-v5
 
@@ -88,7 +88,7 @@ The tables below provides more details and some examples.
 
       -  Experimental datasets can have additional text in the name.
          This extra string can contain additional `-`. It provides
-         additional information about the content of dataset.
+         additional information about the content of the dataset.
 
 .. list-table:: Examples
    :widths: 100

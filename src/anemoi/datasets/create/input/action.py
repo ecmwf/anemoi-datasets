@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
 from copy import deepcopy
 from typing import Any
@@ -17,6 +18,7 @@ from earthkit.data.core.order import build_remapping
 
 from ...dates.groups import GroupOfDates
 from .context import Context
+from .template import substitute
 
 LOG = logging.getLogger(__name__)
 
@@ -224,6 +226,7 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
     if not isinstance(config, dict):
         raise ValueError(f"Invalid input config {config}")
     if len(config) != 1:
+        print(json.dumps(config, indent=2, default=str))
         raise ValueError(f"Invalid input config. Expecting dict with only one key, got {list(config.keys())}")
 
     config = deepcopy(config)
@@ -238,17 +241,19 @@ def action_factory(config: Dict[str, Any], context: ActionContext, action_path: 
 
     cls = {
         "data_sources": DataSourcesAction,
+        "data-sources": DataSourcesAction,
         "concat": ConcatAction,
         "join": JoinAction,
         "pipe": PipeAction,
         "function": FunctionAction,
         "repeated_dates": RepeatedDatesAction,
+        "repeated-dates": RepeatedDatesAction,
     }.get(key)
 
     if cls is None:
         from ..sources import create_source
 
-        source = create_source(None, config)
+        source = create_source(None, substitute(context, config))
         return FunctionAction(context, action_path + [key], key, source)
 
     return cls(context, action_path + [key], *args, **kwargs)

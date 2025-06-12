@@ -1,0 +1,11 @@
+input:
+  anemoi-dataset:
+    join:
+    - dataset: dataset1
+      select: [ z_500, t_500, u_500, v_500 ]
+      frequency: 6h
+    - dataset: dataset2
+      select: [ msl, 2t, 10u, 10v ]
+      frequency: 6h
+    start: 2000
+    end: 2001

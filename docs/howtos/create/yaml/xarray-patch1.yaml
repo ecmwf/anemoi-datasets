@@ -1,0 +1,11 @@
+
+dates:
+  start: 2023-01-01T00:00:00
+  end: 2023-01-02T18:00:00
+  frequency: 6h
+
+input:
+  netcdf:
+    path: /path/to/input.nc
+    patch:
+      coordinates: [ nav_lat, nav_lon ]

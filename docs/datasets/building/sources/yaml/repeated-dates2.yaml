@@ -1,0 +1,6 @@
+repeated-dates:
+  mode: constant
+  source:
+    xarray-zarr:
+      url: dem.zarr
+      variable: dem

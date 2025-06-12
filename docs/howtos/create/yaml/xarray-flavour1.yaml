@@ -1,0 +1,11 @@
+rules:
+  latitude:
+    name: grid_yt
+  level:
+    name: pfull
+  longitude:
+    name: grid_xt
+  time:
+    name: time
+
+levtype: pl

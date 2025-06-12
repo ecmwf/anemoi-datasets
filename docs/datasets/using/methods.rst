@@ -3,16 +3,16 @@
 ########################
 
 For a complete list of methods and attributes available for the objects
-returned by ``open_dataset``, please see :ref:`data-autodoc`. Here, a
-sub-set of stable and commonly used methods and attributes are described
+returned by ``open_dataset``, please see :ref:`dataset-autodoc`. Here, a
+subset of stable and commonly used methods and attributes are described
 in more detail.
 
 .. warning::
 
    All methods and attributes will take into account any subsetting,
-   selecting or combining used to construct the final dataset with the
-   exception of ``statistics`` which will return the values of the first
-   dataset encountered. See :ref:`selecting-statistics` for more
+   selecting, or combining used to construct the final dataset, with the
+   exception of ``statistics``, which will return the values of the
+   first dataset encountered. See :ref:`selecting-statistics` for more
    details.
 
 *********
@@ -40,18 +40,25 @@ __getitem__(key)
       ``ds[:]``.
 
 metadata()
-   Return the dataset's metadata.
+   Returns the dataset's metadata.
 
 provenance()
-   Return the dataset's provenance information.
+   Returns the dataset's provenance information.
 
 source(index)
    For debugging. Given the index of a variable, this will return from
-   which Zarr store it will be loaded. This is useful to debug combining
-   datasets with :ref:`join`.
+   which Zarr store it will be loaded. This is useful for debugging
+   combining datasets with :ref:`join`.
 
 tree()
-   For debugging. Return the dataset's internal tree structure.
+   For debugging. Returns the dataset's internal tree structure.
+
+statistics_tendencies(delta):
+   `Statistics tendencies` are statistics of the difference between two
+   dates, typically over 1h, 3h, 6h, 12h and 24h, depending on the
+   underlying frequency of the dataset. The delta is given in hours, or
+   as a ``datetime.timedelta``. See :ref:`statistics-property` below for
+   the format of the returned information.
 
 ************
  Attributes
@@ -71,14 +78,16 @@ dates:
    The dataset's dates, as a NumPy vector of datetime64_ objects.
 
 frequency:
-   The dataset's frequency (i.e the delta between two consecutive dates)
-   in hours.
+   The dataset's frequency (i.e., the delta between two consecutive
+   dates) in hours.
 
 latitudes:
    The dataset's latitudes as a NumPy vector.
 
 longitudes:
    The dataset's longitudes as a NumPy vector.
+
+.. _statistics-property:
 
 statistics:
    The dataset's statistics. This is a dictionary with the following
@@ -100,7 +109,7 @@ statistics:
       .. code:: python
 
          values = ds[0]
-         normalized = (values - dataset.statistics["mean"]) / dataset.statistics["stdev"]
+         normalised = (values - dataset.statistics["mean"]) / dataset.statistics["stdev"]
 
    Use the ``name_to_index`` attribute to map variable names to indices.
 
@@ -122,8 +131,8 @@ missing:
    The set of indices of the missing dates.
 
 grids:
-   A tuple of number of grid points for each dataset that is combined
-   with the :ref:`grids` method.
+   A tuple of the number of grid points for each dataset that is
+   combined with the :ref:`grids` method.
 
 .. _datetime64: https://docs.scipy.org/doc/numpy/reference/arrays.datetime.html
 

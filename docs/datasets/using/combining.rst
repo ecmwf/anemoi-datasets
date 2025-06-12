@@ -5,9 +5,9 @@
 ####################
 
 You can create "virtual" datasets by combining two or more datasets. The
-combination will behave exactly as if you had a single dataset with all
-the methods behaving as expected. The package will make sure that the
-data is loaded lazily from the original datasets.
+combination will behave exactly as if you had a single dataset, with all
+the methods behaving as expected. The package will ensure that the data
+is loaded lazily from the original datasets.
 
 .. warning::
 
@@ -17,12 +17,13 @@ data is loaded lazily from the original datasets.
    is not part of the combination.
 
 When combining datasets, the package will check that the datasets are
-compatible, i.e. that they have the same resolution, the same variables,
-etc. The compatibility checks depend on the type of combination. You can
-adjust some of the attributes of the datasets to make them compatible,
-e.g. by changing their date range or frequency using :ref:`start`,
-:ref:`end`, :ref:`frequency`, etc. You can also ask the package to
-:ref:`automatically adjust <using-matching>` these attributes.
+compatible, i.e., that they have the same resolution, the same
+variables, etc. The compatibility checks depend on the type of
+combination. You can adjust some of the attributes of the datasets to
+make them compatible, e.g., by changing their date range or frequency
+using :ref:`start`, :ref:`end`, :ref:`frequency`, etc. You can also ask
+the package to :ref:`automatically adjust <using-matching>` these
+attributes.
 
 ***********
  automatic
@@ -31,10 +32,10 @@ e.g. by changing their date range or frequency using :ref:`start`,
 If you just provide a list of datasets, the package will automatically
 attempt to combine them:
 
--  If the datasets have the same variables and the same ensemble
-   dimension and the same grids, and if the dates once concatenated,
-   create a continuous range of dates with a constant frequency, the
-   package will combine using concat_.
+-  If the datasets have the same variables, the same ensemble dimension,
+   and the same grids, and if the dates, once concatenated, create a
+   continuous range of dates with a constant frequency, the package will
+   combine using concat_.
 
 -  If the datasets have the same dates, ensemble dimension and grids,
    the package will combine using join_.
@@ -73,8 +74,8 @@ concatenate datasets that have gaps between them, check the
 Please note that you can pass more than two datasets to the function.
 
    **NOTE:** When concatenating datasets, the statistics are not
-   recomputed; it is the statistics of first dataset that are returned
-   to the user. You can change this using the
+   recomputed; it is the statistics of the first dataset that are
+   returned to the user. You can change this using the
    :ref:`selecting-statistics` option.
 
 .. _join:
@@ -105,7 +106,7 @@ variables.
    :alt: Join
 
 If a variable is present in more than one file, the last occurrence of
-that variable will be used, and will be at the position of the first
+that variable will be used and will be at the position of the first
 occurrence of that name.
 
 .. image:: ../../_static//overlay.png
@@ -202,8 +203,8 @@ dataset over the cutout area. If you do not want to use this feature,
 you can set `min_distance_km=0`, or provide your own value.
 
 The plots below illustrate how the cutout differs if `min_distance_km`
-is not given (top) or if `min_distance_km` is is set to `0` (bottom).
-The difference can be seen at the boundary between the two grids:
+is not given (top) or if `min_distance_km` is set to `0` (bottom). The
+difference can be seen at the boundary between the two grids:
 
 .. image:: ../../_static//cutout-5.png
    :align: center
@@ -214,7 +215,7 @@ The difference can be seen at the boundary between the two grids:
    :alt: Cutout
 
 To debug the combination, you can pass `plot=True` to the `cutout`
-function (when running from a Notebook), of use `plot="prefix"` to save
+function (when running from a Notebook), or use `plot="prefix"` to save
 the plots to series of PNG files in the current directory.
 
 .. _complement:
@@ -224,8 +225,8 @@ the plots to series of PNG files in the current directory.
 ************
 
 That feature will interpolate the variables of `dataset2` that are not
-in `dataset1` to the grid of `dataset1` , add them to the list of
-variable of `dataset1` and return the result.
+in `dataset1` to the grid of `dataset1`, add them to the list of
+variables of `dataset1` and return the result.
 
 .. code:: python
 
@@ -258,7 +259,7 @@ dataset.
    )
 
 Another use case is to simply bring all non-overlapping variables of a
-dataset into an other:
+dataset into another:
 
 .. code:: python
 

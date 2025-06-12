@@ -1,0 +1,23 @@
+dates:
+  start: 2023-01-01T00:00:00
+  end: 2023-01-02T18:00:00
+  frequency: 6h
+
+flavour: &flavour
+  - - levtype: sfc
+    - levelist: null
+
+input:
+  join:
+  - grib:
+      path: /path/to/input.grib
+      flavour: *flavour
+      param: [ z, t, u, v ]
+      levelist: [ 1000, 850, 500 ]
+      levtype: pl
+
+  - grib:
+      path: /path/to/input2.grib
+      flavour: *flavour
+      param: [ 2t, msl ]
+      levtype: sfc

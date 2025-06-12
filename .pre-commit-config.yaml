@@ -39,15 +39,15 @@ repos:
     - -l 120
     - --force-single-line-imports
     - --profile black
+    - --project anemoi
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.9.9
+  rev: v0.11.12
   hooks:
   - id: ruff
     args:
     - --line-length=120
     - --fix
     - --exit-non-zero-on-fix
-    - --preview
     - --exclude=docs/**/*_.py
 - repo: https://github.com/sphinx-contrib/sphinx-lint
   rev: v1.0.0
@@ -65,11 +65,11 @@ repos:
   - id: docconvert
     args: ["numpy"]
 - repo: https://github.com/tox-dev/pyproject-fmt
-  rev: "v2.5.1"
+  rev: "v2.6.0"
   hooks:
   - id: pyproject-fmt
 -   repo: https://github.com/jshwi/docsig # Check docstrings against function sig
-    rev: v0.69.1
+    rev: v0.69.3
     hooks:
     -   id: docsig
         args:

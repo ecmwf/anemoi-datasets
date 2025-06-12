@@ -7,4 +7,4 @@ input:
   xarray-kerchunk:
     json: combined.json
     param: T
-    level: [1000, 50]
+    level: [ 1000, 50 ]

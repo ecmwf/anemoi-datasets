@@ -4,8 +4,8 @@
  Subsetting datasets
 #####################
 
-Subsetting is the action of filtering the dataset by it's first
-dimension (dates).
+Subsetting is the action of filtering the dataset by its first dimension
+(dates).
 
 .. _start:
 
