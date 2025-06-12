@@ -141,6 +141,14 @@ class BaseRecordsDataset:
         if window is not None:
             return Rewindowed(self, window)._subset(**kwargs)
 
+        set_group = kwargs.pop("set_group", None)
+        if set_group is not None:
+            return SetGroup(self, set_group)._subset(**kwargs)
+
+        rename = kwargs.pop("rename", None)
+        if rename is not None:
+            return Rename(self, rename)._subset(**kwargs)
+
         for k in kwargs:
             if k in ["backend"]:
                 continue
@@ -196,6 +204,40 @@ class RecordsForward(BaseRecordsDataset):
 
     def __len__(self):
         return len(self.dates)
+
+
+class Rename(RecordsForward):
+    def __init__(self, dataset, rename):
+        self.forward = dataset
+        # rename: {"current_group": "new_group"}
+        assert isinstance(rename, dict)
+        for k, v in rename.items():
+            assert isinstance(k, str), k
+            assert isinstance(v, str), v
+        self.rename = rename
+
+    @property
+    def statistics(self):
+        return {self.rename.get(k, k): v for k, v in self.forward.statistics.items()}
+    
+    @property
+    def variables(self):
+        return {self.rename.get(k, k): v for k, v in self.forward.variables.items()}
+    
+    @property
+    def name_to_index(self):
+        return {self.rename.get(k, k): v for k, v in self.forward.name_to_index.items()}
+    
+    def keys(self):
+        return [self.rename.get(k, k) for k in self.forward.keys()]
+
+
+class SetGroup(Rename):
+    def __init__(self, dataset, set_group):
+        if len(dataset.groups) != 1:
+            raise ValueError(f"{self.__class__.__name__} can only be used with datasets containing a single group.")
+
+        super.__init__(dataset, {dataset.groups[0]: set_group})
 
 
 def match_variable(lst, group, name):
