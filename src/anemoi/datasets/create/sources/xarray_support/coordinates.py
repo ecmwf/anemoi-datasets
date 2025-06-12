@@ -95,6 +95,7 @@ class Coordinate:
     is_member = False
     is_x = False
     is_y = False
+    is_point = False
 
     def __init__(self, variable: xr.DataArray) -> None:
         """Initialize the coordinate.
@@ -389,6 +390,11 @@ class EnsembleCoordinate(Coordinate):
             return int(value)
         return value
 
+class PointCoordinate(Coordinate):
+    """Coordinate class for point data."""
+
+    is_point = True
+    mars_names = ("point",)
 
 class LongitudeCoordinate(Coordinate):
     """Coordinate class for longitude."""

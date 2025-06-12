@@ -134,6 +134,10 @@ class CoordinateGuesser(ABC):
 
         d: Optional[Coordinate] = None
 
+        d = self._is_point(coordinate, attributes)
+        if d is not None:
+            return d
+
         d = self._is_longitude(coordinate, attributes)
         if d is not None:
             return d
@@ -390,6 +394,10 @@ class CoordinateGuesser(ABC):
         Optional[LongitudeCoordinate]
             The LongitudeCoordinate if matched, else None.
         """
+        pass
+
+    @abstractmethod
+    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
         pass
 
     @abstractmethod
