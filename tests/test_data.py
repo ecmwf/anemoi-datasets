@@ -1454,12 +1454,13 @@ def test_invalid_trim_edge() -> None:
 def test_fields_to_records() -> None:
     """Test joining datasets (case 2)."""
 
-    key = 'grp'
+    key = "grp"
     ds = open_dataset(dataset="test-2021-2021-6h-o96-abcd-1", set_group=key)
     unwrapped = open_dataset(dataset="test-2021-2021-6h-o96-abcd-2")
 
     assert ds.groups == [key]
-    assert ds.variables == {key:["a", "b", "c", "d"]}
+    assert ds.variables == {key: ["a", "b", "c", "d"]}
+
 
 if __name__ == "__main__":
     for name, obj in list(globals().items()):

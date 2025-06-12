@@ -514,7 +514,6 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
 
         return observations_factory(args, kwargs).mutate()
 
-
     if "xy" in kwargs:
         # Experimental feature, may be removed
         from .xy import xy_factory
@@ -597,6 +596,7 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
 
     if "set_group" in kwargs:
         from anemoi.datasets.data.records import FieldsRecords
+
         assert len(sets) == 1, sets
         set_group = kwargs.pop("set_group")
 
