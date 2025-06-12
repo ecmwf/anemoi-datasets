@@ -459,11 +459,12 @@ class AccumulationFromStart(Accumulation):
             A tuple representing the MARS date-time step.
         """
         assert user_date is None, user_date
-        assert not frequency, frequency
 
         steps = (step1 + add_step, step2 + add_step)
         if steps[0] == 0:
             steps = (steps[1],)
+
+        assert frequency == 0 or frequency == (step2 - step1), frequency
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
@@ -824,6 +825,11 @@ def _compute_accumulations(
     step1, step2 = user_accumulation_period
     assert step1 < step2, user_accumulation_period
 
+    if accumulations_reset_frequency is not None:
+        AccumulationClass = AccumulationFromLastReset
+    else:
+        AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
+
     if data_accumulation_period is None:
         data_accumulation_period = user_accumulation_period[1] - user_accumulation_period[0]
 
@@ -837,11 +843,6 @@ def _compute_accumulations(
             base_times = [0, 6, 12, 18]
 
     base_times = [t // 100 if t > 100 else t for t in base_times]
-
-    if accumulations_reset_frequency is not None:
-        AccumulationClass = AccumulationFromLastReset
-    else:
-        AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
 
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates=dates,
