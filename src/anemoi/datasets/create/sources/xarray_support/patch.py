@@ -60,10 +60,31 @@ def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
 
     return ds
 
+def patch_sort_coordinate(ds: xr.Dataset, sort_coordinate: List[str]) -> Any:
+    """Sort the coordinates of the dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    coordinates : List[str]
+        The coordinates to sort.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
+
+    for name in sort_coordinate:
+        ds = ds.sortby(name)
+    return ds
+
 
 PATCHES = {
     "attributes": patch_attributes,
     "coordinates": patch_coordinates,
+    "sort_coordinates": patch_sort_coordinate,
 }
 
 
