@@ -219,15 +219,15 @@ class Rename(RecordsForward):
     @property
     def statistics(self):
         return {self.rename.get(k, k): v for k, v in self.forward.statistics.items()}
-    
+
     @property
     def variables(self):
         return {self.rename.get(k, k): v for k, v in self.forward.variables.items()}
-    
+
     @property
     def name_to_index(self):
         return {self.rename.get(k, k): v for k, v in self.forward.name_to_index.items()}
-    
+
     def keys(self):
         return [self.rename.get(k, k) for k in self.forward.keys()]
 
