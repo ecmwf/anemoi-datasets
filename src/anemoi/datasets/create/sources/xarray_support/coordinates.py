@@ -390,11 +390,13 @@ class EnsembleCoordinate(Coordinate):
             return int(value)
         return value
 
+
 class PointCoordinate(Coordinate):
     """Coordinate class for point data."""
 
     is_point = True
     mars_names = ("point",)
+
 
 class LongitudeCoordinate(Coordinate):
     """Coordinate class for longitude."""

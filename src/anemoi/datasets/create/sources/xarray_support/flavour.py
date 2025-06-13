@@ -26,11 +26,11 @@ from .coordinates import EnsembleCoordinate
 from .coordinates import LatitudeCoordinate
 from .coordinates import LevelCoordinate
 from .coordinates import LongitudeCoordinate
+from .coordinates import PointCoordinate
 from .coordinates import ScalarCoordinate
 from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
 from .coordinates import UnsupportedCoordinate
-from .coordinates import PointCoordinate
 from .coordinates import XCoordinate
 from .coordinates import YCoordinate
 from .coordinates import is_scalar

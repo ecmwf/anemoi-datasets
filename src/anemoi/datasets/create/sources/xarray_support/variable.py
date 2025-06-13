@@ -82,8 +82,12 @@ class Variable:
 
         self.time = time
 
-        self.shape = tuple(len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid and not c.is_point)
-        self.names = {c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid and not c.is_point}
+        self.shape = tuple(
+            len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid and not c.is_point
+        )
+        self.names = {
+            c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid and not c.is_point
+        }
         self.by_name = {c.variable.name: c for c in coordinates}
 
         # We need that alias for the time dimension
