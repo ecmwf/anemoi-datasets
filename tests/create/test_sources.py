@@ -13,7 +13,6 @@ import sys
 
 import numpy as np
 import pytest
-from anemoi.utils.testing import get_test_data
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 from anemoi.utils.testing import skip_slow_tests
@@ -23,7 +22,7 @@ from anemoi.datasets.create.testing import create_dataset
 
 
 @skip_if_offline
-def test_grib() -> None:
+def test_grib(get_test_data: callable) -> None:
     """Test the creation of a dataset from GRIB files.
 
     This function tests the creation of a dataset using GRIB files from
@@ -57,7 +56,7 @@ def test_grib() -> None:
     sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
 )
 @skip_if_offline
-def test_grib_gridfile() -> None:
+def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
 
     This function tests the creation of a dataset using GRIB files from
@@ -104,7 +103,9 @@ def test_grib_gridfile() -> None:
         (7, (2, 13, 1, 2949120)),
     ),
 )
-def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tuple[int, int, int, int, int]) -> None:
+def test_grib_gridfile_with_refinement_level(
+    refinement_level_c: str, shape: tuple[int, int, int, int, int], get_test_data: callable
+) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
 
     This function tests the creation of a dataset using GRIB files from
@@ -167,7 +168,7 @@ def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tup
 
 
 @skip_if_offline
-def test_netcdf() -> None:
+def test_netcdf(get_test_data: callable) -> None:
     """Test for NetCDF files.
 
     This function tests the creation of a dataset from a NetCDF file.
@@ -190,7 +191,7 @@ def test_netcdf() -> None:
 
 
 @skip_missing_packages("fstd", "rpnpy.librmn")
-def test_eccs_fstd() -> None:
+def test_eccs_fstd(get_test_data: callable) -> None:
     """Test for 'fstd' files from ECCC."""
     # See https://github.com/neishm/fstd2nc
 
@@ -214,7 +215,7 @@ def test_eccs_fstd() -> None:
 @skip_slow_tests
 @skip_if_offline
 @skip_missing_packages("kerchunk", "s3fs")
-def test_kerchunk() -> None:
+def test_kerchunk(get_test_data: callable) -> None:
     """Test for Kerchunk JSON files.
 
     This function tests the creation of a dataset from a Kerchunk JSON file.
