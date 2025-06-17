@@ -8,6 +8,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.24](https://github.com/ecmwf/anemoi-datasets/compare/0.5.23...0.5.24) (2025-05-23)
+
+
+### Features
+
+* verify command ([#279](https://github.com/ecmwf/anemoi-datasets/issues/279)) ([aed36d2](https://github.com/ecmwf/anemoi-datasets/commit/aed36d2ea7a39ea1ae6bbd5f8d01ef0ce7523cde))
+
+
+### Bug Fixes
+
+* adapt to earthkit 0.14 (ignore_keys issue) ([#331](https://github.com/ecmwf/anemoi-datasets/issues/331)) ([fb3ab8d](https://github.com/ecmwf/anemoi-datasets/commit/fb3ab8d46b8e00c62d8d7cbb1d1afae0efea2054))
+
+## [0.5.23](https://github.com/ecmwf/anemoi-datasets/compare/0.5.22...0.5.23) (2025-05-07)
+
+
+### Features
+
+* support accumulations that resets regularly (e.g. every 24h) ([#314](https://github.com/ecmwf/anemoi-datasets/issues/314)) ([0cd772b](https://github.com/ecmwf/anemoi-datasets/commit/0cd772b168ea6a3eb2113a9b3de0ddd9e964a6de))
+
+## [0.5.22](https://github.com/ecmwf/anemoi-datasets/compare/0.5.21...0.5.22) (2025-05-05)
+
+
+### Features
+
+* add command line tool to check naming conventions ([#287](https://github.com/ecmwf/anemoi-datasets/issues/287)) ([38a81e2](https://github.com/ecmwf/anemoi-datasets/commit/38a81e2256e9eb043594698b1adb3bf5bd9a68ed))
+* copy datasets from http(s) sources ([#307](https://github.com/ecmwf/anemoi-datasets/issues/307)) ([cedd9db](https://github.com/ecmwf/anemoi-datasets/commit/cedd9dbfca0ee2add889d86a3f37990d508b2af3))
+* downloading zip files if needed ([#288](https://github.com/ecmwf/anemoi-datasets/issues/288)) ([3024099](https://github.com/ecmwf/anemoi-datasets/commit/30240999a380b6d9087e5203d356f6770361ffbb))
+* optionally search for zarr files at various location if not found ([#281](https://github.com/ecmwf/anemoi-datasets/issues/281)) ([8bd174c](https://github.com/ecmwf/anemoi-datasets/commit/8bd174ca4457ee57fc111df91e02f6b515d84c0c))
+* reset accumulations ([#300](https://github.com/ecmwf/anemoi-datasets/issues/300)) ([b12666a](https://github.com/ecmwf/anemoi-datasets/commit/b12666aab59af389b591d098e3a3b1ee9b9a3bcb))
+* work on check ([#311](https://github.com/ecmwf/anemoi-datasets/issues/311)) ([c6a8db9](https://github.com/ecmwf/anemoi-datasets/commit/c6a8db9ccecf821cfce216907c83a7f60dd21c0d))
+
+
+### Bug Fixes
+
+* bug in complement ([#296](https://github.com/ecmwf/anemoi-datasets/issues/296)) ([4e57f7c](https://github.com/ecmwf/anemoi-datasets/commit/4e57f7c4c1a8eaee3300065248963e1382819b32))
+* bugs affecting creation of datasets from xarray-zarr ([#299](https://github.com/ecmwf/anemoi-datasets/issues/299)) ([09fcb51](https://github.com/ecmwf/anemoi-datasets/commit/09fcb51e8d1934024441e60d1f01367c742feea8))
+* fix copy ([#289](https://github.com/ecmwf/anemoi-datasets/issues/289)) ([a79759f](https://github.com/ecmwf/anemoi-datasets/commit/a79759fb7ca0d019f03768b56cc7e807fa21f3d4))
+* Proper indent for parallel additions ([#303](https://github.com/ecmwf/anemoi-datasets/issues/303)) ([0643fb8](https://github.com/ecmwf/anemoi-datasets/commit/0643fb80b0b83b15c7a01f140788665dd0d2076a))
+
+
+### Documentation
+
+* update some docstrings ([#283](https://github.com/ecmwf/anemoi-datasets/issues/283)) ([d3fe801](https://github.com/ecmwf/anemoi-datasets/commit/d3fe801abac7da932d14f03a660e9469683f91a3))
+
+## [0.5.21](https://github.com/ecmwf/anemoi-datasets/compare/0.5.20...0.5.21) (2025-04-08)
+
+
+### Features
+
+* more tests ([#277](https://github.com/ecmwf/anemoi-datasets/issues/277)) ([0ea7d46](https://github.com/ecmwf/anemoi-datasets/commit/0ea7d46a61aaa4381f8eb75b2623033bd404da5b))
+
+
+### Bug Fixes
+
+* grib-index command default ([#275](https://github.com/ecmwf/anemoi-datasets/issues/275)) ([04a37d8](https://github.com/ecmwf/anemoi-datasets/commit/04a37d8a046dc6b314e9f2376c69f1824cbfa43d))
+* pin version of numcodecs ([#285](https://github.com/ecmwf/anemoi-datasets/issues/285)) ([d86f317](https://github.com/ecmwf/anemoi-datasets/commit/d86f317981a312438a19323d5d67e1b31f80cf23))
+* update version of transform ([#284](https://github.com/ecmwf/anemoi-datasets/issues/284)) ([e72cdde](https://github.com/ecmwf/anemoi-datasets/commit/e72cddedd8160a27a9e63e2581f4fcc1a91cd8b6))
+
+
+### Documentation
+
+* some cleanup ([#276](https://github.com/ecmwf/anemoi-datasets/issues/276)) ([496b82a](https://github.com/ecmwf/anemoi-datasets/commit/496b82a5e10119c1fd27a58a85d5964fcad3c7bb))
+* time interpolation example ([#274](https://github.com/ecmwf/anemoi-datasets/issues/274)) ([9d19bd6](https://github.com/ecmwf/anemoi-datasets/commit/9d19bd6bc3c8e0c25718a05d670357936ec99a8b))
+* update documentation ([#271](https://github.com/ecmwf/anemoi-datasets/issues/271)) ([85ea386](https://github.com/ecmwf/anemoi-datasets/commit/85ea38690e7e8fab4dbac5c5b4d10eafdabde766))
+
+## [0.5.20](https://github.com/ecmwf/anemoi-datasets/compare/0.5.19...0.5.20) (2025-03-31)
+
+
+### Features
+
+* interpolate nearest spatial ([#260](https://github.com/ecmwf/anemoi-datasets/issues/260)) ([e6c9af4](https://github.com/ecmwf/anemoi-datasets/commit/e6c9af48dca7292940a8b10f2804e9d456b6bccc))
+* new data sources ([#258](https://github.com/ecmwf/anemoi-datasets/issues/258)) ([708c816](https://github.com/ecmwf/anemoi-datasets/commit/708c816b80ae30781f42442e0e9d8d70fed2371c))
+* save opened anemoi_dataset ([#259](https://github.com/ecmwf/anemoi-datasets/issues/259)) ([4759dd9](https://github.com/ecmwf/anemoi-datasets/commit/4759dd9da67ece246e691eb6be4637ef6bc0b157))
+
+
+### Bug Fixes
+
+* Remove hardcoded indices and get pressure levels from keys directly ([#257](https://github.com/ecmwf/anemoi-datasets/issues/257)) ([777fbac](https://github.com/ecmwf/anemoi-datasets/commit/777fbac9fb09afd6e77ee13f8442ccbb3efb73f8))
+
+
+### Documentation
+
+* Add API Docs ([#255](https://github.com/ecmwf/anemoi-datasets/issues/255)) ([be13424](https://github.com/ecmwf/anemoi-datasets/commit/be1342400552f520b64f4f0fdb29d39ee51d81fe))
+
 ## [0.5.19](https://github.com/ecmwf/anemoi-datasets/compare/0.5.18...0.5.19) (2025-03-27)
 
 

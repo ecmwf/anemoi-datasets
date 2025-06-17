@@ -4,7 +4,7 @@
  Miscellaneous functions
 #########################
 
-The two functions below can be used modify temporarily the
+The two functions below can be used to temporarily modify the
 :ref:`configuration <configuration>` so that the packages can find named
 datasets at given locations.
 

@@ -2,7 +2,7 @@
  orog_to_z
 ###########
 
-The ``orog_to_z`` filter converts orography (in meters) to surface
+The ``orog_to_z`` filter converts orography (in metres) to surface
 geopotential height (m^2/s^2) using the equation:
 
 .. math::
@@ -10,7 +10,7 @@ geopotential height (m^2/s^2) using the equation:
    z &= g \cdot \textrm{orog}\\
    g &= 9.80665\ m \cdot s^{-1}
 
-This filter needs to follow a source that provides orography, which is
+This filter must follow a source that provides orography, which is
 replaced by surface geopotential height.
 
 .. literalinclude:: yaml/orog_to_z.yaml

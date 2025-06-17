@@ -3,9 +3,9 @@
 ################
 
 The `repeated-dates` source is used to repeat a single source multiple
-times, so that its data is present at multiple dates. A simple example
+times, so that its data are present on multiple dates. A simple example
 of this is when you have a source that contains a constant field, such
-as orography or bathymetry, that you want to have repeated at all the
+as orography or bathymetry, that you want to have repeated on all the
 dates of the dataset.
 
 The general format of the `repeated-dates` source is:

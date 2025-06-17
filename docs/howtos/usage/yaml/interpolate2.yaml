@@ -1,0 +1,8 @@
+dataset:
+  join:
+  - dataset: dataset-3h
+    frequency: 24h
+  - dataset: dataset-24h
+    frequency: 24h
+start: 2004-01-01
+end: 2023-01-01

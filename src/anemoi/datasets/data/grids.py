@@ -344,7 +344,7 @@ class Cutout(GridsBase):
         self.cropping_distance = cropping_distance
         self.neighbours = neighbours
         self.min_distance_km = min_distance_km
-        self.plot = plot
+        self._plot = plot
         self.masks = []  # To store the masks for each LAM dataset
         self.global_mask = np.ones(self.globe.shape[-1], dtype=bool)
 
@@ -373,7 +373,7 @@ class Cutout(GridsBase):
                 lam.longitudes,
                 self.globe.latitudes,
                 self.globe.longitudes,
-                plot=False,
+                plot=self._plot,
                 min_distance_km=self.min_distance_km,
                 cropping_distance=self.cropping_distance,
                 neighbours=self.neighbours,
@@ -399,7 +399,7 @@ class Cutout(GridsBase):
                             prev_lam_lons,
                             lam_lats,
                             lam_lons,
-                            plot=False,
+                            plot=self._plot,
                             min_distance_km=self.min_distance_km,
                             cropping_distance=self.cropping_distance,
                             neighbours=self.neighbours,

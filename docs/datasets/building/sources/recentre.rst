@@ -4,12 +4,12 @@
  recentre
 ##########
 
-Perturbations refers to the small variations centered around a nominal
+Perturbations refer to the small variations centred around a nominal
 value of a parameter. When dealing with `ensemble forecasting`_, the
 perturbations are related to the difference between `ensemble members`
 and their given `centre`.
 
-The `recentre` function computes a set of new ensemble members centered
+The `recentre` function computes a set of new ensemble members centred
 on a different centre from previous ensemble members using the following
 formula:
 
@@ -25,8 +25,8 @@ this, positive clipping is performed using the alternative formula:
 
    members_{new} = max(0, centre + ( members - \overline{members} ))
 
-The current implementation enforces that following variables are
-positive when using the `perturbations` function :
+The current implementation enforces that the following variables are
+positive when using the `perturbations` function:
 
 +----------+------------------------------+
 | Variable | Description                  |
@@ -46,7 +46,7 @@ members
    A :ref:`reference <yaml-reference>` to the ensemble members.
 
 centre
-   A :ref:`reference <yaml-reference>` to the new center requested.
+   A :ref:`reference <yaml-reference>` to the new centre requested.
 
 Examples
 

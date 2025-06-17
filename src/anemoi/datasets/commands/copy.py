@@ -20,6 +20,8 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
+from anemoi.datasets.check import check_zarr
+
 from . import Command
 
 LOG = logging.getLogger(__name__)
@@ -319,10 +321,30 @@ class ZarrCopier:
         """
         import zarr
 
+        if self.verbosity > 0:
+            LOG.info(f"Copying group {source} to {target}")
+
         for k, v in source.attrs.items():
+            if self.verbosity > 1:
+                import textwrap
+
+                LOG.info(f"Copying attribute {k} = {textwrap.shorten(str(v), 40)}")
             target.attrs[k] = v
 
-        for name in sorted(source.keys()):
+        source_keys = list(source.keys())
+
+        if not source_keys:
+            raise ValueError(f"Source group {source} is empty.")
+
+        if self.verbosity > 1:
+            LOG.info(f"Keys {source_keys}")
+
+        for name in sorted(source_keys):
+            if name.startswith("."):
+                if self.verbosity > 1:
+                    LOG.info(f"Skipping {name}")
+                continue
+
             if isinstance(source[name], zarr.hierarchy.Group):
                 group = target[name] if name in target else target.create_group(name)
                 self.copy_group(
@@ -361,6 +383,11 @@ class ZarrCopier:
             )
         _copy = target["_copy"]
         _copy_np = _copy[:]
+
+        if self.verbosity > 1:
+            import numpy as np
+
+            LOG.info(f"copy {np.sum(_copy_np)} of {len(_copy_np)}")
 
         self.copy_group(source, target, _copy_np, verbosity)
         del target["_copy"]
@@ -417,12 +444,25 @@ class ZarrCopier:
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
 
+        if self.verbosity > 0:
+            LOG.info(f"Open target: {self.target}")
+
         target = open_target()
 
         assert target is not None, target
 
+        if self.verbosity > 0:
+            LOG.info(f"Open source: {self.source}")
+
         source = zarr.open(self._store(self.source), mode="r")
+        # zarr.consolidate_metadata(source)
+
         self.copy(source, target, self.verbosity)
+        if os.path.exists(self.target) and os.path.isdir(self.target):
+            LOG.info(f"Checking target: {self.target}")
+            check_zarr(self.target, self.verbosity)
+        else:
+            LOG.info(f"Target {self.target} is not a local directory, skipping check.")
 
 
 class CopyMixin:
@@ -488,8 +528,8 @@ class CopyMixin:
                 if args.source.startswith("s3://") and not args.source.endswith("/"):
                     args.source = args.source + "/"
                 copier = Transfer(
-                    args.source,
-                    args.target,
+                    source=args.source,
+                    target=args.target,
                     overwrite=args.overwrite,
                     resume=args.resume,
                     verbosity=args.verbosity,

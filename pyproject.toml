@@ -49,9 +49,10 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.4",
-  "anemoi-utils[provenance]>=0.4.16",
+  "anemoi-transform>=0.1.10",
+  "anemoi-utils[provenance]>=0.4.21",
   "cfunits",
+  "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pyyaml",
   "semantic-version",
@@ -70,7 +71,7 @@ optional-dependencies.comparelam = [
 
 optional-dependencies.create = [
   "cachetools",
-  "earthkit-data[mars]>=0.12.4",
+  "earthkit-data[mars]>=0.14",
   "earthkit-geo>=0.3",
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
@@ -108,6 +109,7 @@ optional-dependencies.xarray = [
   "pandas",
   "planetary-computer",
   "pystac-client",
+  "s3fs",
 ]
 
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"

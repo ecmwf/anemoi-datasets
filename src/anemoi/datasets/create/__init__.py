@@ -44,7 +44,7 @@ from .check import check_data_values
 from .chunks import ChunkFilter
 from .config import build_output
 from .config import loader_config
-from .input import build_input
+from .input import InputBuilder
 from .statistics import Summary
 from .statistics import TmpStatistics
 from .statistics import check_variance
@@ -101,7 +101,9 @@ def json_tidy(o: Any) -> Any:
 
 
 def build_statistics_dates(
-    dates: list[datetime.datetime], start: Optional[datetime.datetime], end: Optional[datetime.datetime]
+    dates: list[datetime.datetime],
+    start: Optional[datetime.datetime],
+    end: Optional[datetime.datetime],
 ) -> tuple[str, str]:
     """Compute the start and end dates for the statistics.
 
@@ -551,36 +553,16 @@ class HasElementForDataMixin:
 
         self.output = build_output(config.output, parent=self)
 
-        self.input = build_input_(main_config=config, output_config=self.output)
-        # LOG.info("%s", self.input)
-
-
-def build_input_(main_config: Any, output_config: Any) -> Any:
-    """Build the input for the dataset.
-
-    Parameters
-    ----------
-    main_config : Any
-        The main configuration.
-    output_config : Any
-        The output configuration.
-
-    Returns
-    -------
-    Any
-        The input builder.
-    """
-    builder = build_input(
-        main_config.input,
-        data_sources=main_config.get("data_sources", {}),
-        order_by=output_config.order_by,
-        flatten_grid=output_config.flatten_grid,
-        remapping=build_remapping(output_config.remapping),
-        use_grib_paramid=main_config.build.use_grib_paramid,
-    )
-    LOG.debug("✅ INPUT_BUILDER")
-    LOG.debug(builder)
-    return builder
+        self.input = InputBuilder(
+            config.input,
+            data_sources=config.get("data_sources", {}),
+            order_by=self.output.order_by,
+            flatten_grid=self.output.flatten_grid,
+            remapping=build_remapping(self.output.remapping),
+            use_grib_paramid=config.build.use_grib_paramid,
+        )
+        LOG.debug("✅ INPUT_BUILDER")
+        LOG.debug(self.input)
 
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
@@ -938,13 +920,23 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         check_shape(cube, dates, dates_in_data)
 
         def check_dates_in_data(dates_in_data, requested_dates):
-            requested_dates = [np.datetime64(_) for _ in requested_dates]
-            dates_in_data = [np.datetime64(_) for _ in dates_in_data]
-            assert dates_in_data == requested_dates, (
-                "Dates in data are not the requested ones:",
-                dates_in_data,
-                requested_dates,
-            )
+            _requested_dates = [np.datetime64(_) for _ in requested_dates]
+            _dates_in_data = [np.datetime64(_) for _ in dates_in_data]
+            if _dates_in_data != _requested_dates:
+                LOG.error("Dates in data are not the requested ones:")
+
+                dates_in_data = set(dates_in_data)
+                requested_dates = set(requested_dates)
+
+                missing = sorted(requested_dates - dates_in_data)
+                extra = sorted(dates_in_data - requested_dates)
+
+                if missing:
+                    LOG.error(f"Missing dates: {[_.isoformat() for _ in missing]}")
+                if extra:
+                    LOG.error(f"Extra dates: {[_.isoformat() for _ in extra]}")
+
+                raise ValueError("Dates in data are not the requested ones")
 
         check_dates_in_data(dates_in_data, dates)
 
@@ -1075,6 +1067,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
 
     def run(self) -> None:
         """Run the cleanup."""
+
         self.tmp_statistics.delete()
         self.registry.clean()
         for actor in self.actors:
@@ -1215,7 +1208,7 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=True)
         self.tmp_storage.delete()
         self.tmp_storage.create()
-        LOG.info(f"Dataset {self.tmp_storage_path} additions initialized.")
+        LOG.info(f"Dataset {self.tmp_storage_path} additions initialised.")
 
     def cleanup(self) -> None:
         """Clean up the temporary storage."""
@@ -1530,7 +1523,16 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+        for k in [
+            "mean",
+            "stdev",
+            "minimum",
+            "maximum",
+            "sums",
+            "squares",
+            "count",
+            "has_nans",
+        ]:
             self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
 
         self.registry.add_to_history("compute_statistics_end")
