@@ -8,17 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import logging
 
-import numpy as np
 import pandas as pd
+from earthkit.data import from_source
+from odb2df import process_odb
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
 from anemoi.datasets.data.records import AbsoluteWindow
 from anemoi.datasets.data.records import window_from_str
-from earthkit.data import from_source
-from odb2df import process_odb
-import logging
 
 log = logging.getLogger(__name__)
 
@@ -53,11 +52,9 @@ class MarsSource(ObservationsSource):
 
     def __call__(self, window):
         assert isinstance(window, AbsoluteWindow), "window must be an AbsoluteWindow"
-        
+
         request_dict = self.request_dict
-        request_dict["date"] = (
-            f"{window.start.strftime('%Y%m%d')}/to/{window.end.strftime('%Y%m%d')}"
-        )
+        request_dict["date"] = f"{window.start.strftime('%Y%m%d')}/to/{window.end.strftime('%Y%m%d')}"
         try:
             ekd_ds = from_source("mars", request_dict)
         except Exception as e:
@@ -111,13 +108,13 @@ source = MarsSource(
         "reportype": "16001/16002/16004/16065/16076",
         "type": "ofb",
         "time": "00/12",
-        "filter": "'select seqno,reportype,date,time,lat,lon,report_status,report_event1,entryno,varno,statid,stalt,obsvalue,lsm@modsurf,biascorr_fg,final_obs_error,datum_status@body,datum_event1@body,vertco_reference_1,vertco_type where ((varno==39 and abs(fg_depar@body)<20) or (varno in (41,42) and abs(fg_depar@body)<15) or (varno==58 and abs(fg_depar@body)<0.4) or (varno == 110 and entryno == 1 and abs(fg_depar@body)<10000) or (varno == 91)) and time in (000000,030000,060000,090000,120000,150000,180000,210000);'"
+        "filter": "'select seqno,reportype,date,time,lat,lon,report_status,report_event1,entryno,varno,statid,stalt,obsvalue,lsm@modsurf,biascorr_fg,final_obs_error,datum_status@body,datum_event1@body,vertco_reference_1,vertco_type where ((varno==39 and abs(fg_depar@body)<20) or (varno in (41,42) and abs(fg_depar@body)<15) or (varno==58 and abs(fg_depar@body)<0.4) or (varno == 110 and entryno == 1 and abs(fg_depar@body)<10000) or (varno == 91)) and time in (000000,030000,060000,090000,120000,150000,180000,210000);'",
     },
     post_process_dict={
-       "index": ["seqno@hdr", "lat@hdr", "lon@hdr", "date@hdr", "time@hdr", "stalt@hdr", "lsm@modsurf"], 
-       "pivot": ["varno@body"], 
-       "values": ["obsvalue@body"]
-    }
+        "index": ["seqno@hdr", "lat@hdr", "lon@hdr", "date@hdr", "time@hdr", "stalt@hdr", "lsm@modsurf"],
+        "pivot": ["varno@body"],
+        "values": ["obsvalue@body"],
+    },
 )
 filter = DummyFilter("obsvalue_v10m_0")
 
