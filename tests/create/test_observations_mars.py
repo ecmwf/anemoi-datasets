@@ -71,8 +71,8 @@ class MarsSource(ObservationsSource):
 
         data = process_odb(ekd_ds, **self.post_process_dict)
         
-        print(data)
-        print(data.columns)
+        # print(data)
+        # print(data.columns)
 
         if window.include_start:
             mask = data["times"] > window.start
@@ -89,17 +89,19 @@ class MarsSource(ObservationsSource):
 
 
 class DummyFilter(ObservationsFilter):
-    def __call__(self, df, col_name):
+    def __init__(self, col_name):
+        self.col_name = col_name
+
+    def __call__(self, df):
         """Filter the data based on the given window."""
         self._check(df)
         # Here we can add any filtering logic if needed
-        df.loc[:, col_name] = df[col_name] + 0.42
+        df.loc[:, self.col_name] = df[self.col_name] + 0.42
         return self._check(df)
 
 
 dates = [datetime.datetime(2025, 1, 1, 0, 0) + datetime.timedelta(hours=i * 8) for i in range(3)]
 
-N = 100
 source = MarsSource(
     request_dict={
         "class": "ea",
@@ -117,12 +119,12 @@ source = MarsSource(
        "values": ["obsvalue@body"]
     }
 )
-filter = DummyFilter()
+filter = DummyFilter("obsvalue_v10m_0")
 
 for d in dates:
     window = window_from_str("(-5h, 1h]").to_absolute_window(d)
     print(window.start.strftime("%Y-%m-%d"), window.end.strftime("%Y-%m-%d"))
     d = source(window)
-    d = filter(d, "obsvalue_v10m_0")
+    d = filter(d)
     print(window)
     print(d)
