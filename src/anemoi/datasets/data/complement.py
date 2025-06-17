@@ -335,5 +335,6 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     }[interpolation]
 
     complement = Class(target=target, source=source)._subset(**kwargs)
+    joined = _open_dataset([target, complement])
 
-    return _open_dataset([target, complement], reorder=source.variables)
+    return _open_dataset(joined, reorder=sorted(joined.variables))
