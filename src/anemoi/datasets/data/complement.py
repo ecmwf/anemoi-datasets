@@ -93,17 +93,14 @@ class Complement(Combined):
     def variables(self) -> List[str]:
         """Returns the list of variables to be added to the target dataset."""
         return self._variables
-    
+
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        datasets = [self._source, self._target]   
+        datasets = [self._source, self._target]
         return {
-                    k: [d.statistics[k][d.name_to_index[i]] 
-                        for d in datasets 
-                        for i in d.variables if i in self.variables
-                    ]
-                    for k in datasets[0].statistics
-                } 
+            k: [d.statistics[k][d.name_to_index[i]] for d in datasets for i in d.variables if i in self.variables]
+            for k in datasets[0].statistics
+        }
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         index = [self._source.name_to_index[v] for v in self._variables]
