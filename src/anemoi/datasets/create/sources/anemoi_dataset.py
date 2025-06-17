@@ -64,8 +64,6 @@ def execute(context, dates, params=None, **kwargs):
 
                 results.append(metadata.copy())
 
-    print(results[0].keys())
-
     # "list-of-dicts" does support resolution
     results = ekd.from_source("list-of-dicts", results)
 
