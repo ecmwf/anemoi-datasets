@@ -37,7 +37,7 @@ class GribIndex:
         self,
         database: str,
         *,
-        keys: Optional[Union[list[str],str]] = None,
+        keys: Optional[Union[list[str], str]] = None,
         flavour: Optional[str] = None,
         update: bool = False,
         overwrite: bool = False,
@@ -655,7 +655,7 @@ def grib_index_retrieve(
 def execute(
     context: Any,
     dates: list[Any],
-    *requests: Optional[Union[tuple,list]],
+    *requests: Optional[Union[tuple, list]],
     flavour: Optional[str] = None,
     **kwargs: Any,
 ) -> FieldArray:
