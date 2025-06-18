@@ -13,6 +13,7 @@ import sys
 
 import numpy as np
 import pytest
+import tqdm
 from anemoi.utils.testing import get_test_data
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
@@ -51,6 +52,138 @@ def test_grib() -> None:
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
+
+
+@skip_if_offline
+def test_accumulate_grib_index() -> None:
+    """Test the creation of a accumulation from grib index.
+
+    This function tests the creation of a dataset using GRIB files from
+    specific dates and verifies the shape of the resulting dataset.
+    """
+
+    filelist = [
+        "2021-01-01_23h00/PAAROME_1S100_ECH1_SOL.grib",
+        "2021-01-02_00h00/PAAROME_1S100_ECH1_SOL.grib",
+        "2021-01-02_01h00/PAAROME_1S100_ECH1_SOL.grib",
+        "2021-01-02_02h00/PAAROME_1S100_ECH1_SOL.grib",
+    ]
+
+    keys = [
+        "class",
+        "date",
+        "expver",
+        "level",
+        "levelist",
+        "levtype",
+        "number",
+        "paramId",
+        "shortName",
+        "step",
+        "stream",
+        "time",
+        "type",
+        "valid_datetime",
+    ]
+
+    data1 = []
+    for file in filelist:
+        data1.append(get_test_data(f"meteo-france/grib/{file}"))
+        parent = os.path.dirname(os.path.dirname(data1[-1]))
+    assert all([os.path.dirname(os.path.dirname(d)) == parent for d in data1])
+
+    path_db = os.path.dirname(data1[-1])
+    from anemoi.datasets.create.sources.grib_index import GribIndex
+
+    # create a GribIndex database with grib files
+    index = GribIndex(
+        os.path.join(path_db, "grib-index-accumulate-tp.db"),
+        keys=keys,
+        update=True,
+        overwrite=True,
+        flavour=None,
+    )
+
+    paths = []
+    for path in data1:
+        if os.path.isfile(path):
+            paths.append(path)
+        else:
+            for root, _, files in os.walk(path):
+                for file in files:
+                    full = os.path.join(root, file)
+                    paths.append(full)
+
+    for path in tqdm.tqdm(data1, leave=False):
+        index.add_grib_file(path)
+
+    reference_config = {
+        "dates": {
+            "start": "2021-01-02T00:00:00",
+            "end": "2021-01-02T02:00:00",
+            "frequency": "1h",
+        },
+        "input": {
+            "pipe": [
+                {
+                    "grib-index": {
+                        "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
+                        "levtype": "sfc",
+                        "param": ["tp"],
+                    }
+                },
+                {"remove-nans": {}},
+            ]
+        },
+    }
+
+    # get a reference dataset
+    reference = create_dataset(config=reference_config, output=None)
+    ds2 = open_dataset(reference)
+
+    # creating configuration using the previously created grib-index
+    config_grib_index = {
+        "dates": {
+            "start": "2021-01-02T02:00:00",
+            "end": "2021-01-02T02:00:00",
+            "frequency": "1h",
+        },
+        "input": {
+            "pipe": [
+                {
+                    "accumulate": {
+                        "source": {
+                            "grib-index": {
+                                "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
+                                "levtype": "sfc",
+                                "param": ["tp"],
+                                "accumulation_period": 3,
+                            },
+                        },
+                    }
+                },
+                {"remove-nans": {}},  # needed because data has Nans due to projection
+            ]
+        },
+    }
+
+    created = create_dataset(config=config_grib_index, output=None)
+    ds = open_dataset(created)
+
+    # shapes should be divided by 'accumulation_period'
+    assert ds.shape[0] == ds2.shape[0] // 3, (ds.shape, ds2.shape)
+
+    assert np.max(np.abs(ds[0] - np.sum(ds2[:3], axis=(0, 1, 2)))) <= 1e-3, (
+        "max of absolute difference, t=0",
+        np.max(np.abs(ds[0] - np.sum(ds2[:3], axis=(0, 1, 2)))),
+    )
+
+    # this construction should fail because dates are missing
+    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 24
+
+    with pytest.raises(Exception) as e_info:
+        print(f"Caught {e_info}")
+        created = create_dataset(config=config_grib_index, output=None)
 
 
 @pytest.mark.skipif(
