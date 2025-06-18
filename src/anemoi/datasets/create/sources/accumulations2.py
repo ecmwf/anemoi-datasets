@@ -19,11 +19,11 @@ from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
-from earthkit.data.core.temporary import temp_file
-from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.transform.fields import new_field_from_numpy, new_fieldlist_from_list
+from anemoi.utils import frequency_to_timedelta
 
 from .legacy import legacy_source
 
@@ -235,18 +235,6 @@ class Periods:
             raise ValueError(f"Found more than one period for {field}")
         return None
 
-    def update_template(self, field: Any):
-        if self.template_field is None:
-            self.template_field = field
-
-        field_date = datetime.datetime.strptime(field.metadata()["valid_datetime"], "%Y-%m-%dT%H:%M:%S")
-        template_date = datetime.datetime.strptime(
-            self.template_field.metadata()["valid_datetime"], "%Y-%m-%dT%H:%M:%S"
-        )
-
-        if field_date < template_date:
-            self.template_field = field
-
     @property
     def todo(self):
         if self._todo is None:
@@ -285,15 +273,12 @@ class DefaultPeriods(Periods):
         self.base_datetime = lambda x: x
 
         # base datetime can either be user-defined or default to the starting step of accumulation
-        if "base_datetime" in kwargs.keys():
+        if "base_datetime" in kwargs:
             base = int(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
 
-        if "data_accumulation_period" in kwargs.keys():
-            self.data_accumulation_period = int(kwargs.pop("data_accumulation_period"))
-        else:
-            self.data_accumulation_period = 1
-
+        self.data_accumulation_period = frequency_to_timedelta(kwargs.pop("data_accumulation_period",'1h'))
+        
         super().__init__(valid_date, accumulation_period, **kwargs)
 
     def available_steps(
@@ -310,13 +295,13 @@ class DefaultPeriods(Periods):
 
         """
 
-        start_base_delta = int((start - base).total_seconds() // 3600)
-        end_start_delta = int((end - start).total_seconds() // 3600)
+        list_avail = []
+        t = start - base
+        while t<(end-base):
+            list_avail.append([t, t + self.data_accumulation_period])
+            t += self.data_accumulation_period
         return {
-            base: [
-                [i, i + self.data_accumulation_period]
-                for i in range(start_base_delta, start_base_delta + end_start_delta, self.data_accumulation_period)
-            ],
+            base : list_avail
         }
 
     def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
@@ -330,19 +315,19 @@ class DefaultPeriods(Periods):
                 if debug:
                     xprint(f"❌ tring: {base_time=} {step1=} {step2=}")
 
-                base_datetime = start - datetime.timedelta(hours=step1)
+                base_datetime = start - step1
 
                 period = Period(start, end, base_datetime)
                 found.append(period)
 
                 assert base_datetime.hour == base_time.hour, (base_datetime, base_time)
 
-                assert period.start_datetime - period.base_datetime == datetime.timedelta(hours=step1), (
+                assert period.start_datetime - period.base_datetime == step1, (
                     period.end_datetime,
                     period.base_datetime,
                     step1,
                 )
-                assert period.end_datetime - period.base_datetime == datetime.timedelta(hours=step2), (
+                assert period.end_datetime - period.base_datetime == step2, (
                     period.start_datetime,
                     period.base_datetime,
                     step2,
@@ -362,13 +347,13 @@ class DefaultPeriods(Periods):
         ), "DefaultPeriods needs a base_datetime function, but base_datetime is None"
 
         lst = []
-        for wanted in [[i, i + self.data_accumulation_period] for i in range(0, hours, self.data_accumulation_period)]:
+        for wanted in self.available_steps(datetime.timedelta(hours=0), self.accumulation_period, self.data_accumulation_period):
 
-            start = self.valid_date - datetime.timedelta(hours=wanted[1])
-            end = self.valid_date - datetime.timedelta(hours=wanted[0])
+            start = self.valid_date - wanted[1]
+            end = self.valid_date - wanted[0]
 
-            if not end - start == datetime.timedelta(hours=self.data_accumulation_period):
-                raise NotImplementedError(f"end and start must be {self.data_accumulation_period} hours apart")
+            if not end - start == self.data_accumulation_period:
+                raise NotImplementedError(f"end and start must be {self.data_accumulation_period} apart")
 
             found = self.search_periods(self.base_datetime(start), start, end)
             if not found:
@@ -554,7 +539,7 @@ class Accumulator:
         self.valid_date = valid_date
 
         # keep the reference to the output file to be able to write the result using an input field as template
-        self.out = out
+        self.out = []
 
         # key contains the mars request parameters except the one related to the time
         # A mars request is a dictionary with three categories of keys:
@@ -567,8 +552,6 @@ class Accumulator:
                 raise ValueError(f"Cannot use {k} in kwargs for accumulations")
 
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
-
-        print("kwargs accum", kwargs)
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
 
@@ -606,9 +589,6 @@ class Accumulator:
 
         period.check(field)
 
-        # template field for write must be updated with the oldest field encountered for the accumulator
-        self.periods.update_template(field)
-
         xprint(f"{self} field ✅ ({period.sign}){field} for {period}")
 
         self.values = period.apply(self.values, values)
@@ -616,8 +596,7 @@ class Accumulator:
 
         if self.periods.all_done():
             # all periods for accumulation have been processed
-            # template field is now the oldest
-            # temporary file can be written
+            # final list of outputs is ready to be updated
             self.write()
             xprint("accumulator", self, " : data written ✅ ")
 
@@ -629,26 +608,22 @@ class Accumulator:
                 f"Negative values when computing accumutation for {self}): min={np.amin(self.values)} max={np.amax(self.values)}"
             )
 
-        startStep = 0
-        endStep = self.periods.accumulation_period.total_seconds() // 3600
-        assert int(endStep) == endStep, "only full hours accumulation is supported"
-        endStep = int(endStep)
-        fake_base_date = self.valid_date - self.periods.accumulation_period
-        date = int(fake_base_date.strftime("%Y%m%d"))
-        time = int(fake_base_date.strftime("%H%M"))
+        startStep = datetime.timedelta(hours=0)
+        endStep = self.periods.accumulation_period.total_seconds()
 
-        self.out.write(
-            self.values,
-            template=self.periods.template_field,
-            stepType="accum",
+        field = new_field_from_numpy(
+            self.values, 
             startStep=startStep,
             endStep=endStep,
             date=date,
-            time=time,
-            check_nans=True,
-        )
-        self.values = None
+            time=time
+            )
 
+        self.out.append(new_field_with_valid_datetime(field, self.valid_date))
+        
+        # resetting values as accumulation is done
+        self.values = None
+        
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
         return f"{self.__class__.__name__}({self.valid_date}, {key})"
@@ -666,10 +641,6 @@ def _compute_accumulations(
 
     period_class = find_accumulator_class(request)
 
-    tmp = temp_file()
-    path = tmp.path
-    out = new_grib_output(path)
-
     # build one accumulator per output field
     accumulators = []
     overlapping_periods = set()
@@ -680,7 +651,6 @@ def _compute_accumulations(
                 accumulators.append(
                     Accumulator(
                         period_class,
-                        out,
                         valid_date,
                         user_accumulation_period=user_accumulation_period,
                         param=p,
@@ -718,18 +688,14 @@ def _compute_accumulations(
         for a in accumulators:
             a.compute(field, values)
 
-    out.close()
 
-    ds = ekd.from_source("file", path)
+    ds = new_fieldlist_from_list([a.out for a in accumulators])
 
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
         len(param),
         len(dates),
     )
-
-    # keep a reference to the tmp file, or it gets deleted when the function returns
-    ds._tmp = tmp
 
     return ds
 
@@ -780,7 +746,7 @@ def accumulations(context, dates, action, **request):
     except KeyError:
         raise ValueError("Accumulate action should provide 'accumulation_period', but none was found.")
 
-    user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
+    user_accumulation_period = frequency_to_timedelta(user_accumulation_period)
 
     context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
 
