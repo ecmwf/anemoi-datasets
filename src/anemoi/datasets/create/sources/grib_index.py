@@ -14,6 +14,7 @@ import sqlite3
 from typing import Any
 from typing import Iterator
 from typing import Optional
+from typing import Union
 
 import earthkit.data as ekd
 import tqdm
@@ -36,7 +37,7 @@ class GribIndex:
         self,
         database: str,
         *,
-        keys: Optional[list[str] | str] = None,
+        keys: Optional[Union[list[str],str]] = None,
         flavour: Optional[str] = None,
         update: bool = False,
         overwrite: bool = False,
@@ -654,7 +655,7 @@ def grib_index_retrieve(
 def execute(
     context: Any,
     dates: list[Any],
-    *requests: Optional[tuple | list],
+    *requests: Optional[Union[tuple,list]],
     flavour: Optional[str] = None,
     **kwargs: Any,
 ) -> FieldArray:
@@ -666,7 +667,7 @@ def execute(
         The execution context.
     dates : list[Any]
         list of dates to retrieve data for.
-    requests : Optional[Tuple | list] = None
+    requests : Optional[Union[tuple,list]] = None
         requests to the indexdb database
         Either requests[0] or kwargs must have an indexdb key
         referring to database path
