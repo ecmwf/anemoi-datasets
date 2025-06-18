@@ -19,6 +19,7 @@ from typing import Union
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -503,6 +504,7 @@ class DatasetTester:
             t[::step]
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_trim_edge_simple() -> None:
     """Test trimming the edges of a dataset."""
@@ -516,6 +518,7 @@ def test_trim_edge_simple() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
+@pytest.mark.integration
 @mockup_open_zarr
 def test_trim_edge_zeros() -> None:
     """Test trimming the edges of a dataset when edges are 0"""

@@ -14,6 +14,7 @@ import pytest
 from anemoi.datasets.create.chunks import ChunkFilter
 
 
+@pytest.mark.unit
 def test_chunk_filter():
     """Test the ChunkFilter class with various inputs and scenarios.
 

@@ -370,6 +370,7 @@ class Comparer:
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
+@pytest.mark.integration
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
 @mockup_from_source
