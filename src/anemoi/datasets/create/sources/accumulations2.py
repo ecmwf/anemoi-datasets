@@ -24,6 +24,8 @@ from anemoi.utils import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.transform.fields import new_field_from_numpy, new_fieldlist_from_list
+from anemoi.utils.dates import frequency_to_timedelta
 
 from .legacy import legacy_source
 
