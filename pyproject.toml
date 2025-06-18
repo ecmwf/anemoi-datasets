@@ -100,6 +100,7 @@ optional-dependencies.remote = [
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pytest",
+  "pytest-xdist",
 ]
 
 optional-dependencies.xarray = [
@@ -130,6 +131,13 @@ version_file = "src/anemoi/datasets/_version.py"
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+  "--numprocesses=auto",
+  "--strict-config",
+]
 
 [tool.mypy]
 strict = false
