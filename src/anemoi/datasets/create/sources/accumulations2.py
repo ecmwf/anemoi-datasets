@@ -17,13 +17,13 @@ from typing import List
 from typing import Tuple
 from typing import Union
 
-import earthkit.data as ekd
 import numpy as np
+from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.utils import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
-from anemoi.transform.fields import new_field_from_numpy, new_fieldlist_from_list
-from anemoi.utils import frequency_to_timedelta
 
 from .legacy import legacy_source
 
@@ -277,8 +277,8 @@ class DefaultPeriods(Periods):
             base = int(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
 
-        self.data_accumulation_period = frequency_to_timedelta(kwargs.pop("data_accumulation_period",'1h'))
-        
+        self.data_accumulation_period = frequency_to_timedelta(kwargs.pop("data_accumulation_period", "1h"))
+
         super().__init__(valid_date, accumulation_period, **kwargs)
 
     def available_steps(
@@ -297,12 +297,10 @@ class DefaultPeriods(Periods):
 
         list_avail = []
         t = start - base
-        while t<(end-base):
+        while t < (end - base):
             list_avail.append([t, t + self.data_accumulation_period])
             t += self.data_accumulation_period
-        return {
-            base : list_avail
-        }
+        return {base: list_avail}
 
     def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
         # find candidate periods that can be used to accumulate the data
@@ -347,7 +345,9 @@ class DefaultPeriods(Periods):
         ), "DefaultPeriods needs a base_datetime function, but base_datetime is None"
 
         lst = []
-        for wanted in self.available_steps(datetime.timedelta(hours=0), self.accumulation_period, self.data_accumulation_period):
+        for wanted in self.available_steps(
+            datetime.timedelta(hours=0), self.accumulation_period, self.data_accumulation_period
+        ):
 
             start = self.valid_date - wanted[1]
             end = self.valid_date - wanted[0]
@@ -611,19 +611,13 @@ class Accumulator:
         startStep = datetime.timedelta(hours=0)
         endStep = self.periods.accumulation_period.total_seconds()
 
-        field = new_field_from_numpy(
-            self.values, 
-            startStep=startStep,
-            endStep=endStep,
-            date=date,
-            time=time
-            )
+        field = new_field_from_numpy(self.values, startStep=startStep, endStep=endStep, date=date, time=time)
 
         self.out.append(new_field_with_valid_datetime(field, self.valid_date))
-        
+
         # resetting values as accumulation is done
         self.values = None
-        
+
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
         return f"{self.__class__.__name__}({self.valid_date}, {key})"
@@ -687,7 +681,6 @@ def _compute_accumulations(
         values = field.values  # optimisation : reading values only once
         for a in accumulators:
             a.compute(field, values)
-
 
     ds = new_fieldlist_from_list([a.out for a in accumulators])
 
