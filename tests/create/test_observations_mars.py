@@ -45,10 +45,10 @@ class DummpySource(ObservationsSource):
 
 
 class MarsSource(ObservationsSource):
-    def __init__(self, request_dict, post_process_dict):
+    def __init__(self, request_dict, pre_process_dict, post_process_dict):
         assert isinstance(request_dict, dict), "request_dict must be a dictionary"
         self.request_dict = request_dict
-        self.post_process_dict = post_process_dict
+        self.pre_process_dict = pre_process_dict
 
     def __call__(self, window):
         assert isinstance(window, AbsoluteWindow), "window must be an AbsoluteWindow"
@@ -66,10 +66,7 @@ class MarsSource(ObservationsSource):
             else:
                 raise  # Re-raise if it's a different error
 
-        data = process_odb(ekd_ds, **self.post_process_dict)
-
-        # print(data)
-        # print(data.columns)
+        data = process_odb(ekd_ds, **self.pre_process_dict)
 
         if window.include_start:
             mask = data["times"] > window.start
@@ -110,10 +107,12 @@ source = MarsSource(
         "time": "00/12",
         "filter": "'select seqno,reportype,date,time,lat,lon,report_status,report_event1,entryno,varno,statid,stalt,obsvalue,lsm@modsurf,biascorr_fg,final_obs_error,datum_status@body,datum_event1@body,vertco_reference_1,vertco_type where ((varno==39 and abs(fg_depar@body)<20) or (varno in (41,42) and abs(fg_depar@body)<15) or (varno==58 and abs(fg_depar@body)<0.4) or (varno == 110 and entryno == 1 and abs(fg_depar@body)<10000) or (varno == 91)) and time in (000000,030000,060000,090000,120000,150000,180000,210000);'",
     },
-    post_process_dict={
+    pre_process_dict={
+        # "target": odb2df.process_odb,
         "index": ["seqno@hdr", "lat@hdr", "lon@hdr", "date@hdr", "time@hdr", "stalt@hdr", "lsm@modsurf"],
         "pivot": ["varno@body"],
         "values": ["obsvalue@body"],
+        "drop_na": True,
     },
 )
 filter = DummyFilter("obsvalue_v10m_0")
