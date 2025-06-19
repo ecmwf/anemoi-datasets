@@ -45,10 +45,11 @@ class DummpySource(ObservationsSource):
 
 
 class MarsSource(ObservationsSource):
-    def __init__(self, request_dict, pre_process_dict, post_process_dict):
+    def __init__(self, request_dict, pre_process_dict, process_func):
         assert isinstance(request_dict, dict), "request_dict must be a dictionary"
         self.request_dict = request_dict
         self.pre_process_dict = pre_process_dict
+        self.process_func = process_func
 
     def __call__(self, window):
         assert isinstance(window, AbsoluteWindow), "window must be an AbsoluteWindow"
@@ -66,7 +67,7 @@ class MarsSource(ObservationsSource):
             else:
                 raise  # Re-raise if it's a different error
 
-        data = process_odb(ekd_ds, **self.pre_process_dict)
+        data = self.process_func(ekd_ds, **self.pre_process_dict)
 
         if window.include_start:
             mask = data["times"] > window.start
@@ -114,6 +115,7 @@ source = MarsSource(
         "values": ["obsvalue@body"],
         "drop_na": True,
     },
+    process_func=process_odb,
 )
 filter = DummyFilter("obsvalue_v10m_0")
 
