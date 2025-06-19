@@ -356,7 +356,9 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     from .stores import Zarr
     from .stores import zarr_lookup
 
-    if isinstance(a, str) and len(a.split(".")) in [2, 3]:
+    if isinstance(a, str) and len(a.split(".")[-1]) in [1, 2, 3]:
+        # This will do nothing if there is no "metadata.json" file
+        # .zarr datasets do not have "metadata.json"
 
         metadata_path = os.path.join(a, "metadata.json")
         if os.path.exists(metadata_path):
@@ -591,6 +593,14 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
                 sets.append(_open(a))
 
     assert len(sets) > 0, (args, kwargs)
+
+    if "set_group" in kwargs:
+        from anemoi.datasets.data.records import FieldsRecords
+
+        assert len(sets) == 1, sets
+        set_group = kwargs.pop("set_group")
+
+        return FieldsRecords(*sets, name=set_group).mutate()
 
     if len(sets) > 1:
         dataset, kwargs = _concat_or_join(sets, kwargs)
