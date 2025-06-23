@@ -662,11 +662,11 @@ class RecordsSubset(RecordsForward):
 
 class RecordsDataset(BaseRecordsDataset):
 
-    def __init__(self, path, backend="npz1", **kwargs):
+    def __init__(self, path, backend=None, **kwargs):
         if kwargs:
             print("Warning: ignoring additional kwargs", kwargs)
         self.path = path
-        self.backend = backend_factory(backend, path, **kwargs)
+        self.backend = backend_factory(**backend, path=path)
         self._groups = list(self.metadata["sources"].keys())
         for k in self.groups:
             assert k == self.normalise_key(k), k

@@ -43,10 +43,10 @@ class Backend:
 
 
 class Npz1Backend(Backend):
-    number_of_files_per_subdirectory = 100
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, number_of_files_per_subdirectory=100, **kwargs):
         super().__init__(*args, **kwargs)
+        self.number_of_files_per_subdirectory = number_of_files_per_subdirectory
         self._cache = None
 
     def read(self, i, **kwargs):
@@ -99,6 +99,7 @@ class Npz2Backend(Backend):
 
 
 class Nc1Backend(Backend):
+    number_of_files_per_subdirectory = 100
 
     def read(self, i, **kwargs):
         d = str(int(i / self.number_of_files_per_subdirectory))
@@ -138,8 +139,8 @@ def backend_factory(name, *args, **kwargs):
 
 
 class WriteBackend(Backend):
-    def __init__(self, path, **kwargs):
-        super().__init__(path, **kwargs)
+    def __init__(self, *, target, **kwargs):
+        super().__init__(target, **kwargs)
 
     def write(self, i, data, **kwargs):
         raise NotImplementedError("Must be implemented in subclass")
@@ -183,9 +184,9 @@ class WriteBackend(Backend):
 
 
 class Npz1WriteBackend(WriteBackend):
-    number_of_files_per_subdirectory = 100
 
-    def write(self, i, data, **kwargs):
+    def write(self, i, data, number_of_files_per_subdirectory=100, **kwargs):
+        self.number_of_files_per_subdirectory = number_of_files_per_subdirectory
         self._check_data(data)
         d = str(int(i / self.number_of_files_per_subdirectory))
         dir_path = os.path.join(self.path, "data", d)
@@ -302,10 +303,10 @@ class Npz2WriteBackend(WriteBackend):
         np.savez(path, **flatten)
 
 
-def writer_backend_factory(backend, *args, **kwargs):
+def writer_backend_factory(name, **kwargs):
     WRITE_BACKENDS = dict(
         npz1=Npz1WriteBackend,
         npz2=Npz2WriteBackend,
         nc1=Nc1WriteBackend,
     )
-    return WRITE_BACKENDS[backend](*args, **kwargs)
+    return WRITE_BACKENDS[name](**kwargs)

@@ -28,6 +28,9 @@ def build(input, output, backend, overwrite=False):
     print(f"Dataset has {len(ds)} records, from {ds.start_date} to {ds.end_date}")
     print(f"Converting dataset to {output} using new backend '{backend}'")
 
+    if not isinstance(backend, dict):
+        backend = {"name": backend}
+
     from anemoi.datasets.data.records.backends import writer_backend_factory
 
     if os.path.exists(output):
@@ -36,7 +39,7 @@ def build(input, output, backend, overwrite=False):
             shutil.rmtree(output)
         else:
             raise FileExistsError(f"Output directory {output} already exists, use --overwrite to remove it")
-    writer = writer_backend_factory(backend, output)
+    writer = writer_backend_factory(**backend, target=output)
 
     for i in tqdm.tqdm(range(len(ds))):
         writer.write(i, ds[i])
