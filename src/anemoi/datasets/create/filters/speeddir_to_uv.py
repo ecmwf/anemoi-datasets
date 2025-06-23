@@ -89,7 +89,7 @@ def execute(
 
         u, v = polar_to_xy(magnitude.to_numpy(flatten=True), direction.to_numpy(flatten=True))
 
-        result.append(new_field_from_numpy(magnitude, u, param=u_component))
-        result.append(new_field_from_numpy(direction, v, param=v_component))
+        result.append(new_field_from_numpy(u, template=magnitude, param=u_component))
+        result.append(new_field_from_numpy(v, template=direction, param=v_component))
 
     return new_fieldlist_from_list(result)

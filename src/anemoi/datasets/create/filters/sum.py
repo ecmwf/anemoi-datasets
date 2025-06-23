@@ -63,6 +63,6 @@ def execute(context: Any, input: ekd.FieldList, params: List[str], output: str) 
                 s = c
             else:
                 s += c
-        result.append(new_field_from_numpy(values[list(values.keys())[0]], s, param=output))
+        result.append(new_field_from_numpy(s, template=values[list(values.keys())[0]], param=output))
 
     return new_fieldlist_from_list(result)
