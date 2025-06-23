@@ -565,6 +565,10 @@ def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
     config = load_config()["datasets"]
     use_search_path_not_found = config.get("use_search_path_not_found", False)
 
+    if name.endswith(".zarr/"):
+        LOG.warning("Removing trailing slash from path: %s", name)
+        name = name[:-1]
+
     if name.endswith(".zarr") or name.endswith(".zip"):
 
         if os.path.exists(name):
