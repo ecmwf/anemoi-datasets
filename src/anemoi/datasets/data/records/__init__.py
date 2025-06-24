@@ -683,7 +683,7 @@ class RecordsDataset(BaseRecordsDataset):
 
     @classmethod
     def normalise_key(cls, k):
-        return "".join([x.lower() if x.isalnum() else "-" for x in k])
+        return "".join([x.lower() if x.isalnum() else "_" for x in k])
 
     @property
     def frequency(self):
