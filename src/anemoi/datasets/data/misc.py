@@ -597,10 +597,14 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     if "set_group" in kwargs:
         from anemoi.datasets.data.records import FieldsRecords
 
-        assert len(sets) == 1, sets
         set_group = kwargs.pop("set_group")
+        assert len(sets) == 1, "set_group can only be used with a single dataset"
+        dataset = sets[0]
 
-        return FieldsRecords(*sets, name=set_group).mutate()
+        from anemoi.datasets.data.dataset import Dataset
+
+        if isinstance(dataset, Dataset):  # Fields dataset
+            return FieldsRecords(dataset, **kwargs, name=set_group).mutate()
 
     if len(sets) > 1:
         dataset, kwargs = _concat_or_join(sets, kwargs)

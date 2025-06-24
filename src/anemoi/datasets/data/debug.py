@@ -69,6 +69,7 @@ class Node:
             Additional keyword arguments.
         """
         self.dataset = dataset
+        assert isinstance(kids, list), "Kids must be a list"
         self.kids = kids
         self.kwargs = kwargs
 

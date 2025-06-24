@@ -216,6 +216,9 @@ class FieldsRecords(RecordsForward):
 
     def __init__(self, fields_dataset, name):
         self.forward = fields_dataset
+        from anemoi.datasets.data.dataset import Dataset
+
+        assert isinstance(fields_dataset, Dataset), f"fields_dataset must be a Dataset, got {type(fields_dataset)}"
         self._name = name
         self._groups = [name]
         self.reason = {"name": name}
@@ -223,6 +226,17 @@ class FieldsRecords(RecordsForward):
     def _nest_in_dict(self, obj):
         """Helper to nest the object in a dict with the name as key."""
         return {self._name: obj}
+
+    def _load_data(self, i):
+        data = self.forward[i]
+        out = {}
+        out[f"data:{self._name}"] = data
+        # out[f"latitudes:{self._name}"] =  self.forward.latitudes
+        # out[f"longitudes:{self._name}"] =  self.forward.longitudes
+        out[f"timedeltas:{self._name}"] = np.zeros_like(data, dtype="timedelta64[s]") + _to_numpy_date(
+            self.forward.dates[i]
+        )
+        return out
 
     @property
     def groups(self):
@@ -297,6 +311,9 @@ class SetGroup(GenericRename):
             raise ValueError(f"{self.__class__.__name__} can only be used with datasets containing a single group.")
 
         super.__init__(dataset, {dataset.groups[0]: set_group})
+
+    def _load_data(self, i):
+        return self.dataset._load_data(i)
 
 
 def match_variable(lst, group, name):
@@ -607,6 +624,10 @@ class Select(RecordsForward):
                     variables[group].append(name)
                     count += 1
             assert np.sum(ind) == count, f"Mismatch in {group}: {names}, {ind}"
+        if not variables:
+            raise ValueError(
+                f"No variables matched in {self._select} for dataset {self.dataset}. Available groups: {self.dataset.groups} Available variables: {self.dataset.variables} "
+            )
         self._indices = indices
         self._name_to_index = name_to_index
         self._variables = variables
@@ -813,6 +834,10 @@ class Record:
     @property
     def statistics(self):
         return self.dataset.statistics
+
+    def as_dict(self):
+        """Returns the record as a dictionary with group names as keys."""
+        return {group: self[group] for group in self.groups}
 
 
 class Tabular:
