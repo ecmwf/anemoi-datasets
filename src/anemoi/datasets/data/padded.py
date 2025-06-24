@@ -170,8 +170,10 @@ class Padded(Forwards):
 
     def get_aux(self, i: FullIndex) -> NDArray[np.timedelta64]:
         if self._i_out_of_range(i):
-            arr = np.array([], dtype=np.float32)
-            aux = arr, arr, arr
+            lats = np.array([], dtype=np.float32)
+            lons = lats
+            timedeltas = np.ones_like(lons, dtype="timedelta64[s]") * 0
+            aux = lats, lons, timedeltas
         else:
             aux = self.dataset.get_aux(i - self._before)
 

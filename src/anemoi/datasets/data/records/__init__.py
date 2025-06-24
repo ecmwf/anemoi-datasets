@@ -537,17 +537,14 @@ class Rewindowed(RecordsForward):
         print(f"Requested ds({i}) : need to read {list(range(first_j, last_j + 1))} indices")
 
         # _load_data could support a list of indices, but for now we merge the data ourselves
+        # we merge the windows that we need, and then remove unnecessary data
         too_much_data = merge_data(self.forward._load_data(j) for j in range(first_j, last_j + 1))
 
         out = {}
         for group in self.groups:
             timedeltas = too_much_data[f"timedeltas:{group}"]
             if timedeltas.dtype != "timedelta64[s]":
-                if len(timedeltas) != 0:
-                    raise ValueError(f"Wrong type for {group}")
-                else:
-                    LOG.warning(f"TODO: Fixing {group} on the fly")
-                    timedeltas = np.ones_like(timedeltas, dtype="timedelta64[s]") * 0
+                raise ValueError(f"Wrong type for {group}")
             mask = self._window.compute_mask(timedeltas)
 
             out[f"data:{group}"] = too_much_data[f"data:{group}"][..., mask]
