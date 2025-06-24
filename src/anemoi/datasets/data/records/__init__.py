@@ -17,6 +17,7 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets.data.debug import Node
 from anemoi.datasets.data.records.backends import backend_factory
 
 LOG = logging.getLogger(__name__)
@@ -206,6 +207,9 @@ class RecordsForward(BaseRecordsDataset):
     def __len__(self):
         return len(self.dates)
 
+    def tree(self):
+        return Node(self, [self.forward.tree()], **self.reason)
+
 
 class FieldsRecords(RecordsForward):
     """A wrapper around a FieldsDataset to provide a consistent interface for records datasets."""
@@ -214,6 +218,7 @@ class FieldsRecords(RecordsForward):
         self.forward = fields_dataset
         self._name = name
         self._groups = [name]
+        self.reason = {"name": name}
 
     def _nest_in_dict(self, obj):
         """Helper to nest the object in a dict with the name as key."""
@@ -255,15 +260,15 @@ class FieldsRecords(RecordsForward):
         return len(self.forward.dates)
 
 
-class Rename(RecordsForward):
+class GenericRename(RecordsForward):
     def __init__(self, dataset, rename):
         self.forward = dataset
-        # rename: {"current_group": "new_group"}
         assert isinstance(rename, dict)
         for k, v in rename.items():
             assert isinstance(k, str), k
             assert isinstance(v, str), v
         self.rename = rename
+        self.reason = {"rename": rename}
 
     @property
     def statistics(self):
@@ -282,7 +287,11 @@ class Rename(RecordsForward):
         return [self.rename.get(k, k) for k in self.forward.groups]
 
 
-class SetGroup(Rename):
+class Rename(GenericRename):
+    pass
+
+
+class SetGroup(GenericRename):
     def __init__(self, dataset, set_group):
         if len(dataset.groups) != 1:
             raise ValueError(f"{self.__class__.__name__} can only be used with datasets containing a single group.")
@@ -747,6 +756,9 @@ class RecordsDataset(BaseRecordsDataset):
                 dict_of_sets[group].add(kind)
             for group, s in dict_of_sets.items():
                 assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
+
+    def tree(self):
+        return Node(self, [], path=self.path)
 
 
 class Record:

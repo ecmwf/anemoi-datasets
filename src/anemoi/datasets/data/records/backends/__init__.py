@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 
 
 def normalise_key(k):
-    return "".join([x.lower() if x.isalnum() else "-" for x in k])
+    return "".join([x.lower() if x.isalnum() else "_" for x in k])
 
 
 class Backend:
@@ -155,7 +155,7 @@ class WriteBackend(Backend):
         for k in list(data.keys()):
             k = k.split(":")[-1]
             if k != normalise_key(k):
-                raise ValueError(f"{k} must be alphanumerical and '-' only.")
+                raise ValueError(f"{k} must be alphanumerical and '_' only.")
 
     def _dataframes_to_record(self, i, data, variables, **kwargs):
 

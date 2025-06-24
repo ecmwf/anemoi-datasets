@@ -25,6 +25,8 @@ def check_numpy(x, y):
 
 
 def _test(ds, nb_dates=None):
+    print(f"💬 Testing {type(ds)} with {len(ds)} dates")
+    print(ds.tree())
     grp = "metop-a-ascat"
     index_i = 0
 

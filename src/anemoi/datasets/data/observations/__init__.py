@@ -69,7 +69,10 @@ class ObservationsBase(Dataset):
         return len(self.dates)
 
     def tree(self):
-        return Node(self)
+        return Node(
+            self,
+            [],
+        )
 
     def __getitem__(self, i):
         if isinstance(i, int):
