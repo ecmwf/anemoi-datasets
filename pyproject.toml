@@ -50,7 +50,7 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.10",
-  "anemoi-utils[provenance]>=0.4.21",
+  "anemoi-utils[provenance]>=0.4.26",
   "cfunits",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
