@@ -392,7 +392,7 @@ class Combined(Forwards):
         ValueError
             If the variables are not the same.
         """
-        if d1.variables != d2.variables:
+        if d1.variables.sort() != d2.variables.sort():
             raise ValueError(f"Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})")
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
