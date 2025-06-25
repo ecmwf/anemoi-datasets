@@ -19,7 +19,7 @@ function, which allows you to subset and combine datasets. See
 :ref:`opening-datasets` for more information.
 
 In particular, this is how local zarr datasets created with anemoi in a can 
-be used as a source:
+be used as a source, contrary to :ref:`xarray-zarr` :
 
 .. literalinclude:: yaml/anemoi-zarr-dataset.yaml
    :language: yaml
