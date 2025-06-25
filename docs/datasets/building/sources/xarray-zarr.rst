@@ -1,3 +1,4 @@
+.. _xarray-zarr:
 #############
  xarray-zarr
 #############
