@@ -96,9 +96,11 @@ class Complement(Combined):
 
     @property
     def statistics(self) -> Dict[str, NDArray[Any]]:
-        """Returns the statistics of the complemented dataset."""
-        index = [self._source.name_to_index[v] for v in self._variables]
-        return {k: v[index] for k, v in self._source.statistics.items()}
+        datasets = [self._source, self._target]
+        return {
+            k: [d.statistics[k][d.name_to_index[i]] for d in datasets for i in d.variables if i in self.variables]
+            for k in datasets[0].statistics
+        }
 
     def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
         index = [self._source.name_to_index[v] for v in self._variables]
@@ -120,7 +122,9 @@ class Complement(Combined):
     @property
     def variables_metadata(self) -> Dict[str, Any]:
         """Returns the metadata of the variables to be added to the target dataset."""
-        return {k: v for k, v in self._source.variables_metadata.items() if k in self._variables}
+        all_meta = self._source.variables_metadata.items().copy()
+        all_meta.update(self._target.variables_metadata.items())
+        return {k: v for k, v in all_meta.items() if k in self._variables}
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the variables in two datasets are the same.
@@ -331,5 +335,6 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
     }[interpolation]
 
     complement = Class(target=target, source=source)._subset(**kwargs)
+    joined = _open_dataset([target, complement])
 
-    return _open_dataset([target, complement], reorder=source.variables)
+    return _open_dataset(joined, reorder=sorted(joined.variables))
