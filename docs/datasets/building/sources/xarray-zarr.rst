@@ -18,4 +18,7 @@ it is necessary to use the :ref:`join <building-join>` operation to join
 separate lists containing 2D variables and 3D variables. If all vertical
 levels are desired, then it is acceptable to specify a single source.
 
+Also, an ``xarray-zarr`` source uses the ``url`` keyword, and cannot be used for accessing local datasets.
+For using local zarr datasets as a source, use instead :ref:`anemoi-dataset_source`.
+
 See :ref:`create-cf-data` for more information.
