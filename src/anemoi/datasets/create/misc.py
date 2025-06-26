@@ -8,8 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import logging
-import shutil
 from typing import Any
 from typing import Optional
 
@@ -17,7 +15,10 @@ import numpy as np
 import zarr
 from numpy.typing import NDArray
 
-LOG = logging.getLogger(__name__)
+from anemoi.datasets.zarr_versions import zarr_2_or_3
+
+from .synchronise import NoSynchroniser
+from .synchronise import Synchroniser
 
 
 def add_zarr_dataset(
@@ -72,8 +73,11 @@ def add_zarr_dataset(
         shape = array.shape
 
     if array is not None:
+        array, dtype = zarr_2_or_3.cast_dtype_datetime64(array, dtype)
+
         assert array.shape == shape, (array.shape, shape)
-        a = zarr_root.create_dataset(
+        a = zarr_2_or_3.create_array(
+            zarr_root,
             name,
             shape=shape,
             dtype=dtype,
@@ -100,7 +104,9 @@ def add_zarr_dataset(
         else:
             raise ValueError(f"No fill_value for dtype={dtype}")
 
-    a = zarr_root.create_dataset(
+    dtype = zarr_2_or_3.change_dtype_datetime64(dtype)
+    a = zarr_2_or_3.create_array(
+        zarr_root,
         name,
         shape=shape,
         dtype=dtype,
@@ -132,33 +138,19 @@ class ZarrBuiltRegistry:
         use_threads : bool
             Whether to use thread-based synchronization.
         """
-        import zarr
 
         assert isinstance(path, str), path
         self.zarr_path = path
 
-        if use_threads:
-            self.synchronizer = zarr.ThreadSynchronizer()
-            self.synchronizer_path = None
-        else:
-            if synchronizer_path is None:
-                synchronizer_path = self.zarr_path + ".sync"
-            self.synchronizer_path = synchronizer_path
-            self.synchronizer = zarr.ProcessSynchronizer(self.synchronizer_path)
+        self.synchronizer = Synchroniser(synchronizer_path) if synchronizer_path else NoSynchroniser()
 
     def clean(self) -> None:
         """Clean up the synchronizer path."""
-        if self.synchronizer_path is not None:
-            try:
-                shutil.rmtree(self.synchronizer_path)
-            except FileNotFoundError:
-                pass
+        self.synchronizer.clean()
 
     def _open_write(self) -> zarr.Group:
         """Open the Zarr store in write mode."""
-        import zarr
-
-        return zarr.open(self.zarr_path, mode="r+", synchronizer=self.synchronizer)
+        return zarr.open(self.zarr_path, mode="r+")
 
     def _open_read(self, sync: bool = True) -> zarr.Group:
         """Open the Zarr store in read mode.
@@ -173,12 +165,7 @@ class ZarrBuiltRegistry:
         zarr.Group
             The opened Zarr group.
         """
-        import zarr
-
-        if sync:
-            return zarr.open(self.zarr_path, mode="r", synchronizer=self.synchronizer)
-        else:
-            return zarr.open(self.zarr_path, mode="r")
+        return zarr.open(self.zarr_path, mode="r")
 
     def new_dataset(self, *args, **kwargs) -> None:
         """Create a new dataset in the Zarr store.
@@ -190,9 +177,11 @@ class ZarrBuiltRegistry:
         **kwargs
             Keyword arguments for dataset creation.
         """
-        z = self._open_write()
-        zarr_root = z["_build"]
-        add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
+        with self.synchronizer:
+            z = self._open_write()
+            zarr_root = z["_build"]
+            add_zarr_dataset(*args, zarr_root=zarr_root, overwrite=True, dimensions=("tmp",), **kwargs)
+            del z
 
     def add_to_history(self, action: str, **kwargs) -> None:
         """Add an action to the history attribute of the Zarr store.
@@ -210,10 +199,12 @@ class ZarrBuiltRegistry:
         )
         new.update(kwargs)
 
-        z = self._open_write()
-        history = z.attrs.get("history", [])
-        history.append(new)
-        z.attrs["history"] = history
+        with self.synchronizer:
+            z = self._open_write()
+            history = z.attrs.get("history", [])
+            history.append(new)
+            z.attrs["history"] = history
+            del z
 
     def get_lengths(self) -> list[int]:
         """Get the lengths dataset.
@@ -223,8 +214,11 @@ class ZarrBuiltRegistry:
         list[int]
             The lengths dataset.
         """
-        z = self._open_read()
-        return list(z["_build"][self.name_lengths][:])
+        with self.synchronizer:
+            z = self._open_read()
+            lengths = list(z["_build"][self.name_lengths][:])
+            del z
+        return lengths
 
     def get_flags(self, **kwargs) -> list[bool]:
         """Get the flags dataset.
@@ -239,8 +233,11 @@ class ZarrBuiltRegistry:
         list[bool]
             The flags dataset.
         """
-        z = self._open_read(**kwargs)
-        return list(z["_build"][self.name_flags][:])
+        with self.synchronizer:
+            z = self._open_read(**kwargs)
+            flags = list(z["_build"][self.name_flags][:])
+            del z
+        return flags
 
     def get_flag(self, i: int) -> bool:
         """Get a specific flag.
@@ -255,8 +252,11 @@ class ZarrBuiltRegistry:
         bool
             The flag value.
         """
-        z = self._open_read()
-        return z["_build"][self.name_flags][i]
+        with self.synchronizer:
+            z = self._open_read()
+            flag = z["_build"][self.name_flags][i]
+            del z
+        return flag
 
     def set_flag(self, i: int, value: bool = True) -> None:
         """Set a specific flag.
@@ -268,11 +268,13 @@ class ZarrBuiltRegistry:
         value : bool
             Value to set the flag to.
         """
-        z = self._open_write()
-        z.attrs["latest_write_timestamp"] = (
-            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
-        )
-        z["_build"][self.name_flags][i] = value
+        with self.synchronizer:
+            z = self._open_write()
+            z.attrs["latest_write_timestamp"] = (
+                datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+            )
+            z["_build"][self.name_flags][i] = value
+            del z
 
     def ready(self) -> bool:
         """Check if all flags are set.
@@ -316,11 +318,13 @@ class ZarrBuiltRegistry:
         name : str
             Name of the provenance attribute.
         """
-        z = self._open_write()
+        with self.synchronizer:
+            z = self._open_write()
 
-        if name in z.attrs:
-            return
+            if name in z.attrs:
+                return
 
-        from anemoi.utils.provenance import gather_provenance_info
+            from anemoi.utils.provenance import gather_provenance_info
 
-        z.attrs[name] = gather_provenance_info()
+            z.attrs[name] = gather_provenance_info()
+            del z

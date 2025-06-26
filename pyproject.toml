@@ -57,7 +57,7 @@ dependencies = [
   "pyyaml",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.4",
+  "zarr",
 ]
 
 optional-dependencies.all = [
@@ -94,6 +94,7 @@ optional-dependencies.docs = [
 
 optional-dependencies.remote = [
   "boto3",
+  "obstore",
   "requests",
 ]
 

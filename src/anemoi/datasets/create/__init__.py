@@ -38,6 +38,7 @@ from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
+from anemoi.datasets.zarr_versions import zarr_2_or_3
 
 from .check import DatasetName
 from .check import check_data_values
@@ -156,7 +157,7 @@ def _path_readable(path: str) -> bool:
     try:
         zarr.open(path, "r")
         return True
-    except zarr.errors.PathNotFoundError:
+    except zarr_2_or_3.FileNotFoundException:
         return False
 
 
@@ -172,6 +173,11 @@ class Dataset:
             The path to the dataset.
         """
         self.path = path
+
+        # if zarr_2_or_3.version != 2:
+        #     raise ValueError(
+        #         f"Only zarr version 2 is supported when creating datasets, found version: {zarr.__version__}"
+        #     )
 
         _, ext = os.path.splitext(self.path)
         if ext != ".zarr":
@@ -192,10 +198,9 @@ class Dataset:
         zarr.Array
             The added dataset.
         """
-        import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from .zarr import add_zarr_dataset
+        from .misc import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -210,7 +215,7 @@ class Dataset:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="w+")
+        z = zarr.open(self.path, mode=zarr_2_or_3.open_mode_append)
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
                 v = v.astype(datetime.datetime)
@@ -445,7 +450,7 @@ class Actor:  # TODO: rename to Creator
             """
             import zarr
 
-            z = zarr.open(path, "r")
+            z = zarr.open(path, mode="r")
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
@@ -517,7 +522,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from .zarr import ZarrBuiltRegistry
+        from .misc import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 
@@ -581,6 +586,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         progress: Any = None,
         test: bool = False,
         cache: Optional[str] = None,
+        force_zarr3: bool = False,
         **kwargs: Any,
     ):
         """Initialize an Init instance.
@@ -608,6 +614,32 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         """
         if _path_readable(path) and not overwrite:
             raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
+
+        version = zarr_2_or_3.version
+        if not zarr_2_or_3.supports_datetime64():
+            LOG.warning("⚠️" * 80)
+            LOG.warning(f"This version of Zarr ({zarr.__version__}) does not support datetime64.")
+            LOG.warning("⚠️" * 80)
+
+        if version != 2:
+
+            pytesting = "PYTEST_CURRENT_TEST" in os.environ
+
+            if pytesting or force_zarr3:
+                LOG.warning("⚠️" * 80)
+                LOG.warning("Zarr version 3 is used, but this is an unsupported feature.")
+                LOG.warning("⚠️" * 80)
+            else:
+                LOG.warning("⚠️" * 80)
+                LOG.warning(
+                    f"Only Zarr version 2 is supported when creating datasets, found version: {zarr.__version__}"
+                )
+                LOG.warning("If you want to use Zarr version 3, please set --force-zarr3 option.")
+                LOG.warning("Please note that this is an unsupported feature.")
+                LOG.warning("⚠️" * 80)
+                raise ValueError(
+                    f"Only Zarr version 2 is supported when creating datasets, found version: {zarr.__version__}"
+                )
 
         super().__init__(path, cache=cache)
         self.config = config
@@ -1520,7 +1552,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
 
         LOG.info(stats)
 
-        if not all(self.registry.get_flags(sync=False)):
+        if not all(self.registry.get_flags()):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
         for k in [

@@ -27,6 +27,8 @@ from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
+from anemoi.datasets.zarr_versions import zarr_2_or_3
+
 if TYPE_CHECKING:
     from .dataset import Dataset
 
@@ -371,7 +373,7 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     if isinstance(a, Dataset):
         return a.mutate()
 
-    if isinstance(a, zarr.hierarchy.Group):
+    if isinstance(a, zarr_2_or_3.Group):
         return Zarr(a).mutate()
 
     if isinstance(a, str):

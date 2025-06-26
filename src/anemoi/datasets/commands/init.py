@@ -63,6 +63,7 @@ class Init(Command):
         subparser.add_argument("--cache", help="Location to store the downloaded data.", metavar="DIR")
 
         subparser.add_argument("--trace", action="store_true")
+        subparser.add_argument("--force-zarr3", action="store_true", help="Force the use of Zarr v3 format.")
 
     def run(self, args: Any) -> None:
         """Execute the command with the provided arguments.

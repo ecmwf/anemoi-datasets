@@ -86,6 +86,7 @@ class Create(Command):
         group.add_argument("--threads", help="Use `n` parallel thread workers.", type=int, default=0)
         group.add_argument("--processes", help="Use `n` parallel process workers.", type=int, default=0)
         command_parser.add_argument("--trace", action="store_true")
+        command_parser.add_argument("--force-zarr3", action="store_true")
 
     def run(self, args: Any) -> None:
         """Execute the create command.
