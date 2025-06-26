@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.26](https://github.com/ecmwf/anemoi-datasets/compare/0.5.25...0.5.26) (2025-06-26)
+
+
+### Features
+
+* Sort xarray coordinate with patch ([#356](https://github.com/ecmwf/anemoi-datasets/issues/356)) ([638cbdb](https://github.com/ecmwf/anemoi-datasets/commit/638cbdb013b94b87748654ae338e0d02e69c1900))
+* Use pytest-xdist to run tests in parallel. ([#346](https://github.com/ecmwf/anemoi-datasets/issues/346)) ([1d656ee](https://github.com/ecmwf/anemoi-datasets/commit/1d656ee62c51ee0cbe043943581cef16b2f7d7db))
+
+
+### Bug Fixes
+
+* Remove trailing slash from zarr paths.  ([#362](https://github.com/ecmwf/anemoi-datasets/issues/362)) ([9a9bfe5](https://github.com/ecmwf/anemoi-datasets/commit/9a9bfe50406d299f44f7cce7e3befcabef6fefaf))
+
+
+### Documentation
+
+* Fix pre-commit ([#367](https://github.com/ecmwf/anemoi-datasets/issues/367)) ([6e6ebe2](https://github.com/ecmwf/anemoi-datasets/commit/6e6ebe2e81fc735a2af422b8c222b0a2f229d8dc))
+* Zarr dataset creation ([#365](https://github.com/ecmwf/anemoi-datasets/issues/365)) ([622c261](https://github.com/ecmwf/anemoi-datasets/commit/622c26156de44ae4eaa3359fef836741b1d81d67))
+
 ## [0.5.25](https://github.com/ecmwf/anemoi-datasets/compare/0.5.24...0.5.25) (2025-06-11)
 
 
