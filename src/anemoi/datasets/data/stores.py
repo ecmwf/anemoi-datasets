@@ -214,9 +214,6 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
         if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
             s3_url = f"s3://{bits[0]}{parsed.path}"
             store = S3Store(s3_url, region=bits[2])
-        elif store.startswith("https://planetarycomputer.microsoft.com/"):
-            data_catalog_id = store.rsplit("/", 1)[-1]
-            store = PlanetaryComputerStore(data_catalog_id).store
         else:
             store = HTTPStore(store)
 

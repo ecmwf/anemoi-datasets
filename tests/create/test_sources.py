@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import logging
 import os
 import sys
 
@@ -245,12 +244,44 @@ def test_kerchunk(get_test_data: callable) -> None:
     assert ds.shape == (4, 1, 1, 1038240)
 
 
+@skip_if_offline
+@skip_missing_packages("planetary_computer", "adlfs")
+def test_planetary_computer_conus404() -> None:
+    """Test loading and validating the planetary_computer_conus404 dataset."""
+
+    config = {
+        "dates": {
+            "start": "2022-01-01",
+            "end": "2022-01-02",
+            "frequency": "1d",
+        },
+        "input": {
+            "planetary_computer": {
+                "data_catalog_id": "conus404",
+                "param": ["Z"],
+                "level": [1],
+                "patch": {
+                    "coordinates": ["bottom_top_stag"],
+                    "rename": {
+                        "bottom_top_stag": "level",
+                    },
+                    "attributes": {
+                        "lon": {"standard_name": "longitude", "long_name": "Longitude"},
+                        "lat": {"standard_name": "latitude", "long_name": "Latitude"},
+                    },
+                },
+            }
+        },
+    }
+
+    created = create_dataset(config=config, output=None)
+    ds = open_dataset(created)
+    assert ds.shape == (2, 1, 1, 1387505), ds.shape
+
+
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    test_kerchunk()
-    exit()
-    """Run all test functions that start with 'test_'."""
-    for name, obj in list(globals().items()):
-        if name.startswith("test_") and callable(obj):
-            print(f"Running {name}...")
-            obj()
+    test_planetary_computer_conus404()
+    exit(0)
+    from anemoi.utils.testing import run_tests
+
+    run_tests(globals())
