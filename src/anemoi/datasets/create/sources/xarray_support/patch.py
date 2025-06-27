@@ -60,16 +60,15 @@ def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
 
     return ds
 
-
-def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
+  def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
     """Rename variables in the dataset.
 
-    Parameters
     ----------
     ds : xr.Dataset
         The dataset to patch.
     renames : dict[str, str]
         Mapping from old variable names to new variable names.
+
 
     Returns
     -------
@@ -78,11 +77,31 @@ def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
     """
     return ds.rename(renames)
 
+def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: List[str]) -> Any:
+    """Sort the coordinates of the dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    sort_coordinates : List[str]
+        The coordinates to sort.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
+
+    for name in sort_coordinates:
+        ds = ds.sortby(name)
+    return ds
 
 PATCHES = {
     "attributes": patch_attributes,
     "coordinates": patch_coordinates,
     "rename": patch_rename,
+    "sort_coordinates": patch_sort_coordinate,
 }
 
 
@@ -102,7 +121,7 @@ def patch_dataset(ds: xr.Dataset, patch: Dict[str, Dict[str, Any]]) -> Any:
         The patched dataset.
     """
 
-    ORDER = ["coordinates", "attributes", "rename"]
+    ORDER = ["coordinates", "attributes", "rename", "sort_coordinates"]
     for what, values in sorted(patch.items(), key=lambda x: ORDER.index(x[0])):
         if what not in PATCHES:
             raise ValueError(f"Unknown patch type {what!r}")
