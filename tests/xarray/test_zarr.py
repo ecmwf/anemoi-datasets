@@ -13,7 +13,6 @@ from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
-from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
 
 
@@ -130,33 +129,6 @@ def test_noaa_replay() -> None:
         36972870,
         "1993-12-31T18:00:00",
         "1999-06-13T03:00:00",
-    )
-
-
-@skip_if_offline
-@skip_missing_packages("planetary_computer", "adlfs")
-def test_planetary_computer_conus404() -> None:
-    """Test loading and validating the planetary_computer_conus404 dataset."""
-    url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
-    ds = xr.open_zarr(**name_to_zarr_store(url))
-
-    flavour = {
-        "rules": {
-            "latitude": {"name": "lat"},
-            "longitude": {"name": "lon"},
-            "x": {"name": "west_east"},
-            "y": {"name": "south_north"},
-            "time": {"name": "time"},
-        },
-    }
-
-    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
-
-    assert_field_list(
-        fs,
-        74634912,
-        "1979-10-01T00:00:00",
-        "2022-09-30T23:00:00",
     )
 
 

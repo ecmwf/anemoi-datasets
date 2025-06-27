@@ -20,7 +20,6 @@ import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
-from anemoi.datasets.data.stores import name_to_zarr_store
 
 from ..legacy import legacy_source
 from .fieldlist import XarrayFieldList
@@ -89,37 +88,22 @@ def load_one(
         The loaded dataset.
     """
 
-    """
-    We manage the S3 client ourselves, bypassing fsspec and s3fs layers, because sometimes something on the stack
-    zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
-    connection error). In that case,  Zarr will silently fill the chunks that could not be downloaded with NaNs.
-    See https://github.com/pydata/xarray/issues/8842
-
-    We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
-    """
-
     if options is None:
         options = {}
 
     context.trace(emoji, dataset, options, kwargs)
 
-    if isinstance(dataset, str) and ".zarr" in dataset:
-        data = xr.open_zarr(name_to_zarr_store(dataset), **options)
-    elif "planetarycomputer" in dataset:
-        store = name_to_zarr_store(dataset)
-        if "store" in store:
-            data = xr.open_zarr(**store)
-        if "filename_or_obj" in store:
-            data = xr.open_dataset(**store)
-    else:
-        data = xr.open_dataset(dataset, **options)
+    if isinstance(dataset, str) and dataset.endswith(".zarr"):
+        # If the dataset is a zarr store, we need to use the zarr engine
+        options["engine"] = "zarr"
+
+    data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
 
     if len(dates) == 0:
         result = fs.sel(**kwargs)
     else:
-        print("dates", dates, kwargs)
         result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:
@@ -130,7 +114,7 @@ def load_one(
             a = ["valid_datetime", k.metadata("valid_datetime", default=None)]
             for n in kwargs.keys():
                 a.extend([n, k.metadata(n, default=None)])
-            print([str(x) for x in a])
+            LOG.warning(f"{[str(x) for x in a]}")
 
             if i > 16:
                 break

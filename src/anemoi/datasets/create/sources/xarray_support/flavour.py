@@ -308,9 +308,9 @@ class CoordinateGuesser(ABC):
             return self._grid_cache[(x.name, y.name, dim_vars)]
 
         grid_mapping = variable.attrs.get("grid_mapping", None)
-        if grid_mapping is not None:
-            print(f"grid_mapping: {grid_mapping}")
-            print(self.ds[grid_mapping])
+        # if grid_mapping is not None:
+        #     print(f"grid_mapping: {grid_mapping}")
+        #     print(self.ds[grid_mapping])
 
         if grid_mapping is None:
             LOG.warning(f"No 'grid_mapping' attribute provided for '{variable.name}'")
