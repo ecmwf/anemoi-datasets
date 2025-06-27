@@ -60,15 +60,16 @@ def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
 
     return ds
 
-  def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
+
+def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
     """Rename variables in the dataset.
 
+    Parameters
     ----------
     ds : xr.Dataset
         The dataset to patch.
     renames : dict[str, str]
         Mapping from old variable names to new variable names.
-
 
     Returns
     -------
@@ -76,6 +77,7 @@ def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
         The patched dataset.
     """
     return ds.rename(renames)
+
 
 def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: List[str]) -> Any:
     """Sort the coordinates of the dataset.
@@ -96,6 +98,7 @@ def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: List[str]) -> Any:
     for name in sort_coordinates:
         ds = ds.sortby(name)
     return ds
+
 
 PATCHES = {
     "attributes": patch_attributes,
