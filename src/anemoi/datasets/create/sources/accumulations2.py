@@ -205,6 +205,8 @@ class Periods:
         assert isinstance(accumulation_period, datetime.timedelta), (accumulation_period, type(accumulation_period))
         self.valid_date = valid_date
         self.accumulation_period = accumulation_period
+        self.data_accumulation_period = frequency_to_timedelta(kwargs.pop("data_accumulation_period", "1h"))
+
         self.kwargs = kwargs
 
         self._periods = self.build_periods()
@@ -215,12 +217,11 @@ class Periods:
     def check_merged_interval(self):
         global_start = self.valid_date - self.accumulation_period
         global_end = self.valid_date
-        resolution = datetime.timedelta(hours=1)
 
         timeline = np.arange(
-            np.datetime64(global_start, "s"), np.datetime64(global_end, "s"), np.timedelta64(resolution)
+            np.datetime64(global_start, "s"), np.datetime64(global_end, "s"), self.data_accumulation_period
         )
-
+        print("timeline", timeline)
         flags = np.zeros_like(timeline, dtype=int)
         for p in self._periods:
             segment = np.where((timeline >= p.start_datetime) & (timeline < p.end_datetime))
@@ -278,13 +279,11 @@ class DefaultPeriods(Periods):
             base = int(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
 
-        self.data_accumulation_period = frequency_to_timedelta(kwargs.pop("data_accumulation_period", "1h"))
-
         super().__init__(valid_date, accumulation_period, **kwargs)
 
     def available_steps(
         self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime
-    ) -> Dict[int, List[int]]:
+    ) -> Dict[datetime.datetime, List[datetime.datetime]]:
         """Return the steps available to build/search an available period
 
         Arguments:
@@ -337,9 +336,9 @@ class DefaultPeriods(Periods):
     def build_periods(self):
         # build the list of periods to accumulate the data
 
-        hours = self.accumulation_period.total_seconds() / 3600
-        assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
-        hours = int(hours)
+        #hours = self.accumulation_period.total_seconds() / 3600
+        #assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
+        #hours = int(hours)
 
         assert (
             self.base_datetime is not None
@@ -347,8 +346,8 @@ class DefaultPeriods(Periods):
 
         lst = []
         for wanted in self.available_steps(
-            datetime.timedelta(hours=0), self.accumulation_period, self.data_accumulation_period
-        ):
+            datetime.timedelta(hours=0), datetime.timedelta(hours=0), self.accumulation_period
+        )[datetime.timedelta(hours=0)]:
 
             start = self.valid_date - wanted[1]
             end = self.valid_date - wanted[0]
@@ -540,8 +539,6 @@ class Accumulator:
         self.valid_date = valid_date
 
         # keep the reference to the output file to be able to write the result using an input field as template
-        self.out = []
-
         # key contains the mars request parameters except the one related to the time
         # A mars request is a dictionary with three categories of keys:
         #   - the ones related to the time (date, time, step)
@@ -598,10 +595,10 @@ class Accumulator:
         if self.periods.all_done():
             # all periods for accumulation have been processed
             # final list of outputs is ready to be updated
-            self.write()
+            self.write(field)
             xprint("accumulator", self, " : data written ✅ ")
 
-    def write(self) -> None:
+    def write(self,field) -> None:
         assert self.periods.all_done(), self.periods
 
         if np.all(self.values < 0):
@@ -610,10 +607,10 @@ class Accumulator:
             )
 
         startStep = datetime.timedelta(hours=0)
-        endStep = self.periods.accumulation_period.total_seconds()
-        field = new_field_from_numpy(self.values, startStep=startStep, endStep=endStep, stepType="accum")
+        endStep = self.periods.accumulation_period
+        accumfield = new_field_from_numpy(self.values, template=field, startStep=startStep, endStep=endStep, stepType="accum")
 
-        self.out.append(new_field_with_valid_datetime(field, self.valid_date))
+        self.out = new_field_with_valid_datetime(accumfield, self.valid_date)
 
         # resetting values as accumulation is done
         self.values = None
@@ -683,7 +680,7 @@ def _compute_accumulations(
             a.compute(field, values)
 
     ds = new_fieldlist_from_list([a.out for a in accumulators])
-
+    print(type(ds))
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
         len(param),

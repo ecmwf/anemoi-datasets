@@ -7,13 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import sys
 import os 
+import sys 
 
 import numpy as np
 import pytest
-import tqdm
-from anemoi.utils.testing import get_test_data
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 from anemoi.utils.testing import skip_slow_tests
@@ -52,9 +50,8 @@ def test_grib(get_test_data: callable) -> None:
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
 
-
 @skip_if_offline
-def test_accumulate_grib_index() -> None:
+def test_accumulate_grib_index(get_test_data: callable) -> None:
     """Test the creation of a accumulation from grib index.
 
     This function tests the creation of a dataset using GRIB files from
@@ -194,7 +191,7 @@ def test_accumulate_grib_index() -> None:
 
 
 @skip_if_offline
-def test_accumulate_grib_index() -> None:
+def test_accumulate_grib_index(get_test_data: callable) -> None:
     """Test the creation of a accumulation from grib index.
 
     This function tests the creation of a dataset using GRIB files from
@@ -253,7 +250,7 @@ def test_accumulate_grib_index() -> None:
                     full = os.path.join(root, file)
                     paths.append(full)
 
-    for path in tqdm.tqdm(data1, leave=False):
+    for path in paths:
         index.add_grib_file(path)
 
     reference_config = {
@@ -279,7 +276,6 @@ def test_accumulate_grib_index() -> None:
     # get a reference dataset
     reference = create_dataset(config=reference_config, output=None)
     ds2 = open_dataset(reference)
-
     # creating configuration using the previously created grib-index
     config_grib_index = {
         "dates": {
@@ -321,7 +317,6 @@ def test_accumulate_grib_index() -> None:
     config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 24
 
     with pytest.raises(Exception) as e_info:
-        print(f"Caught {e_info}")
         created = create_dataset(config=config_grib_index, output=None)
 
 
