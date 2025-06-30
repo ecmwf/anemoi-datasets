@@ -54,7 +54,7 @@ def _member(field: Any) -> int:
     return number
 
 
-def _prep_request(request: Dict[str, Any]) -> Dict[str, Any]:
+def _prep_request(request: Dict[str, Any], period_class: Any) -> Dict[str, Any]:
     request = deepcopy(request)
 
     param = request.pop("param")
@@ -75,6 +75,10 @@ def _prep_request(request: Dict[str, Any]) -> Dict[str, Any]:
     if request["levtype"] != "sfc":
         # LOG.warning("'type' should be 'sfc', found %s", request['type'])
         raise NotImplementedError("Only sfc leveltype is supported")
+    
+    if period_class!=DefaultPeriods:
+        _ = request.pop("data_accumulation_period")
+        LOG.warning(f"Non-default data (e.g MARS): ignoring data_accumulation_period")
 
     return request, param, number
 
@@ -334,10 +338,6 @@ class DefaultPeriods(Periods):
 
     def build_periods(self):
         # build the list of periods to accumulate the data
-
-        # hours = self.accumulation_period.total_seconds() / 3600
-        # assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
-        # hours = int(hours)
 
         assert (
             self.base_datetime is not None
@@ -628,10 +628,10 @@ def _compute_accumulations(
     request: Dict[str, Any],
     user_accumulation_period: datetime.timedelta,
 ) -> Any:
-
-    request, param, number = _prep_request(request)
-
+    
     period_class = find_accumulator_class(request)
+
+    request, param, number = _prep_request(request, period_class)
 
     # build one accumulator per output field
     accumulators = []
