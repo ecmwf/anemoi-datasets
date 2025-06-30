@@ -13,13 +13,10 @@ import json
 import logging
 import os
 import sys
-from functools import wraps
 from unittest.mock import patch
 
 import numpy as np
 import pytest
-from anemoi.utils.testing import get_test_archive
-from anemoi.utils.testing import get_test_data
 from anemoi.utils.testing import skip_if_offline
 from earthkit.data import from_source as original_from_source
 
@@ -37,30 +34,11 @@ NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
 
-def mockup_from_source(func: callable) -> callable:
-    """Decorator to mock the `from_source` function from the `earthkit.data` module.
-
-    Parameters
-    ----------
-    func : function
-        The function to be wrapped.
-
-    Returns
-    -------
-    function
-        The wrapped function.
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        with patch("earthkit.data.from_source", _from_source):
-            return func(*args, **kwargs)
-
-    return wrapper
-
-
 class LoadSource:
     """Class to load data sources and handle mockup data."""
+
+    def __init__(self, get_test_data_func) -> None:
+        self._get_test_data = get_test_data_func
 
     def filename(self, args: tuple, kwargs: dict) -> str:
         """Generate a filename based on the arguments and keyword arguments.
@@ -130,7 +108,7 @@ class LoadSource:
         name = self.filename(args, kwargs)
 
         try:
-            return original_from_source("file", get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
         except RuntimeError:
             raise  # If offline
         except Exception:
@@ -159,7 +137,9 @@ class LoadSource:
         return original_from_source(name, *args, **kwargs)
 
 
-_from_source = LoadSource()
+@pytest.fixture
+def load_source(get_test_data: callable) -> LoadSource:
+    return LoadSource(get_test_data)
 
 
 def compare_dot_zattrs(a: dict, b: dict, path: str, errors: list) -> None:
@@ -372,30 +352,34 @@ class Comparer:
 
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
-@mockup_from_source
-def test_run(name: str) -> None:
+def test_run(name: str, get_test_archive: callable, load_source: LoadSource) -> None:
     """Run the test for the specified dataset.
 
     Parameters
     ----------
     name : str
         The name of the dataset.
+    get_test_archive : callable
+        Fixture to retrieve the test archive.
+    load_source : LoadSource
+        Fixture to mock data sources.
 
     Raises
     ------
     AssertionError
         If the comparison fails.
     """
-    config = os.path.join(HERE, name + ".yaml")
-    output = os.path.join(HERE, name + ".zarr")
-    is_test = False
+    with patch("earthkit.data.from_source", load_source):
+        config = os.path.join(HERE, name + ".yaml")
+        output = os.path.join(HERE, name + ".zarr")
+        is_test = False
 
-    create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
+        create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
 
-    directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
-    reference = os.path.join(directory, name + ".zarr")
+        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
+        reference = os.path.join(directory, name + ".zarr")
 
-    Comparer(name, output_path=output, reference_path=reference).compare()
+        Comparer(name, output_path=output, reference_path=reference).compare()
 
 
 if __name__ == "__main__":

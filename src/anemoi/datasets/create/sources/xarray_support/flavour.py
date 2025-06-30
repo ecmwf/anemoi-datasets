@@ -26,6 +26,7 @@ from .coordinates import EnsembleCoordinate
 from .coordinates import LatitudeCoordinate
 from .coordinates import LevelCoordinate
 from .coordinates import LongitudeCoordinate
+from .coordinates import PointCoordinate
 from .coordinates import ScalarCoordinate
 from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
@@ -133,6 +134,10 @@ class CoordinateGuesser(ABC):
         )
 
         d: Optional[Coordinate] = None
+
+        d = self._is_point(coordinate, attributes)
+        if d is not None:
+            return d
 
         d = self._is_longitude(coordinate, attributes)
         if d is not None:
@@ -393,6 +398,10 @@ class CoordinateGuesser(ABC):
         pass
 
     @abstractmethod
+    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[PointCoordinate]:
+        pass
+
+    @abstractmethod
     def _is_latitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LatitudeCoordinate]:
         """Checks if the coordinate is a latitude.
 
@@ -549,6 +558,15 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
             The dataset to guess coordinates from.
         """
         super().__init__(ds)
+
+    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[PointCoordinate]:
+        if attributes.standard_name in ["cell", "station", "poi", "point"]:
+            return PointCoordinate(c)
+
+        if attributes.name in ["cell", "station", "poi", "point"]:  # WeatherBench
+            return PointCoordinate(c)
+
+        return None
 
     def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
         """Checks if the coordinate is a longitude.
