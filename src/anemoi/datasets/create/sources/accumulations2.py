@@ -536,7 +536,7 @@ def find_accumulator_class(request: Dict[str, Any]) -> Periods:
 class Accumulator:
     values = None
 
-    def __init__(self, period_class, out, valid_date, user_accumulation_period, **kwargs):
+    def __init__(self, period_class, valid_date, user_accumulation_period, **kwargs):
         self.valid_date = valid_date
 
         # keep the reference to the output file to be able to write the result using an input field as template
