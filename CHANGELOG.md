@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.25](https://github.com/ecmwf/anemoi-datasets/compare/0.5.24...0.5.25) (2025-06-11)
+
+
+### Features
+
+* Integrating non-regular datasets in anemoi for observations. ([#306](https://github.com/ecmwf/anemoi-datasets/issues/306)) ([95a0fe4](https://github.com/ecmwf/anemoi-datasets/commit/95a0fe4bb10dc48469c0be0efad94f4d5e2a9fe8))
+
+
+### Bug Fixes
+
+* Incremental dataset build tasks called regardless of presence of debug flag in CLI code ([#294](https://github.com/ecmwf/anemoi-datasets/issues/294)) ([37afc0d](https://github.com/ecmwf/anemoi-datasets/commit/37afc0d6489f2d6c4b3ce3f9901c40e4cec5c4eb))
+* Regression in accumulations [#354](https://github.com/ecmwf/anemoi-datasets/issues/354) ([#355](https://github.com/ecmwf/anemoi-datasets/issues/355)) ([f9769d7](https://github.com/ecmwf/anemoi-datasets/commit/f9769d7944738ecbedb6b3cc1f78cd26de36a73f))
+* Remove 2 layers of build function ([#348](https://github.com/ecmwf/anemoi-datasets/issues/348)) ([7a904c4](https://github.com/ecmwf/anemoi-datasets/commit/7a904c451772089f120419a9d39bff746e0aeebb))
+
 ## [0.5.24](https://github.com/ecmwf/anemoi-datasets/compare/0.5.23...0.5.24) (2025-05-23)
 
 

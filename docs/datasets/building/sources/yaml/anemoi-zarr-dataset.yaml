@@ -1,0 +1,3 @@
+input:
+  anemoi-dataset:
+    dataset: path/to/dataset.zarr
