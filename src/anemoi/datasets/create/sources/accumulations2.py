@@ -18,9 +18,8 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
-from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_field_from_numpy, new_field_with_valid_datetime
 from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.utils import frequency_to_timedelta
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -611,8 +610,7 @@ class Accumulator:
 
         startStep = datetime.timedelta(hours=0)
         endStep = self.periods.accumulation_period.total_seconds()
-
-        field = new_field_from_numpy(self.values, startStep=startStep, endStep=endStep, date=date, time=time)
+        field = new_field_from_numpy(self.values, startStep=startStep, endStep=endStep, stepType="accum")
 
         self.out.append(new_field_with_valid_datetime(field, self.valid_date))
 
