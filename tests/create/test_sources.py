@@ -112,7 +112,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     )
 
     paths = []
-    for path in data1
+    for path in data1:
         if os.path.isfile(path):
             paths.append(path)
         else:
@@ -121,7 +121,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                     full = os.path.join(root, file)
                     paths.append(full)
 
-    for path in tqdm.tqdm(data1, leave=False):
+    for path in paths:
         index.add_grib_file(path)
 
     # creating configuration
@@ -152,12 +152,10 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
 
     created = create_dataset(config=config_grib_index, output=None)
     ds = open_dataset(created)
-    print(ds.shape)
 
     # get a reference zarr
     data2 = get_test_data("meteo-france/zarr/tp-test.zarr")
     ds2 = open_dataset(data2)
-    print(ds2.shape)
 
     # shapes should be offset by 'accumulation_period' since frequency is 1h
     assert ds.shape[0] == ds2.shape[0] - 6, (ds.shape, ds2.shape)

@@ -221,7 +221,6 @@ class Periods:
         timeline = np.arange(
             np.datetime64(global_start, "s"), np.datetime64(global_end, "s"), self.data_accumulation_period
         )
-        print("timeline", timeline)
         flags = np.zeros_like(timeline, dtype=int)
         for p in self._periods:
             segment = np.where((timeline >= p.start_datetime) & (timeline < p.end_datetime))
@@ -680,7 +679,6 @@ def _compute_accumulations(
             a.compute(field, values)
 
     ds = new_fieldlist_from_list([a.out for a in accumulators])
-    print(type(ds))
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
         len(param),
