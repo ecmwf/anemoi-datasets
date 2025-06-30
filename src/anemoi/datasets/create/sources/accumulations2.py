@@ -75,10 +75,10 @@ def _prep_request(request: Dict[str, Any], period_class: Any) -> Dict[str, Any]:
     if request["levtype"] != "sfc":
         # LOG.warning("'type' should be 'sfc', found %s", request['type'])
         raise NotImplementedError("Only sfc leveltype is supported")
-    
-    if period_class!=DefaultPeriods:
+
+    if period_class != DefaultPeriods:
         _ = request.pop("data_accumulation_period")
-        LOG.warning(f"Non-default data (e.g MARS): ignoring data_accumulation_period")
+        LOG.warning("Non-default data (e.g MARS): ignoring data_accumulation_period")
 
     return request, param, number
 
@@ -628,7 +628,7 @@ def _compute_accumulations(
     request: Dict[str, Any],
     user_accumulation_period: datetime.timedelta,
 ) -> Any:
-    
+
     period_class = find_accumulator_class(request)
 
     request, param, number = _prep_request(request, period_class)
