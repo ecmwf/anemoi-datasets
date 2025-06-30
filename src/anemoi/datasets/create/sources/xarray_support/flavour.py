@@ -26,6 +26,7 @@ from .coordinates import EnsembleCoordinate
 from .coordinates import LatitudeCoordinate
 from .coordinates import LevelCoordinate
 from .coordinates import LongitudeCoordinate
+from .coordinates import PointCoordinate
 from .coordinates import ScalarCoordinate
 from .coordinates import StepCoordinate
 from .coordinates import TimeCoordinate
@@ -133,6 +134,10 @@ class CoordinateGuesser(ABC):
         )
 
         d: Optional[Coordinate] = None
+
+        d = self._is_point(coordinate, attributes)
+        if d is not None:
+            return d
 
         d = self._is_longitude(coordinate, attributes)
         if d is not None:
@@ -308,9 +313,9 @@ class CoordinateGuesser(ABC):
             return self._grid_cache[(x.name, y.name, dim_vars)]
 
         grid_mapping = variable.attrs.get("grid_mapping", None)
-        if grid_mapping is not None:
-            print(f"grid_mapping: {grid_mapping}")
-            print(self.ds[grid_mapping])
+        # if grid_mapping is not None:
+        #     print(f"grid_mapping: {grid_mapping}")
+        #     print(self.ds[grid_mapping])
 
         if grid_mapping is None:
             LOG.warning(f"No 'grid_mapping' attribute provided for '{variable.name}'")
@@ -390,6 +395,10 @@ class CoordinateGuesser(ABC):
         Optional[LongitudeCoordinate]
             The LongitudeCoordinate if matched, else None.
         """
+        pass
+
+    @abstractmethod
+    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[PointCoordinate]:
         pass
 
     @abstractmethod
@@ -549,6 +558,15 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
             The dataset to guess coordinates from.
         """
         super().__init__(ds)
+
+    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[PointCoordinate]:
+        if attributes.standard_name in ["cell", "station", "poi", "point"]:
+            return PointCoordinate(c)
+
+        if attributes.name in ["cell", "station", "poi", "point"]:  # WeatherBench
+            return PointCoordinate(c)
+
+        return None
 
     def _is_longitude(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[LongitudeCoordinate]:
         """Checks if the coordinate is a longitude.
@@ -750,6 +768,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if attributes.standard_name == "air_pressure" and attributes.units == "hPa":
             return LevelCoordinate(c, "pl")
 
+        if attributes.long_name == "pressure" and attributes.units in ["hPa", "Pa"]:
+            return LevelCoordinate(c, "pl")
+
         if attributes.name == "level":
             return LevelCoordinate(c, "pl")
 
@@ -758,9 +779,6 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
 
         if attributes.standard_name == "depth":
             return LevelCoordinate(c, "depth")
-
-        if attributes.name == "vertical" and attributes.units == "hPa":
-            return LevelCoordinate(c, "pl")
 
         return None
 
