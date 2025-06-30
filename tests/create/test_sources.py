@@ -177,7 +177,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     # this construction should fail because dates are missing
     config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 24
 
-    with pytest.raises(Exception) as e_info:
+    with pytest.raises(Exception):
         created = create_dataset(config=config_grib_index, output=None)
 
 
