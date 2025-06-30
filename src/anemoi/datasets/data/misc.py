@@ -354,21 +354,7 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
     """
     from .dataset import Dataset
     from .stores import Zarr
-    from .stores import zarr_lookup
-
-    if isinstance(a, str) and len(a.split(".")[-1]) in [1, 2, 3]:
-        # This will do nothing if there is no "metadata.json" file
-        # .zarr datasets do not have "metadata.json"
-
-        metadata_path = os.path.join(a, "metadata.json")
-        if os.path.exists(metadata_path):
-            metadata = load_any_dict_format(metadata_path)
-            if "backend" not in metadata:
-                raise ValueError(f"Metadata for {a} does not contain 'backend' key")
-
-            from anemoi.datasets.data.records import open_records_dataset
-
-            return open_records_dataset(a, backend=metadata["backend"])
+    from .stores import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
@@ -377,7 +363,22 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
         return Zarr(a).mutate()
 
     if isinstance(a, str):
-        return Zarr(zarr_lookup(a)).mutate()
+        path = dataset_lookup(a)
+
+        if path and path.endswith(".zarr") or path.endswith(".zip"):
+            return Zarr(path).mutate()
+
+        if path and path.endswith(".vz"):
+            metadata_path = os.path.join(path, "metadata.json")
+            if os.path.exists(metadata_path):
+                if "backend" not in load_any_dict_format(metadata_path):
+                    raise ValueError(f"Metadata for {path} does not contain 'backend' key")
+
+                from anemoi.datasets.data.records import open_records_dataset
+
+                return open_records_dataset(path)
+
+        raise ValueError(f"Unsupported dataset path: {path}. ")
 
     if isinstance(a, PurePath):
         return _open(str(a)).mutate()

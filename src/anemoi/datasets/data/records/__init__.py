@@ -14,6 +14,7 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
@@ -41,6 +42,11 @@ else:
 
 
 def open_records_dataset(dataset, **kwargs):
+    metadata_path = os.path.join(dataset, "metadata.json")
+    if not os.path.exists(metadata_path):
+        return None
+    metadata = load_any_dict_format(metadata_path)
+    kwargs["backend"] = kwargs.get("backend", metadata["backend"])
     return RecordsDataset(dataset, **kwargs)
 
 
@@ -810,7 +816,10 @@ class Record:
         return self.dataset.groups
 
     def __getitem__(self, group):
-        return self._payload["data:" + group]
+        k = f"data:{group}"
+        if k not in self._payload:
+            raise KeyError(f"Group {group} not found in record {self.n}. Available groups are {self.groups}")
+        return self._payload[k]
 
     def _get_aux(self, name):
         try:

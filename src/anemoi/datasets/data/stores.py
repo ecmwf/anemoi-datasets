@@ -559,17 +559,21 @@ class ZarrWithMissingDates(Zarr):
 QUIET = set()
 
 
-def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
+def zarr_lookup(*args, **kwargs) -> Optional[str]:
+    return dataset_lookup(*args, **kwargs)
+
+
+def dataset_lookup(name: str, fail: bool = True) -> Optional[str]:
     """Look up a zarr dataset by name."""
 
     config = load_config()["datasets"]
     use_search_path_not_found = config.get("use_search_path_not_found", False)
 
-    if name.endswith(".zarr/"):
+    if name.endswith(".zarr/") or name.endswith(".vz/"):
         LOG.warning("Removing trailing slash from path: %s", name)
         name = name[:-1]
 
-    if name.endswith(".zarr") or name.endswith(".zip"):
+    if name.endswith(".zarr") or name.endswith(".zip") or name.endswith(".vz"):
 
         if os.path.exists(name):
             return name
@@ -591,6 +595,24 @@ def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
     for location in config["path"]:
         if not location.endswith("/"):
             location += "/"
+
+        full = location + name + ".vz"
+        tried.append(full)
+        try:
+
+            from anemoi.datasets.data.records import open_records_dataset
+
+            z = open_records_dataset(full)
+            if z is not None:
+                # Cache for next time
+                config["named"][name] = full
+                if name not in QUIET:
+                    LOG.info("Opening `%s` as `%s`", name, full)
+                    QUIET.add(name)
+                return full
+        except zarr.errors.PathNotFoundError:
+            pass
+
         full = location + name + ".zarr"
         tried.append(full)
         try:
