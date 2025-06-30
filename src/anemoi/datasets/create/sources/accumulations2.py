@@ -335,9 +335,9 @@ class DefaultPeriods(Periods):
     def build_periods(self):
         # build the list of periods to accumulate the data
 
-        #hours = self.accumulation_period.total_seconds() / 3600
-        #assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
-        #hours = int(hours)
+        # hours = self.accumulation_period.total_seconds() / 3600
+        # assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
+        # hours = int(hours)
 
         assert (
             self.base_datetime is not None
@@ -597,7 +597,7 @@ class Accumulator:
             self.write(field)
             xprint("accumulator", self, " : data written ✅ ")
 
-    def write(self,field) -> None:
+    def write(self, field) -> None:
         assert self.periods.all_done(), self.periods
 
         if np.all(self.values < 0):
@@ -607,7 +607,9 @@ class Accumulator:
 
         startStep = datetime.timedelta(hours=0)
         endStep = self.periods.accumulation_period
-        accumfield = new_field_from_numpy(self.values, template=field, startStep=startStep, endStep=endStep, stepType="accum")
+        accumfield = new_field_from_numpy(
+            self.values, template=field, startStep=startStep, endStep=endStep, stepType="accum"
+        )
 
         self.out = new_field_with_valid_datetime(accumfield, self.valid_date)
 

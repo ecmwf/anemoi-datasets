@@ -7,8 +7,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import os 
-import sys 
+import os
+import sys
 
 import numpy as np
 import pytest
@@ -49,6 +49,7 @@ def test_grib(get_test_data: callable) -> None:
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
+
 
 @skip_if_offline
 def test_accumulate_grib_index(get_test_data: callable) -> None:
