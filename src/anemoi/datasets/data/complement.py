@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 import datetime
 import logging
 from abc import abstractmethod
@@ -19,6 +18,7 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+import numpy as np
 from numpy.typing import NDArray
 
 from ..grids import nearest_grid_points
@@ -85,6 +85,7 @@ class Complement(Combined):
         for v in self._source.variables:
             if v not in self._target.variables:
                 self._variables.append(v)
+        LOG.info(f"The following variables will be complemented: {self._variables}")
 
         if not self._variables:
             raise ValueError("Augment: no missing variables")
@@ -122,8 +123,10 @@ class Complement(Combined):
     @property
     def variables_metadata(self) -> Dict[str, Any]:
         """Returns the metadata of the variables to be added to the target dataset."""
-        all_meta = self._source.variables_metadata.items().copy()
-        all_meta.update(self._target.variables_metadata.items())
+        # Merge the two dicts first
+        all_meta = {**self._source.variables_metadata, **self._target.variables_metadata}
+
+        # Filter to keep only desired variables
         return {k: v for k, v in all_meta.items() if k in self._variables}
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
@@ -235,7 +238,7 @@ class ComplementNone(Complement):
 class ComplementNearest(Complement):
     """A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation."""
 
-    def __init__(self, target: Any, source: Any, max_distance: float = None) -> None:
+    def __init__(self, target: Any, source: Any, max_distance: float = None, k: int = 1) -> None:
         """Initializes the ComplementNearest class.
 
         Parameters
@@ -246,16 +249,24 @@ class ComplementNearest(Complement):
             The source dataset.
         max_distance : float, optional
             The maximum distance for nearest neighbor interpolation, default is None.
+        k : int, optional
+            The number of k closest neighbors to consider for interpolation
         """
         super().__init__(target, source)
 
-        self._nearest_grid_points = nearest_grid_points(
+        self.k = k
+        self._distances, self._nearest_grid_points = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
             self._target.latitudes,
             self._target.longitudes,
             max_distance=max_distance,
+            k=k,
         )
+
+        if k == 1:
+            self._distances = np.expand_dims(self._distances, axis=1)
+            self._nearest_grid_points = np.expand_dims(self._nearest_grid_points, axis=1)
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Checks the compatibility of two datasets for nearest neighbor interpolation.
@@ -289,7 +300,19 @@ class ComplementNearest(Complement):
         source_data = self._source[index[0], source_index, index[2], ...]
         target_data = source_data[..., self._nearest_grid_points]
 
-        result = target_data[..., index[3]]
+        epsilon = 1e-8  # prevent division by zero
+        weights = 1.0 / (self._distances + epsilon)
+        weights = weights.astype(target_data.dtype)
+        weights /= weights.sum(axis=1, keepdims=True)  # normalize
+
+        # Reshape weights to broadcast correctly
+        # Add leading singleton dimensions so it matches target_data shape
+        while weights.ndim < target_data.ndim:
+            weights = np.expand_dims(weights, axis=0)
+
+        # Compute weighted average along the last dimension
+        final_point = np.sum(target_data * weights, axis=-1)
+        result = final_point[..., index[3]]
 
         return apply_index_to_slices_changes(result, changes)
 
@@ -334,7 +357,11 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
         "nearest": ComplementNearest,
     }[interpolation]
 
-    complement = Class(target=target, source=source)._subset(**kwargs)
-    joined = _open_dataset([target, complement])
+    if interpolation == "nearest":
+        k = kwargs.pop("k", "1")
+        complement = Class(target=target, source=source, k=k)._subset(**kwargs)
 
-    return _open_dataset(joined, reorder=sorted(joined.variables))
+    else:
+        complement = Class(target=target, source=source)._subset(**kwargs)
+
+    return _open_dataset([target, complement], reorder=source.variables)
