@@ -11,14 +11,14 @@ import glob
 import logging
 import os
 import sys
+from unittest.mock import patch
 
 import pytest
-from anemoi.utils.testing import get_test_archive
 from anemoi.utils.testing import skip_if_offline
 
 from .utils.compare import Comparer
 from .utils.create import create_dataset
-from .utils.mock_sources import mockup_from_source
+from .utils.mock_sources import LoadSource
 
 HERE = os.path.dirname(__file__)
 # find_yamls
@@ -30,32 +30,41 @@ NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
 
+@pytest.fixture
+def load_source(get_test_data: callable) -> LoadSource:
+    return LoadSource(get_test_data)
+
+
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
-@mockup_from_source
-def test_run(name: str) -> None:
+def test_run(name: str, get_test_archive: callable, load_source: LoadSource) -> None:
     """Run the test for the specified dataset.
 
     Parameters
     ----------
     name : str
         The name of the dataset.
+    get_test_archive : callable
+        Fixture to retrieve the test archive.
+    load_source : LoadSource
+        Fixture to mock data sources.
 
     Raises
     ------
     AssertionError
         If the comparison fails.
     """
-    config = os.path.join(HERE, name + ".yaml")
-    output = os.path.join(HERE, name + ".zarr")
-    is_test = False
+    with patch("earthkit.data.from_source", load_source):
+        config = os.path.join(HERE, name + ".yaml")
+        output = os.path.join(HERE, name + ".zarr")
+        is_test = False
 
-    create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
+        create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
 
-    directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
-    reference = os.path.join(directory, name + ".zarr")
+        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
+        reference = os.path.join(directory, name + ".zarr")
 
-    Comparer(output_path=output, reference_path=reference).compare()
+        Comparer(output_path=output, reference_path=reference).compare()
 
 
 if __name__ == "__main__":

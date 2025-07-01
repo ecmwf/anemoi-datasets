@@ -10,37 +10,15 @@
 import hashlib
 import json
 import os
-from functools import wraps
-from unittest.mock import patch
 
-from anemoi.utils.testing import get_test_data
 from earthkit.data import from_source as original_from_source
-
-
-def mockup_from_source(func: callable) -> callable:
-    """Decorator to mock the `from_source` function from the `earthkit.data` module.
-
-    Parameters
-    ----------
-    func : function
-        The function to be wrapped.
-
-    Returns
-    -------
-    function
-        The wrapped function.
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        with patch("earthkit.data.from_source", _from_source):
-            return func(*args, **kwargs)
-
-    return wrapper
 
 
 class LoadSource:
     """Class to load data sources and handle mockup data."""
+
+    def __init__(self, get_test_data_func) -> None:
+        self._get_test_data = get_test_data_func
 
     def filename(self, args: tuple, kwargs: dict) -> str:
         """Generate a filename based on the arguments and keyword arguments.
@@ -110,7 +88,7 @@ class LoadSource:
         name = self.filename(args, kwargs)
 
         try:
-            return original_from_source("file", get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
         except RuntimeError:
             raise  # If offline
         except Exception:
@@ -137,6 +115,3 @@ class LoadSource:
             return self.mars(args, kwargs)
 
         return original_from_source(name, *args, **kwargs)
-
-
-_from_source = LoadSource()

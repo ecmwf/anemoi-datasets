@@ -7,13 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import logging
 import os
 import sys
 
 import numpy as np
 import pytest
-from anemoi.utils.testing import get_test_data
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 from anemoi.utils.testing import skip_slow_tests
@@ -24,7 +22,7 @@ from .utils.create import create_dataset
 
 
 @skip_if_offline
-def test_grib() -> None:
+def test_grib(get_test_data: callable) -> None:
     """Test the creation of a dataset from GRIB files.
 
     This function tests the creation of a dataset using GRIB files from
@@ -58,7 +56,7 @@ def test_grib() -> None:
     sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
 )
 @skip_if_offline
-def test_grib_gridfile() -> None:
+def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
 
     This function tests the creation of a dataset using GRIB files from
@@ -105,7 +103,9 @@ def test_grib_gridfile() -> None:
         (7, (2, 13, 1, 2949120)),
     ),
 )
-def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tuple[int, int, int, int, int]) -> None:
+def test_grib_gridfile_with_refinement_level(
+    refinement_level_c: str, shape: tuple[int, int, int, int, int], get_test_data: callable
+) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
 
     This function tests the creation of a dataset using GRIB files from
@@ -168,7 +168,7 @@ def test_grib_gridfile_with_refinement_level(refinement_level_c: str, shape: tup
 
 
 @skip_if_offline
-def test_netcdf() -> None:
+def test_netcdf(get_test_data: callable) -> None:
     """Test for NetCDF files.
 
     This function tests the creation of a dataset from a NetCDF file.
@@ -191,7 +191,7 @@ def test_netcdf() -> None:
 
 
 @skip_missing_packages("fstd", "rpnpy.librmn")
-def test_eccs_fstd() -> None:
+def test_eccs_fstd(get_test_data: callable) -> None:
     """Test for 'fstd' files from ECCC."""
     # See https://github.com/neishm/fstd2nc
 
@@ -215,7 +215,7 @@ def test_eccs_fstd() -> None:
 @skip_slow_tests
 @skip_if_offline
 @skip_missing_packages("kerchunk", "s3fs")
-def test_kerchunk() -> None:
+def test_kerchunk(get_test_data: callable) -> None:
     """Test for Kerchunk JSON files.
 
     This function tests the creation of a dataset from a Kerchunk JSON file.
@@ -245,12 +245,44 @@ def test_kerchunk() -> None:
     assert ds.shape == (4, 1, 1, 1038240)
 
 
+@skip_if_offline
+@skip_missing_packages("planetary_computer", "adlfs")
+def test_planetary_computer_conus404() -> None:
+    """Test loading and validating the planetary_computer_conus404 dataset."""
+
+    config = {
+        "dates": {
+            "start": "2022-01-01",
+            "end": "2022-01-02",
+            "frequency": "1d",
+        },
+        "input": {
+            "planetary_computer": {
+                "data_catalog_id": "conus404",
+                "param": ["Z"],
+                "level": [1],
+                "patch": {
+                    "coordinates": ["bottom_top_stag"],
+                    "rename": {
+                        "bottom_top_stag": "level",
+                    },
+                    "attributes": {
+                        "lon": {"standard_name": "longitude", "long_name": "Longitude"},
+                        "lat": {"standard_name": "latitude", "long_name": "Latitude"},
+                    },
+                },
+            }
+        },
+    }
+
+    created = create_dataset(config=config, output=None)
+    ds = open_dataset(created)
+    assert ds.shape == (2, 1, 1, 1387505), ds.shape
+
+
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    test_kerchunk()
-    exit()
-    """Run all test functions that start with 'test_'."""
-    for name, obj in list(globals().items()):
-        if name.startswith("test_") and callable(obj):
-            print(f"Running {name}...")
-            obj()
+    test_planetary_computer_conus404()
+    exit(0)
+    from anemoi.utils.testing import run_tests
+
+    run_tests(globals())

@@ -46,7 +46,16 @@ can contain patterns. See :ref:`file-pattern` for more information.
  Zarr
 ******
 
+For using remote hosted zarr datasets as sources, use
+:ref:`xarray-zarr`.
+
 .. literalinclude:: yaml/zarr1.yaml
+   :language: yaml
+
+For using local zarr datasets (such as anemoi-generated datasets), use
+:ref:`anemoi-dataset_source`.
+
+.. literalinclude:: yaml/zarr2.yaml
    :language: yaml
 
 *********************************************
