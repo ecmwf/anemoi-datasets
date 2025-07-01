@@ -19,6 +19,7 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.data import MissingDateError
 from anemoi.datasets.data.dataset import Dataset
 from anemoi.datasets.data.dataset import FullIndex
 from anemoi.datasets.data.dataset import Shape
@@ -38,7 +39,15 @@ class Padded(Forwards):
     _after: int = 0
     _inside: int = 0
 
-    def __init__(self, dataset: Dataset, start: str, end: str, frequency: str, reason: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        dataset: Dataset,
+        start: str,
+        end: str,
+        frequency: str,
+        reason: Dict[str, Any],
+        padding: str,
+    ) -> None:
         """Create a padded subset of a dataset.
 
         Attributes:
@@ -48,6 +57,7 @@ class Padded(Forwards):
         frequency (str): The frequency of the subset.
         reason (Dict[str, Any]): The reason for the padding.
         """
+        self.padding = padding
 
         self.reason = {k: v for k, v in reason.items() if v is not None}
 
@@ -165,8 +175,15 @@ class Padded(Forwards):
         LOG.warning("Padded subset does not support tuple indexing, returning a list")
         return [self[i] for i in n]
 
+    @property
     def empty_item(self):
-        return self.dataset.empty_item()
+        if self.padding == "empty":
+            return self.dataset.empty_item()
+        elif self.padding == "raise":
+            raise ValueError("Padding is set to 'raise', cannot return an empty item.")
+        elif self.padding == "missing":
+            raise MissingDateError("Padding is set to 'missing'")
+        assert False, self.padding
 
     def get_aux(self, i: FullIndex) -> NDArray[np.timedelta64]:
         if self._i_out_of_range(i):
