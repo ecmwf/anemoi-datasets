@@ -1058,3 +1058,23 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
             return EnsembleCoordinate(c)
 
         return None
+
+    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> Optional[PointCoordinate]:
+        """Checks if the coordinate is a point coordinate using the flavour rules.
+
+        Parameters
+        ----------
+        c : xr.DataArray
+            The coordinate to check.
+        attributes : CoordinateAttributes
+            The attributes of the coordinate.
+
+        Returns
+        -------
+        Optional[PointCoordinate]
+            The StepCoorPointCoordinateinate if matched, else None.
+        """
+        if self._match(c, "point", attributes):
+            return PointCoordinate(c)
+
+        return None
