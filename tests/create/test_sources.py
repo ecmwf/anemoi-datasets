@@ -17,7 +17,8 @@ from anemoi.utils.testing import skip_missing_packages
 from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.testing import create_dataset
+
+from .utils.create import create_dataset
 
 
 @skip_if_offline
