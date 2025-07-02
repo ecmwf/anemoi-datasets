@@ -99,7 +99,7 @@ def execute(
             target_projection,
         )
 
-        result.append(new_field_from_numpy(x, x_new))
-        result.append(new_field_from_numpy(y, y_new))
+        result.append(new_field_from_numpy(x_new, template=x))
+        result.append(new_field_from_numpy(y_new, template=y))
 
     return new_fieldlist_from_list(result)

@@ -70,7 +70,7 @@ def execute(context: Any, input: ekd.FieldList, wz: str, t: str, w: str = "w") -
             float(v) * 100 for k, v in keys if k in ["level", "levelist"]
         )  # Looks first for "level" then "levelist" value
         w_pl = wz_to_w(wz_pl, t_pl, pressure)
-        result.append(new_field_from_numpy(values[wz], w_pl, param=w))
+        result.append(new_field_from_numpy(w_pl, template=values[wz], param=w))
 
     return new_fieldlist_from_list(result)
 

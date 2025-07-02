@@ -79,6 +79,6 @@ def execute(context: Any, input: ekd.FieldList, t: str, rh: str, td: str = "d") 
         rh_values[rh_values == 0] = EPS
         # actual conversion from rh --> td
         td_values = thermo.dewpoint_from_relative_humidity(t=t_values, r=rh_values)
-        result.append(new_field_from_numpy(values[rh], td_values, param=td))
+        result.append(new_field_from_numpy(td_values, template=values[rh], param=td))
 
     return new_fieldlist_from_list(result)

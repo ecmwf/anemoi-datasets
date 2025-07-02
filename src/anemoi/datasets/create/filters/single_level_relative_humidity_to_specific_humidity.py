@@ -158,6 +158,6 @@ def execute(
         p_sl = pressure_at_height_level(height, q_ml, t_ml, sp_sl, np.array(kwargs["A"]), np.array(kwargs["B"]))
         q_sl = thermo.specific_humidity_from_relative_humidity(t_sl, rh_sl, p_sl)
 
-        result.append(new_field_from_numpy(values["sfc"][rh], q_sl, param=new_name))
+        result.append(new_field_from_numpy(q_sl, template=values["sfc"][rh], param=new_name))
 
     return new_fieldlist_from_list(result)

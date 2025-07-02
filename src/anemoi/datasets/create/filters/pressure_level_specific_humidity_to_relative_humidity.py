@@ -79,6 +79,6 @@ def execute(context: Any, input: ekd.FieldList, t: str, q: str, rh: str = "r") -
 
         # actual conversion from rh --> q_v
         rh_pl = thermo.relative_humidity_from_specific_humidity(t_pl, q_pl, pressure)
-        result.append(new_field_from_numpy(values[q], rh_pl, param=rh))
+        result.append(new_field_from_numpy(rh_pl, template=values[q], param=rh))
 
     return new_fieldlist_from_list(result)
