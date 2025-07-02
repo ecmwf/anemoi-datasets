@@ -363,7 +363,7 @@ def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
 
     else:
         complement = Class(target=target, source=source)._subset(**kwargs)
-    
+
     joined = _open_dataset([target, complement])
 
     return _open_dataset(joined, reorder=sorted(joined.variables))
