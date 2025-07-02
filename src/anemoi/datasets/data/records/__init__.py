@@ -83,7 +83,7 @@ class BaseRecordsDataset:
         if isinstance(i, str):
             return self._getgroup(i)
 
-        if isinstance(i, int):
+        if isinstance(i, (int, np.integer)):
             return self._getrecord(i)
 
         raise ValueError(f"Invalid index {i}, must be int or str")
