@@ -1,19 +1,15 @@
-from typing import Optional
-import numpy as np
-import os
-
-from torch import Tensor
-from torch.utils.data import IterableDataset
-from torch.utils.data import get_worker_info
-
-import torch
-import random
 import json
+import os
+import random
+from typing import Optional
 
 import numpy as np
+import torch
 import yaml
 from rich.console import Console
 from rich.tree import Tree
+from torch.utils.data import IterableDataset
+from torch.utils.data import get_worker_info
 
 from anemoi.datasets import open_dataset
 
@@ -236,8 +232,7 @@ def shorten_numpy(structure):
 
 
 def get_base_seed():
-    """
-    Get a base seed for random number generation.
+    """Get a base seed for random number generation.
     This is a placeholder function; replace with actual logic to get a base seed.
     """
     return 42  # Example fixed seed, replace with actual logic as needed
@@ -281,9 +276,7 @@ class DOPDataset(IterableDataset):
         self.len = 25  # len(self._sample_factory)
 
     def __get_sample(self, index: int):
-        """
-        Get a sample from the dataset.
-        """
+        """Get a sample from the dataset."""
         return self._sample_factory[index]
 
     def per_worker_init(self, n_workers: int, worker_id: int) -> None:
