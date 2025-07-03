@@ -242,6 +242,7 @@ class FieldsRecords(RecordsForward):
         out[f"timedeltas:{self._name}"] = np.zeros(data.shape[-1], dtype="timedelta64[s]")# + _to_numpy_date(
         #    self.forward.dates[i]
         #)
+        out[f"metadata:{self._name}"] = self.forward.metadata()
         return out
 
     @property
