@@ -237,8 +237,8 @@ class FieldsRecords(RecordsForward):
         data = self.forward[i]
         out = {}
         out[f"data:{self._name}"] = data
-        # out[f"latitudes:{self._name}"] =  self.forward.latitudes
-        # out[f"longitudes:{self._name}"] =  self.forward.longitudes
+        out[f"latitudes:{self._name}"] =  self.forward.latitudes
+        out[f"longitudes:{self._name}"] =  self.forward.longitudes
         out[f"timedeltas:{self._name}"] = np.zeros_like(data, dtype="timedelta64[s]") + _to_numpy_date(
             self.forward.dates[i]
         )
@@ -259,6 +259,14 @@ class FieldsRecords(RecordsForward):
     @property
     def dates(self):
         return self.forward.dates
+
+    @property
+    def longitudes(self):
+        return self._nest_in_dict(self.forward.longitudes)
+
+    @property
+    def latitudes(self):
+        return self._nest_in_dict(self.forward.latitudes)
 
     @property
     def name_to_index(self):
