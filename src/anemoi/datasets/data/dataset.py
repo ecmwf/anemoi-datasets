@@ -182,13 +182,13 @@ class Dataset(ABC, Sized):
             padding = kwargs.pop("padding", None)
 
             if padding:
-                if padding != "empty":
-                    raise ValueError(f"Only 'empty' padding is supported, got {padding=}")
                 from .padded import Padded
 
                 frequency = kwargs.pop("frequency", self.frequency)
                 return (
-                    Padded(self, start, end, frequency, dict(start=start, end=end, frequency=frequency))
+                    Padded(
+                        self, start, end, frequency, dict(start=start, end=end, frequency=frequency, padding=padding)
+                    )
                     ._subset(**kwargs)
                     .mutate()
                 )
