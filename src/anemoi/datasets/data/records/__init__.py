@@ -239,9 +239,9 @@ class FieldsRecords(RecordsForward):
         out[f"data:{self._name}"] = data
         out[f"latitudes:{self._name}"] =  self.forward.latitudes
         out[f"longitudes:{self._name}"] =  self.forward.longitudes
-        out[f"timedeltas:{self._name}"] = np.zeros_like(data, dtype="timedelta64[s]") + _to_numpy_date(
-            self.forward.dates[i]
-        )
+        out[f"timedeltas:{self._name}"] = np.zeros(data.shape[-1], dtype="timedelta64[s]")# + _to_numpy_date(
+        #    self.forward.dates[i]
+        #)
         return out
 
     @property
