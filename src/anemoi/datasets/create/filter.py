@@ -7,44 +7,42 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from abc import ABC
-from abc import abstractmethod
 from typing import Any
+from typing import Dict
 
 import earthkit.data as ekd
 
 
-class Filter(ABC):
-    """A base class for filters."""
+class TransformFilter:
+    """Calls filters from anemoi.transform.filters
 
-    def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
-        """Initialise the filter.
+    Parameters
+    ----------
+    context : Any
+        The context in which the filter is created.
+    name : str
+        The name of the filter.
+    config : Dict[str, Any]
+        The configuration for the filter.
+    """
+
+    def __init__(self, context: Any, name: str, config: Dict[str, Any]) -> None:
+        from anemoi.transform.filters import create_filter
+
+        self.name = name
+        self.transform_filter = create_filter(context, config)
+
+    def execute(self, input: ekd.FieldList) -> ekd.FieldList:
+        """Execute the transformation filter.
 
         Parameters
         ----------
-        context : Any
-            The context in which the filter is created.
-        *args : tuple
-            Positional arguments.
-        **kwargs : dict
-            Keyword arguments.
-        """
-
-        self.context = context
-
-    @abstractmethod
-    def execute(self, data: ekd.FieldList) -> ekd.FieldList:
-        """Execute the filter.
-
-        Parameters
-        ----------
-        data : ekd.FieldList
-            The input data.
+        input : ekd.FieldList
+            The input data to be transformed.
 
         Returns
         -------
         ekd.FieldList
-            The output data.
+            The transformed data.
         """
-
-        pass
+        return self.transform_filter.forward(input)
