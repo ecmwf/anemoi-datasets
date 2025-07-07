@@ -22,7 +22,6 @@ from typing import Union
 import numpy as np
 import semantic_version
 import tqdm
-from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.humanize import bytes
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.humanize import when
@@ -32,8 +31,8 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.data.stores import dataset_lookup
 from anemoi.datasets.data.stores import open_zarr
+from anemoi.datasets.data.stores import zarr_lookup
 
 from . import Command
 
@@ -301,12 +300,12 @@ class Version:
     @property
     def total_size(self) -> Optional[int]:
         """Get the total size of the dataset."""
-        return self.metadata.get("total_size")
+        return self.zarr.attrs.get("total_size")
 
     @property
     def total_number_of_files(self) -> Optional[int]:
         """Get the total number of files in the dataset."""
-        return self.metadata.get("total_number_of_files")
+        return self.zarr.attrs.get("total_number_of_files")
 
     def print_sizes(self, size: bool) -> None:
         """Print the size and number of files in the dataset.
@@ -363,14 +362,15 @@ class Version:
 
     @cached_property
     def copy_flags(self) -> Optional[NDArray[Any]]:
-        if not self.zarr or "_copy" not in self.zarr:
+        """Get the copy flags of the dataset."""
+        if "_copy" not in self.zarr:
             return None
         return self.zarr["_copy"][:]
 
     @property
     def copy_in_progress(self) -> bool:
         """Check if a copy operation is in progress."""
-        if not self.zarr or "_copy" not in self.zarr:
+        if "_copy" not in self.zarr:
             return False
 
         start = self.zarr["_copy"].attrs.get("copy_start_timestamp")
@@ -383,8 +383,6 @@ class Version:
     @property
     def build_lengths(self) -> Optional[NDArray]:
         """Get the build lengths of the dataset."""
-        if not self.zarr:
-            return None
         return self.zarr.get("_build_lengths")
 
     def progress(self) -> None:
@@ -654,7 +652,7 @@ class Version0_6(Version):
 
     def ready(self) -> bool:
         """Check if the dataset is ready."""
-        if not self.zarr or "_build_flags" not in self.zarr:
+        if "_build_flags" not in self.zarr:
             return False
 
         build_flags = self.zarr["_build_flags"]
@@ -710,7 +708,7 @@ class Version0_13(Version0_12):
     @property
     def build_flags(self) -> Optional[NDArray]:
         """Get the build flags for the dataset."""
-        if not self.zarr or "_build" not in self.zarr:
+        if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
         return build.get("flags")
@@ -820,15 +818,9 @@ class InspectZarr(Command):
         Version
             The version object of the dataset.
         """
-        resolved_path = dataset_lookup(path)
-        if resolved_path.endswith(".vz"):
-            LOG.warning(f"Inspecting a .vz file: {resolved_path}. This is not supported yet.")
-            metadata = load_any_dict_format(os.path.join(resolved_path, "metadata.json"))
-            z = None
-        else:
-            z = open_zarr(resolved_path)
-            metadata = dict(z.attrs)
+        z = open_zarr(zarr_lookup(path))
 
+        metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")
         if isinstance(version, int):
             version = f"0.{version}"
