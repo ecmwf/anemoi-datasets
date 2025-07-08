@@ -361,6 +361,9 @@ class TmpStatistics:
             pickle.dump((key, dates, data), f)
         shutil.move(tmp_path, path)
 
+        # ✅ Assert that the final file exists after writing
+        assert os.path.exists(path), f"Failed to write data to {path}"
+
         LOG.debug(f"Written statistics data for {len(dates)} dates in {path} ({dates})")
 
     def _gather_data(self) -> tuple[str, list[datetime.datetime], dict]:
