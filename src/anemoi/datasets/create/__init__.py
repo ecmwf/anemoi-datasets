@@ -880,7 +880,9 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 continue
             if self.registry.get_flag(igroup):
                 LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
-                continue
+                LOG.info(f"Reloading {igroup}...")
+                # TODO option to overwrite on load as with --init
+                # continue 
 
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
@@ -1537,7 +1539,9 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
 
         LOG.info(stats)
-
+        flags = self.registry.get_flags(sync=False)
+        false_indices = [i for i, val in enumerate(flags) if val == False]
+        print(false_indices)
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
