@@ -1539,9 +1539,6 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
 
         LOG.info(stats)
-        flags = self.registry.get_flags(sync=False)
-        false_indices = [i for i, val in enumerate(flags) if val == False]
-        print(false_indices)
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
