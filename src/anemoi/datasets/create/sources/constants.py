@@ -47,7 +47,7 @@ def constants(context: Any, dates: List[str], template: Dict[str, Any], param: s
     if len(template) == 0:
         raise ValueError("Forcings template is empty.")
 
-    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
+    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
 
 
 execute: Any = constants

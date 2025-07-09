@@ -11,20 +11,9 @@ import logging
 
 import rich
 
+from anemoi.datasets.dates import DatesProvider
+
 LOG = logging.getLogger(__name__)
-
-
-class Predicate:
-    def __init__(self, config):
-        self.config = config
-
-    def __repr__(self):
-        return f"Predicate({self.config})"
-
-    def match(self, dates):
-        # Just a demo
-        raise NotImplementedError("Not yet implemented")
-        return True
 
 
 class Action:
@@ -44,24 +33,26 @@ class Concat(Action):
         for item in config:
 
             assert "dates" in item, f"Value must contain the key 'date' {item}"
-            predicate = Predicate(item.pop("dates"))
+            dates = item.pop("dates")
+            filtering_dates = DatesProvider.from_config(**dates)
             action = action_factory(item)
 
-            self.choices.append((predicate, action))
+            self.choices.append((filtering_dates, action))
 
     def __repr__(self):
         return f"Concat({self.choices})"
 
     def __call__(self, context, argument):
 
-        for predicate, action in self.choices:
-            if predicate.match(argument):
-                return context.register(
-                    action(context, argument),
-                    self.path,
-                )
+        results = context.empty_result()
 
-        raise ValueError(f"No matching predicate for dates: {argument}")
+        for filtering_dates, action in self.choices:
+            dates = context.matching_dates(filtering_dates, argument)
+            if len(dates) == 0:
+                continue
+            results += action(context, dates)
+
+        return context.register(results, self.path)
 
 
 class Join(Action):
@@ -70,42 +61,25 @@ class Join(Action):
 
         assert isinstance(config, list), f"Value must be a list {config}"
 
-        self.actions = [
-            action_factory(
-                item,
-                *path,
-                "join",
-                str(i),
-            )
-            for i, item in enumerate(config)
-        ]
+        self.actions = [action_factory(item, *path, "join", str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Join({self.actions})"
 
     def __call__(self, context, argument):
         results = context.empty_result()
+
         for action in self.actions:
             results += action(context, argument)
-        return context.register(
-            results,
-            self.path,
-        )
+
+        return context.register(results, self.path)
 
 
 class Pipe(Action):
     def __init__(self, config, *path):
         assert isinstance(config, list), f"Value must be a list {config}"
         super().__init__(config, *path)
-        self.actions = [
-            action_factory(
-                item,
-                *path,
-                "pipe",
-                str(i),
-            )
-            for i, item in enumerate(config)
-        ]
+        self.actions = [action_factory(item, *path, "pipe", str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Pipe({self.actions})"
@@ -119,44 +93,88 @@ class Pipe(Action):
             else:
                 result = action(context, result)
 
-        return context.register(
-            result,
-            self.path,
-        )
+        return context.register(result, self.path)
 
 
 class Function(Action):
     def __init__(self, config, *path):
         super().__init__(config, *path, self.name)
 
-
-class SourceFunction(Function):
-
     def __call__(self, context, argument):
-        from anemoi.datasets.create.sources import create_source
 
         config = context.resolve(self.config)  # Substitute the ${} variables in the config
+
         config["_type"] = self.name  # Find a better way to do this
-        source = create_source(self, config)
+
+        source = self.create_object(config)
 
         rich.print(f"Executing source {self.name} from {config}")
 
-        return context.register(
-            source.execute(context, context.source_argument(argument)),
-            self.path,
-        )
+        return context.register(self.call_object(context, source, argument), self.path)
+
+
+class DatasetSourceMixin:
+    def create_object(self, config):
+        from anemoi.datasets.create.sources import create_source as create_datasets_source
+
+        return create_datasets_source(self, config)
+
+    def call_object(self, context, source, argument):
+        return source.execute(context, context.source_argument(argument))
+
+
+class DatasetFilterMixin:
+    def create_object(self, config):
+        from anemoi.datasets.create.filters import create_filter as create_datasets_filter
+
+        return create_datasets_filter(self, config)
+
+    def call_object(self, context, filter, argument):
+        return filter.execute(context.filter_argument(argument))
+
+
+class TransformSourceMixin:
+    def create_object(self, config):
+        from anemoi.transform.sources import create_source as create_transform_source
+
+        return create_transform_source(self, config)
+
+
+class TransformFilterMixin:
+    def create_object(self, config):
+        from anemoi.transform.filters import create_filter as create_transform_filter
+
+        return create_transform_filter(self, config)
+
+    def call_object(self, context, filter, argument):
+        return filter.forward(context.filter_argument(argument))
 
 
 class FilterFunction(Function):
-    pass
+    def __call__(self, context, argument):
+        return self.call(context, argument, context.filter_argument)
 
 
-def new_source(name):
-    return type(name.title(), (SourceFunction,), {"name": name})
+def _make_name(name, what):
+    name = name.replace("_", "-")
+    name = "".join(x.title() for x in name.split("-"))
+    return name + what.title()
 
 
-def new_filter(name):
-    return type(name.title(), (FilterFunction,), {"name": name})
+def new_source(name, mixin):
+    return type(
+        _make_name(name, "source"),
+        (Function, mixin),
+        {"name": name},
+    )
+
+
+def new_filter(name, mixin):
+    return type(
+        _make_name(name, "filter"),
+        (Function, mixin),
+        {"name": name},
+    )
 
 
 KLASS = {"concat": Concat, "join": Join, "pipe": Pipe}
@@ -167,14 +185,33 @@ LEN_KLASS = len(KLASS)
 def make(key, config, path):
 
     if LEN_KLASS == len(KLASS):
+
         # Load pluggins
-        from anemoi.datasets.create.sources import registered_sources
+        from anemoi.transform.filters import filter_registry as transform_filter_registry
+        from anemoi.transform.sources import source_registry as transform_source_registry
 
-        for name in registered_sources():
-            assert name not in KLASS, f"Duplicate source name: {name}"
-            KLASS[name] = new_source(name)
+        from anemoi.datasets.create.filters import filter_registry as dataset_filter_registry
+        from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
-    return KLASS[key](config, *path)
+        # Register sources, local first
+        for name in dataset_source_registry.registered:
+            if name not in KLASS:
+                KLASS[name.replace("_", "-")] = new_source(name, DatasetSourceMixin)
+
+        for name in transform_source_registry.registered:
+            if name not in KLASS:
+                KLASS[name.replace("_", "-")] = new_source(name, TransformSourceMixin)
+
+        # Register filters, local first
+        for name in dataset_filter_registry.registered:
+            if name not in KLASS:
+                KLASS[name.replace("_", "-")] = new_filter(name, DatasetFilterMixin)
+
+        for name in transform_filter_registry.registered:
+            if name not in KLASS:
+                KLASS[name.replace("_", "-")] = new_filter(name, TransformFilterMixin)
+
+    return KLASS[key.replace("_", "-")](config, *path)
 
 
 def action_factory(data, *path):

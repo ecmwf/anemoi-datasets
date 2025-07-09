@@ -20,7 +20,13 @@ from . import Context
 class FieldContext(Context):
 
     def __init__(
-        self, /, argument: Any, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool
+        self,
+        /,
+        argument: Any,
+        order_by: str,
+        flatten_grid: bool,
+        remapping: Dict[str, Any],
+        use_grib_paramid: bool,
     ) -> None:
         super().__init__(argument)
         self.order_by = order_by
@@ -34,7 +40,15 @@ class FieldContext(Context):
         return ekd.from_source("empty")
 
     def source_argument(self, argument: Any) -> Any:
-        return argument.dates
+        return argument  # .dates
+
+    def filter_argument(self, argument: Any) -> Any:
+        return argument
 
     def create_result(self, data):
         return FieldResult(self, data)
+
+    def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
+        from anemoi.datasets.dates.groups import GroupOfDates
+
+        return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)

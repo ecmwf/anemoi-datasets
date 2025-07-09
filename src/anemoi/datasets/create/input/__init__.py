@@ -12,7 +12,6 @@ from typing import Any
 from typing import Union
 
 from anemoi.datasets.create.input.context.field import FieldContext
-from anemoi.datasets.dates.groups import GroupOfDates
 
 
 class InputBuilder:
@@ -41,9 +40,8 @@ class InputBuilder:
                 )
             )
         self.config = config
-        self.action_path = ["input"]
 
-    def select(self, argument: GroupOfDates) -> Any:
+    def select(self, argument) -> Any:
         """Select data based on the group of dates.
 
         Parameters
@@ -62,18 +60,3 @@ class InputBuilder:
         context = FieldContext(argument, **self.kwargs)
         action = action_factory(self.config, "input")
         return context.create_result(action(context, argument))
-
-    def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """Trace the select operation.
-
-        Parameters
-        ----------
-        group_of_dates : GroupOfDates
-            Group of dates to select data for.
-
-        Returns
-        -------
-        str
-            Trace string.
-        """
-        return f"InputBuilder({group_of_dates})"

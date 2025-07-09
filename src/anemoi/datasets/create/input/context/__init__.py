@@ -22,13 +22,18 @@ class Context(ABC):
 
     def __init__(self, /, argument: Any) -> None:
         self.results = {}
+        self.cache = {}
         self.argument = argument
 
-    def trace(self, emoji, message) -> None:
+    def trace(self, emoji, *message) -> None:
 
         rich.print(f"{emoji}: {message}")
 
     def register(self, data: Any, path: list[str]) -> Any:
+
+        if not path:
+            return data
+
         rich.print(f"Registering data at path: {path}")
         self.results[tuple(path)] = data
         return data
@@ -46,11 +51,13 @@ class Context(ABC):
 
         return config
 
-    @abstractmethod
-    def empty_result(self) -> Any: ...
+    def create_source(self, config: Any) -> Any:
+        from anemoi.datasets.create.input.action import action_factory
+
+        return action_factory(config)
 
     @abstractmethod
-    def source_argument(self, argument: Any) -> Any: ...
+    def empty_result(self) -> Any: ...
 
     @abstractmethod
     def create_result(self, data: Any) -> Any: ...
