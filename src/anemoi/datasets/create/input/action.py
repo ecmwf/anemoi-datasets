@@ -23,6 +23,7 @@ class Predicate:
 
     def match(self, dates):
         # Just a demo
+        raise NotImplementedError("Not yet implemented")
         return True
 
 

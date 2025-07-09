@@ -14,7 +14,7 @@ from typing import List
 from earthkit.data import FieldList
 
 from .misc import assert_fieldlist
-from .result import Result
+from .result.field import Result
 from .trace import trace_datasource
 
 LOG = logging.getLogger(__name__)

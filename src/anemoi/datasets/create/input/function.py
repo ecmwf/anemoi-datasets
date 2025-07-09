@@ -18,7 +18,7 @@ from ...dates.groups import GroupOfDates
 from .action import Action
 from .misc import _tidy
 from .misc import assert_fieldlist
-from .result import Result
+from .result.field import Result
 from .template import notify_result
 from .template import substitute
 from .trace import trace

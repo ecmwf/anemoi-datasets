@@ -19,7 +19,7 @@ from typing import Type
 from .action import Action
 from .action import ActionContext
 from .context import Context
-from .result import Result
+from .result.field import Result
 from .template import notify_result
 from .trace import trace_datasource
 from .trace import trace_select
