@@ -20,29 +20,15 @@ LOG = logging.getLogger(__name__)
 class Context(ABC):
     """Context for building input data."""
 
-    def __init__(self):
+    def __init__(self, /, argument: Any) -> None:
         self.results = {}
+        self.argument = argument
 
     def trace(self, emoji, message) -> None:
 
         rich.print(f"{emoji}: {message}")
 
     def register(self, data: Any, path: list[str]) -> Any:
-        """Register data in the context.
-
-        Parameters
-        ----------
-        data : Any
-            Data to register.
-        path : list[str]
-            Path where the data should be registered.
-
-        Returns
-        -------
-        Any
-            Registered data.
-        """
-        # This is a placeholder for actual registration logic.
         rich.print(f"Registering data at path: {path}")
         self.results[tuple(path)] = data
         return data

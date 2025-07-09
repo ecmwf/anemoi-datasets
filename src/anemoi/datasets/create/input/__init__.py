@@ -43,12 +43,12 @@ class InputBuilder:
         self.config = config
         self.action_path = ["input"]
 
-    def select(self, group_of_dates: GroupOfDates) -> Any:
+    def select(self, argument: GroupOfDates) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
-        group_of_dates : GroupOfDates
+        argument : GroupOfDates
             Group of dates to select data for.
 
         Returns
@@ -59,9 +59,9 @@ class InputBuilder:
         from .action import action_factory
 
         """This changes the context."""
-        context = FieldContext(**self.kwargs)
+        context = FieldContext(argument, **self.kwargs)
         action = action_factory(self.config, "input")
-        return context.create_result(action(context, group_of_dates))
+        return context.create_result(action(context, argument))
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
         """Trace the select operation.

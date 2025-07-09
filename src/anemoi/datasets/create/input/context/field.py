@@ -13,14 +13,16 @@ from typing import Dict
 
 from earthkit.data.core.order import build_remapping
 
-from . import Context
 from ..result.field import FieldResult
+from . import Context
 
 
 class FieldContext(Context):
 
-    def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
-        super().__init__()
+    def __init__(
+        self, /, argument: Any, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool
+    ) -> None:
+        super().__init__(argument)
         self.order_by = order_by
         self.flatten_grid = flatten_grid
         self.remapping = build_remapping(remapping)
