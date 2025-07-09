@@ -9,6 +9,8 @@
 
 import logging
 
+import rich
+
 LOG = logging.getLogger(__name__)
 
 
@@ -24,8 +26,16 @@ class Predicate:
         return True
 
 
-class Concat:
-    def __init__(self, config):
+class Action:
+    def __init__(self, config, *path):
+        self.config = config
+        self.path = path
+
+
+class Concat(Action):
+    def __init__(self, config, *path):
+        super().__init__(config, *path)
+
         assert isinstance(config, list), f"Value must be a dict {list}"
 
         self.choices = []
@@ -41,104 +51,119 @@ class Concat:
     def __repr__(self):
         return f"Concat({self.choices})"
 
-    def __call__(self, context, group_of_dates):
+    def __call__(self, context, argument):
 
         for predicate, action in self.choices:
-            if predicate.match(group_of_dates):
-                return action(group_of_dates)
+            if predicate.match(argument):
+                return context.register(
+                    action(context, argument),
+                    self.path,
+                )
 
-        raise ValueError(f"No matching predicate for dates: {group_of_dates}")
+        raise ValueError(f"No matching predicate for dates: {argument}")
 
 
-class Join:
-    def __init__(self, config):
+class Join(Action):
+    def __init__(self, config, *path):
+        super().__init__(config, *path)
+
         assert isinstance(config, list), f"Value must be a list {config}"
-        self.actions = [action_factory(item) for item in config]
+
+        self.actions = [
+            action_factory(
+                item,
+                *path,
+                "join",
+                str(i),
+            )
+            for i, item in enumerate(config)
+        ]
 
     def __repr__(self):
         return f"Join({self.actions})"
 
-    def __call__(self, context, group_of_dates):
-        results = []
+    def __call__(self, context, argument):
+        results = context.empty_result()
         for action in self.actions:
-            results.append(action(context, group_of_dates))
-        return results
+            results += action(context, argument)
+        return context.register(
+            results,
+            self.path,
+        )
 
 
-class Pipe:
-    def __init__(self, config):
+class Pipe(Action):
+    def __init__(self, config, *path):
         assert isinstance(config, list), f"Value must be a list {config}"
-        self.actions = [action_factory(item) for item in config]
+        super().__init__(config, *path)
+        self.actions = [
+            action_factory(
+                item,
+                *path,
+                "pipe",
+                str(i),
+            )
+            for i, item in enumerate(config)
+        ]
 
     def __repr__(self):
         return f"Pipe({self.actions})"
 
-    def __call__(self, context, dates):
-        result = None
-        for action in self.actions:
-            if result is None:
-                result = action(dates)
+    def __call__(self, context, argument):
+        result = context.empty_result()
+
+        for i, action in enumerate(self.actions):
+            if i == 0:
+                result = action(context, argument)
             else:
-                result = action(result)
-        return result
+                result = action(context, result)
+
+        return context.register(
+            result,
+            self.path,
+        )
 
 
-class Function:
-    def __init__(self, config):
-        self.config = config
-
-    #     # if self._source:
-    #     #     self.source = action_factory(config[self._source])
-    #     # else:
-    #     #     self.source = None
-
-    # def __repr__(self):
-    #     return f"{self.__class__.__name__}({self.config})"
-
-    # def __call__(self, context, dates):
-    #     # Just a demo, in real case it would do something with the dates
-
-    #     config = self.config.copy()
-    #     if self.source:
-    #         config[self._source] = self.source(dates)
-
-    #     return {self.__class__.__name__: self.config, "dates": dates}
+class Function(Action):
+    def __init__(self, config, *path):
+        super().__init__(config, *path, self.name)
 
 
 class SourceFunction(Function):
-    def __init__(self, config):
+
+    def __call__(self, context, argument):
         from anemoi.datasets.create.sources import create_source
 
-        super().__init__(config)
-        config["_type"] = self.name
-        self.source = create_source(self, config)
+        config = context.resolve(self.config)  # Substitute the ${} variables in the config
+        config["_type"] = self.name  # Find a better way to do this
+        source = create_source(self, config)
 
-    def __call__(self, context, group_of_dates):
-        return self.source.execute(context, group_of_dates.dates)
+        rich.print(f"Executing source {self.name} from {config}")
+
+        return context.register(
+            source.execute(context, context.source_argument(argument)),
+            self.path,
+        )
 
 
 class FilterFunction(Function):
     pass
 
 
-def new_source(name, source=None):
+def new_source(name):
     return type(name.title(), (SourceFunction,), {"name": name})
 
 
-def new_filter(name, source=None):
+def new_filter(name):
     return type(name.title(), (FilterFunction,), {"name": name})
 
 
-KLASS = {
-    "concat": Concat,
-    "join": Join,
-    "pipe": Pipe,
-}
+KLASS = {"concat": Concat, "join": Join, "pipe": Pipe}
 
 LEN_KLASS = len(KLASS)
 
 
-def make(key, config):
+def make(key, config, path):
 
     if LEN_KLASS == len(KLASS):
         # Load pluggins
@@ -148,7 +173,7 @@ def make(key, config):
             assert name not in KLASS, f"Duplicate source name: {name}"
             KLASS[name] = new_source(name)
 
-    return KLASS[key](config)
+    return KLASS[key](config, *path)
 
 
 def action_factory(data, *path):
@@ -156,4 +181,4 @@ def action_factory(data, *path):
     assert len(data) == 1, "Input data must contain exactly one key-value pair"
 
     key, value = next(iter(data.items()))
-    return make(key, value)
+    return make(key, value, path)

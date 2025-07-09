@@ -26,9 +26,55 @@ class Context:
 
     use_grib_paramid = False
 
+    def __init__(self):
+        self.results = {}
+
     def trace(self, emoji, message) -> None:
 
         rich.print(f"{emoji}: {message}")
+
+    def register(self, data: Any, path: list[str]) -> Any:
+        """Register data in the context.
+
+        Parameters
+        ----------
+        data : Any
+            Data to register.
+        path : list[str]
+            Path where the data should be registered.
+
+        Returns
+        -------
+        Any
+            Registered data.
+        """
+        # This is a placeholder for actual registration logic.
+        rich.print(f"Registering data at path: {path}")
+        self.results[tuple(path)] = data
+        return data
+
+    def resolve(self, config):
+        config = config.copy()
+
+        for key, value in list(config.items()):
+            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                path = tuple(value[2:-1].split("."))
+                if path in self.results:
+                    config[key] = self.results[path]
+                else:
+                    raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
+
+        return config
+
+
+class FieldContext(Context):
+    def empty_result(self) -> Any:
+        import earthkit.data as ekd
+
+        return ekd.from_source("empty")
+
+    def source_argument(self, argument: Any) -> Any:
+        return argument.dates
 
 
 class InputBuilder:
@@ -76,24 +122,9 @@ class InputBuilder:
         from .action import action_factory
 
         """This changes the context."""
-        context = Context()
-        action = action_factory(self.config, self.action_path)
+        context = FieldContext()
+        action = action_factory(self.config, "input")
         return action(context, group_of_dates)
-
-    def __repr__(self) -> str:
-        """Return a string representation of the InputBuilder.
-
-        Returns
-        -------
-        str
-            String representation.
-        """
-        from .action import ActionContext
-        from .action import action_factory
-
-        context = ActionContext(**self.kwargs)
-        a = action_factory(self.config, context, self.action_path)
-        return repr(a)
 
     def _trace_select(self, group_of_dates: GroupOfDates) -> str:
         """Trace the select operation.
