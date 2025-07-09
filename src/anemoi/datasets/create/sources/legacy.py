@@ -71,13 +71,13 @@ class legacy_source:
         name = f"Legacy{self.name.title()}Source"
         source = ".".join([execute.__module__, execute.__name__])
 
-        def execute_wrapper(self, dates) -> Any:
+        def execute_wrapper(self, context, dates) -> Any:
             """Wrapper method to call the execute function."""
 
-            args, kwargs = resolve(self.context, (self.args, self.kwargs))
+            args, kwargs = resolve(context, (self.args, self.kwargs))
 
             try:
-                return execute(self.context, dates, *args, **kwargs)
+                return execute(context, dates, *args, **kwargs)
             except TypeError:
                 LOG.error(f"Error executing source {this.name} from {source}")
                 LOG.error(f"Function signature is: {inspect.signature(execute)}")

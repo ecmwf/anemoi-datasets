@@ -141,3 +141,6 @@ _version.py
 *.to_upload
 tempCodeRunnerFile.python
 Untitled-*.py
+*.prof
+prof/
+*.gz

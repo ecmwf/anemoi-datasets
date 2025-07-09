@@ -7,253 +7,153 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import json
 import logging
-from copy import deepcopy
-from typing import Any
-from typing import Dict
-from typing import List
-
-from earthkit.data.core.order import build_remapping
-
-from ...dates.groups import GroupOfDates
-from .context import Context
-from .template import substitute
 
 LOG = logging.getLogger(__name__)
 
 
-class Action:
-    """Represents an action to be performed within a given context.
+class Predicate:
+    def __init__(self, config):
+        self.config = config
 
-    Attributes
-    ----------
-    context : ActionContext
-        The context in which the action exists.
-    kwargs : Dict[str, Any]
-        Additional keyword arguments.
-    args : Any
-        Additional positional arguments.
-    action_path : List[str]
-        The action path.
-    """
+    def __repr__(self):
+        return f"Predicate({self.config})"
 
-    def __init__(
-        self, context: "ActionContext", action_path: List[str], /, *args: Any, **kwargs: Dict[str, Any]
-    ) -> None:
-        """Initialize an Action instance.
-
-        Parameters
-        ----------
-        context : ActionContext
-            The context in which the action exists.
-        action_path : List[str]
-            The action path.
-        args : Any
-            Additional positional arguments.
-        kwargs : Dict[str, Any]
-            Additional keyword arguments.
-        """
-        if "args" in kwargs and "kwargs" in kwargs:
-            """We have:
-               args = []
-               kwargs = {args: [...], kwargs: {...}}
-            move the content of kwargs to args and kwargs.
-            """
-            assert len(kwargs) == 2, (args, kwargs)
-            assert not args, (args, kwargs)
-            args = kwargs.pop("args")
-            kwargs = kwargs.pop("kwargs")
-
-        assert isinstance(context, ActionContext), type(context)
-        self.context = context
-        self.kwargs = kwargs
-        self.args = args
-        self.action_path = action_path
-
-    @classmethod
-    def _short_str(cls, x: str) -> str:
-        """Shorten the string representation if it exceeds 1000 characters.
-
-        Parameters
-        ----------
-        x : str
-            The string to shorten.
-
-        Returns
-        -------
-        str
-            The shortened string.
-        """
-        x = str(x)
-        if len(x) < 1000:
-            return x
-        return x[:1000] + "..."
-
-    def _repr(self, *args: Any, _indent_: str = "\n", _inline_: str = "", **kwargs: Any) -> str:
-        """Generate a string representation of the Action instance.
-
-        Parameters
-        ----------
-        args : Any
-            Additional positional arguments.
-        _indent_ : str, optional
-            The indentation string, by default "\n".
-        _inline_ : str, optional
-            The inline string, by default "".
-        kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        str
-            The string representation.
-        """
-        more = ",".join([str(a)[:5000] for a in args])
-        more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
-
-        more = more[:5000]
-        txt = f"{self.__class__.__name__}: {_inline_}{_indent_}{more}"
-        if _indent_:
-            txt = txt.replace("\n", "\n  ")
-        return txt
-
-    def __repr__(self) -> str:
-        """Return the string representation of the Action instance.
-
-        Returns
-        -------
-        str
-            The string representation.
-        """
-        return self._repr()
-
-    def select(self, dates: object, **kwargs: Any) -> None:
-        """Select dates for the action.
-
-        Parameters
-        ----------
-        dates : object
-            The dates to select.
-        kwargs : Any
-            Additional keyword arguments.
-        """
-        self._raise_not_implemented()
-
-    def _raise_not_implemented(self) -> None:
-        """Raise a NotImplementedError indicating the method is not implemented."""
-        raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
-
-    def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """Trace the selection of a group of dates.
-
-        Parameters
-        ----------
-        group_of_dates : GroupOfDates
-            The group of dates to trace.
-
-        Returns
-        -------
-        str
-            The trace string.
-        """
-        return f"{self.__class__.__name__}({group_of_dates})"
+    def match(self, dates):
+        # Just a demo
+        return True
 
 
-class ActionContext(Context):
-    """Represents the context in which an action is performed.
+class Concat:
+    def __init__(self, config):
+        assert isinstance(config, list), f"Value must be a dict {list}"
 
-    Attributes
-    ----------
-    order_by : str
-        The order by criteria.
-    flatten_grid : bool
-        Whether to flatten the grid.
-    remapping : Dict[str, Any]
-        The remapping configuration.
-    use_grib_paramid : bool
-        Whether to use GRIB parameter ID.
-    """
+        self.choices = []
 
-    def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
-        """Initialize an ActionContext instance.
+        for item in config:
 
-        Parameters
-        ----------
-        order_by : str
-            The order by criteria.
-        flatten_grid : bool
-            Whether to flatten the grid.
-        remapping : Dict[str, Any]
-            The remapping configuration.
-        use_grib_paramid : bool
-            Whether to use GRIB parameter ID.
-        """
-        super().__init__()
-        self.order_by = order_by
-        self.flatten_grid = flatten_grid
-        self.remapping = build_remapping(remapping)
-        self.use_grib_paramid = use_grib_paramid
+            assert "dates" in item, f"Value must contain the key 'date' {item}"
+            predicate = Predicate(item.pop("dates"))
+            action = action_factory(item)
+
+            self.choices.append((predicate, action))
+
+    def __repr__(self):
+        return f"Concat({self.choices})"
+
+    def __call__(self, context, group_of_dates):
+
+        for predicate, action in self.choices:
+            if predicate.match(group_of_dates):
+                return action(group_of_dates)
+
+        raise ValueError(f"No matching predicate for dates: {group_of_dates}")
 
 
-def action_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str]) -> Action:
-    """Factory function to create an Action instance based on the configuration.
+class Join:
+    def __init__(self, config):
+        assert isinstance(config, list), f"Value must be a list {config}"
+        self.actions = [action_factory(item) for item in config]
 
-    Parameters
-    ----------
-    config : Dict[str, Any]
-        The action configuration.
-    context : ActionContext
-        The context in which the action exists.
-    action_path : List[str]
-        The action path.
+    def __repr__(self):
+        return f"Join({self.actions})"
 
-    Returns
-    -------
-    Action
-        The created Action instance.
-    """
-    from .concat import ConcatAction
-    from .data_sources import DataSourcesAction
-    from .function import FunctionAction
-    from .join import JoinAction
-    from .pipe import PipeAction
-    from .repeated_dates import RepeatedDatesAction
+    def __call__(self, context, group_of_dates):
+        results = []
+        for action in self.actions:
+            results.append(action(context, group_of_dates))
+        return results
 
-    # from .data_sources import DataSourcesAction
 
-    assert isinstance(context, Context), (type, context)
-    if not isinstance(config, dict):
-        raise ValueError(f"Invalid input config {config}")
-    if len(config) != 1:
-        print(json.dumps(config, indent=2, default=str))
-        raise ValueError(f"Invalid input config. Expecting dict with only one key, got {list(config.keys())}")
+class Pipe:
+    def __init__(self, config):
+        assert isinstance(config, list), f"Value must be a list {config}"
+        self.actions = [action_factory(item) for item in config]
 
-    config = deepcopy(config)
-    key = list(config.keys())[0]
+    def __repr__(self):
+        return f"Pipe({self.actions})"
 
-    if isinstance(config[key], list):
-        args, kwargs = config[key], {}
-    elif isinstance(config[key], dict):
-        args, kwargs = [], config[key]
-    else:
-        raise ValueError(f"Invalid input config {config[key]} ({type(config[key])}")
+    def __call__(self, context, dates):
+        result = None
+        for action in self.actions:
+            if result is None:
+                result = action(dates)
+            else:
+                result = action(result)
+        return result
 
-    cls = {
-        "data_sources": DataSourcesAction,
-        "data-sources": DataSourcesAction,
-        "concat": ConcatAction,
-        "join": JoinAction,
-        "pipe": PipeAction,
-        "function": FunctionAction,
-        "repeated_dates": RepeatedDatesAction,
-        "repeated-dates": RepeatedDatesAction,
-    }.get(key)
 
-    if cls is None:
-        from ..sources import create_source
+class Function:
+    def __init__(self, config):
+        self.config = config
 
-        source = create_source(None, substitute(context, config))
-        return FunctionAction(context, action_path + [key], key, source)
+    #     # if self._source:
+    #     #     self.source = action_factory(config[self._source])
+    #     # else:
+    #     #     self.source = None
 
-    return cls(context, action_path + [key], *args, **kwargs)
+    # def __repr__(self):
+    #     return f"{self.__class__.__name__}({self.config})"
+
+    # def __call__(self, context, dates):
+    #     # Just a demo, in real case it would do something with the dates
+
+    #     config = self.config.copy()
+    #     if self.source:
+    #         config[self._source] = self.source(dates)
+
+    #     return {self.__class__.__name__: self.config, "dates": dates}
+
+
+class SourceFunction(Function):
+    def __init__(self, config):
+        from anemoi.datasets.create.sources import create_source
+
+        super().__init__(config)
+        config["_type"] = self.name
+        self.source = create_source(self, config)
+
+    def __call__(self, context, group_of_dates):
+        return self.source.execute(context, group_of_dates.dates)
+
+
+class FilterFunction(Function):
+    pass
+
+
+def new_source(name, source=None):
+    return type(name.title(), (SourceFunction,), {"name": name})
+
+
+def new_filter(name, source=None):
+    return type(name.title(), (FilterFunction,), {"name": name})
+
+
+KLASS = {
+    "concat": Concat,
+    "join": Join,
+    "pipe": Pipe,
+}
+
+LEN_KLASS = len(KLASS)
+
+
+def make(key, config):
+
+    if LEN_KLASS == len(KLASS):
+        # Load pluggins
+        from anemoi.datasets.create.sources import registered_sources
+
+        for name in registered_sources():
+            assert name not in KLASS, f"Duplicate source name: {name}"
+            KLASS[name] = new_source(name)
+
+    return KLASS[key](config)
+
+
+def action_factory(data, *path):
+    assert isinstance(data, dict), f"Input data must be a dictionary {data}"
+    assert len(data) == 1, "Input data must contain exactly one key-value pair"
+
+    key, value = next(iter(data.items()))
+    return make(key, value)

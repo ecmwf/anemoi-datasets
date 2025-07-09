@@ -34,3 +34,14 @@ def create_source(context: Any, config: Any) -> Any:
         The created source.
     """
     return source_registry.from_config(config, context)
+
+
+def registered_sources() -> list[str]:
+    """Get a list of registered source names.
+
+    Returns
+    -------
+    list[str]
+        A list of names of registered sources.
+    """
+    return source_registry.registered

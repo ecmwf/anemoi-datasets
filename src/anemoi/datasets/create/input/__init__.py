@@ -12,6 +12,8 @@ from copy import deepcopy
 from typing import Any
 from typing import Union
 
+import rich
+
 from anemoi.datasets.dates.groups import GroupOfDates
 
 from .trace import trace_select
@@ -22,7 +24,11 @@ LOG = logging.getLogger(__name__)
 class Context:
     """Context for building input data."""
 
-    pass
+    use_grib_paramid = False
+
+    def trace(self, emoji, message) -> None:
+
+        rich.print(f"{emoji}: {message}")
 
 
 class InputBuilder:
@@ -67,13 +73,12 @@ class InputBuilder:
         Any
             Selected data.
         """
-        from .action import ActionContext
         from .action import action_factory
 
         """This changes the context."""
-        context = ActionContext(**self.kwargs)
-        action = action_factory(self.config, context, self.action_path)
-        return action.select(group_of_dates)
+        context = Context()
+        action = action_factory(self.config, self.action_path)
+        return action(context, group_of_dates)
 
     def __repr__(self) -> str:
         """Return a string representation of the InputBuilder.
