@@ -14,6 +14,7 @@ from typing import Dict
 from earthkit.data.core.order import build_remapping
 
 from . import Context
+from ..result.field import FieldResult
 
 
 class FieldContext(Context):
