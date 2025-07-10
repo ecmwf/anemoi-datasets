@@ -375,7 +375,7 @@ def execute(
         td_sl = thermo.dewpoint_from_specific_humidity(q=q_sl, p=p_sl)
         rh_sl = thermo.relative_humidity_from_dewpoint(t=t_sl, td=td_sl)
 
-        result.append(new_field_from_numpy(values["sfc"][q], rh_sl, param=new_name))
+        result.append(new_field_from_numpy(rh_sl, template=values["sfc"][q], param=new_name))
 
     return new_fieldlist_from_list(result)
 
