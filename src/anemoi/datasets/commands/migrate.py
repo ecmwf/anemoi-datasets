@@ -11,7 +11,6 @@
 import datetime
 import logging
 import os
-from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
 
@@ -36,7 +35,7 @@ def find_paths(data, target_key=None, target_value=None, *path):
 
     matches = []
 
-    if isinstance(data, Mapping):
+    if isinstance(data, dict):
         for k, v in data.items():
             if (target_key is not None and k == target_key) or (target_value is not None and v == target_value):
                 matches.append(list(path) + [k])
@@ -44,6 +43,21 @@ def find_paths(data, target_key=None, target_value=None, *path):
     elif isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
         for i, item in enumerate(data):
             matches.extend(find_paths(item, target_key, target_value, *path, str(i)))
+    return matches
+
+
+def find_chevrons(data, *path):
+
+    matches = []
+
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k == "<<":
+                matches.append(list(path) + [k])
+            matches.extend(find_chevrons(v, *path, k))
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            matches.extend(find_chevrons(item, *path, str(i)))
     return matches
 
 
@@ -63,7 +77,9 @@ def represent_date(dumper, data):
 # Custom representer for multiline strings using the '|' block style
 def represent_multiline_str(dumper, data):
     if "\n" in data:
-        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+        text_list = [line.rstrip() for line in data.splitlines()]
+        fixed_data = "\n".join(text_list)
+        return dumper.represent_scalar("tag:yaml.org,2002:str", fixed_data, style="|")
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 
@@ -358,6 +374,82 @@ def _fix_other(result: dict, config: dict) -> None:
         delete(result, ".".join(p))
 
 
+def _fix_join(result: dict, config: dict) -> None:
+    rich.print("Fixing join...")
+    input = config["input"]
+    if "dates" in input and "join" in input["dates"]:
+        result["input"]["join"] = input["dates"]["join"]
+        config["input"]["join"] = input["dates"]["join"].copy()
+
+    if "join" not in input:
+        return
+
+    join = input["join"]
+    new_join = []
+    for j in join:
+        assert isinstance(j, dict)
+        assert len(j) == 1
+
+        key, values = list(j.items())[0]
+
+        if key not in ("label", "source"):
+            return
+
+        assert isinstance(values, dict), f"Join values for {key} should be a dict: {values}"
+        if key == "label":
+            j = values
+            j.pop("name")
+            key, values = list(j.items())[0]
+
+        print(values)
+        source_name = values.pop("name", "mars")
+        new_join.append(
+            {
+                SOURCES.get(source_name, source_name): values,
+            }
+        )
+
+    result["input"] = {"join": new_join}
+    config["input"] = result["input"].copy()
+
+
+def _fix_sources(result: dict, config: dict, what) -> None:
+
+    input = config["input"]
+    if what not in input:
+        return
+
+    join = input[what]
+    new_join = []
+    for j in join:
+        assert isinstance(j, dict)
+        assert len(j) == 1
+
+        key, values = list(j.items())[0]
+
+        key = SOURCES.get(key, key)
+
+        new_join.append(
+            {
+                key: values,
+            }
+        )
+
+    result["input"][what] = new_join
+    config["input"][what] = new_join.copy()
+
+
+def _fix_chevrons(result: dict, config: dict) -> None:
+    rich.print("Fixing chevrons...")
+    paths = find_chevrons(config)
+    for p in paths:
+        a = glom(config, ".".join(p))
+        b = glom(config, ".".join(p[:-1]))
+        delete(result, ".".join(p))
+        a.update(b)
+        assign(result, ".".join(p[:-1]), a)
+
+
 def _migrate(config: dict, n) -> dict:
 
     result = config.copy()
@@ -365,6 +457,9 @@ def _migrate(config: dict, n) -> dict:
     _fix_input_0(result, config)
     _fix_loops(result, config)
     _fix_input_1(result, config)
+    _fix_join(result, config)
+    _fix_sources(result, config, "join")
+    _fix_chevrons(result, config)
     _fix_other(result, config)
 
     for k, v in MIGRATE.items():
