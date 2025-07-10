@@ -36,7 +36,7 @@ def forcings(context: Any, dates: List[str], template: str, param: str) -> Any:
         Loaded forcing data.
     """
     context.trace("✅", f"from_source(forcings, {template}, {param}")
-    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
+    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
 
 
 execute = forcings

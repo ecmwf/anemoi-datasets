@@ -20,7 +20,7 @@ from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .misc import _tidy
-from .result import Result
+from .result.field import Result
 
 LOG = logging.getLogger(__name__)
 
