@@ -792,10 +792,10 @@ class InspectZarr(Command):
 
         try:
             if progress:
-                return version.progress()
+                version.progress()
 
             if statistics:
-                return version.brute_force_statistics()
+                version.brute_force_statistics()
 
             version.info(detailed, size)
 
