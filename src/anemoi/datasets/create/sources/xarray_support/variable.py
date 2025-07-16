@@ -221,19 +221,22 @@ class Variable:
                 LOG.warning(f"Could not find {k}={v} in {c}")
             return None
 
-        coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]
+        if c.scalar and i == 0:
+            variable = self
+        else:
+            coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]
 
-        metadata = self._metadata.copy()
-        metadata.update({k: v})
+            metadata = self._metadata.copy()
+            metadata.update({k: v})
 
-        variable = Variable(
-            ds=self.ds,
-            variable=self.variable.isel({k: i}),
-            coordinates=coordinates,
-            grid=self.grid,
-            time=self.time,
-            metadata=metadata,
-        )
+            variable = Variable(
+                ds=self.ds,
+                variable=self.variable.isel({k: i}),
+                coordinates=coordinates,
+                grid=self.grid,
+                time=self.time,
+                metadata=metadata,
+            )
 
         return variable.sel(missing, **kwargs)
 
