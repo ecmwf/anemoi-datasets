@@ -187,7 +187,12 @@ class Dataset(ABC, Sized):
                 frequency = kwargs.pop("frequency", self.frequency)
                 return (
                     Padded(
-                        self, start, end, frequency, dict(start=start, end=end, frequency=frequency, padding=padding)
+                        self,
+                        start=start,
+                        end=end,
+                        frequency=frequency,
+                        padding=padding,
+                        reason=dict(start=start, end=end, frequency=frequency, padding=padding),
                     )
                     ._subset(**kwargs)
                     .mutate()
