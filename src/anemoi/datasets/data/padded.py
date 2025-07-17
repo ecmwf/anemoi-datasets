@@ -175,7 +175,6 @@ class Padded(Forwards):
         LOG.warning("Padded subset does not support tuple indexing, returning a list")
         return [self[i] for i in n]
 
-    @property
     def empty_item(self):
         if self.padding == "empty":
             return self.dataset.empty_item()
