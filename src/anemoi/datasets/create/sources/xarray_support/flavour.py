@@ -768,9 +768,6 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if attributes.standard_name == "air_pressure" and attributes.units == "hPa":
             return LevelCoordinate(c, "pl")
 
-        if attributes.long_name == "pressure" and attributes.units in ["hPa", "Pa"]:
-            return LevelCoordinate(c, "pl")
-
         if attributes.name == "level":
             return LevelCoordinate(c, "pl")
 
@@ -779,6 +776,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
 
         if attributes.standard_name == "depth":
             return LevelCoordinate(c, "depth")
+
+        if attributes.name == "vertical" and attributes.units == "hPa":
+            return LevelCoordinate(c, "pl")
 
         return None
 
