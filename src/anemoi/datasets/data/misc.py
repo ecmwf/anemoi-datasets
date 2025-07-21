@@ -13,7 +13,13 @@ import datetime
 import logging
 import os
 from pathlib import PurePath
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import zarr
@@ -347,7 +353,8 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
         The opened dataset.
     """
     from .dataset import Dataset
-    from .stores import Zarr, zarr_lookup
+    from .stores import Zarr
+    from .stores import zarr_lookup
 
     if isinstance(a, str) and len(a.split(".")) in [2, 3]:
 
@@ -626,14 +633,14 @@ def append_to_zarr(new_data: np.ndarray, new_dates: np.ndarray, zarr_path: str) 
     data_ds[old_shape[0] :] = new_data
 
 
-def process_date(date: Any, big_dataset: Any) -> Tuple[np.ndarray, np.ndarray]:
+def process_date(date: Any, big_dataset: "Dataset") -> Tuple[np.ndarray, np.ndarray]:
     """Open the subset corresponding to the given date and return (date, subset).
 
     Parameters
     ----------
     date : Any
         The date to process.
-    big_dataset : Any
+    big_dataset : Dataset
         The dataset to process.
 
     Returns
@@ -648,17 +655,15 @@ def process_date(date: Any, big_dataset: Any) -> Tuple[np.ndarray, np.ndarray]:
     return s, date
 
 
-def initialize_zarr_store(root: Any, big_dataset: Any) -> None:
+def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     """Initialize the Zarr store with the given dataset and recipe.
 
     Parameters
     ----------
     root : Any
-        The root of the Zarr store.
-    big_dataset : Any
+        The root Zarr store.
+    big_dataset : Dataset
         The dataset to initialize the store with.
-    recipe : Dict[str, Any]
-        The recipe for initializing the store.
     """
     ensembles = big_dataset.shape[2]
     # Create or append to "dates" dataset.
@@ -702,12 +707,13 @@ def initialize_zarr_store(root: Any, big_dataset: Any) -> None:
         root.attrs["recipe"] = {}
 
 
-def _save_dataset(dataset, zarr_path: str, n_workers: int = 1) -> None:
+def _save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> None:
     """Incrementally create (or update) a Zarr store from an Anemoi dataset.
 
     Parameters
     ----------
-    dataset : anemoi-dataset opened from python to save to Zarr store
+    dataset : Dataset
+        anemoi-dataset opened from python to save to Zarr store
     zarr_path : str
         The path to the Zarr store.
     n_workers : int, optional
