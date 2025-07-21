@@ -348,8 +348,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         The opened dataset.
     """
     from .dataset import Dataset
-    from .stores import Zarr
-    from .stores import zarr_lookup
+    from .stores import Zarr, zarr_lookup
 
     if isinstance(a, str) and len(a.split(".")) in [2, 3]:
 
