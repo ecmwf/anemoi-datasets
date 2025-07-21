@@ -92,12 +92,13 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     return ds
 
 
-def save_dataset(dataset, zarr_path: str, n_workers: int = 1) -> None:
+def save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> None:
     """Open a dataset and save it to disk.
 
     Parameters
     ----------
-    dataset : anemoi-dataset opened from python to save to Zarr store 
+    dataset : Dataset
+        anemoi-dataset opened from python to save to Zarr store
     zarr_path : str
         Path to store the obtained anemoi dataset to disk.
     n_workers : int
