@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.27](https://github.com/ecmwf/anemoi-datasets/compare/0.5.26...0.5.27) (2025-07-22)
+
+
+### Features
+
+* Extend xarray Variable.sel to handle scalar variables ([#381](https://github.com/ecmwf/anemoi-datasets/issues/381)) ([1306d62](https://github.com/ecmwf/anemoi-datasets/commit/1306d62d0c7e2be627460e35ba8a6780b0b26db7))
+
 ## [0.5.26](https://github.com/ecmwf/anemoi-datasets/compare/0.5.25...0.5.26) (2025-07-11)
 
 
