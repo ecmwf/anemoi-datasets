@@ -360,7 +360,7 @@ def set_to_test_mode(cfg: dict) -> None:
         end=dates[NUMBER_OF_DATES - 1],
         frequency=groups.provider.frequency,
         group_by=NUMBER_OF_DATES,
-    )        
+    )
 
     num_ensembles = count_ensembles(cfg)
 
@@ -447,26 +447,28 @@ def build_output(*args, **kwargs) -> OutputSpecs:
     """
     return OutputSpecs(*args, **kwargs)
 
+
 def flatten_list_of_sets(list_of_sets: list[set]) -> set:
     return {element for subset in list_of_sets for element in subset}
 
+
 def mars_str_to_set(s: str) -> set[str]:
-    """
-    Mars strings are like 1/to/2 or 1/to/2/by/1
+    """Mars strings are like 1/to/2 or 1/to/2/by/1
 
     Returns a set of strings, e.g. {'1', '2'}
     """
-    assert '/' in s, "mars_str_to_set expects a string with '/'"
-    lst = s.split('/')
+    assert "/" in s, "mars_str_to_set expects a string with '/'"
+    lst = s.split("/")
     assert len(lst) in (3, 5), f"mars_str_to_set expects a string like 1/to/2 or 1/to/4/by/1, got {s}"
     if len(lst) == 3:
-        assert 'to' in lst
+        assert "to" in lst
         start, _, end = lst
         step = 1
     elif len(lst) == 5:
-        assert 'by' in lst and 'to' in lst
+        assert "by" in lst and "to" in lst
         start, _, end, _, step = lst
     return {str(i) for i in range(int(start), int(end) + 1, int(step))}
+
 
 def get_ensembles_set(obj):
     """Counts the number of ensembles in the configuration."""
@@ -475,7 +477,7 @@ def get_ensembles_set(obj):
             if isinstance(obj["number"], (list, tuple)):
                 return set([str(element) for element in obj["number"]])
             if isinstance(obj["number"], (str, int)):
-                if '/' in str(obj["number"]):
+                if "/" in str(obj["number"]):
                     return mars_str_to_set(obj["number"])
                 else:
                     return {str(obj["number"])}
@@ -485,7 +487,8 @@ def get_ensembles_set(obj):
         return flatten_list_of_sets([get_ensembles_set(v) for v in obj])
     return {}
 
+
 def count_ensembles(config: Config) -> int:
     """Counts the number of ensembles in the configuration."""
     ensembles = get_ensembles_set(config.input)
-    return len(ensembles) if ensembles else 1 
+    return len(ensembles) if ensembles else 1
