@@ -45,6 +45,8 @@ LOG = logging.getLogger(__name__)
 class ReadOnlyStore(zarr.storage.BaseStore):
     """A base class for read-only stores."""
 
+    _store_version = 2
+
     def __delitem__(self, key: str) -> None:
         """Prevent deletion of items."""
         raise NotImplementedError()
@@ -59,6 +61,10 @@ class ReadOnlyStore(zarr.storage.BaseStore):
 
     def __iter__(self) -> iter:
         """Return an iterator over the store."""
+        raise NotImplementedError()
+
+    def __contains__(self, key: str) -> bool:
+        """Check if the store contains a key."""
         raise NotImplementedError()
 
 
@@ -136,6 +142,59 @@ class DebugStore(ReadOnlyStore):
         return key in self.store
 
 
+class CopyToSSDStore(ReadOnlyStore):
+    """A store that copies data to SSD before reading."""
+
+    def __init__(self, store: ReadOnlyStore, options: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize the CopyToSSDStore with another store and options."""
+        self.store = store
+        self.options = options or {}
+        self.total_size = 0
+
+        self.tmpdir = tempfile.TemporaryDirectory(
+            prefix="anemoi-datasets-ssd-", dir=self.options.get("ssd-path", os.getenv("TMPDIR", "/tmp"))
+        )
+        print("CopyToSSDStore: using temporary directory %s", self.tmpdir.name)
+
+    def __delete__(self) -> None:
+        print("CopyToSSDStore: deleting temporary directory %s", self.tmpdir.name)
+        print("CopyToSSDStore: total size copied: %d bytes", self.total_size)
+
+    def __getitem__(self, key: str) -> bytes:
+
+        path = os.path.join(self.tmpdir.name, key)
+
+        if os.path.exists(path):
+            # LOG.info("CopyToSSDStore: reusing %s", path)
+            return open(path, "rb").read()
+
+        # LOG.info("CopyToSSDStore: copying %s to %s", key, path)
+        value = self.store[key]
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        with open(path, "wb") as f:
+            f.write(value)
+
+        self.total_size += len(value)
+        LOG.info(f"CopyToSSDStore: copied {key} ({len(value):,} bytes), total {self.total_size:,} bytes")
+
+        return value
+
+    def __len__(self) -> int:
+        """Return the number of items in the store."""
+        return len(self.store)
+
+    def __iter__(self) -> iter:
+        """Return an iterator over the store."""
+        warnings.warn("DebugStore: iterating over the store")
+        return iter(self.store)
+
+    def __contains__(self, key: str) -> bool:
+        """Check if the store contains a key."""
+        return key in self.store
+
+
 def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
     """Convert a path or URL to a zarr store."""
     store = path_or_url
@@ -170,8 +229,11 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
     return store
 
 
-def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hierarchy.Group:
+def open_zarr(path: str, dont_fail: bool = False, options=None) -> zarr.hierarchy.Group:
     """Open a zarr store from a path."""
+
+    options = options or {}
+
     try:
         store = name_to_zarr_store(path)
 
@@ -187,10 +249,19 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
                 store = zarr.storage.DirectoryStore(store)
             store = DebugStore(store)
 
-        if cache is not None:
-            store = zarr.LRUStoreCache(store, max_size=cache)
+        if options.get("copy-to-ssd", False):
+            if isinstance(store, str):
+                import os
 
-        return zarr.convenience.open(store, "r")
+                if not os.path.isdir(store):
+                    raise NotImplementedError(
+                        "`copy-to-ssd` is only implemented for DirectoryStore. " "Please disable it for other backends."
+                    )
+                store = zarr.storage.DirectoryStore(store)
+            store = CopyToSSDStore(store, options)
+
+        return zarr.open(store, "r")
+
     except zarr.errors.PathNotFoundError:
         if not dont_fail:
             raise zarr.errors.PathNotFoundError(path)
@@ -199,16 +270,17 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
 class Zarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
+    def __init__(self, path: Union[str, zarr.hierarchy.Group], options: Optional[Dict[str, Any]] = None) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
             self.path = str(id(path))
             self.z = path
+            assert not options, "Options are not supported for zarr groups"
         else:
             self.was_zarr = False
             self.path = str(path)
-            self.z = open_zarr(self.path)
+            self.z = open_zarr(self.path, options=options)
 
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
