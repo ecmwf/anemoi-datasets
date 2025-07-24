@@ -213,7 +213,17 @@ class ZipBase(Combined):
 
 class Zip(ZipBase):
     """Class for handling zipped datasets."""
+    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+        """Returns metadata specific to the Zip subclass.
 
+        Returns
+        -------
+        Dict[str, Any]
+            Metadata specific to the Zip subclass.
+        """
+        # Implement logic specific to the Zip class, if needed.
+        # For now, return an empty dictionary as a placeholder.
+        return {}
     pass
 
 
