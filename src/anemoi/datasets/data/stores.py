@@ -156,9 +156,9 @@ class CopyToSSDStore(ReadOnlyStore):
         )
         print("CopyToSSDStore: using temporary directory %s", self.tmpdir.name)
 
-    def __delete__(self) -> None:
-        print("CopyToSSDStore: deleting temporary directory %s", self.tmpdir.name)
-        print("CopyToSSDStore: total size copied: %d bytes", self.total_size)
+    def __del__(self) -> None:
+        print(f"CopyToSSDStore: deleting temporary directory {self.tmpdir.name}")
+        print(f"CopyToSSDStore: total size copied: {self.total_size:,} bytes")
 
     def __getitem__(self, key: str) -> bytes:
 
