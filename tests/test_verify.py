@@ -13,7 +13,6 @@ import os
 from functools import cached_property
 
 import numpy as np
-import pytest
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
@@ -251,7 +250,6 @@ def _open_dataset():
     return ds
 
 
-@pytest.mark.skipif(True, reason="Skipping test")
 @skip_if_offline
 @skip_missing_packages("gcsfs")
 def test_validate() -> None:
