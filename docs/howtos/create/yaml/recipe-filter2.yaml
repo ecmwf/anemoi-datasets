@@ -29,7 +29,7 @@ input:
     - rename:
         param:
           tp: tp_era5
-    - w_2_wz:
+    - w_to_wz:
         w_component: w
         temperature: t
         humidity: q
