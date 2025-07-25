@@ -30,9 +30,9 @@ second step of the pipe, after gathering the data.
 
 .. literalinclude:: yaml/recipe-filter1.yaml
 
-**********************
- Creating a new filer
-**********************
+***********************
+ Creating a new filter
+***********************
 
 In order to create a new filter the recommendation is to define it under
 the package ``anemoi-transform``. Available filters can be found in
