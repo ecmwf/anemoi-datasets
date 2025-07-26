@@ -150,6 +150,7 @@ class CopyToSSDStore(ReadOnlyStore):
         self.copied_objects = 0
         self.reused_objects = 0
         self.key_cache = set()
+        self.path_cache = set()
 
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="anemoi-datasets-ssd-",
@@ -169,7 +170,7 @@ class CopyToSSDStore(ReadOnlyStore):
 
         path = os.path.join(self.tmpdir.name, key)
 
-        if os.path.exists(path):
+        if key in self.key_cache or os.path.exists(path):
             self.key_cache.add(key)
             self.reused_objects += 1
             return open(path, "rb").read()
@@ -177,7 +178,10 @@ class CopyToSSDStore(ReadOnlyStore):
         self.copied_objects += 1
         value = self.store[key]
 
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        parent = os.path.dirname(path)
+        if parent not in self.path_cache:
+            os.makedirs(parent, exist_ok=True)
+            self.path_cache.add(parent)
 
         with open(path, "wb") as f:
             f.write(value)
