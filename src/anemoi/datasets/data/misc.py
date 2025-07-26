@@ -339,13 +339,17 @@ def _concat_or_join(datasets: List["Dataset"], kwargs: Dict[str, Any]) -> Tuple[
     return Concat(datasets), kwargs
 
 
-def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -> "Dataset":
+def _open(
+    a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]], options: Optional[Dict[str, Any]] = None
+) -> "Dataset":
     """Open a dataset from various input types.
 
     Parameters
     ----------
     a : Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]
         The input to open.
+    options : Optional[Dict[str, Any]]
+        Additional options for opening the dataset.
 
     Returns
     -------
@@ -372,19 +376,19 @@ def _open(a: Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]) -
         return a.mutate()
 
     if isinstance(a, zarr.hierarchy.Group):
-        return Zarr(a).mutate()
+        return Zarr(a, options=options).mutate()
 
     if isinstance(a, str):
-        return Zarr(zarr_lookup(a)).mutate()
+        return Zarr(zarr_lookup(a), options=options).mutate()
 
     if isinstance(a, PurePath):
-        return _open(str(a)).mutate()
+        return _open(str(a), options=options).mutate()
 
     if isinstance(a, dict):
-        return _open_dataset(**a).mutate()
+        return _open_dataset(**a, options=options).mutate()
 
     if isinstance(a, (list, tuple)):
-        return _open_dataset(*a).mutate()
+        return _open_dataset(*a, options=options).mutate()
 
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
@@ -502,8 +506,9 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
         The opened dataset.
     """
     sets = []
+    options = kwargs.pop("options", None)
     for a in args:
-        sets.append(_open(a))
+        sets.append(_open(a, options=options))
 
     if "observations" in kwargs:
         from .observations import observations_factory
