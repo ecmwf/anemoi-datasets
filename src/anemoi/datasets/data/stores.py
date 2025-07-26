@@ -12,6 +12,7 @@ import datetime
 import logging
 import os
 import tempfile
+import threading
 import warnings
 from functools import cached_property
 from typing import Any
@@ -151,6 +152,7 @@ class CopyToSSDStore(ReadOnlyStore):
         self.reused_objects = 0
         self.key_cache = set()
         self.path_cache = set()
+        self.lock = threading.Lock()
 
         self.tmpdir = tempfile.TemporaryDirectory(
             prefix="anemoi-datasets-ssd-",
@@ -168,28 +170,30 @@ class CopyToSSDStore(ReadOnlyStore):
 
     def __getitem__(self, key: str) -> bytes:
 
-        path = os.path.join(self.tmpdir.name, key)
+        with self.lock:
 
-        if key in self.key_cache or os.path.exists(path):
+            path = os.path.join(self.tmpdir.name, key)
+
+            if key in self.key_cache or os.path.exists(path):
+                self.key_cache.add(key)
+                self.reused_objects += 1
+                return open(path, "rb").read()
+
+            self.copied_objects += 1
+            value = self.store[key]
+
+            parent = os.path.dirname(path)
+            if parent not in self.path_cache:
+                os.makedirs(parent, exist_ok=True)
+                self.path_cache.add(parent)
+
+            with open(path, "wb") as f:
+                f.write(value)
+
+            self.total_size += len(value)
             self.key_cache.add(key)
-            self.reused_objects += 1
-            return open(path, "rb").read()
 
-        self.copied_objects += 1
-        value = self.store[key]
-
-        parent = os.path.dirname(path)
-        if parent not in self.path_cache:
-            os.makedirs(parent, exist_ok=True)
-            self.path_cache.add(parent)
-
-        with open(path, "wb") as f:
-            f.write(value)
-
-        self.total_size += len(value)
-        self.key_cache.add(key)
-
-        return value
+            return value
 
     def __len__(self) -> int:
         """Return the number of items in the store."""
@@ -203,14 +207,17 @@ class CopyToSSDStore(ReadOnlyStore):
     def __contains__(self, key: str) -> bool:
         """Check if the store contains a key."""
 
-        if key in self.key_cache:
-            return True
+        with self.lock:
 
-        path = os.path.join(self.tmpdir.name, key)
-        if os.path.exists(path):
-            return True
+            if key in self.key_cache:
+                return True
 
-        return key in self.store
+            path = os.path.join(self.tmpdir.name, key)
+            if os.path.exists(path):
+                self.key_cache.add(key)
+                return True
+
+            return key in self.store
 
 
 def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
