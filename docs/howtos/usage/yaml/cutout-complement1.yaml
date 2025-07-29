@@ -9,3 +9,4 @@ dataset:
          adjust: dates
    source: global-dataset
    interpolation: nearest
+   k: 1
