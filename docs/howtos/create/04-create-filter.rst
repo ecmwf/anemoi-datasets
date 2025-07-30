@@ -1,4 +1,4 @@
-.. _create-filter:
+.. _create-with-filter:
 
 #################################
  Create a dataset using a filter
@@ -8,13 +8,6 @@ A ``filter`` is a software component that takes as input the output of a
 source or another filter and can modify the fields and/or their
 metadata. For example, typical filters are interpolations, renaming of
 variables, etc. Filters are available as part of ``anemoi-transform``.
-Depending on the exact transformation or processing to be applied, there
-exist two flavours of filters: - `SingleFieldFilter
-<https://github.com/ecmwf/anemoi/blob/main/anemoi/preprocess/filters/single_field_filter.py>`_
-- a filter which operates on a single field at a time -
-`MatchingFieldsFilter<https://anemoi.readthedocs.io/projects/transform/en/latest/filters/matching-filters.html>_`
-- a filter which operates on a set of fields, grouped and matched by
-metadata, at a time
 
 Both inherit from the base ``Filter`` class so if other uses cases
 appear in the future, the type of filters can be extended.
@@ -37,10 +30,10 @@ second step of the pipe, after gathering the data.
 In order to create a new filter the recommendation is to define it under
 the package ``anemoi-transform``. Available filters can be found in
 ``anemoi/transform/filters`` or running the command ``anemoi-transform
-filters list``. A filter should have two main methods: -
-forward_transform: function to apply the transform to the raw data -
-backward_transform: function to reverse the transform and recover the
-raw data
+filters list``. For details about how to create a filter please refer to
+the `anemoi-transform
+<https://anemoi.readthedocs.io/projects/transform/en/latest/>`_
+documentation.
 
 .. note::
 

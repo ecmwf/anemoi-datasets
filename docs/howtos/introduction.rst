@@ -13,7 +13,7 @@ good starting point.
 -  :ref:`create-grib-data`
 -  :ref:`create-cf-data`
 -  :ref:`constant-data`
--  :ref:`create-filter`
+-  :ref:`create-with-filter`
 
 .. toctree::
    :maxdepth: 1
