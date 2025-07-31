@@ -9,9 +9,6 @@ source or another filter and can modify the fields and/or their
 metadata. For example, typical filters are interpolations, renaming of
 variables, etc. Filters are available as part of ``anemoi-transform``.
 
-Both inherit from the base ``Filter`` class so if other uses cases
-appear in the future, the type of filters can be extended.
-
 ****************
  Using a filter
 ****************
@@ -70,12 +67,6 @@ filters list``. For details about how to create a filter please refer to
 the `anemoi-transform
 <https://anemoi.readthedocs.io/projects/transform/en/latest/>`_
 documentation.
-
-.. note::
-
-   This is a general rule, there are certain operations that can't be
-   reversed. In those cases it's okey to just implement the
-   forward_transform.
 
 ************************
  Using multiple filters
