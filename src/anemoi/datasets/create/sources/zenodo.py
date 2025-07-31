@@ -9,8 +9,6 @@
 
 
 from typing import Any
-from typing import Dict
-from typing import List
 
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
@@ -47,15 +45,15 @@ def execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any,
     """
     import requests
 
-    result: List[Any] = []
+    result: list[Any] = []
 
     URLPATTERN = "https://zenodo.org/api/records/{record_id}"
     url = URLPATTERN.format(record_id=record_id)
     r = requests.get(url)
     r.raise_for_status()
-    record: Dict[str, Any] = r.json()
+    record: dict[str, Any] = r.json()
 
-    urls: Dict[str, str] = {}
+    urls: dict[str, str] = {}
     for file in record["files"]:
         urls[file["key"]] = file["links"]["self"]
 

@@ -11,9 +11,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import List
-from typing import Set
-from typing import Tuple
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -123,12 +120,12 @@ class ConcatMixin:
         return np.concatenate(result)
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the set of missing indices in the concatenated datasets."""
-        result: Set[int] = set()
+        result: set[int] = set()
         offset = 0
         for d in self.datasets:
-            result = result | set(m + offset for m in d.missing)
+            result = result | {m + offset for m in d.missing}
             offset += len(d)
         return result
 
@@ -195,7 +192,7 @@ class Concat(ConcatMixin, Combined):
         return Node(self, [d.tree() for d in self.datasets])
 
     @classmethod
-    def check_dataset_compatibility(cls, datasets: List[Any], fill_missing_gaps: bool = False) -> List[Any]:
+    def check_dataset_compatibility(cls, datasets: list[Any], fill_missing_gaps: bool = False) -> list[Any]:
         """Checks the compatibility of the datasets for concatenation and fills missing gaps if required.
 
         Parameters
@@ -259,7 +256,7 @@ class Concat(ConcatMixin, Combined):
         return {}
 
 
-def concat_factory(args: Tuple[Any, ...], kwargs: dict) -> Concat:
+def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:
     """Factory function to create a Concat object.
 
     Parameters

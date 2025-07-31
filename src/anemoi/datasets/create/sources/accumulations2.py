@@ -12,10 +12,6 @@ import logging
 from abc import abstractmethod
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
@@ -477,8 +473,8 @@ class Accumulator:
 
 def _compute_accumulations(
     context: Any,
-    dates: List[datetime.datetime],
-    request: Dict[str, Any],
+    dates: list[datetime.datetime],
+    request: dict[str, Any],
     user_accumulation_period: datetime.timedelta,
     # data_accumulation_period: Optional[int] = None,
     # patch: Any = _identity,
@@ -565,7 +561,7 @@ def _compute_accumulations(
     return ds
 
 
-def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
+def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -583,7 +579,7 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
     return [x]
 
 
-def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
+def _scda(request: dict[str, Any]) -> dict[str, Any]:
     """Modifies the request stream based on the time.
 
     Parameters

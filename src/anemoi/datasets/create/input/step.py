@@ -10,10 +10,6 @@
 import logging
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Type
 
 from .action import Action
 from .action import ActionContext
@@ -30,7 +26,7 @@ class StepResult(Result):
     """Represents the result of a step in the data processing pipeline."""
 
     def __init__(
-        self, context: Context, action_path: List[str], group_of_dates: Any, action: Action, upstream_result: Result
+        self, context: Context, action_path: list[str], group_of_dates: Any, action: Action, upstream_result: Result
     ) -> None:
         """Initialize a StepResult instance.
 
@@ -63,10 +59,10 @@ class StepResult(Result):
 class StepAction(Action):
     """Represents an action that is part of a step in the data processing pipeline."""
 
-    result_class: Optional[Type[StepResult]] = None
+    result_class: type[StepResult] | None = None
 
     def __init__(
-        self, context: ActionContext, action_path: List[str], previous_step: Any, *args: Any, **kwargs: Any
+        self, context: ActionContext, action_path: list[str], previous_step: Any, *args: Any, **kwargs: Any
     ) -> None:
         """Initialize a StepAction instance.
 
@@ -115,7 +111,7 @@ class StepAction(Action):
         return self._repr(self.previous_step, _inline_=str(self.kwargs))
 
 
-def step_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str], previous_step: Any) -> Any:
+def step_factory(config: dict[str, Any], context: ActionContext, action_path: list[str], previous_step: Any) -> Any:
     """Factory function to create a step action based on the given configuration.
 
     Parameters
