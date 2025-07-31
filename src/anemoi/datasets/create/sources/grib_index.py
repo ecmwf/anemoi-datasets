@@ -520,13 +520,20 @@ class GribIndex:
             raise ValueError(f"No path found for path_id {path_id}")
         return row[0]
 
-    def retrieve(self, dates: List[Any], **kwargs: Any) -> Iterator[Any]:
+    def retrieve(
+        self,
+        dates: List[Any],
+        request_already_using_valid_datetime: bool = False,
+        **kwargs: Any,
+    ) -> Iterator[Any]:
         """Retrieve GRIB data from the database.
 
         Parameters
         ----------
         dates : List[Any]
             List of dates to retrieve data for.
+        request_already_using_valid_datetime : bool, optional
+            Whether the request is already using valid_datetime, by default False.
         **kwargs : Any
             Additional filtering criteria.
 
@@ -571,6 +578,58 @@ class GribIndex:
             yield data
 
 
+def grib_index_retrieve(
+    context: Any,
+    dates: List[Any],
+    indexdb: str,
+    flavour: Optional[str] = None,
+    requests: Optional[List] = None,
+    **kwargs: Any,
+) -> FieldArray:
+    """Execute the GRIB data retrieval process.
+
+    Parameters
+    ----------
+    context : Any
+        The execution context.
+    dates : List[Any]
+        List of dates to retrieve data for.
+    indexdb : str
+        Path to the GRIB index database.
+    flavour : Optional[str], optional
+        Flavour configuration for mapping fields, by default None.
+    requests : Optional[List], optional
+        List of requests to filter the data, by default None.
+    **kwargs : Any
+        Additional filtering criteria.
+
+    Returns
+    -------
+    FieldArray
+        An array of retrieved GRIB fields.
+    """
+    index = GribIndex(indexdb)
+    result = []
+
+    if requests is not None:
+        assert not kwargs
+        raise NotImplementedError("requests not implemented")
+
+    if kwargs:
+        assert not requests
+
+    if flavour is not None:
+        flavour = RuleBasedFlavour(flavour)
+
+    for grib in index.retrieve(dates, **kwargs):
+        field = ekd.from_source("memory", grib)[0]
+        if flavour:
+            field = flavour.apply(field)
+        result.append(field)
+
+    return FieldArray(result)
+
+
 @legacy_source(__file__)
 def execute(
     context: Any,
@@ -599,16 +658,10 @@ def execute(
     FieldArray
         An array of retrieved GRIB fields.
     """
-    index = GribIndex(indexdb)
-    result = []
-
-    if flavour is not None:
-        flavour = RuleBasedFlavour(flavour)
-
-    for grib in index.retrieve(dates, **kwargs):
-        field = ekd.from_source("memory", grib)[0]
-        if flavour:
-            field = flavour.apply(field)
-        result.append(field)
-
-    return FieldArray(result)
+    return grib_index_retrieve(
+        context,
+        dates,
+        indexdb,
+        flavour=flavour,
+        **kwargs,
+    )
