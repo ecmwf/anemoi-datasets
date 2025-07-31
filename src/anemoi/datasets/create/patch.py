@@ -10,14 +10,13 @@
 import json
 import logging
 import os
-from typing import Union
 
 import zarr
 
 LOG = logging.getLogger(__name__)
 
 
-def fix_order_by(order_by: Union[dict, list]) -> list[dict]:
+def fix_order_by(order_by: dict | list) -> list[dict]:
     """Fix the order_by attribute to ensure it is a list of dictionaries.
 
     Parameters

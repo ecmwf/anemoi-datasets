@@ -9,9 +9,6 @@
 
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Union
 
 from anemoi.datasets.compute.recentre import recentre as _recentre
 
@@ -19,7 +16,7 @@ from .legacy import legacy_source
 from .mars import mars
 
 
-def to_list(x: Union[list, tuple, str]) -> List:
+def to_list(x: list | tuple | str) -> list:
     """Converts the input to a list. If the input is a string, it splits it by '/'.
 
     Parameters
@@ -39,7 +36,7 @@ def to_list(x: Union[list, tuple, str]) -> List:
     return [x]
 
 
-def normalise_number(number: Union[list, tuple, str]) -> List[int]:
+def normalise_number(number: list | tuple | str) -> list[int]:
     """Normalises the input number to a list of integers.
 
     Parameters
@@ -63,7 +60,7 @@ def normalise_number(number: Union[list, tuple, str]) -> List[int]:
     return number
 
 
-def normalise_request(request: Dict) -> Dict:
+def normalise_request(request: dict) -> dict:
     """Normalises the request dictionary by converting certain fields to lists.
 
     Parameters
@@ -85,7 +82,7 @@ def normalise_request(request: Dict) -> Dict:
     return request
 
 
-def load_if_needed(context: Any, dates: Any, dict_or_dataset: Union[Dict, Any]) -> Any:
+def load_if_needed(context: Any, dates: Any, dict_or_dataset: dict | Any) -> Any:
     """Loads the dataset if the input is a dictionary, otherwise returns the input.
 
     Parameters
@@ -112,11 +109,11 @@ def load_if_needed(context: Any, dates: Any, dict_or_dataset: Union[Dict, Any]) 
 def recentre(
     context: Any,
     dates: Any,
-    members: Union[Dict, Any],
-    centre: Union[Dict, Any],
+    members: dict | Any,
+    centre: dict | Any,
     alpha: float = 1.0,
-    remapping: Dict = {},
-    patches: Dict = {},
+    remapping: dict = {},
+    patches: dict = {},
 ) -> Any:
     """Recentres the members dataset using the centre dataset.
 

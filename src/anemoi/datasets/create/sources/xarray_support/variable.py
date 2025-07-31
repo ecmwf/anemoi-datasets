@@ -12,10 +12,7 @@ import logging
 import math
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Optional
-from typing import Tuple
 
 import numpy as np
 import xarray as xr
@@ -49,10 +46,10 @@ class Variable:
         *,
         ds: xr.Dataset,
         variable: xr.DataArray,
-        coordinates: List[Any],
+        coordinates: list[Any],
         grid: Any,
         time: Any,
-        metadata: Dict[str, Any],
+        metadata: dict[str, Any],
     ):
         """Initialize the Variable object.
 
@@ -111,7 +108,7 @@ class Variable:
         return self.length
 
     @property
-    def grid_mapping(self) -> Optional[Dict[str, Any]]:
+    def grid_mapping(self) -> dict[str, Any] | None:
         """Return the grid mapping of the variable."""
         grid_mapping = self.variable.attrs.get("grid_mapping", None)
         if grid_mapping is None:
@@ -146,7 +143,7 @@ class Variable:
         str
             A string representation of the variable.
         """
-        return "Variable[name=%s,coordinates=%s,metadata=%s]" % (
+        return "Variable[name={},coordinates={},metadata={}]".format(
             self.variable.name,
             self.coordinates,
             self._metadata,
@@ -177,7 +174,7 @@ class Variable:
         kwargs = {k: v for k, v in zip(self.names, coords)}
         return XArrayField(self, self.variable.isel(kwargs))
 
-    def sel(self, missing: Dict[str, Any], **kwargs: Any) -> Optional["Variable"]:
+    def sel(self, missing: dict[str, Any], **kwargs: Any) -> Optional["Variable"]:
         """Select a subset of the variable based on the given coordinates.
 
         Parameters
@@ -240,7 +237,7 @@ class Variable:
 
         return variable.sel(missing, **kwargs)
 
-    def match(self, **kwargs: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    def match(self, **kwargs: Any) -> tuple[bool, dict[str, Any] | None]:
         """Match the variable based on the given metadata.
 
         Parameters
@@ -292,7 +289,7 @@ class FilteredVariable:
         self.kwargs = kwargs
 
     @cached_property
-    def fields(self) -> List["XArrayField"]:
+    def fields(self) -> list["XArrayField"]:
         """Filter the fields of a variable based on metadata."""
         return [
             field

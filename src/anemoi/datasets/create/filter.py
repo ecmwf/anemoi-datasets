@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 from typing import Any
-from typing import Dict
 
 import earthkit.data as ekd
 
@@ -26,7 +25,7 @@ class TransformFilter:
         The configuration for the filter.
     """
 
-    def __init__(self, context: Any, name: str, config: Dict[str, Any]) -> None:
+    def __init__(self, context: Any, name: str, config: dict[str, Any]) -> None:
         from anemoi.transform.filters import create_filter
 
         self.name = name

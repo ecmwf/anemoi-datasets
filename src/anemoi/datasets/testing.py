@@ -12,19 +12,17 @@
 
 import logging
 from typing import Any
-from typing import List
-from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
 
 def assert_field_list(
-    fs: List[Any],
-    size: Optional[int] = None,
-    start: Optional[Any] = None,
-    end: Optional[Any] = None,
+    fs: list[Any],
+    size: int | None = None,
+    start: Any | None = None,
+    end: Any | None = None,
     constant: bool = False,
-    skip: Optional[Any] = None,
+    skip: Any | None = None,
 ) -> None:
     """Asserts various properties of a list of fields.
 

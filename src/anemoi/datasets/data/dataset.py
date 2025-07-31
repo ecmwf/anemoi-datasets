@@ -22,15 +22,10 @@ try:
 except ImportError:
     # Python 3.9
     EllipsisType = type(Ellipsis)
+from collections.abc import Sequence
+from collections.abc import Sized
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Set
-from typing import Sized
-from typing import Tuple
 from typing import Union
 
 import numpy as np
@@ -48,8 +43,8 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
-Shape = Tuple[int, ...]
-TupleIndex = Tuple[Union[int, slice, EllipsisType], ...]
+Shape = tuple[int, ...]
+TupleIndex = tuple[Union[int, slice, EllipsisType], ...]
 FullIndex = Union[int, slice, TupleIndex]
 
 
@@ -92,8 +87,8 @@ def _tidy(v: Any) -> Any:
 
 
 class Dataset(ABC, Sized):
-    arguments: Dict[str, Any] = {}
-    _name: Union[str, None] = None
+    arguments: dict[str, Any] = {}
+    _name: str | None = None
 
     def mutate(self) -> "Dataset":
         """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed.
@@ -148,7 +143,7 @@ class Dataset(ABC, Sized):
         return result
 
     @property
-    def name(self) -> Union[str, None]:
+    def name(self) -> str | None:
         """Return the name of the dataset."""
         return self._name
 
@@ -360,9 +355,9 @@ class Dataset(ABC, Sized):
 
     def _dates_to_indices(
         self,
-        start: Union[None, str, datetime.datetime],
-        end: Union[None, str, datetime.datetime],
-    ) -> List[int]:
+        start: None | str | datetime.datetime,
+        end: None | str | datetime.datetime,
+    ) -> list[int]:
         """Convert date range to a list of indices.
 
         Parameters
@@ -387,7 +382,7 @@ class Dataset(ABC, Sized):
 
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
-    def _select_to_columns(self, vars: Union[str, List[str], Tuple[str], set]) -> List[int]:
+    def _select_to_columns(self, vars: str | list[str] | tuple[str] | set) -> list[int]:
         """Convert variable names to a list of column indices.
 
         Parameters
@@ -411,7 +406,7 @@ class Dataset(ABC, Sized):
 
         return [self.name_to_index[v] for v in vars]
 
-    def _drop_to_columns(self, vars: Union[str, Sequence[str]]) -> List[int]:
+    def _drop_to_columns(self, vars: str | Sequence[str]) -> list[int]:
         """Convert variable names to a list of column indices to drop.
 
         Parameters
@@ -432,7 +427,7 @@ class Dataset(ABC, Sized):
 
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
-    def _reorder_to_columns(self, vars: Union[str, List[str], Tuple[str], Dict[str, int]]) -> List[int]:
+    def _reorder_to_columns(self, vars: str | list[str] | tuple[str] | dict[str, int]) -> list[int]:
         """Convert variable names to a list of reordered column indices.
 
         Parameters
@@ -465,8 +460,8 @@ class Dataset(ABC, Sized):
         return indices
 
     def dates_interval_to_indices(
-        self, start: Union[None, str, datetime.datetime], end: Union[None, str, datetime.datetime]
-    ) -> List[int]:
+        self, start: None | str | datetime.datetime, end: None | str | datetime.datetime
+    ) -> list[int]:
         """Convert date interval to a list of indices.
 
         Parameters
@@ -483,7 +478,7 @@ class Dataset(ABC, Sized):
         """
         return self._dates_to_indices(start, end)
 
-    def provenance(self) -> Dict[str, Any]:
+    def provenance(self) -> dict[str, Any]:
         """Return the provenance information of the dataset.
 
         Returns
@@ -511,7 +506,7 @@ class Dataset(ABC, Sized):
         return tuple(shape)
 
     @property
-    def typed_variables(self) -> Dict[str, Any]:
+    def typed_variables(self) -> dict[str, Any]:
         """Return the variables with their types."""
         from anemoi.transform.variables import Variable
 
@@ -532,7 +527,7 @@ class Dataset(ABC, Sized):
 
         return result
 
-    def _input_sources(self) -> List[Any]:
+    def _input_sources(self) -> list[Any]:
         """Return the input sources of the dataset.
 
         Returns
@@ -544,7 +539,7 @@ class Dataset(ABC, Sized):
         self.collect_input_sources(sources)
         return sources
 
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """Return the metadata of the dataset.
 
         Returns
@@ -588,7 +583,7 @@ class Dataset(ABC, Sized):
         """Return the end date of the dataset."""
         return self.dates[-1]
 
-    def dataset_metadata(self) -> Dict[str, Any]:
+    def dataset_metadata(self) -> dict[str, Any]:
         """Return the metadata of the dataset.
 
         Returns
@@ -608,7 +603,7 @@ class Dataset(ABC, Sized):
             name=self.name,
         )
 
-    def _supporting_arrays(self, *path: str) -> Dict[str, NDArray[Any]]:
+    def _supporting_arrays(self, *path: str) -> dict[str, NDArray[Any]]:
         """Return the supporting arrays of the dataset.
 
         Parameters
@@ -646,7 +641,7 @@ class Dataset(ABC, Sized):
 
         return result
 
-    def supporting_arrays(self) -> Dict[str, NDArray[Any]]:
+    def supporting_arrays(self) -> dict[str, NDArray[Any]]:
         """Return the supporting arrays to be saved in the checkpoints.
 
         Returns
@@ -657,7 +652,7 @@ class Dataset(ABC, Sized):
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays
 
-    def _supporting_arrays_and_sources(self) -> Tuple[Dict[str, NDArray], Dict[int, List[str]]]:
+    def _supporting_arrays_and_sources(self) -> tuple[dict[str, NDArray], dict[int, list[str]]]:
         """Return the supporting arrays and their sources.
 
         Returns
@@ -684,7 +679,7 @@ class Dataset(ABC, Sized):
 
         return result, source_to_arrays
 
-    def collect_supporting_arrays(self, collected: List[Tuple[Tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
+    def collect_supporting_arrays(self, collected: list[tuple[tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
         """Collect supporting arrays.
 
         Parameters
@@ -697,7 +692,7 @@ class Dataset(ABC, Sized):
         # Override this method to add more arrays
         pass
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Return specific metadata of the dataset.
 
         Parameters
@@ -764,7 +759,7 @@ class Dataset(ABC, Sized):
         """Return the label of the dataset."""
         return self.__class__.__name__.lower()
 
-    def computed_constant_fields(self) -> List[str]:
+    def computed_constant_fields(self) -> list[str]:
         """Return the computed constant fields of the dataset.
 
         Returns
@@ -781,7 +776,7 @@ class Dataset(ABC, Sized):
 
         return sorted(self._compute_constant_fields_from_a_few_samples())
 
-    def _compute_constant_fields_from_a_few_samples(self) -> List[str]:
+    def _compute_constant_fields_from_a_few_samples(self) -> list[str]:
         """Compute constant fields from a few samples.
 
         Returns
@@ -822,7 +817,7 @@ class Dataset(ABC, Sized):
 
         return [v for i, v in enumerate(self.variables) if constants[i]]
 
-    def _compute_constant_fields_from_statistics(self) -> List[str]:
+    def _compute_constant_fields_from_statistics(self) -> list[str]:
         """Compute constant fields from statistics.
 
         Returns
@@ -842,8 +837,8 @@ class Dataset(ABC, Sized):
 
     def plot(
         self,
-        date: Union[int, datetime.datetime, np.datetime64, str],
-        variable: Union[int, str],
+        date: int | datetime.datetime | np.datetime64 | str,
+        variable: int | str,
         member: int = 0,
         **kwargs: Any,
     ) -> "matplotlib.pyplot.Axes":
@@ -873,10 +868,10 @@ class Dataset(ABC, Sized):
 
     def to_index(
         self,
-        date: Union[int, datetime.datetime, np.datetime64, str],
-        variable: Union[int, str],
+        date: int | datetime.datetime | np.datetime64 | str,
+        variable: int | str,
         member: int = 0,
-    ) -> Tuple[int, int, int]:
+    ) -> tuple[int, int, int]:
         """Convert date, variable, and member to indices.
 
         Parameters
@@ -945,7 +940,7 @@ class Dataset(ABC, Sized):
 
     @property
     @abstractmethod
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Return the list of variables in the dataset."""
         pass
 
@@ -969,7 +964,7 @@ class Dataset(ABC, Sized):
 
     @property
     @abstractmethod
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Return the mapping of variable names to indices."""
         pass
 
@@ -1005,30 +1000,30 @@ class Dataset(ABC, Sized):
 
     @property
     @abstractmethod
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Return the set of missing indices in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
-    def constant_fields(self) -> List[str]:
+    def constant_fields(self) -> list[str]:
         """Return the list of constant fields in the dataset."""
         pass
 
     @abstractmethod
     @cached_property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         pass
 
     @abstractmethod
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the tendencies of the statistics in the dataset.
 
         Parameters
@@ -1071,7 +1066,7 @@ class Dataset(ABC, Sized):
         pass
 
     @abstractmethod
-    def collect_input_sources(self, sources: List[Any]) -> None:
+    def collect_input_sources(self, sources: list[Any]) -> None:
         """Collect the input sources of the dataset.
 
         Parameters
@@ -1082,7 +1077,7 @@ class Dataset(ABC, Sized):
         pass
 
     @abstractmethod
-    def get_dataset_names(self, names: Set[str]) -> None:
+    def get_dataset_names(self, names: set[str]) -> None:
         """Get the names of the datasets.
 
         Parameters

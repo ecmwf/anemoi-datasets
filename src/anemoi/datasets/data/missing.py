@@ -12,11 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Set
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,7 +44,7 @@ class MissingDates(Forwards):
         List of missing dates.
     """
 
-    def __init__(self, dataset: Dataset, missing_dates: List[Union[int, str]]) -> None:
+    def __init__(self, dataset: Dataset, missing_dates: list[int | str]) -> None:
         """Initializes the MissingDates class.
 
         Parameters
@@ -80,13 +75,13 @@ class MissingDates(Forwards):
                     self.missing_dates.append(date)
 
         n = self.forward._len
-        self._missing = set(i for i in self._missing if 0 <= i < n)
+        self._missing = {i for i in self._missing if 0 <= i < n}
         self.missing_dates = sorted(to_datetime(x) for x in self.missing_dates)
 
         assert len(self._missing), "No dates to force missing"
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the set of missing indices."""
         return self._missing.union(self.forward.missing)
 
@@ -148,7 +143,7 @@ class MissingDates(Forwards):
         raise MissingDateError(f"Date {self.forward.dates[n]} is missing (index={n})")
 
     @property
-    def reason(self) -> Dict[str, Any]:
+    def reason(self) -> dict[str, Any]:
         """Provides the reason for missing dates."""
         return {"missing_dates": self.missing_dates}
 
@@ -162,7 +157,7 @@ class MissingDates(Forwards):
         """
         return Node(self, [self.forward.tree()], **self.reason)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Provides metadata specific to the subclass.
 
         Returns
@@ -184,7 +179,7 @@ class SkipMissingDates(Forwards):
         The expected access pattern.
     """
 
-    def __init__(self, dataset: Dataset, expected_access: Union[int, slice]) -> None:
+    def __init__(self, dataset: Dataset, expected_access: int | slice) -> None:
         """Initializes the SkipMissingDates class.
 
         Parameters
@@ -285,7 +280,7 @@ class SkipMissingDates(Forwards):
         return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
-    def _get_slice(self, s: slice) -> Tuple[NDArray[Any], ...]:
+    def _get_slice(self, s: slice) -> tuple[NDArray[Any], ...]:
         """Retrieves a slice of items.
 
         Parameters
@@ -303,7 +298,7 @@ class SkipMissingDates(Forwards):
         return tuple(np.stack(_) for _ in result)
 
     @debug_indexing
-    def __getitem__(self, n: FullIndex) -> Tuple[NDArray[Any], ...]:
+    def __getitem__(self, n: FullIndex) -> tuple[NDArray[Any], ...]:
         """Retrieves the item at the given index.
 
         Parameters
@@ -339,7 +334,7 @@ class SkipMissingDates(Forwards):
         """
         return Node(self, [self.forward.tree()], expected_access=self.expected_access)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Provides metadata specific to the subclass.
 
         Returns
@@ -404,7 +399,7 @@ class MissingDataset(Forwards):
         return self._dates
 
     @property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the set of missing indices."""
         return self._missing
 
@@ -436,7 +431,7 @@ class MissingDataset(Forwards):
         """
         return Node(self, [self.forward.tree()], start=self.start, end=self.end)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Provides metadata specific to the subclass.
 
         Returns
