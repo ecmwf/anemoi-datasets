@@ -11,7 +11,6 @@ import datetime
 import logging
 import shutil
 from typing import Any
-from typing import Optional
 
 import numpy as np
 import zarr
@@ -120,7 +119,7 @@ class ZarrBuiltRegistry:
     flags = None
     z = None
 
-    def __init__(self, path: str, synchronizer_path: Optional[str] = None, use_threads: bool = False):
+    def __init__(self, path: str, synchronizer_path: str | None = None, use_threads: bool = False):
         """Initialize the ZarrBuiltRegistry.
 
         Parameters

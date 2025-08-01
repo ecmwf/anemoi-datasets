@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import List
 
 from .data import MissingDateError
 from .data import add_dataset_path
@@ -23,7 +22,7 @@ except ImportError:  # pragma: no cover
     # Local copy or not installed with setuptools
     __version__ = "999"
 
-__all__: List[str] = [
+__all__: list[str] = [
     "add_dataset_path",
     "add_named_dataset",
     "list_dataset_names",

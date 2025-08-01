@@ -10,12 +10,9 @@
 
 import datetime
 import logging
+from collections.abc import Sequence
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Sequence
-from typing import Set
 from typing import Union
 
 import numpy as np
@@ -95,7 +92,7 @@ def _end(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
         return b
 
 
-def _combine_reasons(reason1: Dict[str, Any], reason2: Dict[str, Any], dates: NDArray[np.datetime64]) -> Dict[str, Any]:
+def _combine_reasons(reason1: dict[str, Any], reason2: dict[str, Any], dates: NDArray[np.datetime64]) -> dict[str, Any]:
     """Combine two reason dictionaries.
 
     Parameters:
@@ -126,7 +123,7 @@ class Subset(Forwards):
     reason (Dict[str, Any]): Dictionary of reasons.
     """
 
-    def __init__(self, dataset: Union[Dataset, "Subset"], indices: Sequence[int], reason: Dict[str, Any]) -> None:
+    def __init__(self, dataset: Union[Dataset, "Subset"], indices: Sequence[int], reason: dict[str, Any]) -> None:
         """Initialize the Subset.
 
         Parameters:
@@ -140,8 +137,8 @@ class Subset(Forwards):
             dataset = dataset.dataset
 
         self.dataset: Dataset = dataset
-        self.indices: List[int] = list(indices)
-        self.reason: Dict[str, Any] = {k: v for k, v in reason.items() if v is not None}
+        self.indices: list[int] = list(indices)
+        self.reason: dict[str, Any] = {k: v for k, v in reason.items() if v is not None}
 
         # Forward other properties to the super dataset
         super().__init__(dataset)
@@ -184,6 +181,11 @@ class Subset(Forwards):
         assert n >= 0, n
         n = self.indices[n]
         return self.dataset[n]
+
+    def get_aux(self, n: FullIndex) -> NDArray[Any]:
+        assert n >= 0, n
+        n = self.indices[n]
+        return self.dataset.get_aux(n)
 
     @debug_indexing
     def _get_slice(self, s: slice) -> NDArray[Any]:
@@ -269,10 +271,10 @@ class Subset(Forwards):
         return f"Subset({self.dataset},{self.dates[0]}...{self.dates[-1]}/{self.frequency})"
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the missing indices of the subset."""
         missing = self.dataset.missing
-        result: Set[int] = set()
+        result: set[int] = set()
         for j, i in enumerate(self.indices):
             if i in missing:
                 result.add(j)
@@ -286,7 +288,7 @@ class Subset(Forwards):
         """
         return Node(self, [self.dataset.tree()], **self.reason)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
 
         Returns:

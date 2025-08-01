@@ -9,15 +9,13 @@
 
 import datetime
 import glob
+from collections.abc import Generator
 from typing import Any
-from typing import Generator
-from typing import List
-from typing import Tuple
 
 from earthkit.data.utils.patterns import Pattern
 
 
-def _expand(paths: List[str]) -> Generator[str, None, None]:
+def _expand(paths: list[str]) -> Generator[str, None, None]:
     """Expand the given paths to include all matching file paths.
 
     Parameters
@@ -54,8 +52,8 @@ def _expand(paths: List[str]) -> Generator[str, None, None]:
 
 
 def iterate_patterns(
-    path: str, dates: List[datetime.datetime], **kwargs: Any
-) -> Generator[Tuple[str, List[str]], None, None]:
+    path: str, dates: list[datetime.datetime], **kwargs: Any
+) -> Generator[tuple[str, list[str]], None, None]:
     """Iterate over patterns and expand them with given dates and additional keyword arguments.
 
     Parameters
@@ -79,6 +77,6 @@ def iterate_patterns(
         kwargs["date"] = dates
 
     for path in given_paths:
-        paths = Pattern(path, ignore_missing_keys=True).substitute(**kwargs)
+        paths = Pattern(path).substitute(allow_extra=True, **kwargs)
         for path in _expand(paths):
             yield path, dates

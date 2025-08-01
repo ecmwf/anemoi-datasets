@@ -10,7 +10,6 @@
 import logging
 from copy import deepcopy
 from typing import Any
-from typing import Union
 
 from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -28,7 +27,7 @@ class Context:
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
+    def __init__(self, config: dict, data_sources: dict | list, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
@@ -104,23 +103,3 @@ class InputBuilder:
             Trace string.
         """
         return f"InputBuilder({group_of_dates})"
-
-
-def build_input(config: dict, data_sources: Union[dict, list], **kwargs: Any) -> InputBuilder:
-    """Build an InputBuilder instance.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration dictionary.
-    data_sources : Union[dict, list]
-        Data sources.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    InputBuilder
-        An instance of InputBuilder.
-    """
-    return InputBuilder(config, data_sources, **kwargs)

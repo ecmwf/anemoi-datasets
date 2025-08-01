@@ -1,5 +1,5 @@
 # This workflow runs pre-commit checks and pytest tests against multiple platforms and Python versions.
-name: Code Quality checks and Testing
+name: Code Quality and Testing
 
 on:
   pull_request:
@@ -19,7 +19,7 @@ jobs:
   checks:
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     uses: ecmwf/reusable-workflows/.github/workflows/qa-pytest-pyproject.yml@v2
     with:
       python-version: ${{ matrix.python-version }}

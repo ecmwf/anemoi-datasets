@@ -28,7 +28,7 @@ authors = [
   { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
 ]
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -36,7 +36,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -49,8 +48,8 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.9",
-  "anemoi-utils[provenance]>=0.4.21",
+  "anemoi-transform>=0.1.10",
+  "anemoi-utils[provenance]>=0.4.26",
   "cfunits",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
@@ -71,7 +70,7 @@ optional-dependencies.comparelam = [
 
 optional-dependencies.create = [
   "cachetools",
-  "earthkit-data[mars]>=0.12.4",
+  "earthkit-data[mars]>=0.14",
   "earthkit-geo>=0.3",
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
@@ -100,6 +99,7 @@ optional-dependencies.remote = [
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pytest",
+  "pytest-xdist",
 ]
 
 optional-dependencies.xarray = [
@@ -109,7 +109,7 @@ optional-dependencies.xarray = [
   "pandas",
   "planetary-computer",
   "pystac-client",
-  "s3fs>=0.5",
+  "s3fs",
 ]
 
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
@@ -130,6 +130,13 @@ version_file = "src/anemoi/datasets/_version.py"
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+  "--numprocesses=auto",
+  "--strict-config",
+]
 
 [tool.mypy]
 strict = false

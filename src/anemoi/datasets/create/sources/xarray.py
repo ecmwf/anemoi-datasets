@@ -8,8 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 from typing import Any
-from typing import Dict
-from typing import Optional
 
 import earthkit.data as ekd
 
@@ -28,11 +26,11 @@ class XarraySourceBase(Source):
 
     emoji = "✖️"  # For tracing
 
-    options: Optional[Dict[str, Any]] = None
-    flavour: Optional[Dict[str, Any]] = None
-    patch: Optional[Dict[str, Any]] = None
+    options: dict[str, Any] | None = None
+    flavour: dict[str, Any] | None = None
+    patch: dict[str, Any] | None = None
 
-    path_or_url: Optional[str] = None
+    path_or_url: str | None = None
 
     def __init__(self, context: Any, path: str = None, url: str = None, *args: Any, **kwargs: Any):
         """Initialise the source.
