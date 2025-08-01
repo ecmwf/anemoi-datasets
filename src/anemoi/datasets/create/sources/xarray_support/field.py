@@ -12,9 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Tuple
 
 from earthkit.data import Field
 from earthkit.data.core.fieldlist import math
@@ -96,22 +93,17 @@ class XArrayField(Field):
             if alias not in self._md:
                 self._md[alias] = value
 
-        # print(values.ndim, values.shape, selection.dims)
         # By now, the only dimensions should be latitude and longitude
         self._shape = tuple(list(self.selection.shape)[-2:])
         if math.prod(self._shape) != math.prod(self.selection.shape):
-            print(self.selection.ndim, self.selection.shape)
-            print(self.selection)
-            raise ValueError("Invalid shape for selection")
+            raise ValueError(f"Invalid shape for selection {self._shape=}, {self.selection.shape=} {self.selection=}")
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """Return the shape of the field."""
         return self._shape
 
-    def to_numpy(
-        self, flatten: bool = False, dtype: Optional[type] = None, index: Optional[int] = None
-    ) -> NDArray[Any]:
+    def to_numpy(self, flatten: bool = False, dtype: type | None = None, index: int | None = None) -> NDArray[Any]:
         """Convert the selection to a numpy array.
 
         Returns
@@ -149,7 +141,7 @@ class XArrayField(Field):
         """Return the grid points of the field."""
         return self.owner.grid_points()
 
-    def to_latlon(self, flatten: bool = True) -> Dict[str, Any]:
+    def to_latlon(self, flatten: bool = True) -> dict[str, Any]:
         """Convert the selection to latitude and longitude coordinates.
 
         Returns
@@ -166,7 +158,7 @@ class XArrayField(Field):
         return dict(lat=self.latitudes, lon=self.longitudes)
 
     @property
-    def resolution(self) -> Optional[Any]:
+    def resolution(self) -> Any | None:
         """Return the resolution of the field."""
         return None
 
@@ -199,7 +191,7 @@ class XArrayField(Field):
         """Return a string representation of the field."""
         return f"XArrayField({self._metadata})"
 
-    def _values(self, dtype: Optional[type] = None) -> Any:
+    def _values(self, dtype: type | None = None) -> Any:
         """Return the values of the selection.
 
         Returns

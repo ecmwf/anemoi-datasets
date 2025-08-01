@@ -55,7 +55,8 @@ class Finalise(Command):
 
         if "debug" in options:
             options.pop("debug")
-            task(step, options)
+
+        task(step, options)
 
         LOG.info(f"Create step '{step}' completed in {seconds_to_human(time.time()-now)}")
 

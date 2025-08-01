@@ -1,0 +1,31 @@
+dates:
+  start: 2020-12-12 00:00:00
+  end: 2020-12-14 12:00:00
+  frequency: 12h
+
+input:
+  pipe:
+    - join:
+      - mars:
+          expver: "0001"
+          class: ea
+          grid: 20./20.
+          param: [2t]
+          levtype: sfc
+      - mars:
+          expver: "0001"
+          class: ea
+          grid: 20./20.
+          param: [q, t,w]
+          levtype: pl
+          level: [50, 100]
+          stream: oper
+          type: an
+      - accumulations:
+          expver: "0001"
+          class: ea
+          grid: 20./20.
+          param: [cp, tp]
+    - rename:
+        param:
+          tp: tp_era5

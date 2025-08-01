@@ -13,10 +13,6 @@ from __future__ import annotations
 import datetime
 import logging
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 import xarray as xr
@@ -95,6 +91,7 @@ class Coordinate:
     is_member = False
     is_x = False
     is_y = False
+    is_point = False
 
     def __init__(self, variable: xr.DataArray) -> None:
         """Initialize the coordinate.
@@ -106,7 +103,7 @@ class Coordinate:
         """
         self.variable = variable
         self.scalar = is_scalar(variable)
-        self.kwargs: Dict[str, Any] = {}  # Used when creating a new coordinate (reduced method)
+        self.kwargs: dict[str, Any] = {}  # Used when creating a new coordinate (reduced method)
 
     def __len__(self) -> int:
         """Get the length of the coordinate.
@@ -126,7 +123,7 @@ class Coordinate:
         str
             The string representation of the coordinate.
         """
-        return "%s[name=%s,values=%s,shape=%s]" % (
+        return "{}[name={},values={},shape={}]".format(
             self.__class__.__name__,
             self.variable.name,
             self.variable.values if self.scalar else len(self),
@@ -151,7 +148,7 @@ class Coordinate:
             **self.kwargs,
         )
 
-    def index(self, value: Union[Any, list, tuple]) -> Optional[Union[int, list]]:
+    def index(self, value: Any | list | tuple) -> int | list | None:
         """Return the index of the value in the coordinate.
 
         Parameters
@@ -171,7 +168,7 @@ class Coordinate:
                 return self._index_multiple(value)
         return self._index_single(value)
 
-    def _index_single(self, value: Any) -> Optional[int]:
+    def _index_single(self, value: Any) -> int | None:
         """Return the index of a single value in the coordinate.
 
         Parameters
@@ -204,7 +201,7 @@ class Coordinate:
 
         return None
 
-    def _index_multiple(self, value: list) -> Optional[list]:
+    def _index_multiple(self, value: list) -> list | None:
         """Return the indices of multiple values in the coordinate.
 
         Parameters
@@ -274,7 +271,7 @@ class TimeCoordinate(Coordinate):
     is_time = True
     mars_names = ("valid_datetime",)
 
-    def index(self, time: datetime.datetime) -> Optional[int]:
+    def index(self, time: datetime.datetime) -> int | None:
         """Return the index of the time in the coordinate.
 
         Parameters
@@ -296,7 +293,7 @@ class DateCoordinate(Coordinate):
     is_date = True
     mars_names = ("date",)
 
-    def index(self, date: datetime.datetime) -> Optional[int]:
+    def index(self, date: datetime.datetime) -> int | None:
         """Return the index of the date in the coordinate.
 
         Parameters
@@ -390,6 +387,13 @@ class EnsembleCoordinate(Coordinate):
         return value
 
 
+class PointCoordinate(Coordinate):
+    """Coordinate class for point data."""
+
+    is_point = True
+    mars_names = ("point",)
+
+
 class LongitudeCoordinate(Coordinate):
     """Coordinate class for longitude."""
 
@@ -428,7 +432,7 @@ class ScalarCoordinate(Coordinate):
     is_grid = False
 
     @property
-    def mars_names(self) -> Tuple[str, ...]:
+    def mars_names(self) -> tuple[str, ...]:
         """Get the MARS names for the coordinate."""
         return (self.variable.name,)
 
