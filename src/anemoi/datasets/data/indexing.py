@@ -32,7 +32,7 @@ def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[i
     """
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
-    result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
+    result = tuple(s if isinstance(s, list) else slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
 
     return result, changes
 
