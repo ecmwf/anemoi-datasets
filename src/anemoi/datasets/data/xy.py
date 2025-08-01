@@ -77,7 +77,11 @@ class ZipBase(Combined):
         Node
             Tree representation of the datasets.
         """
-        return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
+        return Node(
+            self,
+            [d.tree() for d in self.datasets],
+            check_compatibility=self._check_compatibility,
+        )
 
     def __len__(self) -> int:
         """Get the length of the smallest dataset.
@@ -205,6 +209,10 @@ class ZipBase(Combined):
         """
         if self._check_compatibility:
             super().check_compatibility(d1, d2)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the subclass."""
+        return {}
 
 
 class Zip(ZipBase):
