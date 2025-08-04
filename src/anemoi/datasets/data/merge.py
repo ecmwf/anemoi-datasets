@@ -101,7 +101,7 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency.astype(object)
+        self._frequency = frequency if isinstance(frequency, datetime.timedelta) else frequency.astype(object)
 
     def __len__(self) -> int:
         """Get the number of dates in the merged dataset.
@@ -259,6 +259,16 @@ class Merge(Combined):
             Retrieved items.
         """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the forwards subclass.
+
+        Returns
+        -------
+        dict[str, Any]
+            The metadata specific to the forwards subclass.
+        """
+        return dict(allow_gaps_in_dates=self.allow_gaps_in_dates)
 
 
 def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:
