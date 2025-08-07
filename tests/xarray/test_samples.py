@@ -12,7 +12,6 @@ import pytest
 import requests
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
-from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
@@ -61,7 +60,7 @@ def _test_samples(n: int, check_skip: bool = True) -> None:
 
 
 @skip_if_offline
-@skip_slow_tests
+@pytest.mark.slow
 @pytest.mark.parametrize("n", SAMPLES)
 def test_samples(n: int) -> None:
     """Parametrized test for sample datasets.
