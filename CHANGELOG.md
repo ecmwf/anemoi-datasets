@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.27](https://github.com/ecmwf/anemoi-datasets/compare/0.5.26...0.5.27) (2025-08-08)
+
+
+### Features
+
+* Extend xarray Variable.sel to handle scalar variables ([#381](https://github.com/ecmwf/anemoi-datasets/issues/381)) ([1306d62](https://github.com/ecmwf/anemoi-datasets/commit/1306d62d0c7e2be627460e35ba8a6780b0b26db7))
+* Improve conftest types ([#395](https://github.com/ecmwf/anemoi-datasets/issues/395)) ([bd8143d](https://github.com/ecmwf/anemoi-datasets/commit/bd8143d4baf94a5243c023632e62838226ae8fd4))
+* Remove python 3.9 from pyproject.toml. ([#392](https://github.com/ecmwf/anemoi-datasets/issues/392)) ([7f3a250](https://github.com/ecmwf/anemoi-datasets/commit/7f3a250cddf35bba7c83867933236587a1b48572))
+
+
+### Bug Fixes
+
+* Allow multiple options to be provided to anemoi-datasets inspect ([#372](https://github.com/ecmwf/anemoi-datasets/issues/372)) ([dea680e](https://github.com/ecmwf/anemoi-datasets/commit/dea680e54a4daa43ce15400ff49adb2a29c39380))
+* Better handling of xarray metadata ([#322](https://github.com/ecmwf/anemoi-datasets/issues/322)) ([4304cb4](https://github.com/ecmwf/anemoi-datasets/commit/4304cb40a6d6956492b5246a56f4af1a914d7cab))
+* Define the missing forwards_subclass_metadata_specific method in the ZipBase class ([#377](https://github.com/ecmwf/anemoi-datasets/issues/377)) ([2816314](https://github.com/ecmwf/anemoi-datasets/commit/28163143a76cec618e74a2b85d86a7d0d31168f5))
+
+
+### Documentation
+
+* Reference filters transform ([#389](https://github.com/ecmwf/anemoi-datasets/issues/389)) ([4e5d278](https://github.com/ecmwf/anemoi-datasets/commit/4e5d2785db5bb644d20a90e6cb1d3aa17e412718))
+
 ## [0.5.26](https://github.com/ecmwf/anemoi-datasets/compare/0.5.25...0.5.26) (2025-07-11)
 
 
