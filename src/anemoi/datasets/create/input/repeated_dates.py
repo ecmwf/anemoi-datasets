@@ -9,7 +9,6 @@
 
 
 import logging
-import warnings
 from collections import defaultdict
 from typing import Any
 from typing import Dict
@@ -28,7 +27,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from .action import Action
 from .action import action_factory
 from .join import JoinResult
-from .result import Result
+from .result.field import Result
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
@@ -204,21 +203,6 @@ class DateMapperClimatology(DateMapper):
         self.day: int = day
         self.hour: Optional[int] = hour
 
-    def to_python(self) -> Dict[str, Any]:
-        """Convert the DateMapper to Python code.
-
-        Returns
-        -------
-        dict
-            The Python code representation of the DateMapper.
-        """
-        return {
-            "mode": "climatology",
-            "year": self.year,
-            "day": self.day,
-            "hour": self.hour,
-        }
-
     def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
@@ -368,16 +352,6 @@ class RepeatedDatesAction(Action):
         self.mapper: DateMapper = DateMapper.from_mode(mode, self.source, kwargs)
         self.mode = mode
         self.kwargs = kwargs
-
-    def to_python(self) -> str:
-        """Convert the action to Python code."""
-        warnings.warn("RepeatedDatesAction.to_python is still a work in progress")
-        args = {"mode": self.mode}
-        args.update(self.kwargs)
-        return self._to_python("repeated_dates", {"repeated_dates": args}, source=self.source.to_python())
-
-    def python_prelude(self, prelude: Any) -> None:
-        self.source.python_prelude(prelude)
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:

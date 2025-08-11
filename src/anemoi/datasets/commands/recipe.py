@@ -28,6 +28,9 @@ class Recipe(Command):
         command_parser : Any
             Command parser object.
         """
+
+        command_parser.add_argument("--migrate", action="store_true", help="Migrate the recipe to the latest version.")
+
         command_parser.add_argument(
             "path",
             help="Path to recipe.",
@@ -38,7 +41,8 @@ class Recipe(Command):
 
         with open(args.path, "r") as file:
             config = yaml.safe_load(file)
-            config = migrate(config)
+            if args.migrate:
+                config = migrate(config)
 
         print(config_to_python(config))
 
