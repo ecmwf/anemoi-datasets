@@ -8,11 +8,8 @@
 # nor does it submit to any jurisdiction.
 #
 
-import datetime
-import json
 import re
-
-from anemoi.utils.dates import frequency_to_string
+import textwrap
 
 # input.python_prelude(code)
 # code1 = "\n".join(prelude)
@@ -61,21 +58,51 @@ RESERVED_KEYWORDS = (
 
 class PythonCode:
 
+    def __init__(self, parent):
+        self.parent = parent
+
     def call(self, name, argument):
-        return PythonCall(name, argument)
+        return PythonCall(self, name, argument)
 
     def sum(self, actions):
-        return PythonChain("+", actions)
+        return PythonChain(self, "+", actions)
 
     def pipe(self, actions):
-        return PythonChain("|", actions)
+        return PythonChain(self, "|", actions)
 
     def concat(self, argument):
-        return PythonConcat(argument)
+        return PythonConcat(self, argument)
+
+    def source_code(self, top=None):
+        return self.parent.source_code(top=top or self)
+
+
+class PythonSource(PythonCode):
+
+    def __init__(self):
+        super().__init__(parent=None)
+        self.prelude = ""
+
+    def source_code(self, top):
+
+        return textwrap.dedent(
+            f"""
+        # Generated Python code for Anemoi dataset creation
+
+        from anemoi.datasets.recipe import Recipe
+        r = Recipe()
+        {self.prelude}
+        r.input = {repr(top)}
+
+        """
+        )
+
+        return repr(top)
 
 
 class PythonConcat(PythonCode):
-    def __init__(self, argument):
+    def __init__(self, parent, argument):
+        super().__init__(parent=parent)
         self.argument = argument
 
     def __repr__(self):
@@ -83,13 +110,14 @@ class PythonConcat(PythonCode):
 
 
 class PythonCall(PythonCode):
-    def __init__(self, name, argument):
+    def __init__(self, parent, name, argument):
+        super().__init__(parent=parent)
         self.name = name
         self.argument = argument
 
     def __repr__(self):
         name = self.name.replace("-", "_")
-        config = self.argument
+        config = dict(**self.argument)
 
         # def convert(obj):
         #     if isinstance(obj, datetime.datetime):
@@ -121,54 +149,10 @@ class PythonCall(PythonCode):
 
 
 class PythonChain(PythonCode):
-    def __init__(self, op, actions):
+    def __init__(self, parent, op, actions):
+        super().__init__(parent=parent)
         self.op = op
         self.actions = actions
 
     def __repr__(self):
         return "(" + self.op.join(repr(x) for x in self.actions) + ")"
-
-
-def _python(name, config, **extra) -> str:
-    """Convert the action to Python code.
-
-    Parameters
-    ----------
-    name : str
-        The name of the action.
-    config : dict
-        The configuration for the action.
-    extra : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    str
-        The Python code representation of the action.
-    """
-
-    name = name.replace("-", "_")
-
-    def convert(obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        if isinstance(obj, datetime.date):
-            return obj.isoformat()
-        if isinstance(obj, datetime.timedelta):
-            return frequency_to_string(obj)
-        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-    config = json.loads(json.dumps(config, default=convert))
-
-    params = []
-    for k, v in config.items():
-        if k in RESERVED_KEYWORDS or re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k) is None:
-            return f"r.{name}({config})"
-        params.append(f"{k}={repr(v)}")
-
-    for k, v in extra.items():
-        params.append(f"{k}={v}")
-
-    params = ",".join(params)
-    return f"r.{name}({params})"
-    # return f"{name}({config})"

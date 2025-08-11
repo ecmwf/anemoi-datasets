@@ -1667,11 +1667,19 @@ def validate_config(config: Any) -> None:
 
 def config_to_python(config: Any) -> Any:
 
-    from ..create.python import PythonCode
+    from ..create.python import PythonSource
 
     config = loader_config(config)
 
     input = InputBuilder(config.input, data_sources=config.get("data_sources", {}))
 
-    code = PythonCode()
-    return input.python_code(code)
+    code = PythonSource()
+    code = input.python_code(code).source_code()
+
+    try:
+        import black
+
+        return black.format_str(code, mode=black.Mode())
+    except ImportError:
+        LOG.warning("Black not installed, skipping formatting")
+        return code
