@@ -1667,13 +1667,13 @@ def validate_config(config: Any) -> None:
 
 def config_to_python(config: Any) -> Any:
 
-    from ..create.python import PythonSource
+    from ..create.python import PythonScript
 
     config = loader_config(config)
 
     input = InputBuilder(config.input, data_sources=config.get("data_sources", {}))
 
-    code = PythonSource()
+    code = PythonScript()
     x = input.python_code(code)
     code = code.source_code(x)
 

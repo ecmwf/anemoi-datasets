@@ -11,6 +11,7 @@
 import re
 import sys
 from collections import defaultdict
+from functools import cached_property
 
 RESERVED_KEYWORDS = (
     "and",
@@ -74,22 +75,74 @@ class PythonCode:
     def combine(self, nodes):
         return None
 
+    def prelude(self):
+        return None
+
 
 class Argument:
 
     def __init__(self, name):
-        self.name = name
+        self.name = _sanitize_name(name)
 
     def __repr__(self):
-        return f"{_sanitize_name(self.name)}"
+        return self.name
 
 
-class PythonSource(PythonCode):
+class Parameter:
+
+    def __init__(self, name):
+        self.name = _sanitize_name(name)
+
+    def __repr__(self):
+        return self.name
+
+
+class Function:
+    def __init__(self, name, node, counter, *parameters):
+        self._name = name
+        self.node = node
+        self.used = False
+        self.counter = counter
+        # self.parameters = parameters
+
+    def __repr__(self):
+        return self.name
+
+    def prelude(self):
+        if self.used:
+            return None
+
+        self.used = True
+
+        node_prelude = self.node.prelude()
+
+        arguments = self.node.free_arguments()
+
+        return [
+            *(node_prelude if node_prelude else []),
+            f"def {self.name}({','.join(repr(p) for p in arguments)}):",
+            f"   return {self.node}",
+        ]
+
+    def free_arguments(self):
+        return self.node.free_arguments()
+
+    @cached_property
+    def name(self):
+        n = self.counter[self._name]
+        self.counter[self._name] += 1
+        return _sanitize_name(f"{self._name}_{n}")
+
+    def replace_node(self, old, new):
+        if self.node is old:
+            self.node = new
+
+
+class PythonScript(PythonCode):
 
     def __init__(self):
-        self._prelude = []
         self.nodes = []
-        self._count = defaultdict(int)
+        self.counter = defaultdict(int)
         super().__init__(top=self)
 
     def register(self, child):
@@ -97,7 +150,14 @@ class PythonSource(PythonCode):
             self.nodes.append(child)
 
     def prelude(self):
-        return "\n".join(self._prelude)
+        result = []
+        for node in self.nodes:
+            prelude = node.prelude()
+            if prelude:
+                if not isinstance(prelude, (list, tuple)):
+                    prelude = list(prelude)
+                result.extend(prelude)
+        return "\n".join(result)
 
     def source_code(self, first):
 
@@ -127,34 +187,17 @@ class PythonSource(PythonCode):
                 "# Generated Python code for Anemoi dataset creation",
                 "from anemoi.datasets.recipe import Recipe",
                 "r = Recipe()",
-                *self._prelude,
+                self.prelude(),
                 f"r.input = {repr(first)}",
                 "r.dump()",
             ]
         )
 
-    def function(self, key, value, node):
+    def function0(self, node):
+        return Function(node.name, node, self.counter)
 
-        n = self._count[node.name]
-        self._count[node.name] += 1
-
-        name = f"{node.name}_{n}"
-        name = _sanitize_name(name)
-        key = _sanitize_name(key)
-
-        class Function:
-            def __init__(self, name, key, value, node):
-                self.name = name
-                self.key = key
-                self.value = value
-                self.node = node
-
-            def __repr__(self):
-                return f"{self.name}"
-
-        self._prelude.append(f"def {name}({key}):")
-        self._prelude.append(f"   return {node}")
-        return Function(name, key, value, node)
+    def function1(self, node, key):
+        return Function(node.name, node, self.counter, Parameter(key))
 
     def replace_nodes(self, changes):
 
@@ -172,8 +215,6 @@ class PythonConcat(PythonCode):
     def __init__(self, top, argument):
         super().__init__(top=top)
         self.argument = argument
-        for k, v in self.argument.items():
-            assert isinstance(v, PythonCode), f"Value must be a PythonCode instance {v}"
 
     def __repr__(self):
         return f"r.concat({self.argument})"
@@ -184,69 +225,6 @@ class PythonConcat(PythonCode):
                 self.argument[k] = new
             else:
                 v.replace_node(old, new)
-
-
-class PythonCall(PythonCode):
-    def __init__(self, top, name, argument, parameters=None):
-        super().__init__(top=top)
-        self.name = name
-        self.argument = argument
-        self.key = name
-        self.parameters = parameters
-
-    def __repr__(self):
-        name = self.name.replace("-", "_")
-        config = dict(**self.argument)
-
-        params = []
-
-        for k, v in config.items():
-            if isinstance(k, str):
-
-                if k in RESERVED_KEYWORDS:
-                    k = f"{k}_"
-
-                if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k):
-                    return f"r.{name}({config})"
-            params.append(f"{k}={repr(v)}")
-
-        params = ",".join(params)
-        return f"r.{name}({params})"
-
-    def replace_node(self, old, new):
-        pass
-
-    def combine(self, nodes):
-
-        x = defaultdict(list)
-        for node in nodes:
-            argument = node.argument
-            for k, v in argument.items():
-                rest = {k2: v2 for k2, v2 in sorted(argument.items()) if k2 != k}
-                x[str(rest)].append((k, v, node))
-
-        for i in sorted(x.values(), key=len, reverse=True):
-            key, value, node = i[0]
-            if len(i) < 2:
-                return
-
-            rest = {k: v for k, v in node.argument.items() if k != key}
-            rest[key] = Argument(key)
-            call = PythonCall(self.top, self.name, rest)
-
-            func = self.top.function(key, value, node=call)
-            changes = []
-            for key, value, node in i:
-
-                new = PythonFunction(
-                    top=self.top,
-                    func=func,
-                    argument={key: value},
-                )
-
-                changes.append((node, new))
-
-            return changes
 
 
 class PythonChain(PythonCode):
@@ -269,15 +247,138 @@ class PythonChain(PythonCode):
                 node.replace_node(old, new)
 
 
-class PythonFunction(PythonCode):
-    def __init__(self, top, func, argument):
+class PythonCall(PythonCode):
+    def __init__(self, top, name, argument):
         super().__init__(top=top)
-        self.func = func
+        self.name = name
         self.argument = argument
-        self.key = func
+        self.key = name
+
+    def free_arguments(self):
+        result = []
+        for k, v in self.argument.items():
+            if isinstance(v, Argument):
+                result.append(v)
+        return result
 
     def __repr__(self):
-        return f"{self.func}({', '.join(f'{_sanitize_name(k)}={repr(v)}' for k, v in self.argument.items())})"
+        name = self.name.replace("-", "_")
+        config = dict(**self.argument)
+
+        params = []
+
+        for k, v in config.items():
+            if isinstance(k, str):
+
+                if k in RESERVED_KEYWORDS:
+                    k = f"{k}_"
+
+                if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k):
+                    return f"r.{name}({config})"
+            params.append(f"{k}={repr(v)}")
+
+        if params:
+            params.append("")  # For a trailing comma
+
+        params = ",".join(params)
+        return f"r.{name}({params})"
 
     def replace_node(self, old, new):
         pass
+
+    def combine(self, nodes):
+
+        # Exact similarity
+
+        changes = self._combine0(nodes)
+        if changes:
+            return changes
+
+        # On key difference
+        changes = self._combine1(nodes)
+        if changes:
+            return changes
+
+    def _combine0(self, nodes):
+
+        x = defaultdict(list)
+        for node in nodes:
+            key = {k2: v2 for k2, v2 in sorted(node.argument.items())}
+            x[str(key)].append(node)
+
+        for i in sorted(x.values(), key=len, reverse=True):
+            node = i[0]
+            if len(i) < 2:
+                return
+
+            call = PythonCall(self.top, self.name, node.argument)
+
+            func = self.top.function0(node=call)
+            changes = []
+            for node in i:
+
+                new = PythonFunction(top=self.top, func=func)
+
+                changes.append((node, new))
+
+            return changes
+
+    def _combine1(self, nodes):
+
+        x = defaultdict(list)
+        for node in nodes:
+            argument = node.argument
+            for k, v in argument.items():
+                rest = {k2: v2 for k2, v2 in sorted(argument.items()) if k2 != k}
+                x[str(rest)].append((k, v, node))
+
+        for i in sorted(x.values(), key=len, reverse=True):
+            key, value, node = i[0]
+            if len(i) < 2:
+                return
+
+            rest = {k: v for k, v in node.argument.items() if k != key}
+            rest[key] = Argument(key)
+            call = PythonCall(self.top, self.name, rest)
+
+            func = self.top.function1(call, key)
+            changes = []
+            for key, value, node in i:
+
+                new = PythonFunction(
+                    top=self.top,
+                    func=func,
+                    **{key: value},
+                )
+
+                changes.append((node, new))
+
+            return changes
+
+
+class PythonFunction(PythonCode):
+    def __init__(self, top, func, **kwargs):
+        super().__init__(top=top)
+        self.func = func
+        self.kwargs = kwargs
+
+    def __repr__(self):
+        params = []
+        for a in self.func.free_arguments():
+            name = _sanitize_name(a.name)
+            if a.name in self.kwargs:
+                v = self.kwargs[a.name]
+                params.append(f"{name}={repr(v)}")
+            else:
+                params.append(f"{name}={name}")
+
+        return f"{self.func}({', '.join(params)})"
+
+    def replace_node(self, old, new):
+        self.func.replace_node(old, new)
+
+    def prelude(self):
+        return self.func.prelude()
+
+    def free_arguments(self):
+        return [a for a in self.func.free_arguments() if a.name not in self.kwargs]
