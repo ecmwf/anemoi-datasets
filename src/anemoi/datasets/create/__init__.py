@@ -1674,12 +1674,14 @@ def config_to_python(config: Any) -> Any:
     input = InputBuilder(config.input, data_sources=config.get("data_sources", {}))
 
     code = PythonSource()
-    code = input.python_code(code).source_code()
+    x = input.python_code(code)
+    code = code.source_code(x)
 
     try:
         import black
 
         return black.format_str(code, mode=black.Mode())
-    except ImportError:
+    # except ImportError:
+    except Exception:
         LOG.warning("Black not installed, skipping formatting")
         return code
