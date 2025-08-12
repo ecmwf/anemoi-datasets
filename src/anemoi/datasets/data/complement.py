@@ -12,11 +12,6 @@ import logging
 from abc import abstractmethod
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -91,26 +86,26 @@ class Complement(Combined):
             raise ValueError("Augment: no missing variables")
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Returns the list of variables to be added to the target dataset."""
         return self._variables
 
     @property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         datasets = [self._source, self._target]
         return {
             k: [d.statistics[k][d.name_to_index[i]] for d in datasets for i in d.variables if i in self.variables]
             for k in datasets[0].statistics
         }
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         index = [self._source.name_to_index[v] for v in self._variables]
         if delta is None:
             delta = self.frequency
         return {k: v[index] for k, v in self._source.statistics_tendencies(delta).items()}
 
     @property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Returns a dictionary mapping variable names to their indices."""
         return {v: i for i, v in enumerate(self.variables)}
 
@@ -121,7 +116,7 @@ class Complement(Combined):
         return (shape[0], len(self._variables)) + shape[2:]
 
     @property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Returns the metadata of the variables to be added to the target dataset."""
         # Merge the two dicts first
         all_meta = {**self._source.variables_metadata, **self._target.variables_metadata}
@@ -142,7 +137,7 @@ class Complement(Combined):
         pass
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the set of missing indices in the source and target datasets."""
         missing = self._source.missing.copy()
         missing = missing | self._target.missing
@@ -317,7 +312,7 @@ class ComplementNearest(Complement):
         return apply_index_to_slices_changes(result, changes)
 
 
-def complement_factory(args: Tuple, kwargs: dict) -> Dataset:
+def complement_factory(args: tuple, kwargs: dict) -> Dataset:
     """Factory function to create a Complement instance based on the provided arguments.
 
     Parameters

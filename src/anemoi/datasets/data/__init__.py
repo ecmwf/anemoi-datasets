@@ -10,7 +10,6 @@
 import logging
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Set
 
 # from .dataset import FullIndex
 # from .dataset import Shape
@@ -124,6 +123,6 @@ def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
         The list of dataset names.
     """
     ds = _open_dataset(*args, **kwargs)
-    names: Set[str] = set()
+    names: set[str] = set()
     ds.get_dataset_names(names)
     return sorted(names)

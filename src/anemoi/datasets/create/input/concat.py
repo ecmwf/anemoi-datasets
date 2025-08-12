@@ -11,9 +11,6 @@ import logging
 from copy import deepcopy
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Union
 
 from earthkit.data import FieldList
 
@@ -39,9 +36,9 @@ class ConcatResult(Result):
     def __init__(
         self,
         context: object,
-        action_path: List[str],
+        action_path: list[str],
         group_of_dates: GroupOfDates,
-        results: List[Result],
+        results: list[Result],
         **kwargs: Any,
     ) -> None:
         """Initializes a ConcatResult instance.
@@ -74,7 +71,7 @@ class ConcatResult(Result):
         return _tidy(ds)
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Returns the list of variables, ensuring all results have the same variables."""
         variables = None
         for f in self.results:
@@ -101,7 +98,7 @@ class ConcatResult(Result):
 class ConcatAction(Action):
     """Represents an action that concatenates multiple actions based on their dates."""
 
-    def __init__(self, context: object, action_path: List[str], *configs: Dict[str, Any]) -> None:
+    def __init__(self, context: object, action_path: list[str], *configs: dict[str, Any]) -> None:
         """Initializes a ConcatAction instance.
 
         Parameters
@@ -138,7 +135,7 @@ class ConcatAction(Action):
         return self._repr(content)
 
     @trace_select
-    def select(self, group_of_dates: GroupOfDates) -> Union[ConcatResult, EmptyResult]:
+    def select(self, group_of_dates: GroupOfDates) -> ConcatResult | EmptyResult:
         """Selects the concatenated result for the given group of dates.
 
         Parameters

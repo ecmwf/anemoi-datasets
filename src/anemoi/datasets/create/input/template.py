@@ -12,10 +12,9 @@ import logging
 import re
 from abc import ABC
 from abc import abstractmethod
+from collections.abc import Callable
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import List
 
 from .context import Context
 
@@ -68,7 +67,7 @@ class Substitution(ABC):
 class Reference(Substitution):
     """A class to represent a reference to another value in the context."""
 
-    def __init__(self, context: Any, action_path: List[str]) -> None:
+    def __init__(self, context: Any, action_path: list[str]) -> None:
         """Initialize a Reference instance.
 
         Parameters
@@ -79,7 +78,7 @@ class Reference(Substitution):
             The action path to resolve.
         """
         self.context: Any = context
-        self.action_path: List[str] = action_path
+        self.action_path: list[str] = action_path
 
     def resolve(self, context: Context) -> Any:
         """Resolve the reference using the given context.

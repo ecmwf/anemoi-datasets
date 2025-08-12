@@ -12,11 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -35,9 +30,7 @@ from .indexing import update_tuple
 LOG = logging.getLogger(__name__)
 
 
-def make_rescale(
-    variable: str, rescale: Union[Tuple[float, float], List[str], Dict[str, float]]
-) -> Tuple[float, float]:
+def make_rescale(variable: str, rescale: tuple[float, float] | list[str] | dict[str, float]) -> tuple[float, float]:
     """Create rescale parameters (scale and offset) based on the input rescale specification.
 
     Parameters
@@ -86,7 +79,7 @@ class Rescale(Forwards):
     """A class to apply rescaling to dataset variables."""
 
     def __init__(
-        self, dataset: Dataset, rescale: Dict[str, Union[Tuple[float, float], List[str], Dict[str, float]]]
+        self, dataset: Dataset, rescale: dict[str, tuple[float, float] | list[str] | dict[str, float]]
     ) -> None:
         """Initialize the Rescale object.
 
@@ -129,7 +122,7 @@ class Rescale(Forwards):
         """
         return Node(self, [self.forward.tree()], rescale=self.rescale)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the rescale subclass.
 
         Returns
@@ -204,7 +197,7 @@ class Rescale(Forwards):
         return data * self._a[0] + self._b[0]
 
     @cached_property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics of the rescaled data."""
         result = {}
         a = self._a.squeeze()
@@ -224,7 +217,7 @@ class Rescale(Forwards):
 
         return result
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the tendencies of the statistics of the rescaled data.
 
         Parameters

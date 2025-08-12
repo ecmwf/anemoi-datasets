@@ -10,9 +10,6 @@
 import datetime
 from collections import defaultdict
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
 
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
@@ -63,7 +60,7 @@ def normalise_time_delta(t: Any) -> datetime.timedelta:
     return t
 
 
-def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
+def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
     """Groups fields by their metadata excluding 'date', 'time', and 'step'.
 
     Parameters
@@ -87,7 +84,7 @@ def group_by_field(ds: Any) -> Dict[Tuple, List[Any]]:
 
 
 @legacy_source(__file__)
-def tendencies(dates: List[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
+def tendencies(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
     """Computes tendencies for the given dates and time increment.
 
     Parameters

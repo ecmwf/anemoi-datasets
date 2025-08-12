@@ -40,9 +40,9 @@ year = datetime.datetime.now().year
 if year == 2024:
     years = "2024"
 else:
-    years = "2024-%s" % (year,)
+    years = f"2024-{year}"
 
-copyright = "%s, Anemoi contributors" % (years,)
+copyright = f"{years}, Anemoi contributors"
 
 
 try:

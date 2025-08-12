@@ -9,8 +9,6 @@
 
 
 from typing import Any
-from typing import Dict
-from typing import List
 
 import earthkit.data as ekd
 
@@ -19,7 +17,7 @@ from .xarray import load_many
 
 
 @legacy_source(__file__)
-def execute(context: Dict[str, Any], dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+def execute(context: dict[str, Any], dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the data loading process from an OpenDAP source.
 
     Parameters

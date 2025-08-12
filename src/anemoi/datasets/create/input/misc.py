@@ -8,11 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from collections.abc import Callable
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import Tuple
-from typing import Union
 
 from earthkit.data import FieldList
 from earthkit.data.core.fieldlist import MultiFieldList
@@ -20,7 +18,7 @@ from earthkit.data.core.fieldlist import MultiFieldList
 LOG = logging.getLogger(__name__)
 
 
-def parse_function_name(name: str) -> Tuple[str, Union[int, None]]:
+def parse_function_name(name: str) -> tuple[str, int | None]:
     """Parses a function name to extract the base name and an optional time delta.
 
     Parameters
@@ -88,7 +86,7 @@ def assert_is_fieldlist(obj: object) -> None:
     assert isinstance(obj, FieldList), type(obj)
 
 
-def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
+def _flatten(ds: MultiFieldList | FieldList) -> list:
     """Flattens a MultiFieldList or FieldList into a list of FieldList objects.
 
     Parameters
@@ -106,7 +104,7 @@ def _flatten(ds: Union[MultiFieldList, FieldList]) -> list:
     return [ds]
 
 
-def _tidy(ds: Union[MultiFieldList, FieldList], indent: int = 0) -> Union[MultiFieldList, FieldList]:
+def _tidy(ds: MultiFieldList | FieldList, indent: int = 0) -> MultiFieldList | FieldList:
     """Tidies up a MultiFieldList or FieldList by removing empty sources.
 
     Parameters

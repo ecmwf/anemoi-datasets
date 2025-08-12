@@ -12,12 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -193,7 +187,7 @@ class InterpolateFrequency(Forwards):
         return Node(self, [self.forward.tree()], frequency=self.frequency)
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the missing data indices."""
         result = []
         j = 0
@@ -204,10 +198,10 @@ class InterpolateFrequency(Forwards):
                     result.append(j)
                 j += 1
 
-        result = set(x for x in result if x < self._len)
+        result = {x for x in result if x < self._len}
         return result
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the InterpolateFrequency subclass.
 
         Returns
@@ -221,9 +215,7 @@ class InterpolateFrequency(Forwards):
 
 
 class InterpolateNearest(Forwards):
-    def __init__(
-        self, dataset: Dataset, interpolate_variables: List[str], max_distance: Optional[float] = None
-    ) -> None:
+    def __init__(self, dataset: Dataset, interpolate_variables: list[str], max_distance: float | None = None) -> None:
         """Initialize the InterpolateNearest class.
 
         Parameters
@@ -262,7 +254,7 @@ class InterpolateNearest(Forwards):
         return self.forward.shape
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         return self.forward.metadata()
 
     @staticmethod
@@ -281,12 +273,12 @@ class InterpolateNearest(Forwards):
         result = target_data[(slice(None),) + index[1:]]
         return apply_index_to_slices_changes(result, changes)
 
-    def __getitem__(self, index: Union[int, slice, Tuple[Union[int, slice], ...]]) -> NDArray[Any]:
+    def __getitem__(self, index: int | slice | tuple[int | slice, ...]) -> NDArray[Any]:
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
-    def subclass_metadata_specific(self) -> Dict[str, Any]:
+    def subclass_metadata_specific(self) -> dict[str, Any]:
         return {
             "interpolate_variables": self.vars,
         }

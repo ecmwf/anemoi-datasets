@@ -10,9 +10,6 @@
 
 import logging
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Set
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,7 +43,7 @@ class MissingDatesFill(Forwards):
         """
         super().__init__(dataset)
         self._missing = set(dataset.missing)
-        self._warnings: Set[int] = set()
+        self._warnings: set[int] = set()
 
     @debug_indexing
     @expand_list_indexing
@@ -84,7 +81,7 @@ class MissingDatesFill(Forwards):
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
     @property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the set of missing dates."""
         return set()
 
@@ -153,7 +150,7 @@ class MissingDatesClosest(MissingDatesFill):
         self.closest = closest
         self._closest = {}
 
-    def _fill_missing(self, n: int, a: Optional[int], b: Optional[int]) -> NDArray[Any]:
+    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
         """Fill the missing date at the given index.
 
         Parameters
@@ -189,7 +186,7 @@ class MissingDatesClosest(MissingDatesFill):
 
         return self.forward[self._closest[n]]
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
 
         Returns
@@ -224,7 +221,7 @@ class MissingDatesInterpolate(MissingDatesFill):
         super().__init__(dataset)
         self._alpha = {}
 
-    def _fill_missing(self, n: int, a: Optional[int], b: Optional[int]) -> NDArray[Any]:
+    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
         """Fill the missing date at the given index using interpolation.
 
         Parameters
@@ -264,7 +261,7 @@ class MissingDatesInterpolate(MissingDatesFill):
         alpha = self._alpha[n]
         return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
 
         Returns
@@ -285,7 +282,7 @@ class MissingDatesInterpolate(MissingDatesFill):
         return Node(self, [self.forward.tree()])
 
 
-def fill_missing_dates_factory(dataset: Any, method: str, kwargs: Dict[str, Any]) -> Dataset:
+def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create an instance of a class to fill missing dates.
 
     Parameters

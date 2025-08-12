@@ -9,9 +9,6 @@
 
 from datetime import datetime
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
 
 from earthkit.data import from_source
 
@@ -21,7 +18,7 @@ from .legacy import legacy_source
 
 
 @legacy_source(__file__)
-def source(context: Optional[Any], dates: List[datetime], **kwargs: Any) -> Any:
+def source(context: Any | None, dates: list[datetime], **kwargs: Any) -> Any:
     """Generates a source based on the provided context, dates, and additional keyword arguments.
 
     Parameters
@@ -52,7 +49,7 @@ execute = source
 if __name__ == "__main__":
     import yaml
 
-    config: Dict[str, Any] = yaml.safe_load(
+    config: dict[str, Any] = yaml.safe_load(
         """
       name: mars
       class: ea
@@ -65,7 +62,7 @@ if __name__ == "__main__":
       time: $from_dates
     """
     )
-    dates: List[str] = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
+    dates: list[str] = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
     dates = to_datetime_list(dates)
 
     for f in source(None, dates, **config):

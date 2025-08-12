@@ -10,8 +10,6 @@
 
 import logging
 from typing import Any
-from typing import Dict
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -105,7 +103,7 @@ class Number(Forwards):
         """
         return Node(self, [self.forward.tree()], numbers=[n + 1 for n in self.members])
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the Number object.
 
         Parameters
@@ -122,7 +120,7 @@ class Number(Forwards):
             "numbers": [n + 1 for n in self.members],
         }
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Returns metadata specific to the Number object."""
         return {}
 
@@ -140,7 +138,7 @@ class Ensemble(GivenAxis):
         """
         return Node(self, [d.tree() for d in self.datasets])
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
 
         Returns:
@@ -149,7 +147,7 @@ class Ensemble(GivenAxis):
         return {}
 
 
-def ensemble_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Ensemble:
+def ensemble_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Ensemble:
     """Factory function to create an Ensemble object.
 
     Parameters

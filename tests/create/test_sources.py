@@ -14,7 +14,6 @@ import numpy as np
 import pytest
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
-from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets import open_dataset
 
@@ -212,7 +211,7 @@ def test_eccs_fstd(get_test_data: callable) -> None:
     assert ds.shape == (2, 2, 1, 162)
 
 
-@skip_slow_tests
+@pytest.mark.slow
 @skip_if_offline
 @skip_missing_packages("kerchunk", "s3fs")
 def test_kerchunk(get_test_data: callable) -> None:

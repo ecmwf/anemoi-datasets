@@ -9,13 +9,10 @@
 
 
 import datetime
+from collections.abc import Callable
 from functools import cache
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Type
-from typing import Union
 from unittest.mock import patch
 
 import numpy as np
@@ -89,8 +86,8 @@ def create_zarr(
     frequency: datetime.timedelta = datetime.timedelta(hours=6),
     resolution: str = "o96",
     k: int = 0,
-    ensemble: Optional[int] = None,
-    grids: Optional[int] = None,
+    ensemble: int | None = None,
+    grids: int | None = None,
     missing: bool = False,
 ) -> zarr.Group:
     """Create a Zarr dataset.
@@ -344,16 +341,16 @@ class DatasetTester:
     def run(
         self,
         *,
-        expected_class: Type,
+        expected_class: type,
         expected_length: int,
         expected_shape: tuple,
-        expected_variables: Union[str, list],
-        expected_name_to_index: Union[str, dict],
+        expected_variables: str | list,
+        expected_name_to_index: str | dict,
         date_to_row: Callable,
         start_date: datetime.datetime,
         time_increment: datetime.timedelta,
-        statistics_reference_dataset: Optional[Union[str, list]],
-        statistics_reference_variables: Optional[Union[str, list]],
+        statistics_reference_dataset: str | list | None,
+        statistics_reference_variables: str | list | None,
     ) -> None:
         """Run the dataset tests.
 
@@ -433,7 +430,7 @@ class DatasetTester:
         metadata = ds.metadata()
         assert isinstance(metadata, dict)
 
-    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: Optional[list] = None) -> None:
+    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: list | None = None) -> None:
         """Compare statistics between two datasets.
 
         Parameters

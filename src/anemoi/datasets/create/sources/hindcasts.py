@@ -9,9 +9,6 @@
 
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Union
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
@@ -22,7 +19,7 @@ from .legacy import legacy_source
 LOGGER = logging.getLogger(__name__)
 
 
-def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
+def _to_list(x: list | tuple | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -41,7 +38,7 @@ def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
 
 
 @legacy_source(__file__)
-def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
+def hindcasts(context: Any, dates: list[Any], **request: dict[str, Any]) -> MultiFieldList:
     """Generates hindcast requests based on the provided dates and request parameters.
 
     Parameters

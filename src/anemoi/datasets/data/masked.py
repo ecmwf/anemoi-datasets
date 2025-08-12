@@ -11,11 +11,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -117,7 +112,7 @@ class Masked(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
-    def collect_supporting_arrays(self, collected: List[Tuple], *path: Any) -> None:
+    def collect_supporting_arrays(self, collected: list[tuple], *path: Any) -> None:
         """Collect supporting arrays.
 
         Parameters
@@ -134,7 +129,7 @@ class Masked(Forwards):
 class Thinning(Masked):
     """A class to represent a thinned dataset."""
 
-    def __init__(self, forward: Dataset, thinning: Optional[int], method: str) -> None:
+    def __init__(self, forward: Dataset, thinning: int | None, method: str) -> None:
         """Initialize the Thinning class.
 
         Parameters
@@ -195,7 +190,7 @@ class Thinning(Masked):
         """
         return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the Thinning subclass.
 
         Returns
@@ -209,7 +204,7 @@ class Thinning(Masked):
 class Cropping(Masked):
     """A class to represent a cropped dataset."""
 
-    def __init__(self, forward: Dataset, area: Union[Dataset, Tuple[float, float, float, float]]) -> None:
+    def __init__(self, forward: Dataset, area: Dataset | tuple[float, float, float, float]) -> None:
         """Initialize the Cropping class.
 
         Parameters
@@ -245,7 +240,7 @@ class Cropping(Masked):
         """
         return Node(self, [self.forward.tree()], area=self.area)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the Cropping subclass.
 
         Returns
@@ -314,7 +309,7 @@ class TrimEdge(Masked):
         """
         return Node(self, [self.forward.tree()], edge=self.edge)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the TrimEdge subclass.
 
         Returns

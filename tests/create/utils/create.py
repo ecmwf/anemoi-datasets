@@ -9,10 +9,6 @@
 
 import tempfile
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
 
 import yaml
 
@@ -25,9 +21,9 @@ class TestingContext:
 
 def create_dataset(
     *,
-    config: Union[str, Dict[str, Any]],
-    output: Optional[str],
-    delta: Optional[List[str]] = None,
+    config: str | dict[str, Any],
+    output: str | None,
+    delta: list[str] | None = None,
     is_test: bool = False,
 ) -> str:
     """Create a dataset based on the provided configuration.

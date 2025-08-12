@@ -12,8 +12,6 @@ import logging
 import os
 from copy import deepcopy
 from typing import Any
-from typing import Optional
-from typing import Union
 
 import yaml
 from anemoi.utils.config import DotDict
@@ -25,7 +23,7 @@ from anemoi.datasets.dates.groups import Groups
 LOG = logging.getLogger(__name__)
 
 
-def _get_first_key_if_dict(x: Union[str, dict]) -> str:
+def _get_first_key_if_dict(x: str | dict) -> str:
     """Returns the first key if the input is a dictionary, otherwise returns the input string.
 
     Parameters
@@ -97,7 +95,7 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
     dic[key] = value
 
 
-def resolve_includes(config: Union[dict, list]) -> Union[dict, list]:
+def resolve_includes(config: dict | list) -> dict | list:
     """Resolves '<<' includes in a configuration dictionary or list.
 
     Parameters
@@ -123,7 +121,7 @@ def resolve_includes(config: Union[dict, list]) -> Union[dict, list]:
 class Config(DotDict):
     """Configuration class that extends DotDict to handle configuration loading and processing."""
 
-    def __init__(self, config: Optional[Union[str, dict]] = None, **kwargs):
+    def __init__(self, config: str | dict | None = None, **kwargs):
         """Initializes the Config object.
 
         Parameters

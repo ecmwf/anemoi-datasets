@@ -77,7 +77,7 @@ class Check(Command):
 
         recipe_filename = os.path.basename(recipe)
         recipe_name = os.path.splitext(recipe_filename)[0]
-        in_recipe_name = yaml.safe_load(open(recipe, "r", encoding="utf-8"))["name"]
+        in_recipe_name = yaml.safe_load(open(recipe, encoding="utf-8"))["name"]
         if recipe_name != in_recipe_name:
             print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
 

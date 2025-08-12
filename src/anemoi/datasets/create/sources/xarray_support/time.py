@@ -13,9 +13,6 @@ import logging
 from abc import ABC
 from abc import abstractmethod
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
 
 from anemoi.utils.dates import as_datetime
 
@@ -29,7 +26,7 @@ class Time(ABC):
     """Base class for different time representations."""
 
     @classmethod
-    def from_coordinates(cls, coordinates: List[Coordinate]) -> "Time":
+    def from_coordinates(cls, coordinates: list[Coordinate]) -> "Time":
         """Create a Time instance from a list of coordinates.
 
         Returns
@@ -85,7 +82,7 @@ class Time(ABC):
         raise NotImplementedError(f"{len(date_coordinate)=} {len(time_coordinate)=} {len(step_coordinate)=}")
 
     @abstractmethod
-    def select_valid_datetime(self, variable: Variable) -> Optional[str]:
+    def select_valid_datetime(self, variable: Variable) -> str | None:
         """Select the valid datetime for a given variable.
 
         Parameters
@@ -101,7 +98,7 @@ class Time(ABC):
         pass
 
     @abstractmethod
-    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> None:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> None:
         """Fill metadata with time information.
 
         Args
@@ -118,7 +115,7 @@ class Time(ABC):
 class Constant(Time):
     """Represents a constant time."""
 
-    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> None:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> None:
         """Fill metadata with time information.
 
         Parameters
@@ -154,7 +151,7 @@ class Analysis(Time):
         """
         self.time_coordinate_name = time_coordinate.variable.name
 
-    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Parameters
@@ -197,7 +194,7 @@ class ForecastFromValidTimeAndStep(Time):
     """Represents a forecast time derived from valid time and step."""
 
     def __init__(
-        self, time_coordinate: Coordinate, step_coordinate: Coordinate, date_coordinate: Optional[Coordinate] = None
+        self, time_coordinate: Coordinate, step_coordinate: Coordinate, date_coordinate: Coordinate | None = None
     ) -> None:
         """Initialize ForecastFromValidTimeAndStep with time, step, and optional date coordinates.
 
@@ -214,7 +211,7 @@ class ForecastFromValidTimeAndStep(Time):
         self.step_coordinate_name = step_coordinate.variable.name
         self.date_coordinate_name = date_coordinate.variable.name if date_coordinate else None
 
-    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Returns
@@ -285,7 +282,7 @@ class ForecastFromValidTimeAndBaseTime(Time):
         self.date_coordinate_name = date_coordinate.name
         self.time_coordinate_name = time_coordinate.name
 
-    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Returns
@@ -346,7 +343,7 @@ class ForecastFromBaseTimeAndDate(Time):
         self.date_coordinate_name = date_coordinate.name
         self.step_coordinate_name = step_coordinate.name
 
-    def fill_time_metadata(self, coords_values: Dict[str, Any], metadata: Dict[str, Any]) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Returns
@@ -375,7 +372,7 @@ class ForecastFromBaseTimeAndDate(Time):
 
         return date + step
 
-    def select_valid_datetime(self, variable: Variable) -> Optional[str]:
+    def select_valid_datetime(self, variable: Variable) -> str | None:
         """Select the valid datetime for a given variable.
 
         Parameters

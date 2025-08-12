@@ -12,19 +12,16 @@ import datetime
 import itertools
 from abc import ABC
 from abc import abstractmethod
+from collections.abc import Callable
+from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
-from typing import Callable
-from typing import Iterator
-from typing import List
-from typing import Tuple
-from typing import Union
 
 from anemoi.datasets.dates import DatesProvider
 from anemoi.datasets.dates import as_datetime
 
 
-def _shorten(dates: Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]) -> Union[str, List[str]]:
+def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
     """Shorten the list of dates for display.
 
     Args:
@@ -43,7 +40,7 @@ def _shorten(dates: Union[List[datetime.datetime], Tuple[datetime.datetime, ...]
 class GroupOfDates:
     """A class to represent a group of dates."""
 
-    def __init__(self, dates: List[datetime.datetime], provider: DatesProvider, partial_ok: bool = False) -> None:
+    def __init__(self, dates: list[datetime.datetime], provider: DatesProvider, partial_ok: bool = False) -> None:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
@@ -197,10 +194,10 @@ class Groups:
 class Filter:
     """A class to filter out missing dates."""
 
-    def __init__(self, missing: List[datetime.datetime]) -> None:
-        self.missing = set(as_datetime(m) for m in missing)
+    def __init__(self, missing: list[datetime.datetime]) -> None:
+        self.missing = {as_datetime(m) for m in missing}
 
-    def __call__(self, dates: List[datetime.datetime]) -> List[datetime.datetime]:
+    def __call__(self, dates: list[datetime.datetime]) -> list[datetime.datetime]:
         """Filter out missing dates from the list of dates.
 
         Args:

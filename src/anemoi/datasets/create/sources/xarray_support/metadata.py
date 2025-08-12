@@ -12,8 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import Optional
 
 from anemoi.utils.dates import as_datetime
 from earthkit.data.core.geography import Geography
@@ -21,87 +19,6 @@ from earthkit.data.core.metadata import RawMetadata
 from earthkit.data.utils.projections import Projection
 
 LOG = logging.getLogger(__name__)
-
-
-class _MDMapping:
-    """A class to handle metadata mapping for variables.
-
-    Attributes
-    ----------
-    variable : Any
-        The variable to map.
-    time : Any
-        The time associated with the variable.
-    mapping : Dict[str, str]
-        A dictionary mapping keys to variable names.
-    """
-
-    def __init__(self, variable: Any) -> None:
-        """Initialize the _MDMapping class.
-
-        Parameters
-        ----------
-        variable : Any
-            The variable to map.
-        """
-        self.variable = variable
-        self.time = variable.time
-        self.mapping = dict()
-        # Aliases
-
-    def _from_user(self, key: str) -> str:
-        """Get the internal key corresponding to a user-provided key.
-
-        Parameters
-        ----------
-        key : str
-            The user-provided key.
-
-        Returns
-        -------
-        str
-            The internal key corresponding to the user-provided key.
-        """
-        return self.mapping.get(key, key)
-
-    def from_user(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert user-provided keys to internal keys.
-
-        Parameters
-        ----------
-        kwargs : Dict[str, Any]
-            A dictionary of user-provided keys and values.
-
-        Returns
-        -------
-        Dict[str, Any]
-            A dictionary with internal keys and original values.
-        """
-        return {self._from_user(k): v for k, v in kwargs.items()}
-
-    def __repr__(self) -> str:
-        """Return a string representation of the _MDMapping object.
-
-        Returns
-        -------
-        str
-            String representation of the _MDMapping object.
-        """
-        return f"MDMapping({self.mapping})"
-
-    def fill_time_metadata(self, field: Any, md: Dict[str, Any]) -> None:
-        """Fill the time metadata for a field.
-
-        Parameters
-        ----------
-        field : Any
-            The field to fill metadata for.
-        md : Dict[str, Any]
-            The metadata dictionary to update.
-        """
-        valid_datetime = self.variable.time.fill_time_metadata(field._md, md)
-        if valid_datetime is not None:
-            md["valid_datetime"] = as_datetime(valid_datetime).isoformat()
 
 
 class XArrayMetadata(RawMetadata):
@@ -129,10 +46,16 @@ class XArrayMetadata(RawMetadata):
         field : Any
             The field to extract metadata from.
         """
+        from .field import XArrayField
+
+        assert isinstance(field, XArrayField), type(field)
         self._field = field
         md = field._md.copy()
-        self._mapping = _MDMapping(field.owner)
-        self._mapping.fill_time_metadata(field, md)
+
+        valid_datetime = field.owner.time.fill_time_metadata(field._md, md)
+        if valid_datetime is not None:
+            md["valid_datetime"] = as_datetime(valid_datetime).isoformat()
+
         super().__init__(md)
 
     @cached_property
@@ -140,7 +63,7 @@ class XArrayMetadata(RawMetadata):
         """Get the geography information for the field."""
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
-    def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
+    def as_namespace(self, namespace: str | None = None) -> dict[str, Any]:
         """Get the metadata as a specific namespace.
 
         Parameters
@@ -162,7 +85,7 @@ class XArrayMetadata(RawMetadata):
         elif namespace == "mars":
             return self._as_mars()
 
-    def _as_mars(self) -> Dict[str, Any]:
+    def _as_mars(self) -> dict[str, Any]:
         """Get the metadata as MARS namespace.
 
         Returns
@@ -172,7 +95,7 @@ class XArrayMetadata(RawMetadata):
         """
         return {}
 
-    def _base_datetime(self) -> Optional[datetime.datetime]:
+    def _base_datetime(self) -> datetime.datetime | None:
         """Get the base datetime for the field.
 
         Returns
@@ -182,7 +105,7 @@ class XArrayMetadata(RawMetadata):
         """
         return self._field.forecast_reference_time
 
-    def _valid_datetime(self) -> Optional[datetime.datetime]:
+    def _valid_datetime(self) -> datetime.datetime | None:
         """Get the valid datetime for the field.
 
         Returns
@@ -191,38 +114,6 @@ class XArrayMetadata(RawMetadata):
             The valid datetime for the field.
         """
         return self._get("valid_datetime")
-
-    def get(self, key: str, astype: Optional[type] = None, **kwargs: Any) -> Any:
-        """Get a metadata value by key.
-
-        Parameters
-        ----------
-        key : str
-            The key to get the value for.
-        astype : Optional[type]
-            The type to cast the value to.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        Any
-            The value for the specified key, optionally cast to the specified type.
-        """
-
-        if key == "levelist":
-            # Special case for levelist, for compatibility with GRIB
-            if key not in self._d and "level" in self._d:
-                key = "level"
-
-        if key in self._d:
-            if astype is not None:
-                return astype(self._d[key])
-            return self._d[key]
-
-        key = self._mapping._from_user(key)
-
-        return super().get(key, astype=astype, **kwargs)
 
 
 class XArrayFieldGeography(Geography):
@@ -280,7 +171,7 @@ class XArrayFieldGeography(Geography):
         """
         raise NotImplementedError()
 
-    def latitudes(self, dtype: Optional[type] = None) -> Any:
+    def latitudes(self, dtype: type | None = None) -> Any:
         """Get the latitudes for the field.
 
         Parameters
@@ -298,7 +189,7 @@ class XArrayFieldGeography(Geography):
             return result.astype(dtype)
         return result
 
-    def longitudes(self, dtype: Optional[type] = None) -> Any:
+    def longitudes(self, dtype: type | None = None) -> Any:
         """Get the longitudes for the field.
 
         Parameters
@@ -316,7 +207,7 @@ class XArrayFieldGeography(Geography):
             return result.astype(dtype)
         return result
 
-    def resolution(self) -> Optional[Any]:
+    def resolution(self) -> Any | None:
         """Get the resolution for the field.
 
         Returns
@@ -327,7 +218,7 @@ class XArrayFieldGeography(Geography):
         # TODO: implement resolution
         return None
 
-    def mars_grid(self) -> Optional[Any]:
+    def mars_grid(self) -> Any | None:
         """Get the MARS grid for the field.
 
         Returns
@@ -338,7 +229,7 @@ class XArrayFieldGeography(Geography):
         # TODO: implement mars_grid
         return None
 
-    def mars_area(self) -> Optional[Any]:
+    def mars_area(self) -> Any | None:
         """Get the MARS area for the field.
 
         Returns
@@ -350,7 +241,7 @@ class XArrayFieldGeography(Geography):
         # return [self.north, self.west, self.south, self.east]
         return None
 
-    def x(self, dtype: Optional[type] = None) -> None:
+    def x(self, dtype: type | None = None) -> None:
         """Get the x-coordinates for the field.
 
         Parameters
@@ -365,7 +256,7 @@ class XArrayFieldGeography(Geography):
         """
         raise NotImplementedError()
 
-    def y(self, dtype: Optional[type] = None) -> None:
+    def y(self, dtype: type | None = None) -> None:
         """Get the y-coordinates for the field.
 
         Parameters

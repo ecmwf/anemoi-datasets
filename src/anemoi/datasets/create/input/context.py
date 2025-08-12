@@ -10,9 +10,6 @@
 import logging
 import textwrap
 from typing import Any
-from typing import List
-from typing import Tuple
-from typing import Union
 
 from anemoi.utils.humanize import plural
 
@@ -32,7 +29,7 @@ class Context:
         # results is a dictionary of reference path -> obj
         self.results = {}
 
-    def will_need_reference(self, key: Union[List, Tuple]) -> None:
+    def will_need_reference(self, key: list | tuple) -> None:
         """Marks a reference as needed.
 
         Parameters
@@ -44,7 +41,7 @@ class Context:
         key = tuple(key)
         self.used_references.add(key)
 
-    def notify_result(self, key: Union[List, Tuple], result: Any) -> None:
+    def notify_result(self, key: list | tuple, result: Any) -> None:
         """Notifies that a result is available for a reference.
 
         Parameters
@@ -68,7 +65,7 @@ class Context:
                 raise ValueError(f"Duplicate result {key}")
             self.results[key] = result
 
-    def get_result(self, key: Union[List, Tuple]) -> Any:
+    def get_result(self, key: list | tuple) -> Any:
         """Retrieves the result for a given reference.
 
         Parameters

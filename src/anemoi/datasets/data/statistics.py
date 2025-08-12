@@ -12,9 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Set
 
 from numpy.typing import NDArray
 
@@ -56,11 +53,11 @@ class Statistics(Forwards):
             )
 
     @cached_property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics."""
         return self._statistic.statistics
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies.
 
         Parameters
@@ -77,7 +74,7 @@ class Statistics(Forwards):
             delta = self.frequency
         return self._statistic.statistics_tendencies(delta)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
 
         Returns
@@ -97,7 +94,7 @@ class Statistics(Forwards):
         """
         return Node(self, [self.forward.tree()])
 
-    def get_dataset_names(self, names: Set[str]) -> None:
+    def get_dataset_names(self, names: set[str]) -> None:
         """Get the dataset names.
 
         Parameters
