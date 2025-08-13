@@ -49,6 +49,16 @@ def _sanitize_name(name):
     return name
 
 
+def _un_dotdict(x):
+    if isinstance(x, dict):
+        return {k: _un_dotdict(v) for k, v in x.items()}
+
+    if isinstance(x, (list, tuple, set)):
+        return [_un_dotdict(a) for a in x]
+
+    return x
+
+
 class PythonCode:
 
     def __init__(self, top):
@@ -98,12 +108,11 @@ class Parameter:
 
 
 class Function:
-    def __init__(self, name, node, counter, *parameters):
+    def __init__(self, name, node, counter):
         self._name = name
         self.node = node
         self.used = False
         self.counter = counter
-        # self.parameters = parameters
 
     def __repr__(self):
         return self.name
@@ -131,6 +140,8 @@ class Function:
     def name(self):
         n = self.counter[self._name]
         self.counter[self._name] += 1
+        if n == 0:
+            return _sanitize_name(self._name)
         return _sanitize_name(f"{self._name}_{n}")
 
     def replace_node(self, old, new):
@@ -193,11 +204,8 @@ class PythonScript(PythonCode):
             ]
         )
 
-    def function0(self, node):
+    def function(self, node):
         return Function(node.name, node, self.counter)
-
-    def function1(self, node, key):
-        return Function(node.name, node, self.counter, Parameter(key))
 
     def replace_nodes(self, changes):
 
@@ -214,7 +222,7 @@ class PythonScript(PythonCode):
 class PythonConcat(PythonCode):
     def __init__(self, top, argument):
         super().__init__(top=top)
-        self.argument = argument
+        self.argument = _un_dotdict(argument)
 
     def __repr__(self):
         return f"r.concat({self.argument})"
@@ -251,7 +259,7 @@ class PythonCall(PythonCode):
     def __init__(self, top, name, argument):
         super().__init__(top=top)
         self.name = name
-        self.argument = argument
+        self.argument = _un_dotdict(argument)
         self.key = name
 
     def free_arguments(self):
@@ -313,7 +321,7 @@ class PythonCall(PythonCode):
 
             call = PythonCall(self.top, self.name, node.argument)
 
-            func = self.top.function0(node=call)
+            func = self.top.function(call)
             changes = []
             for node in i:
 
@@ -341,7 +349,7 @@ class PythonCall(PythonCode):
             rest[key] = Argument(key)
             call = PythonCall(self.top, self.name, rest)
 
-            func = self.top.function1(call, key)
+            func = self.top.function(call)
             changes = []
             for key, value, node in i:
 
@@ -363,6 +371,12 @@ class PythonFunction(PythonCode):
         self.kwargs = kwargs
 
     def __repr__(self):
+
+        # if len(self.func.free_arguments()) == 0:
+        #     a = repr(self.func.node)
+        #     if '=' not in a:
+        #         return a
+
         params = []
         for a in self.func.free_arguments():
             name = _sanitize_name(a.name)

@@ -56,7 +56,10 @@ class Concat(Action):
 
     def python_code(self, code):
         return code.concat(
-            {filtering_dates.to_python(): action.python_code(code) for filtering_dates, action in self.choices}
+            {
+                filtering_dates.to_python(just_dates=True): action.python_code(code)
+                for filtering_dates, action in self.choices
+            }
         )
 
 
@@ -124,6 +127,10 @@ class Function(Action):
         return context.register(self.call_object(context, source, argument), self.path)
 
     def python_code(self, code) -> str:
+        # For now...
+        if "source" in self.config:
+            source = action_factory(self.config["source"])
+            self.config["source"] = source.python_code(code)
         return code.call(self.name, self.config)
 
 
