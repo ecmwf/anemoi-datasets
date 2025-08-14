@@ -8,10 +8,13 @@
 # nor does it submit to any jurisdiction.
 #
 
+import logging
 import re
 import sys
 from collections import defaultdict
 from functools import cached_property
+
+LOG = logging.getLogger(__name__)
 
 RESERVED_KEYWORDS = (
     "and",
@@ -62,7 +65,7 @@ def _un_dotdict(x):
 class PythonCode:
 
     def __init__(self, top):
-        print(f"Creating {self.__class__.__name__} from {top.__class__.__name__}", file=sys.stderr)
+        # print(f"Creating {self.__class__.__name__} from {top.__class__.__name__}", file=sys.stderr)
         self.top = top
         self.top.register(self)
         self.key = str(id(self))
@@ -71,10 +74,10 @@ class PythonCode:
         return PythonCall(self.top, name, argument)
 
     def sum(self, actions):
-        return PythonChain(self.top, "+", actions)
+        return PythonChain(self.top, "join", "+", actions)
 
     def pipe(self, actions):
-        return PythonChain(self.top, "|", actions)
+        return PythonChain(self.top, "pipe", "|", actions)
 
     def concat(self, argument):
         return PythonConcat(self.top, argument)
@@ -85,26 +88,101 @@ class PythonCode:
     def combine(self, nodes):
         return None
 
+    def recipe(self, input, data_sources):
+        return PythonRecipe(self.top, input, data_sources)
+
     def prelude(self):
         return None
 
+    def sources(self, sources):
+        return PythonSources(self.top, sources)
 
-class Argument:
 
-    def __init__(self, name):
+class PythonRecipe(PythonCode):
+    def __init__(self, top, input, data_sources):
+        super().__init__(top)
+        self.input = input
+        self.data_sources = data_sources
+
+    def apply_references(self, *path):
+        self.input.apply_references(*path, "input")
+
+    def replace_node(self, old, new):
+        if self.input is old:
+            self.input = new
+            return
+
+        if self.data_sources is old:
+            self.data_sources = new
+            return
+
+        self.input.replace_node(old, new)
+        self.data_sources.replace_node(old, new)
+
+    def __repr__(self):
+        return repr(self.input)
+
+    def prelude(self):
+        return self.data_sources.prelude()
+
+
+class Argument(PythonCode):
+
+    def __init__(self, top, name):
+        super().__init__(top=top)
         self.name = _sanitize_name(name)
 
     def __repr__(self):
         return self.name
 
+    def replace_node(self, old, new):
+        pass
 
-class Parameter:
 
-    def __init__(self, name):
-        self.name = _sanitize_name(name)
+class Anchor(PythonCode):
+
+    def __init__(self, node):
+        super().__init__(top=node.top)
+        self.node = node
+
+    @cached_property
+    def name(self):
+        n = self.top.counter["_anchor"]
+        self.top.counter["_anchor"] += 1
+        return f"_a{n}"
 
     def __repr__(self):
-        return self.name
+        return f"({self.name} := {repr(self.node)})"
+
+    def replace_node(self, old, new):
+        pass
+
+
+class Reference(PythonCode):
+
+    def __init__(self, top, path):
+        super().__init__(top)
+        self.path = tuple(path)
+        self.anchor = None
+
+        node = top.by_reference.get(self.path, None)
+        if node is None:
+            LOG.warning(f"Reference {self.path} not found")
+            for p in sorted(top.by_reference):
+                LOG.warning(f"  - {p}")
+        else:
+            self.anchor = Anchor(node)
+            self.top.replace_nodes([(node, self.anchor)])
+
+    def __repr__(self):
+        if self.anchor is not None:
+            print("Reference:", self.path, "->", self.anchor.name, file=sys.stderr)
+            return self.anchor.name
+
+        return f"'${{{'.'.join(self.path)}}}'"
+
+    def replace_node(self, old, new):
+        pass
 
 
 class Function:
@@ -149,11 +227,38 @@ class Function:
             self.node = new
 
 
+class PythonSources(PythonCode):
+    def __init__(self, top, sources):
+        super().__init__(top)
+        self.sources = sources
+
+    def __repr__(self):
+        return ""
+
+    def prelude(self):
+        result = []
+        for k, v in self.sources.items():
+            result.append(f"{k}={repr(v)}")
+            result.append("")
+        return result
+
+    def replace_node(self, old, new):
+        for k, v in list(self.sources.items()):
+            if v is old:
+                self.sources[k] = new
+            else:
+                v.replace_node(old, new)
+
+    def apply_references(self, *path):
+        self.top.by_reference[path + (self.name,)] = self
+
+
 class PythonScript(PythonCode):
 
     def __init__(self):
         self.nodes = []
         self.counter = defaultdict(int)
+        self.by_reference = {}
         super().__init__(top=self)
 
     def register(self, child):
@@ -174,6 +279,10 @@ class PythonScript(PythonCode):
 
         which = self.nodes.index(first)
 
+        first.apply_references()
+        # for k, v in self.by_reference.items():
+        #     print(f"Reference: {k} -> {v}", file=sys.stderr)
+
         more = True
         while more:
             more = False
@@ -184,8 +293,8 @@ class PythonScript(PythonCode):
 
             for (cls, key), nodes in by_class.items():
                 if len(nodes) > 1:
-                    print(f"Found multiple nodes of type {cls.__name__}/{key}, merging them", file=sys.stderr)
-                    print(f"Nodes: {len(nodes)}", file=sys.stderr)
+                    # print(f"Found multiple nodes of type {cls.__name__}/{key}, merging them", file=sys.stderr)
+                    # print(f"Nodes: {len(nodes)}", file=sys.stderr)
                     changes = nodes[0].combine(nodes)
                     if changes:
                         self.replace_nodes(changes)
@@ -234,11 +343,18 @@ class PythonConcat(PythonCode):
             else:
                 v.replace_node(old, new)
 
+    def apply_references(self, *path):
+        assert "concat" not in path, path
+        self.top.by_reference[path + ("concat",)] = self
+        for i, node in enumerate(self.argument.values()):
+            node.apply_references(*path, "concat", str(i))
+
 
 class PythonChain(PythonCode):
-    def __init__(self, top, op, actions):
+    def __init__(self, top, kind, op, actions):
         super().__init__(top=top)
         self.op = op
+        self.kind = kind
         self.actions = list(actions)
         self.key = op
 
@@ -253,6 +369,11 @@ class PythonChain(PythonCode):
                 self.actions[i] = new
             else:
                 node.replace_node(old, new)
+
+    def apply_references(self, *path):
+        self.top.by_reference[path + (self.kind,)] = self
+        for i, node in enumerate(self.actions):
+            node.apply_references(*path, self.kind, str(i))
 
 
 class PythonCall(PythonCode):
@@ -283,6 +404,7 @@ class PythonCall(PythonCode):
 
                 if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k):
                     return f"r.{name}({config})"
+
             params.append(f"{k}={repr(v)}")
 
         if params:
@@ -346,7 +468,7 @@ class PythonCall(PythonCode):
                 return
 
             rest = {k: v for k, v in node.argument.items() if k != key}
-            rest[key] = Argument(key)
+            rest[key] = Argument(self.top, key)
             call = PythonCall(self.top, self.name, rest)
 
             func = self.top.function(call)
@@ -363,6 +485,14 @@ class PythonCall(PythonCode):
 
             return changes
 
+    def apply_references(self, *path):
+        self.top.by_reference[path + (self.name,)] = self
+
+        for k, v in self.argument.items():
+            if isinstance(v, str) and (m := re.match(r"^\${(\w+(?:\.\w+)+)}$", v)):
+                path = m.group(1).split(".")
+                self.argument[k] = Reference(self.top, path)
+
 
 class PythonFunction(PythonCode):
     def __init__(self, top, func, **kwargs):
@@ -371,11 +501,6 @@ class PythonFunction(PythonCode):
         self.kwargs = kwargs
 
     def __repr__(self):
-
-        # if len(self.func.free_arguments()) == 0:
-        #     a = repr(self.func.node)
-        #     if '=' not in a:
-        #         return a
 
         params = []
         for a in self.func.free_arguments():

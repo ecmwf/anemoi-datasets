@@ -198,7 +198,32 @@ def new_filter(name, mixin):
     )
 
 
-KLASS = {"concat": Concat, "join": Join, "pipe": Pipe}
+class DataSources(Action):
+    def __init__(self, config, *path):
+        self.sources = {k: action_factory(v, *path, k) for k, v in config.items()}
+
+    def python_code(self, code):
+        return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
+
+
+class Recipe(Action):
+    def __init__(self, input, data_sources):
+        self.input = input
+        self.data_sources = data_sources
+
+    def python_code(self, code):
+        return code.recipe(
+            self.input.python_code(code),
+            self.data_sources.python_code(code),
+        )
+
+
+KLASS = {
+    "concat": Concat,
+    "join": Join,
+    "pipe": Pipe,
+    "data-sources": DataSources,
+}
 
 LEN_KLASS = len(KLASS)
 

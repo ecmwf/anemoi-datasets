@@ -18,36 +18,32 @@ from anemoi.datasets.create.input.context.field import FieldContext
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
+    def __init__(self, config: dict, data_sources: dict, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
         ----------
         config : dict
             Configuration dictionary.
-        data_sources : Union[dict, list]
+        data_sources : dict
             Data sources.
         **kwargs : Any
             Additional keyword arguments.
         """
         self.kwargs = kwargs
-
-        config = deepcopy(config)
-        if data_sources:
-            config = dict(
-                data_sources=dict(
-                    sources=data_sources,
-                    input=config,
-                )
-            )
-        self.config = config
+        self.config = deepcopy(config)
+        self.data_sources = deepcopy(dict(data_sources=data_sources))
 
     @cached_property
     def action(self) -> Any:
         """Returns the action object based on the configuration."""
+        from .action import Recipe
         from .action import action_factory
 
-        return action_factory(self.config, "input")
+        sources = action_factory(self.data_sources, "data_sources")
+        input = action_factory(self.config, "input")
+
+        return Recipe(input, sources)
 
     def select(self, argument) -> Any:
         """Select data based on the group of dates.

@@ -12,6 +12,7 @@ import os
 import sys
 from tempfile import TemporaryDirectory
 
+import rich
 import yaml
 from anemoi.transform.filters import filter_registry as transform_filter_registry
 from anemoi.utils.config import DotDict
@@ -32,6 +33,11 @@ class Index:
     def __repr__(self):
         return f"Index({self.name})"
 
+    def same(self, other):
+        if not isinstance(other, Index):
+            return False
+        return self.name == other.name
+
 
 class Step:
 
@@ -40,6 +46,9 @@ class Step:
 
     def __add__(self, other):
         return Join(self, other)
+
+    def same(self, other):
+        return self is other
 
 
 class Chain(Step):
@@ -55,10 +64,18 @@ class Chain(Step):
             return self.steps[0].as_dict(recipe)
         return {self.name: [s.as_dict(recipe) for s in self.steps]}
 
-    def __repr__(self):
-        return f"{self.__class__.name}({','.join([str(s) for s in self.steps])})"
+    # def __repr__(self):
+    #     return f"{self.__class__.name}({','.join([str(s) for s in self.steps])})"
 
     def path(self, target, result, *path):
+
+        rich.print(f"path: {target=}, {self=}, {result=}, {[s.name for s in path]}")
+        rich.print("-------------")
+
+        if target is self:
+            result.append([*path, self])
+            return
+
         for i, s in enumerate(self.steps):
             s.path(target, result, *path, self, self.index[i])
 
@@ -81,6 +98,8 @@ class Concat(Step):
         assert isinstance(args, dict), f"Invalid argument {args}"
         self.params = args
 
+        rich.print(f"Concat: {self=}")
+
     def __setitem__(self, key, value):
         self.params[key] = value
 
@@ -94,10 +113,15 @@ class Concat(Step):
         return {"concat": result}
 
     def collocated(self, a, b):
-        return a[0] is b[0]
+        return a[0].same(b[0])
 
     def path(self, target, result, *path):
+        rich.print(f"path: {target=}, {self=}, {result=}, {path=}")
+        rich.print("-------------")
 
+        if target is self:
+            result.append([*path, self])
+            return
         for i, (k, v) in enumerate(sorted(self.params.items())):
             v.path(target, result, *path, self, Index(i))
 
@@ -131,8 +155,8 @@ class Base(Step):
 
         return {self.owner.name: resolve(self.params, recipe)}
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.owner.name}, {','.join([f'{k}={v}' for k, v in self.params.items()])})"
+    # def __repr__(self):
+    #     return f"{self.__class__.__name__}({self.owner.name}, {','.join([f'{k}={v}' for k, v in self.params.items()])})"
 
     def path(self, target, result, *path):
 
@@ -233,7 +257,7 @@ class Recipe:
         return Concat(*args, **kwargs)
 
     def resolve(self, source, target):
-        assert isinstance(target, Source), f"Only sources can be used as template {target}"
+        # assert isinstance(target, Source), f"Only sources can be used as template {target}"
 
         top = Index("input")  # So we have 'input' first in the path
 
@@ -262,6 +286,8 @@ class Recipe:
             b = b[1:]
 
         assert common_ancestor is not None, f"Common ancestor not found between {source} and {target}"
+
+        rich.print(f"Common ancestor: {common_ancestor=} {a=} {b=}")
 
         if not common_ancestor.collocated(a, b):
             source = ".".join(s.name for s in path_to_source)
