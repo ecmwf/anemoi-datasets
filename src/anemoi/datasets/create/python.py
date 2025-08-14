@@ -483,6 +483,9 @@ class PythonFunction(PythonCode):
     def free_arguments(self):
         return [a for a in self.func.free_arguments() if a.name not in self.kwargs]
 
+    def apply_references(self, *path):
+        pass
+
 
 class PythonScript(PythonCode):
 
@@ -509,6 +512,9 @@ class PythonScript(PythonCode):
     def source_code(self, first):
 
         which = self.nodes.index(first)
+        first.apply_references()
+        for node in self.nodes:
+            node.update_anchor()
 
         more = True
         while more:
@@ -524,12 +530,6 @@ class PythonScript(PythonCode):
                     if changes:
                         self.replace_nodes(changes)
                         more = True
-
-        first = self.nodes[which]
-
-        first.apply_references()
-        for node in self.nodes:
-            node.update_anchor()
 
         first = self.nodes[which]
 
