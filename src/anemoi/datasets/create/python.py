@@ -64,7 +64,6 @@ def _un_dotdict(x):
 class PythonCode:
 
     def __init__(self, top):
-        # print(f"Creating {self.__class__.__name__} from {top.__class__.__name__}", file=sys.stderr)
         self.top = top
         self.top.register(self)
         self.key = str(id(self))
@@ -107,7 +106,6 @@ class Variable(PythonCode):
         self.node = node
 
     def __repr__(self):
-
         return ""
 
     def replace_node(self, old, new):
