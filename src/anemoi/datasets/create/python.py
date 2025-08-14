@@ -10,7 +10,6 @@
 
 import logging
 import re
-import sys
 from collections import defaultdict
 from functools import cached_property
 
@@ -97,6 +96,44 @@ class PythonCode:
     def sources(self, sources):
         return PythonSources(self.top, sources)
 
+    def update_anchor(self):
+        pass
+
+
+class Variable(PythonCode):
+    def __init__(self, name, node):
+        super().__init__(top=node.top)
+        self.name = name
+        self.node = node
+
+    def __repr__(self):
+
+        return ""
+
+    def replace_node(self, old, new):
+        pass
+
+    def prelude(self):
+        return [f"{self.name} = {repr(self.node)}", ""]
+
+
+class InLine(PythonCode):
+    def __init__(self, node):
+        super().__init__(top=node.top)
+        self.node = node
+
+    @cached_property
+    def name(self):
+        n = self.top.counter["_anchor"]
+        self.top.counter["_anchor"] += 1
+        return f"_a{n}"
+
+    def __repr__(self):
+        return f"({self.name} := {repr(self.node)})"
+
+    def replace_node(self, old, new):
+        pass
+
 
 class PythonRecipe(PythonCode):
     def __init__(self, top, input, data_sources):
@@ -105,6 +142,7 @@ class PythonRecipe(PythonCode):
         self.data_sources = data_sources
 
     def apply_references(self, *path):
+        self.data_sources.apply_references(*path, "data_sources")
         self.input.apply_references(*path, "input")
 
     def replace_node(self, old, new):
@@ -141,18 +179,17 @@ class Argument(PythonCode):
 
 class Anchor(PythonCode):
 
-    def __init__(self, node):
-        super().__init__(top=node.top)
-        self.node = node
+    def __init__(self, identifier):
+        super().__init__(top=identifier.node.top)
+        self.identifier = identifier
 
-    @cached_property
+    @property
     def name(self):
-        n = self.top.counter["_anchor"]
-        self.top.counter["_anchor"] += 1
-        return f"_a{n}"
+        return self.identifier.name
 
     def __repr__(self):
-        return f"({self.name} := {repr(self.node)})"
+        # assert False
+        return repr(self.identifier)
 
     def replace_node(self, old, new):
         pass
@@ -165,18 +202,19 @@ class Reference(PythonCode):
         self.path = tuple(path)
         self.anchor = None
 
-        node = top.by_reference.get(self.path, None)
+    def update_anchor(self):
+
+        node = self.top.by_reference.get(self.path, None)
         if node is None:
             LOG.warning(f"Reference {self.path} not found")
-            for p in sorted(top.by_reference):
+            for p in sorted(self.top.by_reference):
                 LOG.warning(f"  - {p}")
         else:
             self.anchor = Anchor(node)
-            self.top.replace_nodes([(node, self.anchor)])
+            self.top.replace_nodes([(node.node, self.anchor)])
 
     def __repr__(self):
         if self.anchor is not None:
-            print("Reference:", self.path, "->", self.anchor.name, file=sys.stderr)
             return self.anchor.name
 
         return f"'${{{'.'.join(self.path)}}}'"
@@ -185,8 +223,9 @@ class Reference(PythonCode):
         pass
 
 
-class Function:
+class Function(PythonCode):
     def __init__(self, name, node, counter):
+        super().__init__(top=node.top)
         self._name = name
         self.node = node
         self.used = False
@@ -236,11 +275,7 @@ class PythonSources(PythonCode):
         return ""
 
     def prelude(self):
-        result = []
-        for k, v in self.sources.items():
-            result.append(f"{k}={repr(v)}")
-            result.append("")
-        return result
+        pass
 
     def replace_node(self, old, new):
         for k, v in list(self.sources.items()):
@@ -250,82 +285,8 @@ class PythonSources(PythonCode):
                 v.replace_node(old, new)
 
     def apply_references(self, *path):
-        self.top.by_reference[path + (self.name,)] = self
-
-
-class PythonScript(PythonCode):
-
-    def __init__(self):
-        self.nodes = []
-        self.counter = defaultdict(int)
-        self.by_reference = {}
-        super().__init__(top=self)
-
-    def register(self, child):
-        if child is not self:
-            self.nodes.append(child)
-
-    def prelude(self):
-        result = []
-        for node in self.nodes:
-            prelude = node.prelude()
-            if prelude:
-                if not isinstance(prelude, (list, tuple)):
-                    prelude = list(prelude)
-                result.extend(prelude)
-        return "\n".join(result)
-
-    def source_code(self, first):
-
-        which = self.nodes.index(first)
-
-        first.apply_references()
-        # for k, v in self.by_reference.items():
-        #     print(f"Reference: {k} -> {v}", file=sys.stderr)
-
-        more = True
-        while more:
-            more = False
-
-            by_class = defaultdict(list)
-            for node in self.nodes:
-                by_class[(node.__class__, node.key)].append(node)
-
-            for (cls, key), nodes in by_class.items():
-                if len(nodes) > 1:
-                    # print(f"Found multiple nodes of type {cls.__name__}/{key}, merging them", file=sys.stderr)
-                    # print(f"Nodes: {len(nodes)}", file=sys.stderr)
-                    changes = nodes[0].combine(nodes)
-                    if changes:
-                        self.replace_nodes(changes)
-                        more = True
-
-        first = self.nodes[which]
-
-        return "\n\n".join(
-            [
-                "# Generated Python code for Anemoi dataset creation",
-                "from anemoi.datasets.recipe import Recipe",
-                "r = Recipe()",
-                self.prelude(),
-                f"r.input = {repr(first)}",
-                "r.dump()",
-            ]
-        )
-
-    def function(self, node):
-        return Function(node.name, node, self.counter)
-
-    def replace_nodes(self, changes):
-
-        for old, new in changes:
-            assert old in self.nodes, f"Node {old} not found in {self.nodes}"
-            for i, node in enumerate(self.nodes):
-
-                if node is old:
-                    self.nodes[i] = new
-                else:
-                    node.replace_node(old, new)
+        for k, v in self.sources.items():
+            self.top.by_reference[path + (k,)] = Variable(k, v)
 
 
 class PythonConcat(PythonCode):
@@ -345,7 +306,7 @@ class PythonConcat(PythonCode):
 
     def apply_references(self, *path):
         assert "concat" not in path, path
-        self.top.by_reference[path + ("concat",)] = self
+        self.top.by_reference[path + ("concat",)] = InLine(self)
         for i, node in enumerate(self.argument.values()):
             node.apply_references(*path, "concat", str(i))
 
@@ -371,7 +332,7 @@ class PythonChain(PythonCode):
                 node.replace_node(old, new)
 
     def apply_references(self, *path):
-        self.top.by_reference[path + (self.kind,)] = self
+        self.top.by_reference[path + (self.kind,)] = InLine(self)
         for i, node in enumerate(self.actions):
             node.apply_references(*path, self.kind, str(i))
 
@@ -486,7 +447,7 @@ class PythonCall(PythonCode):
             return changes
 
     def apply_references(self, *path):
-        self.top.by_reference[path + (self.name,)] = self
+        self.top.by_reference[path + (self.name,)] = InLine(self)
 
         for k, v in self.argument.items():
             if isinstance(v, str) and (m := re.match(r"^\${(\w+(?:\.\w+)+)}$", v)):
@@ -521,3 +482,78 @@ class PythonFunction(PythonCode):
 
     def free_arguments(self):
         return [a for a in self.func.free_arguments() if a.name not in self.kwargs]
+
+
+class PythonScript(PythonCode):
+
+    def __init__(self):
+        self.nodes = []
+        self.counter = defaultdict(int)
+        self.by_reference = {}
+        super().__init__(top=self)
+
+    def register(self, child):
+        if child is not self:
+            self.nodes.append(child)
+
+    def prelude(self):
+        result = []
+        for node in self.nodes:
+            prelude = node.prelude()
+            if prelude:
+                if not isinstance(prelude, (list, tuple)):
+                    prelude = list(prelude)
+                result.extend(prelude)
+        return "\n".join(result)
+
+    def source_code(self, first):
+
+        which = self.nodes.index(first)
+
+        more = True
+        while more:
+            more = False
+
+            by_class = defaultdict(list)
+            for node in self.nodes:
+                by_class[(node.__class__, node.key)].append(node)
+
+            for nodes in by_class.values():
+                if len(nodes) > 1:
+                    changes = nodes[0].combine(nodes)
+                    if changes:
+                        self.replace_nodes(changes)
+                        more = True
+
+        first = self.nodes[which]
+
+        first.apply_references()
+        for node in self.nodes:
+            node.update_anchor()
+
+        first = self.nodes[which]
+
+        return "\n\n".join(
+            [
+                "# Generated Python code for Anemoi dataset creation",
+                "from anemoi.datasets.recipe import Recipe",
+                "r = Recipe()",
+                self.prelude(),
+                f"r.input = {repr(first)}",
+                "r.dump()",
+            ]
+        )
+
+    def function(self, node):
+        return Function(node.name, node, self.counter)
+
+    def replace_nodes(self, changes):
+
+        for old, new in changes:
+            assert old in self.nodes, f"Node {old} not found in {self.nodes}"
+            for i, node in enumerate(self.nodes):
+
+                if node is old:
+                    self.nodes[i] = new
+                else:
+                    node.replace_node(old, new)
