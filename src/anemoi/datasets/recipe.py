@@ -10,9 +10,9 @@
 import logging
 import os
 import sys
+from collections import defaultdict
 from tempfile import TemporaryDirectory
 
-import rich
 import yaml
 from anemoi.transform.filters import filter_registry as transform_filter_registry
 from anemoi.utils.config import DotDict
@@ -69,9 +69,6 @@ class Chain(Step):
 
     def path(self, target, result, *path):
 
-        rich.print(f"path: {target=}, {self=}, {result=}, {[s.name for s in path]}")
-        rich.print("-------------")
-
         if target is self:
             result.append([*path, self])
             return
@@ -98,8 +95,6 @@ class Concat(Step):
         assert isinstance(args, dict), f"Invalid argument {args}"
         self.params = args
 
-        rich.print(f"Concat: {self=}")
-
     def __setitem__(self, key, value):
         self.params[key] = value
 
@@ -116,9 +111,6 @@ class Concat(Step):
         return a[0].same(b[0])
 
     def path(self, target, result, *path):
-        rich.print(f"path: {target=}, {self=}, {result=}, {path=}")
-        rich.print("-------------")
-
         if target is self:
             result.append([*path, self])
             return
@@ -138,9 +130,9 @@ class Base(Step):
 
     def as_dict(self, recipe):
 
-        def resolve(params, recipe):
+        def resolve(params, recipe, name=None):
             if isinstance(params, dict):
-                return {k: resolve(v, recipe) for k, v in params.items()}
+                return {k: resolve(v, recipe, name=k) for k, v in params.items()}
 
             if isinstance(params, (list, tuple)):
                 return [resolve(v, recipe) for v in params]
@@ -149,7 +141,7 @@ class Base(Step):
                 return [resolve(v, recipe) for v in params]
 
             if isinstance(params, Step):
-                return recipe.resolve(self, params)
+                return recipe.resolve(self, params, name=name)
 
             return params
 
@@ -209,6 +201,9 @@ class Recipe:
         self.statistics = DotDict()
         self.build = DotDict()
 
+        self._data_sources = {}
+        self._counter = defaultdict(int)
+
         sources = source_registry.factories.copy()
         filters = transform_filter_registry.factories.copy()
 
@@ -247,6 +242,9 @@ class Recipe:
             "dates": self.dates,
         }
 
+        if self._data_sources:
+            result["data_sources"] = self._data_sources
+
         for k, v in list(result.items()):
             if v is None:
                 del result[k]
@@ -256,7 +254,26 @@ class Recipe:
     def concat(self, *args, **kwargs):
         return Concat(*args, **kwargs)
 
-    def resolve(self, source, target):
+    # def assert False, (name, target.as_dict(self))
+
+    def make_data_source(self, name, target):
+
+        target = target.as_dict(self)
+
+        name = name or "source"
+        if name in self._data_sources:
+            if self._data_sources[name] == target:
+                return f"${{data_sources.{name}}}"
+
+        n = self._counter[name]
+        self._counter[name] += 1
+
+        name = f"{name}_{n}" if n > 0 else name
+
+        self._data_sources[name] = target.copy()
+        return f"${{data_sources.{name}}}"
+
+    def resolve(self, source, target, name=None):
         # assert isinstance(target, Source), f"Only sources can be used as template {target}"
 
         top = Index("input")  # So we have 'input' first in the path
@@ -271,10 +288,13 @@ class Recipe:
 
         path_to_target = []
         self.input.path(target, path_to_target, top)
-        if len(path_to_target) == 0:
-            raise ValueError(f"Target {target} not found in recipe")
         if len(path_to_target) > 1:
             raise ValueError(f"Target {target} found in multiple locations {path_to_target}")
+
+        if len(path_to_target) == 0:
+            # Add a `data_sources` entry
+            return self.make_data_source(name, target)
+
         path_to_target = path_to_target[0]
 
         a = [s for s in path_to_target]
@@ -286,8 +306,6 @@ class Recipe:
             b = b[1:]
 
         assert common_ancestor is not None, f"Common ancestor not found between {source} and {target}"
-
-        rich.print(f"Common ancestor: {common_ancestor=} {a=} {b=}")
 
         if not common_ancestor.collocated(a, b):
             source = ".".join(s.name for s in path_to_source)
@@ -368,9 +386,11 @@ class Recipe:
         self._dates = self._parse_dates(value)
 
     def dump(self, file=sys.stdout):
+        input = self.input.as_dict(self)  # First so we get the data_sources
+
         result = self.as_dict()
 
-        result["input"] = self.input.as_dict(self)
+        result["input"] = input
 
         if self.output:
             result["output"] = self.output.as_dict()
