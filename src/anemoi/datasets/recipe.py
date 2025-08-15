@@ -43,7 +43,7 @@ class Step:
     def __or__(self, other):
         return Pipe(self, other)
 
-    def __add__(self, other):
+    def __and__(self, other):
         return Join(self, other)
 
     def same(self, other):

@@ -72,7 +72,7 @@ class PythonCode:
         return PythonCall(self.top, name, argument)
 
     def sum(self, actions):
-        return PythonChain(self.top, "join", "+", actions)
+        return PythonChain(self.top, "join", "&", actions)
 
     def pipe(self, actions):
         return PythonChain(self.top, "pipe", "|", actions)
