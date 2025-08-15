@@ -23,8 +23,7 @@ class Action:
         assert path[0] in (
             "input",
             "data_sources",
-        ), f"{self.__class__.__name__}. Path must start with 'input' or 'data_sources': {path}"
-        # rich.print(f"Creating {self.__class__.__name__} {'.'.join(x for x in self.path)} from {config}")
+        ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
 
 
 class Concat(Action):
@@ -130,7 +129,7 @@ class Function(Action):
     def python_code(self, code) -> str:
         # For now...
         if "source" in self.config:
-            source = action_factory(self.config["source"])
+            source = action_factory(self.config["source"], *self.path, "source")
             self.config["source"] = source.python_code(code)
         return code.call(self.name, self.config)
 
@@ -239,7 +238,7 @@ KLASS = {
 LEN_KLASS = len(KLASS)
 
 
-def make(key, config, path):
+def make(key, config, *path):
 
     if LEN_KLASS == len(KLASS):
 
@@ -272,8 +271,12 @@ def make(key, config, path):
 
 
 def action_factory(data, *path):
+
+    assert len(path) > 0, f"Path must contain at least one element {path}"
+    assert path[0] in ("input", "data_sources")
+
     assert isinstance(data, dict), f"Input data must be a dictionary {data}"
     assert len(data) == 1, f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"
 
     key, value = next(iter(data.items()))
-    return make(key, value, path)
+    return make(key, value, *path)

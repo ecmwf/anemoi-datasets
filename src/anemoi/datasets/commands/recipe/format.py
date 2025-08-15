@@ -9,14 +9,10 @@
 
 
 import datetime
+import io
 import logging
-import sys
-from typing import Any
 
-import yaml
-
-from ..dumper import yaml_dump
-from . import Command
+from ...dumper import yaml_dump
 
 LOG = logging.getLogger(__name__)
 
@@ -52,36 +48,16 @@ ORDER = (
 )
 
 
-class Recipe(Command):
-    def add_arguments(self, command_parser: Any) -> None:
-        """Add arguments to the command parser.
+def format_recipe(args, config: dict) -> str:
 
-        Parameters
-        ----------
-        command_parser : Any
-            Command parser object.
-        """
-        command_parser.add_argument(
-            "path",
-            help="Path to recipe.",
-        )
+    config = make_dates(config)
+    assert config
 
-    def run(self, args: Any) -> None:
+    text = yaml_dump(config, order=ORDER)
+    f = io.StringIO()
+    for i, line in enumerate(text.splitlines()):
+        if i and line and line[0] not in (" ", "-"):
+            line = "\n" + line
+        print(line, file=f)
 
-        with open(args.path, "r") as file:
-            config = yaml.safe_load(file)
-
-        config = make_dates(config)
-
-        text = yaml_dump(config, sort_keys=False, indent=2, width=120, order=ORDER)
-        # with open(args.path + ".tmp", "w") as f:
-        f = sys.stdout
-        for i, line in enumerate(text.splitlines()):
-            if i and line and line[0] not in (" ", "-"):
-                line = "\n" + line
-            print(line, file=f)
-
-        # os.rename(args.path + ".tmp", args.path)
-
-
-command = Recipe
+    return f.getvalue()

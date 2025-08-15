@@ -10,7 +10,6 @@
 
 import datetime
 import logging
-import os
 from collections.abc import Sequence
 from typing import Any
 
@@ -21,8 +20,6 @@ from glom import delete
 from glom import glom
 
 from anemoi.datasets.create import validate_config
-
-from . import Command
 
 LOG = logging.getLogger(__name__)
 
@@ -540,54 +537,22 @@ def check(config):
         raise
 
 
-class Recipe(Command):
-    def add_arguments(self, command_parser: Any) -> None:
-        """Add arguments to the command parser.
+def migrate_recipe(args: Any, config) -> None:
 
-        Parameters
-        ----------
-        command_parser : Any
-            Command parser object.
-        """
-        command_parser.add_argument(
-            "path",
-            help="Path to recipe.",
-        )
+    rich.print(f"Migrating {args.path}")
 
-    def run(self, args: Any) -> None:
+    try:
+        validate_config(config)
+        LOG.info(f"{args.path}: Validation successful.")
+    except Exception:
+        pass
 
-        rich.print(f"Migrating {args.path}")
+    migrated = migrate(config)
 
-        with open(args.path, "r") as file:
-            config = yaml.safe_load(file)
+    migrated = {k: v for k, v in sorted(migrated.items(), key=order) if v}
 
-        try:
-            validate_config(config)
-            LOG.info(f"{args.path}: Validation successful.")
-            return
-        except Exception:
-            pass
+    check(migrated)
+    if migrated == config:
+        return None
 
-        migrated = migrate(config)
-
-        migrated = {k: v for k, v in sorted(migrated.items(), key=order) if v}
-
-        check(migrated)
-        if migrated == config:
-            LOG.info(f"{args.path}: No changes needed.")
-            return
-
-        migrated = make_dates(migrated)
-        text = yaml.dump(migrated, default_flow_style=False, sort_keys=False, indent=2, width=120, Dumper=MyDumper)
-
-        LOG.info(f"{args.path}: updating.")
-        with open(args.path + ".tmp", "w") as f:
-            for i, line in enumerate(text.splitlines()):
-                if i and line and line[0] not in (" ", "-"):
-                    line = "\n" + line
-                print(line, file=f)
-
-        os.rename(args.path + ".tmp", args.path)
-
-
-command = Recipe
+    return migrated
