@@ -16,6 +16,7 @@ from typing import Any
 import yaml
 
 from anemoi.datasets.create import config_to_python
+from anemoi.datasets.create import validate_config
 
 from .. import Command
 from .format import format_recipe
@@ -34,6 +35,7 @@ class Recipe(Command):
             Command parser object.
         """
 
+        command_parser.add_argument("--validate", action="store_true", help="Validate recipe.")
         command_parser.add_argument("--format", action="store_true", help="Format the recipe.")
         command_parser.add_argument("--migrate", action="store_true", help="Migrate the recipe to the latest version.")
         command_parser.add_argument("--python", action="store_true", help="Convert the recipe to a Python script.")
@@ -49,13 +51,24 @@ class Recipe(Command):
 
     def run(self, args: Any) -> None:
 
-        if not args.format and not args.migrate and not args.python:
-            args.format = True
+        if not args.validate and not args.format and not args.migrate and not args.python:
+            args.validate = True
 
         with open(args.path, "r") as file:
             config = yaml.safe_load(file)
 
         assert isinstance(config, dict)
+
+        if args.validate:
+            if args.inplace and (not args.format and not args.migrate and not args.python):
+                argparse.ArgumentError(None, "--inplace is not supported with --validate.")
+
+            if args.output and (not args.format and not args.migrate and not args.python):
+                argparse.ArgumentError(None, "--output is not supported with --validate.")
+
+            validate_config(config)
+            LOG.info(f"{args.path}: Recipe is valid.")
+            return
 
         if args.migrate:
             config = migrate_recipe(args, config)
