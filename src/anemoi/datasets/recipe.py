@@ -63,9 +63,6 @@ class Chain(Step):
             return self.steps[0].as_dict(recipe)
         return {self.name: [s.as_dict(recipe) for s in self.steps]}
 
-    # def __repr__(self):
-    #     return f"{self.__class__.name}({','.join([str(s) for s in self.steps])})"
-
     def path(self, target, result, *path):
 
         if target is self:
@@ -157,11 +154,7 @@ class Base(Step):
 
         return {self.owner.name: resolve(self.params, recipe)}
 
-    # def __repr__(self):
-    #     return f"{self.__class__.__name__}({self.owner.name}, {','.join([f'{k}={v}' for k, v in self.params.items()])})"
-
     def path(self, target, result, *path):
-
         if self is target:
             result.append([*path, self])
 
