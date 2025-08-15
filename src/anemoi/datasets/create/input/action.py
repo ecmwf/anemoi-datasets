@@ -20,23 +20,27 @@ class Action:
     def __init__(self, config, *path):
         self.config = config
         self.path = path
+        assert path[0] in (
+            "input",
+            "data_sources",
+        ), f"{self.__class__.__name__}. Path must start with 'input' or 'data_sources': {path}"
         # rich.print(f"Creating {self.__class__.__name__} {'.'.join(x for x in self.path)} from {config}")
 
 
 class Concat(Action):
     def __init__(self, config, *path):
-        super().__init__(config, *path)
+        super().__init__(config, *path, "concat")
 
         assert isinstance(config, list), f"Value must be a dict {list}"
 
         self.choices = []
 
-        for item in config:
+        for i, item in enumerate(config):
 
             assert "dates" in item, f"Value must contain the key 'dates' {item}"
             dates = item["dates"]
             filtering_dates = DatesProvider.from_config(**dates)
-            action = action_factory({k: v for k, v in item.items() if k != "dates"})
+            action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
             self.choices.append((filtering_dates, action))
 
     def __repr__(self):
@@ -62,11 +66,11 @@ class Concat(Action):
 
 class Join(Action):
     def __init__(self, config, *path):
-        super().__init__(config, *path)
+        super().__init__(config, *path, "join")
 
         assert isinstance(config, list), f"Value must be a list {config}"
 
-        self.actions = [action_factory(item, *path, "join", str(i)) for i, item in enumerate(config)]
+        self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Join({self.actions})"
@@ -86,8 +90,8 @@ class Join(Action):
 class Pipe(Action):
     def __init__(self, config, *path):
         assert isinstance(config, list), f"Value must be a list {config}"
-        super().__init__(config, *path)
-        self.actions = [action_factory(item, *path, "pipe", str(i)) for i, item in enumerate(config)]
+        super().__init__(config, *path, "pipe")
+        self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Pipe({self.actions})"
@@ -197,14 +201,15 @@ def new_filter(name, mixin):
 
 class DataSources(Action):
     def __init__(self, config, *path):
+        super().__init__(config, *path)
         self.sources = {k: action_factory(v, *path, k) for k, v in config.items()}
 
     def python_code(self, code):
         return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
 
     def __call__(self, context, argument):
-        for source in self.sources.values():
-            source(context, argument)
+        for name, source in self.sources.items():
+            context.register(source(context, argument), self.path + (name,))
 
 
 class Recipe(Action):

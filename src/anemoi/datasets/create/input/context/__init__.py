@@ -34,6 +34,8 @@ class Context(ABC):
         if not path:
             return data
 
+        assert path[0] in ("input", "data_sources"), path
+
         rich.print(f"Registering data at path: {path}")
         self.results[tuple(path)] = data
         return data
@@ -47,6 +49,9 @@ class Context(ABC):
                 if path in self.results:
                     config[key] = self.results[path]
                 else:
+                    rich.print(f"Path not found {path}")
+                    for p in sorted(self.results):
+                        rich.print(f"   Available paths: {p}")
                     raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
 
         return config
