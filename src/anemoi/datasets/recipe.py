@@ -13,7 +13,6 @@ import sys
 from collections import defaultdict
 from tempfile import TemporaryDirectory
 
-import yaml
 from anemoi.transform.filters import filter_registry as transform_filter_registry
 from anemoi.utils.config import DotDict
 from anemoi.utils.dates import as_datetime
@@ -103,7 +102,12 @@ class Concat(Step):
         result = []
 
         for k, v in sorted(self.params.items()):
-            result.append({"dates": dict(start=k[0], end=k[1]), **v.as_dict(recipe)})
+
+            key = dict(start=as_datetime(k[0]), end=as_datetime(k[1]))
+            if len(k) == 3:
+                key["frequency"] = k[2]
+
+            result.append({"dates": key, **v.as_dict(recipe)})
 
         return {"concat": result}
 
@@ -407,7 +411,9 @@ class Recipe:
         if self.build:
             result["build"] = self.build.as_dict()
 
-        yaml.safe_dump(result, sort_keys=False, indent=2, width=120, stream=file)
+        from .dumper import yaml_dump
+
+        yaml_dump(result, sort_keys=False, indent=2, width=120, stream=file)
 
     def test(self, output="recipe.zarr"):
         from argparse import ArgumentParser
