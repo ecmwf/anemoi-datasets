@@ -68,4 +68,18 @@ MyDumper.add_representer(list, represent_inline_list)
 
 
 def yaml_dump(obj, **kwargs):
-    return yaml.dump(obj, Dumper=MyDumper, **kwargs)
+
+    kwargs.setdefault("Dumper", MyDumper)
+    kwargs.setdefault("sort_keys", False)
+    kwargs.setdefault("indent", 2)
+    kwargs.setdefault("width", 120)
+
+    order = kwargs.pop("order", None)
+    if order:
+
+        def _ordering(k):
+            return order.index(k) if k in order else len(order)
+
+        obj = {k: v for k, v in sorted(obj.items(), key=lambda item: _ordering(item[0]))}
+
+    return yaml.dump(obj, **kwargs)
