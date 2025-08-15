@@ -132,7 +132,13 @@ class Base(Step):
 
         def resolve(params, recipe, name=None):
             if isinstance(params, dict):
-                return {k: resolve(v, recipe, name=k) for k, v in params.items()}
+
+                def _(k):
+                    if k.endswith("_"):
+                        return k[:-1]
+                    return k
+
+                return {_(k): resolve(v, recipe, name=_(k)) for k, v in params.items()}
 
             if isinstance(params, (list, tuple)):
                 return [resolve(v, recipe) for v in params]

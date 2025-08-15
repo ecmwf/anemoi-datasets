@@ -356,13 +356,10 @@ class PythonCall(PythonCode):
         params = []
 
         for k, v in config.items():
-            if isinstance(k, str):
+            k = _sanitize_name(k)
 
-                if k in RESERVED_KEYWORDS:
-                    k = f"{k}_"
-
-                if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", k):
-                    return f"r.{name}({config})"
+            if not k.isidentifier():
+                return f"r.{name}({config})"
 
             params.append(f"{k}={repr(v)}")
 

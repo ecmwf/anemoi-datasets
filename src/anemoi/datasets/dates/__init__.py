@@ -285,9 +285,9 @@ class StartEndDates(DatesProvider):
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
 
-    def to_python(self, just_dates=False) -> str:
+    def to_python(self) -> str:
         """Convert the StartEndDates instance to a tuple of ISO-formatted date strings."""
-        if just_dates:
+        if self.frequency == datetime.timedelta(hours=1):
             return (self.start.isoformat(), self.end.isoformat())
         else:
             return (self.start.isoformat(), self.end.isoformat(), frequency_to_string(self.frequency))

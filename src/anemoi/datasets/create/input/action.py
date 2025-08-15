@@ -56,10 +56,7 @@ class Concat(Action):
 
     def python_code(self, code):
         return code.concat(
-            {
-                filtering_dates.to_python(just_dates=True): action.python_code(code)
-                for filtering_dates, action in self.choices
-            }
+            {filtering_dates.to_python(): action.python_code(code) for filtering_dates, action in self.choices}
         )
 
 
