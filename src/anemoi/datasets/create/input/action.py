@@ -202,6 +202,10 @@ class DataSources(Action):
     def python_code(self, code):
         return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
 
+    def __call__(self, context, argument):
+        for source in self.sources.values():
+            source(context, argument)
+
 
 class Recipe(Action):
     def __init__(self, input, data_sources):
@@ -213,6 +217,11 @@ class Recipe(Action):
             self.input.python_code(code),
             self.data_sources.python_code(code),
         )
+
+    def __call__(self, context, argument):
+        # Load data_sources
+        self.data_sources(context, argument)
+        return self.input(context, argument)
 
 
 KLASS = {

@@ -67,14 +67,13 @@ MyDumper.add_representer(str, represent_multiline_str)
 MyDumper.add_representer(list, represent_inline_list)
 
 
-def yaml_dump(obj, **kwargs):
+def yaml_dump(obj, order=None, **kwargs):
 
     kwargs.setdefault("Dumper", MyDumper)
     kwargs.setdefault("sort_keys", False)
     kwargs.setdefault("indent", 2)
     kwargs.setdefault("width", 120)
 
-    order = kwargs.pop("order", None)
     if order:
 
         def _ordering(k):
