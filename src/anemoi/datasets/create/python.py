@@ -511,6 +511,7 @@ class PythonScript(PythonCode):
                 continue
 
             if not hasattr(Recipe, k):
+                LOG.warning(f"Unknown key in recipe: {k}")
                 continue
 
             result.append(f"r.{k} = {repr(v)}")
