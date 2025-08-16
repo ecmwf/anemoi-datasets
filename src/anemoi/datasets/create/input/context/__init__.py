@@ -56,10 +56,15 @@ class Context(ABC):
 
         return config
 
-    def create_source(self, config: Any) -> Any:
+    def create_source(self, config: Any, *path) -> Any:
         from anemoi.datasets.create.input.action import action_factory
 
-        return action_factory(config)
+        if not isinstance(config, dict):
+            # It is already a result (e.g. ekd.FieldList), loaded from ${a.b.c}
+            # TODO: something more elegant
+            return lambda *args, **kwargs: config
+
+        return action_factory(config, *path)
 
     @abstractmethod
     def empty_result(self) -> Any: ...

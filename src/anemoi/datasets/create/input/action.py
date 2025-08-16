@@ -275,7 +275,7 @@ def action_factory(data, *path):
     assert len(path) > 0, f"Path must contain at least one element {path}"
     assert path[0] in ("input", "data_sources")
 
-    assert isinstance(data, dict), f"Input data must be a dictionary {data}"
+    assert isinstance(data, dict), f"Input data must be a dictionary, got {type(data)}"
     assert len(data) == 1, f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"
 
     key, value = next(iter(data.items()))
