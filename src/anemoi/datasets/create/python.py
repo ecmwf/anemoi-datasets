@@ -494,8 +494,27 @@ class PythonScript(PythonCode):
         if child is not self:
             self.nodes.append(child)
 
-    def prelude(self):
+    def prelude(self, config):
+
+        from anemoi.datasets.recipe import Recipe
+
+        SKIP = (
+            "input",
+            "data_sources",
+        )
+
         result = []
+
+        for k, v in config.items():
+
+            if k in SKIP:
+                continue
+
+            if not hasattr(Recipe, k):
+                continue
+
+            result.append(f"r.{k} = {repr(v)}")
+
         for node in self.nodes:
             prelude = node.prelude()
             if prelude:
@@ -504,7 +523,7 @@ class PythonScript(PythonCode):
                 result.extend(prelude)
         return "\n".join(result)
 
-    def source_code(self, first):
+    def source_code(self, first, config):
 
         which = self.nodes.index(first)
         first.apply_references()
@@ -531,9 +550,10 @@ class PythonScript(PythonCode):
         return "\n\n".join(
             [
                 "# Generated Python code for Anemoi dataset creation",
+                "import datetime",
                 "from anemoi.datasets.recipe import Recipe",
                 "r = Recipe()",
-                self.prelude(),
+                self.prelude(config),
                 f"r.input = {repr(first)}",
                 "r.dump()",
             ]

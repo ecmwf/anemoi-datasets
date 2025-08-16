@@ -1669,13 +1669,15 @@ def config_to_python(config: Any) -> Any:
 
     from ..create.python import PythonScript
 
+    raw_config = config
+
     config = loader_config(config)
 
     input = InputBuilder(config.input, data_sources=config.get("data_sources", {}))
 
     code = PythonScript()
     x = input.python_code(code)
-    code = code.source_code(x)
+    code = code.source_code(x, raw_config)
 
     try:
         import black

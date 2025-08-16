@@ -358,6 +358,9 @@ class Recipe:
 
     def _parse_dates(self, value):
 
+        if isinstance(value, dict):
+            return value
+
         start = None
         end = None
         frequency = 1
