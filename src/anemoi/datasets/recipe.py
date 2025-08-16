@@ -198,6 +198,8 @@ class Recipe:
         self._licence = licence
         self._name = name
         self._dates = None
+        self._statistics = None
+        self._build = None
 
         self.input = Join()
         self.output = DotDict()
@@ -243,6 +245,8 @@ class Recipe:
             "attribution": self.attribution,
             "licence": self.licence,
             "dates": self.dates,
+            "statistics": self.statistics,
+            "build": self.build,
         }
 
         if self._data_sources:
@@ -391,6 +395,22 @@ class Recipe:
     def dates(self, value):
         self._dates = self._parse_dates(value)
 
+    @property
+    def statistics(self):
+        return self._statistics
+
+    @statistics.setter
+    def statistics(self, value):
+        self._statistics = value
+
+    @property
+    def build(self):
+        return self._build
+
+    @build.setter
+    def build(self, value):
+        self._build = value
+
     def dump(self, file=sys.stdout):
         input = self.input.as_dict(self)  # First so we get the data_sources
 
@@ -402,10 +422,10 @@ class Recipe:
             result["output"] = self.output.as_dict()
 
         if self.statistics:
-            result["statistics"] = self.statistics.as_dict()
+            result["statistics"] = self.statistics
 
         if self.build:
-            result["build"] = self.build.as_dict()
+            result["build"] = self.build
 
         from .dumper import yaml_dump
 
