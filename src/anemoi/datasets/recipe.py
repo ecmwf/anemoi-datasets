@@ -429,7 +429,7 @@ class Recipe:
 
         from .dumper import yaml_dump
 
-        yaml_dump(result, sort_keys=False, indent=2, width=120, stream=file)
+        yaml_dump(result, stream=file)
 
     def test(self, output="recipe.zarr"):
         from argparse import ArgumentParser

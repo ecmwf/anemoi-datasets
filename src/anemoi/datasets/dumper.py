@@ -10,13 +10,9 @@
 import datetime
 import logging
 
-import yaml
+import ruamel.yaml
 
 LOG = logging.getLogger(__name__)
-
-
-class MyDumper(yaml.SafeDumper):
-    pass
 
 
 def represent_date(dumper, data):
@@ -30,7 +26,7 @@ def represent_date(dumper, data):
 # --- Represent multiline strings with | style ---
 def represent_multiline_str(dumper, data):
     if "\n" in data:
-        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data.strip(), style="|")
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 
@@ -40,39 +36,15 @@ def represent_inline_list(dumper, data):
     if not all(isinstance(i, (str, int, float, bool, type(None))) for i in data):
         return dumper.represent_sequence("tag:yaml.org,2002:seq", data)
 
-    elems = [yaml.dump(i, explicit_start=False, explicit_end=False).replace("\n...\n", "") for i in data]
-    lines = []
-    line = []
-    for e in elems:
-        if sum(len(x) for x in line) + len(e) + 2 * (len(line) + 1) <= 80:
-            line.append(e)
-        else:
-            lines.append(line)
-            line = [e]
-
-    if line:
-        lines.append(line)
-
-    if len(lines) == 1:
-        return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
-
-    block_lines = ["- [" + ", ".join(line) + "]" for line in lines]
-    return dumper.represent_scalar("tag:yaml.org,2002:str", "\n".join(block_lines), style="|")
-
-
-# Register representers
-MyDumper.add_representer(datetime.date, represent_date)
-MyDumper.add_representer(datetime.datetime, represent_date)
-MyDumper.add_representer(str, represent_multiline_str)
-MyDumper.add_representer(list, represent_inline_list)
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
 
 
 def yaml_dump(obj, order=None, **kwargs):
 
-    kwargs.setdefault("Dumper", MyDumper)
-    kwargs.setdefault("sort_keys", False)
-    kwargs.setdefault("indent", 2)
-    kwargs.setdefault("width", 120)
+    # kwargs.setdefault("Dumper", MyDumper)
+    # kwargs.setdefault("sort_keys", False)
+    # kwargs.setdefault("indent", 2)
+    # kwargs.setdefault("width", 120)
 
     if order:
 
@@ -81,4 +53,18 @@ def yaml_dump(obj, order=None, **kwargs):
 
         obj = {k: v for k, v in sorted(obj.items(), key=lambda item: _ordering(item[0]))}
 
-    return yaml.dump(obj, **kwargs)
+    # yaml = yaml.YAML(typ='unsafe', pure=True)
+    yaml = ruamel.yaml.YAML()
+    yaml.width = 120  # wrap long flow sequences
+    # yaml.default_flow_style = True
+    yaml.Representer.add_representer(datetime.date, represent_date)
+    yaml.Representer.add_representer(datetime.datetime, represent_date)
+    yaml.Representer.add_representer(str, represent_multiline_str)
+    yaml.Representer.add_representer(list, represent_inline_list)
+
+    data = ruamel.yaml.comments.CommentedMap()
+    for k, v in obj.items():
+        data[k] = v
+        data.yaml_set_comment_before_after_key(key=k, before="\n")
+
+    return yaml.dump(data, **kwargs)
