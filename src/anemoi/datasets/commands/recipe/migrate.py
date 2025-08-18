@@ -8,24 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 
-import datetime
 import logging
+import sys
 from collections.abc import Sequence
 from typing import Any
 
 import rich
-import yaml
 from glom import assign
 from glom import delete
 from glom import glom
 
 from anemoi.datasets.create import validate_config
+from anemoi.datasets.dumper import yaml_dump
 
 LOG = logging.getLogger(__name__)
-
-
-class MyDumper(yaml.SafeDumper):
-    pass
 
 
 def find_paths(data, target_key=None, target_value=None, *path):
@@ -58,85 +54,23 @@ def find_chevrons(data, *path):
     return matches
 
 
-# Custom representer for datetime.date and datetime.datetime
-def represent_date(dumper, data):
-    if isinstance(data, datetime.date) and not isinstance(data, datetime.datetime):
-        data = datetime.datetime(data.year, data.month, data.day, 0, 0, 0)
-    # Ensure it's UTC
-    if data.tzinfo is None:
-        data = data.replace(tzinfo=datetime.timezone.utc)
-    data = data.astimezone(datetime.timezone.utc)
-    # Format as ISO 8601 with 'Z'
-    iso_str = data.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
-    return dumper.represent_scalar("tag:yaml.org,2002:timestamp", iso_str)
-
-
-# Custom representer for multiline strings using the '|' block style
-def represent_multiline_str(dumper, data):
-    if "\n" in data:
-        text_list = [line.rstrip() for line in data.splitlines()]
-        fixed_data = "\n".join(text_list)
-        return dumper.represent_scalar("tag:yaml.org,2002:str", fixed_data, style="|")
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
-
-
-# --- Represent short lists inline (flow style) ---
-def represent_inline_list(dumper, data):
-    # Flow style if list has <= 4 simple elements
-    if (
-        all(isinstance(i, (str, int, float, bool, type(None))) for i in data)
-        and len(", ".join([str(x) for x in data])) + 2 <= 80
-    ):
-        return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
-    return dumper.represent_sequence("tag:yaml.org,2002:seq", data)
-
-
-# Register custom representers
-MyDumper.add_representer(datetime.date, represent_date)
-MyDumper.add_representer(datetime.datetime, represent_date)
-MyDumper.add_representer(str, represent_multiline_str)
-MyDumper.add_representer(list, represent_inline_list)
-
-
-def make_dates(config):
-    if isinstance(config, dict):
-        return {k: make_dates(v) for k, v in config.items()}
-    if isinstance(config, list):
-        return [make_dates(v) for v in config]
-    if isinstance(config, str):
-        try:
-            return datetime.datetime.fromisoformat(config)
-        except ValueError:
-            return config
-    return config
-
-
-ORDER = (
-    "name",
-    "description",
-    "dataset_status",
-    "licence",
-    "attribution",
-    "env",
-    "dates",
-    "common",
-    "data_sources",
-    "input",
-    "output",
-    "statistics",
-    "build",
-    "platform",
-)
-ORDER = {k: i for i, k in enumerate(ORDER)}
-
-
-def order(x: str) -> int:
-
+def find_paths_in_substrees(path, obj, cur_path=None):
+    if cur_path is None:
+        cur_path = []
+    matches = []
     try:
-        return ORDER[x[0]]
-    except KeyError:
-        rich.print(f"Unknown key: {x}")
-        raise
+        glom(obj, path)  # just to check existence
+        matches.append(cur_path + path.split("."))
+    except Exception:
+        pass
+
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            matches.extend(find_paths_in_substrees(path, v, cur_path + [k]))
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            matches.extend(find_paths_in_substrees(path, v, cur_path + [str(i)]))
+    return matches
 
 
 MIGRATE = {
@@ -153,24 +87,26 @@ MIGRATE = {
     "loop.0.loop_a.dates": "dates",
     "dates.stop": "dates.end",
     "dates.group_by": "build.group_by",
-    "include": "data_sources",
+    "include.mars": "data_sources.mars.mars",
     "ensemble_dimension": "build.ensemble_dimension",
     "flatten_grid": "build.flatten_grid",
 }
 
 DELETE = [
     "purpose",
-    "input.join.0.label",
+    # "input.join.0.label",
     "status",
     "common",
     "config_format_version",
     "aliases",
-    "platform",
+    # "platform",
     "loops.0.loop_a.applies_to",
     "loop.0.loop_a.applies_to",
     "dataset_status",
     "alias",
     "resources",
+    "input.dates.<<",
+    "input.dates.join.0.label.name",
 ]
 
 
@@ -186,12 +122,12 @@ SOURCES = {
 MARKER = object()
 
 
-def _delete(config, path, result):
+def _delete(config, path):
     x = glom(config, path, default=MARKER)
     if x is MARKER:
         return
     rich.print(f"Deleting {path}={x}")
-    delete(result, path)
+    delete(config, path)
 
 
 def _move(config, path, new_path, result):
@@ -203,12 +139,12 @@ def _move(config, path, new_path, result):
     assign(result, new_path, x, missing=dict)
 
 
-def _fix_input_0(result, config):
+def _fix_input_0(config):
     if isinstance(config["input"], dict):
         return
 
     input = config["input"]
-    new_input = result["input"] = []
+    new_input = []
 
     blocks = {}
     first = None
@@ -227,26 +163,24 @@ def _fix_input_0(result, config):
             source_name = values.pop("name", None)
 
             if inherit is not None:
+                if inherit.startswith("$"):
+                    inherit = inherit[1:]
                 inherited = blocks[inherit].copy()
                 inherited.update(values)
                 values = inherited
-
-            if "source_or_dataset" in values:
-                values.pop("source_or_dataset", None)
-                values["template"] = "${input.join.0." + first + "}"
 
             if first is None:
                 first = source_name
 
             blocks[block_name] = values.copy()
 
-            new_input.append({block_name: {SOURCES.get(source_name, source_name): values.copy()}})
+            new_input.append({SOURCES.get(source_name, source_name): values.copy()})
         else:
             assert False, f"Block {block_name} does not have 'kwargs': {values}"
 
         blocks[block_name] = values.copy()
 
-    config["input"] = result["input"].copy()
+    config["input"] = dict(join=new_input)
 
 
 def _fix_input_1(result, config):
@@ -410,7 +344,7 @@ def _fix_join(result: dict, config: dict) -> None:
     config["input"] = result["input"].copy()
 
 
-def _fix_sources(result: dict, config: dict, what) -> None:
+def _fix_sources(config: dict, what) -> None:
 
     input = config["input"]
     if what not in input:
@@ -420,7 +354,7 @@ def _fix_sources(result: dict, config: dict, what) -> None:
     new_join = []
     for j in join:
         assert isinstance(j, dict)
-        assert len(j) == 1
+        assert len(j) == 1, j
 
         key, values = list(j.items())[0]
 
@@ -432,8 +366,13 @@ def _fix_sources(result: dict, config: dict, what) -> None:
             }
         )
 
-    result["input"][what] = new_join
+    config["input"][what] = new_join
     config["input"][what] = new_join.copy()
+
+
+def _assign(config, path, value):
+    rich.print(f"Assign {path} {value}")
+    assign(config, path, value)
 
 
 def _fix_chevrons(result: dict, config: dict) -> None:
@@ -447,23 +386,91 @@ def _fix_chevrons(result: dict, config: dict) -> None:
         assign(result, ".".join(p[:-1]), a)
 
 
+def _fix_some(config: dict) -> None:
+
+    paths = find_paths_in_substrees("label.function", config)
+    for p in paths:
+        parent = glom(config, ".".join(p[:-2]))
+        node = glom(config, ".".join(p[:-1]))
+        assert node
+        _assign(config, ".".join(p[:-2]), node)
+
+    paths = find_paths_in_substrees("constants.source_or_dataset", config)
+    for p in paths:
+        node = glom(config, ".".join(p[:-1]))
+        node["template"] = node.pop("source_or_dataset")
+        if node["template"] == "$previous_data":
+            node["template"] = "${input.join.0.mars}"
+    paths = find_paths_in_substrees("constants.template", config)
+    for p in paths:
+        node = glom(config, ".".join(p[:-1]))
+        if node["template"] == "$pl_data":
+            node["template"] = "${input.join.0.mars}"
+    for d in ("date", "dates", "time"):
+        paths = find_paths_in_substrees(d, config)
+        for p in paths:
+            if len(p) > 1:
+                node = glom(config, ".".join(p[:-1]))
+                if isinstance(node, dict) and isinstance(node[d], str) and node[d].startswith("$"):
+                    del node[d]
+
+    paths = find_paths_in_substrees("source.<<", config)
+    for p in paths:
+        parent = glom(config, ".".join(p[:-2]))
+        node = glom(config, ".".join(p[:-1]))
+        node.update(node.pop("<<"))
+        parent[node.pop("name")] = node
+        assert len(parent) == 2
+        del parent["source"]
+
+    paths = find_paths_in_substrees("label.mars", config)
+    for p in paths:
+        parent = glom(config, ".".join(p[:-2]))
+        node = glom(config, ".".join(p[:-1]))
+        assert node
+        assign(config, ".".join(p[:-2]), node)
+
+    paths = find_paths_in_substrees("input.dates.join", config)
+    for p in paths:
+        node = glom(config, ".".join(p))
+        config["input"]["join"] = node
+        del config["input"]["dates"]
+
+    paths = find_paths_in_substrees("source.name", config)
+    for p in paths:
+        parent = glom(config, ".".join(p[:-2]))
+        node = glom(config, ".".join(p[:-1]))
+        name = node.pop("name")
+        assign(config, ".".join(p[:-2]), {name: node})
+
+    paths = find_paths_in_substrees("function.name", config)
+    for p in paths:
+        parent = glom(config, ".".join(p[:-2]))
+        node = glom(config, ".".join(p[:-1]))
+        name = node.pop("name")
+        assert node
+        assign(config, ".".join(p[:-2]), {name: node})
+
+
 def _migrate(config: dict, n) -> dict:
 
     result = config.copy()
 
-    _fix_input_0(result, config)
-    _fix_loops(result, config)
-    _fix_input_1(result, config)
-    _fix_join(result, config)
-    _fix_sources(result, config, "join")
-    _fix_chevrons(result, config)
-    _fix_other(result, config)
+    _fix_input_0(result)
+    # _fix_loops(result, config)
+    # _fix_input_1(result, config)
+    # _fix_join(result, config)
+    # _fix_chevrons(result, config)
+    # _fix_other(result, config)
 
     for k, v in MIGRATE.items():
         _move(config, k, v, result)
 
+    _fix_some(result)
+    _fix_sources(result, "join")
+
     for k in DELETE:
-        _delete(config, k, result)
+        _delete(result, k)
 
     remove_empties(result)
 
@@ -513,7 +520,6 @@ def has_value(config, value: str) -> bool:
 
 
 def check(config):
-    from anemoi.datasets.create import validate_config
 
     try:
 
@@ -523,6 +529,7 @@ def check(config):
         assert not has_key(config, "label")
         assert not has_key(config, "kwargs")
         assert not has_value(config, "$previous_data")
+        assert not has_value(config, "$pl_data")
         assert not has_value(config, "$dates")
         assert not has_key(config, "inherit")
         assert not has_key(config, "source_or_dataset")
@@ -532,24 +539,17 @@ def check(config):
             assert not has_key(config, n), f"Source {n} found in config. Please update to {SOURCES[n]}."
 
     except Exception as e:
-        rich.print(f"Validation failed: {e}")
-        rich.print(f"Config: {config}")
-        raise
+        rich.print("Validation failed:")
+        rich.print(e)
+        print(yaml_dump(config))
+        sys.exit(1)
 
 
 def migrate_recipe(args: Any, config) -> None:
 
     rich.print(f"Migrating {args.path}")
 
-    try:
-        validate_config(config)
-        LOG.info(f"{args.path}: Validation successful.")
-    except Exception:
-        pass
-
     migrated = migrate(config)
-
-    migrated = {k: v for k, v in sorted(migrated.items(), key=order) if v}
 
     check(migrated)
     if migrated == config:

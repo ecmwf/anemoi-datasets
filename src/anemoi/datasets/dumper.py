@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import io
 import logging
 
 import ruamel.yaml
@@ -16,10 +17,15 @@ LOG = logging.getLogger(__name__)
 
 
 def represent_date(dumper, data):
-    if data.tzinfo is None:
-        data = data.replace(tzinfo=datetime.timezone.utc)
-    data = data.astimezone(datetime.timezone.utc)
-    iso_str = data.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
+
+    if isinstance(data, datetime.datetime):
+        if data.tzinfo is None:
+            data = data.replace(tzinfo=datetime.timezone.utc)
+        data = data.astimezone(datetime.timezone.utc)
+        iso_str = data.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
+    else:
+        iso_str = data.isoformat()
+
     return dumper.represent_scalar("tag:yaml.org,2002:timestamp", iso_str)
 
 
@@ -39,12 +45,7 @@ def represent_inline_list(dumper, data):
     return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
 
 
-def yaml_dump(obj, order=None, **kwargs):
-
-    # kwargs.setdefault("Dumper", MyDumper)
-    # kwargs.setdefault("sort_keys", False)
-    # kwargs.setdefault("indent", 2)
-    # kwargs.setdefault("width", 120)
+def yaml_dump(obj, order=None, stream=None, **kwargs):
 
     if order:
 
@@ -53,18 +54,23 @@ def yaml_dump(obj, order=None, **kwargs):
 
         obj = {k: v for k, v in sorted(obj.items(), key=lambda item: _ordering(item[0]))}
 
-    # yaml = yaml.YAML(typ='unsafe', pure=True)
     yaml = ruamel.yaml.YAML()
     yaml.width = 120  # wrap long flow sequences
-    # yaml.default_flow_style = True
+
     yaml.Representer.add_representer(datetime.date, represent_date)
     yaml.Representer.add_representer(datetime.datetime, represent_date)
     yaml.Representer.add_representer(str, represent_multiline_str)
     yaml.Representer.add_representer(list, represent_inline_list)
 
     data = ruamel.yaml.comments.CommentedMap()
-    for k, v in obj.items():
+    for i, (k, v) in enumerate(obj.items()):
         data[k] = v
-        data.yaml_set_comment_before_after_key(key=k, before="\n")
+        if i > 0:
+            data.yaml_set_comment_before_after_key(key=k, before="\n")
 
-    return yaml.dump(data, **kwargs)
+    if stream:
+        yaml.dump(data, stream=stream, **kwargs)
+
+    stream = io.StringIO()
+    yaml.dump(data, stream=stream, **kwargs)
+    return stream.getvalue()

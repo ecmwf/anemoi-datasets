@@ -9,7 +9,6 @@
 
 
 import datetime
-import io
 import logging
 
 from ...dumper import yaml_dump
@@ -53,11 +52,4 @@ def format_recipe(args, config: dict) -> str:
     config = make_dates(config)
     assert config
 
-    text = yaml_dump(config, order=ORDER)
-    f = io.StringIO()
-    for i, line in enumerate(text.splitlines()):
-        if i and line and line[0] not in (" ", "-"):
-            line = "\n" + line
-        print(line, file=f)
-
-    return f.getvalue()
+    return yaml_dump(config, order=ORDER)

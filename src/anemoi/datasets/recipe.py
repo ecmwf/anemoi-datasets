@@ -25,6 +25,16 @@ from anemoi.datasets.create.sources import source_registry
 LOG = logging.getLogger(__name__)
 
 
+def _un_dotdict(x):
+    if isinstance(x, dict):
+        return {k: _un_dotdict(v) for k, v in x.items()}
+
+    if isinstance(x, (list, tuple, set)):
+        return [_un_dotdict(a) for a in x]
+
+    return x
+
+
 class Index:
     def __init__(self, index):
         self.name = str(index)
@@ -135,7 +145,7 @@ class Base(Step):
             if isinstance(params, dict):
 
                 def _(k):
-                    if k.endswith("_"):
+                    if isinstance(k, str) and k.endswith("_"):
                         return k[:-1]
                     return k
 
@@ -200,6 +210,10 @@ class Recipe:
         self._dates = None
         self._statistics = None
         self._build = None
+        self._env = None
+        self._dataset_status = None
+        self._output = None
+        self._platform = None
 
         self.input = Join()
         self.output = DotDict()
@@ -261,8 +275,6 @@ class Recipe:
     def concat(self, *args, **kwargs):
         return Concat(*args, **kwargs)
 
-    # def assert False, (name, target.as_dict(self))
-
     def make_data_source(self, name, target):
 
         target = target.as_dict(self)
@@ -281,7 +293,6 @@ class Recipe:
         return f"${{data_sources.{name}}}"
 
     def resolve(self, source, target, name=None):
-        # assert isinstance(target, Source), f"Only sources can be used as template {target}"
 
         top = Index("input")  # So we have 'input' first in the path
 
@@ -396,6 +407,14 @@ class Recipe:
         self._dates = self._parse_dates(value)
 
     @property
+    def output(self):
+        return self._output
+
+    @output.setter
+    def output(self, value):
+        self._output = value
+
+    @property
     def statistics(self):
         return self._statistics
 
@@ -411,6 +430,30 @@ class Recipe:
     def build(self, value):
         self._build = value
 
+    @property
+    def env(self):
+        return self._env
+
+    @env.setter
+    def env(self, value):
+        self._env = value
+
+    @property
+    def dataset_status(self):
+        return self._dataset_status
+
+    @dataset_status.setter
+    def dataset_status(self, value):
+        self._dataset_status = value
+
+    @property
+    def platform(self):
+        return self._platform
+
+    @platform.setter
+    def platform(self, value):
+        self._platform = value
+
     def dump(self, file=sys.stdout):
         input = self.input.as_dict(self)  # First so we get the data_sources
 
@@ -419,7 +462,7 @@ class Recipe:
         result["input"] = input
 
         if self.output:
-            result["output"] = self.output.as_dict()
+            result["output"] = self.output
 
         if self.statistics:
             result["statistics"] = self.statistics
@@ -427,9 +470,18 @@ class Recipe:
         if self.build:
             result["build"] = self.build
 
+        if self.env:
+            result["env"] = self.env
+
+        if self.dataset_status:
+            result["dataset_status"] = self.dataset_status
+
+        if self.platform:
+            result["platform"] = self.platform
+
         from .dumper import yaml_dump
 
-        yaml_dump(result, stream=file)
+        yaml_dump(_un_dotdict(result), stream=file)
 
     def test(self, output="recipe.zarr"):
         from argparse import ArgumentParser

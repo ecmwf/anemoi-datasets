@@ -80,6 +80,7 @@ class Recipe(Command):
 
         if args.format:
             formatted = format_recipe(args, config)
+            assert "dates" in formatted
             f = sys.stdout
             if args.output:
                 f = open(args.output, "w")
@@ -88,6 +89,7 @@ class Recipe(Command):
                 f = open(args.path, "w")
 
             print(formatted, file=f)
+            f.close()
 
         if args.python:
             if args.inplace:

@@ -501,6 +501,8 @@ class PythonScript(PythonCode):
         SKIP = (
             "input",
             "data_sources",
+            "common",
+            "aliases",
         )
 
         result = []
@@ -512,6 +514,7 @@ class PythonScript(PythonCode):
 
             if not hasattr(Recipe, k):
                 LOG.warning(f"Unknown key in recipe: {k}")
+                assert False, f"Unknown key in recipe: {k}"
                 continue
 
             result.append(f"r.{k} = {repr(v)}")
