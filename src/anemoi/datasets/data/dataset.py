@@ -136,7 +136,7 @@ class Dataset(ABC, Sized):
         if not kwargs:
             return self.mutate()
 
-        name = kwargs.pop("set_group", None) # TODO(Florian)
+        name = kwargs.pop("set_group", None)  # TODO(Florian)
         name = kwargs.pop("name", name)
         result = self.__subset(**kwargs)
         result._name = name
