@@ -881,7 +881,6 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-
     ds = mars(
         context,
         dates,
