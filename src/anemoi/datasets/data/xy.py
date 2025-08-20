@@ -11,10 +11,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Set
-from typing import Tuple
 
 from .dataset import Dataset
 from .dataset import FullIndex
@@ -29,7 +25,7 @@ LOG = logging.getLogger(__name__)
 class ZipBase(Combined):
     """Base class for handling zipped datasets."""
 
-    def __init__(self, datasets: List[Any], check_compatibility: bool = True) -> None:
+    def __init__(self, datasets: list[Any], check_compatibility: bool = True) -> None:
         """Initialize ZipBase with a list of datasets.
 
         Parameters
@@ -58,7 +54,7 @@ class ZipBase(Combined):
         new_parents = [parent.clone(ds) for ds in self.datasets]
         return self.clone(new_parents)
 
-    def clone(self, datasets: List[Any]) -> "ZipBase":
+    def clone(self, datasets: list[Any]) -> "ZipBase":
         """Clone the ZipBase with new datasets.
 
         Parameters
@@ -81,7 +77,11 @@ class ZipBase(Combined):
         Node
             Tree representation of the datasets.
         """
-        return Node(self, [d.tree() for d in self.datasets], check_compatibility=self._check_compatibility)
+        return Node(
+            self,
+            [d.tree() for d in self.datasets],
+            check_compatibility=self._check_compatibility,
+        )
 
     def __len__(self) -> int:
         """Get the length of the smallest dataset.
@@ -93,7 +93,7 @@ class ZipBase(Combined):
         """
         return min(len(d) for d in self.datasets)
 
-    def __getitem__(self, n: FullIndex) -> Tuple[Any, ...]:
+    def __getitem__(self, n: FullIndex) -> tuple[Any, ...]:
         """Get the item at the specified index from all datasets.
 
         Parameters
@@ -145,55 +145,55 @@ class ZipBase(Combined):
         pass
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the set of missing indices from all datasets."""
-        result: Set[int] = set()
+        result: set[int] = set()
         for d in self.datasets:
             result = result | d.missing
         return result
 
     @property
-    def shape(self) -> Tuple[Any, ...]:
+    def shape(self) -> tuple[Any, ...]:
         """Get the shape of all datasets."""
         return tuple(d.shape for d in self.datasets)
 
     @property
-    def field_shape(self) -> Tuple[Any, ...]:
+    def field_shape(self) -> tuple[Any, ...]:
         """Get the field shape of all datasets."""
         return tuple(d.shape for d in self.datasets)
 
     @property
-    def latitudes(self) -> Tuple[Any, ...]:
+    def latitudes(self) -> tuple[Any, ...]:
         """Get the latitudes of all datasets."""
         return tuple(d.latitudes for d in self.datasets)
 
     @property
-    def longitudes(self) -> Tuple[Any, ...]:
+    def longitudes(self) -> tuple[Any, ...]:
         """Get the longitudes of all datasets."""
         return tuple(d.longitudes for d in self.datasets)
 
     @property
-    def dtype(self) -> Tuple[Any, ...]:
+    def dtype(self) -> tuple[Any, ...]:
         """Get the data types of all datasets."""
         return tuple(d.dtype for d in self.datasets)
 
     @property
-    def grids(self) -> Tuple[Any, ...]:
+    def grids(self) -> tuple[Any, ...]:
         """Get the grids of all datasets."""
         return tuple(d.grids for d in self.datasets)
 
     @property
-    def statistics(self) -> Tuple[Any, ...]:
+    def statistics(self) -> tuple[Any, ...]:
         """Get the statistics of all datasets."""
         return tuple(d.statistics for d in self.datasets)
 
     @property
-    def resolution(self) -> Tuple[Any, ...]:
+    def resolution(self) -> tuple[Any, ...]:
         """Get the resolution of all datasets."""
         return tuple(d.resolution for d in self.datasets)
 
     @property
-    def name_to_index(self) -> Tuple[Any, ...]:
+    def name_to_index(self) -> tuple[Any, ...]:
         """Get the name to index mapping of all datasets."""
         return tuple(d.name_to_index for d in self.datasets)
 
@@ -210,6 +210,10 @@ class ZipBase(Combined):
         if self._check_compatibility:
             super().check_compatibility(d1, d2)
 
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the subclass."""
+        return {}
+
 
 class Zip(ZipBase):
     """Class for handling zipped datasets."""
@@ -223,7 +227,7 @@ class XY(ZipBase):
     pass
 
 
-def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
+def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> XY:
     """Factory function to create an XY instance.
 
     Parameters
@@ -256,7 +260,7 @@ def xy_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> XY:
     return XY(datasets, check_compatibility=check_compatibility)._subset(**kwargs)
 
 
-def zip_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Zip:
+def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Zip:
     """Factory function to create a Zip instance.
 
     Parameters

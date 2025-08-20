@@ -63,7 +63,7 @@ class Npz1Backend(Backend):
             return data
 
     def read_metadata(self):
-        with open(os.path.join(self.path, "metadata.json"), "r") as f:
+        with open(os.path.join(self.path, "metadata.json")) as f:
             return json.load(f)
 
     def read_statistics(self):
@@ -84,7 +84,7 @@ class Npz2Backend(Backend):
             return dict(np.load(f))
 
     def read_metadata(self):
-        with open(os.path.join(self.path, "metadata.json"), "r") as f:
+        with open(os.path.join(self.path, "metadata.json")) as f:
             return json.load(f)
 
     def read_statistics(self):

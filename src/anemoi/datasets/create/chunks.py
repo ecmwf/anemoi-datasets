@@ -9,7 +9,6 @@
 
 import logging
 import warnings
-from typing import Union
 
 LOG = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class ChunkFilter:
         The chunks that are allowed to be processed.
     """
 
-    def __init__(self, *, parts: Union[str, list], total: int):
+    def __init__(self, *, parts: str | list, total: int):
         """Initializes the ChunkFilter with the given parts and total number of chunks.
 
         Parameters

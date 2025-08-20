@@ -12,8 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import Set
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -213,7 +211,7 @@ class Padded(Forwards):
         return (len(self.dates),) + self.dataset.shape[1:]
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         raise NotImplementedError("Need to decide whether to include the added dates as missing or not")
         # return self.forward.missing
 
@@ -225,7 +223,7 @@ class Padded(Forwards):
         """
         return Node(self, [self.dataset.tree()], **self.reason)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
 
         Returns:
