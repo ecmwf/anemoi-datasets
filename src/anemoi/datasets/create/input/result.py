@@ -15,10 +15,6 @@ from collections import defaultdict
 from functools import cached_property
 from typing import Any
 from typing import DefaultDict
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 import numpy as np
 from anemoi.utils.dates import as_timedelta
@@ -33,7 +29,7 @@ from .trace import trace_datasource
 LOG = logging.getLogger(__name__)
 
 
-def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
+def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
     Parameters
@@ -50,7 +46,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
     """
     assert isinstance(variables, tuple), variables
 
-    KNOWN: Dict[str, Dict[str, bool]] = {
+    KNOWN: dict[str, dict[str, bool]] = {
         "cos_julian_day": dict(computed_forcing=True, constant_in_time=False),
         "cos_latitude": dict(computed_forcing=True, constant_in_time=True),
         "cos_local_time": dict(computed_forcing=True, constant_in_time=False),
@@ -65,9 +61,9 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
         "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
     }
 
-    def _merge(md1: Dict[str, Any], md2: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge(md1: dict[str, Any], md2: dict[str, Any]) -> dict[str, Any]:
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
         for k in md1.keys():
             v1 = md1[k]
             v2 = md2[k]
@@ -90,10 +86,10 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
         return result
 
-    mars: Dict[str, Any] = {}
-    other: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
+    mars: dict[str, Any] = {}
+    other: DefaultDict[str, dict[str, Any]] = defaultdict(dict)
     i: int = -1
-    date: Optional[str] = None
+    date: str | None = None
     for c in cube.iterate_cubelets():
 
         if date is None:
@@ -137,7 +133,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
-            TYPE_OF_STATISTICAL_PROCESSING: Dict[Optional[int], Optional[str]] = {
+            TYPE_OF_STATISTICAL_PROCESSING: dict[int | None, str | None] = {
                 None: None,
                 0: "average",
                 1: "accumulation",
@@ -157,12 +153,12 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
 
             # https://codes.ecmwf.int/grib/format/grib1/ctable/5/
 
-            TIME_RANGE_INDICATOR: Dict[int, str] = {
+            TIME_RANGE_INDICATOR: dict[int, str] = {
                 4: "accumulation",
                 3: "average",
             }
 
-            STEP_TYPE_FOR_CONVERSION: Dict[str, str] = {
+            STEP_TYPE_FOR_CONVERSION: dict[str, str] = {
                 "min": "minimum",
                 "max": "maximum",
                 "accum": "accumulation",
@@ -172,7 +168,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
             # A few patches
             #
 
-            PATCHES: Dict[str, str] = {
+            PATCHES: dict[str, str] = {
                 "10fg6": "maximum",
                 "mntpr3": "minimum",  # Not in param db
                 "mntpr6": "minimum",  # Not in param db
@@ -211,7 +207,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
         else:
             mars[variables[i]] = md
 
-    result: Dict[str, Dict[str, Any]] = {}
+    result: dict[str, dict[str, Any]] = {}
     for k, v in mars.items():
         result[k] = dict(mars=v) if v else {}
         result[k].update(other[k])
@@ -222,7 +218,7 @@ def _fields_metatata(variables: Tuple[str, ...], cube: Any) -> Dict[str, Any]:
     return result
 
 
-def _data_request(data: Any) -> Dict[str, Any]:
+def _data_request(data: Any) -> dict[str, Any]:
     """Build a data request dictionary from the given data.
 
     Parameters
@@ -235,12 +231,12 @@ def _data_request(data: Any) -> Dict[str, Any]:
     dict
         The data request dictionary.
     """
-    date: Optional[Any] = None
+    date: Any | None = None
     params_levels: DefaultDict[str, set] = defaultdict(set)
     params_steps: DefaultDict[str, set] = defaultdict(set)
 
-    area: Optional[Any] = None
-    grid: Optional[Any] = None
+    area: Any | None = None
+    grid: Any | None = None
 
     for field in data:
         try:
@@ -270,8 +266,8 @@ def _data_request(data: Any) -> Dict[str, Any]:
         except Exception:
             LOG.error(f"Error in retrieving metadata (cannot build data request info) for {field}", exc_info=True)
 
-    def sort(old_dic: DefaultDict[str, set]) -> Dict[str, List[Any]]:
-        new_dic: Dict[str, List[Any]] = {}
+    def sort(old_dic: DefaultDict[str, set]) -> dict[str, list[Any]]:
+        new_dic: dict[str, list[Any]] = {}
         for k, v in old_dic.items():
             new_dic[k] = sorted(list(v))
         return new_dic
@@ -288,7 +284,7 @@ class Result:
     empty: bool = False
     _coords_already_built: bool = False
 
-    def __init__(self, context: ActionContext, action_path: List[str], dates: Any) -> None:
+    def __init__(self, context: ActionContext, action_path: list[str], dates: Any) -> None:
         """Initialize a Result instance.
 
         Parameters
@@ -309,7 +305,7 @@ class Result:
 
         self.context: Any = context
         self.group_of_dates: Any = dates
-        self.action_path: List[str] = action_path
+        self.action_path: list[str] = action_path
 
     @property
     @trace_datasource
@@ -318,7 +314,7 @@ class Result:
         self._raise_not_implemented()
 
     @property
-    def data_request(self) -> Dict[str, Any]:
+    def data_request(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
 
@@ -340,7 +336,7 @@ class Result:
         LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
         assert order_by, order_by
 
-        patches: Dict[str, Dict[Optional[Any], int]] = {"number": {None: 0}}
+        patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
 
         try:
             cube: Any = ds.cube(
@@ -376,7 +372,7 @@ class Result:
         patches : Any
             The patches configuration.
         """
-        METADATA: Tuple[str, ...] = (
+        METADATA: tuple[str, ...] = (
             "date",
             "time",
             "step",
@@ -401,7 +397,7 @@ class Result:
         # print("Executing", self.action_path)
         # print("Dates:", compress_dates(self.dates))
 
-        names: List[str] = []
+        names: list[str] = []
         for a in args:
             if isinstance(a, str):
                 names.append(a)
@@ -420,7 +416,7 @@ class Result:
                 print("     ", n)
 
         print()
-        user_shape: Tuple[int, ...] = tuple(len(v) for k, v in user_coords.items())
+        user_shape: tuple[int, ...] = tuple(len(v) for k, v in user_coords.items())
         print("Shape of the hypercube           :", user_shape)
         print(
             "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
@@ -641,13 +637,13 @@ class Result:
         self._coords_already_built: bool = True
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Retrieve the variables for the result."""
         self.build_coords()
         return self._variables
 
     @property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Retrieve the metadata for the variables."""
         return _fields_metatata(self.variables, self._cube)
 
@@ -688,7 +684,7 @@ class Result:
         return self._proj_string
 
     @cached_property
-    def shape(self) -> List[int]:
+    def shape(self) -> list[int]:
         """Retrieve the shape of the result."""
         return [
             len(self.group_of_dates),
@@ -698,7 +694,7 @@ class Result:
         ]
 
     @cached_property
-    def coords(self) -> Dict[str, Any]:
+    def coords(self) -> dict[str, Any]:
         """Retrieve the coordinates of the result."""
         return {
             "dates": list(self.group_of_dates),

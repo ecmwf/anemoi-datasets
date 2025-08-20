@@ -15,11 +15,6 @@ import tempfile
 import warnings
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Union
 from urllib.parse import urlparse
 
 import numpy as np
@@ -90,7 +85,7 @@ class S3Store(ReadOnlyStore):
     options using the anemoi configs.
     """
 
-    def __init__(self, url: str, region: Optional[str] = None) -> None:
+    def __init__(self, url: str, region: str | None = None) -> None:
         """Initialize the S3Store with a URL and optional region."""
         from anemoi.utils.remote.s3 import s3_client
 
@@ -199,7 +194,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
 class Zarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
+    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
@@ -215,7 +210,7 @@ class Zarr(Dataset):
         self._missing = set()
 
     @property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Return the missing dates of the dataset."""
         return self._missing
 
@@ -236,7 +231,7 @@ class Zarr(Dataset):
         """Retrieve an item from the dataset."""
         return self.data[n]
 
-    def _unwind(self, index: Union[int, slice, list, tuple], rest: list, shape: tuple, axis: int, axes: list) -> iter:
+    def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:
         """Unwind the index for multi-dimensional indexing."""
         if not isinstance(index, (int, slice, list, tuple)):
             try:
@@ -298,7 +293,7 @@ class Zarr(Dataset):
             return self.z.longitude[:]
 
     @property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         return dict(
             mean=self.z.mean[:],
@@ -307,7 +302,7 @@ class Zarr(Dataset):
             minimum=self.z.minimum[:],
         )
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the statistical tendencies of the dataset."""
         if delta is None:
             delta = self.frequency
@@ -354,14 +349,14 @@ class Zarr(Dataset):
         return dates[1].astype(object) - dates[0].astype(object)
 
     @property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Return the name to index mapping of the dataset."""
         if "variables" in self.z.attrs:
             return {n: i for i, n in enumerate(self.z.attrs["variables"])}
         return self.z.attrs["name_to_index"]
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Return the variables of the dataset."""
         return [
             k
@@ -372,7 +367,7 @@ class Zarr(Dataset):
         ]
 
     @cached_property
-    def constant_fields(self) -> List[str]:
+    def constant_fields(self) -> list[str]:
         """Return the constant fields of the dataset."""
         result = self.z.attrs.get("constant_fields")
         if result is None:
@@ -380,7 +375,7 @@ class Zarr(Dataset):
         return self.computed_constant_fields()
 
     @property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables."""
         return self.z.attrs.get("variables_metadata", {})
 
@@ -392,7 +387,7 @@ class Zarr(Dataset):
         """Return the end date of the statistics."""
         return self.dates[-1]
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Return the specific metadata of the dataset."""
         return super().metadata_specific(
             attrs=dict(self.z.attrs),
@@ -416,7 +411,7 @@ class Zarr(Dataset):
         """Return the tree representation of the dataset."""
         return Node(self, [], path=self.path)
 
-    def get_dataset_names(self, names: Set[str]) -> None:
+    def get_dataset_names(self, names: set[str]) -> None:
         """Get the names of the datasets."""
         name, _ = os.path.splitext(os.path.basename(self.path))
         names.add(name)
@@ -433,17 +428,17 @@ class Zarr(Dataset):
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, path: Union[str, zarr.hierarchy.Group]) -> None:
+    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(path)
 
         missing_dates = self.z.attrs.get("missing_dates", [])
-        missing_dates = set([np.datetime64(x, "s") for x in missing_dates])
+        missing_dates = {np.datetime64(x, "s") for x in missing_dates}
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
         self._missing = set(self.missing_to_dates)
 
     @property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Return the missing dates of the dataset."""
         return self._missing
 
@@ -506,7 +501,7 @@ class ZarrWithMissingDates(Zarr):
 QUIET = set()
 
 
-def zarr_lookup(name: str, fail: bool = True) -> Optional[str]:
+def zarr_lookup(name: str, fail: bool = True) -> str | None:
     """Look up a zarr dataset by name."""
 
     config = load_config()["datasets"]

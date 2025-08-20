@@ -11,8 +11,6 @@ import json
 import logging
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import List
 
 from earthkit.data.core.order import build_remapping
 
@@ -40,7 +38,7 @@ class Action:
     """
 
     def __init__(
-        self, context: "ActionContext", action_path: List[str], /, *args: Any, **kwargs: Dict[str, Any]
+        self, context: "ActionContext", action_path: list[str], /, *args: Any, **kwargs: dict[str, Any]
     ) -> None:
         """Initialize an Action instance.
 
@@ -176,7 +174,7 @@ class ActionContext(Context):
         Whether to use GRIB parameter ID.
     """
 
-    def __init__(self, /, order_by: str, flatten_grid: bool, remapping: Dict[str, Any], use_grib_paramid: bool) -> None:
+    def __init__(self, /, order_by: str, flatten_grid: bool, remapping: dict[str, Any], use_grib_paramid: bool) -> None:
         """Initialize an ActionContext instance.
 
         Parameters
@@ -209,7 +207,7 @@ class ActionContext(Context):
         trace(emoji, *args)
 
 
-def action_factory(config: Dict[str, Any], context: ActionContext, action_path: List[str]) -> Action:
+def action_factory(config: dict[str, Any], context: ActionContext, action_path: list[str]) -> Action:
     """Factory function to create an Action instance based on the configuration.
 
     Parameters

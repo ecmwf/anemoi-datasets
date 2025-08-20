@@ -9,12 +9,8 @@
 
 import datetime
 import re
+from collections.abc import Generator
 from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Union
 
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
@@ -27,7 +23,7 @@ from .legacy import legacy_source
 DEBUG = False
 
 
-def to_list(x: Union[list, tuple, Any]) -> list:
+def to_list(x: list | tuple | Any) -> list:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -46,8 +42,8 @@ def to_list(x: Union[list, tuple, Any]) -> list:
 
 
 def _date_to_datetime(
-    d: Union[datetime.datetime, list, tuple, str],
-) -> Union[datetime.datetime, List[datetime.datetime]]:
+    d: datetime.datetime | list | tuple | str,
+) -> datetime.datetime | list[datetime.datetime]:
     """Converts the input date(s) to datetime objects.
 
     Parameters
@@ -67,7 +63,7 @@ def _date_to_datetime(
     return datetime.datetime.fromisoformat(d)
 
 
-def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
+def expand_to_by(x: str | int | list) -> str | int | list:
     """Expands a range expression to a list of values.
 
     Parameters
@@ -97,7 +93,7 @@ def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
     return x
 
 
-def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelta:
+def normalise_time_delta(t: datetime.timedelta | str) -> datetime.timedelta:
     """Normalizes a time delta string to a datetime.timedelta object.
 
     Parameters
@@ -120,7 +116,7 @@ def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelt
     return t
 
 
-def _normalise_time(t: Union[int, str]) -> str:
+def _normalise_time(t: int | str) -> str:
     """Normalizes a time value to a string in HHMM format.
 
     Parameters
@@ -136,7 +132,7 @@ def _normalise_time(t: Union[int, str]) -> str:
     t = int(t)
     if t < 100:
         t * 100
-    return "{:04d}".format(t)
+    return f"{t:04d}"
 
 
 def _shift_time_request(request: Dict[str, int]) -> Dict[str, int]:
@@ -154,11 +150,11 @@ def _shift_time_request(request: Dict[str, int]) -> Dict[str, int]:
 
 
 def _expand_mars_request(
-    request: Dict[str, Any],
+    request: dict[str, Any],
     date: datetime.datetime,
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Expands a MARS request with the given date and other parameters.
 
     Parameters
@@ -241,12 +237,12 @@ def _expand_mars_request(
 
 
 def factorise_requests(
-    dates: List[datetime.datetime],
-    *requests: List[Dict[str, Any]],
+    dates: list[datetime.datetime],
+    *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
     shift_time_request: bool = False,
     date_key: str = "date",
-) -> Generator[Dict[str, Any], None, None]:
+) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
 
     Parameters
@@ -289,7 +285,7 @@ def factorise_requests(
         yield r
 
 
-def use_grib_paramid(r: Dict[str, Any]) -> Dict[str, Any]:
+def use_grib_paramid(r: dict[str, Any]) -> dict[str, Any]:
     """Converts the parameter short names to GRIB parameter IDs.
 
     Parameters
@@ -386,12 +382,12 @@ MARS_KEYS = [
 @legacy_source(__file__)
 def mars(
     context: Any,
-    dates: List[datetime.datetime],
-    *requests: Dict[str, Any],
+    dates: list[datetime.datetime],
+    *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
     shift_time_request: bool = False,
     date_key: str = "date",
-    use_cdsapi_dataset: Optional[str] = None,
+    use_cdsapi_dataset: str | None = None,
     **kwargs: Any,
 ) -> Any:
     """Executes MARS requests based on the given context, dates, and other parameters.

@@ -11,10 +11,8 @@ import datetime
 import logging
 import os
 import sqlite3
+from collections.abc import Iterator
 from typing import Any
-from typing import Iterator
-from typing import Optional
-from typing import Union
 
 import earthkit.data as ekd
 import tqdm
@@ -37,8 +35,8 @@ class GribIndex:
         self,
         database: str,
         *,
-        keys: Optional[Union[list[str], str]] = None,
-        flavour: Optional[str] = None,
+        keys: list[str] | str | None = None,
+        flavour: str | None = None,
         update: bool = False,
         overwrite: bool = False,
     ) -> None:
@@ -325,7 +323,7 @@ class GribIndex:
 
         self._commit()
 
-    def _paramdb(self, category: int, discipline: int) -> Optional[dict]:
+    def _paramdb(self, category: int, discipline: int) -> dict | None:
         """Fetch parameter information from the parameter database.
 
         Parameters
@@ -384,7 +382,7 @@ class GribIndex:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
         return []
 
-    def _param_id_info(self, paramId: int) -> Optional[dict]:
+    def _param_id_info(self, paramId: int) -> dict | None:
         """Fetch detailed information for a given parameter ID.
 
         Parameters
@@ -413,7 +411,7 @@ class GribIndex:
 
         return None
 
-    def _param_id_unit(self, unitId: int) -> Optional[dict]:
+    def _param_id_unit(self, unitId: int) -> dict | None:
         """Fetch unit information for a given unit ID.
 
         Parameters
@@ -521,20 +519,13 @@ class GribIndex:
             raise ValueError(f"No path found for path_id {path_id}")
         return row[0]
 
-    def retrieve(
-        self,
-        dates: list[Any],
-        request_already_using_valid_datetime: bool = False,
-        **kwargs: Any,
-    ) -> Iterator[Any]:
+    def retrieve(self, dates: list[Any], **kwargs: Any) -> Iterator[Any]:
         """Retrieve GRIB data from the database.
 
         Parameters
         ----------
         dates : list[Any]
             list of dates to retrieve data for.
-        request_already_using_valid_datetime : bool, optional
-            Whether the request is already using valid_datetime, by default False.
         **kwargs : Any
             Additional filtering criteria.
 
@@ -606,8 +597,7 @@ def grib_index_retrieve(
     context: Any,
     dates: list[Any],
     indexdb: str,
-    *requests: dict[str, Any],
-    flavour: Optional[str] = None,
+    flavour: str | None = None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
@@ -620,8 +610,6 @@ def grib_index_retrieve(
         list of dates to retrieve data for.
     indexdb : str
         Path to the GRIB index database.
-    requests : Optional[list], optional
-        list of requests to filter the data, by default None.
     flavour : Optional[str], optional
         Flavour configuration for mapping fields, by default None.
     **kwargs : Any
@@ -655,8 +643,8 @@ def grib_index_retrieve(
 def execute(
     context: Any,
     dates: list[Any],
-    *requests: Optional[Union[tuple, list]],
-    flavour: Optional[str] = None,
+    *requests: tuple | list,
+    flavour: str |None = None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.

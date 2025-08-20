@@ -11,10 +11,6 @@
 import base64
 import logging
 from typing import Any
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -94,7 +90,7 @@ def plot_mask(
 
 # TODO: Use the one from anemoi.utils.grids instead
 # from anemoi.utils.grids import ...
-def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> Tuple[NDArray[Any], NDArray[Any]]:
+def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> tuple[NDArray[Any], NDArray[Any]]:
     """Convert Cartesian coordinates to latitude and longitude.
 
     Parameters
@@ -121,7 +117,7 @@ def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> Tuple[ND
 # from anemoi.utils.grids import ...
 def latlon_to_xyz(
     lat: NDArray[Any], lon: NDArray[Any], radius: float = 1.0
-) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
+) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
     """Convert latitude and longitude to Cartesian coordinates.
 
     Parameters
@@ -272,8 +268,8 @@ def cutout_mask(
     global_lons: NDArray[Any],
     cropping_distance: float = 2.0,
     neighbours: int = 5,
-    min_distance_km: Optional[Union[int, float]] = None,
-    plot: Optional[str] = None,
+    min_distance_km: int | float | None = None,
+    plot: str | None = None,
 ) -> NDArray[Any]:
     """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons].
 
@@ -465,7 +461,7 @@ def thinning_mask(
     return np.array([i for i in indices])
 
 
-def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> List[int]:
+def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> list[int]:
     """Find the outline of the grid points.
 
     Parameters
@@ -605,6 +601,7 @@ def nearest_grid_points(
     target_latitudes: NDArray[Any],
     target_longitudes: NDArray[Any],
     max_distance: float = None,
+    k: int = 1,
 ) -> NDArray[Any]:
     """Find the nearest grid points from source to target coordinates.
 
@@ -621,6 +618,8 @@ def nearest_grid_points(
     max_distance: float, optional
         Maximum distance between nearest point and point to interpolate. Defaults to None.
         For example, 1e-3 is 1 km.
+    k : int, optional
+        The number of k closest neighbors to consider for interpolation
 
     Returns
     -------
@@ -637,10 +636,10 @@ def nearest_grid_points(
     target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
     target_points = np.array(target_xyz).transpose()
     if max_distance is None:
-        _, indices = cKDTree(source_points).query(target_points, k=1)
+        distances, indices = cKDTree(source_points).query(target_points, k=k)
     else:
-        _, indices = cKDTree(source_points).query(target_points, k=1, distance_upper_bound=max_distance)
-    return indices
+        distances, indices = cKDTree(source_points).query(target_points, k=k, distance_upper_bound=max_distance)
+    return distances, indices
 
 
 if __name__ == "__main__":
