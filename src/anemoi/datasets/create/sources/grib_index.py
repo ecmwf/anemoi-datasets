@@ -644,7 +644,7 @@ def execute(
     context: Any,
     dates: list[Any],
     *requests: tuple | list,
-    flavour: str |None = None,
+    flavour: str | None = None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
