@@ -135,7 +135,7 @@ def _normalise_time(t: int | str) -> str:
     return f"{t:04d}"
 
 
-def _shift_time_request(request: Dict[str, int]) -> Dict[str, int]:
+def _shift_time_request(request: dict[str, int]) -> dict[str, int]:
     date = request.get("date")
     time = request.get("time")
     step = request.get("step")
@@ -159,7 +159,7 @@ def _expand_mars_request(
 
     Parameters
     ----------
-    request : Dict[str, Any]
+    request : dict[str, Any]
         The input MARS request.
     date : datetime.datetime
         The date to be used in the request.
@@ -170,7 +170,7 @@ def _expand_mars_request(
 
     Returns
     -------
-    List[Dict[str, Any]]
+    List[dict[str, Any]]
         A list of expanded MARS requests.
     """
     requests = []
@@ -249,7 +249,7 @@ def factorise_requests(
     ----------
     dates : List[datetime.datetime]
         The list of dates to be used in the requests.
-    requests : List[Dict[str, Any]]
+    requests : List[dict[str, Any]]
         The input requests to be factorized.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
@@ -260,7 +260,7 @@ def factorise_requests(
 
     Returns
     -------
-    Generator[Dict[str, Any], None, None]
+    Generator[dict[str, Any], None, None]
         Factorized requests.
     """
     updates = []
@@ -290,12 +290,12 @@ def use_grib_paramid(r: dict[str, Any]) -> dict[str, Any]:
 
     Parameters
     ----------
-    r : Dict[str, Any]
+    r : dict[str, Any]
         The input request containing parameter short names.
 
     Returns
     -------
-    Dict[str, Any]
+    dict[str, Any]
         The request with parameter IDs.
     """
     from anemoi.utils.grib import shortname_to_paramid
@@ -398,7 +398,7 @@ def mars(
         The context for the requests.
     dates : List[datetime.datetime]
         The list of dates to be used in the requests.
-    requests : Dict[str, Any]
+    requests : dict[str, Any]
         The input requests to be executed.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
