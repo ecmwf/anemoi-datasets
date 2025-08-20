@@ -50,7 +50,7 @@ def _member(field: Any) -> int:
     return number
 
 
-def _prep_request(request: Dict[str, Any], period_class: Any) -> Dict[str, Any]:
+def _prep_request(request: dict[str, Any], period_class: Any) -> dict[str, Any]:
     request = deepcopy(request)
 
     param = request.pop("param")
@@ -288,7 +288,7 @@ class DefaultPeriods(Periods):
 
     def available_steps(
         self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime
-    ) -> Dict[datetime.datetime, List[datetime.datetime]]:
+    ) -> dict[datetime.datetime, list[datetime.datetime]]:
         """Return the steps available to build/search an available period
 
         Arguments:
@@ -296,7 +296,7 @@ class DefaultPeriods(Periods):
             start (int): step (=leadtime) from the forecast where accumulation begins
             end (int): step (=leadtime) from the forecast where accumulation ends
         Returns:
-            _ (Dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
 
         """
 
@@ -516,7 +516,7 @@ class OdEnfoPeriods(DiffPeriods):
         raise NotImplementedError("need to implement diff")
 
 
-def find_accumulator_class(request: Dict[str, Any]) -> Periods:
+def find_accumulator_class(request: dict[str, Any]) -> Periods:
 
     try:
         return {
@@ -555,7 +555,7 @@ class Accumulator:
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
 
     @property
-    def requests(self) -> Dict:
+    def requests(self) -> dict:
         for period in self.periods:
             # build the full data requests, merging the time requests with the key
             yield {**self.kwargs.copy(), **dict(period.time_request)}
@@ -715,12 +715,12 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
 
     Parameters
     ----------
-    request : Dict[str, Any]
+    request : dict[str, Any]
         Request parameters.
 
     Returns
     -------
-    Dict[str, Any]
+    dict[str, Any]
         The modified request parameters.
     """
     if request["time"] in (6, 18, 600, 1800):

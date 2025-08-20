@@ -22,7 +22,6 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime_list
 
-from .grib_index import grib_index_retrieve
 from .legacy import legacy_source
 from .mars import mars
 
@@ -806,9 +805,6 @@ def _compute_accumulations(
         List of base times. Defaults to None.
     use_cdsapi_dataset : Optional[str], optional
         CDSAPI dataset to use. Defaults to None.
-    use_grib_index : Optional[str], optional
-        Grib index to use. Defaults to None.
-
     Returns
     -------
     Any
@@ -885,23 +881,14 @@ def _compute_accumulations(
 
                 requests.append(patch(r))
 
-    if use_grib_index:
-        ds = grib_index_retrieve(
-            context,
-            dates,
-            indexdb=use_grib_index,
-            flavour=None,
-            requests=requests,
-            request_already_using_valid_datetime=True,
-        )
-    else:
-        ds = mars(
-            context,
-            dates,
-            *requests,
-            request_already_using_valid_datetime=True,
-            use_cdsapi_dataset=use_cdsapi_dataset,
-        )
+
+    ds = mars(
+        context,
+        dates,
+        *requests,
+        request_already_using_valid_datetime=True,
+        use_cdsapi_dataset=use_cdsapi_dataset,
+    )
 
     accumulations = {}
     for a in [
@@ -997,8 +984,6 @@ def accumulations(
         List of dates.
     use_cdsapi_dataset : Optional[str], optional
         CDSAPI dataset to use. Defaults to None.
-    use_grib_index : Optional[str], optional
-        Grib index to use. Defaults to None.
     **request : Any
         Additional request parameters.
 
@@ -1053,7 +1038,6 @@ def accumulations(
         accumulations_reset_frequency=accumulations_reset_frequency,
         use_cdsapi_dataset=use_cdsapi_dataset,
         user_date=user_date,
-        use_grib_index=use_grib_index,
         **kwargs,
     )
 
