@@ -74,7 +74,7 @@ def _prep_request(request: Dict[str, Any], period_class: Any) -> Dict[str, Any]:
 
     if period_class != DefaultPeriods:
         _ = request.pop("data_accumulation_period")
-        LOG.warning("Non-default data (e.g MARS): ignoring data_accumulation_period")
+        LOG.warning("Non-default data periods (e.g MARS): ignoring data_accumulation_period")
 
     return request, param, number
 
@@ -82,7 +82,10 @@ def _prep_request(request: Dict[str, Any], period_class: Any) -> Dict[str, Any]:
 class Period:
     value = None
 
-    def __init__(self, start_datetime, end_datetime, base_datetime):
+    def __init__(self, 
+                 start_datetime: datetime.datetime,
+                 end_datetime: datetime.datetime,
+                 base_datetime: datetime.datetime):
         assert isinstance(start_datetime, datetime.datetime)
         assert isinstance(end_datetime, datetime.datetime)
         assert isinstance(base_datetime, datetime.datetime)
@@ -110,18 +113,18 @@ class Period:
         time = int(self.end_datetime.strftime("%H%M"))
 
         end_step = self.end_datetime - self.base_datetime
-        assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported
+        assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported in grib/mars
         end_step = int(end_step.total_seconds() // 3600)
 
         return (("date", date), ("time", time), ("step", end_step))
-
+    
     @property
     def time_check(self):
-        date = int(self.base_datetime.strftime("%Y%m%d"))
-        time = int(self.base_datetime.strftime("%H%M"))
+        date = int(self.end_datetime.strftime("%Y%m%d"))
+        time = int(self.end_datetime.strftime("%H%M"))
 
         end_step = self.end_datetime - self.base_datetime
-        assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported
+        assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported in grib/mars
         end_step = int(end_step.total_seconds() // 3600)
 
         return (("date", date), ("time", time), ("step", end_step))
@@ -207,6 +210,9 @@ class Periods:
         self.accumulation_period = accumulation_period
         self.data_accumulation_period = frequency_to_timedelta(kwargs.pop("data_accumulation_period", "1h"))
 
+        assert (self.accumulation_period % self.data_accumulation_period)==datetime.timedelta(hours=0),\
+                f"accumulation {self.accumulation_period} should be an integer multiple of data_accumulation_period"
+        
         self.kwargs = kwargs
 
         self._periods = self.build_periods()
@@ -565,7 +571,7 @@ class Accumulator:
         """Verify the field time metadata, find the associated period
          and perform accumulation with the given values
 
-        in any case values have been exrtacted from field
+        in any case values have been extracted from field
 
         """
 
@@ -590,7 +596,7 @@ class Accumulator:
         if self.periods.all_done():
             # all periods for accumulation have been processed
             # final list of outputs is ready to be updated
-            self.write(field)
+            self.write(field) #field is used as a template
             xprint("accumulator", self, " : data written ✅ ")
 
     def write(self, field) -> None:
