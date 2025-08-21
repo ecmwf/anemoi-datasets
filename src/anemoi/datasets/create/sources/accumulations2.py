@@ -116,9 +116,9 @@ class Period:
         end_step = int(end_step.total_seconds() // 3600)
 
         return (("date", date), ("time", time), ("step", end_step))
-        
+
     def is_matching_field(self, field):
-        
+
         stepType = field.metadata("stepType")
         startStep = field.metadata("startStep")
         endStep = field.metadata("endStep")
@@ -126,14 +126,14 @@ class Period:
         time = field.metadata("time")
 
         assert stepType == "accum", stepType
-        
+
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
         start = base_datetime + datetime.timedelta(hours=startStep)
-        flag = (start == self.start_datetime)
+        flag = start == self.start_datetime
 
         end = base_datetime + datetime.timedelta(hours=endStep)
         flag = flag | (end == self.end_datetime)
-        
+
         return flag
 
     def __repr__(self):
@@ -514,7 +514,7 @@ class Accumulator:
 
     def __init__(self, period_class, valid_date, user_accumulation_period, **kwargs):
         self.valid_date = valid_date
-        
+
         # key contains the mars request parameters except the one related to the time
         # A mars request is a dictionary with three categories of keys:
         #   - the ones related to the time (date, time, step)
@@ -528,7 +528,7 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
-        
+
     @property
     def requests(self) -> dict:
         for period in self.periods:
@@ -537,7 +537,7 @@ class Accumulator:
 
     def is_field_needed(self, field):
         for k, v in self.key.items():
-            metadata = field.metadata(k) if k!='number' else _member(field)
+            metadata = field.metadata(k) if k != "number" else _member(field)
             if metadata != v:
                 LOG.debug(f"{self} does not need field {field} because of {k}={metadata} not {v}")
                 return False
@@ -612,7 +612,7 @@ def _compute_accumulations(
     # building accumulators
     accumulators = []
     overlapping_periods = set()
-    
+
     # one accumulator per valid date, output field and ensemble member
     for valid_date in dates:
         for p in param:
@@ -658,8 +658,8 @@ def _compute_accumulations(
             a.compute(field, values)
 
     for a in accumulators:
-        assert (a.periods.all_done()), f"missing periods for accumulator {a}"
-        
+        assert a.periods.all_done(), f"missing periods for accumulator {a}"
+
     ds = new_fieldlist_from_list([a.out for a in accumulators])
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
