@@ -12,6 +12,6 @@ input:
           stream: oper
           grid: 20./20.
           levtype: sfc
-          param: [ tp , cp]
+          param: [ tp, cp]
           accumulation_period: 6
           data_accumulation_period: 6 # this argument will be ignored

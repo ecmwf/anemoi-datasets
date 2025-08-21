@@ -116,27 +116,9 @@ class Period:
         end_step = int(end_step.total_seconds() // 3600)
 
         return (("date", date), ("time", time), ("step", end_step))
-
-    @property
-    def time_check(self):
-        date = int(self.end_datetime.strftime("%Y%m%d"))
-        time = int(self.end_datetime.strftime("%H%M"))
-
-        end_step = self.end_datetime - self.base_datetime
-        assert end_step.total_seconds() % 3600 == 0, end_step  # only full hours supported in grib/mars
-        end_step = int(end_step.total_seconds() // 3600)
-
-        return (("date", date), ("time", time), ("step", end_step))
-
-    def field_to_key(self, field):
-        return (
-            ("date", field.metadata("date")),
-            ("time", field.metadata("time")),
-            ("step", field.metadata("step")),
-        )
-
-    def check(self, field):
-
+        
+    def is_matching_field(self, field):
+        
         stepType = field.metadata("stepType")
         startStep = field.metadata("startStep")
         endStep = field.metadata("endStep")
@@ -144,17 +126,15 @@ class Period:
         time = field.metadata("time")
 
         assert stepType == "accum", stepType
-
+        
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
-
         start = base_datetime + datetime.timedelta(hours=startStep)
-        assert start == self.start_datetime, (start, self.start_datetime)
+        flag = (start == self.start_datetime)
 
         end = base_datetime + datetime.timedelta(hours=endStep)
-        assert end == self.end_datetime, (end, self.end_datetime)
-
-    def is_matching_field(self, field):
-        return self.field_to_key(field) == self.time_check
+        flag = flag | (end == self.end_datetime)
+        
+        return flag
 
     def __repr__(self):
         return f"Period({self.start_datetime} to {self.end_datetime} -> {self.time_request})"
@@ -168,8 +148,6 @@ class Period:
 
         assert accumulated.shape == values.shape, (accumulated.shape, values.shape)
 
-        # if not np.all(values >= 0):
-        #     warnings.warn(f"Negative values for {values}: {np.amin(values)} {np.amax(values)}")
         return accumulated + self.sign * values
 
 
@@ -273,8 +251,8 @@ class DefaultPeriods(Periods):
         """The default Periods object (as opposed to ERA5/MARS-like periods)
         one Periods object for each accumulated field in the output
         The base_datetime does depend on the valid time, and is not hard-coded
-        The default assumption is that the base datetime for one sample is the datetime of the previous sample in the dataset.
-        It can be user-defined if different
+        IMPORTANT : The default assumption is that the base_datetime for one sample is the datetime of the previous sample in the dataset.
+        It can be user-defined if different. For ERA5/MARS-like, the base_datetime is specific, we have other periods.
         """
 
         self.base_datetime = lambda x: x
@@ -397,7 +375,6 @@ class EraPeriods(Periods):
                     continue
 
                 base_datetime = start - datetime.timedelta(hours=step1)
-
                 period = Period(start, end, base_datetime)
                 found.append(period)
 
@@ -442,7 +419,7 @@ class EraPeriods(Periods):
                 xprint(f"  Found more than one period for {start} {end}")
                 for f in found:
                     xprint(f"    {f}")
-                xprint(f"    Chosing {chosen}")
+                xprint(f"    Chosing {chosen}, base_datetime: {chosen.base_datetime}")
 
             chosen.sign = 1
 
@@ -516,8 +493,7 @@ class OdEnfoPeriods(DiffPeriods):
         raise NotImplementedError("need to implement diff")
 
 
-def find_accumulator_class(request: dict[str, Any]) -> Periods:
-
+def find_period_class(request: dict[str, Any]) -> Periods:
     try:
         return {
             ("ea", "oper"): EaOperPeriods,  # runs ok
@@ -538,8 +514,7 @@ class Accumulator:
 
     def __init__(self, period_class, valid_date, user_accumulation_period, **kwargs):
         self.valid_date = valid_date
-
-        # keep the reference to the output file to be able to write the result using an input field as template
+        
         # key contains the mars request parameters except the one related to the time
         # A mars request is a dictionary with three categories of keys:
         #   - the ones related to the time (date, time, step)
@@ -553,7 +528,7 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         self.periods = period_class(self.valid_date, user_accumulation_period, **kwargs)
-
+        
     @property
     def requests(self) -> dict:
         for period in self.periods:
@@ -562,8 +537,9 @@ class Accumulator:
 
     def is_field_needed(self, field):
         for k, v in self.key.items():
-            if field.metadata(k, default=0) != v:
-                LOG.debug(f"{self} does not need field {field} because of {k}={field.metadata(k,default=0)} not {v}")
+            metadata = field.metadata(k) if k!='number' else _member(field)
+            if metadata != v:
+                LOG.debug(f"{self} does not need field {field} because of {k}={metadata} not {v}")
                 return False
         return True
 
@@ -586,9 +562,7 @@ class Accumulator:
         assert self.periods.is_todo(period), (self.periods, period)
         assert not self.periods.is_done(period), f"Field {field} for period {period} already done"
 
-        period.check(field)
-
-        xprint(f"{self} field ✅ ({period.sign}){field} for {period}")
+        xprint(f"{self} field ✅ ({period.sign}) {field} for {period}")
 
         self.values = period.apply(self.values, values)
         self.periods.set_done(period)
@@ -602,7 +576,7 @@ class Accumulator:
     def write(self, field) -> None:
         assert self.periods.all_done(), self.periods
 
-        if np.all(self.values < 0):
+        if np.any(self.values < 0):
             LOG.warning(
                 f"Negative values when computing accumutation for {self}): min={np.amin(self.values)} max={np.amax(self.values)}"
             )
@@ -631,14 +605,15 @@ def _compute_accumulations(
     user_accumulation_period: datetime.timedelta,
 ) -> Any:
 
-    period_class = find_accumulator_class(request)
+    period_class = find_period_class(request)
 
     request, param, number = _prep_request(request, period_class)
 
-    # build one accumulator per output field
+    # building accumulators
     accumulators = []
     overlapping_periods = set()
-
+    
+    # one accumulator per valid date, output field and ensemble member
     for valid_date in dates:
         for p in param:
             for n in number:
@@ -662,10 +637,11 @@ def _compute_accumulations(
         for r in a.requests:
             requests.append(r)
 
-    # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
+    # these arguments are needed for the database to retrieve the fields with the right valid time
     action.source.kwargs = {"request_already_using_valid_datetime": True, "shift_time_request": True}
     action.source.args = requests
     action.source.context = context
+    # get the data (this will pack the requests to avoid duplicates and make a minimal number of requests)
     ds = action.source.execute(dates)
 
     assert len(ds) / len(param) / len(number) == len(overlapping_periods), (
@@ -674,14 +650,16 @@ def _compute_accumulations(
         f"❌❌❌ error in {action.source}",
     )
 
-    # send each field to the each accumulator, the accumulator will use the field to the accumulation
-    # if the accumulator has requested it
-
+    # send each field to each accumulator
+    # the field will be used only if the accumulator has requested it
     for field in ds:
         values = field.values  # optimisation : reading values only once
         for a in accumulators:
             a.compute(field, values)
 
+    for a in accumulators:
+        assert (a.periods.all_done()), f"missing periods for accumulator {a}"
+        
     ds = new_fieldlist_from_list([a.out for a in accumulators])
     assert len(ds) / len(param) / len(number) == len(dates), (
         len(ds),
@@ -770,7 +748,6 @@ if __name__ == "__main__":
     """
     )
     dates = yaml.safe_load("[2022-12-31 00:00, 2022-12-31 06:00]")
-    # dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
     dates = to_datetime_list(dates)
 
     class Context:
