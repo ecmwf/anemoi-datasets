@@ -27,7 +27,6 @@ from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
 
-xprint = print
 
 def _prep_request(request: dict[str, Any], timeline_class: type[tl.Timeline]) -> dict[str, Any]:
     request = deepcopy(request)
@@ -51,14 +50,10 @@ def _prep_request(request: dict[str, Any], timeline_class: type[tl.Timeline]) ->
         # LOG.warning("'type' should be 'sfc', found %s", request['type'])
         raise NotImplementedError("Only sfc leveltype is supported")
 
-    if timeline_class != tl.DefaultTimeline:
-        _ = request.pop("data_accumulation_period")
-        LOG.warning("Non-default data Timeline (e.g MARS): ignoring data_accumulation_period")
-
     return request, param, number
 
 class Accumulator:
-    values = None
+    values: NDArray | None = None
 
     def __init__(
         self, 
@@ -66,7 +61,23 @@ class Accumulator:
         valid_date: datetime.datetime, 
         user_accumulation_period: datetime.timedelta,
         data_accumulation_period: datetime.timedelta,
-        **kwargs):
+        **kwargs: dict):
+        """
+        Accumulator object for a given param/member/valid_date
+        
+        Parameters:
+        ---------
+        timeline_class: type[tl.Timeline]
+            The type of Timeline that should be used by this accumulator (depends on data source)
+        valid_date: datetime.datetime
+            the valid date at which the Accumulator refers (final value will indicate accumulation up to this date)
+        user_accumulation_period: datetime.timedelta
+            User-defined accumulation period
+        data_accumulation_period: datetime.timedelta,
+            Source data accumulation period
+        **kwargs: dict
+            Additional kwargs coming from accumulation recipe
+        """
         
         self.valid_date = valid_date
 
@@ -82,17 +93,27 @@ class Accumulator:
 
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
+        # instantiate Timeline object
+        if timeline_class != tl.DefaultTimeline:
+            LOG.warning("Non-default data Timeline (e.g MARS): ignoring data_accumulation_period")
+            data_accumulation_period = frequency_to_timedelta('1h') # only to ensure compatibility
         self.timeline = timeline_class(self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs)
         
     @property
     def requests(self) -> dict:
+        """
+        build the full data requests, merging the time requests with the key.
+        This will be used to query the source data database.
+        """
         for period in self.timeline:
-            # build the full data requests, merging the time requests with the key
             yield {**self.kwargs.copy(), **dict(period.time_request)}
 
-    def is_field_needed(self, field):
+    def is_field_needed(self, field: Any):
+        """
+        Check whether the given field is needed by the accumulator (correct param, etc...)
+        """
         for k, v in self.key.items():
-            metadata = field.metadata(k) if k != "number" else _member(field)
+            metadata = field.metadata(k) if k != "number" else utils._member(field)
             if metadata != v:
                 LOG.debug(f"{self} does not need field {field} because of {k}={metadata} not {v}")
                 return False
@@ -101,10 +122,20 @@ class Accumulator:
     def compute(self, field: Any, values: NDArray) -> None:
         """
         Verify the field time metadata, find the associated period
-        and perform accumulation with the values array on this 
+        and perform accumulation with the values array on this period. 
+        Note: values have been extracted from field before the call to `compute`,
+        so values are read from field only once.
 
-        In any case values have been extracted from field
-
+        Parameters:
+        ----------
+        field: Any
+            An earthkit-data-like field
+        values: NDArray
+            Values from the field, will be added to the held values array
+        
+        Return
+        ------
+        None
         """
 
         # check if field has correct parameters for the Accumulator (param, number)
@@ -119,7 +150,7 @@ class Accumulator:
         assert self.timeline.is_todo(period), (self.timeline, period)
         assert not self.timeline.is_done(period), f"Field {field} for period {period} already done"
 
-        xprint(f"{self} field ✅ ({period.sign}) {field} for {period}")
+        print(f"{self} field ✅ ({period.sign}) {field} for {period}")
 
         # actual accumulation computation
         self.values = period.apply(self.values, values)
@@ -129,11 +160,21 @@ class Accumulator:
             # all periods for accumulation have been processed
             # final list of outputs is ready to be updated
             self.write(field)  # field is used as a template
-            xprint("accumulator", self, " : data written ✅ ")
+            print("accumulator", self, " : data written ✅ ")
 
     def write(self, field: Any) -> None:
         """
-        Writing output inside a new field at the end of the accumulation
+        Writing output inside a new field at the end of the accumulation.
+        The field is simply used as a template.
+        
+        Parameters:
+        ----------
+        field: Any
+            An earthkit-data-like field
+        
+        Return
+        ------
+        None
         """
         assert self.timeline.all_done(), self.timeline
 
@@ -168,7 +209,36 @@ def _compute_accumulations(
     user_accumulation_period: datetime.timedelta,
     data_accumulation_period: datetime.timedelta,
     ) -> Any:
-
+    """
+    Concrete accumulation logic.
+    
+    - identify the needed timelines for each date/parameter/member defined in recipe
+    - fetch the source data via a database (mars or grib-index)
+    - create Accumulator objects and fill them will accumulated values from source data
+    - return the datasource with accumulated values
+    
+    Parameters:
+    ----------
+    context: Any,
+        The dataset building context (will be updated with trace of accumulation)
+    dates: list[datetime.datetime]
+        The list of valid dates on which to perform accumulations.
+    action: Any,
+        The abstract AccumulationAction object containing the accumulation source
+    request: dict[str,Any]
+        The parameters from the accumulation recipe, except for user/data accumulation periods
+    user_accumulation_period: datetime.timedelta,
+        The interval over which to accumulate (user-defined)
+    data_accumulation_period: datetime.timedelta
+        The interval over which source data is already accumulated (default 1h if not user-specified, ignored for mars data).
+        
+    Return
+    ------
+    The accumulated datasource for all dates, parameters, members.
+    
+    """
+    
+    # timeline class depends on data source ; split between Era-like timelines and Default ones
     timeline_class = tl.find_timeline_class(request)
 
     request, param, number = _prep_request(request, timeline_class)
@@ -239,8 +309,36 @@ def _compute_accumulations(
     return ds
 
 @legacy_source(__file__)
-def accumulations(context, dates, action, **request):
-    utils._to_list(request["param"])
+def accumulations(
+    context: Any,
+    dates: list[datetime.datetime],
+    action: Any,
+    **request: dict[str, Any]
+    ) -> Any:
+    """
+    Accumulation source callable function.
+    Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
+    
+    Parameters:
+    ----------
+    context: Any,
+        The dataset building context (will be updated with trace of accumulation)
+    dates: list[datetime.datetime]
+        The list of valid dates on which to perform accumulations.
+    action: Any,
+        The abstract AccumulationAction object containing the accumulation source
+    request: dict[str,Any]
+        The parameters from the accumulation recipe
+        
+    Return
+    ------
+    The accumulated data source.
+    
+    """
+    try:
+        utils._to_list(request["param"])
+    except KeyError:
+        raise ValueError("Accumulate action should provide at least one `param`, found none.")
     try:
         user_accumulation_period = request.pop("accumulation_period")
         data_accumulation_period = request.pop("data_accumulation_period", "1h")
@@ -257,7 +355,6 @@ def accumulations(context, dates, action, **request):
         user_accumulation_period=frequency_to_timedelta(user_accumulation_period),
         data_accumulation_period=frequency_to_timedelta(data_accumulation_period)
     )
-
 
 execute = accumulations
 

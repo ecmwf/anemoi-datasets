@@ -35,12 +35,12 @@ class TodoList:
 def _member(field: Any) -> int:
     """Retrieves the member number from the field metadata.
 
-    Parameters
+    Parameters:
     ----------
     field : Any
         The field from which to retrieve the member number.
 
-    Returns
+    Return:
     -------
     int
         The member number.
@@ -54,12 +54,12 @@ def _member(field: Any) -> int:
 def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
-    Parameters
+    Parameters:
     ----------
     x : Union[List[Any], Tuple[Any], Any]
         Input value.
 
-    Returns
+    Return:
     -------
     List[Any]
         The input value as a list.
@@ -72,12 +72,12 @@ def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
 def _scda(request: dict[str, Any]) -> dict[str, Any]:
     """Modifies the request stream based on the time.
 
-    Parameters
+    Parameters:
     ----------
     request : dict[str, Any]
         Request parameters.
 
-    Returns
+    Return:
     -------
     dict[str, Any]
         The modified request parameters.

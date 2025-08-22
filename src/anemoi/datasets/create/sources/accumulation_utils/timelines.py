@@ -17,14 +17,28 @@ from .utils import TodoList
 from numpy.typing import NDArray
 
 class Period:
-    value = None
-
+    sign: int | None = None
+    
     def __init__(
         self,
         start_datetime: datetime.datetime, 
         end_datetime: datetime.datetime, 
         base_datetime: datetime.datetime
     ):
+        """
+        Defining an insecable time segment carrying all temporal information.
+        
+        Parameters:
+        ----------
+        start_datetime: datetime.datetime
+            the date and hour at which the period starts
+        end_datetime: datetime.datetime
+            the date and hour at which the period ends
+        base_datetime: datetime.datetime
+            the date and hour referring to the beginning of the forecast run that has produced the data
+            At this base_datetime, the accumulation of the forecast is zero.
+            In the case of DefaultTimelines, this is equal to start_datetime.
+        """
         assert isinstance(start_datetime, datetime.datetime)
         assert isinstance(end_datetime, datetime.datetime)
         assert isinstance(base_datetime, datetime.datetime)
@@ -33,6 +47,9 @@ class Period:
         self.end_datetime = end_datetime
 
         self.base_datetime = base_datetime
+        
+        assert base_datetime <= start_datetime, "invalid base/start dates for Period"
+        assert start_datetime <= end_datetime, "invalid start/end dates for Period"
 
     def __eq__(self, other: Any):
         if not isinstance(other, Period):
@@ -47,7 +64,16 @@ class Period:
         return hash((self.start_datetime, self.end_datetime, self.base_datetime))
 
     @property
-    def time_request(self):
+    def time_request(self) -> tuple:
+        """
+        Create a formatted time request for the database.
+        
+        Return
+        ------
+        tuple
+            date, time, step : date and time of the period end
+            and number of steps (in hours) from base_datetime to end_datetime
+        """
         date = int(self.end_datetime.strftime("%Y%m%d"))
         time = int(self.end_datetime.strftime("%H%M"))
 
@@ -57,15 +83,18 @@ class Period:
 
         return (("date", date), ("time", time), ("step", end_step))
         
-    def is_matching_field(self, field):
-        
+    def is_matching_field(self, field: Any):
+        """
+        Check whether a given field matches the current Period 
+        in terms of timestamps.
+        """
         stepType = field.metadata("stepType")
         startStep = field.metadata("startStep")
         endStep = field.metadata("endStep")
         date = field.metadata("date")
         time = field.metadata("time")
 
-        assert stepType == "accum", stepType
+        assert stepType == "accum", f"Not an accumulated variable: {stepType}"
         
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
         start = base_datetime + datetime.timedelta(hours=startStep)
@@ -80,11 +109,27 @@ class Period:
         return f"Period({self.start_datetime} to {self.end_datetime} -> {self.time_request})"
 
     def length(self):
+        """
+        Time length of the period
+        """
         return self.end_datetime - self.start_datetime
 
-    def apply(self, accumulated: NDArray | None, values: NDArray) ->NDArray:
+    def apply(self, accumulated: NDArray | None, values: NDArray) -> NDArray:
         """
         Actual accumulation computation, from a previously accumulated array and a new values array
+        
+        Parameters:
+        ----------
+        accumulated: NDArray
+            Previously accumulated values
+            
+        values: NDArray
+            Values to be accumulated.
+            
+        Return
+        ------
+        
+        NDArray: new accumulated values
         """
         if accumulated is None:
             accumulated = np.zeros_like(values)
@@ -94,20 +139,21 @@ class Period:
         return accumulated + self.sign * values
 
 class Timeline:
-    _todo = None
+    _todo: TodoList | None = None
 
     def __init__(
         self, 
         valid_date: datetime.datetime,
         accumulation_period: datetime.timedelta,
-        data_accumulation_period: datetime.timedelta
+        data_accumulation_period: datetime.timedelta,
+        **kwargs: dict
         ):
         """
         The Timeline object identifies the steps to accumulate on a valid date over an accumulation_period
         This Timeline is made of several consecutive Period objects.
         There is one Timeline object for each accumulated field in the output.
          
-        Parameters
+        Parameters:
         ----------
         valid_date : datetime.datetime
             The valid date for which accumulation is computed
@@ -156,15 +202,15 @@ class Timeline:
         """
         For a given field with accumulation, find a period in the Timeline that matches the field metadata
         
-        Parameters :
+        Parameters:
         ----------
         
         field: Any
             The field for which a Period is looked after
             The field originates from the database which reflects the initial dataset
         
-        Returns :
-        ----------
+        Return: :
+        ---------
         
         Period : the corresponding period in the Timeline
         None : if there is no matching period (field outside of Timeline)
@@ -213,7 +259,7 @@ class DefaultTimeline(Timeline):
                  valid_date: datetime.datetime,
                  accumulation_period: datetime.timedelta,
                  data_accumulation_period: datetime.timedelta,
-                 **kwargs
+                 **kwargs: dict
         ):
         """
         The default Timeline object (as opposed to ERA5/MARS-like periods)
@@ -221,21 +267,23 @@ class DefaultTimeline(Timeline):
         IMPORTANT : The default assumption is that the base_datetime for one sample is the datetime of the previous sample in the dataset.
         It can be user-defined if different. For ERA5/MARS-like, the base_datetime is specific and requires different Timelines.
         
-        Parameters
+        Parameters:
         ----------
         valid_date: datetime.datetime
-
+            Validity date of the timeline
         accumulation_period: datetime.timedelta,
-
-        data_accumulation_period: datetime.timedelta,
-      
+            User-defined accumulation period
+        data_accumulation_period: datetime.timedelta
+            Source data accumulation period
+        kwargs: dict
+            Additional parameters, among which an optional base_datetime: str
         """
 
         self.base_datetime = lambda x: x
 
         # base datetime can either be user-defined or default to the starting step of accumulation
         if "base_datetime" in kwargs:
-            base = int(kwargs["base_datetime"])
+            base = frequency_to_timedelta(kwargs["base_datetime"])
             self.base_datetime = lambda x: base
 
         super().__init__(valid_date, accumulation_period, data_accumulation_period)
@@ -246,15 +294,17 @@ class DefaultTimeline(Timeline):
         start: datetime.datetime,
         end: datetime.datetime
     ) -> dict[datetime.datetime, list[datetime.datetime]]:
-        """Return the steps available to build/search an available period
+        
+        """Return the timeline time steps available to build/search an available period
 
         Parameters:
         ----------
-            base (int): start of the forecast producing accumulations
-            start (int): step (=leadtime) from the forecast where accumulation begins
-            end (int): step (=leadtime) from the forecast where accumulation ends
-        Returns:
-        --------
+            base (datetime.datetime): start of the forecast producing accumulations
+            start (datetime.datetime): step (=leadtime) from the forecast where period begins
+            end (datetime.datetime): step (=leadtime) from the forecast where period ends
+            
+        Return:
+        -------
             _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
 
         """
@@ -266,43 +316,9 @@ class DefaultTimeline(Timeline):
             t += self.data_accumulation_period
         return {base: list_avail}
 
-    def search_periods(self, base: datetime.datetime, start: datetime.datetime, end: datetime.datetime, debug=False):
+    def build_periods(self) -> list[Period]:
         """
-        find candidate periods in the dataset that can be used to accumulate the data
-        to get the accumulation between the two dates 'start' and 'end'
-        # the periods 
-        """
-        found = []
-
-        for base_time, steps in self.available_steps(base, start, end).items():
-
-            for step1, step2 in steps:
-                if debug:
-                    xprint(f"❌ tring: {base_time=} {step1=} {step2=}")
-
-                base_datetime = start - step1
-
-                period = Period(start, end, base_datetime)
-                found.append(period)
-
-                assert base_datetime.hour == base_time.hour, (base_datetime, base_time)
-
-                assert period.start_datetime - period.base_datetime == step1, (
-                    period.end_datetime,
-                    period.base_datetime,
-                    step1,
-                )
-                assert period.end_datetime - period.base_datetime == step2, (
-                    period.start_datetime,
-                    period.base_datetime,
-                    step2,
-                )
-
-        return found
-
-    def build_periods(self):
-        """
-        build the list of periods to accumulate the data
+        Build the list of periods to accumulate the data on the Timeline
         """
 
         assert (
@@ -320,32 +336,45 @@ class DefaultTimeline(Timeline):
             if not end - start == self.data_accumulation_period:
                 raise NotImplementedError(f"end and start must be {self.data_accumulation_period} apart")
 
-            found = self.search_periods(self.base_datetime(start), start, end)
+            found = Period(start, end, self.base_datetime(start))
             
             if not found:
-                xprint(f"❌❌❌ Cannot find accumulation period for {start} {end}")
+                print(f"❌❌❌ Cannot find accumulation period for {start} {end}")
                 self.search_periods(self.base_datetime(start), wanted[0], wanted[1], debug=True)
                 raise ValueError(f"Cannot find accumulation period for {start} {end}")
 
-            found = sorted(found, key=lambda x: x.base_datetime, reverse=True)
-            chosen = found[0]
+            found.sign = 1
 
-            if len(found) > 1:
-                xprint(f"  Found more than one period for {start} {end}")
-                for f in found:
-                    xprint(f"    {f}")
-                xprint(f"    Chosing {chosen}")
-
-            chosen.sign = 1
-
-            lst.append(chosen)
+            lst.append(found)
         return lst
 
 
 class EraTimeline(Timeline):
-    def search_periods(self, start, end, debug=False):
-        # find candidate periods that can be used to accumulate the data
-        # to get the accumulation between the two dates 'start' and 'end'
+    def search_periods(
+        self, 
+        start: datetime.datetime,
+        end: datetime.datetime,
+        debug: bool=False) -> list[Period]:
+        """
+        Find candidate periods that can be used to accumulate the data
+        between the two dates 'start' and 'end'.
+        Depending on the ERA configuration, one might have several corresponding periods with the same dates.
+        
+        Parameters:
+        -----------
+        start: datetime.datetime
+            starting date for the period
+        end: datetime.datetime
+            end date for the period
+        debug: bool, default
+            print debug information
+        
+        Return:
+        -------
+        
+        found: list[Period]
+            The list of matching periods
+        """
         found = []
         if not end - start == datetime.timedelta(hours=1):
             raise NotImplementedError("Only 1 hour period is supported")
@@ -353,7 +382,7 @@ class EraTimeline(Timeline):
         for base_time, steps in self.available_steps(start, end).items():
             for step1, step2 in steps:
                 if debug:
-                    xprint(f"❌ tring: {base_time=} {step1=} {step2=}")
+                    print(f"❌ tring: {base_time=} {step1=} {step2=}")
 
                 if ((base_time + step1) % 24) != start.hour:
                     continue
@@ -380,8 +409,10 @@ class EraTimeline(Timeline):
 
         return found
 
-    def build_periods(self):
-        # build the list of periods to accumulate the data
+    def build_periods(self) -> list[Period]:
+        """
+        Build the list of periods to accumulate the data on the Timeline
+        """
 
         hours = self.accumulation_period.total_seconds() / 3600
         assert int(hours) == hours, f"Only full hours accumulation is supported {hours}"
@@ -395,18 +426,19 @@ class EraTimeline(Timeline):
 
             found = self.search_periods(start, end)
             if not found:
-                xprint(f"❌❌❌ Cannot find accumulation for {start} {end}")
+                print(f"❌❌❌ Cannot find accumulation for {start} {end}")
                 self.search_periods(start, end, debug=True)
                 raise ValueError(f"Cannot find accumulation for {start} {end}")
 
+            # choosing most recent forecast
             found = sorted(found, key=lambda x: x.base_datetime, reverse=True)
             chosen = found[0]
 
             if len(found) > 1:
-                xprint(f"  Found more than one period for {start} {end}")
+                print(f"  Found more than one period for {start} {end}")
                 for f in found:
-                    xprint(f"    {f}")
-                xprint(f"    Chosing {chosen}, base_datetime: {chosen.base_datetime}")
+                    print(f"    {f}")
+                print(f"    Chosing {chosen}, base_datetime: {chosen.base_datetime}")
 
             chosen.sign = 1
 
@@ -415,7 +447,19 @@ class EraTimeline(Timeline):
 
 
 class EaOperTimeline(EraTimeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end) -> dict:
+        """Return the timeline time steps available to build/search an available period
+
+        Parameters:
+        ----------
+            start (datetime.datetime): step (=leadtime) from the forecast where period begins
+            end (datetime.datetime): step (=leadtime) from the forecast where period ends
+            
+        Return:
+        -------
+            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+
+        """
         return {
             6: [[i, i + 1] for i in range(0, 18, 1)],
             18: [[i, i + 1] for i in range(0, 18, 1)],
@@ -423,7 +467,19 @@ class EaOperTimeline(EraTimeline):
 
 
 class L5OperTimeline(EraTimeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end) -> dict:
+        """Return the timeline time steps available to build/search an available period
+
+        Parameters:
+        ----------
+            start (datetime.datetime): step (=leadtime) from the forecast where period begins
+            end (datetime.datetime): step (=leadtime) from the forecast where period ends
+            
+        Return:
+        -------
+            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+
+        """
         print("❌❌❌ untested")
         x = 24  # need to check if 24 is the right value
         return {
@@ -432,7 +488,19 @@ class L5OperTimeline(EraTimeline):
 
 
 class EaEndaTimeline(EraTimeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end) -> dict:
+        """Return the timeline time steps available to build/search an available period
+
+        Parameters:
+        ----------
+            start (datetime.datetime): step (=leadtime) from the forecast where period begins
+            end (datetime.datetime): step (=leadtime) from the forecast where period ends
+            
+        Return:
+        -------
+            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+
+        """
         print("❌❌❌ untested")
         return {
             6: [[i, i + 3] for i in range(0, 18, 1)],
@@ -441,7 +509,19 @@ class EaEndaTimeline(EraTimeline):
 
 
 class RrOperTimeline(Timeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end) -> dict:
+        """Return the timeline time steps available to build/search an available period
+
+        Parameters:
+        ----------
+            start (datetime.datetime): step (=leadtime) from the forecast where period begins
+            end (datetime.datetime): step (=leadtime) from the forecast where period ends
+            
+        Return:
+        -------
+            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+
+        """
         raise NotImplementedError("need to implement diff")
         x = 24  # todo: check if 24 is the right value
         return {
@@ -457,7 +537,19 @@ class RrOperTimeline(Timeline):
 
 
 class OdEldaTimeline(EraTimeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end)  -> dict:
+        """Return the timeline time steps available to build/search an available period
+
+        Parameters:
+        ----------
+            start (datetime.datetime): step (=leadtime) from the forecast where period begins
+            end (datetime.datetime): step (=leadtime) from the forecast where period ends
+            
+        Return:
+        -------
+            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
+
+        """
         print("❌❌❌ untested")
         x = 24  # need to check if 24 is the right value
         return {
@@ -471,16 +563,25 @@ class DiffTimeline(Timeline):
 
 
 class OdOperTimeline(DiffTimeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end) -> dict:
         raise NotImplementedError("need to implement diff and _scda patch (cf accumulation_utils.utils)")
 
 
 class OdEnfoTimeline(DiffTimeline):
-    def available_steps(self, start, end):
+    def available_steps(self, start, end) -> dict:
         raise NotImplementedError("need to implement diff")
 
 
 def find_timeline_class(request: dict[str, Any]) -> type[Timeline]:
+    """
+    Find the appropriate Timeline class given the recipe's parameters
+    
+    Parameters:
+    ----------
+    request: dict[str, Any]
+        The recipes request parameters
+
+    """
     try:
         return {
             ("ea", "oper"): EaOperTimeline,  # runs ok
