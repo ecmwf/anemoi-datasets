@@ -16,7 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .utils import TodoList
-
+from anemoi.utils.dates import frequency_to_timedelta
 
 class Period:
     sign: int | None = None
