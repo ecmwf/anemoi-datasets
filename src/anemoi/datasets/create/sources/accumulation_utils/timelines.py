@@ -65,12 +65,6 @@ class Period:
     @property
     def time_request(self) -> tuple:
         """Create a formatted time request for the database.
-
-        Return
-        ------
-        tuple
-            date, time, step : date and time of the period end
-            and number of steps (in hours) from base_datetime to end_datetime
         """
         date = int(self.end_datetime.strftime("%Y%m%d"))
         time = int(self.end_datetime.strftime("%H%M"))
@@ -116,7 +110,6 @@ class Period:
         ----------
         accumulated: NDArray
             Previously accumulated values
-
         values: NDArray
             Values to be accumulated.
 
