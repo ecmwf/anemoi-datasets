@@ -10,7 +10,6 @@
 from copy import deepcopy
 from functools import cached_property
 from typing import Any
-from typing import Union
 
 from anemoi.datasets.create.input.context.field import FieldContext
 
@@ -18,7 +17,7 @@ from anemoi.datasets.create.input.context.field import FieldContext
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: dict, **kwargs: Any) -> None:
+    def __init__(self, config: dict, data_sources: dict | list, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
@@ -65,7 +64,7 @@ class InputBuilder:
         return self.action.python_code(code)
 
 
-def build_input(config: dict, data_sources: Union[dict, list], **kwargs: Any) -> InputBuilder:
+def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
     """Build an InputBuilder instance.
 
     Parameters

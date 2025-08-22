@@ -8,8 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-from typing import List
 
 Date = datetime.datetime
 
-DateList = List[Date]
+DateList = list[Date]

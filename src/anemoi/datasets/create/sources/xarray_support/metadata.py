@@ -12,8 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import Optional
 
 from anemoi.utils.dates import as_datetime
 from earthkit.data.core.geography import Geography
@@ -65,7 +63,7 @@ class XArrayMetadata(RawMetadata):
         """Get the geography information for the field."""
         return XArrayFieldGeography(self._field, self._field.owner.grid)
 
-    def as_namespace(self, namespace: Optional[str] = None) -> Dict[str, Any]:
+    def as_namespace(self, namespace: str | None = None) -> dict[str, Any]:
         """Get the metadata as a specific namespace.
 
         Parameters
@@ -87,7 +85,7 @@ class XArrayMetadata(RawMetadata):
         elif namespace == "mars":
             return self._as_mars()
 
-    def _as_mars(self) -> Dict[str, Any]:
+    def _as_mars(self) -> dict[str, Any]:
         """Get the metadata as MARS namespace.
 
         Returns
@@ -97,7 +95,7 @@ class XArrayMetadata(RawMetadata):
         """
         return {}
 
-    def _base_datetime(self) -> Optional[datetime.datetime]:
+    def _base_datetime(self) -> datetime.datetime | None:
         """Get the base datetime for the field.
 
         Returns
@@ -107,7 +105,7 @@ class XArrayMetadata(RawMetadata):
         """
         return self._field.forecast_reference_time
 
-    def _valid_datetime(self) -> Optional[datetime.datetime]:
+    def _valid_datetime(self) -> datetime.datetime | None:
         """Get the valid datetime for the field.
 
         Returns
@@ -173,7 +171,7 @@ class XArrayFieldGeography(Geography):
         """
         raise NotImplementedError()
 
-    def latitudes(self, dtype: Optional[type] = None) -> Any:
+    def latitudes(self, dtype: type | None = None) -> Any:
         """Get the latitudes for the field.
 
         Parameters
@@ -191,7 +189,7 @@ class XArrayFieldGeography(Geography):
             return result.astype(dtype)
         return result
 
-    def longitudes(self, dtype: Optional[type] = None) -> Any:
+    def longitudes(self, dtype: type | None = None) -> Any:
         """Get the longitudes for the field.
 
         Parameters
@@ -209,7 +207,7 @@ class XArrayFieldGeography(Geography):
             return result.astype(dtype)
         return result
 
-    def resolution(self) -> Optional[Any]:
+    def resolution(self) -> Any | None:
         """Get the resolution for the field.
 
         Returns
@@ -220,7 +218,7 @@ class XArrayFieldGeography(Geography):
         # TODO: implement resolution
         return None
 
-    def mars_grid(self) -> Optional[Any]:
+    def mars_grid(self) -> Any | None:
         """Get the MARS grid for the field.
 
         Returns
@@ -231,7 +229,7 @@ class XArrayFieldGeography(Geography):
         # TODO: implement mars_grid
         return None
 
-    def mars_area(self) -> Optional[Any]:
+    def mars_area(self) -> Any | None:
         """Get the MARS area for the field.
 
         Returns
@@ -243,7 +241,7 @@ class XArrayFieldGeography(Geography):
         # return [self.north, self.west, self.south, self.east]
         return None
 
-    def x(self, dtype: Optional[type] = None) -> None:
+    def x(self, dtype: type | None = None) -> None:
         """Get the x-coordinates for the field.
 
         Parameters
@@ -258,7 +256,7 @@ class XArrayFieldGeography(Geography):
         """
         raise NotImplementedError()
 
-    def y(self, dtype: Optional[type] = None) -> None:
+    def y(self, dtype: type | None = None) -> None:
         """Get the y-coordinates for the field.
 
         Parameters

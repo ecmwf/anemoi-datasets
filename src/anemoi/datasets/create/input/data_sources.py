@@ -10,9 +10,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Union
 
 from earthkit.data import FieldList
 
@@ -31,9 +28,9 @@ class DataSourcesAction(Action):
     def __init__(
         self,
         context: object,
-        action_path: List[str],
-        sources: Union[Dict[str, Any], List[Dict[str, Any]]],
-        input: Dict[str, Any],
+        action_path: list[str],
+        sources: dict[str, Any] | list[dict[str, Any]],
+        input: dict[str, Any],
     ) -> None:
         """Initializes a DataSourcesAction instance.
 
@@ -99,10 +96,10 @@ class DataSourcesResult(Result):
     def __init__(
         self,
         context: object,
-        action_path: List[str],
+        action_path: list[str],
         dates: object,
         input_result: Result,
-        sources_results: List[Result],
+        sources_results: list[Result],
     ) -> None:
         """Initializes a DataSourcesResult instance.
 

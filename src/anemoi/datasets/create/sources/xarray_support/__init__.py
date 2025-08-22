@@ -10,10 +10,6 @@
 import datetime
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
 
 import earthkit.data as ekd
 import xarray as xr
@@ -27,7 +23,7 @@ from .fieldlist import XarrayFieldList
 LOG = logging.getLogger(__name__)
 
 
-def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
+def check(what: str, ds: xr.Dataset, paths: list[str], **kwargs: Any) -> None:
     """Checks if the dataset has the expected number of fields.
 
     Parameters
@@ -53,12 +49,12 @@ def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
 def load_one(
     emoji: str,
     context: Any,
-    dates: List[str],
-    dataset: Union[str, xr.Dataset],
+    dates: list[str],
+    dataset: str | xr.Dataset,
     *,
-    options: Optional[Dict[str, Any]] = None,
-    flavour: Optional[str] = None,
-    patch: Optional[Any] = None,
+    options: dict[str, Any] | None = None,
+    flavour: str | None = None,
+    patch: Any | None = None,
     **kwargs: Any,
 ) -> ekd.FieldList:
     """Loads a single dataset.
@@ -124,7 +120,7 @@ def load_one(
     return result
 
 
-def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
+def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
     """Loads multiple datasets.
 
     Parameters
@@ -154,7 +150,7 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
 
 
 @legacy_source("xarray")
-def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Executes the loading of datasets.
 
     Parameters
