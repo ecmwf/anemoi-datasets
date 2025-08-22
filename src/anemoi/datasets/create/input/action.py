@@ -118,7 +118,7 @@ class Function(Action):
 
         config["_type"] = self.name  # Find a better way to do this
 
-        source = self.create_object(config)
+        source = self.create_object(context, config)
 
         return context.register(self.call_object(context, source, argument), self.path)
 
@@ -131,37 +131,27 @@ class Function(Action):
 
 
 class DatasetSourceMixin:
-    def create_object(self, config):
+    def create_object(self, context, config):
         from anemoi.datasets.create.sources import create_source as create_datasets_source
 
-        return create_datasets_source(self, config)
+        return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(context, context.source_argument(argument))
-
-
-class DatasetFilterMixin:
-    def create_object(self, config):
-        from anemoi.datasets.create.filters import create_filter as create_datasets_filter
-
-        return create_datasets_filter(self, config)
-
-    def call_object(self, context, filter, argument):
-        return filter.execute(context.filter_argument(argument))
+        return source.execute(context.source_argument(argument))
 
 
 class TransformSourceMixin:
-    def create_object(self, config):
+    def create_object(self, context, config):
         from anemoi.transform.sources import create_source as create_transform_source
 
-        return create_transform_source(self, config)
+        return create_transform_source(context, config)
 
 
 class TransformFilterMixin:
-    def create_object(self, config):
+    def create_object(self, context, config):
         from anemoi.transform.filters import create_filter as create_transform_filter
 
-        return create_transform_filter(self, config)
+        return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
         return filter.forward(context.filter_argument(argument))
