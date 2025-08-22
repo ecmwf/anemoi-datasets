@@ -759,6 +759,9 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         if attributes.standard_name == "atmosphere_hybrid_sigma_pressure_coordinate":
             return LevelCoordinate(c, "ml")
 
+        if attributes.standard_name == "model_level_number":
+            return LevelCoordinate(c, "ml")
+
         if attributes.long_name == "height" and attributes.units == "m":
             return LevelCoordinate(c, "height")
 
