@@ -13,10 +13,11 @@ from abc import abstractmethod
 from typing import Any
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from .utils import TodoList
-from anemoi.utils.dates import frequency_to_timedelta
+
 
 class Period:
     sign: int | None = None
