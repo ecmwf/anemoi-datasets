@@ -17,12 +17,12 @@ This depends on the data's native format. For an accumulated field (say `tp` for
 - the `data_accumulation_period`, that is the duration over which the data is already accumulated.
 
 The resulting field is then "`tp` accumulated over `accumulation_period` hours up to `validity_time`".
-In a common case, dataset features, e.g., 1h-accumulated `tp` at a 1 hour frequency, and each raw file features `tp` as accumulated over the *last* hour. 
+In a common case, dataset features, e.g., 1h-accumulated `tp` at a 1 hour frequency, and each raw file features `tp` as accumulated over the *last* hour.
 So having 6h-accumulated `tp` consists in taking all 6 files before (and including) `validity_time` and summing fields in them.
 
 The resulting accumulated field can be treated as a normal anemoi `source` in recipes (e.g, filters can be applied to the source).
 
-Note that depending on how your native dataset is built (e.g, your native files feature the accumulation on the *next* hour), the calculation can be very different. 
+Note that depending on how your native dataset is built (e.g, your native files feature the accumulation on the *next* hour), the calculation can be very different.
 See $Subtleties below with the associated recipes.
 
 ***************************************
@@ -92,7 +92,7 @@ The resulting dataset is:
    🔋 Dataset ready, last update 3 minutes ago.
    📊 Statistics ready.
 
-Note that statitics for the two datasets are equal up to `1e-6`, this is due to rounding errors that can accumulate. 
+Note that statitics for the two datasets are equal up to `1e-6`, this is due to rounding errors that can accumulate.
 Larger discrepancies are a sign something might be wrong.
 
 *********************************************
@@ -107,7 +107,7 @@ that creates a database to query fields. Then, say we want to accumulate 3h-data
 
 .. literalinclude::  yaml/recipe-accumulate-gribindex.yaml
 
-Note that we also added a filter at the end of the recipe to rename `tp` to `tp_6h`. 
+Note that we also added a filter at the end of the recipe to rename `tp` to `tp_6h`.
 The frequency of the dataset is `1h`, so the accumulation is a moving window.
 
 ************

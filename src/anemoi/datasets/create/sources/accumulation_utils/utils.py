@@ -9,6 +9,7 @@
 
 from typing import Any
 
+
 class TodoList:
     def __init__(self, keys):
         self._todo = set(keys)
@@ -31,7 +32,8 @@ class TodoList:
             assert len(self._done) == self._len, (len(self._done), self._len)
             return True
         return False
-    
+
+
 def _member(field: Any) -> int:
     """Retrieves the member number from the field metadata.
 
@@ -50,6 +52,7 @@ def _member(field: Any) -> int:
     if number is None:
         number = 0
     return number
+
 
 def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.

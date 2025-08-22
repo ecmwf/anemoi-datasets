@@ -50,6 +50,7 @@ def test_grib(get_test_data: callable) -> None:
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
 
+
 @pytest.mark.slow
 @skip_if_offline
 def test_accumulate_grib_index(get_test_data: callable) -> None:
