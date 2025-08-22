@@ -64,8 +64,7 @@ class Period:
 
     @property
     def time_request(self) -> tuple:
-        """Create a formatted time request for the database.
-        """
+        """Create a formatted time request for the database."""
         date = int(self.end_datetime.strftime("%Y%m%d"))
         time = int(self.end_datetime.strftime("%H%M"))
 
