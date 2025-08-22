@@ -242,7 +242,6 @@ def make(key, config, *path):
         from anemoi.transform.filters import filter_registry as transform_filter_registry
         from anemoi.transform.sources import source_registry as transform_source_registry
 
-        from anemoi.datasets.create.filters import filter_registry as dataset_filter_registry
         from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
         # Register sources, local first
@@ -254,11 +253,7 @@ def make(key, config, *path):
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_source(name, TransformSourceMixin)
 
-        # Register filters, local first
-        for name in dataset_filter_registry.registered:
-            if name not in KLASS:
-                KLASS[name.replace("_", "-")] = new_filter(name, DatasetFilterMixin)
-
+        # Register filters
         for name in transform_filter_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_filter(name, TransformFilterMixin)

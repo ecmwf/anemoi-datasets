@@ -32,6 +32,7 @@ class FieldContext(Context):
         self.flatten_grid = flatten_grid
         self.remapping = build_remapping(remapping)
         self.use_grib_paramid = use_grib_paramid
+        self.partial_ok = False
 
     def empty_result(self) -> Any:
         import earthkit.data as ekd
