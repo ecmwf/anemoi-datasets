@@ -135,6 +135,20 @@ def _normalise_time(t: int | str) -> str:
     return f"{t:04d}"
 
 
+def _shift_time_request(request: dict[str, int]) -> dict[str, int]:
+    date = request.get("date")
+    time = request.get("time")
+    step = request.get("step")
+
+    end_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
+    base_datetime = end_datetime - datetime.timedelta(hours=step)
+
+    request["date"] = int(base_datetime.strftime("%Y%m%d"))
+    request["time"] = int(base_datetime.strftime("%H%M"))
+
+    return request
+
+
 def _expand_mars_request(
     request: dict[str, Any],
     date: datetime.datetime,
@@ -145,7 +159,7 @@ def _expand_mars_request(
 
     Parameters
     ----------
-    request : Dict[str, Any]
+    request : dict[str, Any]
         The input MARS request.
     date : datetime.datetime
         The date to be used in the request.
@@ -156,7 +170,7 @@ def _expand_mars_request(
 
     Returns
     -------
-    List[Dict[str, Any]]
+    List[dict[str, Any]]
         A list of expanded MARS requests.
     """
     requests = []
@@ -173,7 +187,12 @@ def _expand_mars_request(
 
         user_date = request.get(date_key)
         if user_date is not None:
-            assert isinstance(user_date, str), user_date
+            if isinstance(user_date, int):
+                user_date = str(user_date)
+            elif isinstance(user_date, datetime.datetime):
+                user_date = user_date.strftime("%Y%m%d")
+            else:
+                raise ValueError(f"Invalid type for {user_date}")
             user_date = re.compile("^{}$".format(user_date.replace("-", "").replace("?", ".")))
 
     for step in user_step:
@@ -221,6 +240,7 @@ def factorise_requests(
     dates: list[datetime.datetime],
     *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
+    shift_time_request: bool = False,
     date_key: str = "date",
 ) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
@@ -229,22 +249,23 @@ def factorise_requests(
     ----------
     dates : List[datetime.datetime]
         The list of dates to be used in the requests.
-    requests : Dict[str, Any]
+    requests : List[dict[str, Any]]
         The input requests to be factorized.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
+    shift_time_request: bool, optional
+        Flag to shift request valid time request from end to base time, default False
     date_key : str, optional
         The key for the date in the requests.
 
     Returns
     -------
-    Generator[Dict[str, Any], None, None]
+    Generator[dict[str, Any], None, None]
         Factorized requests.
     """
     updates = []
     for req in requests:
-        # req = normalise_request(req)
-
+        req = _shift_time_request(req) if shift_time_request else req
         for d in dates:
             updates += _expand_mars_request(
                 req,
@@ -269,12 +290,12 @@ def use_grib_paramid(r: dict[str, Any]) -> dict[str, Any]:
 
     Parameters
     ----------
-    r : Dict[str, Any]
+    r : dict[str, Any]
         The input request containing parameter short names.
 
     Returns
     -------
-    Dict[str, Any]
+    dict[str, Any]
         The request with parameter IDs.
     """
     from anemoi.utils.grib import shortname_to_paramid
@@ -364,6 +385,7 @@ def mars(
     dates: list[datetime.datetime],
     *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
+    shift_time_request: bool = False,
     date_key: str = "date",
     use_cdsapi_dataset: str | None = None,
     **kwargs: Any,
@@ -376,10 +398,12 @@ def mars(
         The context for the requests.
     dates : List[datetime.datetime]
         The list of dates to be used in the requests.
-    requests : Dict[str, Any]
+    requests : dict[str, Any]
         The input requests to be executed.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
+    shift_time_request: bool, optional
+        Flag to shift request valid time request from end to base time, default False
     date_key : str, optional
         The key for the date in the requests.
     use_cdsapi_dataset : Optional[str], optional
@@ -425,6 +449,7 @@ def mars(
             dates,
             *requests,
             request_already_using_valid_datetime=request_already_using_valid_datetime,
+            shift_time_request=shift_time_request,
             date_key=date_key,
         )
 
@@ -460,7 +485,6 @@ def mars(
 
 
 execute = mars
-
 
 if __name__ == "__main__":
     import yaml
