@@ -104,18 +104,6 @@ class Period:
 
     def apply(self, accumulated: NDArray | None, values: NDArray) -> NDArray:
         """Actual accumulation computation, from a previously accumulated array and a new values array
-
-        Parameters:
-        ----------
-        accumulated: NDArray
-            Previously accumulated values
-        values: NDArray
-            Values to be accumulated.
-
-        Return
-        ------
-
-        NDArray: new accumulated values
         """
         if accumulated is None:
             accumulated = np.zeros_like(values)
