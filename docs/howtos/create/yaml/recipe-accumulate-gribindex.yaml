@@ -14,4 +14,5 @@ input:
             - tp
             accumulation_period: 6
             data_accumulation_period: 3
-    - remove_nans: {}
+    - rename:
+        tp: tp_6h

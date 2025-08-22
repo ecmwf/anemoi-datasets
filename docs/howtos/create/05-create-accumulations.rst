@@ -30,10 +30,7 @@ See $Subtleties below with the associated recipes.
 ***************************************
 
 In the example below we see recipes to create accumulations from MARS data.
-To keep older recipes working, there are two equivalent ways to do so.
-in which we perform a rename transform to update ``tp`` to be named
-``tp_era5``. To be able to use the transform we just define it as a
-second step of the pipe, after gathering the data.
+To keep older recipes working, there are two equivalent ways to do so. The first one is a generic way working for MARS and grib-index sources.
 
 .. literalinclude:: yaml/recipe-accumulate-era.yaml
 
@@ -70,6 +67,7 @@ The "legacy" way to do is the following (syntax is only slightly different)
 The resulting dataset is:
 
 .. code:: bash
+
    📦 Path       : recipe-accumulation.zarr
    🔢 Format version: 0.30.0
 
