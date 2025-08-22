@@ -11,7 +11,6 @@ import datetime
 import json
 import logging
 import os
-import re
 import time
 import uuid
 import warnings
@@ -22,6 +21,7 @@ from typing import Union
 
 import cftime
 import numpy as np
+import rich
 import tqdm
 import zarr
 from anemoi.utils.dates import as_datetime
@@ -45,7 +45,7 @@ from .check import check_data_values
 from .chunks import ChunkFilter
 from .config import build_output
 from .config import loader_config
-from .input import build_input
+from .input import InputBuilder
 from .statistics import Summary
 from .statistics import TmpStatistics
 from .statistics import check_variance
@@ -102,7 +102,9 @@ def json_tidy(o: Any) -> Any:
 
 
 def build_statistics_dates(
-    dates: list[datetime.datetime], start: Optional[datetime.datetime], end: Optional[datetime.datetime]
+    dates: list[datetime.datetime],
+    start: Optional[datetime.datetime],
+    end: Optional[datetime.datetime],
 ) -> tuple[str, str]:
     """Compute the start and end dates for the statistics.
 
@@ -552,36 +554,16 @@ class HasElementForDataMixin:
 
         self.output = build_output(config.output, parent=self)
 
-        self.input = build_input_(main_config=config, output_config=self.output)
-        # LOG.info("%s", self.input)
-
-
-def build_input_(main_config: Any, output_config: Any) -> Any:
-    """Build the input for the dataset.
-
-    Parameters
-    ----------
-    main_config : Any
-        The main configuration.
-    output_config : Any
-        The output configuration.
-
-    Returns
-    -------
-    Any
-        The input builder.
-    """
-    builder = build_input(
-        main_config.input,
-        data_sources=main_config.get("data_sources", {}),
-        order_by=output_config.order_by,
-        flatten_grid=output_config.flatten_grid,
-        remapping=build_remapping(output_config.remapping),
-        use_grib_paramid=main_config.build.use_grib_paramid,
-    )
-    LOG.debug("✅ INPUT_BUILDER")
-    LOG.debug(builder)
-    return builder
+        self.input = InputBuilder(
+            config.input,
+            data_sources=config.get("data_sources", {}),
+            order_by=self.output.order_by,
+            flatten_grid=self.output.flatten_grid,
+            remapping=build_remapping(self.output.remapping),
+            use_grib_paramid=config.build.use_grib_paramid,
+        )
+        LOG.debug("✅ INPUT_BUILDER")
+        LOG.debug(self.input)
 
 
 class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
@@ -689,6 +671,8 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
         LOG.info(f"Missing dates: {len(missing)}")
         lengths = tuple(len(g) for g in self.groups)
+
+        rich.print("Minimal input dates:", self.minimal_input)
 
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
@@ -886,7 +870,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(group_of_dates=group)
+            result = self.input.select(argument=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -1542,7 +1526,16 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
+        for k in [
+            "mean",
+            "stdev",
+            "minimum",
+            "maximum",
+            "sums",
+            "squares",
+            "count",
+            "has_nans",
+        ]:
             self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
 
         self.registry.add_to_history("compute_statistics_end")
@@ -1629,28 +1622,3 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
-
-
-def config_to_python(config: Any) -> Any:
-
-    config = loader_config(config)
-
-    input = build_input_(config, build_output(config.output, None))
-
-    prelude = []
-    input.python_prelude(prelude)
-    code1 = "\n".join(prelude)
-
-    code2 = input.to_python()
-
-    code = f"from anemoi.datasets.recipe import Recipe\nr = Recipe()\n{code1}\nr.input = {code2}\n\nr.dump()"
-
-    code = re.sub(r"[\"\']?\${data_sources\.(\w+)}[\"\']?", r"\1", code)
-
-    try:
-        import black
-
-        return black.format_str(code, mode=black.Mode())
-    except ImportError:
-        LOG.warning("Black not installed, skipping formatting")
-        return code

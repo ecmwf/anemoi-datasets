@@ -96,13 +96,10 @@ class XArrayField(Field):
             if alias not in self._md:
                 self._md[alias] = value
 
-        # print(values.ndim, values.shape, selection.dims)
         # By now, the only dimensions should be latitude and longitude
         self._shape = tuple(list(self.selection.shape)[-2:])
         if math.prod(self._shape) != math.prod(self.selection.shape):
-            print(self.selection.ndim, self.selection.shape)
-            print(self.selection)
-            raise ValueError("Invalid shape for selection")
+            raise ValueError(f"Invalid shape for selection {self._shape=}, {self.selection.shape=} {self.selection=}")
 
     @property
     def shape(self) -> Tuple[int, int]:

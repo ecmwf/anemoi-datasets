@@ -28,7 +28,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from .action import Action
 from .action import action_factory
 from .join import JoinResult
-from .result import Result
+from .result.field import Result
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
