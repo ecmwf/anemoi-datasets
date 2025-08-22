@@ -103,8 +103,7 @@ class Period:
         return self.end_datetime - self.start_datetime
 
     def apply(self, accumulated: NDArray | None, values: NDArray) -> NDArray:
-        """Actual accumulation computation, from a previously accumulated array and a new values array
-        """
+        """Actual accumulation computation, from a previously accumulated array and a new values array"""
         if accumulated is None:
             accumulated = np.zeros_like(values)
 
