@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 from copy import deepcopy
+from functools import cached_property
 from typing import Any
 from typing import Union
 
@@ -17,29 +18,32 @@ from anemoi.datasets.create.input.context.field import FieldContext
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: Union[dict, list], **kwargs: Any) -> None:
+    def __init__(self, config: dict, data_sources: dict, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
         ----------
         config : dict
             Configuration dictionary.
-        data_sources : Union[dict, list]
+        data_sources : dict
             Data sources.
         **kwargs : Any
             Additional keyword arguments.
         """
         self.kwargs = kwargs
+        self.config = deepcopy(config)
+        self.data_sources = deepcopy(dict(data_sources=data_sources))
 
-        config = deepcopy(config)
-        if data_sources:
-            config = dict(
-                data_sources=dict(
-                    sources=data_sources,
-                    input=config,
-                )
-            )
-        self.config = config
+    @cached_property
+    def action(self) -> Any:
+        """Returns the action object based on the configuration."""
+        from .action import Recipe
+        from .action import action_factory
+
+        sources = action_factory(self.data_sources, "data_sources")
+        input = action_factory(self.config, "input")
+
+        return Recipe(input, sources)
 
     def select(self, argument) -> Any:
         """Select data based on the group of dates.
@@ -54,9 +58,28 @@ class InputBuilder:
         Any
             Selected data.
         """
-        from .action import action_factory
-
-        """This changes the context."""
         context = FieldContext(argument, **self.kwargs)
-        action = action_factory(self.config, "input")
-        return context.create_result(action(context, argument))
+        return context.create_result(self.action(context, argument))
+
+    def python_code(self, code):
+        return self.action.python_code(code)
+
+
+def build_input(config: dict, data_sources: Union[dict, list], **kwargs: Any) -> InputBuilder:
+    """Build an InputBuilder instance.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary.
+    data_sources : Union[dict, list]
+        Data sources.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    InputBuilder
+        An instance of InputBuilder.
+    """
+    return InputBuilder(config, data_sources, **kwargs)

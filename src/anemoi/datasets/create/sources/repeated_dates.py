@@ -302,11 +302,12 @@ class DateMapperConstant(DateMapper):
 class RepeatedDatesSource(Source):
 
     def __init__(self, owner, source: Any, mode: str, **kwargs) -> None:
+        self.owner = owner
         self.mapper = DateMapper.from_mode(mode, source, kwargs)
         self.source = source
 
     def execute(self, context, group_of_dates):
-        source = context.create_source(self.source)
+        source = context.create_source(self.source, *self.owner.path, "source")
 
         result = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):

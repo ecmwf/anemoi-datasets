@@ -32,13 +32,15 @@ from anemoi.utils.humanize import print_dates
 def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
-    Args:
-        x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
+    Parameters
+    ----------
+    x : Union[str, List[Any], Tuple[Any, ...]]
+        A date range string or list/tuple of dates.
 
-    Returns
-    -------
-    Iterator[datetime.datetime]
-        An iterator of datetime objects.
+    Yields
+    ------
+    datetime.datetime
+        Individual datetime objects.
     """
 
     if isinstance(x, (list, tuple)):
@@ -63,6 +65,8 @@ def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datet
 class DatesProvider:
     """Base class for date generation.
 
+    Examples
+    --------
     >>> DatesProvider.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-02 00:00", "frequency": "1d"}).values
     [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 2, 0, 0)]
 
@@ -163,9 +167,12 @@ class DatesProvider:
 class ValuesDates(DatesProvider):
     """Class for handling a list of date values.
 
-    Args:
-        values (List[Union[str, datetime.datetime]]): List of date values.
-        **kwargs (Any): Additional arguments.
+    Parameters
+    ----------
+    values : List[Union[str, datetime.datetime]]
+        List of date values.
+    **kwargs : Any
+        Additional arguments.
     """
 
     def __init__(self, values: List[Union[str, datetime.datetime]], **kwargs: Any) -> None:
@@ -202,11 +209,16 @@ class ValuesDates(DatesProvider):
 class StartEndDates(DatesProvider):
     """Class for generating dates between a start and end date with a specified frequency.
 
-    Args:
-        start (Union[str, datetime.datetime]): Start date.
-        end (Union[str, datetime.datetime]): End date.
-        frequency (Union[int, str]): Frequency of dates.
-        **kwargs (Any): Additional arguments.
+    Parameters
+    ----------
+    start : Union[str, datetime.datetime]
+        Start date.
+    end : Union[str, datetime.datetime]
+        End date.
+    frequency : Union[int, str]
+        Frequency of dates.
+    **kwargs : Any
+        Additional arguments.
     """
 
     def __repr__(self) -> str:
@@ -274,25 +286,26 @@ class StartEndDates(DatesProvider):
         }.update(self.kwargs)
 
     def to_python(self) -> str:
-        """Convert the StartEndDates instance to a Python string.
-
-        Returns
-        -------
-        str
-            Python string representation of the instance.
-        """
-        # assert self.frequency == frequency_to_timedelta(1), self.frequency
-        return (self.start.isoformat(), self.end.isoformat(), frequency_to_string(self.frequency))
+        """Convert the StartEndDates instance to a tuple of ISO-formatted date strings."""
+        if self.frequency == datetime.timedelta(hours=1):
+            return (self.start.isoformat(), self.end.isoformat())
+        else:
+            return (self.start.isoformat(), self.end.isoformat(), frequency_to_string(self.frequency))
 
 
 class Hindcast:
     """Class representing a single hindcast date.
 
-    Args:
-        date (datetime.datetime): The date of the hindcast.
-        refdate (datetime.datetime): The reference date.
-        hdate (datetime.datetime): The hindcast date.
-        step (int): The step value.
+    Parameters
+    ----------
+    date : datetime.datetime
+        The date of the hindcast.
+    refdate : datetime.datetime
+        The reference date.
+    hdate : datetime.datetime
+        The hindcast date.
+    step : int
+        The step value.
     """
 
     def __init__(
@@ -315,12 +328,18 @@ class Hindcast:
 class HindcastsDates(DatesProvider):
     """Class for generating hindcast dates over a range of years.
 
-    Args:
-        start (Union[str, List[str]]): Start date(s).
-        end (Union[str, List[str]]): End date(s).
-        steps (List[int]): List of step values.
-        years (int): Number of years.
-        **kwargs (Any): Additional arguments.
+    Parameters
+    ----------
+    start : Union[str, List[str]]
+        Start date(s).
+    end : Union[str, List[str]]
+        End date(s).
+    steps : List[int]
+        List of step values.
+    years : int
+        Number of years.
+    **kwargs : Any
+        Additional arguments.
     """
 
     def __init__(

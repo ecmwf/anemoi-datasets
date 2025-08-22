@@ -1622,3 +1622,68 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
+
+
+def validate_config(config: Any) -> None:
+
+    import json
+
+    import jsonschema
+
+    def _tidy(d):
+        if isinstance(d, dict):
+            return {k: _tidy(v) for k, v in d.items()}
+
+        if isinstance(d, list):
+            return [_tidy(v) for v in d if v is not None]
+
+        # jsonschema does not support datetime.date
+        if isinstance(d, datetime.datetime):
+            return d.isoformat()
+
+        if isinstance(d, datetime.date):
+            return d.isoformat()
+
+        return d
+
+    # https://json-schema.org
+
+    with open(
+        os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "schemas",
+            "recipe.json",
+        )
+    ) as f:
+        schema = json.load(f)
+
+    try:
+        jsonschema.validate(instance=_tidy(config), schema=schema)
+    except jsonschema.exceptions.ValidationError as e:
+        LOG.error("❌ Config validation failed (jsonschema):")
+        LOG.error(e.message)
+        raise
+
+
+def config_to_python(config: Any) -> Any:
+
+    from ..create.python import PythonScript
+
+    raw_config = config
+
+    config = loader_config(config)
+
+    input = InputBuilder(config.input, data_sources=config.get("data_sources", {}))
+
+    code = PythonScript()
+    x = input.python_code(code)
+    code = code.source_code(x, raw_config)
+
+    try:
+        import black
+
+        return black.format_str(code, mode=black.Mode())
+    # except ImportError:
+    except Exception:
+        LOG.warning("Black not installed, skipping formatting")
+        return code

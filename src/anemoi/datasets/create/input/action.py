@@ -20,23 +20,26 @@ class Action:
     def __init__(self, config, *path):
         self.config = config
         self.path = path
+        assert path[0] in (
+            "input",
+            "data_sources",
+        ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
 
 
 class Concat(Action):
     def __init__(self, config, *path):
-        super().__init__(config, *path)
+        super().__init__(config, *path, "concat")
 
         assert isinstance(config, list), f"Value must be a dict {list}"
 
         self.choices = []
 
-        for item in config:
+        for i, item in enumerate(config):
 
-            assert "dates" in item, f"Value must contain the key 'date' {item}"
-            dates = item.pop("dates")
+            assert "dates" in item, f"Value must contain the key 'dates' {item}"
+            dates = item["dates"]
             filtering_dates = DatesProvider.from_config(**dates)
-            action = action_factory(item)
-
+            action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
             self.choices.append((filtering_dates, action))
 
     def __repr__(self):
@@ -54,14 +57,19 @@ class Concat(Action):
 
         return context.register(results, self.path)
 
+    def python_code(self, code):
+        return code.concat(
+            {filtering_dates.to_python(): action.python_code(code) for filtering_dates, action in self.choices}
+        )
+
 
 class Join(Action):
     def __init__(self, config, *path):
-        super().__init__(config, *path)
+        super().__init__(config, *path, "join")
 
         assert isinstance(config, list), f"Value must be a list {config}"
 
-        self.actions = [action_factory(item, *path, "join", str(i)) for i, item in enumerate(config)]
+        self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Join({self.actions})"
@@ -74,12 +82,15 @@ class Join(Action):
 
         return context.register(results, self.path)
 
+    def python_code(self, code) -> None:
+        return code.sum(a.python_code(code) for a in self.actions)
+
 
 class Pipe(Action):
     def __init__(self, config, *path):
         assert isinstance(config, list), f"Value must be a list {config}"
-        super().__init__(config, *path)
-        self.actions = [action_factory(item, *path, "pipe", str(i)) for i, item in enumerate(config)]
+        super().__init__(config, *path, "pipe")
+        self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Pipe({self.actions})"
@@ -94,6 +105,9 @@ class Pipe(Action):
                 result = action(context, result)
 
         return context.register(result, self.path)
+
+    def python_code(self, code) -> None:
+        return code.pipe(a.python_code(code) for a in self.actions)
 
 
 class Function(Action):
@@ -111,6 +125,13 @@ class Function(Action):
         rich.print(f"Executing source {self.name} from {config}")
 
         return context.register(self.call_object(context, source, argument), self.path)
+
+    def python_code(self, code) -> str:
+        # For now...
+        if "source" in self.config:
+            source = action_factory(self.config["source"], *self.path, "source")
+            self.config["source"] = source.python_code(code)
+        return code.call(self.name, self.config)
 
 
 class DatasetSourceMixin:
@@ -177,12 +198,47 @@ def new_filter(name, mixin):
     )
 
 
-KLASS = {"concat": Concat, "join": Join, "pipe": Pipe}
+class DataSources(Action):
+    def __init__(self, config, *path):
+        super().__init__(config, *path)
+        self.sources = {k: action_factory(v, *path, k) for k, v in config.items()}
+
+    def python_code(self, code):
+        return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
+
+    def __call__(self, context, argument):
+        for name, source in self.sources.items():
+            context.register(source(context, argument), self.path + (name,))
+
+
+class Recipe(Action):
+    def __init__(self, input, data_sources):
+        self.input = input
+        self.data_sources = data_sources
+
+    def python_code(self, code):
+        return code.recipe(
+            self.input.python_code(code),
+            self.data_sources.python_code(code),
+        )
+
+    def __call__(self, context, argument):
+        # Load data_sources
+        self.data_sources(context, argument)
+        return self.input(context, argument)
+
+
+KLASS = {
+    "concat": Concat,
+    "join": Join,
+    "pipe": Pipe,
+    "data-sources": DataSources,
+}
 
 LEN_KLASS = len(KLASS)
 
 
-def make(key, config, path):
+def make(key, config, *path):
 
     if LEN_KLASS == len(KLASS):
 
@@ -215,8 +271,12 @@ def make(key, config, path):
 
 
 def action_factory(data, *path):
-    assert isinstance(data, dict), f"Input data must be a dictionary {data}"
-    assert len(data) == 1, "Input data must contain exactly one key-value pair"
+
+    assert len(path) > 0, f"Path must contain at least one element {path}"
+    assert path[0] in ("input", "data_sources")
+
+    assert isinstance(data, dict), f"Input data must be a dictionary, got {type(data)}"
+    assert len(data) == 1, f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"
 
     key, value = next(iter(data.items()))
-    return make(key, value, path)
+    return make(key, value, *path)

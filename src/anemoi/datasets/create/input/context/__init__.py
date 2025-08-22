@@ -34,6 +34,8 @@ class Context(ABC):
         if not path:
             return data
 
+        assert path[0] in ("input", "data_sources"), path
+
         rich.print(f"Registering data at path: {path}")
         self.results[tuple(path)] = data
         return data
@@ -47,14 +49,22 @@ class Context(ABC):
                 if path in self.results:
                     config[key] = self.results[path]
                 else:
+                    rich.print(f"Path not found {path}")
+                    for p in sorted(self.results):
+                        rich.print(f"   Available paths: {p}")
                     raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
 
         return config
 
-    def create_source(self, config: Any) -> Any:
+    def create_source(self, config: Any, *path) -> Any:
         from anemoi.datasets.create.input.action import action_factory
 
-        return action_factory(config)
+        if not isinstance(config, dict):
+            # It is already a result (e.g. ekd.FieldList), loaded from ${a.b.c}
+            # TODO: something more elegant
+            return lambda *args, **kwargs: config
+
+        return action_factory(config, *path)
 
     @abstractmethod
     def empty_result(self) -> Any: ...

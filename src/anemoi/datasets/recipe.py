@@ -10,9 +10,9 @@
 import logging
 import os
 import sys
+from collections import defaultdict
 from tempfile import TemporaryDirectory
 
-import yaml
 from anemoi.transform.filters import filter_registry as transform_filter_registry
 from anemoi.utils.config import DotDict
 from anemoi.utils.dates import as_datetime
@@ -25,6 +25,16 @@ from anemoi.datasets.create.sources import source_registry
 LOG = logging.getLogger(__name__)
 
 
+def _un_dotdict(x):
+    if isinstance(x, dict):
+        return {k: _un_dotdict(v) for k, v in x.items()}
+
+    if isinstance(x, (list, tuple, set)):
+        return [_un_dotdict(a) for a in x]
+
+    return x
+
+
 class Index:
     def __init__(self, index):
         self.name = str(index)
@@ -32,14 +42,22 @@ class Index:
     def __repr__(self):
         return f"Index({self.name})"
 
+    def same(self, other):
+        if not isinstance(other, Index):
+            return False
+        return self.name == other.name
+
 
 class Step:
 
     def __or__(self, other):
         return Pipe(self, other)
 
-    def __add__(self, other):
+    def __and__(self, other):
         return Join(self, other)
+
+    def same(self, other):
+        return self is other
 
 
 class Chain(Step):
@@ -55,10 +73,12 @@ class Chain(Step):
             return self.steps[0].as_dict(recipe)
         return {self.name: [s.as_dict(recipe) for s in self.steps]}
 
-    def __repr__(self):
-        return f"{self.__class__.name}({','.join([str(s) for s in self.steps])})"
-
     def path(self, target, result, *path):
+
+        if target is self:
+            result.append([*path, self])
+            return
+
         for i, s in enumerate(self.steps):
             s.path(target, result, *path, self, self.index[i])
 
@@ -89,15 +109,22 @@ class Concat(Step):
         result = []
 
         for k, v in sorted(self.params.items()):
-            result.append({"dates": dict(start=k[0], end=k[1]), **v.as_dict(recipe)})
+
+            key = dict(start=as_datetime(k[0]), end=as_datetime(k[1]))
+            if len(k) == 3:
+                key["frequency"] = k[2]
+
+            result.append({"dates": key, **v.as_dict(recipe)})
 
         return {"concat": result}
 
     def collocated(self, a, b):
-        return a[0] is b[0]
+        return a[0].same(b[0])
 
     def path(self, target, result, *path):
-
+        if target is self:
+            result.append([*path, self])
+            return
         for i, (k, v) in enumerate(sorted(self.params.items())):
             v.path(target, result, *path, self, Index(i))
 
@@ -114,9 +141,15 @@ class Base(Step):
 
     def as_dict(self, recipe):
 
-        def resolve(params, recipe):
+        def resolve(params, recipe, name=None):
             if isinstance(params, dict):
-                return {k: resolve(v, recipe) for k, v in params.items()}
+
+                def _(k):
+                    if isinstance(k, str) and k.endswith("_"):
+                        return k[:-1]
+                    return k
+
+                return {_(k): resolve(v, recipe, name=_(k)) for k, v in params.items()}
 
             if isinstance(params, (list, tuple)):
                 return [resolve(v, recipe) for v in params]
@@ -125,17 +158,13 @@ class Base(Step):
                 return [resolve(v, recipe) for v in params]
 
             if isinstance(params, Step):
-                return recipe.resolve(self, params)
+                return recipe.resolve(self, params, name=name)
 
             return params
 
         return {self.owner.name: resolve(self.params, recipe)}
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.owner.name}, {','.join([f'{k}={v}' for k, v in self.params.items()])})"
-
     def path(self, target, result, *path):
-
         if self is target:
             result.append([*path, self])
 
@@ -179,11 +208,20 @@ class Recipe:
         self._licence = licence
         self._name = name
         self._dates = None
+        self._statistics = None
+        self._build = None
+        self._env = None
+        self._dataset_status = None
+        self._output = None
+        self._platform = None
 
         self.input = Join()
         self.output = DotDict()
         self.statistics = DotDict()
         self.build = DotDict()
+
+        self._data_sources = {}
+        self._counter = defaultdict(int)
 
         sources = source_registry.factories.copy()
         filters = transform_filter_registry.factories.copy()
@@ -221,7 +259,12 @@ class Recipe:
             "attribution": self.attribution,
             "licence": self.licence,
             "dates": self.dates,
+            "statistics": self.statistics,
+            "build": self.build,
         }
+
+        if self._data_sources:
+            result["data_sources"] = self._data_sources
 
         for k, v in list(result.items()):
             if v is None:
@@ -232,8 +275,24 @@ class Recipe:
     def concat(self, *args, **kwargs):
         return Concat(*args, **kwargs)
 
-    def resolve(self, source, target):
-        assert isinstance(target, Source), f"Only sources can be used as template {target}"
+    def make_data_source(self, name, target):
+
+        target = target.as_dict(self)
+
+        name = name or "source"
+        if name in self._data_sources:
+            if self._data_sources[name] == target:
+                return f"${{data_sources.{name}}}"
+
+        n = self._counter[name]
+        self._counter[name] += 1
+
+        name = f"{name}_{n}" if n > 0 else name
+
+        self._data_sources[name] = target.copy()
+        return f"${{data_sources.{name}}}"
+
+    def resolve(self, source, target, name=None):
 
         top = Index("input")  # So we have 'input' first in the path
 
@@ -247,10 +306,13 @@ class Recipe:
 
         path_to_target = []
         self.input.path(target, path_to_target, top)
-        if len(path_to_target) == 0:
-            raise ValueError(f"Target {target} not found in recipe")
         if len(path_to_target) > 1:
             raise ValueError(f"Target {target} found in multiple locations {path_to_target}")
+
+        if len(path_to_target) == 0:
+            # Add a `data_sources` entry
+            return self.make_data_source(name, target)
+
         path_to_target = path_to_target[0]
 
         a = [s for s in path_to_target]
@@ -311,6 +373,9 @@ class Recipe:
 
     def _parse_dates(self, value):
 
+        if isinstance(value, dict):
+            return value
+
         start = None
         end = None
         frequency = 1
@@ -341,21 +406,82 @@ class Recipe:
     def dates(self, value):
         self._dates = self._parse_dates(value)
 
+    @property
+    def output(self):
+        return self._output
+
+    @output.setter
+    def output(self, value):
+        self._output = value
+
+    @property
+    def statistics(self):
+        return self._statistics
+
+    @statistics.setter
+    def statistics(self, value):
+        self._statistics = value
+
+    @property
+    def build(self):
+        return self._build
+
+    @build.setter
+    def build(self, value):
+        self._build = value
+
+    @property
+    def env(self):
+        return self._env
+
+    @env.setter
+    def env(self, value):
+        self._env = value
+
+    @property
+    def dataset_status(self):
+        return self._dataset_status
+
+    @dataset_status.setter
+    def dataset_status(self, value):
+        self._dataset_status = value
+
+    @property
+    def platform(self):
+        return self._platform
+
+    @platform.setter
+    def platform(self, value):
+        self._platform = value
+
     def dump(self, file=sys.stdout):
+        input = self.input.as_dict(self)  # First so we get the data_sources
+
         result = self.as_dict()
 
-        result["input"] = self.input.as_dict(self)
+        result["input"] = input
 
         if self.output:
-            result["output"] = self.output.as_dict()
+            result["output"] = self.output
 
         if self.statistics:
-            result["statistics"] = self.statistics.as_dict()
+            result["statistics"] = self.statistics
 
         if self.build:
-            result["build"] = self.build.as_dict()
+            result["build"] = self.build
 
-        yaml.safe_dump(result, sort_keys=False, indent=2, width=120, stream=file)
+        if self.env:
+            result["env"] = self.env
+
+        if self.dataset_status:
+            result["dataset_status"] = self.dataset_status
+
+        if self.platform:
+            result["platform"] = self.platform
+
+        from .dumper import yaml_dump
+
+        yaml_dump(_un_dotdict(result), stream=file)
 
     def test(self, output="recipe.zarr"):
         from argparse import ArgumentParser
