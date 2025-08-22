@@ -9,8 +9,6 @@
 
 import logging
 
-import rich
-
 from anemoi.datasets.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
@@ -121,8 +119,6 @@ class Function(Action):
         config["_type"] = self.name  # Find a better way to do this
 
         source = self.create_object(config)
-
-        rich.print(f"Executing source {self.name} from {config}")
 
         return context.register(self.call_object(context, source, argument), self.path)
 

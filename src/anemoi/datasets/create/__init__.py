@@ -19,7 +19,6 @@ from typing import Any
 
 import cftime
 import numpy as np
-import rich
 import tqdm
 import zarr
 from anemoi.utils.dates import as_datetime
@@ -669,8 +668,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
         LOG.info(f"Missing dates: {len(missing)}")
         lengths = tuple(len(g) for g in self.groups)
-
-        rich.print("Minimal input dates:", self.minimal_input)
 
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")

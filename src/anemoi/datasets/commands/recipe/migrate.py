@@ -13,7 +13,6 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-import rich
 from glom import assign
 from glom import delete
 from glom import glom
@@ -126,7 +125,6 @@ def _delete(config, path):
     x = glom(config, path, default=MARKER)
     if x is MARKER:
         return
-    rich.print(f"Deleting {path}={x}")
     delete(config, path)
 
 
@@ -134,7 +132,6 @@ def _move(config, path, new_path, result):
     x = glom(config, path, default=MARKER)
     if x is MARKER:
         return
-    rich.print(f"Moving {path}={x} to {new_path}={x}")
     delete(result, path)
     assign(result, new_path, x, missing=dict)
 
@@ -265,7 +262,7 @@ def _fix_loops(result: dict, config: dict) -> None:
     concat = []
     result["input"] = {"concat": concat}
 
-    rich.print("Found loops:", entries)
+    print("Found loops:", entries)
 
     for block in input:
         assert isinstance(block, dict), block
@@ -296,7 +293,7 @@ def _fix_loops(result: dict, config: dict) -> None:
 def _fix_other(result: dict, config: dict) -> None:
     paths = find_paths(config, target_key="source_or_dataset", target_value="$previous_data")
     for p in paths:
-        rich.print(f"Fixing {'.'.join(p)}")
+        print(f"Fixing {'.'.join(p)}")
         assign(result, ".".join(p[:-1] + ["template"]), "${input.join.0.mars}", missing=dict)
         delete(result, ".".join(p))
 
@@ -306,7 +303,7 @@ def _fix_other(result: dict, config: dict) -> None:
 
 
 def _fix_join(result: dict, config: dict) -> None:
-    rich.print("Fixing join...")
+    print("Fixing join...")
     input = config["input"]
     if "dates" in input and "join" in input["dates"]:
         result["input"]["join"] = input["dates"]["join"]
@@ -371,12 +368,12 @@ def _fix_sources(config: dict, what) -> None:
 
 
 def _assign(config, path, value):
-    rich.print(f"Assign {path} {value}")
+    print(f"Assign {path} {value}")
     assign(config, path, value)
 
 
 def _fix_chevrons(result: dict, config: dict) -> None:
-    rich.print("Fixing chevrons...")
+    print("Fixing chevrons...")
     paths = find_chevrons(config)
     for p in paths:
         a = glom(config, ".".join(p))
@@ -539,15 +536,15 @@ def check(config):
             assert not has_key(config, n), f"Source {n} found in config. Please update to {SOURCES[n]}."
 
     except Exception as e:
-        rich.print("Validation failed:")
-        rich.print(e)
+        print("Validation failed:")
+        print(e)
         print(yaml_dump(config))
         sys.exit(1)
 
 
 def migrate_recipe(args: Any, config) -> None:
 
-    rich.print(f"Migrating {args.path}")
+    print(f"Migrating {args.path}")
 
     migrated = migrate(config)
 

@@ -54,7 +54,7 @@ class Recipe(Command):
         if not args.validate and not args.format and not args.migrate and not args.python:
             args.validate = True
 
-        with open(args.path, "r") as file:
+        with open(args.path) as file:
             config = yaml.safe_load(file)
 
         assert isinstance(config, dict)

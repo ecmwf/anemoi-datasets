@@ -10,15 +10,10 @@
 
 import logging
 from collections import defaultdict
+from collections.abc import Generator
 from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import Optional
-from typing import Set
-from typing import Tuple
 
 import numpy as np
-import rich
 from anemoi.transform.fields import new_field_with_valid_datetime
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import as_datetime
@@ -52,7 +47,7 @@ class DateMapper:
     """A factory class to create DateMapper instances based on the given mode."""
 
     @staticmethod
-    def from_mode(mode: str, source: Any, config: Dict[str, Any]) -> "DateMapper":
+    def from_mode(mode: str, source: Any, config: dict[str, Any]) -> "DateMapper":
         """Create a DateMapper instance based on the given mode.
 
         Parameters
@@ -102,10 +97,10 @@ class DateMapperClosest(DateMapper):
         self.maximum: Any = frequency_to_timedelta(maximum)
         self.frequency: Any = frequency_to_timedelta(frequency)
         self.skip_all_nans: bool = skip_all_nans
-        self.tried: Set[Any] = set()
-        self.found: Set[Any] = set()
+        self.tried: set[Any] = set()
+        self.found: set[Any] = set()
 
-    def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
+    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the closest available dates.
 
         Parameters
@@ -200,7 +195,7 @@ class DateMapperClosest(DateMapper):
 class DateMapperClimatology(DateMapper):
     """A DateMapper implementation that maps dates to specified climatology dates."""
 
-    def __init__(self, source: Any, year: int, day: int, hour: Optional[int] = None) -> None:
+    def __init__(self, source: Any, year: int, day: int, hour: int | None = None) -> None:
         """Initialize DateMapperClimatology.
 
         Parameters
@@ -216,9 +211,9 @@ class DateMapperClimatology(DateMapper):
         """
         self.year: int = year
         self.day: int = day
-        self.hour: Optional[int] = hour
+        self.hour: int | None = hour
 
-    def transform(self, group_of_dates: Any) -> Generator[Tuple[Any, Any], None, None]:
+    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
         Parameters
@@ -254,7 +249,7 @@ class DateMapperClimatology(DateMapper):
 class DateMapperConstant(DateMapper):
     """A DateMapper implementation that maps dates to a constant date."""
 
-    def __init__(self, source: Any, date: Optional[Any] = None) -> None:
+    def __init__(self, source: Any, date: Any | None = None) -> None:
         """Initialize DateMapperConstant.
 
         Parameters
@@ -265,9 +260,9 @@ class DateMapperConstant(DateMapper):
             The constant date to map to.
         """
         self.source: Any = source
-        self.date: Optional[Any] = date
+        self.date: Any | None = date
 
-    def transform(self, group_of_dates: Any) -> Tuple[Any, Any]:
+    def transform(self, group_of_dates: Any) -> tuple[Any, Any]:
         """Transform the group of dates to a constant date.
 
         Parameters
@@ -311,7 +306,7 @@ class RepeatedDatesSource(Source):
 
         result = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
-            rich.print(f"one_date_group: {one_date_group}, many_dates_group: {many_dates_group}")
+            print(f"one_date_group: {one_date_group}, many_dates_group: {many_dates_group}")
             source_results = source(context, one_date_group)
             for field in source_results:
                 for date in many_dates_group:

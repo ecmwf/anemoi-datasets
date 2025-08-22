@@ -9,7 +9,6 @@
 
 
 from typing import Any
-from typing import Dict
 
 from earthkit.data.core.order import build_remapping
 
@@ -25,7 +24,7 @@ class FieldContext(Context):
         argument: Any,
         order_by: str,
         flatten_grid: bool,
-        remapping: Dict[str, Any],
+        remapping: dict[str, Any],
         use_grib_paramid: bool,
     ) -> None:
         super().__init__(argument)
