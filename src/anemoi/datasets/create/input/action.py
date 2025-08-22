@@ -197,7 +197,11 @@ def new_filter(name, mixin):
 class DataSources(Action):
     def __init__(self, config, *path):
         super().__init__(config, *path)
-        self.sources = {k: action_factory(v, *path, k) for k, v in config.items()}
+        assert isinstance(config, (dict, list)), f"Invalid config type: {type(config)}"
+        if isinstance(config, dict):
+            self.sources = {k: action_factory(v, *path, k) for k, v in config.items()}
+        else:
+            self.sources = {i: action_factory(v, *path, str(i)) for i, v in enumerate(config)}
 
     def python_code(self, code):
         return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
