@@ -8,13 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from abc import ABC
+from abc import abstractmethod
 
 from anemoi.datasets.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
 
 
-class Action:
+class Action(ABC):
     def __init__(self, config, *path):
         self.config = config
         self.path = path
@@ -22,6 +24,14 @@ class Action:
             "input",
             "data_sources",
         ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
+
+    @abstractmethod
+    def __call__(self, context, argument):
+        pass
+
+    @abstractmethod
+    def python_code(self, code):
+        pass
 
 
 class Concat(Action):
@@ -137,7 +147,12 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(context.source_argument(argument))
+        return context.origin(source.execute(context.source_argument(argument)), self)
+
+    def origin(self):
+        from .origin import Source
+
+        return Source(self.path[-1], self.config)
 
 
 class TransformSourceMixin:
@@ -145,6 +160,15 @@ class TransformSourceMixin:
         from anemoi.transform.sources import create_source as create_transform_source
 
         return create_transform_source(context, config)
+
+    def combine_origins(self, current, previous):
+        assert previous is None, f"Cannot combine origins, previous already exists: {previous}"
+        return current
+
+    def origin(self):
+        from .origin import Source
+
+        return Source(self.path[-1], self.config)
 
 
 class TransformFilterMixin:
@@ -154,12 +178,15 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return filter.forward(context.filter_argument(argument))
+        return context.origin(filter.forward(context.filter_argument(argument)), self)
 
+    def origin(self):
+        from .origin import Filter
 
-class FilterFunction(Function):
-    def __call__(self, context, argument):
-        return self.call(context, argument, context.filter_argument)
+        return Filter(self.path[-1], self.config)
+
+    def combine_origins(self, current, previous):
+        return {"_apply": current, **(previous or {})}
 
 
 def _make_name(name, what):

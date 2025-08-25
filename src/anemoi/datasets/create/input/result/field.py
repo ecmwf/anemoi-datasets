@@ -17,6 +17,7 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
+import rich
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
@@ -293,6 +294,8 @@ class FieldResult(Result):
             self.group_of_dates, GroupOfDates
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
+        self._origin = defaultdict(set)
+
     @property
     def data_request(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
@@ -555,6 +558,13 @@ class FieldResult(Result):
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
         self._cube: Any = cube
+
+        p = None
+        for i, fs in enumerate(self.datasource):
+            o = fs.metadata("_origin")
+            if p != o:
+                rich.print(f"🔥🔥🔥🔥🔥🔥 {fs.metadata()}, {o}")
+                p = o
 
         self._coords_already_built: bool = True
 
