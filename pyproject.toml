@@ -51,6 +51,7 @@ dependencies = [
   "anemoi-transform>=0.1.10",
   "anemoi-utils[provenance]>=0.4.32",
   "cfunits",
+  "glom",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pyyaml",
