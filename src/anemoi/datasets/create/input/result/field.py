@@ -294,12 +294,17 @@ class FieldResult(Result):
             self.group_of_dates, GroupOfDates
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
-        self._origin = defaultdict(set)
+        self._origins = []
 
     @property
     def data_request(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
+
+    @property
+    def origins(self) -> dict[str, Any]:
+        """Returns a dictionary with the parameters needed to retrieve the data."""
+        return [o.as_dict() for o in self._origins]
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -312,26 +317,26 @@ class FieldResult(Result):
 
         ds: Any = self.datasource
 
-        remapping: Any = self.context.remapping
-        order_by: Any = self.context.order_by
-        flatten_grid: Any = self.context.flatten_grid
-        start: float = time.time()
-        LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
-        assert order_by, order_by
+        self.remapping: Any = self.context.remapping
+        self.order_by: Any = self.context.order_by
+        self.flatten_grid: Any = self.context.flatten_grid
+        self.start: float = time.time()
+        LOG.debug("Sorting dataset %s %s", dict(self.order_by), self.remapping)
+        assert self.order_by, self.order_by
 
-        patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
+        self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
 
         try:
             cube: Any = ds.cube(
-                order_by,
-                remapping=remapping,
-                flatten_values=flatten_grid,
-                patches=patches,
+                self.order_by,
+                remapping=self.remapping,
+                flatten_values=self.flatten_grid,
+                patches=self.patches,
             )
             cube = cube.squeeze()
-            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
         except ValueError:
-            self.explain(ds, order_by, remapping=remapping, patches=patches)
+            self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             # raise ValueError(f"Error in {self}")
             exit(1)
 
@@ -559,12 +564,17 @@ class FieldResult(Result):
 
         self._cube: Any = cube
 
+        name_key = list(self.order_by.keys())[1]
+
         p = None
-        for i, fs in enumerate(self.datasource):
-            o = fs.metadata("_origin")
-            if p != o:
-                rich.print(f"🔥🔥🔥🔥🔥🔥 {fs.metadata()}, {o}")
+        self._origins = []
+        for fs in self.datasource:
+            o, name = fs.metadata("anemoi_origin", name_key, remapping=self.remapping, patches=self.patches)
+            o.add_variable(name)
+            if p is not o:
+                rich.print(f"🔥🔥🔥🔥🔥🔥 {name}, {o}")
                 p = o
+                self._origins.append(o)
 
         self._coords_already_built: bool = True
 

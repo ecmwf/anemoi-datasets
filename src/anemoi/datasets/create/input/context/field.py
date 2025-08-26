@@ -56,13 +56,14 @@ class FieldContext(Context):
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
 
     def origin(self, data: Any, action: Any) -> Any:
-        # rich.print(f"origin: {data} from {action}")
+
         origin = action.origin()
+
         result = []
         for fs in data:
-            previous = fs.metadata("_origin", default=None)
+            previous = fs.metadata("anemoi_origin", default=None)
             origin = origin.combine(previous)
-            result.append(new_field_with_metadata(fs, _origin=origin))
+            result.append(new_field_with_metadata(fs, anemoi_origin=origin))
 
         result = new_fieldlist_from_list(result)
 

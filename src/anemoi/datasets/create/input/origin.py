@@ -14,7 +14,23 @@ LOG = logging.getLogger(__name__)
 
 
 class Origin(ABC):
-    pass
+
+    def __init__(self):
+        self._variables = set()
+
+    def __repr__(self):
+        return repr(self.as_dict())
+
+    def __eq__(self, other):
+        if not isinstance(other, Origin):
+            return False
+        return self is other  # or self.as_dict() == other.as_dict()
+
+    def __hash__(self):
+        return id(self)
+
+    def add_variable(self, name):
+        self._variables.add(name)
 
 
 def _un_dotdict(x):
@@ -29,6 +45,7 @@ def _un_dotdict(x):
 
 class Source(Origin):
     def __init__(self, name, config):
+        super().__init__()
         assert isinstance(config, dict), f"Config must be a dictionary {config}"
         self.name = name
         self.config = _un_dotdict(config)
@@ -37,12 +54,13 @@ class Source(Origin):
         assert previous is None, f"Cannot combine origins, previous already exists: {previous}"
         return self
 
-    def __repr__(self):
-        return f"Source(name={self.name}, config={self.config})"
+    def as_dict(self):
+        return {"type": "source", "name": self.name, "config": self.config, "variables": sorted(self._variables)}
 
 
 class Filter(Origin):
     def __init__(self, name, config, previous=None):
+        super().__init__()
         assert isinstance(config, dict), f"Config must be a dictionary {config}"
         self.name = name
         self.config = _un_dotdict(config)
@@ -54,5 +72,11 @@ class Filter(Origin):
             return self
         return Filter(self.name, self.config, previous)
 
-    def __repr__(self):
-        return f"Filter(name={self.name}, config={self.config}, previous={self.previous})"
+    def as_dict(self):
+        return {
+            "type": "filter",
+            "name": self.name,
+            "config": self.config,
+            "apply_to": self.previous.as_dict(),
+            "variables": sorted(self._variables),
+        }
