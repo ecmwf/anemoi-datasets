@@ -7,19 +7,20 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 from datetime import datetime
+from typing import Any
 
 import earthkit.data as ekd
-
-from anemoi.datasets.create.typing import DateList
-from anemoi.transform.flavour import RuleBasedFlavour
-from anemoi.transform.grids import grid_registry
 from anemoi.transform.fields import new_field_from_grid
 from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.flavour import RuleBasedFlavour
+from anemoi.transform.grids import grid_registry
 
-from . import source_registry
+from anemoi.datasets.create.typing import DateList
+
 from ..source import Source
+from . import source_registry
+
 
 @source_registry.register("fdb")
 class FdbSource(Source):
@@ -93,7 +94,7 @@ class FdbSource(Source):
         for date in dates:
             time_request = _time_request_keys(date, self.offset_from_date)
             requests.append(self.request | time_request)
-        
+
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
         # defined request already and an empty dates list
         requests = requests or [self.request]
@@ -107,9 +108,9 @@ class FdbSource(Source):
 
         if self.flavour:
             fl = self.flavour.map(fl)
-            
+
         return fl
-    
+
 
 def _time_request_keys(dt: datetime, offset_from_date: bool | None = None) -> str:
     """Defines the time-related keys for the FDB request."""
@@ -123,8 +124,9 @@ def _time_request_keys(dt: datetime, offset_from_date: bool | None = None) -> st
     return out
 
 
-def _shortname_to_paramid(shortname: list[str], param_id_map: dict[str, int]| None = None) -> list[int]:
+def _shortname_to_paramid(shortname: list[str], param_id_map: dict[str, int] | None = None) -> list[int]:
     from anemoi.datasets.create.sources.mars import use_grib_paramid
+
     """Convert a shortname to a parameter ID."""
     if param_id_map is None:
         return use_grib_paramid(shortname)
