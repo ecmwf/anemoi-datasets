@@ -89,15 +89,17 @@ class FdbSource(Source):
             The output data.
         """
 
-
         requests = []
         for date in dates:
             time_request = _time_request_keys(date, self.offset_from_date)
             requests.append(self.request | time_request)
+        
+        # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
+        # defined request already and an empty dates list
+        requests = requests or [self.request]
 
         fl = ekd.from_source("empty")
         for request in requests:
-            breakpoint()
             fl += ekd.from_source("fdb", request, **self.configs, read_all=True)
 
         if self.grid is not None:
