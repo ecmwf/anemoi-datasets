@@ -65,9 +65,4 @@ class FieldContext(Context):
             origin = origin.combine(previous)
             result.append(new_field_with_metadata(fs, anemoi_origin=origin))
 
-        result = new_fieldlist_from_list(result)
-
-        for fs in result:
-            fs.metadata()
-
-        return result
+        return new_fieldlist_from_list(result)
