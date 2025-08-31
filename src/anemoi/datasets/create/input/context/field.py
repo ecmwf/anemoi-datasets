@@ -62,7 +62,11 @@ class FieldContext(Context):
         result = []
         for fs in data:
             previous = fs.metadata("anemoi_origin", default=None)
-            origin = origin.combine(previous)
-            result.append(new_field_with_metadata(fs, anemoi_origin=origin))
+            fall_through = fs.metadata("anemoi_fall_through", default=False)
+            if fall_through:
+                # The field has pass unchanges in a filter
+                result.append(fs)
+            else:
+                result.append(new_field_with_metadata(fs, anemoi_origin=origin.combine(previous)))
 
         return new_fieldlist_from_list(result)

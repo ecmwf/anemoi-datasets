@@ -17,7 +17,6 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
-import rich
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
@@ -304,7 +303,7 @@ class FieldResult(Result):
     @property
     def origins(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
-        return [o.as_dict() for o in self._origins]
+        return {"version": 1, "origins": self._origins}
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -567,14 +566,22 @@ class FieldResult(Result):
         name_key = list(self.order_by.keys())[1]
 
         p = None
-        self._origins = []
+        origins = defaultdict(set)
+
         for fs in self.datasource:
-            o, name = fs.metadata("anemoi_origin", name_key, remapping=self.remapping, patches=self.patches)
-            o.add_variable(name)
+            o = fs.metadata("anemoi_origin", remapping=self.remapping, patches=self.patches)
+            name = fs.metadata(name_key, remapping=self.remapping, patches=self.patches)
+
+            assert name not in origins[o], (name,)
+            origins[o].add(name)
+
             if p is not o:
-                rich.print(f"🔥🔥🔥🔥🔥🔥 {name}, {o}")
+                LOG.info(f"🔥🔥🔥🔥🔥🔥 Source: {name}, {o}")
                 p = o
-                self._origins.append(o)
+
+        self._origins = []
+        for k, v in origins.items():
+            self._origins.append({"origin": k.as_dict(), "variables": sorted(v)})
 
         self._coords_already_built: bool = True
 

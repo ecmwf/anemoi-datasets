@@ -15,22 +15,13 @@ LOG = logging.getLogger(__name__)
 
 class Origin(ABC):
 
-    def __init__(self):
-        self._variables = set()
-
-    def __repr__(self):
-        return repr(self.as_dict())
-
     def __eq__(self, other):
         if not isinstance(other, Origin):
             return False
-        return self is other  # or self.as_dict() == other.as_dict()
+        return self is other
 
     def __hash__(self):
         return id(self)
-
-    def add_variable(self, name):
-        self._variables.add(name)
 
 
 def _un_dotdict(x):
@@ -41,6 +32,28 @@ def _un_dotdict(x):
         return [_un_dotdict(a) for a in x]
 
     return x
+
+
+class Pipe(Origin):
+    def __init__(self, s1, s2):
+        super().__init__()
+        self.steps = [s1, s2]
+
+        if isinstance(s1, Pipe):
+            assert not isinstance(s2, Pipe), (s1, s2)
+            self.steps = s1.steps + [s2]
+
+    def combine(self, previous):
+        assert False, (self, previous)
+
+    def as_dict(self):
+        return {
+            "type": "pipe",
+            "steps": [s.as_dict() for s in self.steps],
+        }
+
+    def __repr__(self):
+        return " | ".join(repr(s) for s in self.steps)
 
 
 class Source(Origin):
@@ -55,28 +68,33 @@ class Source(Origin):
         return self
 
     def as_dict(self):
-        return {"type": "source", "name": self.name, "config": self.config, "variables": sorted(self._variables)}
+        return {"type": "source", "name": self.name, "config": self.config}
+
+    def __repr__(self):
+        return f"{self.name}({id(self)})"
 
 
 class Filter(Origin):
-    def __init__(self, name, config, previous=None):
+    def __init__(self, name, config):
         super().__init__()
         assert isinstance(config, dict), f"Config must be a dictionary {config}"
         self.name = name
         self.config = _un_dotdict(config)
-        self.previous = previous
+        self._cache = {}
 
     def combine(self, previous):
-        if self.previous is previous:
-            # Avoid duplication of intermediate origins
-            return self
-        return Filter(self.name, self.config, previous)
+        if previous in self._cache:
+            # We use a cache to avoid recomputing the same combination
+            return self._cache[previous]
+        self._cache[previous] = Pipe(previous, self)
+        return self._cache[previous]
 
     def as_dict(self):
         return {
             "type": "filter",
             "name": self.name,
             "config": self.config,
-            "apply_to": self.previous.as_dict(),
-            "variables": sorted(self._variables),
         }
+
+    def __repr__(self):
+        return f"{self.name}({id(self)})"
