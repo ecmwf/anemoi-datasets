@@ -12,33 +12,36 @@ from rich.tree import Tree
 
 def indices_to_slices(indices: list[int]) -> list[slice]:
     indices = sorted(indices)
+    assert len(indices) == len(set(indices)), "Duplicate indices are not allowed"
 
-    if len(indices) <= 1:
-        return [slice(indices[0], indices[0] + 1, 1)]
+    if not indices:
+        return []
 
-    diffs = [a - b for a, b in zip(indices[1:], indices[:-1])]
     slices = []
-    count = 0
-    prev = None
+    n = len(indices)
     i = 0
-    for diff in diffs:
-        if diff != prev:
-            if count:
-                slices.append(slice(indices[i], indices[i + count] + 1, prev))
-                i += count
-            count = 1
-            prev = diff
-            continue
-        count += 1
 
-    if count:
-        slices.append(slice(indices[i], indices[i + count] + 1, prev))
+    while i < n:
+        start = indices[i]
+        # default step = 1
+        if i + 1 < n:
+            step = indices[i + 1] - indices[i]
+        else:
+            step = 1
 
-    check = set()
+        j = i + 1
+        while j < n and indices[j] - indices[j - 1] == step:
+            j += 1
+
+        stop = indices[j - 1] + step
+        slices.append(slice(start, stop, step))
+        i = j
+
+    check = list()
     for s in slices:
-        check.update(range(s.start, s.stop, s.step))
+        check.extend(range(s.start, s.stop, s.step))
 
-    assert check == set(indices), (check - set(indices), set(indices) - check, slices, indices)
+    assert check == list(indices), slices
 
     return slices
 
@@ -80,7 +83,7 @@ class Component:
             for i in range(len(slices)):
                 combined.append(combine_slices(shape[i], *slices[i]))
 
-            result.append((combined, name, shape))
+            result.append((combined, name))
 
         return result
 
