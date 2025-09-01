@@ -291,6 +291,24 @@ class Join(Combined):
         """
         return {}
 
+    def origin(self, index):
+        assert (
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+        ), tuple
+
+        i = index[1]
+        for dataset in self.datasets:
+            if i < dataset.shape[1]:
+                return dataset.origin((index[0], i, index[2], index[3]))
+            i -= dataset.shape[1]
+
+        raise ValueError(f"Invalid index {index} {[d.shape for d in self.datasets]}")
+
+    def components(self):
+        from .components import ComponentList
+
+        return ComponentList([d.components() for d in self.datasets])
+
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
     """Create a joined dataset.

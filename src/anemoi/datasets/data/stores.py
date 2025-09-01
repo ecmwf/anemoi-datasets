@@ -424,6 +424,21 @@ class Zarr(Dataset):
         """Collect input sources."""
         pass
 
+    def origin(self, index):
+        # if self.z.attrs.get("origins") is None:
+        #     raise ValueError(f"No origins found in {self}")
+        return [self.path, self.variables_metadata[self.variables[index[1]]]]
+
+    def components(self):
+        from .components import ZarrComponent
+
+        return ZarrComponent(self.dataset_name, self.shape)
+
+    @property
+    def dataset_name(self) -> str:
+        """Return the name of the dataset."""
+        return self.z.attrs.get("recipe", {}).get("name", self.path)
+
 
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
@@ -496,6 +511,11 @@ class ZarrWithMissingDates(Zarr):
     def label(self) -> str:
         """Return the label of the dataset."""
         return "zarr*"
+
+    def origin(self, index):
+        if index[0] in self.missing:
+            self._report_missing(index[0])
+        return super().origin(index)
 
 
 QUIET = set()

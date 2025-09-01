@@ -298,3 +298,26 @@ class Subset(Forwards):
             # "indices": self.indices,
             "reason": self.reason,
         }
+
+    def origin(self, index):
+        assert (
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+        ), tuple
+        return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
+
+    def components(self):
+
+        from .components import ComponentList
+        from .components import DateSpan
+        from .components import indices_to_slices
+
+        slices = indices_to_slices(self.indices)
+
+        forward = self.dataset.components()
+
+        slices = [DateSpan(s, forward) for s in slices]
+
+        if len(slices) == 1:
+            return slices[0]
+
+        return ComponentList(slices)
