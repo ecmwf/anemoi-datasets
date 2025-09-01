@@ -66,9 +66,9 @@ def combine_slices(length, *slices):
     stop = start + current_length * step
 
     if step > 0 and stop > length:
-        stop = None
+        stop = length
     elif step < 0 and stop <= -1:
-        stop = None
+        stop = 0
 
     return slice(start, stop, step)
 
@@ -78,12 +78,12 @@ class Component:
     def reduce(self):
         result = []
 
-        for slices, name, shape in self._reduce():
+        for slices, store in self._reduce():
             combined = []
             for i in range(len(slices)):
-                combined.append(combine_slices(shape[i], *slices[i]))
+                combined.append(combine_slices(store.shape[i], *slices[i]))
 
-            result.append((combined, name))
+            result.append((combined, store))
 
         return result
 
@@ -109,23 +109,22 @@ class ComponentList(Component):
 
 
 class ZarrComponent(Component):
-    def __init__(self, name, shape) -> None:
-        self.name = name
-        self.shape = shape
+    def __init__(self, store) -> None:
+        self.store = store
 
     def __repr__(self):
-        return f"ZarrComponent({self.name})"
+        return f"ZarrComponent({self.store})"
 
     def tree(self, tree=None):
         if tree is None:
             tree = Tree("Components")
 
-        tree.add(f"ZarrComponent({self.name})")
+        tree.add(f"ZarrComponent({self.store})")
         return tree
 
     def _reduce(self):
-        slices = [[slice(0, s, 1)] for s in self.shape]
-        return [(slices, self.name, self.shape)]
+        slices = [[slice(0, s, 1)] for s in self.store.shape]
+        return [(slices, self.store)]
 
 
 class AxisComponent(Component):
@@ -148,10 +147,10 @@ class AxisComponent(Component):
 
     def _reduce(self):
         result = []
-        for slices, name, shape in self.component._reduce():
+        for slices, store in self.component._reduce():
             slices = slices.copy()
             slices[self.axis].append(self.slice)  # Add this slice to list
-            result.append((slices, name, shape))
+            result.append((slices, store))
         return result
 
 

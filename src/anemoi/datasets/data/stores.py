@@ -432,7 +432,7 @@ class Zarr(Dataset):
     def components(self):
         from .components import ZarrComponent
 
-        return ZarrComponent(self.dataset_name, self.shape)
+        return ZarrComponent(self)
 
     @property
     def dataset_name(self) -> str:
