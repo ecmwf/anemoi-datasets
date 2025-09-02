@@ -424,15 +424,42 @@ class Zarr(Dataset):
         """Collect input sources."""
         pass
 
-    def origin(self, index):
-        # if self.z.attrs.get("origins") is None:
-        #     raise ValueError(f"No origins found in {self}")
-        return [self.path, self.variables_metadata[self.variables[index[1]]]]
+    @cached_property
+    def _origins(self):
+        origins = self.z.attrs.get("origins")
+        if self.z.attrs.get("origins") is None:
+            from anemoi.registry import Dataset
 
-    def components(self):
+            LOG.warning("No 'origins' in %r, trying to get it from the registry", self.dataset_name)
+            ds = Dataset(self.dataset_name)
+            origins = ds.record.get("metadata", {}).get("origins")
+
+        if origins is None:
+            raise ValueError(f"No 'origins' in {self.dataset_name} or in the registry")
+
+        # version = origins["version"]
+        origins = origins["origins"]
+
+        result = {}
+
+        for origin in origins:
+            for v in origin["variables"]:
+                result[v] = origin["origin"]
+
+        return result
+
+    def origin(self, index):
+        variable = self.variables[index[1]]
+        return [self.path, self._origins[variable]]
+
+    def components(self, slices):
         from .components import ZarrComponent
 
         return ZarrComponent(self)
+
+    def project(self, projection):
+        slices = tuple(slice(0, i, 1) for i in self.shape)
+        return projection.from_store(slices, self).apply(projection)
 
     @property
     def dataset_name(self) -> str:

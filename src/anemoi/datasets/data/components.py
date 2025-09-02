@@ -7,6 +7,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from functools import cached_property
+
 from rich.tree import Tree
 
 
@@ -58,9 +60,11 @@ def combine_slices(length, *slices):
         current_length = new_length
 
         if current_length == 0:
+            # assert False, (length, slices)
             return slice(0, 0, 1)  # canonical empty slice
 
     if current_length == 0:
+        # assert False, (length, slices)
         return slice(0, 0, 1)
 
     stop = start + current_length * step
@@ -73,6 +77,149 @@ def combine_slices(length, *slices):
     return slice(start, stop, step)
 
 
+class _Base:
+
+    def from_store(self, slices, store):
+        return ProjectionStore(slices, store)
+
+    def make_new(self, slices):
+        return Projection(slices)
+
+    def list_or_single(self, projections):
+        if len(projections) == 1:
+            return projections[0]
+        return ProjectionList(projections)
+
+    def ensure_list(self):
+        return ProjectionList([self])
+
+
+class Projection(_Base):
+
+    def __init__(self, slices):
+        assert isinstance(slices, (list, tuple)), slices
+        assert all(isinstance(s, slice) for s in slices), slices
+        assert len(slices) == 4, slices
+        self.slices = tuple(slices)
+
+    def from_indices(self, *, axis, indices):
+        slices = indices_to_slices(indices)
+        this_slice = self.slices[axis]
+        combined = []
+        for s in slices:
+            # combined.append(combine_slices(max(this_slice.stop,s.stop), this_slice, s))
+            combined.append(combine_slices(max(this_slice.stop, s.stop), s, this_slice))
+
+        projections = [
+            Projection([c if i == axis else self.slices[i] for i in range(len(self.slices))]) for c in combined
+        ]
+
+        if len(projections) == 1:
+            return projections[0]
+        else:
+            return ProjectionList(projections)
+
+    # def join(self, *, axis, shapes):
+    #     assert isinstance(shapes, (list, tuple)), shapes
+    #     assert all(isinstance(s, (list, tuple)) for s in shapes), shapes
+
+    #     i = 0
+    #     for s in shapes:
+    #         i += s[axis]
+
+    def advance(self, axis, amount):
+        this_slice = self.slices[axis]
+        new_start = this_slice.start + amount
+        new_stop = this_slice.stop + amount
+        slices = list(self.slices)
+        slices[axis] = slice(new_start, new_stop, this_slice.step)
+        return Projection(slices)
+
+    def __repr__(self):
+        return f"Projection(slices={self.slices})"
+
+
+class ProjectionList(_Base):
+
+    def __init__(self, projections):
+        assert isinstance(projections, (list, tuple)), projections
+        assert all(isinstance(p, _Base) for p in projections), projections
+        self.projections = []
+        for p in projections:
+            if isinstance(p, ProjectionList):
+                self.projections.extend(p.projections)
+            else:
+                self.projections.append(p)
+
+    def from_indices(self, *, axis, indices):
+        return ProjectionList([p.from_indices(axis=axis, indices=indices) for p in self.projections])
+
+    # def join(self, *, axis, shapes):
+    #     return ProjectionList([p.join(axis=axis, shapes=shapes) for p in self.projections])
+
+    # def combine(self, *, axis, projections):
+    #     assert False, projections
+
+    def __repr__(self):
+        return "ProjectionList(" + ",".join(repr(p) for p in self.projections) + ")"
+
+    def ensure_list(self):
+        return self
+
+    def __iter__(self):
+        return iter(self.projections)
+
+
+class ProjectionStore(_Base):
+    def __init__(self, slices, store):
+        assert isinstance(slices, (list, tuple)), slices
+        assert all(isinstance(s, slice) for s in slices), slices
+        assert len(slices) == 4, slices
+
+        self.slices = slices
+        self.store = store
+
+    def __repr__(self):
+        return repr((self.slices, self.store.dataset_name))
+
+    def apply(self, projection):
+
+        projections = projection.ensure_list()
+
+        result = []
+
+        for projection in projections:
+
+            # rich.print('apply', projection, 'on', self)
+            slices = []
+            for a, b in zip(self.slices, projection.slices):
+                slices.append(combine_slices(a.stop, a, b))
+            result.append(ProjectionStore(slices, self.store))
+
+        return self.list_or_single(result)
+
+
+class Mapping:
+
+    def __init__(self, slice: slice, length) -> None:
+        self.slice = slice
+        self.length = length
+
+    def __repr__(self):
+        return f"Mapping(slice={self.slice}, length={self.length})"
+
+    def indices(self):
+        return self.slice.indices(self.length)
+
+    @property
+    def start(self):
+        return self.slice.start
+
+    @cached_property
+    def mapping(self):
+        return {j: i for i, j in enumerate(range(*self.indices()))}
+
+
 class Component:
 
     def reduce(self):
@@ -81,16 +228,19 @@ class Component:
         for slices, store in self._reduce():
             combined = []
             for i in range(len(slices)):
-                combined.append(combine_slices(store.shape[i], *slices[i]))
+                s = combine_slices(store.shape[i], *slices[i])
+                combined.append(Mapping(s, store.shape[i]))
 
-            result.append((combined, store))
+            result.append((combined, store, slices))
 
         return result
 
 
-class ComponentList(Component):
-    def __init__(self, components: list[Component]) -> None:
+class _ComponentList(Component):
+    def __init__(self, components: list[Component], what, reason) -> None:
         self.components = components
+        self.what = what
+        self.reason = reason
 
     def __repr__(self):
         return "ComponentList(" + ",".join(repr(c) for c in self.components) + ")"
@@ -99,13 +249,27 @@ class ComponentList(Component):
         if tree is None:
             tree = Tree("Components")
 
-        t = tree.add("ComponentList")
+        t = tree.add(f"{self.__class__.__name__}({self.what}, {self.reason})")
         for c in self.components:
             c.tree(t)
         return tree
 
     def _reduce(self):
         return sum([c._reduce() for c in self.components], [])
+
+
+class Join(_ComponentList):
+    # def _reduce(self):
+    #     assert False, self.components
+    pass
+
+
+class Select(_ComponentList):
+    pass
+
+
+class Concat(_ComponentList):
+    pass
 
 
 class ZarrComponent(Component):

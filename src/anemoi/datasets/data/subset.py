@@ -305,19 +305,21 @@ class Subset(Forwards):
         ), tuple
         return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
 
-    def components(self):
+    def components(self, slices):
 
-        from .components import ComponentList
+        from .components import Concat
         from .components import DateSpan
         from .components import indices_to_slices
 
         slices = indices_to_slices(self.indices)
 
-        forward = self.dataset.components()
-
-        slices = [DateSpan(s, forward) for s in slices]
+        slices = [DateSpan(s, self.dataset.components((s, None, None, None))) for s in slices]
 
         if len(slices) == 1:
             return slices[0]
 
-        return ComponentList(slices)
+        return Concat(slices)
+
+    def project(self, projection):
+        projection = projection.from_indices(axis=0, indices=self.indices)
+        return self.dataset.project(projection)

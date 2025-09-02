@@ -1010,9 +1010,14 @@ class Dataset(ABC, Sized):
         raise NotImplementedError(f"origin() is not implemented for `{self.__class__.__name__}`")
 
     # @abstractmethod
-    def components(self) -> Any:
+    def components(self, slices) -> Any:
         """Return the components of the variable at the specified index."""
         raise NotImplementedError(f"components() is not implemented for `{self.__class__.__name__}`")
+
+    # @abstractmethod
+    def project(self, projection) -> Any:
+        """Return the project of the variable at the specified index."""
+        raise NotImplementedError(f"project() is not implemented for `{self.__class__.__name__}`")
 
     @abstractmethod
     @cached_property

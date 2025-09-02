@@ -304,10 +304,18 @@ class Join(Combined):
 
         raise ValueError(f"Invalid index {index} {[d.shape for d in self.datasets]}")
 
-    def components(self):
-        from .components import ComponentList
+    def components(self, slices):
+        from .components import Join
 
-        return ComponentList([d.components() for d in self.datasets])
+        return Join([d.components(slices) for d in self.datasets], "join", {})
+
+    def project(self, projection):
+        projections = []
+        for dataset in self.datasets:
+            projections.append(dataset.project(projection))
+            projection = projection.advance(axis=1, amount=dataset.shape[1])
+
+        return projection.list_or_single(projections)
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:

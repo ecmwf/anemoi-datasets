@@ -231,21 +231,23 @@ class Select(Forwards):
 
         return self.dataset.origin((index[0], self.indices[index[1]], index[2], index[3]))
 
-    def components(self):
-        from .components import ComponentList
+    def components(self, slices):
+        from .components import Select
         from .components import VariableSpan
         from .components import indices_to_slices
 
         slices = indices_to_slices(self.indices)
 
-        forward = self.dataset.components()
-
-        slices = [VariableSpan(s, forward) for s in slices]
+        slices = [VariableSpan(s, self.dataset.components((None, s, None, None))) for s in slices]
 
         if len(slices) == 1:
             return slices[0]
 
-        return ComponentList(slices)
+        return Select(slices, "select", self.reason)
+
+    def project(self, projection):
+        projection = projection.from_indices(axis=1, indices=self.indices)
+        return self.dataset.project(projection)
 
 
 class Rename(Forwards):
@@ -300,3 +302,6 @@ class Rename(Forwards):
             Dict[str, Any]: The metadata specific to the subclass.
         """
         return dict(rename=self.rename)
+
+    def components(self, slices):
+        return self.forward.components(slices)

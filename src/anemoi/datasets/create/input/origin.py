@@ -15,6 +15,9 @@ LOG = logging.getLogger(__name__)
 
 class Origin(ABC):
 
+    def __init__(self, when="dataset-create"):
+        self.when = when
+
     def __eq__(self, other):
         if not isinstance(other, Origin):
             return False
@@ -35,8 +38,8 @@ def _un_dotdict(x):
 
 
 class Pipe(Origin):
-    def __init__(self, s1, s2):
-        super().__init__()
+    def __init__(self, s1, s2, when="dataset-create"):
+        super().__init__(when)
         self.steps = [s1, s2]
 
         if isinstance(s1, Pipe):
@@ -50,6 +53,7 @@ class Pipe(Origin):
         return {
             "type": "pipe",
             "steps": [s.as_dict() for s in self.steps],
+            "when": self.when,
         }
 
     def __repr__(self):
@@ -57,8 +61,8 @@ class Pipe(Origin):
 
 
 class Source(Origin):
-    def __init__(self, name, config):
-        super().__init__()
+    def __init__(self, name, config, when="dataset-create"):
+        super().__init__(when)
         assert isinstance(config, dict), f"Config must be a dictionary {config}"
         self.name = name
         self.config = _un_dotdict(config)
@@ -68,15 +72,20 @@ class Source(Origin):
         return self
 
     def as_dict(self):
-        return {"type": "source", "name": self.name, "config": self.config}
+        return {
+            "type": "source",
+            "name": self.name,
+            "config": self.config,
+            "when": self.when,
+        }
 
     def __repr__(self):
         return f"{self.name}({id(self)})"
 
 
 class Filter(Origin):
-    def __init__(self, name, config):
-        super().__init__()
+    def __init__(self, name, config, when="dataset-create"):
+        super().__init__(when)
         assert isinstance(config, dict), f"Config must be a dictionary {config}"
         self.name = name
         self.config = _un_dotdict(config)
@@ -94,6 +103,7 @@ class Filter(Origin):
             "type": "filter",
             "name": self.name,
             "config": self.config,
+            "when": self.when,
         }
 
     def __repr__(self):
