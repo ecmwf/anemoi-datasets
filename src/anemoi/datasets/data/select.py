@@ -234,9 +234,9 @@ class Select(Forwards):
     def components(self, slices):
         from .components import Select
         from .components import VariableSpan
-        from .components import indices_to_slices
+        from .components import _indices_to_slices
 
-        slices = indices_to_slices(self.indices)
+        slices = _indices_to_slices(self.indices)
 
         slices = [VariableSpan(s, self.dataset.components((None, s, None, None))) for s in slices]
 

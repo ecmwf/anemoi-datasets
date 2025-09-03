@@ -309,9 +309,9 @@ class Subset(Forwards):
 
         from .components import Concat
         from .components import DateSpan
-        from .components import indices_to_slices
+        from .components import _indices_to_slices
 
-        slices = indices_to_slices(self.indices)
+        slices = _indices_to_slices(self.indices)
 
         slices = [DateSpan(s, self.dataset.components((s, None, None, None))) for s in slices]
 
