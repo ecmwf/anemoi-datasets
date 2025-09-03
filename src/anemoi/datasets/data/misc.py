@@ -15,6 +15,7 @@ import os
 from pathlib import PurePath
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Tuple
 
 import numpy as np
 import zarr
