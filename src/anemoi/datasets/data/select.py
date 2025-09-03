@@ -289,5 +289,8 @@ class Rename(Forwards):
         """
         return dict(rename=self.rename)
 
-    def project(self, projection):
-        return self.forward.project(projection)
+    def origin_transformation(self, variable, origins):
+        return {
+            "name": "rename",
+            "config": {"rename": self.rename},
+        }

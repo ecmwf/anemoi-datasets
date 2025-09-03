@@ -155,13 +155,14 @@ class ProjectionList(ProjectionBase):
 
 
 class ProjectionStore(ProjectionBase):
-    def __init__(self, slices, store):
+    def __init__(self, slices, store, transformations=None):
         assert isinstance(slices, (list, tuple)), slices
         assert all(isinstance(s, slice) for s in slices), slices
         assert len(slices) == 4, slices
 
         self.slices = slices
         self.store = store
+        self.transformations = transformations or []
 
     def __repr__(self):
         return repr((self.slices, self.store.dataset_name))
@@ -187,5 +188,28 @@ class ProjectionStore(ProjectionBase):
     def origins(self):
         result = {}
         for variable in self.variables():
-            result[variable] = self.store.origins[variable]
+
+            origins = self.store.origins[variable]
+
+            pipe = []
+            for transformation in self.transformations:
+
+                action = transformation.origin_transformation(variable, origins)
+                action = action.copy()
+                action.setdefault("when", "dataset-usage")
+                action.setdefault("type", "filter")
+                pipe.append(action)
+
+            if pipe:
+                origins = {
+                    "type": "pipe",
+                    "when": "dataset-usage",
+                    "steps": [origins] + pipe,
+                }
+
+            result[variable] = origins
+
         return result
+
+    def add_transformation(self, transformation):
+        return ProjectionStore(self.slices, self.store, self.transformations + [transformation])
