@@ -14,6 +14,7 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+import rich
 from numpy.typing import NDArray
 
 from .dataset import Dataset
@@ -175,6 +176,8 @@ class Join(Combined):
 
         from .select import Select
 
+        rich.print("Overlaying join with", variables, len(indices), [d.shape for d in self.datasets])
+
         return Select(self, indices, {"overlay": variables})
 
     @cached_property
@@ -310,12 +313,15 @@ class Join(Combined):
         return Join([d.components(slices) for d in self.datasets], "join", {})
 
     def project(self, projection):
-        projections = []
-        for dataset in self.datasets:
-            projections.append(dataset.project(projection))
-            projection = projection.advance(axis=1, amount=dataset.shape[1])
+        result = []
+        offset = 0
 
-        return projection.list_or_single(projections)
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p.offset(axis=1, amount=-offset)))
+            offset += dataset.shape[1]
+
+        return projection.list_or_single(result)
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:

@@ -305,3 +305,6 @@ class Rename(Forwards):
 
     def components(self, slices):
         return self.forward.components(slices)
+
+    def project(self, projection):
+        return self.forward.project(projection)

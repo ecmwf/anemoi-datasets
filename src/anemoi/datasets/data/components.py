@@ -9,6 +9,7 @@
 
 from functools import cached_property
 
+import rich
 from rich.tree import Tree
 
 
@@ -53,6 +54,7 @@ def combine_slices(length, *slices):
     start, step, current_length = 0, 1, length
 
     for s in slices:
+        assert s.stop >= s.start and s.step > 0
         new_start, new_stop, new_step = s.indices(current_length)
         new_length = len(range(new_start, new_stop, new_step))
         start = start + new_start * step
@@ -60,19 +62,12 @@ def combine_slices(length, *slices):
         current_length = new_length
 
         if current_length == 0:
-            # assert False, (length, slices)
             return slice(0, 0, 1)  # canonical empty slice
 
     if current_length == 0:
-        # assert False, (length, slices)
         return slice(0, 0, 1)
 
     stop = start + current_length * step
-
-    if step > 0 and stop > length:
-        stop = length
-    elif step < 0 and stop <= -1:
-        stop = 0
 
     return slice(start, stop, step)
 
@@ -103,44 +98,71 @@ class Projection(_Base):
         self.slices = tuple(slices)
 
     def from_indices(self, *, axis, indices):
+        length = max(indices) + 1
         slices = indices_to_slices(indices)
         this_slice = self.slices[axis]
         combined = []
+
         for s in slices:
-            # combined.append(combine_slices(max(this_slice.stop,s.stop), this_slice, s))
-            combined.append(combine_slices(max(this_slice.stop, s.stop), s, this_slice))
+            c = combine_slices(max(this_slice.stop, s.stop, length), s, this_slice)
+
+            combined.append(c)
 
         projections = [
             Projection([c if i == axis else self.slices[i] for i in range(len(self.slices))]) for c in combined
         ]
 
-        if len(projections) == 1:
-            return projections[0]
-        else:
-            return ProjectionList(projections)
+        return self.list_or_single(projections)
 
-    # def join(self, *, axis, shapes):
-    #     assert isinstance(shapes, (list, tuple)), shapes
-    #     assert all(isinstance(s, (list, tuple)) for s in shapes), shapes
-
-    #     i = 0
-    #     for s in shapes:
-    #         i += s[axis]
-
-    def advance(self, axis, amount):
-        this_slice = self.slices[axis]
-        new_start = this_slice.start + amount
-        new_stop = this_slice.stop + amount
-        slices = list(self.slices)
-        slices[axis] = slice(new_start, new_stop, this_slice.step)
+    def from_slices(self, slices):
         return Projection(slices)
+
+    def distribute(self, axis, shapes):
+
+        rich.print("Distributing", self.slices[axis], [s[axis] for s in shapes])
+        result = []
+        sizes = [s[axis] for s in shapes]
+        sizes = [sizes[0]] + [sizes[i] + sizes[i - 1] for i in range(1, len(sizes))]
+        i = 0
+        indices = []
+        rich.print("Sizes", sizes)
+        for indice in range(*self.slices[axis].indices(self.slices[axis].stop)):
+            if i == len(sizes):
+                break
+            if indice < sizes[i]:
+                indices.append(indice)
+                continue
+
+            if indices:
+                for s in indices_to_slices(indices):
+                    result.append(self.make_new([s if j == axis else self.slices[j] for j in range(len(self.slices))]))
+                indices = []
+            indices.append(indice)
+            i += 1
+        if indices:
+            for s in indices_to_slices(indices):
+                result.append(self.make_new([s if j == axis else self.slices[j] for j in range(len(self.slices))]))
+        rich.print("======")
+        for r in result:
+            rich.print("Distributing", r)
+
+        # for n in [s[axis] for s in shapes]:
+
+        return self.list_or_single(result)
 
     def __repr__(self):
         return f"Projection(slices={self.slices})"
 
+    def offset(self, axis, amount):
+        return Projection(
+            [slice(s.start + amount, s.stop + amount, s.step) if i == axis else s for i, s in enumerate(self.slices)]
+        )
+
+    def shape(self):
+        return tuple(len(range(*s.indices(s.stop))) for s in self.slices)
+
 
 class ProjectionList(_Base):
-
     def __init__(self, projections):
         assert isinstance(projections, (list, tuple)), projections
         assert all(isinstance(p, _Base) for p in projections), projections
@@ -154,11 +176,18 @@ class ProjectionList(_Base):
     def from_indices(self, *, axis, indices):
         return ProjectionList([p.from_indices(axis=axis, indices=indices) for p in self.projections])
 
-    # def join(self, *, axis, shapes):
-    #     return ProjectionList([p.join(axis=axis, shapes=shapes) for p in self.projections])
+    def distribute(self, axis, shapes):
 
-    # def combine(self, *, axis, projections):
-    #     assert False, projections
+        result = []
+        offset = 0
+        for p in self.projections:
+            n = p.slices[axis].stop
+            result.append(p.offset(axis, offset).distribute(axis=axis, shapes=shapes))
+            offset += n
+
+        return self.list_or_single(result)
+
+        return ProjectionList([p.distribute(axis=axis, shapes=shapes) for p in self.projections])
 
     def __repr__(self):
         return "ProjectionList(" + ",".join(repr(p) for p in self.projections) + ")"
