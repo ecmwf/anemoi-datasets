@@ -307,11 +307,6 @@ class Join(Combined):
 
         raise ValueError(f"Invalid index {index} {[d.shape for d in self.datasets]}")
 
-    def components(self, slices):
-        from .components import Join
-
-        return Join([d.components(slices) for d in self.datasets], "join", {})
-
     def project(self, projection):
         result = []
         offset = 0

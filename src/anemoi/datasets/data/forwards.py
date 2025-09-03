@@ -240,6 +240,11 @@ class Forwards(Dataset):
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
+    def origin(self, index):
+        origin = self.forward_subclass_origin(index)
+        self.annotate_origin(origin)
+        return origin
+
 
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""

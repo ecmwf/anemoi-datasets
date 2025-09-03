@@ -44,7 +44,7 @@ def _indices_to_slices(indices: list[int]) -> list[slice]:
     return slices
 
 
-def combine_slices(length, *slices):
+def _combine_slices(length, *slices):
 
     start, step, current_length = 0, 1, length
 
@@ -101,7 +101,7 @@ class Projection(ProjectionBase):
         combined = []
 
         for s in slices:
-            combined.append(combine_slices(max(this_slice.stop, s.stop, length), s, this_slice))
+            combined.append(_combine_slices(max(this_slice.stop, s.stop, length), s, this_slice))
 
         projections = [
             Projection([c if i == axis else self.slices[i] for i in range(len(self.slices))]) for c in combined
@@ -176,7 +176,16 @@ class ProjectionStore(ProjectionBase):
 
             slices = []
             for a, b in zip(self.slices, projection.slices):
-                slices.append(combine_slices(a.stop, a, b))
+                slices.append(_combine_slices(a.stop, a, b))
             result.append(ProjectionStore(slices, self.store))
 
         return self.list_or_single(result)
+
+    def variables(self):
+        return self.store.variables[self.slices[1]]
+
+    def origins(self):
+        result = {}
+        for variable in self.variables():
+            result[variable] = self.store.origins[variable]
+        return result

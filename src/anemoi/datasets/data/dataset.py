@@ -1009,10 +1009,11 @@ class Dataset(ABC, Sized):
         """Return the origin of the variable at the specified index."""
         raise NotImplementedError(f"origin() is not implemented for `{self.__class__.__name__}`")
 
-    # @abstractmethod
-    def components(self, slices) -> Any:
-        """Return the components of the variable at the specified index."""
-        raise NotImplementedError(f"components() is not implemented for `{self.__class__.__name__}`")
+    def components(self) -> Any:
+        from anemoi.datasets.data.components import Projection
+
+        slices = tuple(slice(0, i, 1) for i in self.shape)
+        return self.project(Projection(slices))
 
     # @abstractmethod
     def project(self, projection) -> Any:

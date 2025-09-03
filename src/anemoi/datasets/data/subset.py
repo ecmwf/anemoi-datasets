@@ -299,26 +299,11 @@ class Subset(Forwards):
             "reason": self.reason,
         }
 
-    def origin(self, index):
+    def forward_subclass_origin(self, index):
         assert (
             isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
         ), tuple
         return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
-
-    def components(self, slices):
-
-        from .components import Concat
-        from .components import DateSpan
-        from .components import _indices_to_slices
-
-        slices = _indices_to_slices(self.indices)
-
-        slices = [DateSpan(s, self.dataset.components((s, None, None, None))) for s in slices]
-
-        if len(slices) == 1:
-            return slices[0]
-
-        return Concat(slices)
 
     def project(self, projection):
         projection = projection.from_indices(axis=0, indices=self.indices)

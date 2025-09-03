@@ -425,7 +425,7 @@ class Zarr(Dataset):
         pass
 
     @cached_property
-    def _origins(self):
+    def origins(self):
         origins = self.z.attrs.get("origins")
         if self.z.attrs.get("origins") is None:
             from anemoi.registry import Dataset
@@ -447,15 +447,6 @@ class Zarr(Dataset):
                 result[v] = origin["origin"]
 
         return result
-
-    def origin(self, index):
-        variable = self.variables[index[1]]
-        return [self.path, self._origins[variable]]
-
-    def components(self, slices):
-        from .components import ZarrComponent
-
-        return ZarrComponent(self)
 
     def project(self, projection):
         slices = tuple(slice(0, i, 1) for i in self.shape)
