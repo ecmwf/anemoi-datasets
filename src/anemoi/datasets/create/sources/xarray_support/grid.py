@@ -198,7 +198,7 @@ class MeshProjectionGrid(ProjectionGrid):
         return lat.flatten(), lon.flatten()
 
 
-class UnstructuredProjectionGrid(XYGrid):
+class UnstructuredProjectionGrid(ProjectionGrid):
     """Grid class for unstructured projected coordinates."""
 
     @cached_property
