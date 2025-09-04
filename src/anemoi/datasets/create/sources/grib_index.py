@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import logging
 import os
 import sqlite3
@@ -45,8 +46,8 @@ class GribIndex:
         ----------
         database : str
             Path to the SQLite database file.
-        keys : Optional[List[str] | str], optional
-            List of keys or a string of keys to use for indexing, by default None.
+        keys : Optional[list[str] | str], optional
+            list of keys or a string of keys to use for indexing, by default None.
         flavour : Optional[str], optional
             Flavour configuration for mapping fields, by default None.
         update : bool, optional
@@ -160,7 +161,7 @@ class GribIndex:
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of metadata keys stored in the database.
         """
         self.cursor.execute("SELECT key FROM metadata_keys")
@@ -228,7 +229,7 @@ class GribIndex:
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of column names.
         """
         if self._columns is not None:
@@ -244,8 +245,8 @@ class GribIndex:
 
         Parameters
         ----------
-        columns : List[str]
-            List of column names to ensure in the table.
+        columns : list[str]
+            list of column names to ensure in the table.
         """
         assert self.update
 
@@ -363,7 +364,7 @@ class GribIndex:
 
         Returns
         -------
-        List[dict]
+        list[dict]
             A list of GRIB2 parameter information.
         """
         if ("grib2", paramId) in self.cache:
@@ -523,8 +524,8 @@ class GribIndex:
 
         Parameters
         ----------
-        dates : List[Any]
-            List of dates to retrieve data for.
+        dates : list[Any]
+            list of dates to retrieve data for.
         **kwargs : Any
             Additional filtering criteria.
 
@@ -544,6 +545,9 @@ class GribIndex:
         params = dates
 
         for k, v in kwargs.items():
+            if k not in self._columns:
+                LOG.warning(f"Warning : {k} not in database columns, key discarded")
+                continue
             if isinstance(v, list):
                 query += f" AND {k} IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
@@ -551,11 +555,14 @@ class GribIndex:
                 query += f" AND {k} = ?"
                 params.append(str(v))
 
-        print("SELECT", query)
-        print("SELECT", params)
+        print("SELECT (query)", query)
+        print("SELECT (params)", params)
 
         self.cursor.execute(query, params)
-        for path_id, offset, length in self.cursor.fetchall():
+
+        fetch = self.cursor.fetchall()
+
+        for path_id, offset, length in fetch:
             if path_id in self.cache:
                 file = self.cache[path_id]
             else:
@@ -569,8 +576,24 @@ class GribIndex:
             yield data
 
 
-@legacy_source(__file__)
-def execute(
+def format_and_map_requests(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep in requests only what is needed to fetch data in grib-index"""
+
+    stripped_requests = []
+    to_keep = {"param", "number", "levtype", "step", "valid_datetime"}
+
+    for r in requests:
+        r_strip = {k: v for k, v in r.items() if k in to_keep}
+        stripped_requests.append(r_strip)
+        r["valid_datetime"] = datetime.datetime.strptime(str(r["date"]), "%Y%m%d") + datetime.timedelta(
+            hours=(r["time"] // 100)
+        )
+
+    mapped_requests = {k: list(set([r[k] for r in requests])) for k in to_keep}
+    return mapped_requests
+
+
+def grib_index_retrieve(
     context: Any,
     dates: list[Any],
     indexdb: str,
@@ -583,8 +606,8 @@ def execute(
     ----------
     context : Any
         The execution context.
-    dates : List[Any]
-        List of dates to retrieve data for.
+    dates : list[Any]
+        list of dates to retrieve data for.
     indexdb : str
         Path to the GRIB index database.
     flavour : Optional[str], optional
@@ -597,11 +620,15 @@ def execute(
     FieldArray
         An array of retrieved GRIB fields.
     """
+
     index = GribIndex(indexdb)
     result = []
 
     if flavour is not None:
         flavour = RuleBasedFlavour(flavour)
+
+    if "valid_datetime" in kwargs.keys():
+        dates = kwargs.pop("valid_datetime")
 
     for grib in index.retrieve(dates, **kwargs):
         field = ekd.from_source("memory", grib)[0]
@@ -610,3 +637,45 @@ def execute(
         result.append(field)
 
     return FieldArray(result)
+
+
+@legacy_source(__file__)
+def execute(
+    context: Any,
+    dates: list[Any],
+    *requests: tuple | list,
+    flavour: str | None = None,
+    **kwargs: Any,
+) -> FieldArray:
+    """Execute the GRIB data retrieval process.
+
+    Parameters
+    ----------
+    context : Any
+        The execution context.
+    dates : list[Any]
+        list of dates to retrieve data for.
+    requests : Optional[Union[tuple,list]] = None
+        requests to the indexdb database
+        Either requests[0] or kwargs must have an indexdb key
+        referring to database path
+    flavour : Optional[str], optional
+        Flavour configuration for mapping fields, by default None.
+    **kwargs : Any
+        Additional filtering criteria or requests.
+        Either requests[0] or kwargs must have an indexdb key
+        referring to database path
+
+    Returns
+    -------
+    FieldArray
+        An array of retrieved GRIB fields.
+    """
+
+    if requests:
+        indexdb = requests[0].pop("indexdb")
+        assert all([(indexdb == r.pop("indexdb") for r in requests[1:])])
+        kwargs = kwargs | format_and_map_requests(requests)
+    else:
+        indexdb = kwargs.pop("indexdb")
+    return grib_index_retrieve(context, dates, indexdb, flavour=flavour, **kwargs)
