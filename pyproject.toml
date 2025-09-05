@@ -138,6 +138,7 @@ profile = "black"
 testpaths = "tests"
 addopts = [
   "--numprocesses=auto",
+  "--maxprocesses=16",
   "--strict-config",
 ]
 
