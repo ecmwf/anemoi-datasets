@@ -17,7 +17,7 @@ from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .misc import _tidy
-from .result import Result
+from .result.field import Result
 
 LOG = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ class DataSourcesAction(Action):
 
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
+        self.names = [a_path for a_path, config in configs]
 
     def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
         """Selects the data sources result for the given group of dates.
@@ -82,6 +83,11 @@ class DataSourcesAction(Action):
         """Returns a string representation of the DataSourcesAction instance."""
         content = "\n".join([str(i) for i in self.sources])
         return self._repr(content)
+
+    def python_code(self, code) -> str:
+        for n, s in zip(self.names, self.sources):
+            code.source(n, s.python_code(code))
+        return code
 
 
 class DataSourcesResult(Result):
