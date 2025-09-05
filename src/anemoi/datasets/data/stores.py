@@ -14,7 +14,8 @@ import os
 import tempfile
 import warnings
 from functools import cached_property
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 from urllib.parse import urlparse
 
 import numpy as np
