@@ -229,6 +229,10 @@ class FieldsRecords(RecordsForward):
         self._groups = [name]
         self.reason = {"name": name}
 
+    @property
+    def metadata(self):
+        return self.forward.metadata
+
     def _nest_in_dict(self, obj):
         """Helper to nest the object in a dict with the name as key."""
         return {self._name: obj}
@@ -615,6 +619,10 @@ class Select(RecordsForward):
 
         self.reason = {"select": select}
         self._build_indices_and_name_to_index()
+
+    @property
+    def metadata(self):
+        return dict(select=self._select, forward=self.dataset.metadata)
 
     def _build_indices_and_name_to_index(self):
         indices = {}
