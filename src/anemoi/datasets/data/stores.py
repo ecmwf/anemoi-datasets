@@ -188,7 +188,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
         if cache is not None:
             store = zarr.LRUStoreCache(store, max_size=cache)
 
-        return zarr.convenience.open(store, "r")
+        return zarr.open(store, "r")
     except zarr.errors.PathNotFoundError:
         if not dont_fail:
             raise zarr.errors.PathNotFoundError(path)
@@ -430,15 +430,12 @@ class Zarr(Dataset):
     @cached_property
     def origins(self):
         origins = self.z.attrs.get("origins")
-        if self.z.attrs.get("origins") is None:
-            from anemoi.registry import Dataset
-
-            LOG.warning("No 'origins' in %r, trying to get it from the registry", self.dataset_name)
-            ds = Dataset(self.dataset_name)
-            origins = ds.record.get("metadata", {}).get("origins")
 
         if origins is None:
-            raise ValueError(f"No 'origins' in {self.dataset_name} or in the registry")
+            import rich
+
+            rich.print(dict(self.z.attrs))
+            raise ValueError(f"No 'origins' in {self.dataset_name}")
 
         # version = origins["version"]
         origins = origins["origins"]
