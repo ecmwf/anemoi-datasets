@@ -293,4 +293,4 @@ class Rename(Forwards):
         return {
             "name": "rename",
             "config": {"rename": self.rename},
-        }
+        }, self.rename.get(variable, variable)

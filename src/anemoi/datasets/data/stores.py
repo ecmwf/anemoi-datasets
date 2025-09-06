@@ -85,21 +85,24 @@ class S3Store(ReadOnlyStore):
     options using the anemoi configs.
     """
 
-    def __init__(self, url: str, region: str | None = None) -> None:
-        """Initialize the S3Store with a URL and optional region."""
-        from anemoi.utils.remote.s3 import s3_client
+    def __init__(self, url: str) -> None:
+        """Initialize the S3Store with a URL."""
 
-        _, _, self.bucket, self.key = url.split("/", 3)
-        self.s3 = s3_client(self.bucket, region=region)
+        LOG.warning("Accessing dataset using %s", url)
+        LOG.warning("Data access may be slow")
+
+        self.url = url
 
     def __getitem__(self, key: str) -> bytes:
         """Retrieve an item from the store."""
-        try:
-            response = self.s3.get_object(Bucket=self.bucket, Key=self.key + "/" + key)
-        except self.s3.exceptions.NoSuchKey:
-            raise KeyError(key)
+        from anemoi.utils.remote.s3 import get_object
 
-        return response["Body"].read()
+        target = self.url + "/" + key
+
+        try:
+            return get_object(target).bytes()
+        except FileNotFoundError:
+            raise KeyError(target)
 
 
 class DebugStore(ReadOnlyStore):
@@ -586,6 +589,9 @@ def zarr_lookup(name: str, fail: bool = True) -> str | None:
             pass
 
     if fail:
-        raise ValueError(f"Cannot find a dataset that matched '{name}'. Tried: {tried}")
+        LOG.error(f"Failed to find dataset '{name}'. Tried:")
+        for path in tried:
+            LOG.error(f" - {path}")
+        raise ValueError(f"Cannot find a dataset that matched '{name}'")
 
     return None

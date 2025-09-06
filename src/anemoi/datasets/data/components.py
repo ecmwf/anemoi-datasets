@@ -153,6 +153,9 @@ class ProjectionList(ProjectionBase):
     def __iter__(self):
         return iter(self.projections)
 
+    def add_transformation(self, transformation):
+        return ProjectionList([p.add_transformation(transformation) for p in self.projections])
+
 
 class ProjectionStore(ProjectionBase):
     def __init__(self, slices, store, transformations=None):
@@ -194,7 +197,7 @@ class ProjectionStore(ProjectionBase):
             pipe = []
             for transformation in self.transformations:
 
-                action = transformation.origin_transformation(variable, origins)
+                action, variable = transformation.origin_transformation(variable, origins)
                 action = action.copy()
                 action.setdefault("when", "dataset-usage")
                 action.setdefault("type", "filter")
@@ -213,3 +216,6 @@ class ProjectionStore(ProjectionBase):
 
     def add_transformation(self, transformation):
         return ProjectionStore(self.slices, self.store, self.transformations + [transformation])
+
+    def __iter__(self):
+        return iter([self])
