@@ -530,10 +530,10 @@ class ZarrWithMissingDates(Zarr):
         """Return the label of the dataset."""
         return "zarr*"
 
-    def origin(self, index):
-        if index[0] in self.missing:
-            self._report_missing(index[0])
-        return super().origin(index)
+    # def origin(self, index):
+    #     if index[0] in self.missing:
+    #         self._report_missing(index[0])
+    #     return super().origin(index)
 
 
 QUIET = set()

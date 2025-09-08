@@ -240,9 +240,6 @@ class Forwards(Dataset):
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
-    def project(self, projection):
-        return self.forward.project(projection).add_transformation(self)
-
 
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""
@@ -664,3 +661,14 @@ class GivenAxis(Combined):
             if self.axis == 0:  # Advance if axis is time
                 offset += len(d)
         return result
+
+    def project(self, projection):
+        result = []
+        offset = 0
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p.offset(axis=self.axis, amount=-offset)))
+            offset += dataset.shape[self.axis]
+
+        return projection.list_or_single(result)

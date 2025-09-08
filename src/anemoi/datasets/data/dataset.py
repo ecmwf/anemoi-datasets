@@ -1004,10 +1004,9 @@ class Dataset(ABC, Sized):
         """Return the metadata of the variables in the dataset."""
         pass
 
-    # @abstractmethod
-    def origin(self, index) -> Any:
-        """Return the origin of the variable at the specified index."""
-        raise NotImplementedError(f"origin() is not implemented for `{self.__class__.__name__}`")
+    def origins(self) -> Any:
+        for p in self.components().ensure_list():
+            print(p.origins())
 
     def components(self) -> Any:
         from anemoi.datasets.data.components import Projection

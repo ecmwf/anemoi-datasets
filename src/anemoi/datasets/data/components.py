@@ -8,6 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 
+from collections import defaultdict
+
+
 def _indices_to_slices(indices: list[int]) -> list[slice]:
     indices = sorted(indices)
     assert len(indices) == len(set(indices)), "Duplicate indices are not allowed"
@@ -84,6 +87,13 @@ class ProjectionBase:
 
     def ensure_list(self):
         return ProjectionList([self])
+
+    def compressed_origins(self):
+        result = defaultdict(list)
+        for p in self.ensure_list():
+            for k, v in p.origins().items():
+                result[k].append(v)
+        return result
 
 
 class Projection(ProjectionBase):

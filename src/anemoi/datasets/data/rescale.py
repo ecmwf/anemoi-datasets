@@ -242,3 +242,15 @@ class Rescale(Forwards):
             raise NotImplementedError("rescale tendencies statistics", k)
 
         return result
+
+    def project(self, projection):
+        return self.forward.project(projection).add_transformation(self)
+
+    def origin_transformation(self, variable, origins):
+        config = {}
+        for variable, (a, b) in self.rescale.items():
+            config[variable] = {"scale": a, "offset": b}
+        return {
+            "name": "rescale",
+            "config": config,
+        }, variable
