@@ -494,11 +494,11 @@ def validate_field_shape(report, dataset, name, result):
         raise ValueError(f"Result has wrong shape: {result} != {dataset.shape[-1]}")
 
 
-def verify(report, dataset, name, kwargs=None):
+def validate(report, dataset, name, kwargs=None):
 
     try:
 
-        validate = globals().get(f"validate_{name}", _no_validate)
+        validate_fn = globals().get(f"validate_{name}", _no_validate)
 
         # Check if the method is still in the Dataset class
         try:
@@ -534,7 +534,7 @@ def verify(report, dataset, name, kwargs=None):
             return
 
         try:
-            validate(report, dataset, name, result)
+            validate_fn(report, dataset, name, result)
         except Exception as e:
             report.invalid(name, e)
             return
@@ -552,8 +552,8 @@ def validate_dtype(report, dataset, name, result):
         raise ValueError(f"Result is not a np.dtype {type(result)}")
 
 
-def verify_dataset(dataset, costly_checks=False, detailed=False):
-    """Verify the dataset."""
+def validate_dataset(dataset, costly_checks=False, detailed=False):
+    """Validate the dataset."""
 
     report = Report()
 
@@ -567,7 +567,7 @@ def verify_dataset(dataset, costly_checks=False, detailed=False):
             assert (x == y).all(), f"Dataset indexing failed at index {i}: {x} != {y}"
 
     for name in METHODS:
-        verify(report, dataset, name, kwargs=KWARGS.get(name))
+        validate(report, dataset, name, kwargs=KWARGS.get(name))
 
     report.summary(detailed=detailed)
 

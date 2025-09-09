@@ -17,7 +17,7 @@ import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
-from anemoi.datasets.verify import verify_dataset
+from anemoi.datasets.validate import validate_dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -213,7 +213,7 @@ class DemoAlternativeDataset:
 
 def _open_dataset():
 
-    cache = "anemoi-datasets-test-verify-cache-file.nc"
+    cache = "anemoi-datasets-test-validate-cache-file.nc"
 
     if os.path.exists(cache):
         LOG.info("Loading dataset from %s", cache)
@@ -243,7 +243,7 @@ def _open_dataset():
 
     ds = ds.sel(level=[1000, 850, 500])
 
-    if int(os.environ.get("ANEMOI_DATASETS_TEST_VERIFY_CACHE_FILE", 0)):
+    if int(os.environ.get("ANEMOI_DATASETS_TEST_VALIDATE_CACHE_FILE", 0)):
         LOG.info("Caching dataset to %s", cache)
         ds.to_netcdf(cache, format="NETCDF4", mode="w")
 
@@ -256,8 +256,8 @@ def test_validate() -> None:
 
     dummy = DemoAlternativeDataset(_open_dataset())
 
-    result = verify_dataset(dummy, costly_checks=True, detailed=True)
-    assert result is None, "Dataset verification failed"
+    result = validate_dataset(dummy, costly_checks=True, detailed=True)
+    assert result is None, "Dataset validation failed"
 
 
 if __name__ == "__main__":

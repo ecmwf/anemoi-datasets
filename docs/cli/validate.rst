@@ -30,6 +30,14 @@ To validate a dataset class:
 
 In the first case, the command will check the compatibility of the zarr dataset using anemoi-datasets own class, in the second case, it will use the class provided by the user.
 
+When running the command, emojis are used to categorise the different validation results:
+
+* ✅: validation succeeded
+* ⚠️: validation for the attribute/method is not implemented
+* 💣: validation failed because the test does not pass
+* 💥: validation failed because the validation tool is out of date
+
+
 .. argparse::
     :module: anemoi.datasets.__main__
     :func: create_parser
