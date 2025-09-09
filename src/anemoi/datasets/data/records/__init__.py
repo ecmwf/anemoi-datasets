@@ -14,9 +14,11 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
+from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets.data.debug import Node
 from anemoi.datasets.data.records.backends import backend_factory
 
 LOG = logging.getLogger(__name__)
@@ -40,6 +42,11 @@ else:
 
 
 def open_records_dataset(dataset, **kwargs):
+    metadata_path = os.path.join(dataset, "metadata.json")
+    if not os.path.exists(metadata_path):
+        return None
+    metadata = load_any_dict_format(metadata_path)
+    kwargs["backend"] = kwargs.get("backend", metadata["backend"])
     return RecordsDataset(dataset, **kwargs)
 
 
@@ -76,7 +83,7 @@ class BaseRecordsDataset:
         if isinstance(i, str):
             return self._getgroup(i)
 
-        if isinstance(i, int):
+        if isinstance(i, (int, np.integer)):
             return self._getrecord(i)
 
         raise ValueError(f"Invalid index {i}, must be int or str")
@@ -206,18 +213,41 @@ class RecordsForward(BaseRecordsDataset):
     def __len__(self):
         return len(self.dates)
 
+    def tree(self):
+        return Node(self, [self.forward.tree()], **self.reason)
+
 
 class FieldsRecords(RecordsForward):
     """A wrapper around a FieldsDataset to provide a consistent interface for records datasets."""
 
     def __init__(self, fields_dataset, name):
         self.forward = fields_dataset
+        from anemoi.datasets.data.dataset import Dataset
+
+        assert isinstance(fields_dataset, Dataset), f"fields_dataset must be a Dataset, got {type(fields_dataset)}"
         self._name = name
         self._groups = [name]
+        self.reason = {"name": name}
+
+    @property
+    def metadata(self):
+        return self.forward.metadata
 
     def _nest_in_dict(self, obj):
         """Helper to nest the object in a dict with the name as key."""
         return {self._name: obj}
+
+    def _load_data(self, i):
+        data = self.forward[i]
+        out = {}
+        out[f"data:{self._name}"] = data
+        out[f"latitudes:{self._name}"] = self.forward.latitudes
+        out[f"longitudes:{self._name}"] = self.forward.longitudes
+        out[f"timedeltas:{self._name}"] = np.zeros(data.shape[-1], dtype="timedelta64[s]")  # + _to_numpy_date(
+        #    self.forward.dates[i]
+        # )
+        out[f"metadata:{self._name}"] = self.forward.metadata()
+        return out
 
     @property
     def groups(self):
@@ -234,6 +264,14 @@ class FieldsRecords(RecordsForward):
     @property
     def dates(self):
         return self.forward.dates
+
+    @property
+    def longitudes(self):
+        return self._nest_in_dict(self.forward.longitudes)
+
+    @property
+    def latitudes(self):
+        return self._nest_in_dict(self.forward.latitudes)
 
     @property
     def name_to_index(self):
@@ -255,15 +293,15 @@ class FieldsRecords(RecordsForward):
         return len(self.forward.dates)
 
 
-class Rename(RecordsForward):
+class GenericRename(RecordsForward):
     def __init__(self, dataset, rename):
         self.forward = dataset
-        # rename: {"current_group": "new_group"}
         assert isinstance(rename, dict)
         for k, v in rename.items():
             assert isinstance(k, str), k
             assert isinstance(v, str), v
         self.rename = rename
+        self.reason = {"rename": rename}
 
     @property
     def statistics(self):
@@ -282,12 +320,19 @@ class Rename(RecordsForward):
         return [self.rename.get(k, k) for k in self.forward.groups]
 
 
-class SetGroup(Rename):
+class Rename(GenericRename):
+    pass
+
+
+class SetGroup(GenericRename):
     def __init__(self, dataset, set_group):
         if len(dataset.groups) != 1:
             raise ValueError(f"{self.__class__.__name__} can only be used with datasets containing a single group.")
 
         super.__init__(dataset, {dataset.groups[0]: set_group})
+
+    def _load_data(self, i):
+        return self.dataset._load_data(i)
 
 
 def match_variable(lst, group, name):
@@ -537,17 +582,14 @@ class Rewindowed(RecordsForward):
         print(f"Requested ds({i}) : need to read {list(range(first_j, last_j + 1))} indices")
 
         # _load_data could support a list of indices, but for now we merge the data ourselves
+        # we merge the windows that we need, and then remove unnecessary data
         too_much_data = merge_data(self.forward._load_data(j) for j in range(first_j, last_j + 1))
 
         out = {}
         for group in self.groups:
             timedeltas = too_much_data[f"timedeltas:{group}"]
             if timedeltas.dtype != "timedelta64[s]":
-                if len(timedeltas) != 0:
-                    raise ValueError(f"Wrong type for {group}")
-                else:
-                    LOG.warning(f"TODO: Fixing {group} on the fly")
-                    timedeltas = np.ones_like(timedeltas, dtype="timedelta64[s]") * 0
+                raise ValueError(f"Wrong type for {group}")
             mask = self._window.compute_mask(timedeltas)
 
             out[f"data:{group}"] = too_much_data[f"data:{group}"][..., mask]
@@ -578,6 +620,10 @@ class Select(RecordsForward):
         self.reason = {"select": select}
         self._build_indices_and_name_to_index()
 
+    @property
+    def metadata(self):
+        return dict(select=self._select, forward=self.dataset.metadata)
+
     def _build_indices_and_name_to_index(self):
         indices = {}
         name_to_index = {}
@@ -601,6 +647,10 @@ class Select(RecordsForward):
                     variables[group].append(name)
                     count += 1
             assert np.sum(ind) == count, f"Mismatch in {group}: {names}, {ind}"
+        if not variables:
+            raise ValueError(
+                f"No variables matched in {self._select} for dataset {self.dataset}. Available groups: {self.dataset.groups} Available variables: {self.dataset.variables} "
+            )
         self._indices = indices
         self._name_to_index = name_to_index
         self._variables = variables
@@ -662,11 +712,11 @@ class RecordsSubset(RecordsForward):
 
 class RecordsDataset(BaseRecordsDataset):
 
-    def __init__(self, path, backend="npz1", **kwargs):
+    def __init__(self, path, backend=None, **kwargs):
         if kwargs:
             print("Warning: ignoring additional kwargs", kwargs)
         self.path = path
-        self.backend = backend_factory(backend, path, **kwargs)
+        self.backend = backend_factory(**backend, path=path)
         self._groups = list(self.metadata["sources"].keys())
         for k in self.groups:
             assert k == self.normalise_key(k), k
@@ -677,7 +727,7 @@ class RecordsDataset(BaseRecordsDataset):
 
     @classmethod
     def normalise_key(cls, k):
-        return "".join([x.lower() if x.isalnum() else "-" for x in k])
+        return "".join([x.lower() if x.isalnum() else "_" for x in k])
 
     @property
     def frequency(self):
@@ -751,6 +801,9 @@ class RecordsDataset(BaseRecordsDataset):
             for group, s in dict_of_sets.items():
                 assert s == {"latitudes", "longitudes", "timedeltas", "metadata", "data"}, f"Invalid keys {s}"
 
+    def tree(self):
+        return Node(self, [], path=self.path)
+
 
 class Record:
     def __init__(self, dataset, n):
@@ -780,7 +833,10 @@ class Record:
         return self.dataset.groups
 
     def __getitem__(self, group):
-        return self._payload["data:" + group]
+        k = f"data:{group}"
+        if k not in self._payload:
+            raise KeyError(f"Group {group} not found in record {self.n}. Available groups are {self.groups}")
+        return self._payload[k]
 
     def _get_aux(self, name):
         try:
@@ -804,6 +860,10 @@ class Record:
     @property
     def statistics(self):
         return self.dataset.statistics
+
+    def as_dict(self):
+        """Returns the record as a dictionary with group names as keys."""
+        return {group: self[group] for group in self.groups}
 
 
 class Tabular:

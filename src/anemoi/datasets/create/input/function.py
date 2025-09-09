@@ -10,7 +10,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
 
 from earthkit.data import FieldList
 
@@ -91,7 +90,7 @@ class FunctionAction(Action):
         The name of the function.
     """
 
-    def __init__(self, context: object, action_path: list, _name: str, source, **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, context: object, action_path: list, _name: str, source, **kwargs: dict[str, Any]) -> None:
         """Initializes a FunctionAction instance.
 
         Parameters

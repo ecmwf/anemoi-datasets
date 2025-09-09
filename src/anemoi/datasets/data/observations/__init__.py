@@ -10,8 +10,6 @@ import logging
 import os
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import Tuple
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -69,7 +67,10 @@ class ObservationsBase(Dataset):
         return len(self.dates)
 
     def tree(self):
-        return Node(self)
+        return Node(
+            self,
+            [],
+        )
 
     def __getitem__(self, i):
         if isinstance(i, int):
@@ -82,10 +83,8 @@ class ObservationsBase(Dataset):
         #    return [self.getitem(j) for j in i]
 
         raise ValueError(
-            (
-                f"Expected int, got {i} of type {type(i)}. Only int is supported to index "
-                "observations datasets. Please use a second [] to select part of the data [i][a,b,c]"
-            )
+            f"Expected int, got {i} of type {type(i)}. Only int is supported to index "
+            "observations datasets. Please use a second [] to select part of the data [i][a,b,c]"
         )
 
     @property
@@ -195,13 +194,11 @@ class ObservationsZarr(ObservationsBase):
 
         if len(self.forward) != len(self.dates):
             raise ValueError(
-                (
-                    f"Dates are not consistent with the number of items in the dataset. "
-                    f"The dataset contains {len(self.forward)} time windows. "
-                    f"This is not compatible with the "
-                    f"{len(self.dates)} requested dates with frequency={frequency_hours}"
-                    f"{self.dates[0]}, {self.dates[1]}, ..., {self.dates[-2]}, {self.dates[-1]} "
-                )
+                f"Dates are not consistent with the number of items in the dataset. "
+                f"The dataset contains {len(self.forward)} time windows. "
+                f"This is not compatible with the "
+                f"{len(self.dates)} requested dates with frequency={frequency_hours}"
+                f"{self.dates[0]}, {self.dates[1]}, ..., {self.dates[-2]}, {self.dates[-1]} "
             )
 
     @property
@@ -238,6 +235,7 @@ class ObservationsZarr(ObservationsBase):
         assert latitudes.shape == longitudes.shape, f"Expected {latitudes.shape}, got {longitudes.shape}"
         assert timedeltas.shape == latitudes.shape, f"Expected {timedeltas.shape}, got {latitudes.shape}"
 
+        assert timedeltas.dtype == "timedelta64[s]", f"Expected timedelta64[s], got {timedeltas.dtype}"
         return latitudes, longitudes, timedeltas
 
     def getitem(self, i):
@@ -307,7 +305,7 @@ class ObservationsZarr(ObservationsBase):
         return f"Observations({os.path.basename(self.path)}, {self.dates[0]};{self.dates[-1]}, {len(self)})"
 
 
-def observations_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> ObservationsBase:
+def observations_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> ObservationsBase:
     observations = kwargs.pop("observations")
 
     if not isinstance(observations, dict):

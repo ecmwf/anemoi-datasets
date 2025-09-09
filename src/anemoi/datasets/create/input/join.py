@@ -10,7 +10,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import List
 
 from earthkit.data import FieldList
 
@@ -44,7 +43,7 @@ class JoinResult(Result):
     """
 
     def __init__(
-        self, context: object, action_path: list, group_of_dates: GroupOfDates, results: List[Result], **kwargs: Any
+        self, context: object, action_path: list, group_of_dates: GroupOfDates, results: list[Result], **kwargs: Any
     ) -> None:
         """Initializes a JoinResult instance.
 
@@ -60,7 +59,7 @@ class JoinResult(Result):
             The list of results.
         """
         super().__init__(context, action_path, group_of_dates)
-        self.results: List[Result] = [r for r in results if not r.empty]
+        self.results: list[Result] = [r for r in results if not r.empty]
 
     @cached_property
     @assert_fieldlist
@@ -105,7 +104,7 @@ class JoinAction(Action):
             The configuration dictionaries.
         """
         super().__init__(context, action_path, *configs)
-        self.actions: List[Action] = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
+        self.actions: list[Action] = [action_factory(c, context, action_path + [str(i)]) for i, c in enumerate(configs)]
 
     def __repr__(self) -> str:
         """Returns a string representation of the JoinAction instance."""
@@ -126,5 +125,5 @@ class JoinAction(Action):
         JoinResult
             The combined result for the given group of dates.
         """
-        results: List[Result] = [a.select(group_of_dates) for a in self.actions]
+        results: list[Result] = [a.select(group_of_dates) for a in self.actions]
         return JoinResult(self.context, self.action_path, group_of_dates, results)

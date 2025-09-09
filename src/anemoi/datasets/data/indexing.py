@@ -8,12 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 
+from collections.abc import Callable
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import List
-from typing import Tuple
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,7 +20,7 @@ from .dataset import Shape
 from .dataset import TupleIndex
 
 
-def _tuple_with_slices(t: TupleIndex, shape: Shape) -> Tuple[TupleIndex, Tuple[int, ...]]:
+def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[int, ...]]:
     """Replace all integers in a tuple with slices, so we preserve the dimensionality.
 
     Parameters:
@@ -87,7 +84,7 @@ def _index_to_tuple(index: FullIndex, shape: Shape) -> TupleIndex:
     raise ValueError(f"Invalid index: {index}")
 
 
-def index_to_slices(index: Union[int, slice, Tuple], shape: Shape) -> Tuple[TupleIndex, Tuple[int, ...]]:
+def index_to_slices(index: int | slice | tuple, shape: Shape) -> tuple[TupleIndex, tuple[int, ...]]:
     """Convert an index to a tuple of slices, with the same dimensionality as the shape.
 
     Parameters:
@@ -100,7 +97,7 @@ def index_to_slices(index: Union[int, slice, Tuple], shape: Shape) -> Tuple[Tupl
     return _tuple_with_slices(_index_to_tuple(index, shape), shape)
 
 
-def apply_index_to_slices_changes(result: NDArray[Any], changes: Tuple[int, ...]) -> NDArray[Any]:
+def apply_index_to_slices_changes(result: NDArray[Any], changes: tuple[int, ...]) -> NDArray[Any]:
     """Apply changes to the result array based on the slices.
 
     Parameters:
@@ -118,7 +115,7 @@ def apply_index_to_slices_changes(result: NDArray[Any], changes: Tuple[int, ...]
     return result
 
 
-def update_tuple(t: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
+def update_tuple(t: tuple, index: int, value: Any) -> tuple[tuple, Any]:
     """Replace the elements of a tuple at the given index with a new value.
 
     Parameters:
@@ -135,7 +132,7 @@ def update_tuple(t: Tuple, index: int, value: Any) -> Tuple[Tuple, Any]:
     return tuple(t), prev
 
 
-def length_to_slices(index: slice, lengths: List[int]) -> List[Union[slice, None]]:
+def length_to_slices(index: slice, lengths: list[int]) -> list[slice | None]:
     """Convert an index to a list of slices, given the lengths of the dimensions.
 
     Parameters:
@@ -174,7 +171,7 @@ def length_to_slices(index: slice, lengths: List[int]) -> List[Union[slice, None
     return result
 
 
-def _as_tuples(index: Tuple) -> Tuple:
+def _as_tuples(index: tuple) -> tuple:
     """Convert elements of the index to tuples if they are lists or arrays.
 
     Parameters:
@@ -219,7 +216,7 @@ def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., N
         if not any(isinstance(i, (list, tuple)) for i in index):
             return method(self, index)
 
-        which: List[int] = []
+        which: list[int] = []
         for i, idx in enumerate(index):
             if isinstance(idx, (list, tuple)):
                 which.append(i)
@@ -241,7 +238,7 @@ def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., N
     return wrapper
 
 
-def make_slice_or_index_from_list_or_tuple(indices: List[int]) -> Union[List[int], slice]:
+def make_slice_or_index_from_list_or_tuple(indices: list[int]) -> list[int] | slice:
     """Convert a list or tuple of indices to a slice or an index, if possible.
 
     Parameters:

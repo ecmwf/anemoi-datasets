@@ -16,8 +16,6 @@ import uuid
 import warnings
 from functools import cached_property
 from typing import Any
-from typing import Optional
-from typing import Union
 
 import cftime
 import numpy as np
@@ -102,8 +100,8 @@ def json_tidy(o: Any) -> Any:
 
 def build_statistics_dates(
     dates: list[datetime.datetime],
-    start: Optional[datetime.datetime],
-    end: Optional[datetime.datetime],
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
 ) -> tuple[str, str]:
     """Compute the start and end dates for the statistics.
 
@@ -359,7 +357,7 @@ class Actor:  # TODO: rename to Creator
 
     dataset_class = WritableDataset
 
-    def __init__(self, path: str, cache: Optional[str] = None):
+    def __init__(self, path: str, cache: str | None = None):
         """Initialize an Actor instance.
 
         Parameters
@@ -577,10 +575,10 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         check_name: bool = False,
         overwrite: bool = False,
         use_threads: bool = False,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         progress: Any = None,
         test: bool = False,
-        cache: Optional[str] = None,
+        cache: str | None = None,
         **kwargs: Any,
     ):
         """Initialize an Init instance.
@@ -809,11 +807,11 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def __init__(
         self,
         path: str,
-        parts: Optional[str] = None,
+        parts: str | None = None,
         use_threads: bool = False,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         progress: Any = None,
-        cache: Optional[str] = None,
+        cache: str | None = None,
         **kwargs: Any,
     ):
         """Initialize a Load instance.
@@ -907,8 +905,8 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 print("Requested dates", compress_dates(dates))
                 print("Cube dates", compress_dates(dates_in_data))
 
-                a = set(as_datetime(_) for _ in dates)
-                b = set(as_datetime(_) for _ in dates_in_data)
+                a = {as_datetime(_) for _ in dates}
+                b = {as_datetime(_) for _ in dates_in_data}
 
                 print("Missing dates", compress_dates(a - b))
                 print("Extra dates", compress_dates(b - a))
@@ -958,7 +956,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         array.flush()
         LOG.info("Flushed data array")
 
-    def _get_allow_nans(self) -> Union[bool, list]:
+    def _get_allow_nans(self) -> bool | list:
         """Get the allow_nans configuration.
 
         Returns
@@ -991,7 +989,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         total = cube.count(reading_chunks)
         LOG.debug(f"Loading datacube: {cube}")
 
-        def position(x: Any) -> Optional[int]:
+        def position(x: Any) -> int | None:
             if isinstance(x, str) and "/" in x:
                 x = x.split("/")
                 return int(x[0])
@@ -1038,7 +1036,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
     def __init__(
         self,
         path: str,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         delta: list = [],
         use_threads: bool = False,
         **kwargs: Any,
@@ -1224,7 +1222,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         self,
         path: str,
         delta: str,
-        parts: Optional[str] = None,
+        parts: str | None = None,
         use_threads: bool = False,
         progress: Any = None,
         **kwargs: Any,
@@ -1480,7 +1478,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         self,
         path: str,
         use_threads: bool = False,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         progress: Any = None,
         **kwargs: Any,
     ):
@@ -1539,7 +1537,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(f"Wrote statistics in {self.path}")
 
     @cached_property
-    def allow_nans(self) -> Union[bool, list]:
+    def allow_nans(self) -> bool | list:
         """Check if NaNs are allowed."""
         import zarr
 
@@ -1581,7 +1579,7 @@ def chain(tasks: list) -> type:
     return Chain
 
 
-def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> Any:
+def creator_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
     """Create a dataset creator.
 
     Parameters
