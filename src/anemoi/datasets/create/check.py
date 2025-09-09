@@ -12,10 +12,8 @@ import datetime
 import logging
 import re
 import warnings
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Union
 
 import numpy as np
 from anemoi.utils.config import load_config
@@ -31,10 +29,10 @@ class DatasetName:
     def __init__(
         self,
         name: str,
-        resolution: Optional[str] = None,
-        start_date: Optional[datetime.date] = None,
-        end_date: Optional[datetime.date] = None,
-        frequency: Optional[datetime.timedelta] = None,
+        resolution: str | None = None,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+        frequency: datetime.timedelta | None = None,
     ):
         """Initialize a DatasetName instance.
 
@@ -146,7 +144,7 @@ class DatasetName:
                 "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
             )
 
-    def check_resolution(self, resolution: Optional[str]) -> None:
+    def check_resolution(self, resolution: str | None) -> None:
         """Check if the resolution matches the expected format.
 
         Parameters
@@ -175,7 +173,7 @@ class DatasetName:
             if not c.isalnum() and c not in "-":
                 self.messages.append(f"the {self.name} should only contain alphanumeric characters and '-'.")
 
-    def check_frequency(self, frequency: Optional[datetime.timedelta]) -> None:
+    def check_frequency(self, frequency: datetime.timedelta | None) -> None:
         """Check if the frequency matches the expected format.
 
         Parameters
@@ -189,7 +187,7 @@ class DatasetName:
         self._check_missing("frequency", frequency_str)
         self._check_mismatch("frequency", frequency_str)
 
-    def check_start_date(self, start_date: Optional[datetime.date]) -> None:
+    def check_start_date(self, start_date: datetime.date | None) -> None:
         """Check if the start date matches the expected format.
 
         Parameters
@@ -203,7 +201,7 @@ class DatasetName:
         self._check_missing("start_date", start_date_str)
         self._check_mismatch("start_date", start_date_str)
 
-    def check_end_date(self, end_date: Optional[datetime.date]) -> None:
+    def check_end_date(self, end_date: datetime.date | None) -> None:
         """Check if the end date matches the expected format.
 
         Parameters
@@ -251,7 +249,7 @@ class StatisticsValueError(ValueError):
 
 
 def check_data_values(
-    arr: NDArray[Any], *, name: str, log: list = [], allow_nans: Union[bool, list, set, tuple, dict] = False
+    arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
 ) -> None:
     """Check the values in the data array for validity.
 

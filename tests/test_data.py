@@ -9,13 +9,10 @@
 
 
 import datetime
+from collections.abc import Callable
 from functools import cache
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Type
-from typing import Union
 from unittest.mock import patch
 
 import numpy as np
@@ -31,6 +28,7 @@ from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
+from anemoi.datasets.data.padded import Padded
 from anemoi.datasets.data.select import Rename
 from anemoi.datasets.data.select import Select
 from anemoi.datasets.data.statistics import Statistics
@@ -101,8 +99,8 @@ def create_zarr(
     frequency: datetime.timedelta = datetime.timedelta(hours=6),
     resolution: str = "o96",
     k: int = 0,
-    ensemble: Optional[int] = None,
-    grids: Optional[int] = None,
+    ensemble: int | None = None,
+    grids: int | None = None,
     missing: bool = False,
 ) -> zarr.Group:
     """Create a Zarr dataset.
@@ -345,16 +343,17 @@ class DatasetTester:
     def run(
         self,
         *,
-        expected_class: Type,
+        expected_class: type,
         expected_length: int,
         expected_shape: tuple,
-        expected_variables: Union[str, list],
-        expected_name_to_index: Union[str, dict],
+        expected_variables: str | list,
+        expected_name_to_index: str | dict,
         date_to_row: Callable,
         start_date: datetime.datetime,
         time_increment: datetime.timedelta,
-        statistics_reference_dataset: Optional[Union[str, list]],
-        statistics_reference_variables: Optional[Union[str, list]],
+        statistics_reference_dataset: str | list | None,
+        statistics_reference_variables: str | list | None,
+        regular_shape: bool = True,
     ) -> None:
         """Run the dataset tests.
 
@@ -380,6 +379,8 @@ class DatasetTester:
             Reference dataset for statistics.
         statistics_reference_variables : Optional[Union[str, list]]
             Reference variables for statistics.
+        regular_shape : bool, optional
+            Whether the dataset has a regular shape, by default True.
         """
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
@@ -418,7 +419,8 @@ class DatasetTester:
                 statistics_reference_variables,
             )
 
-        self.indexing(self.ds)
+        if regular_shape:
+            self.indexing(self.ds)
         self.metadata(self.ds)
 
         self.ds.tree()
@@ -434,7 +436,7 @@ class DatasetTester:
         metadata = ds.metadata()
         assert isinstance(metadata, dict)
 
-    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: Optional[list] = None) -> None:
+    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: list | None = None) -> None:
         """Compare statistics between two datasets.
 
         Parameters
@@ -601,6 +603,25 @@ def test_join_3() -> None:
         ),
         statistics_reference_dataset="test-2021-2021-6h-o96-abcd-2",
         statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_padding_1() -> None:
+    """Test subsetting a dataset (case 2)."""
+    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00:00", padding="empty")
+    test.run(
+        expected_class=Padded,
+        expected_length=365 * 24 * 3,
+        expected_shape=(365 * 24 * 3, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd") if date.year == 2022 else np.zeros((4, 1, 0)),
+        start_date=datetime.datetime(2021, 1, 1),
+        time_increment=datetime.timedelta(hours=1),
+        statistics_reference_dataset="test-2022-2022-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        regular_shape=False,
     )
 
 

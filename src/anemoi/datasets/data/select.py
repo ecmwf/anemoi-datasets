@@ -12,9 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
 
 from numpy.typing import NDArray
 
@@ -37,7 +34,7 @@ LOG = logging.getLogger(__name__)
 class Select(Forwards):
     """Class to select a subset of variables from a dataset."""
 
-    def __init__(self, dataset: Dataset, indices: List[int], reason: Dict[str, Any]) -> None:
+    def __init__(self, dataset: Dataset, indices: list[int], reason: dict[str, Any]) -> None:
         """Initialize the Select class.
 
         Parameters
@@ -140,26 +137,26 @@ class Select(Forwards):
         return (len(self), len(self.indices)) + self.dataset.shape[2:]
 
     @cached_property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Get the variables of the dataset."""
         return [self.dataset.variables[i] for i in self.indices]
 
     @cached_property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Get the metadata of the variables."""
         return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}
 
     @cached_property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Get the mapping of variable names to indices."""
         return {k: i for i, k in enumerate(self.variables)}
 
     @cached_property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics of the dataset."""
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistical tendencies of the dataset.
 
         Parameters
@@ -176,7 +173,7 @@ class Select(Forwards):
             delta = self.frequency
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Get the specific metadata of the dataset.
 
         Parameters
@@ -216,7 +213,7 @@ class Select(Forwards):
         """
         return Node(self, [self.dataset.tree()], **self.reason)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the subclass.
 
         Returns
@@ -231,7 +228,7 @@ class Select(Forwards):
 class Rename(Forwards):
     """Class to rename variables in a dataset."""
 
-    def __init__(self, dataset: Dataset, rename: Dict[str, str]) -> None:
+    def __init__(self, dataset: Dataset, rename: dict[str, str]) -> None:
         """Initialize the Rename class.
 
         Parameters
@@ -251,17 +248,17 @@ class Rename(Forwards):
         self.rename = rename
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Get the renamed variables."""
         return self._variables
 
     @property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Get the renamed variables metadata."""
         return self._variables_metadata
 
     @cached_property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Get the mapping of renamed variable names to indices."""
         return {k: i for i, k in enumerate(self.variables)}
 
@@ -273,7 +270,7 @@ class Rename(Forwards):
         """
         return Node(self, [self.forward.tree()], rename=self.rename)
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the subclass.
 
         Returns:

@@ -9,7 +9,6 @@
 
 import logging
 from functools import cached_property
-from typing import List
 
 from earthkit.data import FieldList
 
@@ -49,6 +48,6 @@ class EmptyResult(Result):
         return from_source("empty")
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Returns an empty list of variables."""
         return []

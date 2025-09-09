@@ -10,14 +10,9 @@
 import datetime
 import logging
 import warnings
+from collections.abc import Generator
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
@@ -66,10 +61,10 @@ class Accumulation:
         date: int,
         time: int,
         number: int,
-        step: List[int],
+        step: list[int],
         frequency: int,
-        accumulations_reset_frequency: Optional[int] = None,
-        user_date: Optional[str] = None,
+        accumulations_reset_frequency: int | None = None,
+        user_date: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialises an Accumulation instance.
@@ -103,10 +98,10 @@ class Accumulation:
         self.time = time
         self.steps = step
         self.number = number
-        self.values: Optional[NDArray[None]] = None
+        self.values: NDArray[None] | None = None
         self.seen = set()
-        self.startStep: Optional[int] = None
-        self.endStep: Optional[int] = None
+        self.startStep: int | None = None
+        self.endStep: int | None = None
         self.done = False
         self.frequency = frequency
         self.accumulations_reset_frequency = accumulations_reset_frequency
@@ -114,7 +109,7 @@ class Accumulation:
         self.user_date = user_date
 
     @property
-    def key(self) -> Tuple[str, int, int, List[int], int]:
+    def key(self) -> tuple[str, int, int, list[int], int]:
         """Returns the key for the accumulation."""
         return (self.param, self.date, self.time, self.steps, self.number)
 
@@ -235,15 +230,15 @@ class Accumulation:
     def mars_date_time_steps(
         cls,
         *,
-        dates: List[datetime.datetime],
+        dates: list[datetime.datetime],
         step1: int,
         step2: int,
-        frequency: Optional[int],
-        base_times: List[int],
+        frequency: int | None,
+        base_times: list[int],
         adjust_step: bool,
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-    ) -> Generator[Tuple[int, int, Tuple[int, ...]], None, None]:
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+    ) -> Generator[tuple[int, int, tuple[int, ...]], None, None]:
         """Generates MARS date-time steps.
 
         Parameters
@@ -327,11 +322,11 @@ class Accumulation:
         step1: int,
         step2: int,
         add_step: int,
-        frequency: Optional[int],
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        frequency: int | None,
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -364,7 +359,7 @@ class Accumulation:
 class AccumulationFromStart(Accumulation):
     """Class to handle data accumulation from the start of the forecast."""
 
-    def adjust_steps(self, startStep: int, endStep: int) -> Tuple[int, int]:
+    def adjust_steps(self, startStep: int, endStep: int) -> tuple[int, int]:
         """Adjusts the start and end steps.
 
         Parameters
@@ -427,11 +422,11 @@ class AccumulationFromStart(Accumulation):
         step1: int,
         step2: int,
         add_step: int,
-        frequency: Optional[int],
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        frequency: int | None,
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -459,11 +454,12 @@ class AccumulationFromStart(Accumulation):
             A tuple representing the MARS date-time step.
         """
         assert user_date is None, user_date
-        assert not frequency, frequency
 
         steps = (step1 + add_step, step2 + add_step)
         if steps[0] == 0:
             steps = (steps[1],)
+
+        assert frequency == 0 or frequency == (step2 - step1), frequency
 
         return (
             base_date.year * 10000 + base_date.month * 100 + base_date.day,
@@ -517,10 +513,10 @@ class AccumulationFromLastStep(Accumulation):
         step2: int,
         add_step: int,
         frequency: int,
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str] = None,
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        accumulations_reset_frequency: int | None,
+        user_date: str | None = None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -567,7 +563,7 @@ class AccumulationFromLastStep(Accumulation):
 class AccumulationFromLastReset(Accumulation):
     """Class to handle data accumulation from the last step of the forecast."""
 
-    def adjust_steps(self, startStep: int, endStep: int) -> Tuple[int, int]:
+    def adjust_steps(self, startStep: int, endStep: int) -> tuple[int, int]:
         """Adjusts the start and end steps.
 
         Parameters
@@ -587,7 +583,7 @@ class AccumulationFromLastReset(Accumulation):
     @classmethod
     def _adjust_steps(
         self, startStep: int, endStep: int, frequency: int, accumulations_reset_frequency: int
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Adjusts the start and end steps.
 
         Parameters
@@ -619,7 +615,7 @@ class AccumulationFromLastReset(Accumulation):
         base_date: datetime.datetime,
         frequency: int,
         accumulations_reset_frequency: int,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Calculates the steps for accumulation.
 
         Parameters
@@ -703,10 +699,10 @@ class AccumulationFromLastReset(Accumulation):
         step2: int,
         add_step: int,
         frequency: int,
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -775,15 +771,15 @@ def _identity(x: Any) -> Any:
 
 def _compute_accumulations(
     context: Any,
-    dates: List[datetime.datetime],
-    request: Dict[str, Any],
-    user_accumulation_period: Union[int, Tuple[int, int]] = 6,
-    data_accumulation_period: Optional[int] = None,
-    accumulations_reset_frequency: Optional[int] = None,
-    user_date: Optional[str] = None,
+    dates: list[datetime.datetime],
+    request: dict[str, Any],
+    user_accumulation_period: int | tuple[int, int] = 6,
+    data_accumulation_period: int | None = None,
+    accumulations_reset_frequency: int | None = None,
+    user_date: str | None = None,
     patch: Any = _identity,
-    base_times: Optional[List[int]] = None,
-    use_cdsapi_dataset: Optional[str] = None,
+    base_times: list[int] | None = None,
+    use_cdsapi_dataset: str | None = None,
 ) -> Any:
     """Computes accumulations based on the provided parameters.
 
@@ -824,6 +820,11 @@ def _compute_accumulations(
     step1, step2 = user_accumulation_period
     assert step1 < step2, user_accumulation_period
 
+    if accumulations_reset_frequency is not None:
+        AccumulationClass = AccumulationFromLastReset
+    else:
+        AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
+
     if data_accumulation_period is None:
         data_accumulation_period = user_accumulation_period[1] - user_accumulation_period[0]
 
@@ -837,11 +838,6 @@ def _compute_accumulations(
             base_times = [0, 6, 12, 18]
 
     base_times = [t // 100 if t > 100 else t for t in base_times]
-
-    if accumulations_reset_frequency is not None:
-        AccumulationClass = AccumulationFromLastReset
-    else:
-        AccumulationClass = AccumulationFromStart if data_accumulation_period in (0, None) else AccumulationFromLastStep
 
     mars_date_time_steps = AccumulationClass.mars_date_time_steps(
         dates=dates,
@@ -932,7 +928,7 @@ def _compute_accumulations(
     return ds
 
 
-def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
+def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -950,7 +946,7 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
     return [x]
 
 
-def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
+def _scda(request: dict[str, Any]) -> dict[str, Any]:
     """Modifies the request stream based on the time.
 
     Parameters
@@ -972,7 +968,7 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
 
 @legacy_source(__file__)
 def accumulations(
-    context: Any, dates: List[datetime.datetime], use_cdsapi_dataset: Optional[str] = None, **request: Any
+    context: Any, dates: list[datetime.datetime], use_cdsapi_dataset: str | None = None, **request: Any
 ) -> Any:
     """Computes accumulations based on the provided context, dates, and request parameters.
 

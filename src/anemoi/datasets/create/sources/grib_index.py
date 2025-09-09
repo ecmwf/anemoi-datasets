@@ -10,10 +10,8 @@
 import logging
 import os
 import sqlite3
+from collections.abc import Iterator
 from typing import Any
-from typing import Iterator
-from typing import List
-from typing import Optional
 
 import earthkit.data as ekd
 import tqdm
@@ -36,8 +34,8 @@ class GribIndex:
         self,
         database: str,
         *,
-        keys: Optional[List[str] | str] = None,
-        flavour: Optional[str] = None,
+        keys: list[str] | str | None = None,
+        flavour: str | None = None,
         update: bool = False,
         overwrite: bool = False,
     ) -> None:
@@ -157,7 +155,7 @@ class GribIndex:
         """Commit the current transaction to the database."""
         self.conn.commit()
 
-    def _get_metadata_keys(self) -> List[str]:
+    def _get_metadata_keys(self) -> list[str]:
         """Retrieve the metadata keys from the database.
 
         Returns
@@ -225,7 +223,7 @@ class GribIndex:
                 LOG.info(f"Path: {self._get_path(existing_record[1])}")
             raise
 
-    def _all_columns(self) -> List[str]:
+    def _all_columns(self) -> list[str]:
         """Retrieve all column names from the grib_index table.
 
         Returns
@@ -241,7 +239,7 @@ class GribIndex:
         self._columns = [col for col in columns if not col.startswith("_")]
         return self._columns
 
-    def _ensure_columns(self, columns: List[str]) -> None:
+    def _ensure_columns(self, columns: list[str]) -> None:
         """Add missing columns to the grib_index table.
 
         Parameters
@@ -324,7 +322,7 @@ class GribIndex:
 
         self._commit()
 
-    def _paramdb(self, category: int, discipline: int) -> Optional[dict]:
+    def _paramdb(self, category: int, discipline: int) -> dict | None:
         """Fetch parameter information from the parameter database.
 
         Parameters
@@ -355,7 +353,7 @@ class GribIndex:
         except Exception as e:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
 
-    def _param_grib2_info(self, paramId: int) -> List[dict]:
+    def _param_grib2_info(self, paramId: int) -> list[dict]:
         """Fetch GRIB2 parameter information for a given parameter ID.
 
         Parameters
@@ -383,7 +381,7 @@ class GribIndex:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
         return []
 
-    def _param_id_info(self, paramId: int) -> Optional[dict]:
+    def _param_id_info(self, paramId: int) -> dict | None:
         """Fetch detailed information for a given parameter ID.
 
         Parameters
@@ -412,7 +410,7 @@ class GribIndex:
 
         return None
 
-    def _param_id_unit(self, unitId: int) -> Optional[dict]:
+    def _param_id_unit(self, unitId: int) -> dict | None:
         """Fetch unit information for a given unit ID.
 
         Parameters
@@ -520,7 +518,7 @@ class GribIndex:
             raise ValueError(f"No path found for path_id {path_id}")
         return row[0]
 
-    def retrieve(self, dates: List[Any], **kwargs: Any) -> Iterator[Any]:
+    def retrieve(self, dates: list[Any], **kwargs: Any) -> Iterator[Any]:
         """Retrieve GRIB data from the database.
 
         Parameters
@@ -574,9 +572,9 @@ class GribIndex:
 @legacy_source(__file__)
 def execute(
     context: Any,
-    dates: List[Any],
+    dates: list[Any],
     indexdb: str,
-    flavour: Optional[str] = None,
+    flavour: str | None = None,
     **kwargs: Any,
 ) -> FieldArray:
     """Execute the GRIB data retrieval process.
