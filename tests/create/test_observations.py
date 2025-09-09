@@ -45,7 +45,7 @@ class DummyFilter(ObservationsFilter):
         """Filter the data based on the given window."""
         self._check(df)
         # Here we can add any filtering logic if needed
-        df["a1"] = df["a1"] + 0.42
+        df.loc[:, "a1"] = df["a1"] + 0.42
         return self._check(df)
 
 

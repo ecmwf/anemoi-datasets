@@ -11,8 +11,8 @@ import datetime
 import logging
 
 import pandas as pd
+from bufr2df_parallel import bufr2df_parallel
 from earthkit.data import from_source
-from odb2df import process_odb
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
@@ -95,29 +95,47 @@ class ColFilter(ObservationsFilter):
         return self._check(df)
 
 
-dates = [datetime.datetime(2025, 1, 1, 0, 0) + datetime.timedelta(hours=i * 8) for i in range(3)]
+dates = [datetime.datetime(2015, 10, 1, 0, 0) + datetime.timedelta(hours=i * 8) for i in range(3)]
 
 source = MarsObsSource(
     request_dict={
-        "class": "ea",
+        "class": "od",
         "expver": "0001",
-        "stream": "oper",
-        "obsgroup": "conv",
-        "reportype": "16001/16002/16004/16065/16076",
-        "type": "ofb",
-        "time": "00/12",
-        "filter": "'select seqno,reportype,date,time,lat,lon,report_status,report_event1,entryno,varno,statid,stalt,obsvalue,lsm@modsurf,biascorr_fg,final_obs_error,datum_status@body,datum_event1@body,vertco_reference_1,vertco_type where ((varno==39 and abs(fg_depar@body)<20) or (varno in (41,42) and abs(fg_depar@body)<15) or (varno==58 and abs(fg_depar@body)<0.4) or (varno == 110 and entryno == 1 and abs(fg_depar@body)<10000) or (varno == 91)) and time in (000000,030000,060000,090000,120000,150000,180000,210000);'",
+        "stream": "DCDA/LWDA",
+        "type": "ai",
+        "obstype": "ssmis",
+        "times": "00/06/12/18",
     },
     pre_process_dict={
         # "target": odb2df.process_odb,
-        "index": ["seqno@hdr", "lat@hdr", "lon@hdr", "date@hdr", "time@hdr", "stalt@hdr", "lsm@modsurf"],
-        "pivot": ["varno@body"],
-        "values": ["obsvalue@body"],
-        "drop_na": True,
+        "nproc": 12,
+        "prefilter_msg_header": {"satelliteID": 286.0},
+        "datetime_position_prefix": "#1#",
+        "per_report": {
+            "satelliteID": "satelliteID",
+            "#1#latitude": "latitudes",
+            "#1#longitude": "longitudes",
+            # bearingOrAzimuth: azimuth
+            "fieldOfViewNumber": "fov_num",
+            "#9#brightnessTemperature": "obsvalue_rawbt_9",
+            "#10#brightnessTemperature": "obsvalue_rawbt_10",
+            "#11#brightnessTemperature": "obsvalue_rawbt_11",
+            "#12#brightnessTemperature": "obsvalue_rawbt_12",
+            "#13#brightnessTemperature": "obsvalue_rawbt_13",
+            "#14#brightnessTemperature": "obsvalue_rawbt_14",
+            "#15#brightnessTemperature": "obsvalue_rawbt_15",
+            "#16#brightnessTemperature": "obsvalue_rawbt_16",
+            "#17#brightnessTemperature": "obsvalue_rawbt_17",
+            "#18#brightnessTemperature": "obsvalue_rawbt_18",
+        },
+        "filters": {
+            "longitudes": "lambda x: np.isfinite(x)",
+            "latitudes": "lambda x: np.isfinite(x)",
+        },
     },
-    process_func=process_odb,
+    process_func=bufr2df_parallel,
 )
-filter = ColFilter("obsvalue_v10m_0")
+filter = ColFilter("obsvalue_rawbt_9")
 
 for d in dates:
     window = window_from_str("(-5h, 1h]").to_absolute_window(d)
@@ -126,3 +144,4 @@ for d in dates:
     d = filter(d)
     print(window)
     print(d)
+    print(d["satelliteID"].unique())

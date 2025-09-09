@@ -16,7 +16,7 @@ def load_varno_dict(path: Optional[str] = None) -> Dict:
     try:
         with open(path or "varno.json") as f:
             return json.load(f)
-    except:
+    except (ValueError, Exception):
         return {"data": []}
 
 
@@ -27,7 +27,7 @@ def get_varno_name(varno: Union[int, str], varno_dict: Dict) -> str:
         for entry in varno_dict.get("data", []):
             if v in entry:
                 return str(entry[0])
-    except:
+    except (ValueError, Exception):
         pass
     return str(varno)
 
@@ -75,7 +75,7 @@ def process_odb(
 
     try:
         df = reader.to_pandas()
-    except Exception as e:
+    except (ValueError, Exception) as e:
         logging.error(f"ODB conversion failed: {e}")
         return pd.DataFrame()
 
@@ -108,14 +108,14 @@ def process_odb(
                 format="%Y%m%d%H%M%S",
             )
             df = df.drop(columns=[date_col, time_col], level=0)
-        except:
+        except (ValueError, Exception):
             logging.warning("Could not create datetime column")
 
     # Rename columns
     df.columns = rename_cols(df.columns.tolist(), extra_obs, varno_path)
 
     # Rename lat/lon columns to match expected format
-    df = df.rename(columns={"lat": "latitudes", "lon": "longitudes"})
+    df = df.rename(columns={"lat": "latitudes", "lon": "longitudes"}).sort_values(by="times")
 
     return df
 
