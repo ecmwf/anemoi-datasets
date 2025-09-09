@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import logging
 from typing import Any
 
 from anemoi.transform.fields import new_field_with_metadata
@@ -16,6 +17,8 @@ from earthkit.data.core.order import build_remapping
 
 from ..result.field import FieldResult
 from . import Context
+
+LOG = logging.getLogger(__name__)
 
 
 class FieldContext(Context):
@@ -55,7 +58,7 @@ class FieldContext(Context):
 
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
 
-    def origin(self, data: Any, action: Any) -> Any:
+    def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
 
         origin = action.origin()
 
@@ -67,6 +70,7 @@ class FieldContext(Context):
                 # The field has pass unchanges in a filter
                 result.append(fs)
             else:
-                result.append(new_field_with_metadata(fs, anemoi_origin=origin.combine(previous)))
+                anemoi_origin = origin.combine(previous, action, action_arguments)
+                result.append(new_field_with_metadata(fs, anemoi_origin=anemoi_origin))
 
         return new_fieldlist_from_list(result)

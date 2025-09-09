@@ -121,9 +121,7 @@ def test_class_grids():
         ],
         adjust="all",
     )
-
-    for p in ds.components():
-        print(p.origins()["2t"])
+    _test_dataset(ds)
 
 
 @skip_if_offline
@@ -137,10 +135,7 @@ def test_class_cutout() -> None:
         ],
         adjust="all",
     )
-
-    for p in ds.components():
-        print(p)
-        print(p.origins())
+    _test_dataset(ds)
 
 
 @skip_if_offline
@@ -195,7 +190,11 @@ def test_class_cropping():
 @zarr_tests
 @not_ready
 def test_class_trim_edge():
-    pass
+    ds = open_dataset(
+        "cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
+        trim_edge=(1, 2, 3, 4),
+    )
+    _test_dataset(ds)
 
 
 @skip_if_offline
@@ -332,10 +331,7 @@ def test_class_rename_with_overlap() -> None:
         ],
         end=2022,
     )
-
-    for p in ds.components():
-        print(p)
-        print(p.origins())
+    _test_dataset(ds)
 
 
 @skip_if_offline
