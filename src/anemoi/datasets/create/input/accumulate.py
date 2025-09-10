@@ -98,9 +98,9 @@ class AccumulationAction(Action):
         ----------
             context: Any
                 The context needed to initialize the action
-            action_path: List[str] 
+            action_path: List[str]
                 The action path to initialize the action.
-            source: Dict[str, Any] 
+            source: Dict[str, Any]
                 The configuration describing the data source.
         """
         super().__init__(context, action_path, source)
