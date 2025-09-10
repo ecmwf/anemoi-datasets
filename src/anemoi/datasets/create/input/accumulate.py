@@ -65,8 +65,8 @@ class AccumulationResult(Result):
             The group of dates.
         source: Any
             The original source used to perform accumulation (as action_factory)
-        accumulate: Any
-            The accumulate operation to be used (as action_factory)
+        request: Dict[str,Any]
+            The description of the accumulate request
         """
         super().__init__(context, action_path, group_of_dates)
         self.source: Any = source
@@ -83,23 +83,25 @@ class AccumulationResult(Result):
         return _tidy(ds)
 
     def __repr__(self) -> str:
-        """Returns a string representation of the JoinResult instance."""
-        content: str = f"AccumulationAction({self.source})"
+        """Returns a string representation of the AccumulationResult instance."""
+        content: str = f"AccumulationRsult({self.source})"
         return self._repr(content)
 
 
 class AccumulationAction(Action):
     """An Action implementation that selects and transforms a group of dates."""
 
-    def __init__(self, context: Any, action_path: List[str], source: Dict[str, Any], **kwargs: Any) -> None:
-        """Initialize RepeatedDatesAction.
+    def __init__(self, context: Any, action_path: List[str], source: Dict[str, Any]) -> None:
+        """Initialize AccumulationAction.
 
-        Args:
-            context (Any): The context.
-            action_path (List[str]): The action path.
-            source (Any): The data source.
-            mode (str): The mode for date mapping.
-            **kwargs (Any): Additional arguments.
+        Parameters
+        ----------
+            context: Any
+                The context needed to initialize the action
+            action_path: List[str] 
+                The action path to initialize the action.
+            source: Dict[str, Any] 
+                The configuration describing the data source.
         """
         super().__init__(context, action_path, source)
 
@@ -107,11 +109,13 @@ class AccumulationAction(Action):
         self.request = source[list(source.keys())[0]]
 
     @trace_select
-    def select(self, group_of_dates: Any) -> AccumulationResult:
+    def select(self, group_of_dates: GroupOfDates) -> AccumulationResult:
         """Select and transform the group of dates.
 
-        Args:
-            group_of_dates (Any): The group of dates to select.
+        Parameters
+        ----------
+            group_of_dates: GroupOfDates
+                The group of dates to select.
 
         Returns
         -------
