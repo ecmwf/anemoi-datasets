@@ -9,19 +9,23 @@
 
 
 import logging
-import os
 from functools import cached_property
 
 import numpy as np
+import pytest
 import xarray as xr
+from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
-from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets.validate import validate_dataset
 
-LOG = logging.getLogger(__name__)
 
-# https://github.com/google-research/arco-era5
+@pytest.fixture
+def test_netcdf(get_test_data: GetTestData) -> str:
+    return get_test_data("anemoi-datasets/test-validate.nc")
+
+
+LOG = logging.getLogger(__name__)
 
 
 class DemoAlternativeDataset:
@@ -211,50 +215,12 @@ class DemoAlternativeDataset:
         return frequency[0]
 
 
-def _open_dataset():
-
-    cache = "anemoi-datasets-test-validate-cache-file.nc"
-
-    if os.path.exists(cache):
-        LOG.info("Loading dataset from %s", cache)
-        return xr.open_dataset(cache)
-
-    LOG.info("Loading dataset from the Internet")
-
-    ds = xr.open_zarr(
-        "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
-        consolidated=True,
-        storage_options=dict(token="anon"),
-    )
-
-    ds = ds.isel(time=(slice(0, 24 * 7, 6)))  # Select a few dates
-
-    ds = ds[
-        [  # Single level
-            "10m_u_component_of_wind",
-            "10m_v_component_of_wind",
-            "2m_temperature",
-        ]
-        + [  # Pressure levels
-            "temperature",
-            "geopotential",
-        ]
-    ]
-
-    ds = ds.sel(level=[1000, 850, 500])
-
-    if int(os.environ.get("ANEMOI_DATASETS_TEST_VALIDATE_CACHE_FILE", 0)):
-        LOG.info("Caching dataset to %s", cache)
-        ds.to_netcdf(cache, format="NETCDF4", mode="w")
-
-    return ds
-
-
 @skip_if_offline
-@skip_missing_packages("gcsfs")
-def test_validate() -> None:
+def test_validate(test_netcdf) -> None:
 
-    dummy = DemoAlternativeDataset(_open_dataset())
+    ds = xr.open_dataset(test_netcdf)
+    print(ds)
+    dummy = DemoAlternativeDataset(ds)
 
     result = validate_dataset(dummy, costly_checks=True, detailed=True)
     assert result is None, "Dataset validation failed"
