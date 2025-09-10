@@ -125,9 +125,6 @@ class Masked(Forwards):
         super().collect_supporting_arrays(collected, *path)
         collected.append((path, self.mask_name, self.mask))
 
-    def project(self, projection):
-        return self.forward.project(projection).add_transformation(self)
-
 
 class Thinning(Masked):
     """A class to represent a thinned dataset."""
@@ -207,7 +204,7 @@ class Thinning(Masked):
         return {
             "name": "thinning",
             "config": dict(thinning=self.thinning, method=self.method),
-        }, variable
+        }
 
 
 class Cropping(Masked):
@@ -260,10 +257,7 @@ class Cropping(Masked):
         return dict(area=self.area)
 
     def origin_transformation(self, variable, origins):
-        return {
-            "name": "cropping",
-            "config": dict(area=self.area),
-        }, variable
+        return {"name": "cropping", "config": dict(area=self.area)}
 
 
 class TrimEdge(Masked):

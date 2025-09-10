@@ -71,7 +71,7 @@ def test_class_concat():
 @zarr_tests
 def test_class_number():
     ds = open_dataset(
-        "aifs-ea-an-enda-0001-mars-o96-1979-2022-6h-v6",
+        "aifs-ea-an-enda-0001-mars-20p0-2020-2020-24h-v6",
         number=[1, 5, 6],
     )
     _test_dataset(ds)
@@ -396,7 +396,7 @@ def test_class_xy():
 
 
 if __name__ == "__main__":
-    test_class_rescale_2()
+    test_class_number()
     exit(0)
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):

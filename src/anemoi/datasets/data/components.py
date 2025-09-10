@@ -207,7 +207,11 @@ class ProjectionStore(ProjectionBase):
             pipe = []
             for transformation in self.transformations:
 
-                action, variable = transformation.origin_transformation(variable, origins)
+                action = transformation.origin_transformation(variable, origins)
+                if isinstance(action, tuple):
+                    # Needed to support 'rename'
+                    action, variable = action
+
                 action = action.copy()
                 action.setdefault("when", "dataset-usage")
                 action.setdefault("type", "filter")

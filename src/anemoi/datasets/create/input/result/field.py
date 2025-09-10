@@ -566,18 +566,33 @@ class FieldResult(Result):
         name_key = list(self.order_by.keys())[1]
 
         p = None
-        origins = defaultdict(set)
+        origins_per_number = defaultdict(lambda: defaultdict(set))
 
         for fs in self.datasource:
             o = fs.metadata("anemoi_origin", remapping=self.remapping, patches=self.patches)
             name = fs.metadata(name_key, remapping=self.remapping, patches=self.patches)
+            number = fs.metadata("number", remapping=self.remapping, patches=self.patches)
 
-            assert name not in origins[o], (name,)
-            origins[o].add(name)
+            assert name not in origins_per_number[number][o], name
+            origins_per_number[number][o].add(name)
 
             if p is not o:
                 LOG.info(f"🔥🔥🔥🔥🔥🔥 Source: {name}, {o}")
                 p = o
+
+        origins_per_variables = defaultdict(lambda: defaultdict(set))
+        for number, origins in origins_per_number.items():
+            for origin, names in origins.items():
+                for name in names:
+                    origins_per_variables[name][origin].add(number)
+
+        origins = defaultdict(set)
+
+        # Check if all members of a variable have the same origins
+        for name, origin_number in origins_per_variables.items():
+            # For now we do not support variables with members from different origins
+            assert len(origin_number) == 1, origin_number
+            origins[list(origin_number.keys())[0]].add(name)
 
         self._origins = []
         for k, v in origins.items():

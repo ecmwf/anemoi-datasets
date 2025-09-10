@@ -119,11 +119,13 @@ class Filter(Origin):
     def combine(self, previous, action, action_arguments):
 
         if previous is None:
+            # This can happen if the filter does not tag its output with an origin
+            # (e.g. a user plugin). In that case we try to get the origin from the action arguments
             key = (id(action), id(action_arguments))
             if key not in self._cache:
 
                 LOG.warning(f"No previous origin to combine with: {self}. Action: {action}")
-                LOG.warning(f"Connecting to action argumentsm {action_arguments}")
+                LOG.warning(f"Connecting to action arguments {action_arguments}")
                 origins = set()
                 for k in action_arguments:
                     o = k.metadata("anemoi_origin", default=None)
