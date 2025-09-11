@@ -1450,17 +1450,16 @@ def test_invalid_trim_edge() -> None:
         )
 
 
-def test_save_dataset() -> None:
+@pytest.fixture
+@mockup_open_zarr
+def mock_dataset():
+    return DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02").ds
+
+
+def test_save_dataset(mock_dataset) -> None:
     """Test save datasets."""
-
-    @mockup_open_zarr
-    def mock_save_dataset():
-        tmp_dir = tempfile.mkdtemp(suffix=".zarr")
-        test = DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02")
-        save_dataset(test.ds, tmp_dir)
-        return tmp_dir
-
-    tmp_dir = mock_save_dataset()
+    tmp_dir = tempfile.mkdtemp(suffix=".zarr")
+    save_dataset(mock_dataset, tmp_dir)
     print(InspectZarr().inspect_zarr(tmp_dir))
     saved = open_dataset(tmp_dir)
     assert saved.variables == ["a", "b"]
