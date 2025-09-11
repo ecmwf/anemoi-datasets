@@ -149,6 +149,7 @@ class Comparer:
                 if k not in b_keys:
                     errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
                     continue
+
                 if k in [
                     "timestamp",
                     "uuid",
@@ -159,7 +160,6 @@ class Comparer:
                     "description",
                     "config_path",
                     "total_size",
-                    "total_number_of_files",  # should be removed latter when the reference metadata has been updated.
                 ]:
                     if type(a[k]) is not type(b[k]):
                         errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
