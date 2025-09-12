@@ -24,6 +24,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
+from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.data import save_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
@@ -1461,7 +1462,11 @@ def test_save_dataset() -> None:
         return tmp_dir
 
     tmp_dir = mock_save_dataset()
-    print(InspectZarr().inspect_zarr(tmp_dir))
+    iz = InspectZarr()
+    version = iz._info(tmp_dir)
+    if isinstance(version, NoVersion):
+        pytest.skip("No version information found, test not supported")
+    print(iz.inspect_zarr(tmp_dir))
     saved = open_dataset(tmp_dir)
     assert saved.variables == ["a", "b"]
     assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
