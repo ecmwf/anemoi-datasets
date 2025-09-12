@@ -164,6 +164,7 @@ You may also have to install pandoc on macOS:
    cli/scan
    cli/patch
    cli/compare-lam
+   cli/validate
 
 .. toctree::
    :maxdepth: 1
