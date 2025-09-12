@@ -466,9 +466,9 @@ class EaEndaTimeline(EraTimeline):
 
 
 class RrOperTimeline(Timeline):
-    
+
     forecast_interval: datetime.timedelta = datetime.timedelta(hours=3)
-    
+
     def available_steps(self, start, end) -> dict:
         """Return the timeline time steps available to build/search an available period
 
@@ -493,21 +493,20 @@ class RrOperTimeline(Timeline):
             18: [[0, i] for i in range(0, x, 1)],
             21: [[0, i] for i in range(0, x, 1)],
         }
-        
-        
+
     def search_period(self, current: datetime) -> Period:
-        
+
         steps = self.available_steps()
         current_hour = current.hour
-        
+
         candidates = [sk for sk in steps if sk < current_hour]
         start_guess = max(candidates)
-        assert [0,current_hour-start_guess] in steps[start_guess], f"No available forecast for {current}"
+        assert [0, current_hour - start_guess] in steps[start_guess], f"No available forecast for {current}"
 
         delta = datetime.timedelta(hours=current_hour - start_guess)
         assert delta < self.forecast_interval.hours(), f"{current} is too far from a forecast start"
         start = current - delta
-        
+
         return Period(start, current, start)
 
     def build_periods(self) -> list[Period]:
@@ -523,20 +522,20 @@ class RrOperTimeline(Timeline):
         while current > start:
             chosen = self.search_period(current)
             current = current - (chosen.start_datetime)
-            
-            #avoid infinite loop
-            assert current<chosen.end_datetime
+
+            # avoid infinite loop
+            assert current < chosen.end_datetime
             chosen.sign = 1
             # if start matches a forecast start, no additional period needed
             lst.append(chosen)
-        
+
         # if start does not match a forecast start, one additional period needed
-        if current<start:
+        if current < start:
             assert start - current < self.forecast_interval, f"{current} selects a forecast too far in the past"
             assert current.hour in self.available_steps()
-            chosen = Period(current,start,current)
+            chosen = Period(current, start, current)
             # must substract the accumulated value from forecast start
-            chosen.sign = -1 
+            chosen.sign = -1
             lst.append(chosen)
         return lst
 
