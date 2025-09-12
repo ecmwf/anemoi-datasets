@@ -91,12 +91,11 @@ class Period:
         flag = start == self.start_datetime
 
         end = base_datetime + datetime.timedelta(hours=endStep)
-        flag = flag | (end == self.end_datetime)
-
+        flag = (flag and (end == self.end_datetime))
         return flag
 
     def __repr__(self):
-        return f"Period({self.start_datetime} to {self.end_datetime} -> {self.time_request})"
+        return f"Period({self.start_datetime} to {self.end_datetime} -> {self.time_request}, counted {self.sign})"
 
     def length(self):
         """Time length of the period"""
@@ -173,15 +172,15 @@ class Timeline:
     def find_matching_period(self, field: Any) -> Period | None:
         """For a given field with accumulation, find a period in the Timeline that matches the field metadata
 
-        Parameters:
+        Parameters
         ----------
 
         field: Any
             The field for which a Period is looked after
             The field originates from the database which reflects the initial dataset
 
-        Return: :
-        ---------
+        Return
+        ------
 
         Period : the corresponding period in the Timeline
         None : if there is no matching period (field outside of Timeline)
@@ -237,8 +236,9 @@ class DefaultTimeline(Timeline):
         IMPORTANT : The default assumption is that the base_datetime for one sample is the datetime of the previous sample in the dataset.
         It can be user-defined if different. For ERA5/MARS-like, the base_datetime is specific and requires different Timelines.
 
-        Parameters:
+        Parameters
         ----------
+        
         valid_date: datetime.datetime
             Validity date of the timeline
         accumulation_period: datetime.timedelta,
@@ -319,8 +319,8 @@ class EraTimeline(Timeline):
         between the two dates 'start' and 'end'.
         Depending on the ERA configuration, one might have several corresponding periods with the same dates.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         start: datetime.datetime
             starting date for the period
         end: datetime.datetime
@@ -328,8 +328,8 @@ class EraTimeline(Timeline):
         debug: bool, default
             print debug information
 
-        Return:
-        -------
+        Return
+        ------
 
         found: list[Period]
             The list of matching periods
@@ -469,7 +469,7 @@ class RrOperTimeline(Timeline):
 
     forecast_interval: datetime.timedelta = datetime.timedelta(hours=3)
 
-    def available_steps(self, start, end) -> dict:
+    def available_steps(self) -> dict:
         """Return the timeline time steps available to build/search an available period
 
         Parameters:
@@ -494,17 +494,19 @@ class RrOperTimeline(Timeline):
             21: [[0, i] for i in range(0, x, 1)],
         }
 
-    def search_period(self, current: datetime) -> Period:
+    def search_period(self, current: datetime.datetime) -> Period:
 
         steps = self.available_steps()
         current_hour = current.hour
 
-        candidates = [sk for sk in steps if sk < current_hour]
-        start_guess = max(candidates)
-        assert [0, current_hour - start_guess] in steps[start_guess], f"No available forecast for {current}"
+        if current_hour >= int(self.forecast_interval.seconds // 3600):
+            start_guess = max([sk for sk in steps if sk < current_hour])
+        else:
+            start_guess = max(list(steps.keys()))
+        assert [0, (current_hour - start_guess)%24] in steps[start_guess], f"No available forecast for {current}"
 
-        delta = datetime.timedelta(hours=current_hour - start_guess)
-        assert delta < self.forecast_interval.hours(), f"{current} is too far from a forecast start"
+        delta = datetime.timedelta(hours=(current_hour - start_guess)%24)
+        assert delta <= self.forecast_interval, f"{current} is too far from a forecast start"
         start = current - delta
 
         return Period(start, current, start)
@@ -521,22 +523,25 @@ class RrOperTimeline(Timeline):
         lst = []
         while current > start:
             chosen = self.search_period(current)
-            current = current - (chosen.start_datetime)
-
+            current = current - (chosen.end_datetime - chosen.start_datetime)
+            print(f"start : {start}, current: {current}, {chosen}")
             # avoid infinite loop
             assert current < chosen.end_datetime
             chosen.sign = 1
             # if start matches a forecast start, no additional period needed
             lst.append(chosen)
+            print(chosen)
 
         # if start does not match a forecast start, one additional period needed
         if current < start:
+            print(f"additional step start : {start}, current: {current}")
             assert start - current < self.forecast_interval, f"{current} selects a forecast too far in the past"
             assert current.hour in self.available_steps()
             chosen = Period(current, start, current)
             # must substract the accumulated value from forecast start
             chosen.sign = -1
             lst.append(chosen)
+            print(chosen)
         return lst
 
 
