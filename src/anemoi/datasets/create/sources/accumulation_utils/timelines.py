@@ -479,7 +479,7 @@ class RrOperTimeline(Timeline):
             _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
 
         """
-        #raise NotImplementedError("need to implement diff")
+        # raise NotImplementedError("need to implement diff")
         x = 24  # todo: check if 24 is the right value
         return {
             0: [[0, i] for i in range(0, x, 1)],
@@ -491,7 +491,7 @@ class RrOperTimeline(Timeline):
             18: [[0, i] for i in range(0, x, 1)],
             21: [[0, i] for i in range(0, x, 1)],
         }
-    
+
     def search_periods(self, start: datetime.datetime, end: datetime.datetime, debug: bool = False) -> list[Period]:
         """Find candidate periods that can be used to accumulate the data
         between the two dates 'start' and 'end'.
@@ -545,10 +545,10 @@ class RrOperTimeline(Timeline):
                 )
 
         return found
-    
+
     def build_periods(self) -> list[Period]:
         """Build the list of periods to accumulate the data on the Timeline
-        
+
         available steps --> checking the closest base datetime for each hour
         difference should be implemented
         """
@@ -556,7 +556,6 @@ class RrOperTimeline(Timeline):
         accum_hours = self.accumulation_period.total_seconds() / 3600
         assert int(accum_hours) == accum_hours, f"Only full hours accumulation is supported {accum_hours}"
         accum_hours = int(accum_hours)
-
 
         data_accum_hours = self.data_accumulation_period.total_seconds() / 3600
         assert int(accum_hours) == accum_hours, f"Only full hours accumulation is supported {accum_hours}"
