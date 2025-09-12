@@ -153,6 +153,12 @@ class ZarrBuiltRegistry:
             except FileNotFoundError:
                 pass
 
+        _build = self.zarr_path + "/_build"
+        try:
+            shutil.rmtree(_build)
+        except FileNotFoundError:
+            pass
+
     def _open_write(self) -> zarr.Group:
         """Open the Zarr store in write mode."""
         import zarr
