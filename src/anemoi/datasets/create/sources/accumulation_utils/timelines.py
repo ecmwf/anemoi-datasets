@@ -479,7 +479,7 @@ class RrOperTimeline(Timeline):
             _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
 
         """
-        raise NotImplementedError("need to implement diff")
+        #raise NotImplementedError("need to implement diff")
         x = 24  # todo: check if 24 is the right value
         return {
             0: [[0, i] for i in range(0, x, 1)],
@@ -491,6 +491,102 @@ class RrOperTimeline(Timeline):
             18: [[0, i] for i in range(0, x, 1)],
             21: [[0, i] for i in range(0, x, 1)],
         }
+    
+    def search_periods(self, start: datetime.datetime, end: datetime.datetime, debug: bool = False) -> list[Period]:
+        """Find candidate periods that can be used to accumulate the data
+        between the two dates 'start' and 'end'.
+        Depending on the configuration, one might have several corresponding periods with the same dates.
+
+        Parameters:
+        -----------
+        start: datetime.datetime
+            starting date for the period
+        end: datetime.datetime
+            end date for the period
+        debug: bool, default
+            print debug information
+
+        Return:
+        -------
+
+        found: list[Period]
+            The list of matching periods
+        """
+        found = []
+        if not end - start == datetime.timedelta(hours=1):
+            raise NotImplementedError("Only 1 hour period is supported")
+
+        for base_time, steps in self.available_steps(start, end).items():
+            for step1, step2 in steps:
+                if debug:
+                    print(f"❌ tring: {base_time=} {step1=} {step2=}")
+
+                if ((base_time + step1) % 24) != start.hour:
+                    continue
+
+                if ((base_time + step2) % 24) != end.hour:
+                    continue
+
+                base_datetime = start - datetime.timedelta(hours=step1)
+                period = Period(start, end, base_datetime)
+                found.append(period)
+
+                assert base_datetime.hour == base_time, (base_datetime, base_time)
+
+                assert period.start_datetime - period.base_datetime == datetime.timedelta(hours=step1), (
+                    period.start_datetime,
+                    period.base_datetime,
+                    step1,
+                )
+                assert period.end_datetime - period.base_datetime == datetime.timedelta(hours=step2), (
+                    period.end_datetime,
+                    period.base_datetime,
+                    step2,
+                )
+
+        return found
+    
+    def build_periods(self) -> list[Period]:
+        """Build the list of periods to accumulate the data on the Timeline
+        
+        available steps --> checking the closest base datetime for each hour
+        difference should be implemented
+        """
+
+        accum_hours = self.accumulation_period.total_seconds() / 3600
+        assert int(accum_hours) == accum_hours, f"Only full hours accumulation is supported {accum_hours}"
+        accum_hours = int(accum_hours)
+
+
+        data_accum_hours = self.data_accumulation_period.total_seconds() / 3600
+        assert int(accum_hours) == accum_hours, f"Only full hours accumulation is supported {accum_hours}"
+        accum_hours = int(accum_hours)
+        lst = []
+        for wanted in [[i, i + accum_hours] for i in range(0, accum_hours, 1)]:
+
+            start = self.valid_date - datetime.timedelta(hours=wanted[1])
+            end = self.valid_date - datetime.timedelta(hours=wanted[0])
+
+            found = self.search_periods(start, end)
+            if not found:
+                print(f"❌❌❌ Cannot find accumulation for {start} {end}")
+                self.search_periods(start, end, debug=True)
+                raise ValueError(f"Cannot find accumulation for {start} {end}")
+
+            # choosing most recent forecast
+            found = sorted(found, key=lambda x: x.base_datetime, reverse=True)
+            chosen = found[0]
+
+            if len(found) > 1:
+                print(f"  Found more than one period for {start} {end}")
+                for f in found:
+                    print(f"    {f}")
+                print(f"    Chosing {chosen}, base_datetime: {chosen.base_datetime}")
+
+            chosen.sign = 1
+
+            lst.append(chosen)
+        return lst
 
 
 class OdEldaTimeline(EraTimeline):
