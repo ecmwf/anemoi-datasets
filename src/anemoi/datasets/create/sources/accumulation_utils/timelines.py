@@ -91,7 +91,7 @@ class Period:
         flag = start == self.start_datetime
 
         end = base_datetime + datetime.timedelta(hours=endStep)
-        flag = (flag and (end == self.end_datetime))
+        flag = flag and (end == self.end_datetime)
         return flag
 
     def __repr__(self):
@@ -238,7 +238,7 @@ class DefaultTimeline(Timeline):
 
         Parameters
         ----------
-        
+
         valid_date: datetime.datetime
             Validity date of the timeline
         accumulation_period: datetime.timedelta,
@@ -503,9 +503,9 @@ class RrOperTimeline(Timeline):
             start_guess = max([sk for sk in steps if sk < current_hour])
         else:
             start_guess = max(list(steps.keys()))
-        assert [0, (current_hour - start_guess)%24] in steps[start_guess], f"No available forecast for {current}"
+        assert [0, (current_hour - start_guess) % 24] in steps[start_guess], f"No available forecast for {current}"
 
-        delta = datetime.timedelta(hours=(current_hour - start_guess)%24)
+        delta = datetime.timedelta(hours=(current_hour - start_guess) % 24)
         assert delta <= self.forecast_interval, f"{current} is too far from a forecast start"
         start = current - delta
 
