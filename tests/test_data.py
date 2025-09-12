@@ -9,6 +9,7 @@
 
 
 import datetime
+import tempfile
 from collections.abc import Callable
 from functools import cache
 from functools import wraps
@@ -22,6 +23,9 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.commands.inspect import InspectZarr
+from anemoi.datasets.commands.inspect import NoVersion
+from anemoi.datasets.data import save_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import GridsBase
@@ -1445,6 +1449,27 @@ def test_invalid_trim_edge() -> None:
             "test-2021-2021-6h-o96-abcd",
             trim_edge=(1, 2, 3, 4),
         )
+
+
+def test_save_dataset() -> None:
+    """Test save datasets."""
+
+    @mockup_open_zarr
+    def mock_save_dataset():
+        tmp_dir = tempfile.mkdtemp(suffix=".zarr")
+        test = DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02")
+        save_dataset(test.ds, tmp_dir)
+        return tmp_dir
+
+    tmp_dir = mock_save_dataset()
+    iz = InspectZarr()
+    version = iz._info(tmp_dir)
+    if isinstance(version, NoVersion):
+        pytest.skip("No version information found, test not supported")
+    print(iz.inspect_zarr(tmp_dir))
+    saved = open_dataset(tmp_dir)
+    assert saved.variables == ["a", "b"]
+    assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
 
 
 if __name__ == "__main__":

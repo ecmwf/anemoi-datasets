@@ -312,7 +312,7 @@ def _concat_or_join(datasets: list["Dataset"], kwargs: dict[str, Any]) -> tuple[
 
     Returns
     -------
-    Tuple[Dataset, Dict[str, Any]]
+    tuple[Dataset, Dict[str, Any]]
         The concatenated or joined dataset and remaining arguments.
     """
     if "adjust" in kwargs:
@@ -339,7 +339,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
 
     Parameters
     ----------
-    a : Union[str, PurePath, Dict[str, Any], List[Any], Tuple[Any, ...]]
+    a : Union[str, PurePath, Dict[str, Any], List[Any], tuple[Any, ...]]
         The input to open.
 
     Returns
@@ -402,7 +402,7 @@ def _auto_adjust(
 
     Returns
     -------
-    Tuple[List[Dataset], Dict[str, Any]]
+    tuple[List[Dataset], Dict[str, Any]]
         The adjusted datasets and remaining arguments.
     """
     if "adjust" not in kwargs:
@@ -615,7 +615,7 @@ def append_to_zarr(new_data: np.ndarray, new_dates: np.ndarray, zarr_path: str) 
     # Re-open the zarr store to avoid root object accumulating memory.
     root = zarr.open(zarr_path, mode="a")
     # Convert new dates to strings (using str) regardless of input dtype.
-    new_dates = np.array(new_dates, dtype="datetime64[ns]")
+    new_dates = np.array(new_dates, dtype="datetime64[s]")
     dates_ds = root["dates"]
     old_len = dates_ds.shape[0]
     dates_ds.resize((old_len + len(new_dates),))
@@ -628,19 +628,19 @@ def append_to_zarr(new_data: np.ndarray, new_dates: np.ndarray, zarr_path: str) 
     data_ds[old_shape[0] :] = new_data
 
 
-def process_date(date: Any, big_dataset: Any) -> tuple[np.ndarray, np.ndarray]:
+def process_date(date: Any, big_dataset: "Dataset") -> tuple[np.ndarray, np.ndarray]:
     """Open the subset corresponding to the given date and return (date, subset).
 
     Parameters
     ----------
     date : Any
         The date to process.
-    big_dataset : Any
+    big_dataset : Dataset
         The dataset to process.
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray]
+    tuple[np.ndarray, np.ndarray]
         The subset and the date.
     """
     print("Processing:", date, flush=True)
@@ -650,26 +650,24 @@ def process_date(date: Any, big_dataset: Any) -> tuple[np.ndarray, np.ndarray]:
     return s, date
 
 
-def initialize_zarr_store(root: Any, big_dataset: Any, recipe: dict[str, Any]) -> None:
+def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     """Initialize the Zarr store with the given dataset and recipe.
 
     Parameters
     ----------
     root : Any
-        The root of the Zarr store.
-    big_dataset : Any
+        The root Zarr store.
+    big_dataset : Dataset
         The dataset to initialize the store with.
-    recipe : Dict[str, Any]
-        The recipe for initializing the store.
     """
-    ensembles = big_dataset.shape[1]
+    ensembles = big_dataset.shape[2]
     # Create or append to "dates" dataset.
     if "dates" not in root:
         full_length = len(big_dataset.dates)
         root.create_dataset("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
 
     if "data" not in root:
-        dims = (1, len(big_dataset.variables), ensembles, big_dataset.grids[0])
+        dims = (1, len(big_dataset.variables), ensembles, big_dataset.shape[-1])
         root.create_dataset(
             "data",
             shape=dims,
@@ -689,25 +687,28 @@ def initialize_zarr_store(root: Any, big_dataset: Any, recipe: dict[str, Any]) -
     if "latitudes" not in root or "longitudes" not in root:
         root.create_dataset("latitudes", data=big_dataset.latitudes, compressor=None)
         root.create_dataset("longitudes", data=big_dataset.longitudes, compressor=None)
-
+    for k, v in big_dataset.metadata().items():
+        if k not in root.attrs:
+            root.attrs[k] = v
     # Set store-wide attributes if not already set.
-    if "frequency" not in root.attrs:
-        root.attrs["frequency"] = "10m"
-        root.attrs["resolution"] = "1km"
+    if "first_date" not in root.attrs:
+        root.attrs["first_date"] = big_dataset.metadata()["start_date"]
+        root.attrs["last_date"] = big_dataset.metadata()["end_date"]
+        root.attrs["resolution"] = big_dataset.resolution
         root.attrs["name_to_index"] = {k: i for i, k in enumerate(big_dataset.variables)}
-        root.attrs["ensemble_dimension"] = 1
+        root.attrs["ensemble_dimension"] = 2
         root.attrs["field_shape"] = big_dataset.field_shape
         root.attrs["flatten_grid"] = True
-        root.attrs["recipe"] = recipe
+        root.attrs["recipe"] = {}
 
 
-def _save_dataset(recipe: dict[str, Any], zarr_path: str, n_workers: int = 1) -> None:
+def _save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> None:
     """Incrementally create (or update) a Zarr store from an Anemoi dataset.
 
     Parameters
     ----------
-    recipe : Dict[str, Any]
-        The recipe for creating the dataset.
+    dataset : Dataset
+        anemoi-dataset opened from python to save to Zarr store
     zarr_path : str
         The path to the Zarr store.
     n_workers : int, optional
@@ -723,13 +724,13 @@ def _save_dataset(recipe: dict[str, Any], zarr_path: str, n_workers: int = 1) ->
     """
     from concurrent.futures import ProcessPoolExecutor
 
-    full_ds = _open_dataset(recipe).mutate()
+    full_ds = dataset
     print("Opened full dataset.", flush=True)
 
     # Use ProcessPoolExecutor for parallel data extraction.
     # Workers return (date, subset) tuples.
     root = zarr.open(zarr_path, mode="a")
-    initialize_zarr_store(root, full_ds, recipe)
+    initialize_zarr_store(root, full_ds)
     print("Zarr store initialised.", flush=True)
 
     existing_dates = np.array(sorted(root["dates"]), dtype="datetime64[s]")
