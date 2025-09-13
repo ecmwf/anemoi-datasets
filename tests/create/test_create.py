@@ -14,6 +14,8 @@ import sys
 from unittest.mock import patch
 
 import pytest
+from anemoi.transform.filter import Filter
+from anemoi.transform.filters import filter_registry
 from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
@@ -30,6 +32,18 @@ SKIP += ["accumulation"]  # test not in s3 yet
 SKIP += ["regrid"]
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
+
+
+# Used by pipe.yaml
+@filter_registry.register("filter")
+class TestFilter(Filter):
+
+    def __init__(self, **kwargs):
+
+        self.kwargs = kwargs
+
+    def forward(self, data):
+        return data.sel(**self.kwargs)
 
 
 @pytest.fixture
