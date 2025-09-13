@@ -8,18 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 
+import os
 from collections.abc import Callable
 from functools import wraps
 from unittest.mock import patch
 
 import pytest
+from anemoi.utils.testing import TEST_DATA_URL
 from anemoi.utils.testing import skip_if_offline
 
 from anemoi.datasets import open_dataset
 
 
 def _tests_zarrs(name: str) -> str:
-    return f"https://anemoi-test.ecmwf.int/test-zarrs/{name}.zarr"
+    return os.path.join(TEST_DATA_URL, "anemoi-datasets", f"{name}.zarr")
 
 
 def zarr_tests(func: Callable) -> Callable:
@@ -32,7 +34,15 @@ def zarr_tests(func: Callable) -> Callable:
     return wrapper
 
 
-def _test_dataset(ds):
+def _test_dataset(ds, variables=None):
+
+    if variables is not None:
+        assert ds.variables == variables, (
+            set(ds.variables) - set(variables),
+            set(variables) - set(ds.variables),
+            ds.variables,
+        )
+
     for p in ds.components():
         print(p)
         print(p.origins())
@@ -47,34 +57,122 @@ not_ready = pytest.mark.skip(reason="Not ready yet")
 def test_class_complement_none():
     pass
     # ds = open_dataset(
-    #     source="cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
-    #     complement="aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+    #     source="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+    #     complement="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
     #     # adjust="all",
     # )
 
 
 @skip_if_offline
 @zarr_tests
-@not_ready
-def test_class_complement_nearest():
-    pass
+def test_class_complement_nearest_1():
+    ds = open_dataset(
+        complement="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        source="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        interpolation="nearest",
+    )
+    _test_dataset(
+        ds,
+        variables=[
+            "2t",
+            "cos_latitude",
+            "cp",
+            "insolation",
+            "lsm",
+            "msl",
+            "orog",
+            "sf",
+            "t_500",
+            "t_850",
+            "tp",
+            "z",
+            "z_500",
+            "z_850",
+        ],
+    )
 
 
 @skip_if_offline
 @zarr_tests
-@not_ready
+def test_class_complement_nearest_2():
+    ds = open_dataset(
+        source="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        complement="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        interpolation="nearest",
+    )
+    _test_dataset(
+        ds,
+        variables=[
+            "2t",
+            "cos_latitude",
+            "cp",
+            "insolation",
+            "lsm",
+            "msl",
+            "orog",
+            "sf",
+            "t_500",
+            "t_850",
+            "tp",
+            "z",
+            "z_500",
+            "z_850",
+        ],
+    )
+
+
+@skip_if_offline
+@zarr_tests
 def test_class_concat():
-    pass
+    ds = open_dataset(
+        [
+            "aifs-ea-an-oper-0001-mars-20p0-2016-2016-6h-v1",
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        ]
+    )
+    _test_dataset(
+        ds,
+        variables=[
+            "2t",
+            "cos_latitude",
+            "cp",
+            "insolation",
+            "lsm",
+            "msl",
+            "t_500",
+            "t_850",
+            "tp",
+            "z",
+            "z_500",
+            "z_850",
+        ],
+    )
 
 
 @skip_if_offline
 @zarr_tests
 def test_class_number():
     ds = open_dataset(
-        "aifs-ea-an-enda-0001-mars-20p0-2020-2020-24h-v6",
-        number=[1, 5, 6],
+        "aifs-ea-an-enda-0001-mars-20p0-2017-2017-6h-v1",
+        members=[0, 2],
     )
-    _test_dataset(ds)
+    _test_dataset(
+        ds,
+        variables=[
+            "2t",
+            "cos_latitude",
+            "cp",
+            "insolation",
+            "lsm",
+            "msl",
+            "t_500",
+            "t_850",
+            "tp",
+            "z",
+            "z_500",
+            "z_850",
+        ],
+    )
 
 
 @skip_if_offline
@@ -82,11 +180,27 @@ def test_class_number():
 def test_class_ensemble():
     ds = open_dataset(
         ensemble=[
-            "aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v6",
-            "aifs-ea-em-enda-0001-mars-o96-1979-2022-6h-v6",
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+            "aifs-ea-em-enda-0001-mars-20p0-2017-2017-6h-v1",
         ]
     )
-    _test_dataset(ds)
+    _test_dataset(
+        ds,
+        variables=[
+            "2t",
+            "cos_latitude",
+            "cp",
+            "insolation",
+            "lsm",
+            "msl",
+            "t_500",
+            "t_850",
+            "tp",
+            "z",
+            "z_500",
+            "z_850",
+        ],
+    )
 
 
 @skip_if_offline
@@ -112,12 +226,11 @@ def test_class_missing_dates_interpolate():
 
 @skip_if_offline
 @zarr_tests
-@not_ready
 def test_class_grids():
     ds = open_dataset(
         grids=[
-            "cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
-            "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+            "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         ],
         adjust="all",
     )
@@ -130,8 +243,8 @@ def test_class_grids():
 def test_class_cutout() -> None:
     ds = open_dataset(
         cutout=[
-            "cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
-            "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+            "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         ],
         adjust="all",
     )
@@ -161,17 +274,34 @@ def test_class_interpolate_nearest():
 
 @skip_if_offline
 @zarr_tests
-@not_ready
-def test_class_join():
-    pass
+def test_class_join_1():
+    ds = open_dataset(
+        [
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-sfc",
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-pl",
+        ],
+    )
+    _test_dataset(ds, ["2t", "lsm", "msl", "z", "t_500", "t_850", "z_500", "z_850"])
+
+
+@skip_if_offline
+@zarr_tests
+def test_class_join_2():
+    ds = open_dataset(
+        [
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-pl",
+            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-sfc",
+        ],
+    )
+    _test_dataset(ds, ["t_500", "t_850", "z_500", "z_850", "2t", "lsm", "msl", "z"])
 
 
 @skip_if_offline
 @zarr_tests
 def test_class_thinning():
     ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
-        thinning=100,
+        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        thinning=4,
     )
     _test_dataset(ds)
 
@@ -180,7 +310,7 @@ def test_class_thinning():
 @zarr_tests
 def test_class_cropping():
     ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
+        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         area=[80, -10, 30, 40],
     )
     _test_dataset(ds)
@@ -191,7 +321,7 @@ def test_class_cropping():
 @not_ready
 def test_class_trim_edge():
     ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p5km-1984-2020-6h-v2-hmsi",
+        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         trim_edge=(1, 2, 3, 4),
     )
     _test_dataset(ds)
@@ -236,7 +366,7 @@ def test_class_padded():
 @zarr_tests
 def test_class_rescale_1():
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rescale={"2t": (1.0, -273.15)},
     )
     _test_dataset(ds)
@@ -252,7 +382,7 @@ def test_class_rescale_2():
         raise pytest.skip("udunits2 library not installed")
 
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rescale={"2t": ("K", "degC")},
     )
     _test_dataset(ds)
@@ -262,7 +392,7 @@ def test_class_rescale_2():
 @zarr_tests
 def test_class_rescale_3():
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rescale={
             "2t": {"scale": 1.0, "offset": -273.15},
         },
@@ -274,7 +404,7 @@ def test_class_rescale_3():
 @zarr_tests
 def test_class_select_select_1():
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         select=["msl", "2t"],
     )
     _test_dataset(ds)
@@ -284,7 +414,7 @@ def test_class_select_select_1():
 @zarr_tests
 def test_class_select_select_2():
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         select={"msl", "2t"},
     )
     _test_dataset(ds)
@@ -294,7 +424,7 @@ def test_class_select_select_2():
 @zarr_tests
 def test_class_select_drop():
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         drop=["2t", "msl"],
     )
     _test_dataset(ds)
@@ -304,7 +434,7 @@ def test_class_select_drop():
 @zarr_tests
 def test_class_rename() -> None:
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rename={"2t": "temperature", "msl": "pressure"},
     )
     _test_dataset(ds)
@@ -312,11 +442,12 @@ def test_class_rename() -> None:
 
 @skip_if_offline
 @zarr_tests
+@not_ready
 def test_class_rename_with_overlap() -> None:
     ds = open_dataset(
         [
             {
-                "dataset": "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+                "dataset": "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
                 "select": ["cp", "tp"],
                 "end": 2023,
                 "frequency": "6h",
@@ -344,12 +475,13 @@ def test_class_statistics():
 @skip_if_offline
 @zarr_tests
 def test_class_zarr():
-    ds = open_dataset("aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6")
+    ds = open_dataset("aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1")
     _test_dataset(ds)
 
 
 @skip_if_offline
 @zarr_tests
+@not_ready
 def test_class_zarr_with_missing_dates():
     ds = open_dataset("rodeo-opera-files-o96-2013-2023-6h-v5")
     _test_dataset(ds)
@@ -359,7 +491,7 @@ def test_class_zarr_with_missing_dates():
 @zarr_tests
 def test_class_subset():
     ds = open_dataset(
-        "aifs-od-an-oper-0001-mars-o96-2016-2023-6h-v6",
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         frequency="12h",
         start=2017,
         end=2018,
@@ -396,7 +528,8 @@ def test_class_xy():
 
 
 if __name__ == "__main__":
-    test_class_number()
+    test_class_complement_nearest_1()
+    test_class_complement_nearest_2()
     exit(0)
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
