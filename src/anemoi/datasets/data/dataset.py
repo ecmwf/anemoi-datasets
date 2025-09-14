@@ -566,6 +566,11 @@ class Dataset(ABC, Sized):
         )
 
         try:
+            md["origins"] = self.origins()
+        except Exception:
+            LOG.exception("Failed to get origins")
+
+        try:
             return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
