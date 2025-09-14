@@ -33,6 +33,9 @@ class Action(ABC):
     def python_code(self, code):
         pass
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({'.'.join(str(x) for x in self.path)}, {self.config})"
+
 
 class Concat(Action):
     def __init__(self, config, *path):
@@ -147,7 +150,8 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return context.origin(source.execute(context.source_argument(argument)), self)
+        result = source.execute(context.source_argument(argument))
+        return context.origin(result, self, argument)
 
     def origin(self):
         from .origin import Source
@@ -178,7 +182,8 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return context.origin(filter.forward(context.filter_argument(argument)), self)
+        result = filter.forward(context.filter_argument(argument))
+        return context.origin(result, self, argument)
 
     def origin(self):
         from .origin import Filter

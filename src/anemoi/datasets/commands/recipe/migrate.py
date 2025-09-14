@@ -417,7 +417,7 @@ def _fix_some(config: dict) -> None:
         node = glom(config, ".".join(p[:-1]))
         node.update(node.pop("<<"))
         parent[node.pop("name")] = node
-        assert len(parent) == 2
+        assert len(parent) == 2, parent
         del parent["source"]
 
     paths = find_paths_in_substrees("label.mars", config)

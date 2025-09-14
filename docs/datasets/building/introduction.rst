@@ -94,6 +94,7 @@ operations can be combined to build complex datasets.
    statistics
    incremental
    advanced-options
+   using-python
 
 ********************
  Naming Conventions

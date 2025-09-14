@@ -19,7 +19,7 @@ from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.filters import filter_registry as datasets_filter_registry
+# from anemoi.datasets.create.filters import filter_registry as datasets_filter_registry
 from anemoi.datasets.create.sources import source_registry
 
 LOG = logging.getLogger(__name__)
@@ -226,13 +226,6 @@ class Recipe:
         sources = source_registry.factories.copy()
         filters = transform_filter_registry.factories.copy()
 
-        for key, factory in datasets_filter_registry.factories.items():
-            if key in filters:
-                LOG.warning(
-                    f"Filter `{key}` is registered in anemoi.datasets filter registry and in anemoi.transform filter registry"
-                )
-            filters[key] = factory
-
         for key, factory in sources.items():
             if key in filters:
                 LOG.warning(
@@ -341,7 +334,7 @@ class Recipe:
 
     @description.setter
     def description(self, value):
-        self._description = value
+        self._description = value.strip()
 
     @property
     def attribution(self):
@@ -349,7 +342,7 @@ class Recipe:
 
     @attribution.setter
     def attribution(self, value):
-        self._attribution = value
+        self._attribution = value.strip()
 
     @property
     def licence(self):
@@ -357,7 +350,7 @@ class Recipe:
 
     @licence.setter
     def licence(self, value):
-        self._licence = value
+        self._licence = value.strip()
 
     @property
     def name(self):
@@ -365,7 +358,7 @@ class Recipe:
 
     @name.setter
     def name(self, value):
-        self._name = value
+        self._name = value.strip()
 
     @property
     def dates(self):

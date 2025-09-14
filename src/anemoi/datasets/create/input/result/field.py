@@ -17,7 +17,6 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
-import rich
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
@@ -304,7 +303,7 @@ class FieldResult(Result):
     @property
     def origins(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
-        return [o.as_dict() for o in self._origins]
+        return {"version": 1, "origins": self._origins}
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -567,14 +566,37 @@ class FieldResult(Result):
         name_key = list(self.order_by.keys())[1]
 
         p = None
-        self._origins = []
+        origins_per_number = defaultdict(lambda: defaultdict(set))
+
         for fs in self.datasource:
-            o, name = fs.metadata("anemoi_origin", name_key, remapping=self.remapping, patches=self.patches)
-            o.add_variable(name)
+            o = fs.metadata("anemoi_origin", remapping=self.remapping, patches=self.patches)
+            name = fs.metadata(name_key, remapping=self.remapping, patches=self.patches)
+            number = fs.metadata("number", remapping=self.remapping, patches=self.patches)
+
+            assert name not in origins_per_number[number][o], name
+            origins_per_number[number][o].add(name)
+
             if p is not o:
-                rich.print(f"🔥🔥🔥🔥🔥🔥 {name}, {o}")
+                LOG.info(f"🔥🔥🔥🔥🔥🔥 Source: {name}, {o}")
                 p = o
-                self._origins.append(o)
+
+        origins_per_variables = defaultdict(lambda: defaultdict(set))
+        for number, origins in origins_per_number.items():
+            for origin, names in origins.items():
+                for name in names:
+                    origins_per_variables[name][origin].add(number)
+
+        origins = defaultdict(set)
+
+        # Check if all members of a variable have the same origins
+        for name, origin_number in origins_per_variables.items():
+            # For now we do not support variables with members from different origins
+            assert len(origin_number) == 1, origin_number
+            origins[list(origin_number.keys())[0]].add(name)
+
+        self._origins = []
+        for k, v in origins.items():
+            self._origins.append({"origin": k.as_dict(), "variables": sorted(v)})
 
         self._coords_already_built: bool = True
 

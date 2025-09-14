@@ -1009,6 +1009,21 @@ class Dataset(ABC, Sized):
         """Return the metadata of the variables in the dataset."""
         pass
 
+    def origins(self) -> Any:
+        for p in self.components().ensure_list():
+            print(p.origins())
+
+    def components(self) -> Any:
+        from anemoi.datasets.data.components import Projection
+
+        slices = tuple(slice(0, i, 1) for i in self.shape)
+        return self.project(Projection(slices))
+
+    # @abstractmethod
+    def project(self, projection) -> Any:
+        """Return the project of the variable at the specified index."""
+        raise NotImplementedError(f"project() is not implemented for `{self.__class__.__name__}`")
+
     @abstractmethod
     @cached_property
     def missing(self) -> set[int]:
