@@ -9,6 +9,7 @@
 
 
 import datetime
+import tempfile
 from collections.abc import Callable
 from functools import cache
 from functools import wraps
@@ -22,6 +23,9 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.commands.inspect import InspectZarr
+from anemoi.datasets.commands.inspect import NoVersion
+from anemoi.datasets.data import save_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import GridsBase
@@ -34,6 +38,7 @@ from anemoi.datasets.data.select import Select
 from anemoi.datasets.data.statistics import Statistics
 from anemoi.datasets.data.stores import Zarr
 from anemoi.datasets.data.subset import Subset
+from anemoi.datasets.testing import default_test_indexing
 
 VALUES = 10
 
@@ -264,41 +269,6 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
     )
 
 
-class IndexTester:
-    """Class to test indexing of datasets."""
-
-    def __init__(self, ds: Any) -> None:
-        """Initialise the IndexTester.
-
-        Parameters
-        ----------
-        ds : Any
-            Dataset.
-        """
-        self.ds = ds
-        self.np = ds[:]  # Numpy array
-
-        assert self.ds.shape == self.np.shape
-        assert (self.ds == self.np).all()
-
-    def __getitem__(self, index: Any) -> None:
-        """Test indexing.
-
-        Parameters
-        ----------
-        index : Any
-            Index.
-        """
-        print("INDEX", type(self.ds), index)
-        if self.ds[index] is None:
-            assert False, (self.ds, index)
-
-        if not (self.ds[index] == self.np[index]).all():
-            # print("DS", self.ds[index])
-            # print("NP", self.np[index])
-            assert (self.ds[index] == self.np[index]).all()
-
-
 def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
     """Create a row of data.
 
@@ -497,7 +467,8 @@ class DatasetTester:
             assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
-    def indexing(self, ds: Any) -> None:
+    @classmethod
+    def indexing(cls, ds: Any) -> None:
         """Test indexing.
 
         Parameters
@@ -505,39 +476,7 @@ class DatasetTester:
         ds : Any
             Dataset.
         """
-        t = IndexTester(ds)
-
-        print("INDEXING", ds.shape)
-
-        t[0:10, :, 0]
-        t[:, 0:3, 0]
-        # t[:, :, 0]
-        t[0:10, 0:3, 0]
-        t[:, :, :]
-
-        if ds.shape[1] > 2:  # Variable dimension
-            t[:, (1, 2), :]
-            t[:, (1, 2)]
-
-        t[0]
-        t[0, :]
-        t[0, 0, :]
-        t[0, 0, 0, :]
-
-        if ds.shape[2] > 1:  # Ensemble dimension
-            t[0:10, :, (0, 1)]
-
-        for i in range(3):
-            t[i]
-            start = 5 * i
-            end = len(ds) - 5 * i
-            step = len(ds) // 10
-
-            t[start:end:step]
-            t[start:end]
-            t[start:]
-            t[:end]
-            t[::step]
+        default_test_indexing(ds)
 
 
 def simple_row(date: datetime.datetime, vars: str) -> np.ndarray:
@@ -1445,6 +1384,27 @@ def test_invalid_trim_edge() -> None:
             "test-2021-2021-6h-o96-abcd",
             trim_edge=(1, 2, 3, 4),
         )
+
+
+def test_save_dataset() -> None:
+    """Test save datasets."""
+
+    @mockup_open_zarr
+    def mock_save_dataset():
+        tmp_dir = tempfile.mkdtemp(suffix=".zarr")
+        test = DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02")
+        save_dataset(test.ds, tmp_dir)
+        return tmp_dir
+
+    tmp_dir = mock_save_dataset()
+    iz = InspectZarr()
+    version = iz._info(tmp_dir)
+    if isinstance(version, NoVersion):
+        pytest.skip("No version information found, test not supported")
+    print(iz.inspect_zarr(tmp_dir))
+    saved = open_dataset(tmp_dir)
+    assert saved.variables == ["a", "b"]
+    assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
 
 
 if __name__ == "__main__":

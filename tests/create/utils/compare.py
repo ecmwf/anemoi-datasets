@@ -149,6 +149,7 @@ class Comparer:
                 if k not in b_keys:
                     errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
                     continue
+
                 if k in [
                     "timestamp",
                     "uuid",
