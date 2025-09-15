@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -81,6 +82,9 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     Dataset
         The opened dataset.
     """
+
+    trace = int(os.environ.get("ANEMOI_DATASETS_TRACE", 0))
+
     # That will get rid of OmegaConf objects
 
     args, kwargs = _convert(args), _convert(kwargs)
@@ -89,6 +93,12 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     ds = ds.mutate()
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
+
+    if trace:
+        from anemoi.datasets.testing import Trace
+
+        ds = Trace(ds)
+
     return ds
 
 
