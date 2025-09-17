@@ -265,6 +265,12 @@ class Dataset(ABC, Sized):
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
+        if "grid_points" in kwargs:
+            from .masked import GridPoints
+
+            grid_points = kwargs.pop("grid_points")
+            return GridPoints(self, grid_points)._subset(**kwargs).mutate()
+
         if "number" in kwargs or "numbers" in kwargs or "member" in kwargs or "members" in kwargs:
             from .ensemble import Number
 

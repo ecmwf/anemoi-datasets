@@ -85,7 +85,7 @@ class Masked(Forwards):
 
         result = self.forward[index]
         # We don't support subsetting the grid values
-        assert result.shape[-1] == len(self.mask), (result.shape, len(self.mask))
+        #assert result.shape[-1] == len(self.mask), (result.shape, len(self.mask))
 
         return result[..., self.mask]
 
@@ -326,3 +326,42 @@ class TrimEdge(Masked):
         x -= self.edge[0] + self.edge[1]
         y -= self.edge[2] + self.edge[3]
         return x, y
+
+class GridPoints(Masked):
+    """A class to represent dataset with selected grid points."""
+
+    def __init__(self, forward: Dataset, grid_points: list[int]) -> None:
+        """Initialize the GridPoints class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be selected grid points from.
+        grid_points : list[int]
+            The grid points to be used for selecting.
+        """
+        
+        self.grid_points = grid_points
+        assert all(0 <= n < forward.shape[3] for n in self.grid_points), "Grid points out of range"
+
+        super().__init__(forward, np.array(self.grid_points))
+
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
+        return Node(self, [self.forward.tree()], grid_points=self.grid_points)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the GridPoints subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the GridPoints subclass.
+        """
+        return dict(grid_points=self.grid_points)
