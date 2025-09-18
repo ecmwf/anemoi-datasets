@@ -286,18 +286,19 @@ class DateMapperConstant(DateMapper):
 @source_registry.register("repeated_dates")
 class RepeatedDatesSource(Source):
 
-    def __init__(self, owner, source: Any, mode: str, **kwargs) -> None:
-        self.owner = owner
+    def __init__(self, context, source: Any, mode: str, **kwargs) -> None:
+        # assert False, (context, source, mode, kwargs)
+        super().__init__(context, **kwargs)
         self.mapper = DateMapper.from_mode(mode, source, kwargs)
         self.source = source
 
-    def execute(self, context, group_of_dates):
-        source = context.create_source(self.source, *self.owner.path, "source")
+    def execute(self, group_of_dates):
+        source = self.context.create_source(self.source, "data_sources", str(id(self)))
 
         result = []
         for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
             print(f"one_date_group: {one_date_group}, many_dates_group: {many_dates_group}")
-            source_results = source(context, one_date_group)
+            source_results = source(self.context, one_date_group)
             for field in source_results:
                 for date in many_dates_group:
                     result.append(new_field_with_valid_datetime(field, date))
