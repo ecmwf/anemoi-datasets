@@ -73,6 +73,21 @@ class GroupOfDates:
         """
         return len(self.dates)
 
+    def __getitem__(self, index) -> datetime.datetime:
+        """Return the date at the specified index.
+
+        Parameters
+        ----------
+        index : int
+            The index of the date.
+
+        Returns
+        -------
+        datetime.datetime
+            The date at the specified index.
+        """
+        return self.dates[index]
+
     def __iter__(self) -> Iterator[datetime.datetime]:
         """Return an iterator over the dates in the group.
 
