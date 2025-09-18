@@ -17,6 +17,7 @@ from earthkit.data.core.order import build_remapping
 from ...dates.groups import GroupOfDates
 from .context import Context
 from .template import substitute
+from .trace import trace
 
 LOG = logging.getLogger(__name__)
 
@@ -193,6 +194,18 @@ class ActionContext(Context):
         self.remapping = build_remapping(remapping)
         self.use_grib_paramid = use_grib_paramid
 
+    def trace(self, emoji: str, *args: Any) -> None:
+        """Traces the given arguments with an emoji.
+
+        Parameters
+        ----------
+        emoji : str
+            The emoji to use.
+        *args : Any
+            The arguments to trace.
+        """
+        trace(emoji, *args)
+
 
 def action_factory(config: dict[str, Any], context: ActionContext, action_path: list[str]) -> Action:
     """Factory function to create an Action instance based on the configuration.
@@ -211,14 +224,13 @@ def action_factory(config: dict[str, Any], context: ActionContext, action_path: 
     Action
         The created Action instance.
     """
+    from .accumulate import AccumulationAction
     from .concat import ConcatAction
     from .data_sources import DataSourcesAction
     from .function import FunctionAction
     from .join import JoinAction
     from .pipe import PipeAction
     from .repeated_dates import RepeatedDatesAction
-
-    # from .data_sources import DataSourcesAction
 
     assert isinstance(context, Context), (type, context)
     if not isinstance(config, dict):
@@ -246,6 +258,7 @@ def action_factory(config: dict[str, Any], context: ActionContext, action_path: 
         "function": FunctionAction,
         "repeated_dates": RepeatedDatesAction,
         "repeated-dates": RepeatedDatesAction,
+        "accumulate": AccumulationAction,
     }.get(key)
 
     if cls is None:
