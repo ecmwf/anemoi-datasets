@@ -34,4 +34,4 @@ good starting point.
    :hidden:
    :caption: Using anemoi-datasets
 
-   usage/*
+   using/*
