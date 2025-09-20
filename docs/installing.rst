@@ -61,11 +61,6 @@ functionality:
 
    python -m pip install "anemoi-datasets[docs]" # Install optional dependencies for generating docs
 
-.. literalinclude:: ../pyproject.toml
-   :language: toml
-   :start-at: optional-dependencies.all
-   :end-before: urls.Changelog
-
 **********************
  Development versions
 **********************
