@@ -93,7 +93,10 @@ def load_one(
         # If the dataset is a zarr store, we need to use the zarr engine
         options["engine"] = "zarr"
 
-    data = xr.open_dataset(dataset, **options)
+    if isinstance(dataset, xr.Dataset):
+        data = dataset
+    else:
+        data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
 

@@ -20,4 +20,5 @@ The commands are:
 - :ref:`Inspect Command <Inspect_command>`
 - :ref:`Compare Command <compare_command>`
 - :ref:`Scan Command <scan_command>`
+- :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
