@@ -10,6 +10,8 @@
 import datetime
 import logging
 import os
+import subprocess
+import sys
 from copy import deepcopy
 from typing import Any
 
@@ -402,6 +404,11 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     LoadersConfig
         The validated configuration object.
     """
+
+    if isinstance(config, str) and config.endswith(".py"):
+        result = subprocess.run([sys.executable, config], capture_output=True, text=True, check=True)
+        config = yaml.safe_load(result.stdout)
+
     config = Config(config)
     if is_test:
         set_to_test_mode(config)
