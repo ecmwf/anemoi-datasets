@@ -16,9 +16,8 @@ import os
 import pickle
 import shutil
 import socket
+from collections.abc import Iterator
 from typing import Any
-from typing import Iterator
-from typing import Tuple
 
 import numpy as np
 from anemoi.utils.provenance import gather_provenance_info
@@ -198,7 +197,7 @@ class BufferedPersistentDict(PersistentDict):
         self.elements = []
         self.keys = []
 
-    def items(self) -> Iterator[Tuple[Any, Any]]:
+    def items(self) -> Iterator[tuple[Any, Any]]:
         """Yield items stored in the BufferedPersistentDict.
 
         Yields
@@ -207,8 +206,7 @@ class BufferedPersistentDict(PersistentDict):
             An iterator over the items.
         """
         for keys, elements in self.storage.items():
-            for key, elt in zip(keys, elements):
-                yield key, elt
+            yield from zip(keys, elements)
 
     def delete(self) -> None:
         """Delete the storage directory and its contents."""

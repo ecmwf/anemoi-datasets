@@ -1,6 +1,6 @@
 # This workflow triggers tests on dependent packages.
 # The dependency tree itself is defined in ecmwf/downstream-ci/
-name: Test downstream dependent packages on HPC
+name: Test downstream dependent packages
 
 on:
   # Trigger the workflow on push to main or develop, except tag creation

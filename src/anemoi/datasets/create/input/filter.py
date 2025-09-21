@@ -10,7 +10,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Type
 
 from earthkit.data import FieldList
 
@@ -40,7 +39,7 @@ class FilterStepResult(StepResult):
 class FilterStepAction(StepAction):
     """Represents an action to filter a step result."""
 
-    result_class: Type[FilterStepResult] = FilterStepResult
+    result_class: type[FilterStepResult] = FilterStepResult
 
 
 class StepFunctionResult(StepResult):
@@ -86,7 +85,7 @@ class StepFunctionResult(StepResult):
 class FunctionStepAction(StepAction):
     """Represents an action to apply a function to a step result."""
 
-    result_class: Type[StepFunctionResult] = StepFunctionResult
+    result_class: type[StepFunctionResult] = StepFunctionResult
 
     def __init__(
         self,

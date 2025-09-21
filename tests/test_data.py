@@ -9,13 +9,11 @@
 
 
 import datetime
+import tempfile
+from collections.abc import Callable
 from functools import cache
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import Optional
-from typing import Type
-from typing import Union
 from unittest.mock import patch
 
 import numpy as np
@@ -25,17 +23,22 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.commands.inspect import InspectZarr
+from anemoi.datasets.commands.inspect import NoVersion
+from anemoi.datasets.data import save_dataset
 from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
+from anemoi.datasets.data.padded import Padded
 from anemoi.datasets.data.select import Rename
 from anemoi.datasets.data.select import Select
 from anemoi.datasets.data.statistics import Statistics
 from anemoi.datasets.data.stores import Zarr
 from anemoi.datasets.data.subset import Subset
+from anemoi.datasets.testing import default_test_indexing
 
 VALUES = 10
 
@@ -100,8 +103,8 @@ def create_zarr(
     frequency: datetime.timedelta = datetime.timedelta(hours=6),
     resolution: str = "o96",
     k: int = 0,
-    ensemble: Optional[int] = None,
-    grids: Optional[int] = None,
+    ensemble: int | None = None,
+    grids: int | None = None,
     missing: bool = False,
 ) -> zarr.Group:
     """Create a Zarr dataset.
@@ -266,41 +269,6 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
     )
 
 
-class IndexTester:
-    """Class to test indexing of datasets."""
-
-    def __init__(self, ds: Any) -> None:
-        """Initialise the IndexTester.
-
-        Parameters
-        ----------
-        ds : Any
-            Dataset.
-        """
-        self.ds = ds
-        self.np = ds[:]  # Numpy array
-
-        assert self.ds.shape == self.np.shape
-        assert (self.ds == self.np).all()
-
-    def __getitem__(self, index: Any) -> None:
-        """Test indexing.
-
-        Parameters
-        ----------
-        index : Any
-            Index.
-        """
-        print("INDEX", type(self.ds), index)
-        if self.ds[index] is None:
-            assert False, (self.ds, index)
-
-        if not (self.ds[index] == self.np[index]).all():
-            # print("DS", self.ds[index])
-            # print("NP", self.np[index])
-            assert (self.ds[index] == self.np[index]).all()
-
-
 def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
     """Create a row of data.
 
@@ -379,16 +347,17 @@ class DatasetTester:
     def run(
         self,
         *,
-        expected_class: Type,
+        expected_class: type,
         expected_length: int,
         expected_shape: tuple,
-        expected_variables: Union[str, list],
-        expected_name_to_index: Union[str, dict],
+        expected_variables: str | list,
+        expected_name_to_index: str | dict,
         date_to_row: Callable,
         start_date: datetime.datetime,
         time_increment: datetime.timedelta,
-        statistics_reference_dataset: Optional[Union[str, list]],
-        statistics_reference_variables: Optional[Union[str, list]],
+        statistics_reference_dataset: str | list | None,
+        statistics_reference_variables: str | list | None,
+        regular_shape: bool = True,
     ) -> None:
         """Run the dataset tests.
 
@@ -414,6 +383,8 @@ class DatasetTester:
             Reference dataset for statistics.
         statistics_reference_variables : Optional[Union[str, list]]
             Reference variables for statistics.
+        regular_shape : bool, optional
+            Whether the dataset has a regular shape, by default True.
         """
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
@@ -452,7 +423,8 @@ class DatasetTester:
                 statistics_reference_variables,
             )
 
-        self.indexing(self.ds)
+        if regular_shape:
+            self.indexing(self.ds)
         self.metadata(self.ds)
 
         self.ds.tree()
@@ -468,7 +440,7 @@ class DatasetTester:
         metadata = ds.metadata()
         assert isinstance(metadata, dict)
 
-    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: Optional[list] = None) -> None:
+    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: list | None = None) -> None:
         """Compare statistics between two datasets.
 
         Parameters
@@ -495,7 +467,8 @@ class DatasetTester:
             assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
-    def indexing(self, ds: Any) -> None:
+    @classmethod
+    def indexing(cls, ds: Any) -> None:
         """Test indexing.
 
         Parameters
@@ -503,39 +476,7 @@ class DatasetTester:
         ds : Any
             Dataset.
         """
-        t = IndexTester(ds)
-
-        print("INDEXING", ds.shape)
-
-        t[0:10, :, 0]
-        t[:, 0:3, 0]
-        # t[:, :, 0]
-        t[0:10, 0:3, 0]
-        t[:, :, :]
-
-        if ds.shape[1] > 2:  # Variable dimension
-            t[:, (1, 2), :]
-            t[:, (1, 2)]
-
-        t[0]
-        t[0, :]
-        t[0, 0, :]
-        t[0, 0, 0, :]
-
-        if ds.shape[2] > 1:  # Ensemble dimension
-            t[0:10, :, (0, 1)]
-
-        for i in range(3):
-            t[i]
-            start = 5 * i
-            end = len(ds) - 5 * i
-            step = len(ds) // 10
-
-            t[start:end:step]
-            t[start:end]
-            t[start:]
-            t[:end]
-            t[::step]
+        default_test_indexing(ds)
 
 
 def simple_row(date: datetime.datetime, vars: str) -> np.ndarray:
@@ -666,6 +607,25 @@ def test_join_3() -> None:
         ),
         statistics_reference_dataset="test-2021-2021-6h-o96-abcd-2",
         statistics_reference_variables="abcd",
+    )
+
+
+@mockup_open_zarr
+def test_padding_1() -> None:
+    """Test subsetting a dataset (case 2)."""
+    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00:00", padding="empty")
+    test.run(
+        expected_class=Padded,
+        expected_length=365 * 24 * 3,
+        expected_shape=(365 * 24 * 3, 4, 1, VALUES),
+        expected_variables="abcd",
+        expected_name_to_index="abcd",
+        date_to_row=lambda date: simple_row(date, "abcd") if date.year == 2022 else np.zeros((4, 1, 0)),
+        start_date=datetime.datetime(2021, 1, 1),
+        time_increment=datetime.timedelta(hours=1),
+        statistics_reference_dataset="test-2022-2022-1h-o96-abcd",
+        statistics_reference_variables="abcd",
+        regular_shape=False,
     )
 
 
@@ -1424,6 +1384,27 @@ def test_invalid_trim_edge() -> None:
             "test-2021-2021-6h-o96-abcd",
             trim_edge=(1, 2, 3, 4),
         )
+
+
+def test_save_dataset() -> None:
+    """Test save datasets."""
+
+    @mockup_open_zarr
+    def mock_save_dataset():
+        tmp_dir = tempfile.mkdtemp(suffix=".zarr")
+        test = DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02")
+        save_dataset(test.ds, tmp_dir)
+        return tmp_dir
+
+    tmp_dir = mock_save_dataset()
+    iz = InspectZarr()
+    version = iz._info(tmp_dir)
+    if isinstance(version, NoVersion):
+        pytest.skip("No version information found, test not supported")
+    print(iz.inspect_zarr(tmp_dir))
+    saved = open_dataset(tmp_dir)
+    assert saved.variables == ["a", "b"]
+    assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
 
 
 if __name__ == "__main__":

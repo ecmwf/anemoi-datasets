@@ -11,10 +11,6 @@
 import glob
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
 
 import earthkit.data as ekd
 from anemoi.transform.fields import new_field_from_grid
@@ -29,7 +25,7 @@ from .legacy import legacy_source
 LOG = logging.getLogger(__name__)
 
 
-def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
+def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
     """Check if the dataset matches the expected number of fields.
 
     Parameters
@@ -55,7 +51,7 @@ def check(ds: Any, paths: List[str], **kwargs: Any) -> None:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
 
 
-def _expand(paths: List[str]) -> Any:
+def _expand(paths: list[str]) -> Any:
     """Expand the given paths using glob.
 
     Parameters
@@ -80,23 +76,31 @@ def _expand(paths: List[str]) -> Any:
 @legacy_source(__file__)
 def execute(
     context: Any,
-    dates: List[Any],
-    path: Union[str, List[str]],
-    flavour: Optional[Union[str, Dict[str, Any]]] = None,
-    grid_definition: Optional[Dict[str, Any]] = None,
+    dates: list[Any],
+    path: str | list[str],
+    flavour: str | dict[str, Any] | None = None,
+    grid_definition: dict[str, Any] | None = None,
     *args: Any,
     **kwargs: Any,
 ) -> ekd.FieldList:
-    """Execute the function to load data from GRIB files.
+    """Executes the function to load data from GRIB files.
 
-    Args:
-        context (Any): The context in which the function is executed.
-        dates (List[Any]): List of dates.
-        path (Union[str, List[str]]): Path or list of paths to the GRIB files.
-        flavour (Optional[Union[str, Dict[str, Any]]], optional): Flavour information. Defaults to None.
-        grid_definition (Optional[Dict[str, Any]]): Grid definition config to create a Grid object.
-        *args (Any): Additional arguments.
-        **kwargs (Any): Additional keyword arguments.
+    Parameters
+    ----------
+    context : Any
+        The context in which the function is executed.
+    dates : list of Any
+        List of dates.
+    path : str or list of str
+        Path or list of paths to the GRIB files.
+    flavour : str or dict of str to Any, optional
+        Flavour information, by default None.
+    grid_definition : dict of str to Any, optional
+        Grid definition configuration to create a Grid object, by default None.
+    *args : Any
+        Additional positional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
 
     Returns
     -------
@@ -116,7 +120,7 @@ def execute(
     dates = [d.isoformat() for d in dates]
 
     for path in given_paths:
-        paths = Pattern(path, ignore_missing_keys=True).substitute(*args, date=dates, **kwargs)
+        paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
 
         for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
             if name in kwargs:

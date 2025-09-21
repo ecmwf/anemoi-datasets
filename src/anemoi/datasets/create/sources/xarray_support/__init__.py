@@ -10,17 +10,12 @@
 import datetime
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
 
 import earthkit.data as ekd
 import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
-from anemoi.datasets.data.stores import name_to_zarr_store
 
 from ..legacy import legacy_source
 from .fieldlist import XarrayFieldList
@@ -28,7 +23,7 @@ from .fieldlist import XarrayFieldList
 LOG = logging.getLogger(__name__)
 
 
-def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
+def check(what: str, ds: xr.Dataset, paths: list[str], **kwargs: Any) -> None:
     """Checks if the dataset has the expected number of fields.
 
     Parameters
@@ -54,12 +49,12 @@ def check(what: str, ds: xr.Dataset, paths: List[str], **kwargs: Any) -> None:
 def load_one(
     emoji: str,
     context: Any,
-    dates: List[str],
-    dataset: Union[str, xr.Dataset],
+    dates: list[str],
+    dataset: str | xr.Dataset,
     *,
-    options: Optional[Dict[str, Any]] = None,
-    flavour: Optional[str] = None,
-    patch: Optional[Any] = None,
+    options: dict[str, Any] | None = None,
+    flavour: str | None = None,
+    patch: Any | None = None,
     **kwargs: Any,
 ) -> ekd.FieldList:
     """Loads a single dataset.
@@ -89,28 +84,17 @@ def load_one(
         The loaded dataset.
     """
 
-    """
-    We manage the S3 client ourselves, bypassing fsspec and s3fs layers, because sometimes something on the stack
-    zarr/fsspec/s3fs/boto3 (?) seem to flags files as missing when they actually are not (maybe when S3 reports some sort of
-    connection error). In that case,  Zarr will silently fill the chunks that could not be downloaded with NaNs.
-    See https://github.com/pydata/xarray/issues/8842
-
-    We have seen this bug triggered when we run many clients in parallel, for example, when we create a new dataset using `xarray-zarr`.
-    """
-
     if options is None:
         options = {}
 
     context.trace(emoji, dataset, options, kwargs)
 
-    if isinstance(dataset, str) and ".zarr" in dataset:
-        data = xr.open_zarr(name_to_zarr_store(dataset), **options)
-    elif "planetarycomputer" in dataset:
-        store = name_to_zarr_store(dataset)
-        if "store" in store:
-            data = xr.open_zarr(**store)
-        if "filename_or_obj" in store:
-            data = xr.open_dataset(**store)
+    if isinstance(dataset, str) and dataset.endswith(".zarr"):
+        # If the dataset is a zarr store, we need to use the zarr engine
+        options["engine"] = "zarr"
+
+    if isinstance(dataset, xr.Dataset):
+        data = dataset
     else:
         data = xr.open_dataset(dataset, **options)
 
@@ -119,7 +103,6 @@ def load_one(
     if len(dates) == 0:
         result = fs.sel(**kwargs)
     else:
-        print("dates", dates, kwargs)
         result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:
@@ -130,7 +113,7 @@ def load_one(
             a = ["valid_datetime", k.metadata("valid_datetime", default=None)]
             for n in kwargs.keys():
                 a.extend([n, k.metadata(n, default=None)])
-            print([str(x) for x in a])
+            LOG.warning(f"{[str(x) for x in a]}")
 
             if i > 16:
                 break
@@ -140,7 +123,7 @@ def load_one(
     return result
 
 
-def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
+def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
     """Loads multiple datasets.
 
     Parameters
@@ -170,7 +153,7 @@ def load_many(emoji: str, context: Any, dates: List[datetime.datetime], pattern:
 
 
 @legacy_source("xarray")
-def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Executes the loading of datasets.
 
     Parameters

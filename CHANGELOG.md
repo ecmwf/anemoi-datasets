@@ -8,6 +8,112 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.26](https://github.com/ecmwf/anemoi-datasets/compare/0.5.25...0.5.26) (2025-07-11)
+
+
+### Features
+
+* Add planetary planetary source ([#368](https://github.com/ecmwf/anemoi-datasets/issues/368)) ([c85337f](https://github.com/ecmwf/anemoi-datasets/commit/c85337f4b08381dc1e2e8ba71134c998c6258c2d))
+* Extend xarray coordinate guesser to include pressure as a long_name ([#335](https://github.com/ecmwf/anemoi-datasets/issues/335)) ([bcbffaa](https://github.com/ecmwf/anemoi-datasets/commit/bcbffaa0b0ad011db5b1fd5879f9829f0d2e68af))
+* Extented complement nearest functionality to support k&gt;1 ([#371](https://github.com/ecmwf/anemoi-datasets/issues/371)) ([a2c5f92](https://github.com/ecmwf/anemoi-datasets/commit/a2c5f921f57fce60bd3fe728c21dc5e5b7d3a4a1))
+* Point data ([#358](https://github.com/ecmwf/anemoi-datasets/issues/358)) ([78c4f85](https://github.com/ecmwf/anemoi-datasets/commit/78c4f85bf9cd4d6cc7f17268c8c526da32158220))
+* Relaxed compatibility check for horizontal grid. ([#339](https://github.com/ecmwf/anemoi-datasets/issues/339)) ([a7dc859](https://github.com/ecmwf/anemoi-datasets/commit/a7dc859b6ec2fb0bad2ed7b7b8ee3c76034a258b))
+* Sort xarray coordinate with patch ([#356](https://github.com/ecmwf/anemoi-datasets/issues/356)) ([638cbdb](https://github.com/ecmwf/anemoi-datasets/commit/638cbdb013b94b87748654ae338e0d02e69c1900))
+* Use pytest-xdist to run tests in parallel. ([#346](https://github.com/ecmwf/anemoi-datasets/issues/346)) ([1d656ee](https://github.com/ecmwf/anemoi-datasets/commit/1d656ee62c51ee0cbe043943581cef16b2f7d7db))
+
+
+### Bug Fixes
+
+* Deprecated filters in anemoi datasets ([#350](https://github.com/ecmwf/anemoi-datasets/issues/350)) ([d08c6f5](https://github.com/ecmwf/anemoi-datasets/commit/d08c6f55c3d983c930480bd777e74fd5a5bea6eb))
+* **grib-index:** Match against filename, not full path ([#374](https://github.com/ecmwf/anemoi-datasets/issues/374)) ([e71a952](https://github.com/ecmwf/anemoi-datasets/commit/e71a95221493a703515d7a14a17f3dead06c8430))
+* Missing method in xarray flavour ([#369](https://github.com/ecmwf/anemoi-datasets/issues/369)) ([d0b9588](https://github.com/ecmwf/anemoi-datasets/commit/d0b9588f0bff626ae751a74cf4cbbc373a2f67f4))
+* Remove trailing slash from zarr paths.  ([#362](https://github.com/ecmwf/anemoi-datasets/issues/362)) ([9a9bfe5](https://github.com/ecmwf/anemoi-datasets/commit/9a9bfe50406d299f44f7cce7e3befcabef6fefaf))
+
+
+### Documentation
+
+* Fix pre-commit ([#367](https://github.com/ecmwf/anemoi-datasets/issues/367)) ([6e6ebe2](https://github.com/ecmwf/anemoi-datasets/commit/6e6ebe2e81fc735a2af422b8c222b0a2f229d8dc))
+* Zarr dataset creation ([#365](https://github.com/ecmwf/anemoi-datasets/issues/365)) ([622c261](https://github.com/ecmwf/anemoi-datasets/commit/622c26156de44ae4eaa3359fef836741b1d81d67))
+
+## [0.5.25](https://github.com/ecmwf/anemoi-datasets/compare/0.5.24...0.5.25) (2025-06-11)
+
+
+### Features
+
+* Integrating non-regular datasets in anemoi for observations. ([#306](https://github.com/ecmwf/anemoi-datasets/issues/306)) ([95a0fe4](https://github.com/ecmwf/anemoi-datasets/commit/95a0fe4bb10dc48469c0be0efad94f4d5e2a9fe8))
+
+
+### Bug Fixes
+
+* Incremental dataset build tasks called regardless of presence of debug flag in CLI code ([#294](https://github.com/ecmwf/anemoi-datasets/issues/294)) ([37afc0d](https://github.com/ecmwf/anemoi-datasets/commit/37afc0d6489f2d6c4b3ce3f9901c40e4cec5c4eb))
+* Regression in accumulations [#354](https://github.com/ecmwf/anemoi-datasets/issues/354) ([#355](https://github.com/ecmwf/anemoi-datasets/issues/355)) ([f9769d7](https://github.com/ecmwf/anemoi-datasets/commit/f9769d7944738ecbedb6b3cc1f78cd26de36a73f))
+* Remove 2 layers of build function ([#348](https://github.com/ecmwf/anemoi-datasets/issues/348)) ([7a904c4](https://github.com/ecmwf/anemoi-datasets/commit/7a904c451772089f120419a9d39bff746e0aeebb))
+
+## [0.5.24](https://github.com/ecmwf/anemoi-datasets/compare/0.5.23...0.5.24) (2025-05-23)
+
+
+### Features
+
+* verify command ([#279](https://github.com/ecmwf/anemoi-datasets/issues/279)) ([aed36d2](https://github.com/ecmwf/anemoi-datasets/commit/aed36d2ea7a39ea1ae6bbd5f8d01ef0ce7523cde))
+
+
+### Bug Fixes
+
+* adapt to earthkit 0.14 (ignore_keys issue) ([#331](https://github.com/ecmwf/anemoi-datasets/issues/331)) ([fb3ab8d](https://github.com/ecmwf/anemoi-datasets/commit/fb3ab8d46b8e00c62d8d7cbb1d1afae0efea2054))
+
+## [0.5.23](https://github.com/ecmwf/anemoi-datasets/compare/0.5.22...0.5.23) (2025-05-07)
+
+
+### Features
+
+* support accumulations that resets regularly (e.g. every 24h) ([#314](https://github.com/ecmwf/anemoi-datasets/issues/314)) ([0cd772b](https://github.com/ecmwf/anemoi-datasets/commit/0cd772b168ea6a3eb2113a9b3de0ddd9e964a6de))
+
+## [0.5.22](https://github.com/ecmwf/anemoi-datasets/compare/0.5.21...0.5.22) (2025-05-05)
+
+
+### Features
+
+* add command line tool to check naming conventions ([#287](https://github.com/ecmwf/anemoi-datasets/issues/287)) ([38a81e2](https://github.com/ecmwf/anemoi-datasets/commit/38a81e2256e9eb043594698b1adb3bf5bd9a68ed))
+* copy datasets from http(s) sources ([#307](https://github.com/ecmwf/anemoi-datasets/issues/307)) ([cedd9db](https://github.com/ecmwf/anemoi-datasets/commit/cedd9dbfca0ee2add889d86a3f37990d508b2af3))
+* downloading zip files if needed ([#288](https://github.com/ecmwf/anemoi-datasets/issues/288)) ([3024099](https://github.com/ecmwf/anemoi-datasets/commit/30240999a380b6d9087e5203d356f6770361ffbb))
+* optionally search for zarr files at various location if not found ([#281](https://github.com/ecmwf/anemoi-datasets/issues/281)) ([8bd174c](https://github.com/ecmwf/anemoi-datasets/commit/8bd174ca4457ee57fc111df91e02f6b515d84c0c))
+* reset accumulations ([#300](https://github.com/ecmwf/anemoi-datasets/issues/300)) ([b12666a](https://github.com/ecmwf/anemoi-datasets/commit/b12666aab59af389b591d098e3a3b1ee9b9a3bcb))
+* work on check ([#311](https://github.com/ecmwf/anemoi-datasets/issues/311)) ([c6a8db9](https://github.com/ecmwf/anemoi-datasets/commit/c6a8db9ccecf821cfce216907c83a7f60dd21c0d))
+
+
+### Bug Fixes
+
+* bug in complement ([#296](https://github.com/ecmwf/anemoi-datasets/issues/296)) ([4e57f7c](https://github.com/ecmwf/anemoi-datasets/commit/4e57f7c4c1a8eaee3300065248963e1382819b32))
+* bugs affecting creation of datasets from xarray-zarr ([#299](https://github.com/ecmwf/anemoi-datasets/issues/299)) ([09fcb51](https://github.com/ecmwf/anemoi-datasets/commit/09fcb51e8d1934024441e60d1f01367c742feea8))
+* fix copy ([#289](https://github.com/ecmwf/anemoi-datasets/issues/289)) ([a79759f](https://github.com/ecmwf/anemoi-datasets/commit/a79759fb7ca0d019f03768b56cc7e807fa21f3d4))
+* Proper indent for parallel additions ([#303](https://github.com/ecmwf/anemoi-datasets/issues/303)) ([0643fb8](https://github.com/ecmwf/anemoi-datasets/commit/0643fb80b0b83b15c7a01f140788665dd0d2076a))
+
+
+### Documentation
+
+* update some docstrings ([#283](https://github.com/ecmwf/anemoi-datasets/issues/283)) ([d3fe801](https://github.com/ecmwf/anemoi-datasets/commit/d3fe801abac7da932d14f03a660e9469683f91a3))
+
+## [0.5.21](https://github.com/ecmwf/anemoi-datasets/compare/0.5.20...0.5.21) (2025-04-08)
+
+
+### Features
+
+* more tests ([#277](https://github.com/ecmwf/anemoi-datasets/issues/277)) ([0ea7d46](https://github.com/ecmwf/anemoi-datasets/commit/0ea7d46a61aaa4381f8eb75b2623033bd404da5b))
+
+
+### Bug Fixes
+
+* grib-index command default ([#275](https://github.com/ecmwf/anemoi-datasets/issues/275)) ([04a37d8](https://github.com/ecmwf/anemoi-datasets/commit/04a37d8a046dc6b314e9f2376c69f1824cbfa43d))
+* pin version of numcodecs ([#285](https://github.com/ecmwf/anemoi-datasets/issues/285)) ([d86f317](https://github.com/ecmwf/anemoi-datasets/commit/d86f317981a312438a19323d5d67e1b31f80cf23))
+* update version of transform ([#284](https://github.com/ecmwf/anemoi-datasets/issues/284)) ([e72cdde](https://github.com/ecmwf/anemoi-datasets/commit/e72cddedd8160a27a9e63e2581f4fcc1a91cd8b6))
+
+
+### Documentation
+
+* some cleanup ([#276](https://github.com/ecmwf/anemoi-datasets/issues/276)) ([496b82a](https://github.com/ecmwf/anemoi-datasets/commit/496b82a5e10119c1fd27a58a85d5964fcad3c7bb))
+* time interpolation example ([#274](https://github.com/ecmwf/anemoi-datasets/issues/274)) ([9d19bd6](https://github.com/ecmwf/anemoi-datasets/commit/9d19bd6bc3c8e0c25718a05d670357936ec99a8b))
+* update documentation ([#271](https://github.com/ecmwf/anemoi-datasets/issues/271)) ([85ea386](https://github.com/ecmwf/anemoi-datasets/commit/85ea38690e7e8fab4dbac5c5b4d10eafdabde766))
+
 ## [0.5.20](https://github.com/ecmwf/anemoi-datasets/compare/0.5.19...0.5.20) (2025-03-31)
 
 

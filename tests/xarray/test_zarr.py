@@ -13,7 +13,6 @@ from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
-from anemoi.datasets.data.stores import name_to_zarr_store
 from anemoi.datasets.testing import assert_field_list
 
 
@@ -25,6 +24,7 @@ def test_arco_era5_1() -> None:
         "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
         chunks={"time": 48},
         consolidated=True,
+        storage_options=dict(token="anon"),
     )
 
     fs = XarrayFieldList.from_xarray(ds)
@@ -44,6 +44,7 @@ def test_arco_era5_2() -> None:
         "gs://gcp-public-data-arco-era5/ar/1959-2022-1h-360x181_equiangular_with_poles_conservative.zarr",
         chunks={"time": 48},
         consolidated=True,
+        storage_options=dict(token="anon"),
     )
 
     fs = XarrayFieldList.from_xarray(ds)
@@ -59,7 +60,10 @@ def test_arco_era5_2() -> None:
 @skip_missing_packages("gcsfs")
 def test_weatherbench() -> None:
     """Test loading and validating the weatherbench dataset."""
-    ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
+    ds = xr.open_zarr(
+        "gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr",
+        storage_options=dict(token="anon"),
+    )
 
     # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
 
@@ -130,33 +134,6 @@ def test_noaa_replay() -> None:
         36972870,
         "1993-12-31T18:00:00",
         "1999-06-13T03:00:00",
-    )
-
-
-@skip_if_offline
-@skip_missing_packages("planetary_computer", "adlfs")
-def test_planetary_computer_conus404() -> None:
-    """Test loading and validating the planetary_computer_conus404 dataset."""
-    url = "https://planetarycomputer.microsoft.com/api/stac/v1/collections/conus404"
-    ds = xr.open_zarr(**name_to_zarr_store(url))
-
-    flavour = {
-        "rules": {
-            "latitude": {"name": "lat"},
-            "longitude": {"name": "lon"},
-            "x": {"name": "west_east"},
-            "y": {"name": "south_north"},
-            "time": {"name": "time"},
-        },
-    }
-
-    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
-
-    assert_field_list(
-        fs,
-        74634912,
-        "1979-10-01T00:00:00",
-        "2022-09-30T23:00:00",
     )
 
 

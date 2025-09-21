@@ -11,10 +11,6 @@
 import json
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
 
 import xarray as xr
 import yaml
@@ -33,7 +29,7 @@ LOG = logging.getLogger(__name__)
 class XarrayFieldList(FieldList):
     """A class to represent a list of fields from an xarray Dataset."""
 
-    def __init__(self, ds: xr.Dataset, variables: List[Variable]) -> None:
+    def __init__(self, ds: xr.Dataset, variables: list[Variable]) -> None:
         """Initialize the XarrayFieldList.
 
         Parameters
@@ -44,7 +40,7 @@ class XarrayFieldList(FieldList):
             The list of variables.
         """
         self.ds: xr.Dataset = ds
-        self.variables: List[Variable] = variables.copy()
+        self.variables: list[Variable] = variables.copy()
         self.total_length: int = sum(v.length for v in variables)
 
     def __repr__(self) -> str:
@@ -90,8 +86,8 @@ class XarrayFieldList(FieldList):
         cls,
         ds: xr.Dataset,
         *,
-        flavour: Optional[Union[str, Dict[str, Any]]] = None,
-        patch: Optional[Dict[str, Any]] = None,
+        flavour: str | dict[str, Any] | None = None,
+        patch: dict[str, Any] | None = None,
     ) -> "XarrayFieldList":
         """Create an XarrayFieldList from an xarray Dataset.
 
@@ -112,7 +108,7 @@ class XarrayFieldList(FieldList):
         if patch is not None:
             ds = patch_dataset(ds, patch)
 
-        variables: List[Variable] = []
+        variables: list[Variable] = []
 
         if isinstance(flavour, str):
             with open(flavour) as f:
@@ -121,9 +117,9 @@ class XarrayFieldList(FieldList):
                 else:
                     flavour = json.load(f)
 
-        if isinstance(flavour, Dict):
-            flavour_coords: List[str] = [coords["name"] for coords in flavour["rules"].values()]
-            ds_dims: List[str] = [dim for dim in ds._dims]
+        if isinstance(flavour, dict):
+            flavour_coords: list[str] = [coords["name"] for coords in flavour["rules"].values()]
+            ds_dims: list[str] = [dim for dim in ds._dims]
             for dim in ds_dims:
                 if dim in flavour_coords and dim not in ds._coord_names:
                     ds = ds.assign_coords({dim: ds[dim]})
@@ -154,7 +150,7 @@ class XarrayFieldList(FieldList):
                 continue
 
             variable = ds[name]
-            coordinates: List[Any] = []
+            coordinates: list[Any] = []
 
             for coord in variable.coords:
 
@@ -210,7 +206,7 @@ class XarrayFieldList(FieldList):
             So we get an extra chance to filter the fields by the metadata.
         """
 
-        variables: List[Variable] = []
+        variables: list[Variable] = []
         count: int = 0
 
         for v in self.variables:
@@ -223,7 +219,7 @@ class XarrayFieldList(FieldList):
 
             if match:
                 count += 1
-                missing: Dict[str, Any] = {}
+                missing: dict[str, Any] = {}
 
                 # Select from the variable's coordinates (time, level, number, ....)
                 # This may return a new variable with a isel() slice of the selection
