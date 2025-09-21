@@ -1660,25 +1660,3 @@ def validate_config(config: Any) -> None:
         raise
 
 
-def config_to_python(config: Any) -> Any:
-
-    from ..create.python import PythonScript
-
-    raw_config = config
-
-    config = loader_config(config)
-
-    input = InputBuilder(config.input, data_sources=config.get("data_sources", {}))
-
-    code = PythonScript()
-    x = input.python_code(code)
-    code = code.source_code(x, raw_config)
-
-    try:
-        import black
-
-        return black.format_str(code, mode=black.Mode())
-    # except ImportError:
-    except Exception:
-        LOG.warning("Black not installed, skipping formatting")
-        return code
