@@ -52,6 +52,7 @@ dependencies = [
   "anemoi-transform>=0.1.6",
   "anemoi-utils[provenance]>=0.4.19",
   "cfunits",
+  "numcodecs<0.16.1",
   "numpy",
   "pyyaml",
   "semantic-version",

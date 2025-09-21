@@ -4,7 +4,5 @@
  Dataset
 #########
 
-.. automodule:: anemoi.datasets.data.dataset
-   :members:
-   :no-undoc-members:
-   :show-inheritance:
+.. autoclass:: anemoi.datasets.data.dataset.Dataset
+   :members: dates, variables, latitudes, longitudes
