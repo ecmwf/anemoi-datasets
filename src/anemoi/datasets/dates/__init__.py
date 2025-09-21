@@ -27,15 +27,13 @@ from anemoi.utils.humanize import print_dates
 def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
-    Parameters
-    ----------
-    x : Union[str, List[Any], Tuple[Any, ...]]
-        A date range string or list/tuple of dates.
+    Args:
+        x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
 
-    Yields
-    ------
-    datetime.datetime
-        Individual datetime objects.
+    Returns
+    -------
+    Iterator[datetime.datetime]
+        An iterator of datetime objects.
     """
 
     if isinstance(x, (list, tuple)):
@@ -162,12 +160,9 @@ class DatesProvider:
 class ValuesDates(DatesProvider):
     """Class for handling a list of date values.
 
-    Parameters
-    ----------
-    values : List[Union[str, datetime.datetime]]
-        List of date values.
-    **kwargs : Any
-        Additional arguments.
+    Args:
+        values (List[Union[str, datetime.datetime]]): List of date values.
+        **kwargs (Any): Additional arguments.
     """
 
     def __init__(self, values: list[str | datetime.datetime], **kwargs: Any) -> None:
@@ -204,16 +199,11 @@ class ValuesDates(DatesProvider):
 class StartEndDates(DatesProvider):
     """Class for generating dates between a start and end date with a specified frequency.
 
-    Parameters
-    ----------
-    start : Union[str, datetime.datetime]
-        Start date.
-    end : Union[str, datetime.datetime]
-        End date.
-    frequency : Union[int, str]
-        Frequency of dates.
-    **kwargs : Any
-        Additional arguments.
+    Args:
+        start (Union[str, datetime.datetime]): Start date.
+        end (Union[str, datetime.datetime]): End date.
+        frequency (Union[int, str]): Frequency of dates.
+        **kwargs (Any): Additional arguments.
     """
 
     def __repr__(self) -> str:
@@ -280,27 +270,15 @@ class StartEndDates(DatesProvider):
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
 
-    def to_python(self) -> str:
-        """Convert the StartEndDates instance to a tuple of ISO-formatted date strings."""
-        if self.frequency == datetime.timedelta(hours=1):
-            return (self.start.isoformat(), self.end.isoformat())
-        else:
-            return (self.start.isoformat(), self.end.isoformat(), frequency_to_string(self.frequency))
-
 
 class Hindcast:
     """Class representing a single hindcast date.
 
-    Parameters
-    ----------
-    date : datetime.datetime
-        The date of the hindcast.
-    refdate : datetime.datetime
-        The reference date.
-    hdate : datetime.datetime
-        The hindcast date.
-    step : int
-        The step value.
+    Args:
+        date (datetime.datetime): The date of the hindcast.
+        refdate (datetime.datetime): The reference date.
+        hdate (datetime.datetime): The hindcast date.
+        step (int): The step value.
     """
 
     def __init__(
@@ -323,18 +301,12 @@ class Hindcast:
 class HindcastsDates(DatesProvider):
     """Class for generating hindcast dates over a range of years.
 
-    Parameters
-    ----------
-    start : Union[str, List[str]]
-        Start date(s).
-    end : Union[str, List[str]]
-        End date(s).
-    steps : List[int]
-        List of step values.
-    years : int
-        Number of years.
-    **kwargs : Any
-        Additional arguments.
+    Args:
+        start (Union[str, List[str]]): Start date(s).
+        end (Union[str, List[str]]): End date(s).
+        steps (List[int]): List of step values.
+        years (int): Number of years.
+        **kwargs (Any): Additional arguments.
     """
 
     def __init__(
