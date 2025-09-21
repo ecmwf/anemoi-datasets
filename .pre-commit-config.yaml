@@ -79,6 +79,16 @@ repos:
         - --check-protected  # Check protected methods
         - --check-class      # Check class docstrings
         - --disable=SIG101,SIG102     # Disable empty docstrings
+- repo: local
+  hooks:
+      - id: sphinx-build
+        name: Check Sphinx documentation build
+        entry: bash -c 'cd docs && make html'
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: ^docs/
+
 ci:
   autoupdate_schedule: monthly
   autoupdate_commit_msg: "chore(deps): pre-commit.ci autoupdate"

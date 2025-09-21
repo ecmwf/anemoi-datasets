@@ -10,7 +10,7 @@ dates of the dataset.
 
 The general format of the `repeated-dates` source is:
 
-.. literalinclude:: yaml/repeated_dates1.yaml
+.. literalinclude:: yaml/repeated-dates1.yaml
    :language: yaml
 
 where ``source`` is any of the :ref:`operations <operations>` or
