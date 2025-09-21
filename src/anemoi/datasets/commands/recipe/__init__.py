@@ -15,7 +15,6 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create import config_to_python
 from anemoi.datasets.create import validate_config
 
 from .. import Command
@@ -89,5 +88,6 @@ class Recipe(Command):
 
             print(formatted, file=f)
             f.close()
+
 
 command = Recipe

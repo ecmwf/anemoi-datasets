@@ -1658,5 +1658,3 @@ def validate_config(config: Any) -> None:
         LOG.error("❌ Config validation failed (jsonschema):")
         LOG.error(e.message)
         raise
-
-
