@@ -82,7 +82,8 @@ the same expression:
    :language: python
 
 Finally, if you need different inputs for different dates, you can use
-the following ``Recipe.concat``:
+the ``Recipe.concat`` method, which takes a dictionary mapping dates to
+inputs:
 
 .. literalinclude:: code/using-python-11.py
 
