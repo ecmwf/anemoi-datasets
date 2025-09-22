@@ -19,8 +19,6 @@ from anemoi.datasets.create import config_to_python
 from anemoi.datasets.create import validate_config
 
 from .. import Command
-from .format import format_recipe
-from .migrate import migrate_recipe
 
 LOG = logging.getLogger(__name__)
 
@@ -71,6 +69,8 @@ class Recipe(Command):
             return
 
         if args.migrate:
+            from .migrate import migrate_recipe
+
             config = migrate_recipe(args, config)
             if config is None:
                 LOG.info(f"{args.path}: No changes needed.")
@@ -79,6 +79,8 @@ class Recipe(Command):
             args.format = True
 
         if args.format:
+            from .format import format_recipe
+
             formatted = format_recipe(args, config)
             assert "dates" in formatted
             f = sys.stdout
