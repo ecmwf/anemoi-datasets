@@ -1,6 +1,6 @@
-#############################
- Using Python define recipes
-#############################
+##############################
+ Using Python defined recipes
+##############################
 
 You can use Python to define recipes for building datasets. This allows
 for more complex logic and flexibility compared to using static
