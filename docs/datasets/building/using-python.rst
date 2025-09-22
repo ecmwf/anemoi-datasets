@@ -65,6 +65,30 @@ Which will output:
 .. literalinclude:: yaml/using-python-1.yaml
    :language: yaml
 
+Sometimes you need to refer to part of the input in a source or a
+filter, such as when using the :ref:`forcing_variables` source.
+
+You can do this by assigning the result of a source or filter to a
+variable, and use that variable later in the recipe.
+
+.. literalinclude:: code/using-python-9.py
+   :language: python
+
+Or you can assigning the result of a source or filter to a variable
+using the walrus operator ``:=`` to both assign and use the variable in
+the same expression:
+
+.. literalinclude:: code/using-python-10.py
+   :language: python
+
+Finally, if you need different inputs for different dates, you can use
+the following ``Recipe.concat``:
+
+.. literalinclude:: code/using-python-11.py
+
+Note that the dates can also be ``datetime`` objects and the frequency
+can be a ``timedelta`` object.
+
 .. note::
 
    To get you started quickly, you can use the :ref:`anemoi-datasets
