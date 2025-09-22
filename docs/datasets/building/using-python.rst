@@ -86,8 +86,8 @@ the following ``Recipe.concat``:
 
 .. literalinclude:: code/using-python-11.py
 
-Note that the dates can also be ``datetime`` objects and the frequency
-can be a ``timedelta`` object.
+Note that the dates can also be :class:`datetime.datetime` objects and
+the frequency can be a :class:`datetime.timedelta` object.
 
 .. note::
 
