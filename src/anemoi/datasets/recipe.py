@@ -453,23 +453,21 @@ class Recipe:
 
         result["input"] = input
 
-        if self.output:
-            result["output"] = self.output
+        result["output"] = self.output
 
-        if self.statistics:
-            result["statistics"] = self.statistics
+        result["statistics"] = self.statistics
 
-        if self.build:
-            result["build"] = self.build
+        result["build"] = self.build
 
-        if self.env:
-            result["env"] = self.env
+        result["env"] = self.env
 
-        if self.dataset_status:
-            result["dataset_status"] = self.dataset_status
+        result["dataset_status"] = self.dataset_status
 
-        if self.platform:
-            result["platform"] = self.platform
+        result["platform"] = self.platform
+
+        for k, v in list(result.items()):
+            if v is None or v == {} or v == []:
+                del result[k]
 
         from .dumper import yaml_dump
 

@@ -15,7 +15,6 @@ r.dates = {
 }
 
 # You can also provide datetime objects
-
 r.dates = {
     "start": datetime(2023, 1, 1, 0, 0),
     "end": datetime(2023, 12, 31, 18, 0),
