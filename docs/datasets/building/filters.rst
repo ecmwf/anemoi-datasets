@@ -11,4 +11,5 @@
 
 Filters are used to modify the data or metadata in a dataset.
 
-See :ref:`install <anemoi-transform:filters>` for more information.
+See :ref:`anemoi-transform <anemoi-transform:list-of-filters>` for more
+information.

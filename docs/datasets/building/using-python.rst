@@ -64,3 +64,9 @@ Which will output:
 
 .. literalinclude:: yaml/using-python-1.yaml
    :language: yaml
+
+.. note::
+
+   To get you started quickly, you can use the :ref:`anemoi-datasets
+   recipe --python recipe.yaml <recipe_command>` to transform an
+   existing YAML recipe into a Python script.

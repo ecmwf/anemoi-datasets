@@ -156,15 +156,17 @@ You may also have to install pandoc on macOS:
    :hidden:
    :caption: CLI
 
+   cli/introduction
    cli/create
    cli/inspect
    cli/grib-index
    cli/compare
    cli/copy
    cli/scan
-   cli/patch
+   cli/recipe
    cli/compare-lam
    cli/validate
+   cli/patch
 
 .. toctree::
    :maxdepth: 1
