@@ -1,3 +1,5 @@
+.. _xarray-based-sources:
+
 ######################
  xarray-based Sources
 ######################

@@ -170,14 +170,6 @@ You may also have to install pandoc on macOS:
 
 .. toctree::
    :maxdepth: 1
-   :glob:
-   :hidden:
-   :caption: API Reference
-
-   modules/*
-
-.. toctree::
-   :maxdepth: 1
    :hidden:
    :caption: Contributing
 

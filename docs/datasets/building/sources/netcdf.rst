@@ -1,3 +1,5 @@
+.. _netcdf-source:
+
 ########
  netcdf
 ########

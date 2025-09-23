@@ -1,4 +1,4 @@
-.. _recentre:
+.. _recentre-source:
 
 ##########
  recentre

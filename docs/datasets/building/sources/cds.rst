@@ -1,4 +1,4 @@
-.. _cds_source:
+.. _cds-source:
 
 #####
  cds

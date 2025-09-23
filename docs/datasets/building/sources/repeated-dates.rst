@@ -1,3 +1,5 @@
+.. _repeated-dates-source:
+
 ################
  repeated-dates
 ################

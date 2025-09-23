@@ -34,8 +34,9 @@ You need to select which dates to use for building the dataset:
 All data sources and filters are defined as method calls on the
 ``Recipe`` (any hyphen is replaced by an underscore):
 
-So the ``grib`` source is defined as ``Recipe.grib(...)`` and the
-``clip`` filter as ``Recipe.clip(...)``.
+So the :ref:`grib <grib-source>` source is defined as
+``Recipe.grib(...)`` and the :ref:`clip <anemoi-transform:clip-filter>`
+filter as ``Recipe.clip(...)``.
 
 Source and filter methods can be combined together and assigned to
 ``Recipe.input``.
@@ -55,7 +56,7 @@ And you can combine both operators:
 .. literalinclude:: code/using-python-7.py
    :language: python
 
-To generate the YAML configuration, call the ``dump()`` method:
+To generate the YAML configuration, call the ``Recipe.dump()`` method:
 
 .. literalinclude:: code/using-python-8.py
    :language: python
@@ -82,10 +83,11 @@ the same expression:
    :language: python
 
 Finally, if you need different inputs for different dates, you can use
-the ``Recipe.concat`` method, which takes a dictionary mapping dates to
-inputs:
+the ``Recipe.concat()`` method, which takes a dictionary mapping dates
+to inputs:
 
 .. literalinclude:: code/using-python-11.py
+   :language: python
 
 Note that the dates can also be :class:`datetime.datetime` objects and
 the frequency can be a :class:`datetime.timedelta` object.
@@ -95,3 +97,15 @@ the frequency can be a :class:`datetime.timedelta` object.
    To get you started quickly, you can use the :ref:`anemoi-datasets
    recipe --python recipe.yaml <recipe_command>` to transform an
    existing YAML recipe into a Python script.
+
+Below is the complete example. It uses the :ref:`mars-source` and
+:ref:`accumulations-source` source to get data from the ECMWF's MARS
+archive. In addition, it uses :ref:`lnsp-to-sp
+<anemoi-transform:lnsp-to-sp-filter>` to convert the logarithm of the
+surface pressure to the surface pressure, :ref:`snow-cover
+<anemoi-transform:snow-cover-filter>` to compute the snow cover from the
+snow depth and snow density and :ref:`apply-mask
+<anemoi-transform:apply-mask-filter>` to replace zeros with `NaNs`.
+
+.. literalinclude:: code/using-python-12.py
+   :language: python

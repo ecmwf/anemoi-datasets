@@ -1,3 +1,5 @@
+.. _accumulations-source:
+
 ###############
  accumulations
 ###############
