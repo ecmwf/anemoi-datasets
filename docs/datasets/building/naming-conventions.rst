@@ -68,7 +68,7 @@ The tables below provide more details and some examples.
 
    -  -  **end-year**
 
-      -  2020 if the first validity time is in 2020. Notice that if the
+      -  2020 if the last validity time is in 2020. Notice that if the
          dataset is from 18.04.2020 to 19.07.2020, the start-year and
          end-year are both 2020. For instance in
          aifs-od-an-oper-0001-mars-o96-2020-2020-6h-v5
