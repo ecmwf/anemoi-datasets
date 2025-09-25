@@ -198,7 +198,7 @@ class ProjectionStore(ProjectionBase):
     def variables(self):
         return self.store.variables[self.slices[1]]
 
-    def origins(self):
+    def origins(self, compressed=False):
         result = {}
         for variable in self.variables():
 
@@ -226,6 +226,25 @@ class ProjectionStore(ProjectionBase):
 
             result[variable] = origins
 
+        if compressed:
+
+            def _hashable(v):
+                if isinstance(v, dict):
+                    return tuple((k, _hashable(vv)) for k, vv in sorted(v.items()))
+                if isinstance(v, list):
+                    return tuple(_hashable(vv) for vv in v)
+                return v
+
+            compressed_result = defaultdict(list)
+            for k, v in result.items():
+                compressed_result[_hashable(v)].append((k, v))
+
+            result = {}
+            for v in compressed_result.values():
+                key = tuple(sorted(k for k, _ in v))
+                value = v[0][1]
+                result[key] = value
+
         return result
 
     def add_transformation(self, transformation):
@@ -233,3 +252,7 @@ class ProjectionStore(ProjectionBase):
 
     def __iter__(self):
         return iter([self])
+
+    @property
+    def dataset_name(self):
+        return self.store.dataset_name
