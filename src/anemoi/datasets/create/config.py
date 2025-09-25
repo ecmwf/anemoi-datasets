@@ -91,7 +91,7 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
         if dic[key] == value:
             return
         raise ValueError(f"Cannot use {key}={dic[key]}. Must use {value}.")
-    # LOG.info(f"Setting {key}={value} in config")
+    LOG.info(f"Setting {key}={value} in config")
     dic[key] = value
 
 
