@@ -77,6 +77,9 @@ extensions = [
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "'**.ipynb_checkpoints'"]
 
+# To list the symbols:
+#  python -m sphinx.ext.intersphinx https://anemoi-utils.readthedocs.io/en/latest/objects.inv .
+
 intersphinx_mapping = {
     "python": ("https://python.readthedocs.io/en/latest", None),
     "anemoi-docs": (

@@ -8,13 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from abc import ABC
+from abc import abstractmethod
 
 from anemoi.datasets.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
 
 
-class Action:
+class Action(ABC):
     def __init__(self, config, *path):
         self.config = config
         self.path = path
@@ -22,6 +24,17 @@ class Action:
             "input",
             "data_sources",
         ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
+
+    @abstractmethod
+    def __call__(self, context, argument):
+        pass
+
+    @abstractmethod
+    def python_code(self, code):
+        pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({'.'.join(str(x) for x in self.path)}, {self.config})"
 
 
 class Concat(Action):
@@ -55,6 +68,11 @@ class Concat(Action):
 
         return context.register(results, self.path)
 
+    def python_code(self, code):
+        return code.concat(
+            {filtering_dates.to_python(): action.python_code(code) for filtering_dates, action in self.choices}
+        )
+
 
 class Join(Action):
     def __init__(self, config, *path):
@@ -74,6 +92,9 @@ class Join(Action):
             results += action(context, argument)
 
         return context.register(results, self.path)
+
+    def python_code(self, code) -> None:
+        return code.sum(a.python_code(code) for a in self.actions)
 
 
 class Pipe(Action):
@@ -96,6 +117,9 @@ class Pipe(Action):
 
         return context.register(result, self.path)
 
+    def python_code(self, code) -> None:
+        return code.pipe(a.python_code(code) for a in self.actions)
+
 
 class Function(Action):
     def __init__(self, config, *path):
@@ -110,6 +134,13 @@ class Function(Action):
         source = self.create_object(context, config)
 
         return context.register(self.call_object(context, source, argument), self.path)
+
+    def python_code(self, code) -> str:
+        # For now...
+        if "source" in self.config:
+            source = action_factory(self.config["source"], *self.path, "source")
+            self.config["source"] = source.python_code(code)
+        return code.call(self.name, self.config)
 
 
 class DatasetSourceMixin:
@@ -175,6 +206,9 @@ class DataSources(Action):
         else:
             self.sources = {i: action_factory(v, *path, str(i)) for i, v in enumerate(config)}
 
+    def python_code(self, code):
+        return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
+
     def __call__(self, context, argument):
         for name, source in self.sources.items():
             context.register(source(context, argument), self.path + (name,))
@@ -184,6 +218,12 @@ class Recipe(Action):
     def __init__(self, input, data_sources):
         self.input = input
         self.data_sources = data_sources
+
+    def python_code(self, code):
+        return code.recipe(
+            self.input.python_code(code),
+            self.data_sources.python_code(code),
+        )
 
     def __call__(self, context, argument):
         # Load data_sources

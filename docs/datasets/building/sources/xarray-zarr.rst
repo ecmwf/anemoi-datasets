@@ -1,4 +1,4 @@
-.. _xarray-zarr:
+.. _xarray-zarr-source:
 
 #############
  xarray-zarr

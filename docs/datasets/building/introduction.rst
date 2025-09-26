@@ -105,3 +105,14 @@ operations can be combined to build complex datasets.
    :caption: Naming Conventions
 
    naming-conventions
+
+****************
+ Python recipes
+****************
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Python recipes
+
+   using-python
