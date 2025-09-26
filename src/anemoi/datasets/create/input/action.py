@@ -60,7 +60,7 @@ class Join(Action):
     def __init__(self, config, *path):
         super().__init__(config, *path, "join")
 
-        assert isinstance(config, list), f"Value must be a list {config}"
+        assert isinstance(config, list), f"Value of Join Action must be a list, got: {config}"
 
         self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
