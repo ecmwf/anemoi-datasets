@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2025 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -7,21 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import logging
 from copy import deepcopy
+from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.dates.groups import GroupOfDates
-
-from .trace import trace_select
-
-LOG = logging.getLogger(__name__)
-
-
-class Context:
-    """Context for building input data."""
-
-    pass
+from anemoi.datasets.create.input.context.field import FieldContext
 
 
 class InputBuilder:
@@ -34,31 +24,32 @@ class InputBuilder:
         ----------
         config : dict
             Configuration dictionary.
-        data_sources : Union[dict, list]
+        data_sources : dict
             Data sources.
         **kwargs : Any
             Additional keyword arguments.
         """
         self.kwargs = kwargs
+        self.config = deepcopy(config)
+        self.data_sources = deepcopy(dict(data_sources=data_sources))
 
-        config = deepcopy(config)
-        if data_sources:
-            config = dict(
-                data_sources=dict(
-                    sources=data_sources,
-                    input=config,
-                )
-            )
-        self.config = config
-        self.action_path = ["input"]
+    @cached_property
+    def action(self) -> Any:
+        """Returns the action object based on the configuration."""
+        from .action import Recipe
+        from .action import action_factory
 
-    @trace_select
-    def select(self, group_of_dates: GroupOfDates) -> Any:
+        sources = action_factory(self.data_sources, "data_sources")
+        input = action_factory(self.config, "input")
+
+        return Recipe(input, sources)
+
+    def select(self, argument) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
-        group_of_dates : GroupOfDates
+        argument : GroupOfDates
             Group of dates to select data for.
 
         Returns
@@ -66,40 +57,28 @@ class InputBuilder:
         Any
             Selected data.
         """
-        from .action import ActionContext
-        from .action import action_factory
+        context = FieldContext(argument, **self.kwargs)
+        return context.create_result(self.action(context, argument))
 
-        """This changes the context."""
-        context = ActionContext(**self.kwargs)
-        action = action_factory(self.config, context, self.action_path)
-        return action.select(group_of_dates)
+    def python_code(self, code):
+        return self.action.python_code(code)
 
-    def __repr__(self) -> str:
-        """Return a string representation of the InputBuilder.
 
-        Returns
-        -------
-        str
-            String representation.
-        """
-        from .action import ActionContext
-        from .action import action_factory
+def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
+    """Build an InputBuilder instance.
 
-        context = ActionContext(**self.kwargs)
-        a = action_factory(self.config, context, self.action_path)
-        return repr(a)
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary.
+    data_sources : Union[dict, list]
+        Data sources.
+    **kwargs : Any
+        Additional keyword arguments.
 
-    def _trace_select(self, group_of_dates: GroupOfDates) -> str:
-        """Trace the select operation.
-
-        Parameters
-        ----------
-        group_of_dates : GroupOfDates
-            Group of dates to select data for.
-
-        Returns
-        -------
-        str
-            Trace string.
-        """
-        return f"InputBuilder({group_of_dates})"
+    Returns
+    -------
+    InputBuilder
+        An instance of InputBuilder.
+    """
+    return InputBuilder(config, data_sources, **kwargs)

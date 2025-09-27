@@ -22,9 +22,7 @@ from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
-from .action import ActionContext
-from .trace import trace
-from .trace import trace_datasource
+from . import Result
 
 LOG = logging.getLogger(__name__)
 
@@ -278,45 +276,34 @@ def _data_request(data: Any) -> dict[str, Any]:
     return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
-class Result:
+class FieldResult(Result):
     """Class to represent the result of an action in the dataset creation process."""
 
     empty: bool = False
     _coords_already_built: bool = False
 
-    def __init__(self, context: ActionContext, action_path: list[str], dates: Any) -> None:
-        """Initialize a Result instance.
+    def __init__(self, context: Any, datasource: Any) -> None:
 
-        Parameters
-        ----------
-        context : ActionContext
-            The context in which the result exists.
-        action_path : list of str
-            The action path.
-        dates : Any
-            The dates associated with the result.
-        """
         from anemoi.datasets.dates.groups import GroupOfDates
 
-        assert isinstance(dates, GroupOfDates), dates
-
-        assert isinstance(context, ActionContext), type(context)
-        assert isinstance(action_path, list), action_path
-
         self.context: Any = context
-        self.group_of_dates: Any = dates
-        self.action_path: list[str] = action_path
+        self.datasource = datasource
+        self.group_of_dates = context.argument
+        assert isinstance(
+            self.group_of_dates, GroupOfDates
+        ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
-    @property
-    @trace_datasource
-    def datasource(self) -> Any:
-        """Retrieve the data source for the result."""
-        self._raise_not_implemented()
+        self._origins = []
 
     @property
     def data_request(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
+
+    @property
+    def origins(self) -> dict[str, Any]:
+        """Returns a dictionary with the parameters needed to retrieve the data."""
+        return {"version": 1, "origins": self._origins}
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -326,29 +313,29 @@ class Result:
         Any
             The data cube.
         """
-        trace("🧊", f"getting cube from {self.__class__.__name__}")
+
         ds: Any = self.datasource
 
-        remapping: Any = self.context.remapping
-        order_by: Any = self.context.order_by
-        flatten_grid: Any = self.context.flatten_grid
-        start: float = time.time()
-        LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
-        assert order_by, order_by
+        self.remapping: Any = self.context.remapping
+        self.order_by: Any = self.context.order_by
+        self.flatten_grid: Any = self.context.flatten_grid
+        self.start: float = time.time()
+        LOG.debug("Sorting dataset %s %s", dict(self.order_by), self.remapping)
+        assert self.order_by, self.order_by
 
-        patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
+        self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
 
         try:
             cube: Any = ds.cube(
-                order_by,
-                remapping=remapping,
-                flatten_values=flatten_grid,
-                patches=patches,
+                self.order_by,
+                remapping=self.remapping,
+                flatten_values=self.flatten_grid,
+                patches=self.patches,
             )
             cube = cube.squeeze()
-            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
         except ValueError:
-            self.explain(ds, order_by, remapping=remapping, patches=patches)
+            self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             # raise ValueError(f"Error in {self}")
             exit(1)
 
@@ -519,66 +506,6 @@ class Result:
         print()
         exit(1)
 
-    def _repr(self, *args: Any, _indent_: str = "\n", **kwargs: Any) -> str:
-        """Return the string representation of the Result instance.
-
-        Parameters
-        ----------
-        args : Any
-            Additional positional arguments.
-        _indent_ : str
-            Indentation string.
-        kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        str
-            The string representation.
-        """
-        more: str = ",".join([str(a)[:5000] for a in args])
-        more += ",".join([f"{k}={v}"[:5000] for k, v in kwargs.items()])
-
-        dates: str = " no-dates"
-        if self.group_of_dates is not None:
-            dates = f" {len(self.group_of_dates)} dates"
-            dates += " ("
-            dates += "/".join(d.strftime("%Y-%m-%dT%H:%M") for d in self.group_of_dates)
-            if len(dates) > 100:
-                dates = dates[:100] + "..."
-            dates += ")"
-
-        more = more[:5000]
-        txt: str = f"{self.__class__.__name__}:{dates}{_indent_}{more}"
-        if _indent_:
-            txt = txt.replace("\n", "\n  ")
-        return txt
-
-    def __repr__(self) -> str:
-        """Return the string representation of the Result instance."""
-        return self._repr()
-
-    def _raise_not_implemented(self) -> None:
-        """Raise a NotImplementedError indicating the method is not implemented."""
-        raise NotImplementedError(f"Not implemented in {self.__class__.__name__}")
-
-    def _trace_datasource(self, *args: Any, **kwargs: Any) -> str:
-        """Trace the data source for the result.
-
-        Parameters
-        ----------
-        args : Any
-            Additional positional arguments.
-        kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        str
-            The trace string.
-        """
-        return f"{self.__class__.__name__}({self.group_of_dates})"
-
     def build_coords(self) -> None:
         """Build the coordinates for the result."""
         if self._coords_already_built:
@@ -635,6 +562,41 @@ class Result:
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
         self._cube: Any = cube
+
+        name_key = list(self.order_by.keys())[1]
+
+        p = None
+        origins_per_number = defaultdict(lambda: defaultdict(set))
+
+        for fs in self.datasource:
+            o = fs.metadata("anemoi_origin", remapping=self.remapping, patches=self.patches)
+            name = fs.metadata(name_key, remapping=self.remapping, patches=self.patches)
+            number = fs.metadata("number", remapping=self.remapping, patches=self.patches)
+
+            assert name not in origins_per_number[number][o], name
+            origins_per_number[number][o].add(name)
+
+            if p is not o:
+                LOG.info(f"🔥🔥🔥🔥🔥🔥 Source: {name}, {o}")
+                p = o
+
+        origins_per_variables = defaultdict(lambda: defaultdict(set))
+        for number, origins in origins_per_number.items():
+            for origin, names in origins.items():
+                for name in names:
+                    origins_per_variables[name][origin].add(number)
+
+        origins = defaultdict(set)
+
+        # Check if all members of a variable have the same origins
+        for name, origin_number in origins_per_variables.items():
+            # For now we do not support variables with members from different origins
+            assert len(origin_number) == 1, origin_number
+            origins[list(origin_number.keys())[0]].add(name)
+
+        self._origins = []
+        for k, v in origins.items():
+            self._origins.append({"origin": k.as_dict(), "variables": sorted(v)})
 
         self._coords_already_built: bool = True
 
