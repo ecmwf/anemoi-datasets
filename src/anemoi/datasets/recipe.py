@@ -472,7 +472,7 @@ class Recipe:
         if self.platform:
             result["platform"] = self.platform
 
-        from .dumper import yaml_dump
+        from anemoi.datasets.dumper import yaml_dump
 
         yaml_dump(_un_dotdict(result), stream=file)
 

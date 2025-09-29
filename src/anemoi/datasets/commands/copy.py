@@ -20,8 +20,7 @@ from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.check import check_zarr
-
-from . import Command
+from anemoi.datasets.commands import Command
 
 LOG = logging.getLogger(__name__)
 

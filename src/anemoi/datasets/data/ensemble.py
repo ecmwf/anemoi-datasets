@@ -14,17 +14,17 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .debug import Node
-from .forwards import Forwards
-from .forwards import GivenAxis
-from .indexing import apply_index_to_slices_changes
-from .indexing import index_to_slices
-from .indexing import update_tuple
-from .misc import _auto_adjust
-from .misc import _open
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.forwards import Forwards
+from anemoi.datasets.data.forwards import GivenAxis
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import update_tuple
+from anemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 

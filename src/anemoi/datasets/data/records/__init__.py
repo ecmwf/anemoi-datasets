@@ -20,8 +20,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.data.debug import Node
 from anemoi.datasets.data.records.backends import backend_factory
-
-from .windows import window_from_str
+from anemoi.datasets.data.records.windows import window_from_str
 
 LOG = logging.getLogger(__name__)
 

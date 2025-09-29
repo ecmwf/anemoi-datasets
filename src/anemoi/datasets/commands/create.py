@@ -18,7 +18,7 @@ from typing import Any
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-from . import Command
+from anemoi.datasets.commands import Command
 
 LOG = logging.getLogger(__name__)
 

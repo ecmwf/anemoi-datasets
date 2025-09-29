@@ -8,8 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..source import ObservationsSource
-from . import source_registry
+from anemoi.datasets.create.source import ObservationsSource
+from anemoi.datasets.create.sources import source_registry
 
 
 @source_registry.register("csv")

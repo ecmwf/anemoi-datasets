@@ -15,9 +15,9 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
 
 
 def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[int, ...]]:

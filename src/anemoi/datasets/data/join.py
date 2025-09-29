@@ -17,20 +17,20 @@ import numpy as np
 import rich
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import Source
-from .debug import debug_indexing
-from .forwards import Combined
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
-from .misc import _auto_adjust
-from .misc import _open
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import Source
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Combined
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import update_tuple
+from anemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 
@@ -174,7 +174,7 @@ class Join(Combined):
             if not ok:
                 LOG.warning("Dataset %r completely overridden.", d)
 
-        from .select import Select
+        from anemoi.datasets.data.select import Select
 
         rich.print("Overlaying join with", variables, len(indices), [d.shape for d in self.datasets])
 

@@ -11,7 +11,7 @@
 import datetime
 import logging
 
-from ...dumper import yaml_dump
+from anemoi.datasets.dumper import yaml_dump
 
 LOG = logging.getLogger(__name__)
 

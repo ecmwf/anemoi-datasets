@@ -154,7 +154,7 @@ class DatasetSourceMixin:
         return context.origin(result, self, argument)
 
     def origin(self):
-        from .origin import Source
+        from anemoi.datasets.create.input.origin import Source
 
         return Source(self.path[-1], self.config)
 
@@ -170,7 +170,7 @@ class TransformSourceMixin:
         return current
 
     def origin(self):
-        from .origin import Source
+        from anemoi.datasets.create.input.origin import Source
 
         return Source(self.path[-1], self.config)
 
@@ -186,7 +186,7 @@ class TransformFilterMixin:
         return context.origin(result, self, argument)
 
     def origin(self):
-        from .origin import Filter
+        from anemoi.datasets.create.input.origin import Filter
 
         return Filter(self.path[-1], self.config)
 

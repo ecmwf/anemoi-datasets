@@ -13,9 +13,8 @@ from typing import Any
 
 import yaml
 
+from anemoi.datasets.commands import Command
 from anemoi.datasets.create.check import DatasetName
-
-from . import Command
 
 LOG = logging.getLogger(__name__)
 

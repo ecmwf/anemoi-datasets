@@ -51,7 +51,7 @@ class FieldContext(Context):
         return argument
 
     def create_result(self, argument, data):
-        from .result import FieldResult
+        from anemoi.datasets.create.fields.result import FieldResult
 
         return FieldResult(self, argument, data)
 

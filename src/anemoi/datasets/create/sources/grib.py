@@ -20,7 +20,7 @@ from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
-from .legacy import legacy_source
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
 

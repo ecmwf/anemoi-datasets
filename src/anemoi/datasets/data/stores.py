@@ -23,17 +23,17 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from . import MissingDateError
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import DEBUG_ZARR_LOADING
-from .debug import Node
-from .debug import Source
-from .debug import debug_indexing
-from .indexing import expand_list_indexing
-from .misc import load_config
+from anemoi.datasets.data import MissingDateError
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import DEBUG_ZARR_LOADING
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import Source
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.misc import load_config
 
 LOG = logging.getLogger(__name__)
 

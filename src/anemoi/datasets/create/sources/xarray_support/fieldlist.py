@@ -16,12 +16,12 @@ import xarray as xr
 import yaml
 from earthkit.data import FieldList
 
-from .field import EmptyFieldList
-from .flavour import CoordinateGuesser
-from .patch import patch_dataset
-from .time import Time
-from .variable import FilteredVariable
-from .variable import Variable
+from anemoi.datasets.create.sources.xarray_support.field import EmptyFieldList
+from anemoi.datasets.create.sources.xarray_support.flavour import CoordinateGuesser
+from anemoi.datasets.create.sources.xarray_support.patch import patch_dataset
+from anemoi.datasets.create.sources.xarray_support.time import Time
+from anemoi.datasets.create.sources.xarray_support.variable import FilteredVariable
+from anemoi.datasets.create.sources.xarray_support.variable import Variable
 
 LOG = logging.getLogger(__name__)
 
