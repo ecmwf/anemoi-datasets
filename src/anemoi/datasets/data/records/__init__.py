@@ -11,6 +11,7 @@ import datetime
 import logging
 import os
 from collections import defaultdict
+from collections.abc import Mapping
 from functools import cached_property
 
 import numpy as np
@@ -805,7 +806,17 @@ class RecordsDataset(BaseRecordsDataset):
         return Node(self, [], path=self.path)
 
 
-class Record:
+class Record(Mapping):
+    """A record representing data for each group in the dataset.
+
+    Parameters
+    ----------
+    dataset : BaseRecordsDataset
+        The dataset containing the record.
+    n : int
+        The index of the record.
+    """
+
     def __init__(self, dataset, n):
         self.dataset = dataset
         self.n = n
@@ -816,6 +827,15 @@ class Record:
 
     def items(self):
         return self._payload.items()
+
+    def __iter__(self):
+        return iter(self.groups)
+
+    def __len__(self):
+        return len(self.groups)
+
+    def __contains__(self, group):
+        return group in self.groups
 
     @property
     def name_to_index(self):
@@ -861,8 +881,14 @@ class Record:
     def statistics(self):
         return self.dataset.statistics
 
-    def as_dict(self):
-        """Returns the record as a dictionary with group names as keys."""
+    def as_dict(self) -> dict:
+        """Returns the record as a dictionary with group names as keys.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping group names to their data.
+        """
         return {group: self[group] for group in self.groups}
 
 
