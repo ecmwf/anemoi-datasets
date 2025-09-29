@@ -364,6 +364,10 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
             return Zarr(path).mutate()
 
         if path and path.endswith(".vz"):
+
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"File not found: {path}")
+
             metadata_path = os.path.join(path, "metadata.json")
             if os.path.exists(metadata_path):
                 if "backend" not in load_any_dict_format(metadata_path):
