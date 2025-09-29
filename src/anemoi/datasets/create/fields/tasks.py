@@ -1586,7 +1586,7 @@ def chain(tasks: list) -> type:
     return Chain
 
 
-def creator_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
+def task_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
     """Create a dataset creator.
 
     Parameters

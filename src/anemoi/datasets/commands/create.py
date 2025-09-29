@@ -45,11 +45,11 @@ def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
-    from anemoi.datasets.create.fields.tasks import creator_factory
+    from anemoi.datasets.create.fields.tasks import task_factory
 
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = creator_factory(what.replace("-", "_"), **options)
+    c = task_factory(what.replace("-", "_"), **options)
     result = c.run()
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
