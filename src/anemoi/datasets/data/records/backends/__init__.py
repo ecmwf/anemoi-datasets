@@ -27,15 +27,19 @@ class Backend:
         self.kwargs = kwargs
 
     def read(self, i, **kwargs):
+        """Read the i-th record and return a dictionary of numpy arrays."""
         raise NotImplementedError("Must be implemented in subclass")
 
     def read_metadata(self):
+        """Read the metadata of a record dataset. The metadata does not depend on the record index."""
         raise NotImplementedError("Must be implemented in subclass")
 
     def read_statistics(self):
+        """Read the statistics of a record dataset. The statistics does not depend on the record index."""
         raise NotImplementedError("Must be implemented in subclass")
 
     def _check_data(self, data):
+        # Check that all keys are normalised
         for k in list(data.keys()):
             k = k.split(":")[-1]
             if k != normalise_key(k):
@@ -139,16 +143,22 @@ def backend_factory(name, *args, **kwargs):
 
 
 class WriteBackend(Backend):
+    # Write backend base class, not used for reading
+    # provides implementation to write data
     def __init__(self, *, target, **kwargs):
         super().__init__(target, **kwargs)
 
     def write(self, i, data, **kwargs):
+        # expects data to be a dict of numpy arrays
         raise NotImplementedError("Must be implemented in subclass")
 
     def write_metadata(self, metadata):
+        # expects metadata to be a dict
         raise NotImplementedError("Must be implemented in subclass")
 
     def write_statistics(self, statistics):
+        # expects statistics to be a dict of dicts with the right keys:
+        # {group: {mean:..., std:..., min:..., max:...}}
         raise NotImplementedError("Must be implemented in subclass")
 
     def _check_data(self, data):
@@ -158,6 +168,8 @@ class WriteBackend(Backend):
                 raise ValueError(f"{k} must be alphanumerical and '_' only.")
 
     def _dataframes_to_record(self, i, data, variables, **kwargs):
+        # Convert data from pandas DataFrames to a record format
+        # will be used for writing, building obs datasets
 
         assert isinstance(data, (dict)), type(data)
         if not data:
@@ -174,6 +186,8 @@ class WriteBackend(Backend):
         return data
 
     def _dataframe_to_dict(self, name, df, **kwargs):
+        # will be used for writing, building obs datasets
+
         d = {}
         d["timedeltas:" + name] = df["timedeltas"]
         d["latitudes:" + name] = df["latitudes"]
@@ -304,6 +318,8 @@ class Npz2WriteBackend(WriteBackend):
 
 
 def writer_backend_factory(name, **kwargs):
+    # choose the right backend for writing
+    # this is intended to make benchmarking easier
     WRITE_BACKENDS = dict(
         npz1=Npz1WriteBackend,
         npz2=Npz2WriteBackend,

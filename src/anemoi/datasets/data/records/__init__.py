@@ -79,8 +79,20 @@ def _to_numpy_dates(d):
 
 
 class BaseRecordsDataset:
+    """This is the base class for all datasets based on records.
+    Records datasets are datasets that can be indexed by time (int) or by group (str).
+    A record dataset is designed for observations, where multiple array of difference shapes need to be stored for each date.
+    They have the same concept or start_date, end_date, frequency as fields datasets, but each date correspond to a window.
+    All windows have the same size (the window span can be different from the dataset frequency)
 
-    def __getitem__(self, i):
+    variables in a record datasets are identified by a group and a name.
+    """
+
+    # Depending on the context, a variable is identified by "group.name",
+    # or using a dict with keys as groups and values as list of names.
+    # most of the code should be agnostic and transform one format to the other when needed.
+
+    def __getitem__(self, i: int | str):
         if isinstance(i, str):
             return self._getgroup(i)
 
@@ -91,15 +103,30 @@ class BaseRecordsDataset:
 
     @cached_property
     def window(self):
+        """Returns a string representation of the relative window of the dataset, such as '(-3h, 3h]'."""
         return str(self._window)
 
-    def _getgroup(self, i):
-        return Tabular(self, i)
+    def _getgroup(self, group: str):
+        """Returns a Tabular object for the group. As a partial function when argument group is given but i is not."""
+        return Tabular(self, group)
 
-    def _getrecord(self, i):
+    def _getrecord(self, i: int):
+        """Returns a Record object for the time step i. As a partial function when argument i is given but group is not."""
         return Record(self, i)
 
-    def _load_data(self, i):
+    def _load_data(self, i: int) -> dict:
+        """Load the data for a specific time step or window (i).
+        It is expected to return a dict containing keys of the form:
+
+        - "data:group1" : numpy array
+        - "latitudes:group1" : numpy array
+        - "longitudes:group1" : numpy array
+        - "metadata:group1" :
+        - ...
+        - "data:group2" : numpy array
+        - "latitudes:group2" : numpy array
+        - ...
+        """
         raise NotImplementedError("Must be implemented in subclass")
 
     @property
@@ -222,6 +249,14 @@ class FieldsRecords(RecordsForward):
     """A wrapper around a FieldsDataset to provide a consistent interface for records datasets."""
 
     def __init__(self, fields_dataset, name):
+        """wrapper around a fields dataset to provide a consistent interface for records datasets.
+        A FieldsRecords appears as a RecordsDataset with a single group.
+        This allows merging fields datasets with other records datasets.
+        Parameters:
+             fields_dataset: must be a regular fields dataset
+             name: the name of the group
+        .
+        """
         self.forward = fields_dataset
         from anemoi.datasets.data.dataset import Dataset
 
@@ -294,7 +329,9 @@ class FieldsRecords(RecordsForward):
         return len(self.forward.dates)
 
 
-class GenericRename(RecordsForward):
+class BaseRename(RecordsForward):
+    """Renames variables in a records dataset."""
+
     def __init__(self, dataset, rename):
         self.forward = dataset
         assert isinstance(rename, dict)
@@ -321,16 +358,16 @@ class GenericRename(RecordsForward):
         return [self.rename.get(k, k) for k in self.forward.groups]
 
 
-class Rename(GenericRename):
+class Rename(BaseRename):
     pass
 
 
-class SetGroup(GenericRename):
+class SetGroup(BaseRename):
     def __init__(self, dataset, set_group):
         if len(dataset.groups) != 1:
             raise ValueError(f"{self.__class__.__name__} can only be used with datasets containing a single group.")
 
-        super.__init__(dataset, {dataset.groups[0]: set_group})
+        super().__init__(dataset, {dataset.groups[0]: set_group})
 
     def _load_data(self, i):
         return self.dataset._load_data(i)
@@ -412,6 +449,7 @@ def window_from_str(txt):
 
 
 class AbsoluteWindow:
+    # not used but expected to be useful when building datasets. And used in tests
     def __init__(self, start, end, include_start=True, include_end=True):
         assert isinstance(start, datetime.datetime), f"start must be a datetime.datetime, got {type(start)}"
         assert isinstance(end, datetime.datetime), f"end must be a datetime.datetime, got {type(end)}"
@@ -429,6 +467,14 @@ class AbsoluteWindow:
 
 
 class WindowsSpec:
+    # A window specified by relative timedeltas, such as (-6h, 0h]
+    #
+    # the term "WindowSpec" is used here to avoid confusion between
+    #       - a relative window, such as (-6h, 0h] which this class represents (WindowsSpec)
+    #       - an actual time interval, such as [2023-01-01 00:00, 2023-01-01 06:00] which is an (AbsoluteWindow)
+    #
+    # but is is more confusing, it should be renamed as Window.
+
     def __init__(self, *, start, end, include_start=False, include_end=True):
         assert isinstance(start, (str, datetime.timedelta)), f"start must be a str or timedelta, got {type(start)}"
         assert isinstance(end, (str, datetime.timedelta)), f"end must be a str or timedelta, got {type(end)}"
@@ -448,6 +494,7 @@ class WindowsSpec:
 
     def to_absolute_window(self, date):
         """Convert the window to an absolute window based on a date."""
+        # not used but expected to be useful when building datasets. And used in tests
         assert isinstance(date, datetime.datetime), f"date must be a datetime.datetime, got {type(date)}"
         start = date + self.start
         end = date + self.end
@@ -467,6 +514,8 @@ class WindowsSpec:
         return f"{first}{_frequency_to_string(self.start)},{_frequency_to_string(self.end)}{last}"
 
     def compute_mask(self, timedeltas):
+        """Returns a boolean numpy array of the same shape as timedeltas."""
+
         assert timedeltas.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {timedeltas.dtype}"
         if self.include_start:
             lower_mask = timedeltas >= self._start_np
@@ -481,6 +530,9 @@ class WindowsSpec:
         return lower_mask & upper_mask
 
     def starts_before(self, my_dates, other_dates, other_window):
+        # apply this window to my_dates[0] and the other_window to other_dates[0]
+        # return True if this window starts before the other window
+
         assert my_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {my_dates.dtype}"
         assert other_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {other_dates.dtype}"
         assert isinstance(other_window, WindowsSpec), f"other_window must be a WindowsSpec, got {type(other_window)}"
@@ -493,6 +545,7 @@ class WindowsSpec:
         return my_start <= other_start
 
     def ends_after(self, my_dates, other_dates, other_window):
+        # same as starts_before
         assert my_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {my_dates.dtype}"
         assert other_dates.dtype == "datetime64[s]", f"expecting np.datetime64[s], got {other_dates.dtype}"
         assert isinstance(other_window, WindowsSpec), f"other_window must be a WindowsSpec, got {type(other_window)}"
@@ -508,13 +561,15 @@ class WindowsSpec:
 
 
 class Rewindowed(RecordsForward):
+    # change the window of a records dataset
+    # similar to changing the frequency of a dataset
+
     def __init__(self, dataset, window):
         super().__init__(dataset)
         self.dataset = dataset
 
         # in this class anything with 1 refers to the original window/dataset
         # and anything with 2 refers to the new window/dataset
-        # and we use _Δ for timedeltas
 
         self._window1 = self.forward._window
         self._window2 = window_from_str(window)
@@ -603,6 +658,13 @@ class Rewindowed(RecordsForward):
 
 
 class Select(RecordsForward):
+    # Select a subset of variables from a records dataset
+    # select can be a list of strings with dots (or a dict with keys as groups and values as list of strings)
+    #
+    # the selection is a filter, not a reordering, which is different from fields datasets and should be documented/fixed
+    #
+    # Drop should be implemented
+
     def __init__(self, dataset, select):
         super().__init__(dataset)
 
@@ -694,6 +756,8 @@ class Select(RecordsForward):
 
 
 class RecordsSubset(RecordsForward):
+    """Subset of a records dataset based on a list of integer indices."""
+
     def __init__(self, dataset, indices, reason):
         super().__init__(dataset)
         self.dataset = dataset
@@ -712,6 +776,7 @@ class RecordsSubset(RecordsForward):
 
 
 class RecordsDataset(BaseRecordsDataset):
+    """This is the base class for all datasets based on records stored on disk."""
 
     def __init__(self, path, backend=None, **kwargs):
         if kwargs:
@@ -807,17 +872,13 @@ class RecordsDataset(BaseRecordsDataset):
 
 
 class Record(Mapping):
-    """A record representing data for each group in the dataset.
+    """A record corresponds to a single time step in a record dataset."""
 
-    Parameters
-    ----------
-    dataset : BaseRecordsDataset
-        The dataset containing the record.
-    n : int
-        The index of the record.
-    """
-
-    def __init__(self, dataset, n):
+    def __init__(self, dataset: RecordsDataset, n: int):
+        """A record corresponds to a single time step in a record dataset.
+        n : int, the index of the time step in the dataset.
+        dataset : RecordsDataset, the dataset this record belongs to.
+        """
         self.dataset = dataset
         self.n = n
 
@@ -893,6 +954,8 @@ class Record(Mapping):
 
 
 class Tabular:
+    """A RecordsDataset for a single group, similar to a fields dataset, but allowing different shapes for each date."""
+
     def __init__(self, dataset, name):
         self.dataset = dataset
         self.name = name

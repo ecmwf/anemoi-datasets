@@ -410,6 +410,9 @@ class Dataset(ABC, Sized):
         if not isinstance(vars, (list, tuple)):
             vars = [vars]
 
+        for v in vars:
+            if v not in self.name_to_index:
+                raise ValueError(f"select: unknown variable: {v}, available: {list(self.name_to_index)}")
         return [self.name_to_index[v] for v in vars]
 
     def _drop_to_columns(self, vars: str | Sequence[str]) -> list[int]:
