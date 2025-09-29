@@ -352,7 +352,7 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class Actor:  # TODO: rename to Creator
+class Task:  # TODO: rename to Creator
     """A base class for dataset creation actors."""
 
     dataset_class = WritableDataset
@@ -455,7 +455,7 @@ class Actor:  # TODO: rename to Creator
         check_missing_dates(self.missing_dates)
 
 
-class Patch(Actor):
+class Patch(Task):
     """A class to apply patches to a dataset."""
 
     def __init__(self, path: str, options: dict = None, **kwargs: Any):
@@ -478,7 +478,7 @@ class Patch(Actor):
         apply_patch(self.path, **self.options)
 
 
-class Size(Actor):
+class Size(Task):
     """A class to compute the size of a dataset."""
 
     def __init__(self, path: str, **kwargs: Any):
@@ -566,7 +566,7 @@ class HasElementForDataMixin:
         LOG.debug(self.input)
 
 
-class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+class Init(Task, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     """A class to initialize a new dataset."""
 
     dataset_class = NewDataset
@@ -808,7 +808,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         return len(lengths)
 
 
-class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+class Load(Task, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     """A class to load data into a dataset."""
 
     def __init__(
@@ -1037,7 +1037,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         )
 
 
-class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
+class Cleanup(Task, HasRegistryMixin, HasStatisticTempMixin):
     """A class to clean up temporary data and registry entries."""
 
     def __init__(
@@ -1079,7 +1079,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
             actor.cleanup()
 
 
-class Verify(Actor):
+class Verify(Task):
     """A class to verify the integrity of a dataset."""
 
     def __init__(self, path: str, **kwargs: Any):
@@ -1182,7 +1182,7 @@ class DeltaDataset:
         return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
 
 
-class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
+class _InitAdditions(Task, HasRegistryMixin, AdditionsMixin):
     """A class to initialize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
@@ -1222,7 +1222,7 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
+class _RunAdditions(Task, HasRegistryMixin, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
@@ -1298,7 +1298,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         return True
 
 
-class _FinaliseAdditions(Actor, HasRegistryMixin, AdditionsMixin):
+class _FinaliseAdditions(Task, HasRegistryMixin, AdditionsMixin):
     """A class to finalize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
@@ -1478,7 +1478,7 @@ RunAdditions = multi_addition(_RunAdditions)
 FinaliseAdditions = multi_addition(_FinaliseAdditions)
 
 
-class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
+class Statistics(Task, HasStatisticTempMixin, HasRegistryMixin):
     """A class to compute statistics for a dataset."""
 
     def __init__(
@@ -1573,7 +1573,7 @@ def chain(tasks: list) -> type:
         The class to chain multiple tasks.
     """
 
-    class Chain(Actor):
+    class Chain(Task):
         def __init__(self, **kwargs: Any):
             self.kwargs = kwargs
 
