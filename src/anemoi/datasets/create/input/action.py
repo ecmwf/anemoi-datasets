@@ -15,6 +15,13 @@ LOG = logging.getLogger(__name__)
 
 
 class Action:
+    """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
+    pipe, join, etc.
+
+    See :ref:`operations` for more details.
+
+    """
+
     def __init__(self, config, *path):
         self.config = config
         self.path = path
@@ -25,6 +32,30 @@ class Action:
 
 
 class Concat(Action):
+    """The Concat contruct is used to concat different actions that are responsible
+    for delivery fields for different dates.
+
+    See :ref:`building-concat` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            concat:
+                - dates:
+                    start: 2023-01-01
+                    end: 2023-01-31
+                    frequency: 1d
+                  action: # some action
+                     ...
+
+                - dates:
+                    start: 2023-02-01
+                    end: 2023-02-28
+                    frequency: 1d
+                  action: # some action
+
+    """
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "concat")
 
@@ -34,7 +65,6 @@ class Concat(Action):
 
         for i, item in enumerate(config):
 
-            assert "dates" in item, f"Value must contain the key 'dates' {item}"
             dates = item["dates"]
             filtering_dates = DatesProvider.from_config(**dates)
             action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
@@ -57,6 +87,22 @@ class Concat(Action):
 
 
 class Join(Action):
+    """Implement the join operation to combine results from multiple actions.
+
+    See :ref:`building-join` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            join:
+                - grib:
+                     ...
+
+                - netcdf: # some other action
+                     ...
+
+    """
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "join")
 
@@ -77,6 +123,23 @@ class Join(Action):
 
 
 class Pipe(Action):
+    """Implement the pipe operation to chain results from a
+    source through multiple filters.
+
+    See :ref:`building-pipe` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            pipe:
+                - grib:
+                     ...
+
+                - rename:
+                     ...
+
+    """
+
     def __init__(self, config, *path):
         assert isinstance(config, list), f"Value of Pipe Action must be a list, got {config}"
         super().__init__(config, *path, "pipe")
@@ -98,6 +161,8 @@ class Pipe(Action):
 
 
 class Function(Action):
+    """Base class for sources and filters."""
+
     def __init__(self, config, *path):
         super().__init__(config, *path, self.name)
 
@@ -113,6 +178,8 @@ class Function(Action):
 
 
 class DatasetSourceMixin:
+    """Mixin class for sources defined in anemoi-datasets"""
+
     def create_object(self, context, config):
         from anemoi.datasets.create.sources import create_source as create_datasets_source
 
@@ -123,6 +190,8 @@ class DatasetSourceMixin:
 
 
 class TransformSourceMixin:
+    """Mixin class for sources defined in anemoi-transform"""
+
     def create_object(self, context, config):
         from anemoi.transform.sources import create_source as create_transform_source
 
@@ -130,6 +199,8 @@ class TransformSourceMixin:
 
 
 class TransformFilterMixin:
+    """Mixin class for filters defined in anemoi-transform"""
+
     def create_object(self, context, config):
         from anemoi.transform.filters import create_filter as create_transform_filter
 
@@ -140,6 +211,8 @@ class TransformFilterMixin:
 
 
 class FilterFunction(Function):
+    """Action to call a filter on the argument (e.g. rename, regrid, etc.)."""
+
     def __call__(self, context, argument):
         return self.call(context, argument, context.filter_argument)
 
@@ -167,6 +240,8 @@ def new_filter(name, mixin):
 
 
 class DataSources(Action):
+    """Action to call a source (e.g. mars, netcdf, grib, etc.)."""
+
     def __init__(self, config, *path):
         super().__init__(config, *path)
         assert isinstance(config, (dict, list)), f"Invalid config type: {type(config)}"
@@ -181,6 +256,8 @@ class DataSources(Action):
 
 
 class Recipe(Action):
+    """Action that represent a recipe (i.e. a sequence of data_sources and input)."""
+
     def __init__(self, input, data_sources):
         self.input = input
         self.data_sources = data_sources
