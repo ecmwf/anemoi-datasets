@@ -213,7 +213,7 @@ class Npz1WriteBackend(WriteBackend):
         os.rename(tmp_path, out_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.fields import json_tidy
+        from anemoi.datasets.create.fields.actors import json_tidy
 
         os.makedirs(self.path, exist_ok=True)
 
@@ -257,7 +257,7 @@ class Nc1WriteBackend(WriteBackend):
         ds.to_netcdf(out_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.fields import json_tidy
+        from anemoi.datasets.create.fields.actors import json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:
@@ -295,7 +295,7 @@ class Npz2WriteBackend(WriteBackend):
         np.savez(out_path, **data)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.fields import json_tidy
+        from anemoi.datasets.create.fields.actors import json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:

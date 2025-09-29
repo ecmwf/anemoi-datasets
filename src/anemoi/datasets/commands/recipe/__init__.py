@@ -18,8 +18,8 @@ import yaml
 from anemoi.datasets.commands import Command
 from anemoi.datasets.commands.recipe.format import format_recipe
 from anemoi.datasets.commands.recipe.migrate import migrate_recipe
-from anemoi.datasets.create.fields import config_to_python
-from anemoi.datasets.create.fields import validate_config
+from anemoi.datasets.create.fields.actors import config_to_python
+from anemoi.datasets.create.fields.actors import validate_config
 
 LOG = logging.getLogger(__name__)
 
