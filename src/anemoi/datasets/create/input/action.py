@@ -258,6 +258,7 @@ KLASS = {
 }
 
 LEN_KLASS = len(KLASS)
+TYPES = {}
 
 
 def make(key, config, *path):
@@ -274,17 +275,28 @@ def make(key, config, *path):
         for name in dataset_source_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_source(name, DatasetSourceMixin)
+                TYPES[name.replace("_", "-")] = "source"
 
         for name in transform_source_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_source(name, TransformSourceMixin)
+                TYPES[name.replace("_", "-")] = "source"
 
         # Register filters
         for name in transform_filter_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_filter(name, TransformFilterMixin)
+                TYPES[name.replace("_", "-")] = "filter"
 
-    return KLASS[key.replace("_", "-")](config, *path)
+    key = key.replace("_", "-")
+
+    if key not in KLASS:
+        LOG.error(f"Unknown action '{key}' in {'.'.join(x for x in path)}")
+        for available in sorted(KLASS):
+            LOG.error(f"  Available: {available} (type={TYPES.get(available, 'built-in')})")
+        raise ValueError(f"Unknown action '{key}' in {'.'.join(x for x in path)}")
+
+    return KLASS[key](config, *path)
 
 
 def action_factory(data, *path):

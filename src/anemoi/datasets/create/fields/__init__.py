@@ -37,20 +37,20 @@ from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
 
-from .check import DatasetName
-from .check import check_data_values
-from .chunks import ChunkFilter
-from .config import build_output
-from .config import loader_config
-from .input import InputBuilder
-from .statistics import Summary
-from .statistics import TmpStatistics
-from .statistics import check_variance
-from .statistics import compute_statistics
-from .statistics import default_statistics_dates
-from .statistics import fix_variance
-from .utils import normalize_and_check_dates
-from .writer import ViewCacheArray
+from ..check import DatasetName
+from ..check import check_data_values
+from ..chunks import ChunkFilter
+from ..config import build_output
+from ..config import loader_config
+from ..input import InputBuilder
+from ..statistics import Summary
+from ..statistics import TmpStatistics
+from ..statistics import check_variance
+from ..statistics import compute_statistics
+from ..statistics import default_statistics_dates
+from ..statistics import fix_variance
+from ..utils import normalize_and_check_dates
+from ..writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
 
@@ -193,7 +193,7 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from .zarr import add_zarr_dataset
+        from ..zarr import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -397,7 +397,7 @@ class Actor:  # TODO: rename to Creator
         Any
             The cache context.
         """
-        from .utils import cache_context
+        from ..utils import cache_context
 
         return cache_context(self.cache)
 
@@ -473,7 +473,7 @@ class Patch(Actor):
 
     def run(self) -> None:
         """Run the patch."""
-        from .patch import apply_patch
+        from ..patch import apply_patch
 
         apply_patch(self.path, **self.options)
 
@@ -493,7 +493,7 @@ class Size(Actor):
 
     def run(self) -> None:
         """Run the size computation."""
-        from .size import compute_directory_sizes
+        from ..size import compute_directory_sizes
 
         metadata = compute_directory_sizes(self.path)
         self.update_metadata(**metadata)
@@ -515,7 +515,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from .zarr import ZarrBuiltRegistry
+        from ..zarr import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 
@@ -625,9 +625,12 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         LOG.info(f"Groups: {self.groups}")
 
+        window = self.main_config.dates.get("window")
+
         one_date = self.groups.one_date()
-        # assert False, (type(one_date), type(self.groups))
-        self.minimal_input = self.input.select(one_date)
+
+        self.minimal_input = self.input.select(one_date, window)
+
         LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
@@ -866,7 +869,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(argument=group)
+            result = self.input.select(argument=group, window=None)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.

@@ -15,8 +15,8 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create import config_to_python
-from anemoi.datasets.create import validate_config
+from anemoi.datasets.create.fields import config_to_python
+from anemoi.datasets.create.fields import validate_config
 
 from .. import Command
 from .format import format_recipe

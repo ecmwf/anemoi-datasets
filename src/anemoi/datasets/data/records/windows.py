@@ -73,7 +73,7 @@ def window_from_str(txt):
     )
 
 
-class AbsoluteWindow:
+class Interval:
     # not used but expected to be useful when building datasets. And used in tests
     def __init__(self, start, end, include_start=True, include_end=True):
         assert isinstance(start, datetime.datetime), f"start must be a datetime.datetime, got {type(start)}"
@@ -90,13 +90,66 @@ class AbsoluteWindow:
     def __repr__(self):
         return f"{'[' if self.include_start else '('}{self.start.isoformat()},{self.end.isoformat()}{']' if self.include_end else ')'}"
 
+    def intersection(self, other):
+        assert isinstance(other, Interval), f"`other` must be a Interval, got {type(other)}"
+
+        if self._start_np > other._end_np or other._start_np > self._end_np:
+            return None  # no intersection
+
+        if self._start_np < other._start_np:
+            start = other._start_np
+            include_start = other.include_start
+        elif self._start_np > other._start_np:
+            start = self._start_np
+            include_start = self.include_start
+        else:  # equal
+            start = self._start_np
+            include_start = self.include_start and other.include_start
+
+        if self._end_np < other._end_np:
+            end = self._end_np
+            include_end = self.include_end
+        elif self._end_np > other._end_np:
+            end = other._end_np
+            include_end = other.include_end
+        else:  # equal
+            end = self._end_np
+            include_end = self.include_end and other.include_end
+
+        return Interval(start=start, end=end, include_start=include_start, include_end=include_end)
+
+    def union(self, other):
+        assert isinstance(other, Interval), f"`other` must be a Interval, got {type(other)}"
+
+        if self._start_np < other._start_np:
+            start = self._start_np
+            include_start = self.include_start
+        elif self._start_np > other._start_np:
+            start = other._start_np
+            include_start = other.include_start
+        else:  # equal
+            start = self._start_np
+            include_start = self.include_start or other.include_start
+
+        if self._end_np > other._end_np:
+            end = self._end_np
+            include_end = self.include_end
+        elif self._end_np < other._end_np:
+            end = other._end_np
+            include_end = other.include_end
+        else:  # equal
+            end = self._end_np
+            include_end = self.include_end or other.include_end
+
+        return Interval(start=start, end=end, include_start=include_start, include_end=include_end)
+
 
 class WindowsSpec:
     # A window specified by relative timedeltas, such as (-6h, 0h]
     #
     # the term "WindowSpec" is used here to avoid confusion between
     #       - a relative window, such as (-6h, 0h] which this class represents (WindowsSpec)
-    #       - an actual time interval, such as [2023-01-01 00:00, 2023-01-01 06:00] which is an (AbsoluteWindow)
+    #       - an actual time interval, such as [2023-01-01 00:00, 2023-01-01 06:00] which is an (Interval)
     #
     # but is is more confusing, it should be renamed as Window.
 
@@ -107,8 +160,10 @@ class WindowsSpec:
         assert isinstance(include_end, bool), f"include_end must be a bool, got {type(include_end)}"
         assert include_start in (True, False), f"Invalid include_start {include_start}"  # None is not allowed
         assert include_end in (True, False), f"Invalid include_end {include_end}"  # None is not allowed
+
         if start >= end:
             raise ValueError(f"start {start} must be less than end {end}")
+
         self.start = start
         self.end = end
         self.include_start = include_start
@@ -117,13 +172,13 @@ class WindowsSpec:
         self._start_np = _to_numpy_timedelta(start)
         self._end_np = _to_numpy_timedelta(end)
 
-    def to_absolute_window(self, date):
+    def to_interval(self, date):
         """Convert the window to an absolute window based on a date."""
         # not used but expected to be useful when building datasets. And used in tests
         assert isinstance(date, datetime.datetime), f"date must be a datetime.datetime, got {type(date)}"
         start = date + self.start
         end = date + self.end
-        return AbsoluteWindow(start=start, end=end, include_start=self.include_start, include_end=self.include_end)
+        return Interval(start=start, end=end, include_start=self.include_start, include_end=self.include_end)
 
     def __repr__(self):
         first = "[" if self.include_start else "("

@@ -12,6 +12,7 @@ from functools import cached_property
 from typing import Any
 
 from anemoi.datasets.create.input.context.field import FieldContext
+from anemoi.datasets.create.input.context.observations import ObservationContext
 
 
 class InputBuilder:
@@ -44,20 +45,23 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument) -> Any:
+    def select(self, argument, window) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
         argument : GroupOfDates
             Group of dates to select data for.
+        window : str | None
+            Window specification.
 
         Returns
         -------
         Any
             Selected data.
         """
-        context = FieldContext(argument, **self.kwargs)
+        # TODO: move me elsewhere
+        context = ObservationContext(argument, **self.kwargs) if window else FieldContext(argument, **self.kwargs)
         return context.create_result(self.action(context, argument))
 
     def python_code(self, code):
