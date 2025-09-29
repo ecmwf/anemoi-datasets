@@ -15,8 +15,7 @@ from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
-from ..result.field import FieldResult
-from . import Context
+from anemoi.datasets.create.input.context import Context
 
 LOG = logging.getLogger(__name__)
 
@@ -26,13 +25,14 @@ class FieldContext(Context):
     def __init__(
         self,
         /,
-        argument: Any,
         order_by: str,
         flatten_grid: bool,
         remapping: dict[str, Any],
         use_grib_paramid: bool,
     ) -> None:
-        super().__init__(argument)
+
+        super().__init__()
+
         self.order_by = order_by
         self.flatten_grid = flatten_grid
         self.remapping = build_remapping(remapping)
@@ -50,8 +50,10 @@ class FieldContext(Context):
     def filter_argument(self, argument: Any) -> Any:
         return argument
 
-    def create_result(self, data):
-        return FieldResult(self, data)
+    def create_result(self, argument, data):
+        from .result import FieldResult
+
+        return FieldResult(self, argument, data)
 
     def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
         from anemoi.datasets.dates.groups import GroupOfDates

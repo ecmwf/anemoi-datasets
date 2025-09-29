@@ -22,7 +22,7 @@ from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
-from . import Result
+from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
 
@@ -282,13 +282,13 @@ class FieldResult(Result):
     empty: bool = False
     _coords_already_built: bool = False
 
-    def __init__(self, context: Any, datasource: Any) -> None:
+    def __init__(self, context: Any, argument: Any, datasource: Any) -> None:
 
         from anemoi.datasets.dates.groups import GroupOfDates
 
         self.context: Any = context
         self.datasource = datasource
-        self.group_of_dates = context.argument
+        self.group_of_dates = argument
         assert isinstance(
             self.group_of_dates, GroupOfDates
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"

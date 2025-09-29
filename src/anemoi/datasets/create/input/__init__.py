@@ -11,14 +11,11 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.create.input.context.field import FieldContext
-from anemoi.datasets.create.input.context.observations import ObservationContext
-
 
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: dict | list, **kwargs: Any) -> None:
+    def __init__(self, config: dict, data_sources: dict | list) -> None:
         """Initialize the InputBuilder.
 
         Parameters
@@ -30,7 +27,6 @@ class InputBuilder:
         **kwargs : Any
             Additional keyword arguments.
         """
-        self.kwargs = kwargs
         self.config = deepcopy(config)
         self.data_sources = deepcopy(dict(data_sources=data_sources))
 
@@ -45,15 +41,15 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument, window) -> Any:
+    def select(self, context, argument) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
+        context : Any
+            The context for the data selection.
         argument : GroupOfDates
             Group of dates to select data for.
-        window : str | None
-            Window specification.
 
         Returns
         -------
@@ -61,8 +57,11 @@ class InputBuilder:
             Selected data.
         """
         # TODO: move me elsewhere
-        context = ObservationContext(argument, **self.kwargs) if window else FieldContext(argument, **self.kwargs)
-        return context.create_result(self.action(context, argument))
+
+        return context.create_result(
+            argument,
+            self.action(context, argument),
+        )
 
     def python_code(self, code):
         return self.action.python_code(code)

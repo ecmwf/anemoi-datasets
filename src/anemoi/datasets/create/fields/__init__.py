@@ -51,6 +51,7 @@ from ..statistics import default_statistics_dates
 from ..statistics import fix_variance
 from ..utils import normalize_and_check_dates
 from ..writer import ViewCacheArray
+from .context import FieldContext
 
 LOG = logging.getLogger(__name__)
 
@@ -551,13 +552,16 @@ class HasElementForDataMixin:
 
         self.output = build_output(config.output, parent=self)
 
-        self.input = InputBuilder(
-            config.input,
-            data_sources=config.get("data_sources", {}),
+        self.context = FieldContext(
             order_by=self.output.order_by,
             flatten_grid=self.output.flatten_grid,
             remapping=build_remapping(self.output.remapping),
             use_grib_paramid=config.build.use_grib_paramid,
+        )
+
+        self.input = InputBuilder(
+            config.input,
+            data_sources=config.get("data_sources", {}),
         )
         LOG.debug("✅ INPUT_BUILDER")
         LOG.debug(self.input)
@@ -625,11 +629,11 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         LOG.info(f"Groups: {self.groups}")
 
-        window = self.main_config.dates.get("window")
+        # window = self.main_config.dates.get("window")
 
         one_date = self.groups.one_date()
 
-        self.minimal_input = self.input.select(one_date, window)
+        self.minimal_input = self.input.select(self.context, one_date)
 
         LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
@@ -869,7 +873,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(argument=group, window=None)
+            result = self.input.select(self.context, argument=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
