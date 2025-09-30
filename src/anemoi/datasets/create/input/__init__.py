@@ -11,7 +11,9 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any
 
+from anemoi.datasets.create.input.action import Recipe
 from anemoi.datasets.create.input.context.field import FieldContext
+from anemoi.datasets.create.input.result.field import FieldResult
 
 
 class InputBuilder:
@@ -34,9 +36,8 @@ class InputBuilder:
         self.data_sources = deepcopy(dict(data_sources=data_sources))
 
     @cached_property
-    def action(self) -> Any:
+    def action(self) -> Recipe:
         """Returns the action object based on the configuration."""
-        from .action import Recipe
         from .action import action_factory
 
         sources = action_factory(self.data_sources, "data_sources")
@@ -44,7 +45,7 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument) -> Any:
+    def select(self, argument) -> FieldResult:
         """Select data based on the group of dates.
 
         Parameters
@@ -59,23 +60,3 @@ class InputBuilder:
         """
         context = FieldContext(argument, **self.kwargs)
         return context.create_result(self.action(context, argument))
-
-
-def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
-    """Build an InputBuilder instance.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration dictionary.
-    data_sources : Union[dict, list]
-        Data sources.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    InputBuilder
-        An instance of InputBuilder.
-    """
-    return InputBuilder(config, data_sources, **kwargs)

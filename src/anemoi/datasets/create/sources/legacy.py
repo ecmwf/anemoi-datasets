@@ -72,7 +72,6 @@ class legacy_source:
         def execute_wrapper(self, dates) -> Any:
             """Wrapper method to call the execute function."""
 
-            # args, kwargs = resolve(context, (self.args, self.kwargs))
             args, kwargs = self.args, self.kwargs
 
             try:
