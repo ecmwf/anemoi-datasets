@@ -54,7 +54,7 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
             f" Received empty dates - assuming this is static data."
         )
         return
-    
+
     if len(ds) != 1:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
 
