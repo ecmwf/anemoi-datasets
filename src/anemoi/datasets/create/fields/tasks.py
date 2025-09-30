@@ -11,34 +11,25 @@ import datetime
 import json
 import logging
 import os
-import time
-import uuid
 import warnings
 from functools import cached_property
 from typing import Any
 
 import cftime
 import numpy as np
-import tqdm
 import zarr
-from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
-from anemoi.utils.humanize import compress_dates
-from anemoi.utils.humanize import seconds_to_human
-from anemoi.utils.sanitise import sanitise
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.check import DatasetName
-from anemoi.datasets.create.check import check_data_values
 from anemoi.datasets.create.chunks import ChunkFilter
 from anemoi.datasets.create.config import build_output
 from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.fields.context import FieldContext
 from anemoi.datasets.create.input import InputBuilder
-from anemoi.datasets.create.input.trace import enable_trace
 from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.create.statistics import Summary
 from anemoi.datasets.create.statistics import TmpStatistics
@@ -46,15 +37,13 @@ from anemoi.datasets.create.statistics import check_variance
 from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.statistics import default_statistics_dates
 from anemoi.datasets.create.statistics import fix_variance
-from anemoi.datasets.create.utils import normalize_and_check_dates
-from anemoi.datasets.create.writer import ViewCacheArray
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
 
-LOG = logging.getLogger(__name__)
+from ..tasks import chain
 
-VERSION = "0.30"
+LOG = logging.getLogger(__name__)
 
 
 def json_tidy(o: Any) -> Any:
@@ -134,28 +123,6 @@ def build_statistics_dates(
     start = start.astype(datetime.datetime)
     end = end.astype(datetime.datetime)
     return (start.isoformat(), end.isoformat())
-
-
-def _path_readable(path: str) -> bool:
-    """Check if the path is readable.
-
-    Parameters
-    ----------
-    path : str
-        The path to check.
-
-    Returns
-    -------
-    bool
-        True if the path is readable, False otherwise.
-    """
-    import zarr
-
-    try:
-        zarr.open(path, "r")
-        return True
-    except zarr.errors.PathNotFoundError:
-        return False
 
 
 class Dataset:
@@ -352,7 +319,7 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class Task:
+class FieldTask:
     """A base class for dataset creation tasks."""
 
     dataset_class = WritableDataset
@@ -455,7 +422,7 @@ class Task:
         check_missing_dates(self.missing_dates)
 
 
-class Patch(Task):
+class Patch(FieldTask):
     """A class to apply patches to a dataset."""
 
     def __init__(self, path: str, options: dict = None, **kwargs: Any):
@@ -478,7 +445,7 @@ class Patch(Task):
         apply_patch(self.path, **self.options)
 
 
-class Size(Task):
+class Size(FieldTask):
     """A class to compute the size of a dataset."""
 
     def __init__(self, path: str, **kwargs: Any):
@@ -566,520 +533,7 @@ class HasElementForDataMixin:
         LOG.debug(self.input)
 
 
-class Init(Task, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    """A class to initialize a new dataset."""
-
-    dataset_class = NewDataset
-
-    def __init__(
-        self,
-        path: str,
-        config: dict,
-        check_name: bool = False,
-        overwrite: bool = False,
-        use_threads: bool = False,
-        statistics_temp_dir: str | None = None,
-        progress: Any = None,
-        test: bool = False,
-        cache: str | None = None,
-        **kwargs: Any,
-    ):
-        """Initialize an Init instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        config : dict
-            The configuration.
-        check_name : bool, optional
-            Whether to check the dataset name.
-        overwrite : bool, optional
-            Whether to overwrite the existing dataset.
-        use_threads : bool, optional
-            Whether to use threads.
-        statistics_temp_dir : Optional[str], optional
-            The directory for temporary statistics.
-        progress : Any, optional
-            The progress indicator.
-        test : bool, optional
-            Whether this is a test.
-        cache : Optional[str], optional
-            The cache directory.
-        """
-        if _path_readable(path) and not overwrite:
-            raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
-
-        super().__init__(path, cache=cache)
-        self.config = config
-        self.check_name = check_name
-        self.use_threads = use_threads
-        self.statistics_temp_dir = statistics_temp_dir
-        self.progress = progress
-        self.test = test
-
-        self.main_config = loader_config(config, is_test=test)
-
-        # self.registry.delete() ??
-        self.tmp_statistics.delete()
-
-        assert isinstance(self.main_config.output.order_by, dict), self.main_config.output.order_by
-        self.create_elements(self.main_config)
-
-        LOG.info(f"Groups: {self.groups}")
-
-        # window = self.main_config.dates.get("window")
-
-        one_date = self.groups.one_date()
-
-        self.minimal_input = self.input.select(self.context, one_date)
-
-        LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
-        LOG.info(self.minimal_input)
-
-    def run(self) -> int:
-        """Run the initialization.
-
-        Returns
-        -------
-        int
-            The number of groups to process.
-        """
-        with self._cache_context():
-            return self._run()
-
-    def _run(self) -> int:
-        """Internal method to run the initialization.
-
-        Returns
-        -------
-        int
-            The number of groups to process.
-        """
-        """Create an empty dataset of the right final shape.
-
-        Read a small part of the data to get the shape of the data and the resolution and more metadata.
-        """
-
-        LOG.info("Config loaded ok:")
-        # LOG.info(self.main_config)
-
-        dates = self.groups.provider.values
-        frequency = self.groups.provider.frequency
-        missing = self.groups.provider.missing
-
-        assert isinstance(frequency, datetime.timedelta), frequency
-
-        LOG.info(f"Found {len(dates)} datetimes.")
-        LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
-        LOG.info(f"Missing dates: {len(missing)}")
-        lengths = tuple(len(g) for g in self.groups)
-
-        variables = self.minimal_input.variables
-        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
-
-        variables_with_nans = self.main_config.statistics.get("allow_nans", [])
-
-        ensembles = self.minimal_input.ensembles
-        LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
-
-        grid_points = self.minimal_input.grid_points
-        LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
-
-        resolution = self.minimal_input.resolution
-        LOG.info(f"{resolution=}")
-
-        coords = self.minimal_input.coords
-        coords["dates"] = dates
-        total_shape = self.minimal_input.shape
-        total_shape[0] = len(dates)
-        LOG.info(f"total_shape = {total_shape}")
-
-        chunks = self.output.get_chunking(coords)
-        LOG.info(f"{chunks=}")
-        dtype = self.output.dtype
-
-        LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
-
-        metadata = {}
-        metadata["uuid"] = str(uuid.uuid4())
-
-        metadata.update(self.main_config.get("add_metadata", {}))
-
-        metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-
-        recipe = sanitise(self.main_config.get_serialisable_dict())
-
-        # Remove stuff added by prepml
-        for k in [
-            "build_dataset",
-            "config_format_version",
-            "config_path",
-            "dataset_status",
-            "ecflow",
-            "metadata",
-            "platform",
-            "reading_chunks",
-            "upload",
-        ]:
-            recipe.pop(k, None)
-
-        metadata["recipe"] = recipe
-
-        metadata["description"] = self.main_config.description
-        metadata["licence"] = self.main_config["licence"]
-        metadata["attribution"] = self.main_config["attribution"]
-
-        metadata["remapping"] = self.output.remapping
-        metadata["order_by"] = self.output.order_by_as_list
-        metadata["flatten_grid"] = self.output.flatten_grid
-
-        metadata["ensemble_dimension"] = len(ensembles)
-        metadata["variables"] = variables
-        metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.main_config.build.get("allow_nans", False)
-        metadata["resolution"] = resolution
-
-        metadata["data_request"] = self.minimal_input.data_request
-        metadata["field_shape"] = self.minimal_input.field_shape
-        metadata["proj_string"] = self.minimal_input.proj_string
-        metadata["variables_metadata"] = self.minimal_input.variables_metadata
-
-        metadata["start_date"] = dates[0].isoformat()
-        metadata["end_date"] = dates[-1].isoformat()
-        metadata["frequency"] = frequency
-        metadata["missing_dates"] = [_.isoformat() for _ in missing]
-        metadata["origins"] = self.minimal_input.origins
-
-        metadata["version"] = VERSION
-
-        self.dataset.check_name(
-            raise_exception=self.check_name,
-            is_test=self.test,
-            resolution=resolution,
-            dates=dates,
-            frequency=frequency,
-        )
-
-        if len(dates) != total_shape[0]:
-            raise ValueError(
-                f"Final date size {len(dates)} (from {dates[0]} to {dates[-1]}, {frequency=}) "
-                f"does not match data shape {total_shape[0]}. {total_shape=}"
-            )
-
-        dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
-
-        metadata.update(self.main_config.get("force_metadata", {}))
-
-        ###############################################################
-        # write metadata
-        ###############################################################
-
-        self.update_metadata(**metadata)
-
-        self.dataset.add_dataset(
-            name="data",
-            chunks=chunks,
-            dtype=dtype,
-            shape=total_shape,
-            dimensions=("time", "variable", "ensemble", "cell"),
-        )
-        self.dataset.add_dataset(name="dates", array=dates, dimensions=("time",))
-        self.dataset.add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
-        self.dataset.add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
-
-        self.registry.create(lengths=lengths)
-        self.tmp_statistics.create(exist_ok=False)
-        self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
-
-        statistics_start, statistics_end = build_statistics_dates(
-            dates,
-            self.main_config.statistics.get("start"),
-            self.main_config.statistics.get("end"),
-        )
-        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
-        LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
-
-        self.registry.add_to_history("init finished")
-
-        assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
-
-        # Return the number of groups to process, so we can show a nice progress bar
-        return len(lengths)
-
-
-class Load(Task, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    """A class to load data into a dataset."""
-
-    def __init__(
-        self,
-        path: str,
-        parts: str | None = None,
-        use_threads: bool = False,
-        statistics_temp_dir: str | None = None,
-        progress: Any = None,
-        cache: str | None = None,
-        **kwargs: Any,
-    ):
-        """Initialize a Load instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        parts : Optional[str], optional
-            The parts to load.
-        use_threads : bool, optional
-            Whether to use threads.
-        statistics_temp_dir : Optional[str], optional
-            The directory for temporary statistics.
-        progress : Any, optional
-            The progress indicator.
-        cache : Optional[str], optional
-            The cache directory.
-        """
-        super().__init__(path, cache=cache)
-        self.use_threads = use_threads
-        self.statistics_temp_dir = statistics_temp_dir
-        self.progress = progress
-        self.parts = parts
-        self.dataset = WritableDataset(self.path)
-
-        self.main_config = self.dataset.get_main_config()
-        self.create_elements(self.main_config)
-        self.read_dataset_metadata(self.dataset.path)
-
-        total = len(self.registry.get_flags())
-        self.chunk_filter = ChunkFilter(parts=self.parts, total=total)
-
-        self.data_array = self.dataset.data_array
-        self.n_groups = len(self.groups)
-
-    def run(self) -> None:
-        """Run the data loading."""
-        with self._cache_context():
-            self._run()
-
-    def _run(self) -> None:
-        """Internal method to run the data loading."""
-        for igroup, group in enumerate(self.groups):
-            if not self.chunk_filter(igroup):
-                continue
-            if self.registry.get_flag(igroup):
-                LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
-                continue
-
-            # assert isinstance(group[0], datetime.datetime), type(group[0])
-            LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
-
-            result = self.input.select(self.context, argument=group)
-            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
-
-            # There are several groups.
-            # There is one result to load for each group.
-            self.load_result(result)
-            self.registry.set_flag(igroup)
-
-        self.registry.add_provenance(name="provenance_load")
-        self.tmp_statistics.add_provenance(name="provenance_load", config=self.main_config)
-
-        self.dataset.print_info()
-
-    def load_result(self, result: Any) -> None:
-        """Load the result into the dataset.
-
-        Parameters
-        ----------
-        result : Any
-            The result to load.
-        """
-        # There is one cube to load for each result.
-        dates = list(result.group_of_dates)
-
-        LOG.debug(f"Loading cube for {len(dates)} dates")
-
-        cube = result.get_cube()
-        shape = cube.extended_user_shape
-        dates_in_data = cube.user_coords["valid_datetime"]
-
-        LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
-
-        def check_shape(cube, dates, dates_in_data):
-            if cube.extended_user_shape[0] != len(dates):
-                print(
-                    f"Cube shape does not match the number of dates got {cube.extended_user_shape[0]}, expected {len(dates)}"
-                )
-                print("Requested dates", compress_dates(dates))
-                print("Cube dates", compress_dates(dates_in_data))
-
-                a = {as_datetime(_) for _ in dates}
-                b = {as_datetime(_) for _ in dates_in_data}
-
-                print("Missing dates", compress_dates(a - b))
-                print("Extra dates", compress_dates(b - a))
-
-                raise ValueError(
-                    f"Cube shape does not match the number of dates got {cube.extended_user_shape[0]}, expected {len(dates)}"
-                )
-
-        check_shape(cube, dates, dates_in_data)
-
-        def check_dates_in_data(dates_in_data, requested_dates):
-            _requested_dates = [np.datetime64(_) for _ in requested_dates]
-            _dates_in_data = [np.datetime64(_) for _ in dates_in_data]
-            if _dates_in_data != _requested_dates:
-                LOG.error("Dates in data are not the requested ones:")
-
-                dates_in_data = set(dates_in_data)
-                requested_dates = set(requested_dates)
-
-                missing = sorted(requested_dates - dates_in_data)
-                extra = sorted(dates_in_data - requested_dates)
-
-                if missing:
-                    LOG.error(f"Missing dates: {[_.isoformat() for _ in missing]}")
-                if extra:
-                    LOG.error(f"Extra dates: {[_.isoformat() for _ in extra]}")
-
-                raise ValueError("Dates in data are not the requested ones")
-
-        check_dates_in_data(dates_in_data, dates)
-
-        def dates_to_indexes(dates, all_dates):
-            x = np.array(dates, dtype=np.datetime64)
-            y = np.array(all_dates, dtype=np.datetime64)
-            bitmap = np.isin(x, y)
-            return np.where(bitmap)[0]
-
-        indexes = dates_to_indexes(self.dates, dates_in_data)
-
-        array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
-        LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
-        self.load_cube(cube, array)
-
-        stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
-        self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
-        LOG.info("Flush data array")
-        array.flush()
-        LOG.info("Flushed data array")
-
-    def _get_allow_nans(self) -> bool | list:
-        """Get the allow_nans configuration.
-
-        Returns
-        -------
-        bool | list
-            The allow_nans configuration.
-        """
-        config = self.main_config
-        if "allow_nans" in config.build:
-            return config.build.allow_nans
-
-        return config.statistics.get("allow_nans", [])
-
-    def load_cube(self, cube: Any, array: ViewCacheArray) -> None:
-        """Load the cube into the array.
-
-        Parameters
-        ----------
-        cube : Any
-            The cube to load.
-        array : ViewCacheArray
-            The array to load into.
-        """
-        # There are several cubelets for each cube
-        start = time.time()
-        load = 0
-        save = 0
-
-        reading_chunks = None
-        total = cube.count(reading_chunks)
-        LOG.debug(f"Loading datacube: {cube}")
-
-        def position(x: Any) -> int | None:
-            if isinstance(x, str) and "/" in x:
-                x = x.split("/")
-                return int(x[0])
-            return None
-
-        bar = tqdm.tqdm(
-            iterable=cube.iterate_cubelets(reading_chunks),
-            total=total,
-            desc=f"Loading datacube {cube}",
-            position=position(self.parts),
-        )
-        for i, cubelet in enumerate(bar):
-            bar.set_description(f"Loading {i}/{total}")
-
-            now = time.time()
-            data = cubelet.to_numpy()
-            local_indexes = cubelet.coords
-            load += time.time() - now
-
-            name = self.variables_names[local_indexes[1]]
-            check_data_values(
-                data[:],
-                name=name,
-                log=[i, data.shape, local_indexes],
-                allow_nans=self._get_allow_nans(),
-            )
-
-            now = time.time()
-            array[local_indexes] = data
-            save += time.time() - now
-
-        now = time.time()
-        save += time.time() - now
-        LOG.debug(
-            f"Elapsed: {seconds_to_human(time.time() - start)}, "
-            f"load time: {seconds_to_human(load)}, "
-            f"write time: {seconds_to_human(save)}."
-        )
-
-
-class Cleanup(Task, HasRegistryMixin, HasStatisticTempMixin):
-    """A class to clean up temporary data and registry entries."""
-
-    def __init__(
-        self,
-        path: str,
-        statistics_temp_dir: str | None = None,
-        delta: list = [],
-        use_threads: bool = False,
-        **kwargs: Any,
-    ):
-        """Initialize a Cleanup instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        statistics_temp_dir : Optional[str], optional
-            The directory for temporary statistics.
-        delta : list, optional
-            The delta values.
-        use_threads : bool, optional
-            Whether to use threads.
-        """
-        super().__init__(path)
-        self.use_threads = use_threads
-        self.statistics_temp_dir = statistics_temp_dir
-        self.additinon_temp_dir = statistics_temp_dir
-        self.tasks = [
-            _InitAdditions(path, delta=d, use_threads=use_threads, statistics_temp_dir=statistics_temp_dir)
-            for d in delta
-        ]
-
-    def run(self) -> None:
-        """Run the cleanup."""
-
-        self.tmp_statistics.delete()
-        self.registry.clean()
-        for actor in self.tasks:
-            actor.cleanup()
-
-
-class Verify(Task):
+class Verify(FieldTask):
     """A class to verify the integrity of a dataset."""
 
     def __init__(self, path: str, **kwargs: Any):
@@ -1182,7 +636,7 @@ class DeltaDataset:
         return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
 
 
-class _InitAdditions(Task, HasRegistryMixin, AdditionsMixin):
+class _InitAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
     """A class to initialize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
@@ -1222,7 +676,7 @@ class _InitAdditions(Task, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _RunAdditions(Task, HasRegistryMixin, AdditionsMixin):
+class _RunAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
@@ -1298,7 +752,7 @@ class _RunAdditions(Task, HasRegistryMixin, AdditionsMixin):
         return True
 
 
-class _FinaliseAdditions(Task, HasRegistryMixin, AdditionsMixin):
+class _FinaliseAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
     """A class to finalize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
@@ -1478,7 +932,7 @@ RunAdditions = multi_addition(_RunAdditions)
 FinaliseAdditions = multi_addition(_FinaliseAdditions)
 
 
-class Statistics(Task, HasStatisticTempMixin, HasRegistryMixin):
+class Statistics(FieldTask, HasStatisticTempMixin, HasRegistryMixin):
     """A class to compute statistics for a dataset."""
 
     def __init__(
@@ -1559,73 +1013,6 @@ class Statistics(Task, HasStatisticTempMixin, HasRegistryMixin):
         return True
 
 
-def chain(tasks: list) -> type:
-    """Create a class to chain multiple tasks.
-
-    Parameters
-    ----------
-    tasks : list
-        The list of tasks to chain.
-
-    Returns
-    -------
-    type
-        The class to chain multiple tasks.
-    """
-
-    class Chain(Task):
-        def __init__(self, **kwargs: Any):
-            self.kwargs = kwargs
-
-        def run(self) -> None:
-            """Run the chained tasks."""
-            for cls in tasks:
-                t = cls(**self.kwargs)
-                t.run()
-
-    return Chain
-
-
-def task_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
-    """Create a dataset creator.
-
-    Parameters
-    ----------
-    name : str
-        The name of the creator.
-    trace : Optional[str], optional
-        The trace file.
-    **kwargs
-        Additional arguments for the creator.
-
-    Returns
-    -------
-    Any
-        The dataset creator.
-    """
-    if trace:
-
-        enable_trace(trace)
-
-    cls = dict(
-        init=Init,
-        load=Load,
-        size=Size,
-        patch=Patch,
-        statistics=Statistics,
-        finalise=chain([Statistics, Size, Cleanup]),
-        cleanup=Cleanup,
-        verify=Verify,
-        init_additions=InitAdditions,
-        load_additions=RunAdditions,
-        run_additions=RunAdditions,
-        finalise_additions=chain([FinaliseAdditions, Size]),
-        additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
-    )[name]
-    LOG.debug(f"Creating {cls.__name__} with {kwargs}")
-    return cls(**kwargs)
-
-
 def validate_config(config: Any) -> None:
 
     import json
@@ -1689,3 +1076,53 @@ def config_to_python(config: Any) -> Any:
     except Exception:
         LOG.warning("Black not installed, skipping formatting")
         return code
+
+
+class TaskCreator:
+    """A class to create and run dataset creation tasks."""
+
+    def init(self, *args: Any, **kwargs: Any):
+        from .init import Init
+
+        return Init(*args, **kwargs)
+
+    def load(self, *args: Any, **kwargs: Any):
+        from .load import Load
+
+        return Load(*args, **kwargs)
+
+    def size(self, *args: Any, **kwargs: Any):
+        return Size(*args, **kwargs)
+
+    def patch(self, *args: Any, **kwargs: Any):
+        return Patch(*args, **kwargs)
+
+    def statistics(self, *args: Any, **kwargs: Any):
+        return Statistics(*args, **kwargs)
+
+    def finalise(self, *args: Any, **kwargs: Any):
+        from .cleanup import Cleanup
+
+        return chain([Statistics, Size, Cleanup])(*args, **kwargs)
+
+    def cleanup(self, *args: Any, **kwargs: Any):
+        from .cleanup import Cleanup
+
+        return Cleanup(*args, **kwargs)
+
+    def verify(self, *args: Any, **kwargs: Any):
+        return Verify(*args, **kwargs)
+
+    def init_additions(self, *args: Any, **kwargs: Any):
+        return InitAdditions(*args, **kwargs)
+
+    def run_additions(self, *args: Any, **kwargs: Any):
+        return RunAdditions(*args, **kwargs)
+
+    def finalise_additions(self, *args: Any, **kwargs: Any):
+        return chain([FinaliseAdditions, Size])(*args, **kwargs)
+
+    def additions(self, *args: Any, **kwargs: Any):
+        from .cleanup import Cleanup
+
+        return chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup])(*args, **kwargs)
