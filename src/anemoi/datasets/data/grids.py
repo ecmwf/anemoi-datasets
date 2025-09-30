@@ -11,10 +11,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -189,7 +185,7 @@ class Concat(Combined):
 class GridsBase(GivenAxis):
     """A base class for handling grids in datasets."""
 
-    def __init__(self, datasets: List[Any], axis: int) -> None:
+    def __init__(self, datasets: list[Any], axis: int) -> None:
         """Initializes a GridsBase object.
 
         Parameters
@@ -229,7 +225,7 @@ class GridsBase(GivenAxis):
         # We don't check the resolution, because we want to be able to combine
         pass
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the GridsBase object.
 
         Parameters
@@ -246,7 +242,7 @@ class GridsBase(GivenAxis):
             multi_grids=True,
         )
 
-    def collect_input_sources(self, collected: List[Any]) -> None:
+    def collect_input_sources(self, collected: list[Any]) -> None:
         """Collects input sources from the datasets.
 
         Parameters
@@ -275,7 +271,7 @@ class Grids(GridsBase):
         return np.concatenate([d.longitudes for d in self.datasets])
 
     @property
-    def grids(self) -> Tuple[Any, ...]:
+    def grids(self) -> tuple[Any, ...]:
         """Returns the grids of all datasets."""
         result = []
         for d in self.datasets:
@@ -292,7 +288,7 @@ class Grids(GridsBase):
         """
         return Node(self, [d.tree() for d in self.datasets], mode="concat")
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
 
         Returns:
@@ -306,12 +302,12 @@ class Cutout(GridsBase):
 
     def __init__(
         self,
-        datasets: List[Any],
+        datasets: list[Any],
         axis: int = 3,
         cropping_distance: float = 2.0,
         neighbours: int = 5,
-        min_distance_km: Optional[float] = None,
-        plot: Optional[bool] = None,
+        min_distance_km: float | None = None,
+        plot: bool | None = None,
     ) -> None:
         """Initializes a Cutout object for hierarchical management of Limited Area
         Models (LAMs) and a global dataset, handling overlapping regions.
@@ -487,7 +483,7 @@ class Cutout(GridsBase):
 
         return apply_index_to_slices_changes(result, changes)
 
-    def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
+    def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:
         """Collect supporting arrays, including masks for each LAM and the global dataset.
 
         Parameters
@@ -577,7 +573,7 @@ class Cutout(GridsBase):
         """
         return Node(self, [d.tree() for d in self.datasets])
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Returns metadata specific to the Cutout object.
 
         Returns
@@ -588,7 +584,7 @@ class Cutout(GridsBase):
         return {}
 
 
-def grids_factory(args: Tuple[Any, ...], kwargs: dict) -> Dataset:
+def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
     """Factory function to create a Grids object.
 
     Parameters
@@ -618,7 +614,7 @@ def grids_factory(args: Tuple[Any, ...], kwargs: dict) -> Dataset:
     return Grids(datasets, axis=axis)._subset(**kwargs)
 
 
-def cutout_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dataset:
+def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create a Cutout object.
 
     Parameters
