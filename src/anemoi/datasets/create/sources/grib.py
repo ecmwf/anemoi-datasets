@@ -55,7 +55,7 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
         )
         return
 
-    if len(ds) != 1:
+    if len(ds) != count:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
 
 
