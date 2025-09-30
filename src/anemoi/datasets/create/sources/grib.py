@@ -47,7 +47,15 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
         if isinstance(v, (tuple, list)):
             count *= len(v)
 
-    if len(ds) != count:
+    # in the case of static data (e.g repeated dates) dates might be empty
+    if len(ds) != count and kwargs.get("dates", []) == []:
+        LOG.warning(
+            f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})"
+            f" Received empty dates - assuming this is static data."
+        )
+        return
+    
+    if len(ds) != 1:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
 
 
@@ -120,7 +128,12 @@ def execute(
     dates = [d.isoformat() for d in dates]
 
     for path in given_paths:
-        paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
+
+        # do not substitute if not needed
+        if "{" not in path:
+            paths = [path]
+        else:
+            paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
 
         for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
             if name in kwargs:
