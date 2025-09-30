@@ -18,8 +18,8 @@ import yaml
 from anemoi.datasets.commands import Command
 from anemoi.datasets.commands.recipe.format import format_recipe
 from anemoi.datasets.commands.recipe.migrate import migrate_recipe
-from anemoi.datasets.create.fields.tasks import config_to_python
-from anemoi.datasets.create.fields.tasks import validate_config
+from anemoi.datasets.create.fields.tasks import _config_to_python
+from anemoi.datasets.create.fields.tasks import _validate_config
 
 LOG = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class Recipe(Command):
             if args.output and (not args.format and not args.migrate and not args.python):
                 argparse.ArgumentError(None, "--output is not supported with --validate.")
 
-            validate_config(config)
+            _validate_config(config)
             LOG.info(f"{args.path}: Recipe is valid.")
             return
 
@@ -99,9 +99,9 @@ class Recipe(Command):
 
             if args.output:
                 with open(args.output, "w") as file:
-                    file.write(config_to_python(config))
+                    file.write(_config_to_python(config))
             else:
-                print(config_to_python(config))
+                print(_config_to_python(config))
 
 
 command = Recipe

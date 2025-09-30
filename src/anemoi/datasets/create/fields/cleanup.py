@@ -10,10 +10,10 @@
 import logging
 from typing import Any
 
+from .additions import _InitAdditions
 from .tasks import FieldTask
 from .tasks import HasRegistryMixin
 from .tasks import HasStatisticTempMixin
-from .tasks import _InitAdditions
 
 LOG = logging.getLogger(__name__)
 

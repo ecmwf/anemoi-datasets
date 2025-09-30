@@ -213,14 +213,14 @@ class Npz1WriteBackend(WriteBackend):
         os.rename(tmp_path, out_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.fields.tasks import json_tidy
+        from anemoi.datasets.create.fields.tasks import _json_tidy
 
         os.makedirs(self.path, exist_ok=True)
 
         path = os.path.join(self.path, "metadata.json")
         tmp_path = path + ".tmp"
         with open(tmp_path, "w") as f:
-            json.dump(metadata, f, indent=2, default=json_tidy)
+            json.dump(metadata, f, indent=2, default=_json_tidy)
         os.rename(tmp_path, path)
 
     def write_statistics(self, statistics):
@@ -257,11 +257,11 @@ class Nc1WriteBackend(WriteBackend):
         ds.to_netcdf(out_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.fields.tasks import json_tidy
+        from anemoi.datasets.create.fields.tasks import _json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:
-            json.dump(metadata, f, indent=2, default=json_tidy)
+            json.dump(metadata, f, indent=2, default=_json_tidy)
 
     def write_statistics(self, statistics):
         os.makedirs(self.path, exist_ok=True)
@@ -295,11 +295,11 @@ class Npz2WriteBackend(WriteBackend):
         np.savez(out_path, **data)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.fields.tasks import json_tidy
+        from anemoi.datasets.create.fields.tasks import _json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:
-            json.dump(metadata, f, indent=2, default=json_tidy)
+            json.dump(metadata, f, indent=2, default=_json_tidy)
 
     def write_statistics(self, statistics):
         flatten = {}

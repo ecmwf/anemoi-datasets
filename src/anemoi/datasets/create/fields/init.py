@@ -23,7 +23,7 @@ from .tasks import HasElementForDataMixin
 from .tasks import HasRegistryMixin
 from .tasks import HasStatisticTempMixin
 from .tasks import NewDataset
-from .tasks import build_statistics_dates
+from .tasks import _build_statistics_dates
 
 LOG = logging.getLogger(__name__)
 
@@ -277,7 +277,7 @@ class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         self.tmp_statistics.create(exist_ok=False)
         self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
 
-        statistics_start, statistics_end = build_statistics_dates(
+        statistics_start, statistics_end = _build_statistics_dates(
             dates,
             self.main_config.statistics.get("start"),
             self.main_config.statistics.get("end"),

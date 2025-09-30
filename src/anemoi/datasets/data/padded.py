@@ -12,6 +12,7 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
+from typing import Dict
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
