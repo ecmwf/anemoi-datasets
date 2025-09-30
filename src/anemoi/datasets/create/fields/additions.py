@@ -157,7 +157,7 @@ class _InitAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _RunAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
+class _LoadAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
@@ -169,7 +169,7 @@ class _RunAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
         progress: Any = None,
         **kwargs: Any,
     ):
-        """Initialize a _RunAdditions instance.
+        """Initialize a _LoadAdditions instance.
 
         Parameters
         ----------
@@ -409,5 +409,5 @@ def multi_addition(cls: type) -> type:
 
 
 InitAdditions = multi_addition(_InitAdditions)
-RunAdditions = multi_addition(_RunAdditions)
+LoadAdditions = multi_addition(_LoadAdditions)
 FinaliseAdditions = multi_addition(_FinaliseAdditions)

@@ -105,7 +105,7 @@ class Create(Command):
         task("finalise", fields, options)
 
         task("init_additions", fields, options)
-        task("run_additions", fields, options)
+        task("load_additions", fields, options)
         task("finalise_additions", fields, options)
 
         task("patch", fields, options)

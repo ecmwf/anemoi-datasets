@@ -53,7 +53,7 @@ class InitAdditions(Task):
         # Here would be the logic to initialize additions
 
 
-class RunAdditions(Task):
+class LoadAdditions(Task):
     def __init__(self, *, path: str, **kwargs: Any):
         self.path = path
 
@@ -114,8 +114,8 @@ class TaskCreator:
     def init_additions(self, *args: Any, **kwargs: Any):
         return InitAdditions(*args, **kwargs)
 
-    def run_additions(self, *args: Any, **kwargs: Any):
-        return RunAdditions(*args, **kwargs)
+    def load_additions(self, *args: Any, **kwargs: Any):
+        return LoadAdditions(*args, **kwargs)
 
     def finalise_additions(self, *args: Any, **kwargs: Any):
         return FinaliseAdditions(*args, **kwargs)

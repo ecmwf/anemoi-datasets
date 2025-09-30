@@ -585,10 +585,10 @@ class TaskCreator:
 
         return InitAdditions(*args, **kwargs)
 
-    def run_additions(self, *args: Any, **kwargs: Any):
-        from .additions import RunAdditions
+    def load_additions(self, *args: Any, **kwargs: Any):
+        from .additions import LoadAdditions
 
-        return RunAdditions(*args, **kwargs)
+        return LoadAdditions(*args, **kwargs)
 
     def finalise_additions(self, *args: Any, **kwargs: Any):
         from .additions import FinaliseAdditions
@@ -599,8 +599,8 @@ class TaskCreator:
     def additions(self, *args: Any, **kwargs: Any):
         from .additions import FinaliseAdditions
         from .additions import InitAdditions
-        from .additions import RunAdditions
+        from .additions import LoadAdditions
         from .cleanup import Cleanup
         from .size import Size
 
-        return chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup])(*args, **kwargs)
+        return chain([InitAdditions, LoadAdditions, FinaliseAdditions, Size, Cleanup])(*args, **kwargs)
