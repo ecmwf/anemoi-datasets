@@ -43,9 +43,15 @@ class RollingAverage(Forwards):
         if not all(isinstance(w, int) for w in window):
             raise ValueError(f"Window elements must be integers, got {window}")
 
-        self.i_start = window[0]
+        self.i_start = -window[0]
         self.i_end = window[1]
-        self.window_str = f"{self.i_start}-to-{self.i_end}"
+        # i_start, i_end = 0, 1 means no change
+        if self.i_start <= 0:
+            raise ValueError(f"Window start must be negative, got {window}")
+        if self.i_end <= 0:
+            raise ValueError(f"Window end must be positive, got {window}")
+
+        self.window_str = f"-{self.i_start}-to-{self.i_end}"
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
@@ -55,7 +61,8 @@ class RollingAverage(Forwards):
         if isinstance(n, slice):
             return self._get_slice(n)
 
-        data = self.forward[n + self.i_start : n + self.i_end]
+        slice_ = slice(n, n + self.i_start + self.i_end)
+        data = self.forward[slice_]
         return np.nanmean(data, axis=0)
 
     def __len__(self) -> int:
@@ -66,13 +73,13 @@ class RollingAverage(Forwards):
         int
             The length of the interpolated dataset.
         """
-        return self.forward.__len__() - (self.i_end - self.i_start + 1)
+        return self.forward.__len__() - (self.i_end + self.i_start - 1)
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
         """Get the interpolated dates."""
         dates = self.forward.dates
-        return dates[self.i_start : len(dates) - (self.i_end - self.i_start + 1)]
+        return dates[self.i_start : len(dates) - self.i_end + 1]
 
     def tree(self) -> Node:
         """Get the tree representation of the dataset.
@@ -90,8 +97,8 @@ class RollingAverage(Forwards):
         result = []
 
         for i in self.forward.missing:
-            for j in range(self.i_start, self.i_end):
-                result.append(i - j)
+            for j in range(0, self.i_end + self.i_start):
+                result.append(i + j)
 
         result = {x for x in result if x < self._len}
         return result
