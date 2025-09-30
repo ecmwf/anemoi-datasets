@@ -352,8 +352,8 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class Task:  # TODO: rename to Creator
-    """A base class for dataset creation actors."""
+class Task:
+    """A base class for dataset creation tasks."""
 
     dataset_class = WritableDataset
 
@@ -1065,7 +1065,7 @@ class Cleanup(Task, HasRegistryMixin, HasStatisticTempMixin):
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
         self.additinon_temp_dir = statistics_temp_dir
-        self.actors = [
+        self.tasks = [
             _InitAdditions(path, delta=d, use_threads=use_threads, statistics_temp_dir=statistics_temp_dir)
             for d in delta
         ]
@@ -1075,7 +1075,7 @@ class Cleanup(Task, HasRegistryMixin, HasStatisticTempMixin):
 
         self.tmp_statistics.delete()
         self.registry.clean()
-        for actor in self.actors:
+        for actor in self.tasks:
             actor.cleanup()
 
 
@@ -1457,17 +1457,17 @@ def multi_addition(cls: type) -> type:
 
     class MultiAdditions:
         def __init__(self, *args, **kwargs: Any):
-            self.actors = []
+            self.tasks = []
 
             for k in kwargs.pop("delta", []):
-                self.actors.append(cls(*args, delta=k, **kwargs))
+                self.tasks.append(cls(*args, delta=k, **kwargs))
 
-            if not self.actors:
+            if not self.tasks:
                 LOG.warning("No delta found in kwargs, no additions will be computed.")
 
         def run(self) -> None:
             """Run the additions."""
-            for actor in self.actors:
+            for actor in self.tasks:
                 actor.run()
 
     return MultiAdditions
