@@ -1611,7 +1611,6 @@ def creator_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
         verify=Verify,
         init_additions=InitAdditions,
         load_additions=RunAdditions,
-        run_additions=RunAdditions,
         finalise_additions=chain([FinaliseAdditions, Size]),
         additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
     )[name]
