@@ -144,7 +144,10 @@ def execute(
             s = from_source("file", path)
             if flavour is not None:
                 s = flavour.map(s)
-            s = s.sel(valid_datetime=dates, **kwargs)
+            sel_kwargs = kwargs.copy()
+            if dates != []:
+                sel_kwargs["valid_datetime"] = dates
+            s = s.sel(**sel_kwargs)
             ds = ds + s
 
     if kwargs and not context.partial_ok:
