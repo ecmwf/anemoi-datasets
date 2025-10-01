@@ -34,7 +34,7 @@ class InputBuilder:
         self.data_sources = deepcopy(dict(data_sources=data_sources))
 
     @cached_property
-    def action(self) -> Any:
+    def action(self) -> Recipe:
         """Returns the action object based on the configuration."""
         from .action import Recipe
         from .action import action_factory
