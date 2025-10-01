@@ -323,7 +323,7 @@ def _open_dataset(*args, **kwargs):
 
     if "observations" in kwargs:
         # TODO: remove this temporary code
-        from .observations.unstablgge import observations_factory
+        from .observations.unstable import observations_factory
 
         assert not sets, sets
 
