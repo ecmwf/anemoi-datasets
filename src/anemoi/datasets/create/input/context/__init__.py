@@ -34,7 +34,7 @@ class Context(ABC):
 
         assert path[0] in ("input", "data_sources"), path
 
-        print(f"Registering data at path: {path}")
+        LOG.info(f"Registering data at path: {path}")
         self.results[tuple(path)] = data
         return data
 
