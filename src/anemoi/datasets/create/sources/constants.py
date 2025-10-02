@@ -11,10 +11,10 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
 def constants(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:
     """Deprecated function to retrieve constants data.
 
@@ -46,6 +46,12 @@ def constants(context: Any, dates: list[str], template: dict[str, Any], param: s
         raise ValueError("Forcings template is empty.")
 
     return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
+
+
+@source_registry.register("constants")
+class LegacyConstantsSource(LegacySource):
+    name = "constants"
+    _execute = staticmethod(constants)
 
 
 execute: Any = constants

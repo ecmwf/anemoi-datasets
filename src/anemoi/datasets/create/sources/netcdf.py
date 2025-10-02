@@ -12,11 +12,11 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 from .xarray import load_many
 
 
-@legacy_source(__file__)
 def execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the loading of multiple NetCDF files.
 
@@ -39,3 +39,9 @@ def execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any
         The loaded data.
     """
     return load_many("📁", context, dates, path, *args, **kwargs)
+
+
+@source_registry.register("netcdf")
+class LegacyNetCDFSource(LegacySource):
+    name = "netcdf"
+    _execute = staticmethod(execute)

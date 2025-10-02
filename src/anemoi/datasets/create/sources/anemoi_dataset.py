@@ -9,10 +9,10 @@
 
 import numpy as np
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
 def execute(context, dates, params=None, **kwargs):
     import earthkit.data as ekd
 
@@ -71,3 +71,9 @@ def execute(context, dates, params=None, **kwargs):
 
     # return new_fieldlist_from_list([new_field_from_latitudes_longitudes(x, latitudes, longitudes) for x in results])
     return results
+
+
+@source_registry.register("anemoi_dataset")
+class LegacyAnemoi_DatasetSource(LegacySource):
+    name = "anemoi_dataset"
+    _execute = staticmethod(execute)

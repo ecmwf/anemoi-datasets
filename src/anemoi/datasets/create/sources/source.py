@@ -12,12 +12,12 @@ from typing import Any
 
 from earthkit.data import from_source
 
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.utils import to_datetime_list
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
 def source(context: Any | None, dates: list[datetime], **kwargs: Any) -> Any:
     """Generates a source based on the provided context, dates, and additional keyword arguments.
 
@@ -42,6 +42,12 @@ def source(context: Any | None, dates: list[datetime], **kwargs: Any) -> Any:
     if kwargs["time"] == "$from_dates":
         kwargs["time"] = list({d.strftime("%H%M") for d in dates})
     return from_source(name, **kwargs)
+
+
+@source_registry.register("source")
+class LegacySourceSource(LegacySource):
+    name = "source"
+    _execute = staticmethod(source)
 
 
 execute = source

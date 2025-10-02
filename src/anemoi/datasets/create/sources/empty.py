@@ -12,10 +12,10 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
 def execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
     """Executes the loading of an empty data source.
 
@@ -34,3 +34,9 @@ def execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
         Loaded empty data source.
     """
     return ekd.from_source("empty")
+
+
+@source_registry.register("empty")
+class LegacyEmptySource(LegacySource):
+    name = "empty"
+    _execute = staticmethod(execute)

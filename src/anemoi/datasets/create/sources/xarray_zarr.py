@@ -11,11 +11,11 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 from .xarray import load_many
 
 
-@legacy_source(__file__)
 def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
     """Execute the data loading process.
 
@@ -38,3 +38,9 @@ def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any)
         The loaded data.
     """
     return load_many("🇿", context, dates, url, *args, **kwargs)
+
+
+@source_registry.register("xarray_zarr")
+class LegacyXarray_ZarrSource(LegacySource):
+    name = "xarray_zarr"
+    _execute = staticmethod(execute)

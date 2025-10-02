@@ -20,7 +20,8 @@ from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -73,7 +74,6 @@ def _expand(paths: list[str]) -> Any:
             yield path
 
 
-@legacy_source(__file__)
 def execute(
     context: Any,
     dates: list[Any],
@@ -144,3 +144,9 @@ def execute(
         LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={kwargs})")
 
     return ds
+
+
+@source_registry.register("grib")
+class LegacyGribSource(LegacySource):
+    name = "grib"
+    _execute = staticmethod(execute)

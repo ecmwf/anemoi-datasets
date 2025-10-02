@@ -12,7 +12,8 @@ from typing import Any
 
 from anemoi.datasets.compute.recentre import recentre as _recentre
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 from .mars import mars
 
 
@@ -105,7 +106,6 @@ def load_if_needed(context: Any, dates: Any, dict_or_dataset: dict | Any) -> Any
     return dict_or_dataset
 
 
-@legacy_source(__file__)
 def recentre(
     context: Any,
     dates: Any,
@@ -142,6 +142,12 @@ def recentre(
     members = load_if_needed(context, dates, members)
     centre = load_if_needed(context, dates, centre)
     return _recentre(members=members, centre=centre, alpha=alpha)
+
+
+@source_registry.register("recentre")
+class LegacyRecentreSource(LegacySource):
+    name = "recentre"
+    _execute = staticmethod(recentre)
 
 
 execute = recentre

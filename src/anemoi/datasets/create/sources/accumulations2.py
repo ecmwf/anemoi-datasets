@@ -18,10 +18,11 @@ import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.sources.mars import mars
 from anemoi.datasets.create.utils import to_datetime_list
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -599,7 +600,6 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
     return request
 
 
-@legacy_source(__file__)
 def accumulations(context, dates, **request):
     _to_list(request["param"])
     user_accumulation_period = request.pop("accumulation_period", 6)
@@ -613,6 +613,12 @@ def accumulations(context, dates, **request):
         request,
         user_accumulation_period=user_accumulation_period,
     )
+
+
+@source_registry.register("accumulations2")
+class LegacyAccumulations2Source(LegacySource):
+    name = "accumulations2"
+    _execute = staticmethod(accumulations)
 
 
 execute = accumulations

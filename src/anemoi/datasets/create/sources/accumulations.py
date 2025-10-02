@@ -20,9 +20,10 @@ from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.utils import to_datetime_list
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 from .mars import mars
 
 LOG = logging.getLogger(__name__)
@@ -966,7 +967,6 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
     return request
 
 
-@legacy_source(__file__)
 def accumulations(
     context: Any, dates: list[datetime.datetime], use_cdsapi_dataset: str | None = None, **request: Any
 ) -> Any:
@@ -1036,6 +1036,12 @@ def accumulations(
         user_date=user_date,
         **kwargs,
     )
+
+
+@source_registry.register("accumulations")
+class LegacyAccumulationsSource(LegacySource):
+    name = "accumulations"
+    _execute = staticmethod(accumulations)
 
 
 execute = accumulations

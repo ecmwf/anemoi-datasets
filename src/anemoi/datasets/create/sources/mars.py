@@ -16,9 +16,10 @@ from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.utils import to_datetime_list
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 DEBUG = False
 
@@ -358,7 +359,6 @@ MARS_KEYS = [
 ]
 
 
-@legacy_source(__file__)
 def mars(
     context: Any,
     dates: list[datetime.datetime],
@@ -457,6 +457,12 @@ def mars(
             if "File is empty:" not in str(e):
                 raise
     return ds
+
+
+@source_registry.register("mars")
+class LegacyMarsSource(LegacySource):
+    name = "mars"
+    _execute = staticmethod(mars)
 
 
 execute = mars

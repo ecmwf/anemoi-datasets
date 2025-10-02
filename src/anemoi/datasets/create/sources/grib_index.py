@@ -19,7 +19,8 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -569,7 +570,6 @@ class GribIndex:
             yield data
 
 
-@legacy_source(__file__)
 def execute(
     context: Any,
     dates: list[Any],
@@ -610,3 +610,9 @@ def execute(
         result.append(field)
 
     return FieldArray(result)
+
+
+@source_registry.register("grib_index")
+class LegacyGrib_IndexSource(LegacySource):
+    name = "grib_index"
+    _execute = staticmethod(execute)

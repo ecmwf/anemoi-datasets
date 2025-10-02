@@ -14,9 +14,10 @@ from typing import Any
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.utils import to_datetime_list
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 
 def _date_to_datetime(d: Any) -> Any:
@@ -83,7 +84,6 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
     return d
 
 
-@legacy_source(__file__)
 def tendencies(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
     """Computes tendencies for the given dates and time increment.
 
@@ -167,6 +167,12 @@ def tendencies(dates: list[datetime.datetime], time_increment: Any, **kwargs: An
     ds._tmp = tmp
 
     return ds
+
+
+@source_registry.register("tendencies")
+class LegacyTendenciesSource(LegacySource):
+    name = "tendencies"
+    _execute = staticmethod(tendencies)
 
 
 execute = tendencies

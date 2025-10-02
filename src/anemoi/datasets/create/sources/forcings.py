@@ -11,10 +11,10 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
 def forcings(context: Any, dates: list[str], template: str, param: str) -> Any:
     """Loads forcing data from a specified source.
 
@@ -36,6 +36,12 @@ def forcings(context: Any, dates: list[str], template: str, param: str) -> Any:
     """
     context.trace("✅", f"from_source(forcings, {template}, {param}")
     return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
+
+
+@source_registry.register("forcings")
+class LegacyForcingsSource(LegacySource):
+    name = "forcings"
+    _execute = staticmethod(forcings)
 
 
 execute = forcings
