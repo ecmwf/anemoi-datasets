@@ -46,29 +46,3 @@ class LegacySourceSource(LegacySource):
         if kwargs["time"] == "$from_dates":
             kwargs["time"] = list({d.strftime("%H%M") for d in dates})
         return from_source(name, **kwargs)
-
-
-if __name__ == "__main__":
-    import yaml
-
-    from anemoi.datasets.create.utils import to_datetime_list
-
-    config: dict[str, Any] = yaml.safe_load(
-        """
-      name: mars
-      class: ea
-      expver: '0001'
-      grid: 20.0/20.0
-      levtype: sfc
-      param: [2t]
-      number: [0, 1]
-      date: $from_dates
-      time: $from_dates
-    """
-    )
-    dates: list[str] = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    source = LegacySourceSource._execute
-    for f in source(None, dates, **config):
-        print(f, f.to_numpy().mean())

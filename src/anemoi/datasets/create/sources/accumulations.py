@@ -1040,28 +1040,3 @@ class LegacyAccumulationsSource(LegacySource):
             user_date=user_date,
             **kwargs,
         )
-
-
-if __name__ == "__main__":
-    import yaml
-
-    from anemoi.datasets.create.utils import to_datetime_list
-
-    config = yaml.safe_load(
-        """
-     class: ea
-     expver: '0001'
-     grid: 20./20.
-     levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-     param: [cp, tp]
-#      accumulation_period: 6h
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-    accumulations = LegacyAccumulationsSource._execute
-
-    for f in accumulations(None, dates, **config):
-        print(f, f.to_numpy().mean())

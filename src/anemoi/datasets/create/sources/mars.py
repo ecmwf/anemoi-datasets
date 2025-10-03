@@ -467,34 +467,3 @@ class LegacyMarsSource(LegacySource):
 # Currently some sources use mars as a function rather than through the registry,
 # e.g. accumulations, accumulations2, hindcasts, recentre, tendencies
 mars = LegacyMarsSource._execute
-
-if __name__ == "__main__":
-    import yaml
-
-    from anemoi.datasets.create.utils import to_datetime_list
-
-    config = yaml.safe_load(
-        """
-    - class: ea
-      expver: '0001'
-      grid: 20.0/20.0
-      levtype: sfc
-      param: [2t]
-      # param: [10u, 10v, 2d, 2t, lsm, msl, sdor, skt, slor, sp, tcw, z]
-      number: [0, 1]
-
-    # - class: ea
-    #   expver: '0001'
-    #   grid: 20.0/20.0
-    #   levtype: pl
-    #   param: [q]
-    #   levelist: [1000, 850]
-
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    DEBUG = True
-    for f in mars(None, dates, *config):
-        print(f, f.to_numpy().mean())

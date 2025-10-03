@@ -171,33 +171,3 @@ class LegacyTendenciesSource(LegacySource):
         ds._tmp = tmp
 
         return ds
-
-
-if __name__ == "__main__":
-    import yaml
-
-    from anemoi.datasets.create.utils import to_datetime_list
-
-    config = yaml.safe_load(
-        """
-
-    config:
-      time_increment: 12h
-      database: marser
-      class: ea
-      # date: computed automatically
-      # time: computed automatically
-      expver: "0001"
-      grid: 20.0/20.0
-      levtype: sfc
-      param: [2t]
-    """
-    )["config"]
-
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    DEBUG = True
-    tendencies = LegacyTendenciesSource._execute
-    for f in tendencies(dates, **config):
-        print(f, f.to_numpy().mean())
