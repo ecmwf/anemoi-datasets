@@ -359,7 +359,7 @@ MARS_KEYS = [
 
 
 @source_registry.register("mars")
-class LegacyMarsSource(LegacySource):
+class MarsSource(LegacySource):
     name = "mars"
 
     @staticmethod
@@ -466,4 +466,4 @@ class LegacyMarsSource(LegacySource):
 # TODO: make clearer the interface between sources that use mars.
 # Currently some sources use mars as a function rather than through the registry,
 # e.g. accumulations, accumulations2, hindcasts, recentre, tendencies
-mars = LegacyMarsSource._execute
+mars = MarsSource._execute

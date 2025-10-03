@@ -18,7 +18,7 @@ from .xarray import load_many
 
 
 @source_registry.register("opendap")
-class LegacyOpenDAPSource(LegacySource):
+class OpenDAPSource(LegacySource):
     name = "opendap"
 
     @staticmethod

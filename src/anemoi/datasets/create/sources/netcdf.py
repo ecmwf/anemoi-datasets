@@ -18,7 +18,7 @@ from .xarray import load_many
 
 
 @source_registry.register("netcdf")
-class LegacyNetCDFSource(LegacySource):
+class NetCDFSource(LegacySource):
     name = "netcdf"
 
     @staticmethod

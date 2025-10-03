@@ -571,7 +571,7 @@ class GribIndex:
 
 
 @source_registry.register("grib_index")
-class LegacyGrib_IndexSource(LegacySource):
+class GribIndexSource(LegacySource):
     name = "grib_index"
 
     @staticmethod

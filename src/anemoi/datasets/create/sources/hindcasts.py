@@ -39,7 +39,7 @@ def _to_list(x: list | tuple | Any) -> list[Any]:
 
 
 @source_registry.register("hindcasts")
-class LegacyHindcastsSource(LegacySource):
+class HindcastsSource(LegacySource):
     name = "hindcasts"
 
     @staticmethod

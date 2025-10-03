@@ -21,7 +21,7 @@ from .xarray import load_one
 
 
 @source_registry.register("zenodo")
-class LegacyZenodoSource(LegacySource):
+class ZenodoSource(LegacySource):
     name = "zenodo"
 
     @staticmethod

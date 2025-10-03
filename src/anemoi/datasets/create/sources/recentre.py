@@ -107,7 +107,7 @@ def load_if_needed(context: Any, dates: Any, dict_or_dataset: dict | Any) -> Any
 
 
 @source_registry.register("recentre")
-class LegacyRecentreSource(LegacySource):
+class RecentreSource(LegacySource):
     name = "recentre"
 
     @staticmethod

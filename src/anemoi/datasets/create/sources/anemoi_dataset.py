@@ -14,7 +14,7 @@ from .legacy import LegacySource
 
 
 @source_registry.register("anemoi_dataset")
-class LegacyAnemoi_DatasetSource(LegacySource):
+class AnemoiDatasetSource(LegacySource):
     name = "anemoi_dataset"
 
     @staticmethod

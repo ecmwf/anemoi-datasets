@@ -16,7 +16,7 @@ from .legacy import LegacySource
 
 
 @source_registry.register("forcings")
-class LegacyForcingsSource(LegacySource):
+class ForcingsSource(LegacySource):
     name = "forcings"
 
     @staticmethod

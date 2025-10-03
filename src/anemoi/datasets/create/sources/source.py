@@ -18,7 +18,7 @@ from .legacy import LegacySource
 
 
 @source_registry.register("source")
-class LegacySourceSource(LegacySource):
+class GenericSource(LegacySource):
     name = "source"
 
     @staticmethod

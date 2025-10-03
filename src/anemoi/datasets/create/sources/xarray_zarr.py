@@ -17,7 +17,7 @@ from .xarray import load_many
 
 
 @source_registry.register("xarray_zarr")
-class LegacyXarray_ZarrSource(LegacySource):
+class XarrayZarrSource(LegacySource):
     name = "xarray_zarr"
 
     @staticmethod

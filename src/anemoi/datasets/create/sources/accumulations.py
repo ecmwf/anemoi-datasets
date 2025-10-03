@@ -967,7 +967,7 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
 
 
 @source_registry.register("accumulations")
-class LegacyAccumulationsSource(LegacySource):
+class AccumulationsSource(LegacySource):
     name = "accumulations"
 
     @staticmethod

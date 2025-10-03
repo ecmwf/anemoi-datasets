@@ -84,7 +84,7 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
 
 
 @source_registry.register("tendencies")
-class LegacyTendenciesSource(LegacySource):
+class TendenciesSource(LegacySource):
     name = "tendencies"
 
     @staticmethod

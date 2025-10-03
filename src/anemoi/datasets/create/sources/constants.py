@@ -16,7 +16,7 @@ from .legacy import LegacySource
 
 
 @source_registry.register("constants")
-class LegacyConstantsSource(LegacySource):
+class ConstantsSource(LegacySource):
     name = "constants"
 
     @staticmethod

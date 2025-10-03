@@ -17,7 +17,7 @@ from .legacy import LegacySource
 
 
 @source_registry.register("empty")
-class LegacyEmptySource(LegacySource):
+class EmptySource(LegacySource):
     name = "empty"
 
     @staticmethod
