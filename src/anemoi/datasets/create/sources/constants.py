@@ -15,43 +15,39 @@ from . import source_registry
 from .legacy import LegacySource
 
 
-def constants(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:
-    """Deprecated function to retrieve constants data.
-
-    Parameters
-    ----------
-    context : Any
-        The context object for tracing.
-    dates : list of str
-        List of dates for which data is required.
-    template : dict of str to Any
-        Template dictionary for the data source.
-    param : str
-        Parameter to retrieve.
-
-    Returns
-    -------
-    Any
-        Data retrieved from the source.
-    """
-    from warnings import warn
-
-    warn(
-        "The source `constants` is deprecated, use `forcings` instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    context.trace("✅", f"from_source(constants, {template}, {param}")
-    if len(template) == 0:
-        raise ValueError("Forcings template is empty.")
-
-    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
-
-
 @source_registry.register("constants")
 class LegacyConstantsSource(LegacySource):
     name = "constants"
-    _execute = staticmethod(constants)
 
+    @staticmethod
+    def _execute(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:
+        """Deprecated function to retrieve constants data.
 
-execute: Any = constants
+        Parameters
+        ----------
+        context : Any
+            The context object for tracing.
+        dates : list of str
+            List of dates for which data is required.
+        template : dict of str to Any
+            Template dictionary for the data source.
+        param : str
+            Parameter to retrieve.
+
+        Returns
+        -------
+        Any
+            Data retrieved from the source.
+        """
+        from warnings import warn
+
+        warn(
+            "The source `constants` is deprecated, use `forcings` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        context.trace("✅", f"from_source(constants, {template}, {param}")
+        if len(template) == 0:
+            raise ValueError("Forcings template is empty.")
+
+        return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)

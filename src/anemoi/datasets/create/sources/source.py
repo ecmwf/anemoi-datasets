@@ -13,47 +13,45 @@ from typing import Any
 from earthkit.data import from_source
 
 from anemoi.datasets.create.sources import source_registry
-from anemoi.datasets.create.utils import to_datetime_list
 
 from .legacy import LegacySource
-
-
-def source(context: Any | None, dates: list[datetime], **kwargs: Any) -> Any:
-    """Generates a source based on the provided context, dates, and additional keyword arguments.
-
-    Parameters
-    ----------
-    context : Optional[Any]
-        The context in which the source is generated.
-    dates : List[datetime]
-        A list of datetime objects representing the dates.
-    **kwargs : Any
-        Additional keyword arguments for the source generation.
-
-    Returns
-    -------
-    Any
-        The generated source.
-    """
-    name = kwargs.pop("name")
-    context.trace("✅", f"from_source({name}, {dates}, {kwargs}")
-    if kwargs["date"] == "$from_dates":
-        kwargs["date"] = list({d.strftime("%Y%m%d") for d in dates})
-    if kwargs["time"] == "$from_dates":
-        kwargs["time"] = list({d.strftime("%H%M") for d in dates})
-    return from_source(name, **kwargs)
 
 
 @source_registry.register("source")
 class LegacySourceSource(LegacySource):
     name = "source"
-    _execute = staticmethod(source)
 
+    @staticmethod
+    def _execute(context: Any | None, dates: list[datetime], **kwargs: Any) -> Any:
+        """Generates a source based on the provided context, dates, and additional keyword arguments.
 
-execute = source
+        Parameters
+        ----------
+        context : Optional[Any]
+            The context in which the source is generated.
+        dates : List[datetime]
+            A list of datetime objects representing the dates.
+        **kwargs : Any
+            Additional keyword arguments for the source generation.
+
+        Returns
+        -------
+        Any
+            The generated source.
+        """
+        name = kwargs.pop("name")
+        context.trace("✅", f"from_source({name}, {dates}, {kwargs}")
+        if kwargs["date"] == "$from_dates":
+            kwargs["date"] = list({d.strftime("%Y%m%d") for d in dates})
+        if kwargs["time"] == "$from_dates":
+            kwargs["time"] = list({d.strftime("%H%M") for d in dates})
+        return from_source(name, **kwargs)
+
 
 if __name__ == "__main__":
     import yaml
+
+    from anemoi.datasets.create.utils import to_datetime_list
 
     config: dict[str, Any] = yaml.safe_load(
         """
@@ -71,5 +69,6 @@ if __name__ == "__main__":
     dates: list[str] = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
     dates = to_datetime_list(dates)
 
+    source = LegacySourceSource._execute
     for f in source(None, dates, **config):
         print(f, f.to_numpy().mean())

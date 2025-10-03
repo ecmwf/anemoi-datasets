@@ -15,33 +15,29 @@ from . import source_registry
 from .legacy import LegacySource
 
 
-def forcings(context: Any, dates: list[str], template: str, param: str) -> Any:
-    """Loads forcing data from a specified source.
-
-    Parameters
-    ----------
-    context : object
-        The context in which the function is executed.
-    dates : list
-        List of dates for which data is to be loaded.
-    template : FieldList
-        Template for the data source.
-    param : str
-        Parameter for the data source.
-
-    Returns
-    -------
-    object
-        Loaded forcing data.
-    """
-    context.trace("✅", f"from_source(forcings, {template}, {param}")
-    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
-
-
 @source_registry.register("forcings")
 class LegacyForcingsSource(LegacySource):
     name = "forcings"
-    _execute = staticmethod(forcings)
 
+    @staticmethod
+    def _execute(context: Any, dates: list[str], template: str, param: str) -> Any:
+        """Loads forcing data from a specified source.
 
-execute = forcings
+        Parameters
+        ----------
+        context : object
+            The context in which the function is executed.
+        dates : list
+            List of dates for which data is to be loaded.
+        template : FieldList
+            Template for the data source.
+        param : str
+            Parameter for the data source.
+
+        Returns
+        -------
+        object
+            Loaded forcing data.
+        """
+        context.trace("✅", f"from_source(forcings, {template}, {param}")
+        return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)

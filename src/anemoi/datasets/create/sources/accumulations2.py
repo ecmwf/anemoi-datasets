@@ -20,7 +20,6 @@ from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.sources.mars import mars
-from anemoi.datasets.create.utils import to_datetime_list
 
 from .legacy import LegacySource
 
@@ -600,31 +599,30 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
     return request
 
 
-def accumulations(context, dates, **request):
-    _to_list(request["param"])
-    user_accumulation_period = request.pop("accumulation_period", 6)
-    user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
-
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
-
-    return _compute_accumulations(
-        context,
-        dates,
-        request,
-        user_accumulation_period=user_accumulation_period,
-    )
-
-
 @source_registry.register("accumulations2")
 class LegacyAccumulations2Source(LegacySource):
     name = "accumulations2"
-    _execute = staticmethod(accumulations)
 
+    @staticmethod
+    def _execute(context, dates, **request):
+        _to_list(request["param"])
+        user_accumulation_period = request.pop("accumulation_period", 6)
+        user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
 
-execute = accumulations
+        context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
+
+        return _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=user_accumulation_period,
+        )
+
 
 if __name__ == "__main__":
     import yaml
+
+    from anemoi.datasets.create.utils import to_datetime_list
 
     config = yaml.safe_load(
         """
@@ -649,5 +647,6 @@ if __name__ == "__main__":
         def trace(self, *args):
             print(*args)
 
+    accumulations = LegacyAccumulations2Source._execute
     for f in accumulations(Context, dates, **config):
         print(f, f.to_numpy().mean())

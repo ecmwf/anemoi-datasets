@@ -15,7 +15,6 @@ from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.sources import source_registry
-from anemoi.datasets.create.utils import to_datetime_list
 
 from .legacy import LegacySource
 
@@ -84,101 +83,100 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
     return d
 
 
-def tendencies(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
-    """Computes tendencies for the given dates and time increment.
-
-    Parameters
-    ----------
-    dates : List[datetime.datetime]
-        A list of datetime objects.
-    time_increment : Any
-        A time increment string ending with 'h' or a datetime.timedelta object.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    Any
-        A dataset object with computed tendencies.
-    """
-    print("✅", kwargs)
-    time_increment = normalise_time_delta(time_increment)
-
-    shifted_dates = [d - time_increment for d in dates]
-    all_dates = sorted(list(set(dates + shifted_dates)))
-
-    # from .mars import execute as mars
-    from anemoi.datasets.create.mars import execute as mars
-
-    ds = mars(dates=all_dates, **kwargs)
-
-    dates_in_data = ds.unique_values("valid_datetime", progress_bar=False)["valid_datetime"]
-    for d in all_dates:
-        assert d.isoformat() in dates_in_data, d
-
-    ds1 = ds.sel(valid_datetime=[d.isoformat() for d in dates])
-    ds2 = ds.sel(valid_datetime=[d.isoformat() for d in shifted_dates])
-
-    assert len(ds1) == len(ds2), (len(ds1), len(ds2))
-
-    group1 = group_by_field(ds1)
-    group2 = group_by_field(ds2)
-
-    assert group1.keys() == group2.keys(), (group1.keys(), group2.keys())
-
-    # prepare output tmp file so we can read it back
-    tmp = temp_file()
-    path = tmp.path
-    out = new_grib_output(path)
-
-    for k in group1:
-        assert len(group1[k]) == len(group2[k]), k
-        print()
-        print("❌", k)
-
-        for field, b_field in zip(group1[k], group2[k]):
-            for k in ["param", "level", "number", "grid", "shape"]:
-                assert field.metadata(k) == b_field.metadata(k), (
-                    k,
-                    field.metadata(k),
-                    b_field.metadata(k),
-                )
-
-            c = field.to_numpy()
-            b = b_field.to_numpy()
-            assert c.shape == b.shape, (c.shape, b.shape)
-
-            ################
-            # Actual computation happens here
-            x = c - b
-            ################
-
-            assert x.shape == c.shape, c.shape
-            print(f"Computing data for {field.metadata('valid_datetime')}={field}-{b_field}")
-            out.write(x, template=field)
-
-    out.close()
-
-    from earthkit.data import from_source
-
-    ds = from_source("file", path)
-    # save a reference to the tmp file so it is deleted
-    # only when the dataset is not used anymore
-    ds._tmp = tmp
-
-    return ds
-
-
 @source_registry.register("tendencies")
 class LegacyTendenciesSource(LegacySource):
     name = "tendencies"
-    _execute = staticmethod(tendencies)
 
+    @staticmethod
+    def _execute(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
+        """Computes tendencies for the given dates and time increment.
 
-execute = tendencies
+        Parameters
+        ----------
+        dates : List[datetime.datetime]
+            A list of datetime objects.
+        time_increment : Any
+            A time increment string ending with 'h' or a datetime.timedelta object.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Any
+            A dataset object with computed tendencies.
+        """
+        print("✅", kwargs)
+        time_increment = normalise_time_delta(time_increment)
+
+        shifted_dates = [d - time_increment for d in dates]
+        all_dates = sorted(list(set(dates + shifted_dates)))
+
+        # from .mars import execute as mars
+        from anemoi.datasets.create.mars import execute as mars
+
+        ds = mars(dates=all_dates, **kwargs)
+
+        dates_in_data = ds.unique_values("valid_datetime", progress_bar=False)["valid_datetime"]
+        for d in all_dates:
+            assert d.isoformat() in dates_in_data, d
+
+        ds1 = ds.sel(valid_datetime=[d.isoformat() for d in dates])
+        ds2 = ds.sel(valid_datetime=[d.isoformat() for d in shifted_dates])
+
+        assert len(ds1) == len(ds2), (len(ds1), len(ds2))
+
+        group1 = group_by_field(ds1)
+        group2 = group_by_field(ds2)
+
+        assert group1.keys() == group2.keys(), (group1.keys(), group2.keys())
+
+        # prepare output tmp file so we can read it back
+        tmp = temp_file()
+        path = tmp.path
+        out = new_grib_output(path)
+
+        for k in group1:
+            assert len(group1[k]) == len(group2[k]), k
+            print()
+            print("❌", k)
+
+            for field, b_field in zip(group1[k], group2[k]):
+                for k in ["param", "level", "number", "grid", "shape"]:
+                    assert field.metadata(k) == b_field.metadata(k), (
+                        k,
+                        field.metadata(k),
+                        b_field.metadata(k),
+                    )
+
+                c = field.to_numpy()
+                b = b_field.to_numpy()
+                assert c.shape == b.shape, (c.shape, b.shape)
+
+                ################
+                # Actual computation happens here
+                x = c - b
+                ################
+
+                assert x.shape == c.shape, c.shape
+                print(f"Computing data for {field.metadata('valid_datetime')}={field}-{b_field}")
+                out.write(x, template=field)
+
+        out.close()
+
+        from earthkit.data import from_source
+
+        ds = from_source("file", path)
+        # save a reference to the tmp file so it is deleted
+        # only when the dataset is not used anymore
+        ds._tmp = tmp
+
+        return ds
+
 
 if __name__ == "__main__":
     import yaml
+
+    from anemoi.datasets.create.utils import to_datetime_list
 
     config = yaml.safe_load(
         """
@@ -200,5 +198,6 @@ if __name__ == "__main__":
     dates = to_datetime_list(dates)
 
     DEBUG = True
+    tendencies = LegacyTendenciesSource._execute
     for f in tendencies(dates, **config):
         print(f, f.to_numpy().mean())

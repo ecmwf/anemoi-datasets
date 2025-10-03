@@ -17,31 +17,30 @@ from .legacy import LegacySource
 from .xarray import load_many
 
 
-def execute(context: dict[str, Any], dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Execute the data loading process from an OpenDAP source.
-
-    Parameters
-    ----------
-    context : dict
-        The context in which the function is executed.
-    dates : list
-        List of dates for which data is to be loaded.
-    url : str
-        The URL of the OpenDAP source.
-    *args : tuple
-        Additional positional arguments.
-    **kwargs : dict
-        Additional keyword arguments.
-
-    Returns
-    -------
-    xarray.Dataset
-        The loaded dataset.
-    """
-    return load_many("🌐", context, dates, url, *args, **kwargs)
-
-
 @source_registry.register("opendap")
 class LegacyOpenDAPSource(LegacySource):
     name = "opendap"
-    _execute = staticmethod(execute)
+
+    @staticmethod
+    def _execute(context: dict[str, Any], dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+        """Execute the data loading process from an OpenDAP source.
+
+        Parameters
+        ----------
+        context : dict
+            The context in which the function is executed.
+        dates : list
+            List of dates for which data is to be loaded.
+        url : str
+            The URL of the OpenDAP source.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        xarray.Dataset
+            The loaded dataset.
+        """
+        return load_many("🌐", context, dates, url, *args, **kwargs)

@@ -21,7 +21,6 @@ from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
-from anemoi.datasets.create.utils import to_datetime_list
 
 from .legacy import LegacySource
 from .mars import mars
@@ -967,102 +966,102 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
     return request
 
 
-def accumulations(
-    context: Any, dates: list[datetime.datetime], use_cdsapi_dataset: str | None = None, **request: Any
-) -> Any:
-    """Computes accumulations based on the provided context, dates, and request parameters.
-
-    Parameters
-    ----------
-    context : Any
-        Context for the computation.
-    dates : List[datetime.datetime]
-        List of dates.
-    use_cdsapi_dataset : Optional[str], optional
-        CDSAPI dataset to use. Defaults to None.
-    **request : Any
-        Additional request parameters.
-
-    Returns
-    -------
-    Any
-        The computed accumulations.
-    """
-
-    if (
-        request.get("class") == "ea"
-        and request.get("stream", "oper") == "oper"
-        and request.get("accumulation_period") == 24
-    ):
-        from .accumulations2 import accumulations as accumulations2
-
-        LOG.warning(
-            "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"
-        )
-        return accumulations2(context, dates, **request)
-
-    _to_list(request["param"])
-    class_ = request.get("class", "od")
-    stream = request.get("stream", "oper")
-
-    user_accumulation_period = request.pop("accumulation_period", 6)
-    accumulations_reset_frequency = request.pop("accumulations_reset_frequency", None)
-    user_date = request.pop("date", None)
-
-    # If `data_accumulation_period` is not set, this means that the accumulations are from the start
-    # of the forecast.
-
-    KWARGS = {
-        ("od", "oper"): dict(patch=_scda),
-        ("od", "elda"): dict(base_times=(6, 18)),
-        ("od", "enfo"): dict(base_times=(0, 6, 12, 18)),
-        ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
-        ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
-        ("rr", "oper"): dict(base_times=(0, 3, 6, 9, 12, 15, 18, 21)),
-        ("l5", "oper"): dict(data_accumulation_period=1, base_times=(0,)),
-    }
-
-    kwargs = KWARGS.get((class_, stream), {})
-
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
-
-    return _compute_accumulations(
-        context,
-        dates,
-        request,
-        user_accumulation_period=user_accumulation_period,
-        accumulations_reset_frequency=accumulations_reset_frequency,
-        use_cdsapi_dataset=use_cdsapi_dataset,
-        user_date=user_date,
-        **kwargs,
-    )
-
-
 @source_registry.register("accumulations")
 class LegacyAccumulationsSource(LegacySource):
     name = "accumulations"
-    _execute = staticmethod(accumulations)
 
+    @staticmethod
+    def _execute(
+        context: Any, dates: list[datetime.datetime], use_cdsapi_dataset: str | None = None, **request: Any
+    ) -> Any:
+        """Computes accumulations based on the provided context, dates, and request parameters.
 
-execute = accumulations
+        Parameters
+        ----------
+        context : Any
+            Context for the computation.
+        dates : List[datetime.datetime]
+            List of dates.
+        use_cdsapi_dataset : Optional[str], optional
+            CDSAPI dataset to use. Defaults to None.
+        **request : Any
+            Additional request parameters.
+
+        Returns
+        -------
+        Any
+            The computed accumulations.
+        """
+
+        if (
+            request.get("class") == "ea"
+            and request.get("stream", "oper") == "oper"
+            and request.get("accumulation_period") == 24
+        ):
+            from .accumulations2 import accumulations as accumulations2
+
+            LOG.warning(
+                "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"
+            )
+            return accumulations2(context, dates, **request)
+
+        _to_list(request["param"])
+        class_ = request.get("class", "od")
+        stream = request.get("stream", "oper")
+
+        user_accumulation_period = request.pop("accumulation_period", 6)
+        accumulations_reset_frequency = request.pop("accumulations_reset_frequency", None)
+        user_date = request.pop("date", None)
+
+        # If `data_accumulation_period` is not set, this means that the accumulations are from the start
+        # of the forecast.
+
+        KWARGS = {
+            ("od", "oper"): dict(patch=_scda),
+            ("od", "elda"): dict(base_times=(6, 18)),
+            ("od", "enfo"): dict(base_times=(0, 6, 12, 18)),
+            ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
+            ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
+            ("rr", "oper"): dict(base_times=(0, 3, 6, 9, 12, 15, 18, 21)),
+            ("l5", "oper"): dict(data_accumulation_period=1, base_times=(0,)),
+        }
+
+        kwargs = KWARGS.get((class_, stream), {})
+
+        context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
+
+        return _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=user_accumulation_period,
+            accumulations_reset_frequency=accumulations_reset_frequency,
+            use_cdsapi_dataset=use_cdsapi_dataset,
+            user_date=user_date,
+            **kwargs,
+        )
+
 
 if __name__ == "__main__":
     import yaml
 
+    from anemoi.datasets.create.utils import to_datetime_list
+
     config = yaml.safe_load(
         """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
+     class: ea
+     expver: '0001'
+     grid: 20./20.
+     levtype: sfc
 #      number: [0, 1]
 #      stream: enda
-      param: [cp, tp]
+     param: [cp, tp]
 #      accumulation_period: 6h
     """
     )
     dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
     dates = to_datetime_list(dates)
+    accumulations = LegacyAccumulationsSource._execute
 
     for f in accumulations(None, dates, **config):
         print(f, f.to_numpy().mean())

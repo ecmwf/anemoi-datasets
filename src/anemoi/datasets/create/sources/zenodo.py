@@ -20,54 +20,53 @@ from .patterns import iterate_patterns
 from .xarray import load_one
 
 
-def execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Executes the download and processing of files from Zenodo.
-
-    Parameters
-    ----------
-    context : Any
-        The context in which the function is executed.
-    dates : Any
-        The dates for which the data is required.
-    record_id : str
-        The Zenodo record ID.
-    file_key : str
-        The key to identify the file.
-    *args : Any
-        Additional arguments.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    MultiFieldList
-        A list of fields loaded from the downloaded files.
-    """
-    import requests
-
-    result: list[Any] = []
-
-    URLPATTERN = "https://zenodo.org/api/records/{record_id}"
-    url = URLPATTERN.format(record_id=record_id)
-    r = requests.get(url)
-    r.raise_for_status()
-    record: dict[str, Any] = r.json()
-
-    urls: dict[str, str] = {}
-    for file in record["files"]:
-        urls[file["key"]] = file["links"]["self"]
-
-    for url, dates in iterate_patterns(file_key, dates, **kwargs):
-        if url not in urls:
-            continue
-
-        path = download_and_cache(urls[url])
-        result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
-
-    return MultiFieldList(result)
-
-
 @source_registry.register("zenodo")
 class LegacyZenodoSource(LegacySource):
     name = "zenodo"
-    _execute = staticmethod(execute)
+
+    @staticmethod
+    def _execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+        """Executes the download and processing of files from Zenodo.
+
+        Parameters
+        ----------
+        context : Any
+            The context in which the function is executed.
+        dates : Any
+            The dates for which the data is required.
+        record_id : str
+            The Zenodo record ID.
+        file_key : str
+            The key to identify the file.
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        MultiFieldList
+            A list of fields loaded from the downloaded files.
+        """
+        import requests
+
+        result: list[Any] = []
+
+        URLPATTERN = "https://zenodo.org/api/records/{record_id}"
+        url = URLPATTERN.format(record_id=record_id)
+        r = requests.get(url)
+        r.raise_for_status()
+        record: dict[str, Any] = r.json()
+
+        urls: dict[str, str] = {}
+        for file in record["files"]:
+            urls[file["key"]] = file["links"]["self"]
+
+        for url, dates in iterate_patterns(file_key, dates, **kwargs):
+            if url not in urls:
+                continue
+
+            path = download_and_cache(urls[url])
+            result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
+
+        return MultiFieldList(result)
