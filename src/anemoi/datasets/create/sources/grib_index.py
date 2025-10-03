@@ -572,7 +572,6 @@ class GribIndex:
 
 @source_registry.register("grib_index")
 class GribIndexSource(LegacySource):
-    name = "grib_index"
 
     @staticmethod
     def _execute(

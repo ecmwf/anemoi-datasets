@@ -17,7 +17,6 @@ from .legacy import LegacySource
 
 @source_registry.register("forcings")
 class ForcingsSource(LegacySource):
-    name = "forcings"
 
     @staticmethod
     def _execute(context: Any, dates: list[str], template: str, param: str) -> Any:

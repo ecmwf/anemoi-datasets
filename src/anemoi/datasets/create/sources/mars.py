@@ -360,7 +360,6 @@ MARS_KEYS = [
 
 @source_registry.register("mars")
 class MarsSource(LegacySource):
-    name = "mars"
 
     @staticmethod
     def _execute(

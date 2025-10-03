@@ -19,7 +19,6 @@ from .legacy import LegacySource
 
 @source_registry.register("source")
 class GenericSource(LegacySource):
-    name = "source"
 
     @staticmethod
     def _execute(context: Any | None, dates: list[datetime], **kwargs: Any) -> Any:

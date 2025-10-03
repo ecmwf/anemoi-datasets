@@ -17,7 +17,6 @@ from .legacy import LegacySource
 
 @source_registry.register("constants")
 class ConstantsSource(LegacySource):
-    name = "constants"
 
     @staticmethod
     def _execute(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:

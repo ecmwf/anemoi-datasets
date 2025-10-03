@@ -42,10 +42,6 @@ class LegacySource(Source):
     def _execute(context, *args, **kwargs):
         pass
 
-    @property
-    def _source(self) -> str:
-        return ".".join([self._execute.__module__, self._execute.__name__])
-
     def execute(self, dates: Any) -> Any:
         args, kwargs = self.args, self.kwargs
         return self._execute(self.context, dates, *args, **kwargs)

@@ -40,7 +40,6 @@ def _to_list(x: list | tuple | Any) -> list[Any]:
 
 @source_registry.register("hindcasts")
 class HindcastsSource(LegacySource):
-    name = "hindcasts"
 
     @staticmethod
     def _execute(context: Any, dates: list[Any], **request: dict[str, Any]) -> MultiFieldList:

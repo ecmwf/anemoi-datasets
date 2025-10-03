@@ -19,7 +19,6 @@ from .xarray import load_many
 
 @source_registry.register("netcdf")
 class NetCDFSource(LegacySource):
-    name = "netcdf"
 
     @staticmethod
     def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:

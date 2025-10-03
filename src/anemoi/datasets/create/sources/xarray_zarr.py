@@ -18,7 +18,6 @@ from .xarray import load_many
 
 @source_registry.register("xarray_zarr")
 class XarrayZarrSource(LegacySource):
-    name = "xarray_zarr"
 
     @staticmethod
     def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:

@@ -76,7 +76,6 @@ def _expand(paths: list[str]) -> Any:
 
 @source_registry.register("grib")
 class GribSource(LegacySource):
-    name = "grib"
 
     @staticmethod
     def _execute(

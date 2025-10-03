@@ -85,7 +85,6 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
 
 @source_registry.register("tendencies")
 class TendenciesSource(LegacySource):
-    name = "tendencies"
 
     @staticmethod
     def _execute(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
