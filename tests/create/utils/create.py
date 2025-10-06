@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.build import creator_factory
+from anemoi.datasets.build.gridded import creator_factory
 
 
 class TestingContext:
