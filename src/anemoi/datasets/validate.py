@@ -14,8 +14,8 @@ from collections import defaultdict
 
 import numpy as np
 
-from anemoi.datasets.data.dataset import Dataset
 from anemoi.datasets.testing import default_test_indexing
+from anemoi.datasets.use.dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 # List of methods called during training. To update the list, run training with ANEMOI_DATASETS_TRACE=1

@@ -28,7 +28,7 @@ def build(input, output, backend, overwrite=False):
     print(f"Dataset has {len(ds)} records, from {ds.start_date} to {ds.end_date}")
     print(f"Converting dataset to {output} using new backend '{backend}'")
 
-    from anemoi.datasets.data.records.backends import writer_backend_factory
+    from anemoi.datasets.use.records.backends import writer_backend_factory
 
     if os.path.exists(output):
         if overwrite:

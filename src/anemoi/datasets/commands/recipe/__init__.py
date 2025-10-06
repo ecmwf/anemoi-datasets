@@ -15,10 +15,10 @@ from typing import Any
 
 import yaml
 
+from anemoi.datasets.build import validate_config
 from anemoi.datasets.commands import Command
 from anemoi.datasets.commands.recipe.format import format_recipe
 from anemoi.datasets.commands.recipe.migrate import migrate_recipe
-from anemoi.datasets.create import validate_config
 
 LOG = logging.getLogger(__name__)
 

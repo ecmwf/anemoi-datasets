@@ -12,7 +12,7 @@ import os
 import numpy as np
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.data.stores import open_zarr
+from anemoi.datasets.use.stores import open_zarr
 
 
 class Comparer:

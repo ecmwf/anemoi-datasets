@@ -11,7 +11,7 @@
 
 import pytest
 
-from anemoi.datasets.create.chunks import ChunkFilter
+from anemoi.datasets.build.chunks import ChunkFilter
 
 
 def test_chunk_filter():

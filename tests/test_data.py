@@ -25,20 +25,20 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
-from anemoi.datasets.data import save_dataset
-from anemoi.datasets.data.concat import Concat
-from anemoi.datasets.data.ensemble import Ensemble
-from anemoi.datasets.data.grids import GridsBase
-from anemoi.datasets.data.join import Join
-from anemoi.datasets.data.misc import as_first_date
-from anemoi.datasets.data.misc import as_last_date
-from anemoi.datasets.data.padded import Padded
-from anemoi.datasets.data.select import Rename
-from anemoi.datasets.data.select import Select
-from anemoi.datasets.data.statistics import Statistics
-from anemoi.datasets.data.stores import Zarr
-from anemoi.datasets.data.subset import Subset
 from anemoi.datasets.testing import default_test_indexing
+from anemoi.datasets.use import save_dataset
+from anemoi.datasets.use.concat import Concat
+from anemoi.datasets.use.ensemble import Ensemble
+from anemoi.datasets.use.grids import GridsBase
+from anemoi.datasets.use.join import Join
+from anemoi.datasets.use.misc import as_first_date
+from anemoi.datasets.use.misc import as_last_date
+from anemoi.datasets.use.padded import Padded
+from anemoi.datasets.use.select import Rename
+from anemoi.datasets.use.select import Select
+from anemoi.datasets.use.statistics import Statistics
+from anemoi.datasets.use.stores import Zarr
+from anemoi.datasets.use.subset import Subset
 
 VALUES = 10
 
