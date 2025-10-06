@@ -43,5 +43,4 @@ class LegacySource(Source):
         pass
 
     def execute(self, dates: Any) -> Any:
-        args, kwargs = self.args, self.kwargs
-        return self._execute(self.context, dates, *args, **kwargs)
+        return self._execute(self.context, dates, *self.args, **self.kwargs)
