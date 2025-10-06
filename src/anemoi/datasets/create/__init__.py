@@ -865,7 +865,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(group_of_dates=group)
+            result = self.input.select(argument=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -1616,3 +1616,44 @@ def creator_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
+
+
+def validate_config(config: Any) -> None:
+
+    import json
+
+    import jsonschema
+
+    def _tidy(d):
+        if isinstance(d, dict):
+            return {k: _tidy(v) for k, v in d.items()}
+
+        if isinstance(d, list):
+            return [_tidy(v) for v in d if v is not None]
+
+        # jsonschema does not support datetime.date
+        if isinstance(d, datetime.datetime):
+            return d.isoformat()
+
+        if isinstance(d, datetime.date):
+            return d.isoformat()
+
+        return d
+
+    # https://json-schema.org
+
+    with open(
+        os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "schemas",
+            "recipe.json",
+        )
+    ) as f:
+        schema = json.load(f)
+
+    try:
+        jsonschema.validate(instance=_tidy(config), schema=schema)
+    except jsonschema.exceptions.ValidationError as e:
+        LOG.error("❌ Config validation failed (jsonschema):")
+        LOG.error(e.message)
+        raise

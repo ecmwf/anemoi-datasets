@@ -14,8 +14,6 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-from anemoi.datasets.create.input.template import resolve
-
 from ..source import Source
 from . import source_registry
 
@@ -74,7 +72,7 @@ class legacy_source:
         def execute_wrapper(self, dates) -> Any:
             """Wrapper method to call the execute function."""
 
-            args, kwargs = resolve(self.context, (self.args, self.kwargs))
+            args, kwargs = self.args, self.kwargs
 
             try:
                 return execute(self.context, dates, *args, **kwargs)
