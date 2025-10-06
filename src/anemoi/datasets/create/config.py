@@ -132,7 +132,6 @@ class Config(DotDict):
             Additional keyword arguments to update the configuration.
         """
         if isinstance(config, str):
-            self.config_path = os.path.realpath(config)
             config = load_any_dict_format(config)
         else:
             config = deepcopy(config if config is not None else {})
@@ -279,6 +278,8 @@ class LoadersConfig(Config):
         assert _get_first_key_if_dict(order_by[2]) == "number", order_by
 
         self.output.order_by = normalize_order_by(self.output.order_by)
+
+        self.setdefault("dates", Config())
 
         self.dates["group_by"] = self.build.group_by
 
