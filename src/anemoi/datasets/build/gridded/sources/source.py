@@ -12,8 +12,9 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from anemoi.datasets.build.sources.legacy import legacy_source
 from anemoi.datasets.build.utils import to_datetime_list
+
+from .legacy import legacy_source
 
 
 @legacy_source(__file__)

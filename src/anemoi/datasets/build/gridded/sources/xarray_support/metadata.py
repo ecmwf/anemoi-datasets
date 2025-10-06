@@ -46,7 +46,7 @@ class XArrayMetadata(RawMetadata):
         field : Any
             The field to extract metadata from.
         """
-        from anemoi.datasets.build.sources.xarray_support.field import XArrayField
+        from .field import XArrayField
 
         assert isinstance(field, XArrayField), type(field)
         self._field = field

@@ -17,17 +17,17 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import FullIndex
-from anemoi.datasets.use.dataset import Shape
-from anemoi.datasets.use.dataset import TupleIndex
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.debug import debug_indexing
-from anemoi.datasets.use.forwards import Forwards
-from anemoi.datasets.use.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.indexing import expand_list_indexing
-from anemoi.datasets.use.indexing import index_to_slices
-from anemoi.datasets.use.indexing import update_tuple
+from anemoi.datasets.use.gridded.dataset import Dataset
+from anemoi.datasets.use.gridded.dataset import FullIndex
+from anemoi.datasets.use.gridded.dataset import Shape
+from anemoi.datasets.use.gridded.dataset import TupleIndex
+from anemoi.datasets.use.gridded.debug import Node
+from anemoi.datasets.use.gridded.debug import debug_indexing
+from anemoi.datasets.use.gridded.forwards import Forwards
+from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.use.gridded.indexing import expand_list_indexing
+from anemoi.datasets.use.gridded.indexing import index_to_slices
+from anemoi.datasets.use.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ class InterpolateNearest(Forwards):
         max_distance : Optional[float], optional
             The maximum distance for nearest neighbor search, by default None.
         """
-        from anemoi.datasets.grids import nearest_grid_points
+        from anemoi.datasets.misc.grids import nearest_grid_points
 
         super().__init__(dataset)
         self.vars = interpolate_variables

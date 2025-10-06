@@ -14,9 +14,9 @@ import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.sources.url import download_and_cache
 
-from anemoi.datasets.build.sources.legacy import legacy_source
-from anemoi.datasets.build.sources.patterns import iterate_patterns
-from anemoi.datasets.build.sources.xarray import load_one
+from .legacy import legacy_source
+from .patterns import iterate_patterns
+from .xarray import load_one
 
 
 @legacy_source(__file__)

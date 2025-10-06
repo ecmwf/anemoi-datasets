@@ -12,7 +12,7 @@ import pytest
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 
-from anemoi.datasets.build.sources.xarray import XarrayFieldList
+from anemoi.datasets.build.gridded.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
 
 

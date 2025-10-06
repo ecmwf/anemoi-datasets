@@ -19,8 +19,8 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.build.source import Source
-from anemoi.datasets.build.sources import source_registry
+from .source import Source
+from .sources import source_registry
 
 LOG = logging.getLogger(__name__)
 

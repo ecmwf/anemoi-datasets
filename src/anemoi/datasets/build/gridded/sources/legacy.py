@@ -14,8 +14,8 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-from anemoi.datasets.build.source import Source
-from anemoi.datasets.build.sources import source_registry
+from ..source import Source
+from . import source_registry
 
 LOG = logging.getLogger(__name__)
 

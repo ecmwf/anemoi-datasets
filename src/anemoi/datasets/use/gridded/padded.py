@@ -17,16 +17,16 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import FullIndex
-from anemoi.datasets.use.dataset import Shape
-from anemoi.datasets.use.dataset import TupleIndex
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.debug import debug_indexing
-from anemoi.datasets.use.forwards import Forwards
-from anemoi.datasets.use.indexing import expand_list_indexing
-from anemoi.datasets.use.misc import as_first_date
-from anemoi.datasets.use.misc import as_last_date
+from anemoi.datasets.use.gridded.dataset import Dataset
+from anemoi.datasets.use.gridded.dataset import FullIndex
+from anemoi.datasets.use.gridded.dataset import Shape
+from anemoi.datasets.use.gridded.dataset import TupleIndex
+from anemoi.datasets.use.gridded.debug import Node
+from anemoi.datasets.use.gridded.debug import debug_indexing
+from anemoi.datasets.use.gridded.forwards import Forwards
+from anemoi.datasets.use.gridded.indexing import expand_list_indexing
+from anemoi.datasets.use.gridded.misc import as_first_date
+from anemoi.datasets.use.gridded.misc import as_last_date
 
 LOG = logging.getLogger(__name__)
 

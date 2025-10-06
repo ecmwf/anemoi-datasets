@@ -16,20 +16,20 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import FullIndex
-from anemoi.datasets.use.dataset import Shape
-from anemoi.datasets.use.dataset import TupleIndex
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.debug import debug_indexing
-from anemoi.datasets.use.forwards import Combined
-from anemoi.datasets.use.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.indexing import expand_list_indexing
-from anemoi.datasets.use.indexing import index_to_slices
-from anemoi.datasets.use.indexing import length_to_slices
-from anemoi.datasets.use.indexing import update_tuple
-from anemoi.datasets.use.misc import _auto_adjust
-from anemoi.datasets.use.misc import _open
+from anemoi.datasets.use.gridded.dataset import Dataset
+from anemoi.datasets.use.gridded.dataset import FullIndex
+from anemoi.datasets.use.gridded.dataset import Shape
+from anemoi.datasets.use.gridded.dataset import TupleIndex
+from anemoi.datasets.use.gridded.debug import Node
+from anemoi.datasets.use.gridded.debug import debug_indexing
+from anemoi.datasets.use.gridded.forwards import Combined
+from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.use.gridded.indexing import expand_list_indexing
+from anemoi.datasets.use.gridded.indexing import index_to_slices
+from anemoi.datasets.use.gridded.indexing import length_to_slices
+from anemoi.datasets.use.gridded.indexing import update_tuple
+from anemoi.datasets.use.gridded.misc import _auto_adjust
+from anemoi.datasets.use.gridded.misc import _open
 
 LOG = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ class Concat(ConcatMixin, Combined):
             s = ranges[i + 1]
             if r[1] + frequency != s[0]:
                 if fill_missing_gaps:
-                    from anemoi.datasets.use.missing import MissingDataset
+                    from anemoi.datasets.use.gridded.missing import MissingDataset
 
                     result.append(MissingDataset(datasets[i], r[1] + frequency, s[0] - frequency))
                 else:

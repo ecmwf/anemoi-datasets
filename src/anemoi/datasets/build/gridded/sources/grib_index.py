@@ -19,7 +19,7 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from anemoi.datasets.build.sources.legacy import legacy_source
+from .legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
 

@@ -23,8 +23,8 @@ import tqdm
 from anemoi.utils.provenance import gather_provenance_info
 from numpy.typing import NDArray
 
-from anemoi.datasets.build.check import check_data_values
-from anemoi.datasets.build.statistics.summary import Summary
+from anemoi.datasets.build.gridded.check import check_data_values
+from anemoi.datasets.build.gridded.statistics.summary import Summary
 
 LOG = logging.getLogger(__name__)
 

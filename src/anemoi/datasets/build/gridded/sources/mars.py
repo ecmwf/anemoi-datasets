@@ -16,8 +16,9 @@ from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
-from anemoi.datasets.build.sources.legacy import legacy_source
 from anemoi.datasets.build.utils import to_datetime_list
+
+from .legacy import legacy_source
 
 DEBUG = False
 

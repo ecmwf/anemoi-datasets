@@ -15,10 +15,10 @@ from typing import Any
 
 from numpy.typing import NDArray
 
-from anemoi.datasets.use import open_dataset
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.forwards import Forwards
+from anemoi.datasets.use.gridded import open_dataset
+from anemoi.datasets.use.gridded.dataset import Dataset
+from anemoi.datasets.use.gridded.debug import Node
+from anemoi.datasets.use.gridded.forwards import Forwards
 
 LOG = logging.getLogger(__name__)
 

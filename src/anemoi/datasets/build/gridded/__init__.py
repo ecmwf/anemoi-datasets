@@ -31,25 +31,25 @@ from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
-from anemoi.datasets.build.check import DatasetName
-from anemoi.datasets.build.check import check_data_values
-from anemoi.datasets.build.chunks import ChunkFilter
-from anemoi.datasets.build.config import build_output
-from anemoi.datasets.build.config import loader_config
+from anemoi.datasets.build.gridded.check import DatasetName
+from anemoi.datasets.build.gridded.check import check_data_values
+from anemoi.datasets.build.gridded.chunks import ChunkFilter
+from anemoi.datasets.build.gridded.config import build_output
+from anemoi.datasets.build.gridded.config import loader_config
+from anemoi.datasets.build.gridded.persistent import build_storage
+from anemoi.datasets.build.gridded.statistics import Summary
+from anemoi.datasets.build.gridded.statistics import TmpStatistics
+from anemoi.datasets.build.gridded.statistics import check_variance
+from anemoi.datasets.build.gridded.statistics import compute_statistics
+from anemoi.datasets.build.gridded.statistics import default_statistics_dates
+from anemoi.datasets.build.gridded.statistics import fix_variance
+from anemoi.datasets.build.gridded.utils import normalize_and_check_dates
+from anemoi.datasets.build.gridded.writer import ViewCacheArray
 from anemoi.datasets.build.input import InputBuilder
 from anemoi.datasets.build.input.trace import enable_trace
-from anemoi.datasets.build.persistent import build_storage
-from anemoi.datasets.build.statistics import Summary
-from anemoi.datasets.build.statistics import TmpStatistics
-from anemoi.datasets.build.statistics import check_variance
-from anemoi.datasets.build.statistics import compute_statistics
-from anemoi.datasets.build.statistics import default_statistics_dates
-from anemoi.datasets.build.statistics import fix_variance
-from anemoi.datasets.build.utils import normalize_and_check_dates
-from anemoi.datasets.build.writer import ViewCacheArray
 from anemoi.datasets.dates.groups import Groups
-from anemoi.datasets.use.misc import as_first_date
-from anemoi.datasets.use.misc import as_last_date
+from anemoi.datasets.misc import as_first_date
+from anemoi.datasets.misc import as_last_date
 
 LOG = logging.getLogger(__name__)
 
@@ -192,7 +192,7 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from anemoi.datasets.build.zarr import add_zarr_dataset
+        from anemoi.datasets.build.gridded.zarr import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -396,7 +396,7 @@ class Actor:  # TODO: rename to Creator
         Any
             The cache context.
         """
-        from anemoi.datasets.build.utils import cache_context
+        from anemoi.datasets.build.gridded.utils import cache_context
 
         return cache_context(self.cache)
 
@@ -472,7 +472,7 @@ class Patch(Actor):
 
     def run(self) -> None:
         """Run the patch."""
-        from anemoi.datasets.build.patch import apply_patch
+        from anemoi.datasets.build.gridded.patch import apply_patch
 
         apply_patch(self.path, **self.options)
 
@@ -492,7 +492,7 @@ class Size(Actor):
 
     def run(self) -> None:
         """Run the size computation."""
-        from anemoi.datasets.build.size import compute_directory_sizes
+        from anemoi.datasets.build.gridded.size import compute_directory_sizes
 
         metadata = compute_directory_sizes(self.path)
         self.update_metadata(**metadata)
@@ -514,7 +514,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from anemoi.datasets.build.zarr import ZarrBuiltRegistry
+        from anemoi.datasets.build.gridded.zarr import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 

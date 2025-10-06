@@ -12,8 +12,8 @@ from typing import Any
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.build.sources.legacy import legacy_source
-from anemoi.datasets.build.sources.mars import mars
+from .legacy import legacy_source
+from .mars import mars
 
 LOGGER = logging.getLogger(__name__)
 

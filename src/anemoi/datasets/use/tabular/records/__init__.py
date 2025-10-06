@@ -16,7 +16,7 @@ from functools import cached_property
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.use.records.backends import backend_factory
+from anemoi.datasets.use.gridded.records.backends import backend_factory
 
 LOG = logging.getLogger(__name__)
 
@@ -91,8 +91,8 @@ class BaseRecordsDataset:
         if start is not None or end is not None:
 
             def _dates_to_indices(start, end):
-                from anemoi.datasets.use.misc import as_first_date
-                from anemoi.datasets.use.misc import as_last_date
+                from anemoi.datasets.use.gridded.misc import as_first_date
+                from anemoi.datasets.use.gridded.misc import as_last_date
 
                 start = self.dates[0] if start is None else as_first_date(start, self.dates)
                 end = self.dates[-1] if end is None else as_last_date(end, self.dates)

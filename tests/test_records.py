@@ -11,9 +11,9 @@ import os
 import numpy as np
 import pytest
 
-from anemoi.datasets.use import open_dataset
-from anemoi.datasets.use.records import Record
-from anemoi.datasets.use.records import Tabular
+from anemoi.datasets.use.gridded import open_dataset
+from anemoi.datasets.use.tabular.records import Record
+from anemoi.datasets.use.tabular.records import Tabular
 
 
 def check_numpy(x, y):

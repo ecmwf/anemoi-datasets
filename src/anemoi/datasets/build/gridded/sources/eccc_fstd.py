@@ -8,8 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
-from anemoi.datasets.build.sources import source_registry
-from anemoi.datasets.build.sources.xarray import XarraySourceBase
+from . import source_registry
+from .xarray import XarraySourceBase
 
 
 @source_registry.register("eccc_fstd")

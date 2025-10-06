@@ -15,18 +15,18 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.grids import cropping_mask
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import FullIndex
-from anemoi.datasets.use.dataset import Shape
-from anemoi.datasets.use.dataset import TupleIndex
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.debug import debug_indexing
-from anemoi.datasets.use.forwards import Forwards
-from anemoi.datasets.use.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.indexing import expand_list_indexing
-from anemoi.datasets.use.indexing import index_to_slices
-from anemoi.datasets.use.indexing import update_tuple
+from anemoi.datasets.misc.grids import cropping_mask
+from anemoi.datasets.use.gridded.dataset import Dataset
+from anemoi.datasets.use.gridded.dataset import FullIndex
+from anemoi.datasets.use.gridded.dataset import Shape
+from anemoi.datasets.use.gridded.dataset import TupleIndex
+from anemoi.datasets.use.gridded.debug import Node
+from anemoi.datasets.use.gridded.debug import debug_indexing
+from anemoi.datasets.use.gridded.forwards import Forwards
+from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.use.gridded.indexing import expand_list_indexing
+from anemoi.datasets.use.gridded.indexing import index_to_slices
+from anemoi.datasets.use.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -214,7 +214,7 @@ class Cropping(Masked):
         area : Union[Dataset, Tuple[float, float, float, float]]
             The cropping area.
         """
-        from anemoi.datasets.use import open_dataset
+        from anemoi.datasets.use.gridded import open_dataset
 
         area = area if isinstance(area, (list, tuple)) else open_dataset(area)
 

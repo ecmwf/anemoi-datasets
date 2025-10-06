@@ -16,8 +16,8 @@ from typing import Any
 
 from anemoi.utils.dates import as_datetime
 
-from anemoi.datasets.build.sources.xarray_support.coordinates import Coordinate
-from anemoi.datasets.build.sources.xarray_support.variable import Variable
+from .coordinates import Coordinate
+from .variable import Variable
 
 LOG = logging.getLogger(__name__)
 
