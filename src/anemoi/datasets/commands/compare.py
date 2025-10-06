@@ -15,7 +15,8 @@ import tqdm
 import zarr
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.commands import Command
+
+from . import Command
 
 
 class Compare(Command):

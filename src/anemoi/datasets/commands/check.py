@@ -14,7 +14,8 @@ from typing import Any
 import yaml
 
 from anemoi.datasets.build.gridded.check import DatasetName
-from anemoi.datasets.commands import Command
+
+from . import Command
 
 LOG = logging.getLogger(__name__)
 

@@ -13,8 +13,9 @@ from typing import Any
 
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.commands import Command
 from anemoi.datasets.commands.create import task
+
+from . import Command
 
 LOG = logging.getLogger(__name__)
 

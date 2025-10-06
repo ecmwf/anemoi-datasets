@@ -13,7 +13,7 @@ from typing import Any
 
 import tqdm
 
-from anemoi.datasets.commands import Command
+from . import Command
 
 
 class GribIndexCmd(Command):

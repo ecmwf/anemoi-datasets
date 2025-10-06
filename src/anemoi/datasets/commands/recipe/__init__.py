@@ -16,9 +16,10 @@ from typing import Any
 import yaml
 
 from anemoi.datasets.build.gridded import validate_config
-from anemoi.datasets.commands import Command
-from anemoi.datasets.commands.recipe.format import format_recipe
-from anemoi.datasets.commands.recipe.migrate import migrate_recipe
+
+from .. import Command
+from .format import format_recipe
+from .migrate import migrate_recipe
 
 LOG = logging.getLogger(__name__)
 
