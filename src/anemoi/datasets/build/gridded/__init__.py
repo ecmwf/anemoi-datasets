@@ -48,8 +48,8 @@ from anemoi.datasets.build.gridded.writer import ViewCacheArray
 from anemoi.datasets.build.input import InputBuilder
 from anemoi.datasets.build.input.trace import enable_trace
 from anemoi.datasets.dates.groups import Groups
-from anemoi.datasets.misc import as_first_date
-from anemoi.datasets.misc import as_last_date
+from anemoi.datasets.use.gridded import as_first_date
+from anemoi.datasets.use.gridded import as_last_date
 
 LOG = logging.getLogger(__name__)
 

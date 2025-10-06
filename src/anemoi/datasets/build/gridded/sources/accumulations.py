@@ -994,7 +994,7 @@ def accumulations(
         and request.get("stream", "oper") == "oper"
         and request.get("accumulation_period") == 24
     ):
-        from anemoi.datasets.build.sources.accumulations2 import accumulations as accumulations2
+        from .accumulations2 import accumulations as accumulations2
 
         LOG.warning(
             "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"

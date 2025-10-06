@@ -125,7 +125,7 @@ def _time_request_keys(dt: datetime, offset_from_date: bool | None = None) -> st
 
 
 def _shortname_to_paramid(shortname: list[str], param_id_map: dict[str, int] | None = None) -> list[int]:
-    from anemoi.datasets.build.sources.mars import use_grib_paramid
+    from .mars import use_grib_paramid
 
     """Convert a shortname to a parameter ID."""
     if param_id_map is None:

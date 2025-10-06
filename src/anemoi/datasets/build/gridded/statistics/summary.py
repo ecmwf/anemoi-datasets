@@ -13,9 +13,9 @@ from typing import Any
 
 import numpy as np
 
-from anemoi.datasets.build.check import StatisticsValueError
-from anemoi.datasets.build.check import check_data_values
-from anemoi.datasets.build.check import check_stats
+from anemoi.datasets.build.gridded.check import StatisticsValueError
+from anemoi.datasets.build.gridded.check import check_data_values
+from anemoi.datasets.build.gridded.check import check_stats
 
 
 class Summary(dict):

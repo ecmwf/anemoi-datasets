@@ -16,7 +16,7 @@ from functools import cached_property
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.use.gridded.records.backends import backend_factory
+from anemoi.datasets.use.tabular.records.backends import backend_factory
 
 LOG = logging.getLogger(__name__)
 
