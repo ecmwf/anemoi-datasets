@@ -15,10 +15,9 @@ import earthkit.data as ekd
 import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
+from anemoi.datasets.create.sources.legacy import legacy_source
 from anemoi.datasets.create.sources.patterns import iterate_patterns
-
-from ..legacy import legacy_source
-from .fieldlist import XarrayFieldList
+from anemoi.datasets.create.sources.xarray_support.fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
 

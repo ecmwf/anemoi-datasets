@@ -15,8 +15,7 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.data.dataset import Dataset
-
-from ..debug import Node
+from anemoi.datasets.data.debug import Node
 
 LOG = logging.getLogger(__name__)
 
@@ -139,7 +138,7 @@ class ObservationsZarr(ObservationsBase):
         if isinstance(dataset, zarr.hierarchy.Group):
             dataset = dataset._store.path
 
-        from ..stores import zarr_lookup
+        from anemoi.datasets.data.stores import zarr_lookup
 
         dataset = zarr_lookup(dataset)
         self.path = dataset
@@ -177,7 +176,7 @@ class ObservationsZarr(ObservationsBase):
         # last_window_end must be the end of the time window of the last item
         last_window_end = int(end.strftime("%Y%m%d%H%M%S"))
 
-        from .legacy_obs_dataset import ObsDataset
+        from anemoi.datasets.data.observations.legacy_obs_dataset import ObsDataset
 
         args = [self.path, first_window_begin, last_window_end]
         kwargs = dict(

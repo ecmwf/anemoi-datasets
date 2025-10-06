@@ -22,7 +22,7 @@ from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
-from . import Result
+from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
 

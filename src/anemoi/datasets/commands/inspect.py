@@ -27,10 +27,9 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.commands import Command
 from anemoi.datasets.data.stores import open_zarr
 from anemoi.datasets.data.stores import zarr_lookup
-
-from . import Command
 
 LOG = logging.getLogger(__name__)
 

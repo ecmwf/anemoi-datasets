@@ -16,21 +16,21 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import cKDTree
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import debug_indexing
-from .forwards import Combined
-from .forwards import GivenAxis
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import length_to_slices
-from .indexing import update_tuple
-from .misc import _auto_adjust
-from .misc import _open
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Combined
+from anemoi.datasets.data.forwards import GivenAxis
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import length_to_slices
+from anemoi.datasets.data.indexing import update_tuple
+from anemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 

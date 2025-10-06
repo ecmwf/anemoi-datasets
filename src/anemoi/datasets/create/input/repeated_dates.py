@@ -19,11 +19,11 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from .action import Action
-from .action import action_factory
-from .join import JoinResult
-from .result.field import Result
-from .trace import trace_select
+from anemoi.datasets.create.input.action import Action
+from anemoi.datasets.create.input.action import action_factory
+from anemoi.datasets.create.input.join import JoinResult
+from anemoi.datasets.create.input.result.field import Result
+from anemoi.datasets.create.input.trace import trace_select
 
 LOG = logging.getLogger(__name__)
 

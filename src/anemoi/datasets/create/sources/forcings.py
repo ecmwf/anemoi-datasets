@@ -11,7 +11,7 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from .legacy import legacy_source
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 
 @legacy_source(__file__)

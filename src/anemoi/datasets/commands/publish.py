@@ -10,7 +10,7 @@
 import logging
 from typing import Any
 
-from . import Command
+from anemoi.datasets.commands import Command
 
 LOG = logging.getLogger(__name__)
 

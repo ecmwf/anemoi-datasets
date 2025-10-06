@@ -18,14 +18,14 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from .concat import ConcatMixin
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .debug import Node
-from .forwards import Combined
-from .misc import _auto_adjust
-from .misc import _open
+from anemoi.datasets.data.concat import ConcatMixin
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.forwards import Combined
+from anemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 

@@ -14,9 +14,8 @@ from typing import Any
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
+from anemoi.datasets.create.sources.legacy import legacy_source
 from anemoi.datasets.create.utils import to_datetime_list
-
-from .legacy import legacy_source
 
 
 def _date_to_datetime(d: Any) -> Any:

@@ -34,8 +34,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from .debug import Node
-from .debug import Source
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import Source
 
 if TYPE_CHECKING:
     import matplotlib
@@ -165,7 +165,7 @@ class Dataset(ABC, Sized):
 
         # This one must be first
         if "fill_missing_dates" in kwargs:
-            from .fill_missing import fill_missing_dates_factory
+            from anemoi.datasets.data.fill_missing import fill_missing_dates_factory
 
             fill_missing_dates = kwargs.pop("fill_missing_dates")
             ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
@@ -179,7 +179,7 @@ class Dataset(ABC, Sized):
             if padding:
                 if padding != "empty":
                     raise ValueError(f"Only 'empty' padding is supported, got {padding=}")
-                from .padded import Padded
+                from anemoi.datasets.data.padded import Padded
 
                 frequency = kwargs.pop("frequency", self.frequency)
                 return (
@@ -188,14 +188,14 @@ class Dataset(ABC, Sized):
                     .mutate()
                 )
 
-            from .subset import Subset
+            from anemoi.datasets.data.subset import Subset
 
             return (
                 Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
             )
 
         if "frequency" in kwargs:
-            from .subset import Subset
+            from anemoi.datasets.data.subset import Subset
 
             if "interpolate_frequency" in kwargs:
                 raise ValueError("Cannot use both `frequency` and `interpolate_frequency`")
@@ -208,38 +208,38 @@ class Dataset(ABC, Sized):
             )
 
         if "select" in kwargs:
-            from .select import Select
+            from anemoi.datasets.data.select import Select
 
             select = kwargs.pop("select")
             return Select(self, self._select_to_columns(select), {"select": select})._subset(**kwargs).mutate()
 
         if "drop" in kwargs:
-            from .select import Select
+            from anemoi.datasets.data.select import Select
 
             drop = kwargs.pop("drop")
             return Select(self, self._drop_to_columns(drop), {"drop": drop})._subset(**kwargs).mutate()
 
         if "reorder" in kwargs:
-            from .select import Select
+            from anemoi.datasets.data.select import Select
 
             reorder = kwargs.pop("reorder")
             return Select(self, self._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
 
         if "rename" in kwargs:
-            from .select import Rename
+            from anemoi.datasets.data.select import Rename
 
             rename = kwargs.pop("rename")
             return Rename(self, rename)._subset(**kwargs).mutate()
 
         if "rescale" in kwargs:
-            from .rescale import Rescale
+            from anemoi.datasets.data.rescale import Rescale
 
             rescale = kwargs.pop("rescale")
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
-            from ..data import open_dataset
-            from .statistics import Statistics
+            from anemoi.datasets.data import open_dataset
+            from anemoi.datasets.data.statistics import Statistics
 
             statistics = kwargs.pop("statistics")
 
@@ -247,26 +247,26 @@ class Dataset(ABC, Sized):
 
         # Note: trim_edge should go before thinning
         if "trim_edge" in kwargs:
-            from .masked import TrimEdge
+            from anemoi.datasets.data.masked import TrimEdge
 
             edge = kwargs.pop("trim_edge")
             return TrimEdge(self, edge)._subset(**kwargs).mutate()
 
         if "thinning" in kwargs:
-            from .masked import Thinning
+            from anemoi.datasets.data.masked import Thinning
 
             thinning = kwargs.pop("thinning")
             method = kwargs.pop("method", "every-nth")
             return Thinning(self, thinning, method)._subset(**kwargs).mutate()
 
         if "area" in kwargs:
-            from .masked import Cropping
+            from anemoi.datasets.data.masked import Cropping
 
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
         if "number" in kwargs or "numbers" in kwargs or "member" in kwargs or "members" in kwargs:
-            from .ensemble import Number
+            from anemoi.datasets.data.ensemble import Number
 
             members = {}
             for key in ["number", "numbers", "member", "members"]:
@@ -276,13 +276,13 @@ class Dataset(ABC, Sized):
             return Number(self, **members)._subset(**kwargs).mutate()
 
         if "set_missing_dates" in kwargs:
-            from .missing import MissingDates
+            from anemoi.datasets.data.missing import MissingDates
 
             set_missing_dates = kwargs.pop("set_missing_dates")
             return MissingDates(self, set_missing_dates)._subset(**kwargs).mutate()
 
         if "skip_missing_dates" in kwargs:
-            from .missing import SkipMissingDates
+            from anemoi.datasets.data.missing import SkipMissingDates
 
             if "expected_access" not in kwargs:
                 raise ValueError("`expected_access` is required with `skip_missing_dates`")
@@ -294,13 +294,13 @@ class Dataset(ABC, Sized):
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
         if "interpolate_frequency" in kwargs:
-            from .interpolate import InterpolateFrequency
+            from anemoi.datasets.data.interpolate import InterpolateFrequency
 
             interpolate_frequency = kwargs.pop("interpolate_frequency")
             return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "interpolate_variables" in kwargs:
-            from .interpolate import InterpolateNearest
+            from anemoi.datasets.data.interpolate import InterpolateNearest
 
             interpolate_variables = kwargs.pop("interpolate_variables")
             max_distance = kwargs.pop("max_distance", None)
@@ -308,7 +308,7 @@ class Dataset(ABC, Sized):
 
         # Keep last
         if "shuffle" in kwargs:
-            from .subset import Subset
+            from anemoi.datasets.data.subset import Subset
 
             shuffle = kwargs.pop("shuffle")
 
@@ -372,8 +372,8 @@ class Dataset(ABC, Sized):
         list of int
             The list of indices.
         """
-        from .misc import as_first_date
-        from .misc import as_last_date
+        from anemoi.datasets.data.misc import as_first_date
+        from anemoi.datasets.data.misc import as_last_date
 
         # TODO: optimize
 

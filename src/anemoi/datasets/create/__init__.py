@@ -31,26 +31,25 @@ from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
+from anemoi.datasets.create.check import DatasetName
+from anemoi.datasets.create.check import check_data_values
+from anemoi.datasets.create.chunks import ChunkFilter
+from anemoi.datasets.create.config import build_output
+from anemoi.datasets.create.config import loader_config
+from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.create.input.trace import enable_trace
 from anemoi.datasets.create.persistent import build_storage
+from anemoi.datasets.create.statistics import Summary
+from anemoi.datasets.create.statistics import TmpStatistics
+from anemoi.datasets.create.statistics import check_variance
+from anemoi.datasets.create.statistics import compute_statistics
+from anemoi.datasets.create.statistics import default_statistics_dates
+from anemoi.datasets.create.statistics import fix_variance
+from anemoi.datasets.create.utils import normalize_and_check_dates
+from anemoi.datasets.create.writer import ViewCacheArray
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
-
-from .check import DatasetName
-from .check import check_data_values
-from .chunks import ChunkFilter
-from .config import build_output
-from .config import loader_config
-from .input import InputBuilder
-from .statistics import Summary
-from .statistics import TmpStatistics
-from .statistics import check_variance
-from .statistics import compute_statistics
-from .statistics import default_statistics_dates
-from .statistics import fix_variance
-from .utils import normalize_and_check_dates
-from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
 
@@ -193,7 +192,7 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from .zarr import add_zarr_dataset
+        from anemoi.datasets.create.zarr import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -397,7 +396,7 @@ class Actor:  # TODO: rename to Creator
         Any
             The cache context.
         """
-        from .utils import cache_context
+        from anemoi.datasets.create.utils import cache_context
 
         return cache_context(self.cache)
 
@@ -473,7 +472,7 @@ class Patch(Actor):
 
     def run(self) -> None:
         """Run the patch."""
-        from .patch import apply_patch
+        from anemoi.datasets.create.patch import apply_patch
 
         apply_patch(self.path, **self.options)
 
@@ -493,7 +492,7 @@ class Size(Actor):
 
     def run(self) -> None:
         """Run the size computation."""
-        from .size import compute_directory_sizes
+        from anemoi.datasets.create.size import compute_directory_sizes
 
         metadata = compute_directory_sizes(self.path)
         self.update_metadata(**metadata)
@@ -515,7 +514,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from .zarr import ZarrBuiltRegistry
+        from anemoi.datasets.create.zarr import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 

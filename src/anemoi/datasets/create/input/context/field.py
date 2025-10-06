@@ -12,8 +12,8 @@ from typing import Any
 
 from earthkit.data.core.order import build_remapping
 
-from ..result.field import FieldResult
-from . import Context
+from anemoi.datasets.create.input.context import Context
+from anemoi.datasets.create.input.result.field import FieldResult
 
 
 class FieldContext(Context):

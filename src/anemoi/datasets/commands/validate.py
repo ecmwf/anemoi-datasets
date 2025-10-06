@@ -10,9 +10,8 @@ import importlib
 import logging
 from typing import Any
 
+from anemoi.datasets.commands import Command
 from anemoi.datasets.validate import validate_dataset
-
-from . import Command
 
 LOG = logging.getLogger(__name__)
 

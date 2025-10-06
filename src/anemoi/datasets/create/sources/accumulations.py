@@ -20,10 +20,9 @@ from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
+from anemoi.datasets.create.sources.legacy import legacy_source
+from anemoi.datasets.create.sources.mars import mars
 from anemoi.datasets.create.utils import to_datetime_list
-
-from .legacy import legacy_source
-from .mars import mars
 
 LOG = logging.getLogger(__name__)
 
@@ -994,7 +993,7 @@ def accumulations(
         and request.get("stream", "oper") == "oper"
         and request.get("accumulation_period") == 24
     ):
-        from .accumulations2 import accumulations as accumulations2
+        from anemoi.datasets.create.sources.accumulations2 import accumulations as accumulations2
 
         LOG.warning(
             "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"

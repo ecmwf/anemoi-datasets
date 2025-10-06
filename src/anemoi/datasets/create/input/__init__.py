@@ -40,8 +40,8 @@ class InputBuilder:
     @cached_property
     def action(self) -> "Recipe":
         """Returns the action object based on the configuration."""
-        from .action import Recipe
-        from .action import action_factory
+        from anemoi.datasets.create.input.action import Recipe
+        from anemoi.datasets.create.input.action import action_factory
 
         sources = action_factory(self.data_sources, "data_sources")
         input = action_factory(self.config, "input")

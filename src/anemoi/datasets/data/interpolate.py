@@ -17,17 +17,17 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import debug_indexing
-from .forwards import Forwards
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Forwards
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ class InterpolateNearest(Forwards):
         max_distance : Optional[float], optional
             The maximum distance for nearest neighbor search, by default None.
         """
-        from ..grids import nearest_grid_points
+        from anemoi.datasets.grids import nearest_grid_points
 
         super().__init__(dataset)
         self.vars = interpolate_variables

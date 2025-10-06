@@ -16,10 +16,9 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
+from anemoi.datasets.create.source import Source
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.typing import DateList
-
-from ..source import Source
-from . import source_registry
 
 
 @source_registry.register("fdb")
