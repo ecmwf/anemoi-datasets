@@ -12,8 +12,6 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 from typing import Any
 
-from anemoi.datasets.build.gridded.context import GriddedContext
-
 if TYPE_CHECKING:
     from anemoi.datasets.build.input.action import Recipe
 
@@ -61,6 +59,8 @@ class InputBuilder:
         Any
             Selected data.
         """
+        from anemoi.datasets.build.gridded.context import GriddedContext
+
         context = GriddedContext(argument, **self.kwargs)
         return context.create_result(self.action(context, argument))
 
