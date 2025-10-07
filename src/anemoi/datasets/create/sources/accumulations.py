@@ -26,6 +26,7 @@ from .legacy import LegacySource
 from .mars import mars
 
 LOG = logging.getLogger(__name__)
+MISSING_VALUE = 1e-38
 
 
 def _member(field: Any) -> int:
@@ -168,6 +169,7 @@ class Accumulation:
         # are used to store the end step
 
         edition = template.metadata("edition")
+        assert np.all(self.values != MISSING_VALUE)
 
         if edition == 1 and self.endStep > 254:
             self.out.write(
@@ -176,6 +178,7 @@ class Accumulation:
                 stepType="instant",
                 step=self.endStep,
                 check_nans=True,
+                missing_value=MISSING_VALUE,
             )
         else:
             self.out.write(
@@ -185,6 +188,7 @@ class Accumulation:
                 startStep=self.startStep,
                 endStep=self.endStep,
                 check_nans=True,
+                missing_value=MISSING_VALUE,
             )
         self.values = None
         self.done = True
@@ -204,9 +208,6 @@ class Accumulation:
         step = field.metadata("step")
         if step not in self.steps:
             return
-
-        if not np.all(values >= 0):
-            warnings.warn(f"Negative values for {field}: {np.nanmin(values)} {np.nanmax(values)}")
 
         assert not self.done, (self.key, step)
         assert step not in self.seen, (self.key, step)
