@@ -18,9 +18,9 @@ import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.build.utils import to_datetime_list
+from anemoi.datasets.build.gridded.sources import source_registry
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 from .mars import mars
 
 LOG = logging.getLogger(__name__)
@@ -599,49 +599,20 @@ def _scda(request: dict[str, Any]) -> dict[str, Any]:
     return request
 
 
-@legacy_source(__file__)
-def accumulations(context, dates, **request):
-    _to_list(request["param"])
-    user_accumulation_period = request.pop("accumulation_period", 6)
-    user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
+@source_registry.register("accumulations2")
+class Accumulations2Source(LegacySource):
 
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
+    @staticmethod
+    def _execute(context, dates, **request):
+        _to_list(request["param"])
+        user_accumulation_period = request.pop("accumulation_period", 6)
+        user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
 
-    return _compute_accumulations(
-        context,
-        dates,
-        request,
-        user_accumulation_period=user_accumulation_period,
-    )
+        context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
 
-
-execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
-        """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-      accumulation_period: 2
-    """
-    )
-    dates = yaml.safe_load("[2022-12-31 00:00, 2022-12-31 06:00]")
-    # dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    class Context:
-        use_grib_paramid = True
-
-        def trace(self, *args):
-            print(*args)
-
-    for f in accumulations(Context, dates, **config):
-        print(f, f.to_numpy().mean())
+        return _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=user_accumulation_period,
+        )

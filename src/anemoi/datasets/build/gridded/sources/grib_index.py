@@ -19,7 +19,8 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -569,44 +570,47 @@ class GribIndex:
             yield data
 
 
-@legacy_source(__file__)
-def execute(
-    context: Any,
-    dates: list[Any],
-    indexdb: str,
-    flavour: str | None = None,
-    **kwargs: Any,
-) -> FieldArray:
-    """Execute the GRIB data retrieval process.
+@source_registry.register("grib_index")
+class GribIndexSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The execution context.
-    dates : List[Any]
-        List of dates to retrieve data for.
-    indexdb : str
-        Path to the GRIB index database.
-    flavour : Optional[str], optional
-        Flavour configuration for mapping fields, by default None.
-    **kwargs : Any
-        Additional filtering criteria.
+    @staticmethod
+    def _execute(
+        context: Any,
+        dates: list[Any],
+        indexdb: str,
+        flavour: str | None = None,
+        **kwargs: Any,
+    ) -> FieldArray:
+        """Execute the GRIB data retrieval process.
 
-    Returns
-    -------
-    FieldArray
-        An array of retrieved GRIB fields.
-    """
-    index = GribIndex(indexdb)
-    result = []
+        Parameters
+        ----------
+        context : Any
+            The execution context.
+        dates : List[Any]
+            List of dates to retrieve data for.
+        indexdb : str
+            Path to the GRIB index database.
+        flavour : Optional[str], optional
+            Flavour configuration for mapping fields, by default None.
+        **kwargs : Any
+            Additional filtering criteria.
 
-    if flavour is not None:
-        flavour = RuleBasedFlavour(flavour)
+        Returns
+        -------
+        FieldArray
+            An array of retrieved GRIB fields.
+        """
+        index = GribIndex(indexdb)
+        result = []
 
-    for grib in index.retrieve(dates, **kwargs):
-        field = ekd.from_source("memory", grib)[0]
-        if flavour:
-            field = flavour.apply(field)
-        result.append(field)
+        if flavour is not None:
+            flavour = RuleBasedFlavour(flavour)
 
-    return FieldArray(result)
+        for grib in index.retrieve(dates, **kwargs):
+            field = ekd.from_source("memory", grib)[0]
+            if flavour:
+                field = flavour.apply(field)
+            result.append(field)
+
+        return FieldArray(result)

@@ -176,7 +176,7 @@ class ObservationsZarr(ObservationsBase):
         # last_window_end must be the end of the time window of the last item
         last_window_end = int(end.strftime("%Y%m%d%H%M%S"))
 
-        from anemoi.datasets.use.gridded.observations.legacy_obs_dataset import ObsDataset
+        from anemoi.datasets.use.tabular.observations.legacy_obs_dataset import ObsDataset
 
         args = [self.path, first_window_begin, last_window_end]
         kwargs = dict(
