@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 
-import logging
 from typing import Any
 
 from anemoi.transform.fields import new_field_with_metadata
@@ -17,8 +16,6 @@ from earthkit.data.core.order import build_remapping
 
 from ..result.field import FieldResult
 from . import Context
-
-LOG = logging.getLogger(__name__)
 
 
 class FieldContext(Context):

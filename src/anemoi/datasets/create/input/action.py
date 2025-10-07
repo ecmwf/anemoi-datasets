@@ -117,9 +117,6 @@ class Pipe(Action):
 
         return context.register(result, self.path)
 
-    def python_code(self, code) -> None:
-        return code.pipe(a.python_code(code) for a in self.actions)
-
 
 class Function(Action):
     def __init__(self, config, *path):

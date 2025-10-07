@@ -47,9 +47,9 @@ class Context(ABC):
                 if path in self.results:
                     config[key] = self.results[path]
                 else:
-                    print(f"Path not found {path}")
+                    LOG.warning(f"Path not found {path}")
                     for p in sorted(self.results):
-                        print(f"   Available paths: {p}")
+                        LOG.info(f"   Available paths: {p}")
                     raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
 
         return config
