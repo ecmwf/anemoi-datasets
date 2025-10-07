@@ -566,6 +566,11 @@ class Dataset(ABC, Sized):
         )
 
         try:
+            md["variable_origins"] = self.variable_origins()
+        except Exception as e:
+            LOG.warning(f"Error computing origins: {e}")
+
+        try:
             return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
@@ -1004,9 +1009,8 @@ class Dataset(ABC, Sized):
         """Return the metadata of the variables in the dataset."""
         pass
 
-    def origins(self) -> Any:
-        for p in self.components().ensure_list():
-            print(p.origins())
+    def variables_origins(self) -> dict:
+        return self.components().variables_origins()
 
     def components(self) -> Any:
         from anemoi.datasets.data.components import Projection

@@ -11,6 +11,14 @@
 from collections import defaultdict
 
 
+def _hashable(v):
+    if isinstance(v, dict):
+        return tuple((k, _hashable(vv)) for k, vv in sorted(v.items()))
+    if isinstance(v, list):
+        return tuple(_hashable(vv) for vv in v)
+    return v
+
+
 def _indices_to_slices(indices: list[int]) -> list[slice]:
     indices = sorted(indices)
     assert len(indices) == len(set(indices)), "Duplicate indices are not allowed"
@@ -94,6 +102,35 @@ class ProjectionBase:
             for k, v in p.origins().items():
                 result[k].append(v)
         return result
+
+    def variables_origins(self) -> dict:
+        """Return a compressed representation of the variable origins"""
+        origins = {}
+        datasets = {}
+        variables = {}
+        for p in self.ensure_list():
+            o = p.origins(compressed=True)
+            name = p.dataset_name
+            if name not in datasets:
+                datasets[name] = len(datasets)
+            dataset_index = datasets[name]
+
+            for vars, origin in o.items():
+                ho = _hashable(origin)
+                if ho not in origins:
+                    origins[ho] = [len(origins), origin]
+
+                origin_index = origins[ho][0]
+
+                for var in vars:
+                    if var in variables:
+                        raise ValueError(f"Duplicate origin for {var}")
+                    variables[var] = [origin_index, dataset_index]
+
+        datasets = [k for k, _ in sorted(datasets.items(), key=lambda x: x[1])]
+        origins = [o[1] for _, o in sorted(origins.items(), key=lambda x: x[1][0])]
+
+        return dict(datasets=datasets, origins=origins, variables=variables, version="1")
 
 
 class Projection(ProjectionBase):
@@ -227,13 +264,6 @@ class ProjectionStore(ProjectionBase):
             result[variable] = origins
 
         if compressed:
-
-            def _hashable(v):
-                if isinstance(v, dict):
-                    return tuple((k, _hashable(vv)) for k, vv in sorted(v.items()))
-                if isinstance(v, list):
-                    return tuple(_hashable(vv) for vv in v)
-                return v
 
             compressed_result = defaultdict(list)
             for k, v in result.items():
