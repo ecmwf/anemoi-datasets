@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.28](https://github.com/ecmwf/anemoi-datasets/compare/0.5.27...0.5.28) (2025-10-07)
+
+
+### Features
+
+* Refactor dataset create ([#379](https://github.com/ecmwf/anemoi-datasets/issues/379)) ([c5408da](https://github.com/ecmwf/anemoi-datasets/commit/c5408dafd34c80bcb4b0cd9623dbebfe00959151))
+
+
+### Bug Fixes
+
+* Allow grib source to be used for constant data ([#428](https://github.com/ecmwf/anemoi-datasets/issues/428)) ([c1d7ff1](https://github.com/ecmwf/anemoi-datasets/commit/c1d7ff1035848e26d3034903577c267973985c07))
+* Ensure missing value indicator in not a valid value in accumulat… ([#316](https://github.com/ecmwf/anemoi-datasets/issues/316)) ([3541a1f](https://github.com/ecmwf/anemoi-datasets/commit/3541a1f7068b54ceeb35dff93c3f94b4b138cb9d))
+
 ## [0.5.27](https://github.com/ecmwf/anemoi-datasets/compare/0.5.26...0.5.27) (2025-10-06)
 
 
