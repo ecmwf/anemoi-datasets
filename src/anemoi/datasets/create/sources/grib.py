@@ -143,15 +143,16 @@ class GribSource(LegacySource):
                 if name in kwargs:
                     raise ValueError(f"MARS interpolation parameter '{name}' not supported")
 
-    if grid is not None:
-
-        lat, lon = grid.latlon()
-
-        assert len(lat) == len(lon), (len(lat), len(lon))
-        for f in ds:
-            assert len(f.to_numpy(flatten=True)) == len(lat), (len(f.to_numpy(flatten=True)), len(lat))
-
-        ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
+            for path in _expand(paths):
+                context.trace("📁", "PATH", path)
+                s = from_source("file", path)
+                if flavour is not None:
+                    s = flavour.map(s)
+                sel_kwargs = kwargs.copy()
+                if dates != []:
+                    sel_kwargs["valid_datetime"] = dates
+                s = s.sel(**sel_kwargs)
+                ds = ds + s
 
         if kwargs and not context.partial_ok:
             check(ds, given_paths, valid_datetime=dates, **kwargs)

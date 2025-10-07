@@ -40,6 +40,13 @@ class ConstantsSource(LegacySource):
         """
         from warnings import warn
 
-    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
+        warn(
+            "The source `constants` is deprecated, use `forcings` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        context.trace("✅", f"from_source(constants, {template}, {param}")
+        if len(template) == 0:
+            raise ValueError("Forcings template is empty.")
 
         return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
