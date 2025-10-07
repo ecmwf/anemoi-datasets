@@ -13,10 +13,10 @@ from typing import Any
 
 from earthkit.data import FieldList
 
+from anemoi.datasets.build.gridded.result import Result
 from anemoi.datasets.build.input.action import Action
 from anemoi.datasets.build.input.action import action_factory
 from anemoi.datasets.build.input.misc import _tidy
-from anemoi.datasets.build.input.result.field import Result
 from anemoi.datasets.dates.groups import GroupOfDates
 
 LOG = logging.getLogger(__name__)

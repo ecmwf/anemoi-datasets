@@ -12,11 +12,11 @@ from typing import Any
 
 from earthkit.data.core.order import build_remapping
 
-from anemoi.datasets.build.input.context import Context
-from anemoi.datasets.build.input.result.field import FieldResult
+from anemoi.datasets.build.gridded.result import GriddedResult
+from anemoi.datasets.build.input import Context
 
 
-class FieldContext(Context):
+class GriddedContext(Context):
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class FieldContext(Context):
         return argument
 
     def create_result(self, data):
-        return FieldResult(self, data)
+        return GriddedResult(self, data)
 
     def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
         from anemoi.datasets.dates.groups import GroupOfDates
