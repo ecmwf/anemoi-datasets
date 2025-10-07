@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anemoi.datasets.build.statistics import default_statistics_dates
+from anemoi.datasets.build.gridded.statistics import default_statistics_dates
 
 _ = datetime.datetime
 

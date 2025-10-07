@@ -15,7 +15,7 @@ import earthkit.data as ekd
 import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.create.gridded.sources.patterns import iterate_patterns
+from anemoi.datasets.build.gridded.sources.patterns import iterate_patterns
 
 from ..legacy import legacy_source
 from .fieldlist import XarrayFieldList

@@ -20,7 +20,7 @@ from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
-from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.datasets.build.gridded.utils import to_datetime_list
 
 from .legacy import legacy_source
 from .mars import mars
