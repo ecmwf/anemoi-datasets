@@ -12,7 +12,7 @@ from abc import abstractmethod
 
 import earthkit.data as ekd
 
-from anemoi.datasets.build.typing import DateList
+from anemoi.datasets.build.gridded.typing import DateList
 
 
 class Source(ABC):

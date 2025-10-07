@@ -181,7 +181,7 @@ class DatasetSourceMixin:
     """Mixin class for sources defined in anemoi-datasets"""
 
     def create_object(self, context, config):
-        from anemoi.datasets.build.sources import create_source as create_datasets_source
+        from anemoi.datasets.build.gridded.sources import create_source as create_datasets_source
 
         return create_datasets_source(context, config)
 
@@ -286,7 +286,7 @@ def make(key, config, *path):
         from anemoi.transform.filters import filter_registry as transform_filter_registry
         from anemoi.transform.sources import source_registry as transform_source_registry
 
-        from anemoi.datasets.build.sources import source_registry as dataset_source_registry
+        from anemoi.datasets.build.gridded.sources import source_registry as dataset_source_registry
 
         # Register sources, local first
         for name in dataset_source_registry.registered:
