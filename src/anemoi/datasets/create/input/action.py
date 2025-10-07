@@ -29,15 +29,35 @@ class Action(ABC):
     def __call__(self, context, argument):
         pass
 
-    @abstractmethod
-    def python_code(self, code):
-        pass
-
     def __repr__(self):
         return f"{self.__class__.__name__}({'.'.join(str(x) for x in self.path)}, {self.config})"
 
 
 class Concat(Action):
+    """The Concat contruct is used to concat different actions that are responsible
+    for delivery fields for different dates.
+
+    See :ref:`building-concat` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            concat:
+                - dates:
+                    start: 2023-01-01
+                    end: 2023-01-31
+                    frequency: 1d
+                  action: # some action
+                     ...
+
+                - dates:
+                    start: 2023-02-01
+                    end: 2023-02-28
+                    frequency: 1d
+                  action: # some action
+
+    """
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "concat")
 
@@ -68,17 +88,28 @@ class Concat(Action):
 
         return context.register(results, self.path)
 
-    def python_code(self, code):
-        return code.concat(
-            {filtering_dates.to_python(): action.python_code(code) for filtering_dates, action in self.choices}
-        )
-
 
 class Join(Action):
+    """Implement the join operation to combine results from multiple actions.
+
+    See :ref:`building-join` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            join:
+                - grib:
+                     ...
+
+                - netcdf: # some other action
+                     ...
+
+    """
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "join")
 
-        assert isinstance(config, list), f"Value must be a list {config}"
+        assert isinstance(config, list), f"Value of Join Action must be a list, got: {config}"
 
         self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
@@ -93,13 +124,27 @@ class Join(Action):
 
         return context.register(results, self.path)
 
-    def python_code(self, code) -> None:
-        return code.sum(a.python_code(code) for a in self.actions)
-
 
 class Pipe(Action):
+    """Implement the pipe operation to chain results from a
+    source through multiple filters.
+
+    See :ref:`building-pipe` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            pipe:
+                - grib:
+                     ...
+
+                - rename:
+                     ...
+
+    """
+
     def __init__(self, config, *path):
-        assert isinstance(config, list), f"Value must be a list {config}"
+        assert isinstance(config, list), f"Value of Pipe Action must be a list, got {config}"
         super().__init__(config, *path, "pipe")
         self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
@@ -119,6 +164,8 @@ class Pipe(Action):
 
 
 class Function(Action):
+    """Base class for sources and filters."""
+
     def __init__(self, config, *path):
         super().__init__(config, *path, self.name)
 
@@ -132,15 +179,10 @@ class Function(Action):
 
         return context.register(self.call_object(context, source, argument), self.path)
 
-    def python_code(self, code) -> str:
-        # For now...
-        if "source" in self.config:
-            source = action_factory(self.config["source"], *self.path, "source")
-            self.config["source"] = source.python_code(code)
-        return code.call(self.name, self.config)
-
 
 class DatasetSourceMixin:
+    """Mixin class for sources defined in anemoi-datasets"""
+
     def create_object(self, context, config):
         from anemoi.datasets.create.sources import create_source as create_datasets_source
 
@@ -157,6 +199,8 @@ class DatasetSourceMixin:
 
 
 class TransformSourceMixin:
+    """Mixin class for sources defined in anemoi-transform"""
+
     def create_object(self, context, config):
         from anemoi.transform.sources import create_source as create_transform_source
 
@@ -173,6 +217,8 @@ class TransformSourceMixin:
 
 
 class TransformFilterMixin:
+    """Mixin class for filters defined in anemoi-transform"""
+
     def create_object(self, context, config):
         from anemoi.transform.filters import create_filter as create_transform_filter
 
@@ -214,6 +260,8 @@ def new_filter(name, mixin):
 
 
 class DataSources(Action):
+    """Action to call a source (e.g. mars, netcdf, grib, etc.)."""
+
     def __init__(self, config, *path):
         super().__init__(config, *path)
         assert isinstance(config, (dict, list)), f"Invalid config type: {type(config)}"
@@ -222,24 +270,17 @@ class DataSources(Action):
         else:
             self.sources = {i: action_factory(v, *path, str(i)) for i, v in enumerate(config)}
 
-    def python_code(self, code):
-        return code.sources({k: v.python_code(code) for k, v in self.sources.items()})
-
     def __call__(self, context, argument):
         for name, source in self.sources.items():
             context.register(source(context, argument), self.path + (name,))
 
 
 class Recipe(Action):
+    """Action that represent a recipe (i.e. a sequence of data_sources and input)."""
+
     def __init__(self, input, data_sources):
         self.input = input
         self.data_sources = data_sources
-
-    def python_code(self, code):
-        return code.recipe(
-            self.input.python_code(code),
-            self.data_sources.python_code(code),
-        )
 
     def __call__(self, context, argument):
         # Load data_sources

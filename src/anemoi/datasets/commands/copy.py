@@ -533,7 +533,6 @@ class CopyMixin:
                     resume=args.resume,
                     verbosity=args.verbosity,
                     threads=args.transfers,
-                    workdir=args.workdir,
                 )
                 copier.run()
                 return

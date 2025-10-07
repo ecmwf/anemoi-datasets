@@ -9,9 +9,13 @@
 
 from copy import deepcopy
 from functools import cached_property
+from typing import TYPE_CHECKING
 from typing import Any
 
 from anemoi.datasets.create.input.context.field import FieldContext
+
+if TYPE_CHECKING:
+    from anemoi.datasets.create.input.action import Recipe
 
 
 class InputBuilder:
@@ -34,7 +38,7 @@ class InputBuilder:
         self.data_sources = deepcopy(dict(data_sources=data_sources))
 
     @cached_property
-    def action(self) -> Any:
+    def action(self) -> "Recipe":
         """Returns the action object based on the configuration."""
         from .action import Recipe
         from .action import action_factory
