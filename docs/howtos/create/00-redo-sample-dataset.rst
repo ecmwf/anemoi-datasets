@@ -1,8 +1,8 @@
-.. _usage-getting-started:
+.. _redo-sample-dataset:
 
-###########################
- Create Your First Dataset
-###########################
+##############################
+ Re-create the sample dataset
+##############################
 
 The following example presents a simple but comprehensive recipe to
 create an Anemoi dataset based on the atmospheric reanalysis ERA5. Once
