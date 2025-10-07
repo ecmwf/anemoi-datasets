@@ -48,6 +48,14 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
         if isinstance(v, (tuple, list)):
             count *= len(v)
 
+    # in the case of static data (e.g repeated dates) dates might be empty
+    if len(ds) != count and kwargs.get("dates", []) == []:
+        LOG.warning(
+            f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})"
+            f" Received empty dates - assuming this is static data."
+        )
+        return
+
     if len(ds) != count:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
 
@@ -124,7 +132,12 @@ class GribSource(LegacySource):
         dates = [d.isoformat() for d in dates]
 
         for path in given_paths:
-            paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
+
+            # do not substitute if not needed
+            if "{" not in path:
+                paths = [path]
+            else:
+                paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
 
             for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
                 if name in kwargs:
@@ -135,7 +148,10 @@ class GribSource(LegacySource):
                 s = from_source("file", path)
                 if flavour is not None:
                     s = flavour.map(s)
-                s = s.sel(valid_datetime=dates, **kwargs)
+                sel_kwargs = kwargs.copy()
+                if dates != []:
+                    sel_kwargs["valid_datetime"] = dates
+                s = s.sel(**sel_kwargs)
                 ds = ds + s
 
         if kwargs and not context.partial_ok:
