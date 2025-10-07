@@ -1216,7 +1216,7 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
+class _LoadAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
@@ -1228,7 +1228,7 @@ class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         progress: Any = None,
         **kwargs: Any,
     ):
-        """Initialize a _RunAdditions instance.
+        """Initialize a _LoadAdditions instance.
 
         Parameters
         ----------
@@ -1468,7 +1468,7 @@ def multi_addition(cls: type) -> type:
 
 
 InitAdditions = multi_addition(_InitAdditions)
-RunAdditions = multi_addition(_RunAdditions)
+LoadAdditions = multi_addition(_LoadAdditions)
 FinaliseAdditions = multi_addition(_FinaliseAdditions)
 
 
@@ -1611,10 +1611,9 @@ def creator_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
         cleanup=Cleanup,
         verify=Verify,
         init_additions=InitAdditions,
-        load_additions=RunAdditions,
-        run_additions=RunAdditions,
+        load_additions=LoadAdditions,
         finalise_additions=chain([FinaliseAdditions, Size]),
-        additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
+        additions=chain([InitAdditions, LoadAdditions, FinaliseAdditions, Size, Cleanup]),
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)

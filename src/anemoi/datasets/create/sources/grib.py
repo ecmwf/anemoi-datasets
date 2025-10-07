@@ -20,7 +20,8 @@ from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -46,6 +47,14 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
     for k, v in kwargs.items():
         if isinstance(v, (tuple, list)):
             count *= len(v)
+
+    # in the case of static data (e.g repeated dates) dates might be empty
+    if len(ds) != count and kwargs.get("dates", []) == []:
+        LOG.warning(
+            f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})"
+            f" Received empty dates - assuming this is static data."
+        )
+        return
 
     if len(ds) != count:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
@@ -73,69 +82,66 @@ def _expand(paths: list[str]) -> Any:
             yield path
 
 
-@legacy_source(__file__)
-def execute(
-    context: Any,
-    dates: list[Any],
-    path: str | list[str],
-    flavour: str | dict[str, Any] | None = None,
-    grid_definition: dict[str, Any] | None = None,
-    *args: Any,
-    **kwargs: Any,
-) -> ekd.FieldList:
-    """Executes the function to load data from GRIB files.
+@source_registry.register("grib")
+class GribSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The context in which the function is executed.
-    dates : list of Any
-        List of dates.
-    path : str or list of str
-        Path or list of paths to the GRIB files.
-    flavour : str or dict of str to Any, optional
-        Flavour information, by default None.
-    grid_definition : dict of str to Any, optional
-        Grid definition configuration to create a Grid object, by default None.
-    *args : Any
-        Additional positional arguments.
-    **kwargs : Any
-        Additional keyword arguments.
+    @staticmethod
+    def _execute(
+        context: Any,
+        dates: list[Any],
+        path: str | list[str],
+        flavour: str | dict[str, Any] | None = None,
+        grid_definition: dict[str, Any] | None = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ekd.FieldList:
+        """Executes the function to load data from GRIB files.
 
-    Returns
-    -------
-    Any
-        The loaded dataset.
-    """
-    given_paths = path if isinstance(path, list) else [path]
-    if flavour is not None:
-        flavour = RuleBasedFlavour(flavour)
+        Parameters
+        ----------
+        context : Any
+            The context in which the function is executed.
+        dates : list of Any
+            List of dates.
+        path : str or list of str
+            Path or list of paths to the GRIB files.
+        flavour : str or dict of str to Any, optional
+            Flavour information, by default None.
+        grid_definition : dict of str to Any, optional
+            Grid definition configuration to create a Grid object, by default None.
+        *args : Any
+            Additional positional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
 
-    if grid_definition is not None:
-        grid = grid_registry.from_config(grid_definition)
-    else:
-        grid = None
+        Returns
+        -------
+        Any
+            The loaded dataset.
+        """
+        given_paths = path if isinstance(path, list) else [path]
+        if flavour is not None:
+            flavour = RuleBasedFlavour(flavour)
 
-    ds = from_source("empty")
-    dates = [d.isoformat() for d in dates]
+        if grid_definition is not None:
+            grid = grid_registry.from_config(grid_definition)
+        else:
+            grid = None
 
-    for path in given_paths:
-        paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
+        ds = from_source("empty")
+        dates = [d.isoformat() for d in dates]
 
-        for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
-            if name in kwargs:
-                raise ValueError(f"MARS interpolation parameter '{name}' not supported")
+        for path in given_paths:
 
-        for path in _expand(paths):
-            context.trace("📁", "PATH", path)
-            s = from_source("file", path)
-            if flavour is not None:
-                s = flavour.map(s)
-            s = s.sel(valid_datetime=dates, **kwargs)
-            ds = ds + s
+            # do not substitute if not needed
+            if "{" not in path:
+                paths = [path]
+            else:
+                paths = Pattern(path).substitute(*args, date=dates, allow_extra=True, **kwargs)
 
-    if kwargs and not context.partial_ok:
-        check(ds, given_paths, valid_datetime=dates, **kwargs)
+            for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
+                if name in kwargs:
+                    raise ValueError(f"MARS interpolation parameter '{name}' not supported")
 
     if grid is not None:
 
@@ -147,7 +153,13 @@ def execute(
 
         ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
 
-    if len(ds) == 0:
-        LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={kwargs})")
+        if kwargs and not context.partial_ok:
+            check(ds, given_paths, valid_datetime=dates, **kwargs)
 
-    return ds
+        if grid is not None:
+            ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
+
+        if len(ds) == 0:
+            LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={kwargs})")
+
+        return ds

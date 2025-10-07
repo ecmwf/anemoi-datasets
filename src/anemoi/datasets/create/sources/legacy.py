@@ -8,14 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
-import inspect
 import logging
-import os
-from collections.abc import Callable
+from abc import abstractmethod
 from typing import Any
 
 from ..source import Source
-from . import source_registry
 
 LOG = logging.getLogger(__name__)
 
@@ -25,7 +22,7 @@ class LegacySource(Source):
 
     Parameters
     ----------
-    context : Any
+    context : Context
         The context in which the source is created.
     *args : tuple
         Positional arguments.
@@ -33,11 +30,15 @@ class LegacySource(Source):
         Keyword arguments.
     """
 
-    def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, context: Context, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, *args, **kwargs)
         self.args = args
         self.kwargs = kwargs
 
+    @staticmethod
+    @abstractmethod
+    def _execute(context, *args, **kwargs):
+        pass
 
 class legacy_source:
     """A decorator class for legacy sources.

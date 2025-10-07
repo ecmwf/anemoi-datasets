@@ -59,7 +59,7 @@ def create_dataset(
 
     if delta is not None:
         creator_factory("init_additions", path=output, delta=delta).run()
-        creator_factory("run_additions", path=output, delta=delta).run()
+        creator_factory("load_additions", path=output, delta=delta).run()
         creator_factory("finalise_additions", path=output, delta=delta).run()
 
     creator_factory("cleanup", path=output).run()

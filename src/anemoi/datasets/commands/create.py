@@ -120,7 +120,7 @@ class Create(Command):
         task("finalise", options)
 
         task("init_additions", options)
-        task("run_additions", options)
+        task("load_additions", options)
         task("finalise_additions", options)
 
         task("patch", options)

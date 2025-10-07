@@ -134,7 +134,6 @@ class Config(DotDict):
             Additional keyword arguments to update the configuration.
         """
         if isinstance(config, str):
-            self.config_path = os.path.realpath(config)
             config = load_any_dict_format(config)
         else:
             config = deepcopy(config if config is not None else {})
