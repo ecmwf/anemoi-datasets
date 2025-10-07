@@ -40,6 +40,7 @@ class LegacySource(Source):
     def _execute(context, *args, **kwargs):
         pass
 
+
 class legacy_source:
     """A decorator class for legacy sources.
 
