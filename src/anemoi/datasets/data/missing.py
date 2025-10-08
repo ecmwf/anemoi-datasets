@@ -59,14 +59,14 @@ class MissingDates(Forwards):
 
         self._missing = set()
 
-        other = []
+        other = set()
         for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
                 self.missing_dates.append(dataset.dates[date])
             else:
                 date = to_datetime(date)
-                other.append(date)
+                other.add(date)
 
         if other:
             for i, date in enumerate(dataset.dates):

@@ -85,21 +85,24 @@ class S3Store(ReadOnlyStore):
     options using the anemoi configs.
     """
 
-    def __init__(self, url: str, region: str | None = None) -> None:
-        """Initialize the S3Store with a URL and optional region."""
-        from anemoi.utils.remote.s3 import s3_client
+    def __init__(self, url: str) -> None:
+        """Initialize the S3Store with a URL."""
 
-        _, _, self.bucket, self.key = url.split("/", 3)
-        self.s3 = s3_client(self.bucket, region=region)
+        LOG.warning("Accessing dataset using %s", url)
+        LOG.warning("Data access may be slow")
+
+        self.url = url
 
     def __getitem__(self, key: str) -> bytes:
         """Retrieve an item from the store."""
-        try:
-            response = self.s3.get_object(Bucket=self.bucket, Key=self.key + "/" + key)
-        except self.s3.exceptions.NoSuchKey:
-            raise KeyError(key)
+        from anemoi.utils.remote.s3 import get_object
 
-        return response["Body"].read()
+        target = self.url + "/" + key
+
+        try:
+            return get_object(target).bytes()
+        except FileNotFoundError:
+            raise KeyError(target)
 
 
 class DebugStore(ReadOnlyStore):
@@ -185,7 +188,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
         if cache is not None:
             store = zarr.LRUStoreCache(store, max_size=cache)
 
-        return zarr.convenience.open(store, "r")
+        return zarr.open(store, "r")
     except zarr.errors.PathNotFoundError:
         if not dont_fail:
             raise zarr.errors.PathNotFoundError(path)
@@ -424,6 +427,36 @@ class Zarr(Dataset):
         """Collect input sources."""
         pass
 
+    @cached_property
+    def origins(self):
+        origins = self.z.attrs.get("origins")
+
+        if origins is None:
+            import rich
+
+            rich.print(dict(self.z.attrs))
+            raise ValueError(f"No 'origins' in {self.dataset_name}")
+
+        # version = origins["version"]
+        origins = origins["origins"]
+
+        result = {}
+
+        for origin in origins:
+            for v in origin["variables"]:
+                result[v] = origin["origin"]
+
+        return result
+
+    def project(self, projection):
+        slices = tuple(slice(0, i, 1) for i in self.shape)
+        return projection.from_store(slices, self).apply(projection)
+
+    @property
+    def dataset_name(self) -> str:
+        """Return the name of the dataset."""
+        return self.z.attrs.get("recipe", {}).get("name", self.path)
+
 
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
@@ -497,6 +530,11 @@ class ZarrWithMissingDates(Zarr):
         """Return the label of the dataset."""
         return "zarr*"
 
+    # def origin(self, index):
+    #     if index[0] in self.missing:
+    #         self._report_missing(index[0])
+    #     return super().origin(index)
+
 
 QUIET = set()
 
@@ -548,6 +586,9 @@ def zarr_lookup(name: str, fail: bool = True) -> str | None:
             pass
 
     if fail:
-        raise ValueError(f"Cannot find a dataset that matched '{name}'. Tried: {tried}")
+        LOG.error(f"Failed to find dataset '{name}'. Tried:")
+        for path in tried:
+            LOG.error(f" - {path}")
+        raise ValueError(f"Cannot find a dataset that matched '{name}'")
 
     return None

@@ -291,6 +291,30 @@ class Join(Combined):
         """
         return {}
 
+    def origin(self, index):
+        assert (
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+        ), tuple
+
+        i = index[1]
+        for dataset in self.datasets:
+            if i < dataset.shape[1]:
+                return dataset.origin((index[0], i, index[2], index[3]))
+            i -= dataset.shape[1]
+
+        raise ValueError(f"Invalid index {index} {[d.shape for d in self.datasets]}")
+
+    def project(self, projection):
+        result = []
+        offset = 0
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p.offset(axis=1, amount=-offset)))
+            offset += dataset.shape[1]
+
+        return projection.list_or_single(result)
+
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
     """Create a joined dataset.

@@ -566,6 +566,11 @@ class Dataset(ABC, Sized):
         )
 
         try:
+            md["variable_origins"] = self.variable_origins()
+        except Exception as e:
+            LOG.warning(f"Error computing origins: {e}")
+
+        try:
             return json.loads(json.dumps(_tidy(md)))
         except Exception:
             LOG.exception("Failed to serialize metadata")
@@ -1003,6 +1008,20 @@ class Dataset(ABC, Sized):
     def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables in the dataset."""
         pass
+
+    def variables_origins(self) -> dict:
+        return self.components().variables_origins()
+
+    def components(self) -> Any:
+        from anemoi.datasets.data.components import Projection
+
+        slices = tuple(slice(0, i, 1) for i in self.shape)
+        return self.project(Projection(slices))
+
+    # @abstractmethod
+    def project(self, projection) -> Any:
+        """Return the project of the variable at the specified index."""
+        raise NotImplementedError(f"project() is not implemented for `{self.__class__.__name__}`")
 
     @abstractmethod
     @cached_property
