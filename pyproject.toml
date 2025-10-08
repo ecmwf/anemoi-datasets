@@ -59,7 +59,7 @@ dependencies = [
   "ruamel-yaml",
   "semantic-version",
   "tqdm",
-  "zarr",
+  "zarr>=3",
 ]
 
 optional-dependencies.all = [
