@@ -15,6 +15,8 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from anemoi.datasets.data.indexing import expand_list_indexing
+
 from .dataset import Dataset
 from .dataset import FullIndex
 from .debug import Node
@@ -58,17 +60,48 @@ class RollingAverage(Forwards):
 
         self.window_str = f"-{self.i_start}-to-{self.i_end}"
 
+    @property
+    def shape(self):
+        shape = list(self.forward.shape)
+        shape[0] = len(self)
+        return tuple(shape)
+
     @debug_indexing
+    @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        if isinstance(n, tuple):
-            return self._get_tuple(n)
+        def f(array):
+            return np.nanmean(array, axis=0)
 
         if isinstance(n, slice):
-            return self._get_slice(n)
+            n = (n,)
+
+        if isinstance(n, tuple):
+            first = n[0]
+            if len(n) > 1:
+                rest = n[1:]
+            else:
+                rest = ()
+            if isinstance(first, int):
+                slice_ = slice(first, first + self.i_start + self.i_end)
+                data = self.forward[(slice_,) + rest]
+                return f(data)
+
+            if isinstance(first, slice):
+                first = list(range(first.start or 0, first.stop or len(self), first.step or 1))
+
+            if isinstance(first, (list, tuple)):
+                slices = [slice(i, i + self.i_start + self.i_end) for i in first]
+                data = [self.forward[(slice_,) + rest] for slice_ in slices]
+                res = [f(d) for d in data]
+                return np.array(res)
+
+            assert False, f"Expected int, slice, list or tuple as first element of tuple, got {type(first)}"
+
+        assert isinstance(n, int), f"Expected int, slice, tuple, got {type(n)}"
 
         slice_ = slice(n, n + self.i_start + self.i_end)
         data = self.forward[slice_]
-        return np.nanmean(data, axis=0)
+        return f(data)
 
     def __len__(self) -> int:
         """Get the length of the interpolated dataset.
