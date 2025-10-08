@@ -78,7 +78,7 @@ class RollingAverage(Forwards):
         int
             The length of the interpolated dataset.
         """
-        return self.forward.__len__() - (self.i_end + self.i_start - 1)
+        return len(self.forward) - (self.i_end + self.i_start - 1)
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
