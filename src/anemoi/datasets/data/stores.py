@@ -106,7 +106,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> Any:
 class Zarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+    def __init__(self, path: str | zarr_2_or_3.Group) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
         if isinstance(path, zarr_2_or_3.Group):
             self.was_zarr = True
@@ -346,7 +346,7 @@ class Zarr(Dataset):
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+    def __init__(self, path: str | zarr_2_or_3.Group) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(path)
 

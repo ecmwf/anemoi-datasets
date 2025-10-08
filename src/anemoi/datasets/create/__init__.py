@@ -153,7 +153,7 @@ def _path_readable(path: str) -> bool:
     import zarr
 
     try:
-        zarr.open(path, "r")
+        zarr.open(path, mode="r")
         return True
     except zarr_2_or_3.FileNotFoundException:
         return False
