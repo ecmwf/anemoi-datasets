@@ -38,10 +38,12 @@ class RollingAverage(Forwards):
             The interpolation frequency.
         """
         super().__init__(dataset)
-        if not (isinstance(window, (list, tuple)) and len(window) == 2):
-            raise ValueError(f"Window must be a list or tuple of two elements, got {window}")
-        if not all(isinstance(w, int) for w in window):
-            raise ValueError(f"Window elements must be integers, got {window}")
+        if not (isinstance(window, (list, tuple)) and len(window) == 3):
+            raise ValueError(f"Window must be (int, int, str), got {window}")
+        if not isinstance(window[0], int) or not isinstance(window[1], int) or not isinstance(window[2], str):
+            raise ValueError(f"Window must be (int, int, str), got {window}")
+        if window[2] not in ["freq", "frequency"]:
+            raise NotImplementedError(f"Window must be (int, int, 'freq'), got {window}")
 
         self.i_start = -window[0]
         self.i_end = window[1]
