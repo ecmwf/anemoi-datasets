@@ -8,8 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import shutil
 from typing import Any
-from typing import Optional
 
 import numpy as np
 import zarr
@@ -126,7 +126,7 @@ class ZarrBuiltRegistry:
     flags = None
     z = None
 
-    def __init__(self, path: str, synchronizer_path: Optional[str] = None, use_threads: bool = False):
+    def __init__(self, path: str, synchronizer_path: str | None = None, use_threads: bool = False):
         """Initialize the ZarrBuiltRegistry.
 
         Parameters
@@ -147,6 +147,12 @@ class ZarrBuiltRegistry:
     def clean(self) -> None:
         """Clean up the synchronizer path."""
         self.synchronizer.clean()
+
+        _build = self.zarr_path + "/_build"
+        try:
+            shutil.rmtree(_build)
+        except FileNotFoundError:
+            pass
 
     def _open_write(self) -> zarr.Group:
         """Open the Zarr store in write mode."""

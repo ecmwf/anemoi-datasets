@@ -14,10 +14,6 @@ import warnings
 from abc import abstractmethod
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
 
 import numpy as np
 from numpy.typing import NDArray
@@ -75,7 +71,7 @@ class Forwards(Dataset):
         return self.forward[n]
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Returns the name of the forward dataset."""
         if self._name is not None:
             return self._name
@@ -112,26 +108,26 @@ class Forwards(Dataset):
         return self.forward.longitudes
 
     @property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Returns a dictionary mapping variable names to their indices."""
         return self.forward.name_to_index
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Returns the variables of the forward dataset."""
         return self.forward.variables
 
     @property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Returns the metadata of the variables in the forward dataset."""
         return self.forward.variables_metadata
 
     @property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Returns the statistics of the forward dataset."""
         return self.forward.statistics
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Returns the statistics tendencies of the forward dataset.
 
         Parameters
@@ -159,7 +155,7 @@ class Forwards(Dataset):
         return self.forward.dtype
 
     @property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the missing data information of the forward dataset."""
         return self.forward.missing
 
@@ -168,7 +164,7 @@ class Forwards(Dataset):
         """Returns the grids of the forward dataset."""
         return self.forward.grids
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the forward dataset.
 
         Parameters
@@ -187,7 +183,7 @@ class Forwards(Dataset):
             **kwargs,
         )
 
-    def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
+    def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:
         """Collects supporting arrays from the forward dataset.
 
         Parameters
@@ -199,7 +195,7 @@ class Forwards(Dataset):
         """
         self.forward.collect_supporting_arrays(collected, *path)
 
-    def collect_input_sources(self, collected: List[Any]) -> None:
+    def collect_input_sources(self, collected: list[Any]) -> None:
         """Collects input sources from the forward dataset.
 
         Parameters
@@ -225,11 +221,11 @@ class Forwards(Dataset):
         return self.forward.source(index)
 
     @abstractmethod
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Returns metadata specific to the subclass."""
         pass
 
-    def get_dataset_names(self, names: Set[str]) -> None:
+    def get_dataset_names(self, names: set[str]) -> None:
         """Collects the names of the datasets.
 
         Parameters
@@ -240,7 +236,7 @@ class Forwards(Dataset):
         self.forward.get_dataset_names(names)
 
     @property
-    def constant_fields(self) -> List[str]:
+    def constant_fields(self) -> list[str]:
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
@@ -248,7 +244,7 @@ class Forwards(Dataset):
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""
 
-    def __init__(self, datasets: List[Dataset]) -> None:
+    def __init__(self, datasets: list[Dataset]) -> None:
         """Initializes a Combined object.
 
         Parameters
@@ -330,8 +326,14 @@ class Combined(Forwards):
         ValueError
             If the grids are not the same.
         """
-        if (d1.latitudes != d2.latitudes).any() or (d1.longitudes != d2.longitudes).any():
-            raise ValueError(f"Incompatible grid ({d1} {d2})")
+
+        # note: not a proper implementation, should be handled
+        #       in a more consolidated way ...
+        rtol = 1.0e-7
+        if not np.allclose(d1.latitudes, d2.latitudes, rtol=rtol) or not np.allclose(
+            d1.longitudes, d2.longitudes, rtol=rtol
+        ):
+            raise ValueError(f"Incompatible grid ({d1.longitudes} {d2.longitudes})")
 
     def check_same_shape(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the shapes of two datasets are the same.
@@ -460,7 +462,7 @@ class Combined(Forwards):
         self.check_same_variables(d1, d2)
         self.check_same_dates(d1, d2)
 
-    def provenance(self) -> List[Any]:
+    def provenance(self) -> list[Any]:
         """Returns the provenance of the combined datasets.
 
         Returns
@@ -481,7 +483,7 @@ class Combined(Forwards):
         lst = ", ".join(repr(d) for d in self.datasets)
         return f"{self.__class__.__name__}({lst})"
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the combined datasets.
 
         Parameters
@@ -502,7 +504,7 @@ class Combined(Forwards):
             **kwargs,
         )
 
-    def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
+    def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:
         """Collects supporting arrays from the combined datasets.
 
         Parameters
@@ -518,7 +520,7 @@ class Combined(Forwards):
             d.collect_supporting_arrays(collected, *path, name)
 
     @property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the missing data information of the combined datasets.
 
         Raises
@@ -528,7 +530,7 @@ class Combined(Forwards):
         """
         raise NotImplementedError("missing() not implemented for Combined")
 
-    def get_dataset_names(self, names: Set[str]) -> None:
+    def get_dataset_names(self, names: set[str]) -> None:
         """Collects the names of the combined datasets.
 
         Parameters
@@ -543,7 +545,7 @@ class Combined(Forwards):
 class GivenAxis(Combined):
     """A class to combine datasets along a given axis."""
 
-    def __init__(self, datasets: List[Any], axis: int) -> None:
+    def __init__(self, datasets: list[Any], axis: int) -> None:
         """Initializes a GivenAxis object.
 
         Parameters
@@ -650,10 +652,10 @@ class GivenAxis(Combined):
         return np.concatenate([d[n] for d in self.datasets], axis=self.axis - 1)
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Returns the missing data information of the combined dataset along the given axis."""
         offset = 0
-        result: Set[int] = set()
+        result: set[int] = set()
         for d in self.datasets:
             result.update(offset + m for m in d.missing)
             if self.axis == 0:  # Advance if axis is time

@@ -81,7 +81,7 @@ class GribIndexCmd(Command):
             bool
                 True if the path matches, False otherwise.
             """
-            return fnmatch.fnmatch(path, args.match)
+            return fnmatch.fnmatch(os.path.basename(path), args.match)
 
         from anemoi.datasets.create.sources.grib_index import GribIndex
 

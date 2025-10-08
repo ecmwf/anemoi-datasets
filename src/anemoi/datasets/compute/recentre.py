@@ -10,9 +10,6 @@
 
 import logging
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Tuple
 
 import numpy as np
 from earthkit.data.core.temporary import temp_file
@@ -36,7 +33,7 @@ SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset"
 
 
 def check_compatible(
-    f1: Any, f2: Any, centre_field_as_mars: Dict[str, Any], ensemble_field_as_mars: Dict[str, Any]
+    f1: Any, f2: Any, centre_field_as_mars: dict[str, Any], ensemble_field_as_mars: dict[str, Any]
 ) -> None:
     """Check if two fields are compatible.
 
@@ -75,9 +72,9 @@ def recentre(
     *,
     members: Any,
     centre: Any,
-    clip_variables: Tuple[str, ...] = CLIP_VARIABLES,
+    clip_variables: tuple[str, ...] = CLIP_VARIABLES,
     alpha: float = 1.0,
-    output: Optional[str] = None,
+    output: str | None = None,
 ) -> Any:
     """Recentre ensemble members around the centre field.
 

@@ -8,34 +8,37 @@
 # nor does it submit to any jurisdiction.
 
 from typing import Any
-from typing import List
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 from .xarray import load_many
 
 
-@legacy_source(__file__)
-def execute(context: Any, dates: List[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Execute the data loading process.
+@source_registry.register("xarray_zarr")
+class XarrayZarrSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The context in which the execution occurs.
-    dates : List[str]
-        List of dates for which data is to be loaded.
-    url : str
-        The URL from which data is to be loaded.
-    *args : tuple
-        Additional positional arguments.
-    **kwargs : dict
-        Additional keyword arguments.
+    @staticmethod
+    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+        """Execute the data loading process.
 
-    Returns
-    -------
-    ekd.FieldList
-        The loaded data.
-    """
-    return load_many("🇿", context, dates, url, *args, **kwargs)
+        Parameters
+        ----------
+        context : Any
+            The context in which the execution occurs.
+        dates : List[str]
+            List of dates for which data is to be loaded.
+        url : str
+            The URL from which data is to be loaded.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        ekd.FieldList
+            The loaded data.
+        """
+        return load_many("🇿", context, dates, url, *args, **kwargs)

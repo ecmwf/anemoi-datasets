@@ -10,10 +10,8 @@
 import logging
 import os
 import sqlite3
+from collections.abc import Iterator
 from typing import Any
-from typing import Iterator
-from typing import List
-from typing import Optional
 
 import earthkit.data as ekd
 import tqdm
@@ -21,7 +19,8 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -36,8 +35,8 @@ class GribIndex:
         self,
         database: str,
         *,
-        keys: Optional[List[str] | str] = None,
-        flavour: Optional[str] = None,
+        keys: list[str] | str | None = None,
+        flavour: str | None = None,
         update: bool = False,
         overwrite: bool = False,
     ) -> None:
@@ -157,7 +156,7 @@ class GribIndex:
         """Commit the current transaction to the database."""
         self.conn.commit()
 
-    def _get_metadata_keys(self) -> List[str]:
+    def _get_metadata_keys(self) -> list[str]:
         """Retrieve the metadata keys from the database.
 
         Returns
@@ -225,7 +224,7 @@ class GribIndex:
                 LOG.info(f"Path: {self._get_path(existing_record[1])}")
             raise
 
-    def _all_columns(self) -> List[str]:
+    def _all_columns(self) -> list[str]:
         """Retrieve all column names from the grib_index table.
 
         Returns
@@ -241,7 +240,7 @@ class GribIndex:
         self._columns = [col for col in columns if not col.startswith("_")]
         return self._columns
 
-    def _ensure_columns(self, columns: List[str]) -> None:
+    def _ensure_columns(self, columns: list[str]) -> None:
         """Add missing columns to the grib_index table.
 
         Parameters
@@ -324,7 +323,7 @@ class GribIndex:
 
         self._commit()
 
-    def _paramdb(self, category: int, discipline: int) -> Optional[dict]:
+    def _paramdb(self, category: int, discipline: int) -> dict | None:
         """Fetch parameter information from the parameter database.
 
         Parameters
@@ -355,7 +354,7 @@ class GribIndex:
         except Exception as e:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
 
-    def _param_grib2_info(self, paramId: int) -> List[dict]:
+    def _param_grib2_info(self, paramId: int) -> list[dict]:
         """Fetch GRIB2 parameter information for a given parameter ID.
 
         Parameters
@@ -383,7 +382,7 @@ class GribIndex:
             LOG.warning(f"Failed to fetch information from parameter database: {e}")
         return []
 
-    def _param_id_info(self, paramId: int) -> Optional[dict]:
+    def _param_id_info(self, paramId: int) -> dict | None:
         """Fetch detailed information for a given parameter ID.
 
         Parameters
@@ -412,7 +411,7 @@ class GribIndex:
 
         return None
 
-    def _param_id_unit(self, unitId: int) -> Optional[dict]:
+    def _param_id_unit(self, unitId: int) -> dict | None:
         """Fetch unit information for a given unit ID.
 
         Parameters
@@ -520,7 +519,7 @@ class GribIndex:
             raise ValueError(f"No path found for path_id {path_id}")
         return row[0]
 
-    def retrieve(self, dates: List[Any], **kwargs: Any) -> Iterator[Any]:
+    def retrieve(self, dates: list[Any], **kwargs: Any) -> Iterator[Any]:
         """Retrieve GRIB data from the database.
 
         Parameters
@@ -571,44 +570,47 @@ class GribIndex:
             yield data
 
 
-@legacy_source(__file__)
-def execute(
-    context: Any,
-    dates: List[Any],
-    indexdb: str,
-    flavour: Optional[str] = None,
-    **kwargs: Any,
-) -> FieldArray:
-    """Execute the GRIB data retrieval process.
+@source_registry.register("grib_index")
+class GribIndexSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The execution context.
-    dates : List[Any]
-        List of dates to retrieve data for.
-    indexdb : str
-        Path to the GRIB index database.
-    flavour : Optional[str], optional
-        Flavour configuration for mapping fields, by default None.
-    **kwargs : Any
-        Additional filtering criteria.
+    @staticmethod
+    def _execute(
+        context: Any,
+        dates: list[Any],
+        indexdb: str,
+        flavour: str | None = None,
+        **kwargs: Any,
+    ) -> FieldArray:
+        """Execute the GRIB data retrieval process.
 
-    Returns
-    -------
-    FieldArray
-        An array of retrieved GRIB fields.
-    """
-    index = GribIndex(indexdb)
-    result = []
+        Parameters
+        ----------
+        context : Any
+            The execution context.
+        dates : List[Any]
+            List of dates to retrieve data for.
+        indexdb : str
+            Path to the GRIB index database.
+        flavour : Optional[str], optional
+            Flavour configuration for mapping fields, by default None.
+        **kwargs : Any
+            Additional filtering criteria.
 
-    if flavour is not None:
-        flavour = RuleBasedFlavour(flavour)
+        Returns
+        -------
+        FieldArray
+            An array of retrieved GRIB fields.
+        """
+        index = GribIndex(indexdb)
+        result = []
 
-    for grib in index.retrieve(dates, **kwargs):
-        field = ekd.from_source("memory", grib)[0]
-        if flavour:
-            field = flavour.apply(field)
-        result.append(field)
+        if flavour is not None:
+            flavour = RuleBasedFlavour(flavour)
 
-    return FieldArray(result)
+        for grib in index.retrieve(dates, **kwargs):
+            field = ekd.from_source("memory", grib)[0]
+            if flavour:
+                field = flavour.apply(field)
+            result.append(field)
+
+        return FieldArray(result)

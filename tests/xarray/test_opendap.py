@@ -8,16 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 
+import pytest
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
-from anemoi.utils.testing import skip_slow_tests
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.testing import assert_field_list
 
 
 @skip_if_offline
-@skip_slow_tests
+@pytest.mark.slow
 def test_opendap() -> None:
     """Test loading and validating the opendap dataset."""
     ds = xr.open_dataset(

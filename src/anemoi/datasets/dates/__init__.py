@@ -10,15 +10,10 @@
 
 import datetime
 import warnings
+from collections.abc import Iterator
 from functools import reduce
 from math import gcd
 from typing import Any
-from typing import Dict
-from typing import Iterator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 # from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import DateTimes
@@ -29,7 +24,7 @@ from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
 
 
-def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datetime]:
+def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
     Args:
@@ -63,6 +58,8 @@ def extend(x: Union[str, List[Any], Tuple[Any, ...]]) -> Iterator[datetime.datet
 class DatesProvider:
     """Base class for date generation.
 
+    Examples
+    --------
     >>> DatesProvider.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-02 00:00", "frequency": "1d"}).values
     [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 2, 0, 0)]
 
@@ -86,7 +83,7 @@ class DatesProvider:
     3
     """
 
-    def __init__(self, missing: Optional[List[Union[str, datetime.datetime]]] = None) -> None:
+    def __init__(self, missing: list[str | datetime.datetime] | None = None) -> None:
         """Initialize the DatesProvider with optional missing dates.
 
         Parameters
@@ -168,7 +165,7 @@ class ValuesDates(DatesProvider):
         **kwargs (Any): Additional arguments.
     """
 
-    def __init__(self, values: List[Union[str, datetime.datetime]], **kwargs: Any) -> None:
+    def __init__(self, values: list[str | datetime.datetime], **kwargs: Any) -> None:
         """Initialize ValuesDates with a list of values.
 
         Args:
@@ -188,7 +185,7 @@ class ValuesDates(DatesProvider):
         """
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Convert the ValuesDates instance to a dictionary.
 
         Returns
@@ -215,9 +212,9 @@ class StartEndDates(DatesProvider):
 
     def __init__(
         self,
-        start: Union[str, datetime.datetime],
-        end: Union[str, datetime.datetime],
-        frequency: Union[int, str] = 1,
+        start: str | datetime.datetime,
+        end: str | datetime.datetime,
+        frequency: int | str = 1,
         **kwargs: Any,
     ) -> None:
         """Initialize StartEndDates with start, end, and frequency.
@@ -259,7 +256,7 @@ class StartEndDates(DatesProvider):
 
         super().__init__(missing=missing)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Convert the StartEndDates instance to a dictionary.
 
         Returns
@@ -314,9 +311,9 @@ class HindcastsDates(DatesProvider):
 
     def __init__(
         self,
-        start: Union[str, List[str]],
-        end: Union[str, List[str]],
-        steps: List[int] = [0],
+        start: str | list[str],
+        end: str | list[str],
+        steps: list[int] = [0],
         years: int = 20,
         **kwargs: Any,
     ) -> None:
@@ -403,7 +400,7 @@ class HindcastsDates(DatesProvider):
         """
         return f"{self.__class__.__name__}({self.values[0]}..{self.values[-1]})"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Convert the HindcastsDates instance to a dictionary.
 
         Returns

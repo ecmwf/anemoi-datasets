@@ -9,34 +9,37 @@
 
 
 from typing import Any
-from typing import List
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 from .xarray import load_many
 
 
-@legacy_source(__file__)
-def execute(context: Any, dates: List[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Execute the loading of multiple NetCDF files.
+@source_registry.register("netcdf")
+class NetCDFSource(LegacySource):
 
-    Parameters
-    ----------
-    context : object
-        The context in which the function is executed.
-    dates : list
-        List of dates for which data is to be loaded.
-    path : str
-        Path to the directory containing the NetCDF files.
-    *args : tuple
-        Additional positional arguments.
-    **kwargs : dict
-        Additional keyword arguments.
+    @staticmethod
+    def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+        """Execute the loading of multiple NetCDF files.
 
-    Returns
-    -------
-    object
-        The loaded data.
-    """
-    return load_many("📁", context, dates, path, *args, **kwargs)
+        Parameters
+        ----------
+        context : object
+            The context in which the function is executed.
+        dates : list
+            List of dates for which data is to be loaded.
+        path : str
+            Path to the directory containing the NetCDF files.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        object
+            The loaded data.
+        """
+        return load_many("📁", context, dates, path, *args, **kwargs)

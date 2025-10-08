@@ -14,7 +14,6 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
-from typing import Optional
 
 import tqdm
 from anemoi.utils.remote import Transfer
@@ -110,7 +109,28 @@ class ZarrCopier:
                 raise NotImplementedError("Rechunking with SSH not implemented.")
             assert NotImplementedError("SSH not implemented.")
 
-    def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> Optional[slice]:
+    def _store(self, path: str, nested: bool = False) -> Any:
+        """Get the storage path.
+
+        Parameters
+        ----------
+        path : str
+            Path to the storage.
+        nested : bool, optional
+            Flag to use nested directory storage.
+
+        Returns
+        -------
+        Any
+            Storage path.
+        """
+        if nested:
+            import zarr
+
+            return zarr.storage.NestedDirectoryStore(path)
+        return path
+
+    def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
 
         Parameters

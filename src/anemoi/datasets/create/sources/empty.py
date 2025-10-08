@@ -9,29 +9,32 @@
 
 
 from typing import Any
-from typing import List
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
-def execute(context: Any, dates: List[str], **kwargs: Any) -> ekd.FieldList:
-    """Executes the loading of an empty data source.
+@source_registry.register("empty")
+class EmptySource(LegacySource):
 
-    Parameters
-    ----------
-    context : object
-        The context in which the function is executed.
-    dates : list
-        List of dates for which data is to be loaded.
-    **kwargs : dict
-        Additional keyword arguments.
+    @staticmethod
+    def _execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
+        """Executes the loading of an empty data source.
 
-    Returns
-    -------
-    ekd.FieldList
-        Loaded empty data source.
-    """
-    return ekd.from_source("empty")
+        Parameters
+        ----------
+        context : object
+            The context in which the function is executed.
+        dates : list
+            List of dates for which data is to be loaded.
+        **kwargs : dict
+            Additional keyword arguments.
+
+        Returns
+        -------
+        ekd.FieldList
+            Loaded empty data source.
+        """
+        return ekd.from_source("empty")

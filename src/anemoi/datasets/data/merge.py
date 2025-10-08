@@ -12,10 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Set
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -40,7 +36,7 @@ LOG = logging.getLogger(__name__)
 class Merge(Combined):
     """A class to merge multiple datasets along the dates axis, handling gaps in dates if allowed."""
 
-    def __init__(self, datasets: List[Dataset], allow_gaps_in_dates: bool = False) -> None:
+    def __init__(self, datasets: list[Dataset], allow_gaps_in_dates: bool = False) -> None:
         """Initialize the Merge object.
 
         Parameters
@@ -128,10 +124,10 @@ class Merge(Combined):
         return self._frequency
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the indices of missing dates in the merged dataset."""
         # TODO: optimize
-        result: Set[int] = set()
+        result: set[int] = set()
 
         for i, (dataset, row) in enumerate(self._indices):
             if dataset == self._missing_index:
@@ -192,7 +188,7 @@ class Merge(Combined):
         """
         return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
 
-    def metadata_specific(self) -> Dict[str, Any]:
+    def metadata_specific(self) -> dict[str, Any]:
         """Get the specific metadata for the merged dataset.
 
         Returns
@@ -265,7 +261,7 @@ class Merge(Combined):
         return np.stack([self[i] for i in range(*s.indices(self._len))])
 
 
-def merge_factory(args: Tuple, kwargs: Dict[str, Any]) -> Dataset:
+def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create a merged dataset.
 
     Parameters

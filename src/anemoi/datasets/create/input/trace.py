@@ -11,9 +11,9 @@
 import logging
 import textwrap
 import threading
+from collections.abc import Callable
 from functools import wraps
 from typing import Any
-from typing import Callable
 
 LOG = logging.getLogger(__name__)
 

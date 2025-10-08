@@ -14,4 +14,5 @@ ds = open_dataset(
     },
     source="global-dataset",
     interpolation="nearest",
+    k=1,
 )

@@ -10,15 +10,13 @@
 
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
 
 import xarray as xr
 
 LOG = logging.getLogger(__name__)
 
 
-def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> Any:
+def patch_attributes(ds: xr.Dataset, attributes: dict[str, dict[str, Any]]) -> Any:
     """Patch the attributes of the dataset.
 
     Parameters
@@ -40,7 +38,7 @@ def patch_attributes(ds: xr.Dataset, attributes: Dict[str, Dict[str, Any]]) -> A
     return ds
 
 
-def patch_coordinates(ds: xr.Dataset, coordinates: List[str]) -> Any:
+def patch_coordinates(ds: xr.Dataset, coordinates: list[str]) -> Any:
     """Patch the coordinates of the dataset.
 
     Parameters
@@ -79,14 +77,36 @@ def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
     return ds.rename(renames)
 
 
+def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: list[str]) -> Any:
+    """Sort the coordinates of the dataset.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    sort_coordinates : List[str]
+        The coordinates to sort.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
+
+    for name in sort_coordinates:
+        ds = ds.sortby(name)
+    return ds
+
+
 PATCHES = {
     "attributes": patch_attributes,
     "coordinates": patch_coordinates,
     "rename": patch_rename,
+    "sort_coordinates": patch_sort_coordinate,
 }
 
 
-def patch_dataset(ds: xr.Dataset, patch: Dict[str, Dict[str, Any]]) -> Any:
+def patch_dataset(ds: xr.Dataset, patch: dict[str, dict[str, Any]]) -> Any:
     """Patch the dataset.
 
     Parameters
@@ -102,7 +122,7 @@ def patch_dataset(ds: xr.Dataset, patch: Dict[str, Dict[str, Any]]) -> Any:
         The patched dataset.
     """
 
-    ORDER = ["coordinates", "attributes", "rename"]
+    ORDER = ["coordinates", "attributes", "rename", "sort_coordinates"]
     for what, values in sorted(patch.items(), key=lambda x: ORDER.index(x[0])):
         if what not in PATCHES:
             raise ValueError(f"Unknown patch type {what!r}")

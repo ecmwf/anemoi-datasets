@@ -10,14 +10,10 @@
 
 import datetime
 import logging
+from collections.abc import Callable
 from functools import cached_property
 from functools import wraps
 from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
 
 import numpy as np
 from numpy.typing import NDArray
@@ -163,13 +159,13 @@ class Unchecked(Combined):
 
     @check("check_same_variables")
     @property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Get the mapping of variable names to their indices."""
         raise NotImplementedError()
 
     @check("check_same_variables")
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Get the list of variables in the dataset."""
         raise NotImplementedError()
 
@@ -181,12 +177,12 @@ class Unchecked(Combined):
 
     @check("check_same_variables")
     @property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics of the dataset."""
         raise NotImplementedError()
 
     @check("check_same_variables")
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies of the dataset.
 
         Parameters
@@ -207,9 +203,9 @@ class Unchecked(Combined):
         raise NotImplementedError()
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the missing data indices."""
-        result: Set[int] = set()
+        result: set[int] = set()
         for d in self.datasets:
             result = result | d.missing
         return result

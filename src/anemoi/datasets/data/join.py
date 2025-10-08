@@ -12,10 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
 
 import numpy as np
 from numpy.typing import NDArray
@@ -182,10 +178,10 @@ class Join(Combined):
         return Select(self, indices, {"overlay": variables})
 
     @cached_property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Get the variables of the joined dataset."""
         seen = set()
-        result: List[str] = []
+        result: list[str] = []
         for d in reversed(self.datasets):
             for v in reversed(d.variables):
                 while v in seen:
@@ -196,7 +192,7 @@ class Join(Combined):
         return result
 
     @property
-    def variables_metadata(self) -> Dict[str, Any]:
+    def variables_metadata(self) -> dict[str, Any]:
         """Get the metadata of the variables."""
         result = {}
         variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
@@ -216,18 +212,18 @@ class Join(Combined):
         return result
 
     @cached_property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Get the mapping of variable names to indices."""
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
-    def statistics(self) -> Dict[str, NDArray[Any]]:
+    def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics of the joined dataset."""
         return {
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
 
-    def statistics_tendencies(self, delta: Optional[datetime.timedelta] = None) -> Dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies of the joined dataset.
 
         Parameters
@@ -268,9 +264,9 @@ class Join(Combined):
         assert False
 
     @cached_property
-    def missing(self) -> Set[int]:
+    def missing(self) -> set[int]:
         """Get the missing data indices."""
-        result: Set[int] = set()
+        result: set[int] = set()
         for d in self.datasets:
             result = result | d.missing
         return result

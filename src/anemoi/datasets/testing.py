@@ -12,19 +12,17 @@
 
 import logging
 from typing import Any
-from typing import List
-from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
 
 def assert_field_list(
-    fs: List[Any],
-    size: Optional[int] = None,
-    start: Optional[Any] = None,
-    end: Optional[Any] = None,
+    fs: list[Any],
+    size: int | None = None,
+    start: Any | None = None,
+    end: Any | None = None,
     constant: bool = False,
-    skip: Optional[Any] = None,
+    skip: Any | None = None,
 ) -> None:
     """Asserts various properties of a list of fields.
 
@@ -85,3 +83,91 @@ def assert_field_list(
     assert south >= -90, south
     assert east <= 360, east
     assert west >= -180, west
+
+
+class IndexTester:
+    """Class to test indexing of datasets."""
+
+    def __init__(self, ds: Any) -> None:
+        """Initialise the IndexTester.
+
+        Parameters
+        ----------
+        ds : Any
+            Dataset.
+        """
+        self.ds = ds
+        self.np = ds[:]  # Numpy array
+
+        assert self.ds.shape == self.np.shape, (self.ds.shape, self.np.shape)
+        assert (self.ds == self.np).all()
+
+    def __getitem__(self, index: Any) -> None:
+        """Test indexing.
+
+        Parameters
+        ----------
+        index : Any
+            Index.
+        """
+        LOG.info("IndexTester: %s", index)
+        if self.ds[index] is None:
+            assert False, (self.ds, index)
+
+        if not (self.ds[index] == self.np[index]).all():
+            assert (self.ds[index] == self.np[index]).all()
+
+
+def default_test_indexing(ds):
+
+    t = IndexTester(ds)
+
+    t[0:10, :, 0]
+    t[:, 0:3, 0]
+    # t[:, :, 0]
+    t[0:10, 0:3, 0]
+    t[:, :, :]
+
+    if ds.shape[1] > 2:  # Variable dimension
+        t[:, (1, 2), :]
+        t[:, (1, 2)]
+
+    t[0]
+    t[0, :]
+    t[0, 0, :]
+    t[0, 0, 0, :]
+
+    if ds.shape[2] > 1:  # Ensemble dimension
+        t[0:10, :, (0, 1)]
+
+    for i in range(3):
+        t[i]
+        start = 5 * i
+        end = len(ds) - 5 * i
+        step = len(ds) // 10
+
+        t[start:end:step]
+        t[start:end]
+        t[start:]
+        t[:end]
+        t[::step]
+
+
+class Trace:
+
+    def __init__(self, ds):
+        self.ds = ds
+        self.f = open("trace.txt", "a")
+
+    def __getattr__(self, name: str) -> Any:
+
+        print(name, file=self.f, flush=True)
+        return getattr(self.ds, name)
+
+    def __len__(self) -> int:
+        print("__len__", file=self.f, flush=True)
+        return len(self.ds)
+
+    def __getitem__(self, index: Any) -> Any:
+        print("__getitem__", file=self.f, flush=True)
+        return self.ds[index]

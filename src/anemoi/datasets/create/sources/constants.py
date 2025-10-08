@@ -8,46 +8,45 @@
 # nor does it submit to any jurisdiction.
 
 from typing import Any
-from typing import Dict
-from typing import List
 
 from earthkit.data import from_source
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
-def constants(context: Any, dates: List[str], template: Dict[str, Any], param: str) -> Any:
-    """Deprecated function to retrieve constants data.
+@source_registry.register("constants")
+class ConstantsSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The context object for tracing.
-    dates : list of str
-        List of dates for which data is required.
-    template : dict of str to Any
-        Template dictionary for the data source.
-    param : str
-        Parameter to retrieve.
+    @staticmethod
+    def _execute(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:
+        """Deprecated function to retrieve constants data.
 
-    Returns
-    -------
-    Any
-        Data retrieved from the source.
-    """
-    from warnings import warn
+        Parameters
+        ----------
+        context : Any
+            The context object for tracing.
+        dates : list of str
+            List of dates for which data is required.
+        template : dict of str to Any
+            Template dictionary for the data source.
+        param : str
+            Parameter to retrieve.
 
-    warn(
-        "The source `constants` is deprecated, use `forcings` instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    context.trace("✅", f"from_source(constants, {template}, {param}")
-    if len(template) == 0:
-        raise ValueError("Forcings template is empty.")
+        Returns
+        -------
+        Any
+            Data retrieved from the source.
+        """
+        from warnings import warn
 
-    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
+        warn(
+            "The source `constants` is deprecated, use `forcings` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        context.trace("✅", f"from_source(constants, {template}, {param}")
+        if len(template) == 0:
+            raise ValueError("Forcings template is empty.")
 
-
-execute: Any = constants
+        return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)

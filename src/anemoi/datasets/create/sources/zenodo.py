@@ -9,61 +9,63 @@
 
 
 from typing import Any
-from typing import Dict
-from typing import List
 
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.sources.url import download_and_cache
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 from .patterns import iterate_patterns
 from .xarray import load_one
 
 
-@legacy_source(__file__)
-def execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Executes the download and processing of files from Zenodo.
+@source_registry.register("zenodo")
+class ZenodoSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The context in which the function is executed.
-    dates : Any
-        The dates for which the data is required.
-    record_id : str
-        The Zenodo record ID.
-    file_key : str
-        The key to identify the file.
-    *args : Any
-        Additional arguments.
-    **kwargs : Any
-        Additional keyword arguments.
+    @staticmethod
+    def _execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+        """Executes the download and processing of files from Zenodo.
 
-    Returns
-    -------
-    MultiFieldList
-        A list of fields loaded from the downloaded files.
-    """
-    import requests
+        Parameters
+        ----------
+        context : Any
+            The context in which the function is executed.
+        dates : Any
+            The dates for which the data is required.
+        record_id : str
+            The Zenodo record ID.
+        file_key : str
+            The key to identify the file.
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
 
-    result: List[Any] = []
+        Returns
+        -------
+        MultiFieldList
+            A list of fields loaded from the downloaded files.
+        """
+        import requests
 
-    URLPATTERN = "https://zenodo.org/api/records/{record_id}"
-    url = URLPATTERN.format(record_id=record_id)
-    r = requests.get(url)
-    r.raise_for_status()
-    record: Dict[str, Any] = r.json()
+        result: list[Any] = []
 
-    urls: Dict[str, str] = {}
-    for file in record["files"]:
-        urls[file["key"]] = file["links"]["self"]
+        URLPATTERN = "https://zenodo.org/api/records/{record_id}"
+        url = URLPATTERN.format(record_id=record_id)
+        r = requests.get(url)
+        r.raise_for_status()
+        record: dict[str, Any] = r.json()
 
-    for url, dates in iterate_patterns(file_key, dates, **kwargs):
-        if url not in urls:
-            continue
+        urls: dict[str, str] = {}
+        for file in record["files"]:
+            urls[file["key"]] = file["links"]["self"]
 
-        path = download_and_cache(urls[url])
-        result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
+        for url, dates in iterate_patterns(file_key, dates, **kwargs):
+            if url not in urls:
+                continue
 
-    return MultiFieldList(result)
+            path = download_and_cache(urls[url])
+            result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
+
+        return MultiFieldList(result)

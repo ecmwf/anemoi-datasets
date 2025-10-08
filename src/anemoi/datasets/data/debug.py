@@ -11,12 +11,10 @@
 import logging
 import os
 import textwrap
+from collections.abc import Callable
 from functools import wraps
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Callable
-from typing import List
-from typing import Optional
 
 from anemoi.utils.text import Tree
 from numpy.typing import NDArray
@@ -56,7 +54,7 @@ def css(name: str) -> str:
 class Node:
     """A class to represent a node in a dataset tree."""
 
-    def __init__(self, dataset: "Dataset", kids: List[Any], **kwargs: Any) -> None:
+    def __init__(self, dataset: "Dataset", kids: list[Any], **kwargs: Any) -> None:
         """Initializes a Node object.
 
         Parameters
@@ -72,7 +70,7 @@ class Node:
         self.kids = kids
         self.kwargs = kwargs
 
-    def _put(self, indent: int, result: List[str]) -> None:
+    def _put(self, indent: int, result: list[str]) -> None:
         """Helper method to add the node representation to the result list.
 
         Parameters
@@ -103,11 +101,11 @@ class Node:
         str
             String representation of the node.
         """
-        result: List[str] = []
+        result: list[str] = []
         self._put(0, result)
         return "\n".join(result)
 
-    def graph(self, digraph: List[str], nodes: dict) -> None:
+    def graph(self, digraph: list[str], nodes: dict) -> None:
         """Generates a graph representation of the node.
 
         Parameters
@@ -170,7 +168,7 @@ class Node:
         digraph.append("}")
         return "\n".join(digraph)
 
-    def _html(self, indent: str, rows: List[List[str]]) -> None:
+    def _html(self, indent: str, rows: list[list[str]]) -> None:
         """Helper method to add the node representation to the HTML rows.
 
         Parameters
@@ -273,7 +271,7 @@ class Node:
 class Source:
     """A class used to follow the provenance of a data point."""
 
-    def __init__(self, dataset: Any, index: int, source: Optional[Any] = None, info: Optional[Any] = None) -> None:
+    def __init__(self, dataset: Any, index: int, source: Any | None = None, info: Any | None = None) -> None:
         """Initializes a Source object.
 
         Parameters

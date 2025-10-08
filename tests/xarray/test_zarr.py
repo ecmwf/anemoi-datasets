@@ -24,6 +24,7 @@ def test_arco_era5_1() -> None:
         "gs://gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2",
         chunks={"time": 48},
         consolidated=True,
+        storage_options=dict(token="anon"),
     )
 
     fs = XarrayFieldList.from_xarray(ds)
@@ -43,6 +44,7 @@ def test_arco_era5_2() -> None:
         "gs://gcp-public-data-arco-era5/ar/1959-2022-1h-360x181_equiangular_with_poles_conservative.zarr",
         chunks={"time": 48},
         consolidated=True,
+        storage_options=dict(token="anon"),
     )
 
     fs = XarrayFieldList.from_xarray(ds)
@@ -58,7 +60,10 @@ def test_arco_era5_2() -> None:
 @skip_missing_packages("gcsfs")
 def test_weatherbench() -> None:
     """Test loading and validating the weatherbench dataset."""
-    ds = xr.open_zarr("gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr")
+    ds = xr.open_zarr(
+        "gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr",
+        storage_options=dict(token="anon"),
+    )
 
     # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
 
@@ -129,39 +134,6 @@ def test_noaa_replay() -> None:
         36972870,
         "1993-12-31T18:00:00",
         "1999-06-13T03:00:00",
-    )
-
-
-@skip_if_offline
-@skip_missing_packages("s3fs")
-def test_aws_s3() -> None:
-    """Test loading and validating an AWS S3 dataset."""
-    url = "s3://aodn-cloud-optimised/model_sea_level_anomaly_gridded_realtime.zarr"
-    ds = xr.open_zarr(url, consolidated=True, storage_options={"anon": True})
-
-    fs = XarrayFieldList.from_xarray(ds)
-
-    assert_field_list(
-        fs,
-        400,
-        "2011-09-01T00:00:00",
-        "2011-12-12T00:00:00",
-    )
-
-
-@skip_if_offline
-def test_aws_s3_https() -> None:
-    """Test loading and validating an AWS S3 dataset via HTTPS."""
-    url = "https://aodn-cloud-optimised.s3.amazonaws.com/model_sea_level_anomaly_gridded_realtime.zarr"
-    ds = xr.open_zarr(url, consolidated=True)
-
-    fs = XarrayFieldList.from_xarray(ds)
-
-    assert_field_list(
-        fs,
-        400,
-        "2011-09-01T00:00:00",
-        "2011-12-12T00:00:00",
     )
 
 

@@ -9,25 +9,21 @@
 
 import datetime
 import re
+from collections.abc import Generator
 from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Union
 
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
-from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.datasets.create.sources import source_registry
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 DEBUG = False
 
 
-def to_list(x: Union[list, tuple, Any]) -> list:
+def to_list(x: list | tuple | Any) -> list:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -46,8 +42,8 @@ def to_list(x: Union[list, tuple, Any]) -> list:
 
 
 def _date_to_datetime(
-    d: Union[datetime.datetime, list, tuple, str],
-) -> Union[datetime.datetime, List[datetime.datetime]]:
+    d: datetime.datetime | list | tuple | str,
+) -> datetime.datetime | list[datetime.datetime]:
     """Converts the input date(s) to datetime objects.
 
     Parameters
@@ -67,7 +63,7 @@ def _date_to_datetime(
     return datetime.datetime.fromisoformat(d)
 
 
-def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
+def expand_to_by(x: str | int | list) -> str | int | list:
     """Expands a range expression to a list of values.
 
     Parameters
@@ -97,7 +93,7 @@ def expand_to_by(x: Union[str, int, list]) -> Union[str, int, list]:
     return x
 
 
-def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelta:
+def normalise_time_delta(t: datetime.timedelta | str) -> datetime.timedelta:
     """Normalizes a time delta string to a datetime.timedelta object.
 
     Parameters
@@ -120,7 +116,7 @@ def normalise_time_delta(t: Union[datetime.timedelta, str]) -> datetime.timedelt
     return t
 
 
-def _normalise_time(t: Union[int, str]) -> str:
+def _normalise_time(t: int | str) -> str:
     """Normalizes a time value to a string in HHMM format.
 
     Parameters
@@ -136,15 +132,15 @@ def _normalise_time(t: Union[int, str]) -> str:
     t = int(t)
     if t < 100:
         t * 100
-    return "{:04d}".format(t)
+    return f"{t:04d}"
 
 
 def _expand_mars_request(
-    request: Dict[str, Any],
+    request: dict[str, Any],
     date: datetime.datetime,
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Expands a MARS request with the given date and other parameters.
 
     Parameters
@@ -222,11 +218,11 @@ def _expand_mars_request(
 
 
 def factorise_requests(
-    dates: List[datetime.datetime],
-    *requests: Dict[str, Any],
+    dates: list[datetime.datetime],
+    *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
-) -> Generator[Dict[str, Any], None, None]:
+) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
 
     Parameters
@@ -268,7 +264,7 @@ def factorise_requests(
         yield r
 
 
-def use_grib_paramid(r: Dict[str, Any]) -> Dict[str, Any]:
+def use_grib_paramid(r: dict[str, Any]) -> dict[str, Any]:
     """Converts the parameter short names to GRIB parameter IDs.
 
     Parameters
@@ -362,135 +358,111 @@ MARS_KEYS = [
 ]
 
 
-@legacy_source(__file__)
-def mars(
-    context: Any,
-    dates: List[datetime.datetime],
-    *requests: Dict[str, Any],
-    request_already_using_valid_datetime: bool = False,
-    date_key: str = "date",
-    use_cdsapi_dataset: Optional[str] = None,
-    **kwargs: Any,
-) -> Any:
-    """Executes MARS requests based on the given context, dates, and other parameters.
+@source_registry.register("mars")
+class MarsSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The context for the requests.
-    dates : List[datetime.datetime]
-        The list of dates to be used in the requests.
-    requests : Dict[str, Any]
-        The input requests to be executed.
-    request_already_using_valid_datetime : bool, optional
-        Flag indicating if the requests already use valid datetime.
-    date_key : str, optional
-        The key for the date in the requests.
-    use_cdsapi_dataset : Optional[str], optional
-        The dataset to be used with CDS API.
-    kwargs : Any
-        Additional keyword arguments for the requests.
+    @staticmethod
+    def _execute(
+        context: Any,
+        dates: list[datetime.datetime],
+        *requests: dict[str, Any],
+        request_already_using_valid_datetime: bool = False,
+        date_key: str = "date",
+        use_cdsapi_dataset: str | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Executes MARS requests based on the given context, dates, and other parameters.
 
-    Returns
-    -------
-    Any
-        The resulting dataset.
-    """
+        Parameters
+        ----------
+        context : Any
+            The context for the requests.
+        dates : List[datetime.datetime]
+            The list of dates to be used in the requests.
+        requests : Dict[str, Any]
+            The input requests to be executed.
+        request_already_using_valid_datetime : bool, optional
+            Flag indicating if the requests already use valid datetime.
+        date_key : str, optional
+            The key for the date in the requests.
+        use_cdsapi_dataset : Optional[str], optional
+            The dataset to be used with CDS API.
+        kwargs : Any
+            Additional keyword arguments for the requests.
 
-    if not requests:
-        requests = [kwargs]
-
-    for r in requests:
-        param = r.get("param", [])
-        if not isinstance(param, (list, tuple)):
-            param = [param]
-        # check for "Norway bug" where yaml transforms 'no' into False, etc.
-        for p in param:
-            if p is False:
-                raise ValueError(
-                    "'param' cannot be 'False'. If you wrote 'param: no' or 'param: off' in yaml, you may want to use quotes?"
-                )
-            if p is None:
-                raise ValueError(
-                    "'param' cannot be 'None'. If you wrote 'param: no' in yaml, you may want to use quotes?"
-                )
-            if p is True:
-                raise ValueError(
-                    "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
-                )
-
-    if len(dates) == 0:  # When using `repeated_dates`
-        assert len(requests) == 1, requests
-        assert "date" in requests[0], requests[0]
-        if isinstance(requests[0]["date"], datetime.date):
-            requests[0]["date"] = requests[0]["date"].strftime("%Y%m%d")
-    else:
-        requests = factorise_requests(
-            dates,
-            *requests,
-            request_already_using_valid_datetime=request_already_using_valid_datetime,
-            date_key=date_key,
-        )
-
-    requests = list(requests)
-
-    ds = from_source("empty")
-    context.trace("✅", f"{[str(d) for d in dates]}")
-    context.trace("✅", f"Will run {len(requests)} requests")
-    for r in requests:
-        r = {k: v for k, v in r.items() if v != ("-",)}
-        context.trace("✅", f"mars {r}")
-
-    for r in requests:
-        r = {k: v for k, v in r.items() if v != ("-",)}
-
-        if context.use_grib_paramid and "param" in r:
-            r = use_grib_paramid(r)
-
-        for k, v in r.items():
-            if k not in MARS_KEYS:
-                raise ValueError(
-                    f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
-                )
-        try:
-            if use_cdsapi_dataset:
-                ds = ds + from_source("cds", use_cdsapi_dataset, r)
-            else:
-                ds = ds + from_source("mars", **r)
-        except Exception as e:
-            if "File is empty:" not in str(e):
-                raise
-    return ds
-
-
-execute = mars
-
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
+        Returns
+        -------
+        Any
+            The resulting dataset.
         """
-    - class: ea
-      expver: '0001'
-      grid: 20.0/20.0
-      levtype: sfc
-      param: [2t]
-      # param: [10u, 10v, 2d, 2t, lsm, msl, sdor, skt, slor, sp, tcw, z]
-      number: [0, 1]
 
-    # - class: ea
-    #   expver: '0001'
-    #   grid: 20.0/20.0
-    #   levtype: pl
-    #   param: [q]
-    #   levelist: [1000, 850]
+        if not requests:
+            requests = [kwargs]
 
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
+        for r in requests:
+            param = r.get("param", [])
+            if not isinstance(param, (list, tuple)):
+                param = [param]
+            # check for "Norway bug" where yaml transforms 'no' into False, etc.
+            for p in param:
+                if p is False:
+                    raise ValueError(
+                        "'param' cannot be 'False'. If you wrote 'param: no' or 'param: off' in yaml, you may want to use quotes?"
+                    )
+                if p is None:
+                    raise ValueError(
+                        "'param' cannot be 'None'. If you wrote 'param: no' in yaml, you may want to use quotes?"
+                    )
+                if p is True:
+                    raise ValueError(
+                        "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
+                    )
 
-    DEBUG = True
-    for f in mars(None, dates, *config):
-        print(f, f.to_numpy().mean())
+        if len(dates) == 0:  # When using `repeated_dates`
+            assert len(requests) == 1, requests
+            assert "date" in requests[0], requests[0]
+            if isinstance(requests[0]["date"], datetime.date):
+                requests[0]["date"] = requests[0]["date"].strftime("%Y%m%d")
+        else:
+            requests = factorise_requests(
+                dates,
+                *requests,
+                request_already_using_valid_datetime=request_already_using_valid_datetime,
+                date_key=date_key,
+            )
+
+        requests = list(requests)
+
+        ds = from_source("empty")
+        context.trace("✅", f"{[str(d) for d in dates]}")
+        context.trace("✅", f"Will run {len(requests)} requests")
+        for r in requests:
+            r = {k: v for k, v in r.items() if v != ("-",)}
+            context.trace("✅", f"mars {r}")
+
+        for r in requests:
+            r = {k: v for k, v in r.items() if v != ("-",)}
+
+            if context.use_grib_paramid and "param" in r:
+                r = use_grib_paramid(r)
+
+            for k, v in r.items():
+                if k not in MARS_KEYS:
+                    raise ValueError(
+                        f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
+                    )
+            try:
+                if use_cdsapi_dataset:
+                    ds = ds + from_source("cds", use_cdsapi_dataset, r)
+                else:
+                    ds = ds + from_source("mars", **r)
+            except Exception as e:
+                if "File is empty:" not in str(e):
+                    raise
+        return ds
+
+
+# TODO: make clearer the interface between sources that use mars.
+# Currently some sources use mars as a function rather than through the registry,
+# e.g. accumulations, accumulations2, hindcasts, recentre, tendencies
+mars = MarsSource._execute
