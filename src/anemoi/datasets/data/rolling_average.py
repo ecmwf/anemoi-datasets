@@ -81,6 +81,7 @@ class RollingAverage(Forwards):
                 rest = n[1:]
             else:
                 rest = ()
+
             if isinstance(first, int):
                 slice_ = slice(first, first + self.i_start + self.i_end)
                 data = self.forward[(slice_,) + rest]
@@ -90,6 +91,9 @@ class RollingAverage(Forwards):
                 first = list(range(first.start or 0, first.stop or len(self), first.step or 1))
 
             if isinstance(first, (list, tuple)):
+                first = [i if i >= 0 else len(self) + i for i in first]
+                if any(i >= len(self) for i in first):
+                    raise IndexError(f"Index out of range: {first}")
                 slices = [slice(i, i + self.i_start + self.i_end) for i in first]
                 data = [self.forward[(slice_,) + rest] for slice_ in slices]
                 res = [f(d) for d in data]
@@ -98,6 +102,11 @@ class RollingAverage(Forwards):
             assert False, f"Expected int, slice, list or tuple as first element of tuple, got {type(first)}"
 
         assert isinstance(n, int), f"Expected int, slice, tuple, got {type(n)}"
+
+        if n < 0:
+            n = len(self) + n
+        if n >= len(self):
+            raise IndexError(f"Index out of range: {n}")
 
         slice_ = slice(n, n + self.i_start + self.i_end)
         data = self.forward[slice_]
