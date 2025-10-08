@@ -28,7 +28,7 @@ class RollingAverage(Forwards):
     """A class to represent a dataset with interpolated frequency."""
 
     def __init__(self, dataset: Dataset, window) -> None:
-        """Initialize the InterpolateFrequency class.
+        """Initialize the RollingAverage class.
 
         Parameters
         ----------
