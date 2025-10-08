@@ -27,15 +27,18 @@ LOG = logging.getLogger(__name__)
 class RollingAverage(Forwards):
     """A class to represent a dataset with interpolated frequency."""
 
-    def __init__(self, dataset: Dataset, window) -> None:
+    def __init__(self, dataset: Dataset, window: str | tuple[int, int, str]) -> None:
         """Initialize the RollingAverage class.
 
         Parameters
         ----------
         dataset : Dataset
-            The dataset to be interpolated.
-        frequency : str
-            The interpolation frequency.
+            The dataset to be averaged with a rolling window.
+        window : (int, int, str)
+            The rolling average window (start, end, 'freq').
+            'freq' means the window is in number of time steps in the dataset.
+            For now, only 'freq' is supported, in the future other units may be supported.
+            Windows such as "[-2h, +2h]" are not supported yet.
         """
         super().__init__(dataset)
         if not (isinstance(window, (list, tuple)) and len(window) == 3):
