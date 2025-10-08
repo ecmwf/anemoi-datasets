@@ -8,7 +8,10 @@
 # nor does it submit to any jurisdiction.
 
 
+import logging
 from collections import defaultdict
+
+LOG = logging.getLogger(__name__)
 
 
 def _hashable(v):
@@ -124,7 +127,8 @@ class ProjectionBase:
 
                 for var in vars:
                     if var in variables:
-                        raise ValueError(f"Duplicate origin for {var}")
+                        # That is due to an overlay. To be fixed in the future
+                        LOG.warning(f"Duplicate origin for {var}")
                     variables[var] = [origin_index, dataset_index]
 
         datasets = [k for k, _ in sorted(datasets.items(), key=lambda x: x[1])]
