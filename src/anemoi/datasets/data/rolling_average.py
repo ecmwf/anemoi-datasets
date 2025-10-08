@@ -39,6 +39,7 @@ class RollingAverage(Forwards):
         window : (int, int, str)
             The rolling average window (start, end, 'freq').
             'freq' means the window is in number of time steps in the dataset.
+            Both start and end are inclusive, i.e. window = (-2, 2, 'freq') means a window of 5 time steps.
             For now, only 'freq' is supported, in the future other units may be supported.
             Windows such as "[-2h, +2h]" are not supported yet.
         """
@@ -50,9 +51,9 @@ class RollingAverage(Forwards):
         if window[2] not in ["freq", "frequency"]:
             raise NotImplementedError(f"Window must be (int, int, 'freq'), got {window}")
 
+        # window = (0, 0, 'freq') means no change
         self.i_start = -window[0]
-        self.i_end = window[1]
-        # i_start, i_end = 0, 1 means no change
+        self.i_end = window[1] + 1
         if self.i_start <= 0:
             raise ValueError(f"Window start must be negative, got {window}")
         if self.i_end <= 0:
