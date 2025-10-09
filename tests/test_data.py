@@ -39,7 +39,6 @@ from anemoi.datasets.data.statistics import Statistics
 from anemoi.datasets.data.stores import Zarr
 from anemoi.datasets.data.subset import Subset
 from anemoi.datasets.testing import default_test_indexing
-from anemoi.datasets.zarr_versions import zarr_2_or_3
 
 VALUES = 10
 
@@ -107,7 +106,7 @@ def create_zarr(
     ensemble: int | None = None,
     grids: int | None = None,
     missing: bool = False,
-) -> zarr_2_or_3.Group:
+) -> zarr.Group:
     """Create a Zarr dataset.
 
     Parameters
@@ -145,7 +144,7 @@ def create_zarr(
         dates.append(date)
         date += frequency
 
-    dates = np.array(dates, dtype="datetime64[s]")
+    dates = np.array(dates, dtype="datetime64")
 
     ensembles = ensemble if ensemble is not None else 1
     values = grids if grids is not None else VALUES
@@ -157,42 +156,27 @@ def create_zarr(
             for e in range(ensembles):
                 data[i, j, e] = _(date.astype(object), var, k, e, values)
 
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "data",
-        dtype=data.dtype,
+        data=data,
         chunks=data.shape,
         compressor=None,
-        shape=data.shape,
-    )[...] = data
-
-    dates, dtype_ = zarr_2_or_3.cast_dtype_datetime64(dates, dates.dtype)
-    del dtype_
-    zarr_2_or_3.create_array(
-        root,
+    )
+    root.create_array(
         "dates",
+        data=dates,
         compressor=None,
-        dtype=dates.dtype,
-        shape=dates.shape,
-    )[...] = dates
-
-    latitudes = np.array([x + values for x in range(values)])
-    zarr_2_or_3.create_array(
-        root,
+    )
+    root.create_array(
         "latitudes",
+        data=np.array([x + values for x in range(values)]),
         compressor=None,
-        dtype=latitudes.dtype,
-        shape=latitudes.shape,
-    )[...] = latitudes
-
-    longitudes = np.array([x + values for x in range(values)])
-    zarr_2_or_3.create_array(
-        root,
+    )
+    root.create_array(
         "longitudes",
+        data=np.array([x + values for x in range(values)]),
         compressor=None,
-        dtype=longitudes.dtype,
-        shape=longitudes.shape,
-    )[...] = longitudes
+    )
 
     root.attrs["frequency"] = frequency_to_string(frequency)
     root.attrs["resolution"] = resolution
@@ -213,42 +197,26 @@ def create_zarr(
 
         root.attrs["missing_dates"] = [d.isoformat() for d in missing_dates]
 
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "mean",
+        data=np.mean(data, axis=0),
         compressor=None,
-        shape=data.shape[1:],
-        dtype=data.dtype,
-    )[
-        ...
-    ] = np.mean(data, axis=0)
-    zarr_2_or_3.create_array(
-        root,
+    )
+    root.create_array(
         "stdev",
+        data=np.std(data, axis=0),
         compressor=None,
-        shape=data.shape[1:],
-        dtype=data.dtype,
-    )[
-        ...
-    ] = np.std(data, axis=0)
-    zarr_2_or_3.create_array(
-        root,
+    )
+    root.create_array(
         "maximum",
+        data=np.max(data, axis=0),
         compressor=None,
-        shape=data.shape[1:],
-        dtype=data.dtype,
-    )[
-        ...
-    ] = np.max(data, axis=0)
-    zarr_2_or_3.create_array(
-        root,
+    )
+    root.create_array(
         "minimum",
+        data=np.min(data, axis=0),
         compressor=None,
-        shape=data.shape[1:],
-        dtype=data.dtype,
-    )[
-        ...
-    ] = np.min(data, axis=0)
+    )
 
     return root
 

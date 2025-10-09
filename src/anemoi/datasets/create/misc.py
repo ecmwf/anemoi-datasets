@@ -15,8 +15,6 @@ import numpy as np
 import zarr
 from numpy.typing import NDArray
 
-from anemoi.datasets.zarr_versions import zarr_2_or_3
-
 from .synchronise import NoSynchroniser
 from .synchronise import Synchroniser
 
@@ -73,11 +71,9 @@ def add_zarr_dataset(
         shape = array.shape
 
     if array is not None:
-        array, dtype = zarr_2_or_3.cast_dtype_datetime64(array, dtype)
 
         assert array.shape == shape, (array.shape, shape)
-        a = zarr_2_or_3.create_array(
-            zarr_root,
+        a = zarr_root.create_array(
             name,
             shape=shape,
             dtype=dtype,
@@ -104,9 +100,7 @@ def add_zarr_dataset(
         else:
             raise ValueError(f"No fill_value for dtype={dtype}")
 
-    dtype = zarr_2_or_3.change_dtype_datetime64(dtype)
-    a = zarr_2_or_3.create_array(
-        zarr_root,
+    a = zarr_root.create_array(
         name,
         shape=shape,
         dtype=dtype,

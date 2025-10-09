@@ -13,8 +13,6 @@ import os
 
 import zarr
 
-from anemoi.datasets.zarr_versions import zarr_2_or_3
-
 LOG = logging.getLogger(__name__)
 
 
@@ -135,7 +133,7 @@ def apply_patch(path: str, verbose: bool = True, dry_run: bool = False) -> None:
 
     try:
         attrs = zarr.open(path, mode="r").attrs.asdict()
-    except zarr_2_or_3.get_not_found_exception() as e:
+    except FileNotFoundError as e:
         LOG.error(f"Failed to open {path}")
         LOG.error(e)
         exit(0)

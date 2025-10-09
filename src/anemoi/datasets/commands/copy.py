@@ -20,7 +20,6 @@ from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.check import check_zarr
-from anemoi.datasets.zarr_versions import zarr_2_or_3
 
 from . import Command
 
@@ -51,6 +50,8 @@ class ZarrCopier:
         Flag to resume copying an existing dataset.
     verbosity : int
         Verbosity level of logging.
+    nested : bool
+        Flag to use ZARR's nested directory backend.
     rechunk : str
         Rechunk size for the target data array.
     """
@@ -64,6 +65,7 @@ class ZarrCopier:
         overwrite: bool,
         resume: bool,
         verbosity: int,
+        nested: bool,
         rechunk: str,
         **kwargs: Any,
     ) -> None:
@@ -85,6 +87,8 @@ class ZarrCopier:
             Flag to resume copying an existing dataset.
         verbosity : int
             Verbosity level of logging.
+        nested : bool
+            Flag to use ZARR's nested directory backend.
         rechunk : str
             Rechunk size for the target data array.
         **kwargs : Any
@@ -97,6 +101,7 @@ class ZarrCopier:
         self.overwrite = overwrite
         self.resume = resume
         self.verbosity = verbosity
+        self.nested = nested
         self.rechunk = rechunk
 
         self.rechunking = rechunk.split(",") if rechunk else []
@@ -233,12 +238,10 @@ class ZarrCopier:
         target_data = (
             target["data"]
             if "data" in target
-            else zarr_2_or_3.create_array(
-                target,
+            else target.create_array(
                 "data",
                 shape=source_data.shape,
                 chunks=self.data_chunks,
-                dtype=source_data.dtype,
                 fill_value=source_data.fill_value,
             )
         )
@@ -314,6 +317,7 @@ class ZarrCopier:
         verbosity : int
             Verbosity level of logging.
         """
+        import zarr
 
         if self.verbosity > 0:
             LOG.info(f"Copying group {source} to {target}")
@@ -339,7 +343,7 @@ class ZarrCopier:
                     LOG.info(f"Skipping {name}")
                 continue
 
-            if zarr_2_or_3.is_zarr_group(source[name]):
+            if isinstance(source[name], zarr.Group):
                 group = target[name] if name in target else target.create_group(name)
                 self.copy_group(
                     source[name],
@@ -397,13 +401,13 @@ class ZarrCopier:
 
         def target_exists() -> bool:
             try:
-                zarr.open(self.target, mode="r")
+                zarr.open(self._store(self.target), mode="r")
                 return True
-            except ValueError:
+            except FileNotFoundError:
                 return False
 
         def target_finished() -> bool:
-            target = zarr.open(self.target, mode="r")
+            target = zarr.open(self._store(self.target), mode="r")
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
                 todo = len(target["_copy"])
@@ -421,11 +425,11 @@ class ZarrCopier:
         def open_target() -> Any:
 
             if not target_exists():
-                return zarr.open(self.target, mode="w")
+                return zarr.open(self._store(self.target, self.nested), mode="w")
 
             if self.overwrite:
                 LOG.error("Target already exists, overwriting.")
-                return zarr.open(self.target, mode="w")
+                return zarr.open(self._store(self.target, self.nested), mode="w")
 
             if self.resume:
                 if target_finished():
@@ -433,7 +437,7 @@ class ZarrCopier:
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr.open(self.target, mode=zarr_2_or_3.open_mode_append)
+                return zarr.open(self._store(self.target, self.nested), mode="w+")
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
@@ -489,6 +493,7 @@ class CopyMixin:
             help="Verbosity level. 0 is silent, 1 is normal, 2 is verbose.",
             default=1,
         )
+        command_parser.add_argument("--nested", action="store_true", help="Use ZARR's nested directpry backend.")
         command_parser.add_argument(
             "--rechunk", help="Rechunk the target data array. Rechunk size should be a diviser of the block size."
         )

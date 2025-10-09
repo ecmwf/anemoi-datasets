@@ -36,7 +36,6 @@ from anemoi.datasets.create.persistent import build_storage
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
-from anemoi.datasets.zarr_versions import zarr_2_or_3
 
 from .check import DatasetName
 from .check import check_data_values
@@ -155,7 +154,7 @@ def _path_readable(path: str) -> bool:
     try:
         zarr.open(path, mode="r")
         return True
-    except zarr_2_or_3.FileNotFoundException:
+    except FileNotFoundError:
         return False
 
 
@@ -171,11 +170,6 @@ class Dataset:
             The path to the dataset.
         """
         self.path = path
-
-        # if zarr_2_or_3.version != 2:
-        #     raise ValueError(
-        #         f"Only zarr version 2 is supported when creating datasets, found version: {zarr.__version__}"
-        #     )
 
         _, ext = os.path.splitext(self.path)
         if ext != ".zarr":
@@ -213,7 +207,7 @@ class Dataset:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode=zarr_2_or_3.open_mode_append)
+        z = zarr.open(self.path, mode="a")
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
                 v = v.astype(datetime.datetime)
@@ -584,7 +578,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         progress: Any = None,
         test: bool = False,
         cache: str | None = None,
-        force_zarr3: bool = False,
         **kwargs: Any,
     ):
         """Initialize an Init instance.
@@ -609,37 +602,9 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             Whether this is a test.
         cache : Optional[str], optional
             The cache directory.
-        force_zarr3 : bool, optional
-            Whether to force the use of Zarr version 3.
         """
         if _path_readable(path) and not overwrite:
             raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
-
-        version = zarr_2_or_3.version
-        if not zarr_2_or_3.supports_datetime64():
-            LOG.warning("⚠️" * 80)
-            LOG.warning(f"This version of Zarr ({zarr.__version__}) does not support datetime64.")
-            LOG.warning("⚠️" * 80)
-
-        if version != 2:
-
-            pytesting = "PYTEST_CURRENT_TEST" in os.environ
-
-            if pytesting or force_zarr3:
-                LOG.warning("⚠️" * 80)
-                LOG.warning("Zarr version 3 is used, but this is an unsupported feature.")
-                LOG.warning("⚠️" * 80)
-            else:
-                LOG.warning("⚠️" * 80)
-                LOG.warning(
-                    f"Only Zarr version 2 is supported when creating datasets, found version: {zarr.__version__}"
-                )
-                LOG.warning("If you want to use Zarr version 3, please set --force-zarr3 option.")
-                LOG.warning("Please note that this is an unsupported feature.")
-                LOG.warning("⚠️" * 80)
-                raise ValueError(
-                    f"Only Zarr version 2 is supported when creating datasets, found version: {zarr.__version__}"
-                )
 
         super().__init__(path, cache=cache)
         self.config = config

@@ -21,7 +21,6 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.zarr_versions import zarr_2_or_3
 
 VALUES = 20
 
@@ -142,29 +141,23 @@ def create_zarr(
             for e in range(ensembles):
                 data[i, j, e] = _(date.astype(object), var, k, e, values)
 
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "data",
         data=data,
-        dtype=data.dtype,
         chunks=data.shape,
         compressor=None,
     )
-    # Store dates as ISO strings to avoid unsupported dtype in Zarr v3
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "dates",
-        data=np.array([str(d) for d in dates], dtype="U32"),
+        data=dates,
         compressor=None,
     )
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "latitudes",
         data=np.array([x + values for x in range(values)]),
         compressor=None,
     )
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "longitudes",
         data=np.array([x + values for x in range(values)]),
         compressor=None,
@@ -189,26 +182,22 @@ def create_zarr(
 
         root.attrs["missing_dates"] = [d.isoformat() for d in missing_dates]
 
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "mean",
         data=np.mean(data, axis=0),
         compressor=None,
     )
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "stdev",
         data=np.std(data, axis=0),
         compressor=None,
     )
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "maximum",
         data=np.max(data, axis=0),
         compressor=None,
     )
-    zarr_2_or_3.create_array(
-        root,
+    root.create_array(
         "minimum",
         data=np.min(data, axis=0),
         compressor=None,

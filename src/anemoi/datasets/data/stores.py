@@ -21,7 +21,6 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from ..zarr_versions import zarr_2_or_3
 from . import MissingDateError
 from .dataset import Dataset
 from .dataset import FullIndex
@@ -37,12 +36,54 @@ from .misc import load_config
 LOG = logging.getLogger(__name__)
 
 
+class S3Store(zarr.storage.ObjectStore):
+    """We use our class to manage per bucket credentials"""
+
+    def __init__(self, url):
+
+        import boto3
+        from anemoi.utils.remote.s3 import s3_options
+        from obstore.auth.boto3 import Boto3CredentialProvider
+        from obstore.store import from_url
+
+        options = s3_options(url)
+
+        credential_provider = Boto3CredentialProvider(
+            session=boto3.session.Session(
+                aws_access_key_id=options["aws_access_key_id"],
+                aws_secret_access_key=options["aws_secret_access_key"],
+            ),
+        )
+
+        objectstore = from_url(
+            url,
+            credential_provider=credential_provider,
+            endpoint=options["endpoint_url"],
+        )
+
+        super().__init__(objectstore, read_only=True)
+
+
+class HTTPStore(zarr.storage.ObjectStore):
+
+    def __init__(self, url):
+
+        from obstore.store import from_url
+
+        objectstore = from_url(url)
+
+        super().__init__(objectstore, read_only=True)
+
+
+DebugStore = zarr.storage.LoggingStore
+
+
 def name_to_zarr_store(path_or_url: str) -> Any:
     """Convert a path or URL to a zarr store."""
     store = path_or_url
 
     if store.startswith("s3://"):
-        return zarr_2_or_3.S3Store(store)
+        return S3Store(store)
 
     if store.startswith("http://") or store.startswith("https://"):
 
@@ -66,17 +107,12 @@ def name_to_zarr_store(path_or_url: str) -> Any:
             os.rename(path + ".tmp", path)
             return name_to_zarr_store(path)
 
-        bits = parsed.netloc.split(".")
-        if len(bits) == 5 and (bits[1], bits[3], bits[4]) == ("s3", "amazonaws", "com"):
-            s3_url = f"s3://{bits[0]}{parsed.path}"
-            store = zarr_2_or_3.S3Store(s3_url, region=bits[2])
-        else:
-            store = zarr_2_or_3.HTTPStore(store)
+        return HTTPStore(store)
 
     return store
 
 
-def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> Any:
+def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Group:
     """Open a zarr store from a path."""
     try:
         store = name_to_zarr_store(path)
@@ -90,15 +126,14 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> Any:
                         "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
                         "Please disable it for other backends."
                     )
-                store = zarr_2_or_3.DirectoryStore(store)
-            store = zarr_2_or_3.DebugStore(store)
+                store = zarr.storage.DirectoryStore(store)
+            store = DebugStore(store)
 
         if cache is not None:
-            store = zarr_2_or_3.LRUStoreCache(store, max_size=cache)
+            store = zarr.LRUStoreCache(store, max_size=cache)
 
         return zarr.open(store, mode="r")
-
-    except zarr_2_or_3.FileNotFoundException:
+    except FileNotFoundError:
         if not dont_fail:
             raise FileNotFoundError(f"Zarr store not found: {path}")
 
@@ -106,9 +141,9 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> Any:
 class Zarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: str | zarr_2_or_3.Group) -> None:
+    def __init__(self, path: str | zarr.Group) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
-        if isinstance(path, zarr_2_or_3.Group):
+        if isinstance(path, zarr.Group):
             self.was_zarr = True
             self.path = str(id(path))
             self.z = path
@@ -184,31 +219,17 @@ class Zarr(Dataset):
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates of the dataset."""
-        dates = self.z["dates"][:]
-        if not dates.dtype == np.dtype("datetime64[s]"):
-            # The datasets created with zarr3 will have the dates as int64 as long
-            # as zarr3 does not support datetime64
-            LOG.warning("Converting dates to 'datetime64[s]'")
-            dates = dates.astype("datetime64[s]")
-        return dates
+        return self.z["dates"][:]  # Convert to numpy
 
     @property
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the dataset."""
-        try:
-            return self.z["latitudes"][:]
-        except AttributeError:
-            LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.z["latitude"][:]
+        return self.z["latitudes"][:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the dataset."""
-        try:
-            return self.z["longitudes"][:]
-        except AttributeError:
-            LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.z["longitude"][:]
+        return self.z["longitudes"][:]
 
     @property
     def statistics(self) -> dict[str, NDArray[Any]]:
@@ -346,7 +367,7 @@ class Zarr(Dataset):
 class ZarrWithMissingDates(Zarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, path: str | zarr_2_or_3.Group) -> None:
+    def __init__(self, path: str | zarr.Group) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(path)
 
@@ -462,7 +483,7 @@ def zarr_lookup(name: str, fail: bool = True) -> str | None:
                     LOG.info("Opening `%s` as `%s`", name, full)
                     QUIET.add(name)
                 return full
-        except zarr_2_or_3.FileNotFoundException:
+        except FileNotFoundError:
             pass
 
     if fail:
