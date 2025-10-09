@@ -1517,7 +1517,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
 
         LOG.info(stats)
 
-        if not all(self.registry.get_flags()):
+        if not all(self.registry.get_flags(sync=False)):
             raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
 
         for k in [
