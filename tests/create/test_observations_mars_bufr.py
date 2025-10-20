@@ -16,7 +16,7 @@ from earthkit.data import from_source
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
-from anemoi.datasets.data.records import AbsoluteWindow
+from anemoi.datasets.data.records import Interval
 from anemoi.datasets.data.records import window_from_str
 
 log = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class DummpySource(ObservationsSource):
         self.data = data
 
     def __call__(self, window):
-        assert isinstance(window, AbsoluteWindow), "window must be an AbsoluteWindow"
+        assert isinstance(window, Interval), "window must be an Interval"
 
         if window.include_start:
             mask = self.data["times"] > window.start
@@ -52,7 +52,7 @@ class MarsObsSource(ObservationsSource):
         self.process_func = process_func
 
     def __call__(self, window):
-        assert isinstance(window, AbsoluteWindow), "window must be an AbsoluteWindow"
+        assert isinstance(window, Interval), "window must be an Interval"
 
         request_dict = self.request_dict
         request_dict["date"] = f"{window.start.strftime('%Y%m%d')}/to/{window.end.strftime('%Y%m%d')}"
@@ -119,7 +119,7 @@ source = MarsObsSource(
 filter = ColFilter("obsvalue_precip1h_0")
 
 for d in dates:
-    window = window_from_str("(-5h, 1h]").to_absolute_window(d)
+    window = window_from_str("(-5h, 1h]").to_interval(d)
     print(window.start.strftime("%Y-%m-%d"), window.end.strftime("%Y-%m-%d"))
     d = source(window)
     d = filter(d)

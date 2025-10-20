@@ -11,7 +11,7 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from .legacy import legacy_source
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 
 @legacy_source(__file__)
@@ -45,7 +45,7 @@ def constants(context: Any, dates: list[str], template: dict[str, Any], param: s
     if len(template) == 0:
         raise ValueError("Forcings template is empty.")
 
-    return from_source("forcings", source_or_dataset=template, date=dates, param=param)
+    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
 
 
 execute: Any = constants

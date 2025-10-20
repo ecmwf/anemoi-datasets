@@ -198,10 +198,17 @@ class MeshProjectionGrid(ProjectionGrid):
         return lat.flatten(), lon.flatten()
 
 
-class UnstructuredProjectionGrid(XYGrid):
+class UnstructuredProjectionGrid(ProjectionGrid):
     """Grid class for unstructured projected coordinates."""
 
     @cached_property
     def grid_points(self) -> tuple[Any, Any]:
-        """Get the grid points for the unstructured projection grid."""
-        raise NotImplementedError("UnstructuredProjectionGrid")
+        """Get the grid points for the unstructured grid."""
+        if self.projection == "epsg:4326":
+            # WGS84, no transformation needed
+            return self.y.variable.values.flatten(), self.x.variable.values.flatten()
+        transformer = self.transformer()
+        xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
+        lon, lat = transformer.transform(xv, yv)
+
+        return lat.flatten(), lon.flatten()

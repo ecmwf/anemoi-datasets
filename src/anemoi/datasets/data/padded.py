@@ -12,6 +12,7 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
+from typing import Dict
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -33,9 +34,6 @@ LOG = logging.getLogger(__name__)
 
 
 class Padded(Forwards):
-    _before: int = 0
-    _after: int = 0
-    _inside: int = 0
 
     def __init__(
         self,
@@ -63,6 +61,9 @@ class Padded(Forwards):
             frequency = dataset.frequency
 
         self._frequency = frequency_to_timedelta(frequency)
+        self._before: int = 0
+        self._after: int = 0
+        self._inside: int = 0
 
         if start is None:
             # default is to start at the first date

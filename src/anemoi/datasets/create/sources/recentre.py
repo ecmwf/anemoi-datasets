@@ -11,9 +11,8 @@ from copy import deepcopy
 from typing import Any
 
 from anemoi.datasets.compute.recentre import recentre as _recentre
-
-from .legacy import legacy_source
-from .mars import mars
+from anemoi.datasets.create.sources.legacy import legacy_source
+from anemoi.datasets.create.sources.mars import mars
 
 
 def to_list(x: list | tuple | str) -> list:

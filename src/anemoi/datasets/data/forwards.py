@@ -18,16 +18,16 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import debug_indexing
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import length_to_slices
-from .indexing import update_tuple
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import length_to_slices
+from anemoi.datasets.data.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -240,6 +240,9 @@ class Forwards(Dataset):
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
+    def project(self, projection):
+        return self.forward.project(projection).add_transformation(self)
+
 
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""
@@ -291,7 +294,9 @@ class Combined(Forwards):
             return
 
         if d1.resolution != d2.resolution:
-            raise ValueError(f"Incompatible resolutions: {d1.resolution} and {d2.resolution} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible resolutions: {d1.resolution} and {d2.resolution} ({d1} {d2})"
+            )
 
     def check_same_frequency(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the frequencies of two datasets are the same.
@@ -309,7 +314,9 @@ class Combined(Forwards):
             If the frequencies are not the same.
         """
         if d1.frequency != d2.frequency:
-            raise ValueError(f"Incompatible frequencies: {d1.frequency} and {d2.frequency} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible frequencies: {d1.frequency} and {d2.frequency} ({d1} {d2})"
+            )
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the grids of two datasets are the same.
@@ -333,7 +340,7 @@ class Combined(Forwards):
         if not np.allclose(d1.latitudes, d2.latitudes, rtol=rtol) or not np.allclose(
             d1.longitudes, d2.longitudes, rtol=rtol
         ):
-            raise ValueError(f"Incompatible grid ({d1.longitudes} {d2.longitudes})")
+            raise ValueError(f"{self.__class__.__name__}: Incompatible grid ({d1.longitudes} {d2.longitudes})")
 
     def check_same_shape(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the shapes of two datasets are the same.
@@ -351,10 +358,12 @@ class Combined(Forwards):
             If the shapes are not the same.
         """
         if d1.shape[1:] != d2.shape[1:]:
-            raise ValueError(f"Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
+            raise ValueError(f"{self.__class__.__name__}: Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
 
         if d1.variables != d2.variables:
-            raise ValueError(f"Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})"
+            )
 
     def check_same_sub_shapes(self, d1: Any, d2: Any, drop_axis: int) -> None:
         """Checks if the sub-shapes of two datasets are the same along a given axis.
@@ -377,7 +386,7 @@ class Combined(Forwards):
         shape2 = d2.sub_shape(drop_axis)
 
         if shape1 != shape2:
-            raise ValueError(f"Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
+            raise ValueError(f"{self.__class__.__name__}: Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the variables of two datasets are the same.
@@ -395,7 +404,9 @@ class Combined(Forwards):
             If the variables are not the same.
         """
         if d1.variables != d2.variables:
-            raise ValueError(f"Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})"
+            )
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.
@@ -413,7 +424,7 @@ class Combined(Forwards):
             If the lengths are not the same.
         """
         if d1._len != d2._len:
-            raise ValueError(f"Incompatible lengths: {d1._len} and {d2._len}")
+            raise ValueError(f"{self.__class__.__name__}: Incompatible lengths: {d1._len} and {d2._len}")
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the dates of two datasets are the same.
@@ -433,10 +444,14 @@ class Combined(Forwards):
         self.check_same_frequency(d1, d2)
 
         if d1.dates[0] != d2.dates[0]:
-            raise ValueError(f"Incompatible start dates: {d1.dates[0]} and {d2.dates[0]} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible start dates: {d1.dates[0]} and {d2.dates[0]} ({d1} {d2})"
+            )
 
         if d1.dates[-1] != d2.dates[-1]:
-            raise ValueError(f"Incompatible end dates: {d1.dates[-1]} and {d2.dates[-1]} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible end dates: {d1.dates[-1]} and {d2.dates[-1]} ({d1} {d2})"
+            )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if two datasets are compatible.
@@ -661,3 +676,14 @@ class GivenAxis(Combined):
             if self.axis == 0:  # Advance if axis is time
                 offset += len(d)
         return result
+
+    def project(self, projection):
+        result = []
+        offset = 0
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p.offset(axis=self.axis, amount=-offset)))
+            offset += dataset.shape[self.axis]
+
+        return projection.list_or_single(result)

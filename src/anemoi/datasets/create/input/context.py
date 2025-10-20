@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2025 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,79 +8,63 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-import textwrap
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
-
-from anemoi.utils.humanize import plural
-
-from .trace import step
-from .trace import trace
 
 LOG = logging.getLogger(__name__)
 
 
-class Context:
-    """Class to handle the build context in the dataset creation process."""
+class Context(ABC):
+    """Context for building input data."""
 
     def __init__(self) -> None:
-        """Initializes a Context instance."""
-        # used_references is a set of reference paths that will be needed
-        self.used_references = set()
-        # results is a dictionary of reference path -> obj
         self.results = {}
+        self.cache = {}
 
-    def will_need_reference(self, key: list | tuple) -> None:
-        """Marks a reference as needed.
+    def trace(self, emoji, *message) -> None:
 
-        Parameters
-        ----------
-        key : Union[List, Tuple]
-            The reference key.
-        """
-        assert isinstance(key, (list, tuple)), key
-        key = tuple(key)
-        self.used_references.add(key)
+        print(f"{emoji}: {message}")
 
-    def notify_result(self, key: list | tuple, result: Any) -> None:
-        """Notifies that a result is available for a reference.
+    def register(self, data: Any, path: list[str]) -> Any:
 
-        Parameters
-        ----------
-        key : Union[List, Tuple]
-            The reference key.
-        result : Any
-            The result object.
-        """
-        trace(
-            "🎯",
-            step(key),
-            "notify result",
-            textwrap.shorten(repr(result).replace(",", ", "), width=40),
-            plural(len(result), "field"),
-        )
-        assert isinstance(key, (list, tuple)), key
-        key = tuple(key)
-        if key in self.used_references:
-            if key in self.results:
-                raise ValueError(f"Duplicate result {key}")
-            self.results[key] = result
+        if not path:
+            return data
 
-    def get_result(self, key: list | tuple) -> Any:
-        """Retrieves the result for a given reference.
+        assert path[0] in ("input", "data_sources"), path
 
-        Parameters
-        ----------
-        key : Union[List, Tuple]
-            The reference key.
+        LOG.info(f"Registering data at path: {'.'.join(str(x) for x in path)}")
+        self.results[tuple(path)] = data
+        return data
 
-        Returns
-        -------
-        Any
-            The result for the given reference.
-        """
-        assert isinstance(key, (list, tuple)), key
-        key = tuple(key)
-        if key in self.results:
-            return self.results[key]
-        all_keys = sorted(list(self.results.keys()))
-        raise ValueError(f"Cannot find result {key} in {all_keys}")
+    def resolve(self, config):
+        config = config.copy()
+
+        for key, value in list(config.items()):
+            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                path = tuple(value[2:-1].split("."))
+                if path in self.results:
+                    config[key] = self.results[path]
+                else:
+                    print(f"Path not found {path}")
+                    for p in sorted(self.results):
+                        print(f"   Available paths: {p}")
+                    raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
+
+        return config
+
+    def create_source(self, config: Any, *path) -> Any:
+        from anemoi.datasets.create.input.action import action_factory
+
+        if not isinstance(config, dict):
+            # It is already a result (e.g. ekd.FieldList), loaded from ${a.b.c}
+            # TODO: something more elegant
+            return lambda *args, **kwargs: config
+
+        return action_factory(config, *path)
+
+    @abstractmethod
+    def empty_result(self) -> Any: ...
+
+    @abstractmethod
+    def create_result(self, data: Any) -> Any: ...

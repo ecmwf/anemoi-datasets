@@ -10,6 +10,8 @@
 import datetime
 import logging
 import os
+import subprocess
+import sys
 from copy import deepcopy
 from typing import Any
 
@@ -91,7 +93,7 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
         if dic[key] == value:
             return
         raise ValueError(f"Cannot use {key}={dic[key]}. Must use {value}.")
-    LOG.info(f"Setting {key}={value} in config")
+    # LOG.info(f"Setting {key}={value} in config")
     dic[key] = value
 
 
@@ -280,6 +282,8 @@ class LoadersConfig(Config):
 
         self.output.order_by = normalize_order_by(self.output.order_by)
 
+        self.setdefault("dates", Config())
+
         self.dates["group_by"] = self.build.group_by
 
         ###########
@@ -400,6 +404,11 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     LoadersConfig
         The validated configuration object.
     """
+
+    if isinstance(config, str) and config.endswith(".py"):
+        result = subprocess.run([sys.executable, config], capture_output=True, text=True, check=True)
+        config = yaml.safe_load(result.stdout)
+
     config = Config(config)
     if is_test:
         set_to_test_mode(config)

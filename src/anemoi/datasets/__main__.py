@@ -12,8 +12,8 @@ from typing import Any
 from anemoi.utils.cli import cli_main
 from anemoi.utils.cli import make_parser
 
-from . import __version__
-from .commands import COMMANDS
+from anemoi.datasets import __version__
+from anemoi.datasets.commands import COMMANDS
 
 
 # For read-the-docs

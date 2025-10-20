@@ -20,7 +20,7 @@ from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
-from .legacy import legacy_source
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 LOG = logging.getLogger(__name__)
 
@@ -138,6 +138,13 @@ def execute(
         check(ds, given_paths, valid_datetime=dates, **kwargs)
 
     if grid is not None:
+
+        lat, lon = grid.latlon()
+
+        assert len(lat) == len(lon), (len(lat), len(lon))
+        for f in ds:
+            assert len(f.to_numpy(flatten=True)) == len(lat), (len(f.to_numpy(flatten=True)), len(lat))
+
         ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
 
     if len(ds) == 0:

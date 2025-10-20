@@ -12,7 +12,7 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 
 @legacy_source(__file__)

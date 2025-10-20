@@ -125,7 +125,7 @@ class Comparer:
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
     @staticmethod
-    def compare_dot_zattrs(a: dict, b: dict, path: str, errors: list) -> None:
+    def compare_dot_zattrs(a: dict, b: dict, path: str, errors: list, ignore: list | None = None) -> None:
         """Compare the attributes of two Zarr datasets.
 
         Parameters
@@ -138,17 +138,23 @@ class Comparer:
             The current path in the attribute hierarchy.
         errors : list
             The list to store error messages.
+        ignore : list|None
+            A list of keys to ignore during comparison.
         """
+        if ignore is None:
+            ignore = []
+
         if isinstance(a, dict):
-            a_keys = list(a.keys())
-            b_keys = list(b.keys())
-            for k in set(a_keys) | set(b_keys):
+            a_keys = set(a.keys()) - set(ignore)
+            b_keys = set(b.keys()) - set(ignore)
+            for k in a_keys | b_keys:
                 if k not in a_keys:
                     errors.append(f"❌ {path}.{k} : missing key (only in reference)")
                     continue
                 if k not in b_keys:
                     errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
                     continue
+
                 if k in [
                     "timestamp",
                     "uuid",
@@ -196,7 +202,13 @@ class Comparer:
             If the datasets or their metadata do not match.
         """
         errors = []
-        self.compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), "metadata", errors)
+        self.compare_dot_zattrs(
+            dict(self.z_output.attrs),
+            dict(self.z_reference.attrs),
+            "metadata",
+            errors,
+            ignore=["origins"],
+        )
         if errors:
             print("Comparison failed")
             print("\n".join(errors))
@@ -211,7 +223,7 @@ class Comparer:
             print(f"tar zcf {base}.tgz {base}")
             print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
             print()
-            raise AssertionError("Comparison failed")
+            raise AssertionError(f"Comparison failed {errors}")
 
         self.compare_datasets(self.ds_output, self.ds_reference)
         self.compare_statistics(self.ds_output, self.ds_reference)

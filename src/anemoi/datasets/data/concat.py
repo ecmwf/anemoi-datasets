@@ -16,20 +16,20 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import debug_indexing
-from .forwards import Combined
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import length_to_slices
-from .indexing import update_tuple
-from .misc import _auto_adjust
-from .misc import _open
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Combined
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import length_to_slices
+from anemoi.datasets.data.indexing import update_tuple
+from anemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ class Concat(ConcatMixin, Combined):
             s = ranges[i + 1]
             if r[1] + frequency != s[0]:
                 if fill_missing_gaps:
-                    from .missing import MissingDataset
+                    from anemoi.datasets.data.missing import MissingDataset
 
                     result.append(MissingDataset(datasets[i], r[1] + frequency, s[0] - frequency))
                 else:
@@ -254,6 +254,15 @@ class Concat(ConcatMixin, Combined):
             The metadata specific to the forwards subclass.
         """
         return {}
+
+    def project(self, projection):
+        result = []
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p))
+
+        return projection.list_or_single(result)
 
 
 def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:

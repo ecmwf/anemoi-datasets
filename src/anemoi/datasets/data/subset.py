@@ -19,19 +19,19 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import Source
-from .debug import debug_indexing
-from .forwards import Forwards
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import make_slice_or_index_from_list_or_tuple
-from .indexing import update_tuple
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import Source
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Forwards
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import make_slice_or_index_from_list_or_tuple
+from anemoi.datasets.data.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _start(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
     Returns:
     int: The index of the start date.
     """
-    from .misc import as_first_date
+    from anemoi.datasets.data.misc import as_first_date
 
     c = as_first_date(a, dates)
     d = as_first_date(b, dates)
@@ -82,7 +82,7 @@ def _end(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
     Returns:
     int: The index of the end date.
     """
-    from .misc import as_last_date
+    from anemoi.datasets.data.misc import as_last_date
 
     c = as_last_date(a, dates)
     d = as_last_date(b, dates)
@@ -298,3 +298,13 @@ class Subset(Forwards):
             # "indices": self.indices,
             "reason": self.reason,
         }
+
+    def forward_subclass_origin(self, index):
+        assert (
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+        ), tuple
+        return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
+
+    def project(self, projection):
+        projection = projection.from_indices(axis=0, indices=self.indices)
+        return self.dataset.project(projection)

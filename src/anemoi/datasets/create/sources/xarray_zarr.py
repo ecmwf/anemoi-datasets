@@ -11,8 +11,8 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from .legacy import legacy_source
-from .xarray import load_many
+from anemoi.datasets.create.sources.legacy import legacy_source
+from anemoi.datasets.create.sources.xarray import load_many
 
 
 @legacy_source(__file__)

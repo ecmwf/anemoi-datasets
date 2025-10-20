@@ -9,7 +9,7 @@
 
 import numpy as np
 
-from .legacy import legacy_source
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 
 @legacy_source(__file__)

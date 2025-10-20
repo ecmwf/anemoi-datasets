@@ -19,13 +19,28 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from .action import Action
-from .action import action_factory
-from .join import JoinResult
-from .result import Result
-from .trace import trace_select
+from anemoi.datasets.create.source import Source
+from anemoi.datasets.create.sources import source_registry
+
+# (C) Copyright 2024 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
 
 LOG = logging.getLogger(__name__)
+
+
+class Action:
+    pass
+
+
+class Result:
+    pass
 
 
 class DateMapper:
@@ -278,107 +293,23 @@ class DateMapperConstant(DateMapper):
         ]
 
 
-class DateMapperResult(Result):
-    """A Result implementation that updates the valid datetime of the datasource."""
+@source_registry.register("repeated_dates")
+class RepeatedDatesSource(Source):
 
-    def __init__(
-        self,
-        context: Any,
-        action_path: list[str],
-        group_of_dates: Any,
-        source_result: Any,
-        mapper: DateMapper,
-        original_group_of_dates: Any,
-    ) -> None:
-        """Initialize DateMapperResult.
+    def __init__(self, owner, source: Any, mode: str, **kwargs) -> None:
+        self.owner = owner
+        self.mapper = DateMapper.from_mode(mode, source, kwargs)
+        self.source = source
 
-        Parameters
-        ----------
-        context : Any
-            The context.
-        action_path : list of str
-            The action path.
-        group_of_dates : Any
-            The group of dates.
-        source_result : Any
-            The source result.
-        mapper : DateMapper
-            The date mapper.
-        original_group_of_dates : Any
-            The original group of dates.
-        """
-        super().__init__(context, action_path, group_of_dates)
+    def execute(self, context, group_of_dates):
+        source = context.create_source(self.source, *self.owner.path, "source")
 
-        self.source_results: Any = source_result
-        self.mapper: DateMapper = mapper
-        self.original_group_of_dates: Any = original_group_of_dates
-
-    @property
-    def datasource(self) -> Any:
-        """Get the datasource with updated valid datetime."""
-        result: list = []
-
-        for field in self.source_results.datasource:
-            for date in self.original_group_of_dates:
-                result.append(new_field_with_valid_datetime(field, date))
-
-        if not result:
-            raise ValueError("repeated_dates: no input data found")
+        result = []
+        for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
+            print(f"one_date_group: {one_date_group}, many_dates_group: {many_dates_group}")
+            source_results = source(context, one_date_group)
+            for field in source_results:
+                for date in many_dates_group:
+                    result.append(new_field_with_valid_datetime(field, date))
 
         return new_fieldlist_from_list(result)
-
-
-class RepeatedDatesAction(Action):
-    """An Action implementation that selects and transforms a group of dates."""
-
-    def __init__(self, context: Any, action_path: list[str], source: Any, mode: str, **kwargs: Any) -> None:
-        """Initialize RepeatedDatesAction.
-
-        Args:
-            context (Any): The context.
-            action_path (List[str]): The action path.
-            source (Any): The data source.
-            mode (str): The mode for date mapping.
-            **kwargs (Any): Additional arguments.
-        """
-        super().__init__(context, action_path, source, mode, **kwargs)
-
-        self.source: Any = action_factory(source, context, action_path + ["source"])
-        self.mapper: DateMapper = DateMapper.from_mode(mode, self.source, kwargs)
-
-    @trace_select
-    def select(self, group_of_dates: Any) -> JoinResult:
-        """Select and transform the group of dates.
-
-        Args:
-            group_of_dates (Any): The group of dates to select.
-
-        Returns
-        -------
-        JoinResult
-            The result of the join operation.
-        """
-        results: list = []
-        for one_date_group, many_dates_group in self.mapper.transform(group_of_dates):
-            results.append(
-                DateMapperResult(
-                    self.context,
-                    self.action_path,
-                    one_date_group,
-                    self.source.select(one_date_group),
-                    self.mapper,
-                    many_dates_group,
-                )
-            )
-
-        return JoinResult(self.context, self.action_path, group_of_dates, results)
-
-    def __repr__(self) -> str:
-        """Get the string representation of the action.
-
-        Returns
-        -------
-        str
-            The string representation.
-        """
-        return f"MultiDateMatchAction({self.source}, {self.mapper})"

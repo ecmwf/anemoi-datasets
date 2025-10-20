@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create import creator_factory
+from anemoi.datasets.create.fields.tasks import task_factory
 
 
 class TestingContext:
@@ -52,21 +52,21 @@ def create_dataset(
     if output is None:
         output = tempfile.mkdtemp(suffix=".zarr")
 
-    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
-    creator_factory("load", path=output).run()
-    creator_factory("finalise", path=output).run()
-    creator_factory("patch", path=output).run()
+    task_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
+    task_factory("load", path=output).run()
+    task_factory("finalise", path=output).run()
+    task_factory("patch", path=output).run()
 
     if delta is not None:
-        creator_factory("init_additions", path=output, delta=delta).run()
-        creator_factory("run_additions", path=output, delta=delta).run()
-        creator_factory("finalise_additions", path=output, delta=delta).run()
+        task_factory("init_additions", path=output, delta=delta).run()
+        task_factory("load_additions", path=output, delta=delta).run()
+        task_factory("finalise_additions", path=output, delta=delta).run()
 
-    creator_factory("cleanup", path=output).run()
+    task_factory("cleanup", path=output).run()
 
     if delta is not None:
-        creator_factory("cleanup", path=output, delta=delta).run()
+        task_factory("cleanup", path=output, delta=delta).run()
 
-    creator_factory("verify", path=output).run()
+    task_factory("verify", path=output).run()
 
     return output

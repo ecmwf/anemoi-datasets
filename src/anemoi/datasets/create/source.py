@@ -49,3 +49,46 @@ class Source(ABC):
         """
 
         pass
+
+
+class FieldSource(Source):
+    """A source that returns a predefined FieldList."""
+
+    def __init__(self, context: any, data: ekd.FieldList, *args: tuple, **kwargs: dict):
+        """Initialise the FieldSource.
+
+        Parameters
+        ----------
+        context : Any
+            The context for the data source.
+        data : ekd.FieldList
+            The predefined data to return.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+        super().__init__(context, *args, **kwargs)
+        self.data = data
+
+    def execute(self, dates: DateList) -> ekd.FieldList:
+        """Return the predefined FieldList.
+
+        Parameters
+        ----------
+        dates : DateList
+            The input dates (not used in this implementation).
+
+        Returns
+        -------
+        ekd.FieldList
+            The predefined data.
+        """
+        self.context.trace(self.emoji, f"FieldSource returning {len(self.data)} fields")
+        return self.data
+
+
+class ObservationsSource(Source):
+    """A source that retrieves observational data."""
+
+    pass

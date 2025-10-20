@@ -18,15 +18,14 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.data import MissingDateError
-
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import debug_indexing
-from .forwards import Forwards
-from .indexing import expand_list_indexing
-from .indexing import update_tuple
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Forwards
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -59,14 +58,14 @@ class MissingDates(Forwards):
 
         self._missing = set()
 
-        other = []
+        other = set()
         for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
                 self.missing_dates.append(dataset.dates[date])
             else:
                 date = to_datetime(date)
-                other.append(date)
+                other.add(date)
 
         if other:
             for i, date in enumerate(dataset.dates):

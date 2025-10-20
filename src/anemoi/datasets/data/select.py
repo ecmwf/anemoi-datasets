@@ -15,18 +15,18 @@ from typing import Any
 
 from numpy.typing import NDArray
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .dataset import Shape
-from .dataset import TupleIndex
-from .debug import Node
-from .debug import Source
-from .debug import debug_indexing
-from .forwards import Forwards
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from anemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.data.dataset import Shape
+from anemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.data.debug import Node
+from anemoi.datasets.data.debug import Source
+from anemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.data.forwards import Forwards
+from anemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.data.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -224,6 +224,17 @@ class Select(Forwards):
         # return dict(indices=self.indices)
         return dict(reason=self.reason)
 
+    def forward_subclass_origin(self, index):
+        assert (
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+        ), tuple
+
+        return self.dataset.origin((index[0], self.indices[index[1]], index[2], index[3]))
+
+    def project(self, projection):
+        projection = projection.from_indices(axis=1, indices=self.indices)
+        return self.dataset.project(projection)
+
 
 class Rename(Forwards):
     """Class to rename variables in a dataset."""
@@ -277,3 +288,9 @@ class Rename(Forwards):
             Dict[str, Any]: The metadata specific to the subclass.
         """
         return dict(rename=self.rename)
+
+    def origin_transformation(self, variable, origins):
+        return {
+            "name": "rename",
+            "config": {"rename": self.rename},
+        }, self.rename.get(variable, variable)
