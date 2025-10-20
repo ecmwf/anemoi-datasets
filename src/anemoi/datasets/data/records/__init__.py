@@ -146,7 +146,7 @@ class BaseRecordsDataset:
         if frequency:
             frequency = frequency_to_timedelta(frequency)
             if self.frequency.total_seconds() % frequency.total_seconds() == 0:
-                return self  # IncreaseFrequency(self, frequency)
+                return IncreaseFrequency(self, frequency)
             elif frequency.total_seconds() % self.frequency.total_seconds() == 0:
                 raise NotImplementedError("Decreasing frequency not implemented yet")
                 # return DecreaseFrequency(self, frequency)
@@ -242,6 +242,81 @@ class RecordsForward(BaseRecordsDataset):
 
     def tree(self):
         return Node(self, [self.forward.tree()], **self.reason)
+
+
+class IncreaseFrequency(RecordsForward):
+    # change the frequency of a records dataset by splitting the windows to fit the new frequency
+    # the new frequency must be a divisor of the original frequency (e.g. 6h -> 3h, but not 3h -> 6h) (and not 6h -> 5h)
+    def __init__(self, dataset, frequency):
+        super().__init__(dataset)
+        self.dataset = dataset
+        self._frequency = frequency_to_timedelta(frequency)
+        self.reason = {"frequency": frequency}
+
+        self._n = self.dataset.frequency / self._frequency
+        if int(self._n) != self._n:
+            raise ValueError(f"Cannot split frequency {self.dataset.frequency} to {frequency}, not a multiple")
+        self._n = int(self._n)
+
+    @cached_property
+    def _window(self):
+        previous = self.dataset._window
+        if isinstance(previous, int):
+            previous = window_from_str(previous)
+        return previous / self._n
+
+    def __len__(self):
+        return len(self.dataset) * self._n
+
+    @property
+    def frequency(self):
+        return self._frequency
+
+    def _load_data(self, i):
+        j = i // self._n
+        k = i % self._n
+
+        too_much_data = self.dataset._load_data(j)
+
+        out = {}
+        for group in self.groups:
+            timedeltas = too_much_data[f"timedeltas:{group}"]
+            if timedeltas.dtype != "timedelta64[s]":
+                raise ValueError(f"Wrong type for {group}")
+
+            start_delta = k * self.frequency + self._window.start
+            end_delta = k * self.frequency + self._window.end
+
+            def _to_numpy_timedelta(td):
+                if isinstance(td, np.timedelta64):
+                    assert td.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {td.dtype}"
+                    return td
+                return np.timedelta64(int(td.total_seconds()), "s")
+
+            start_delta = _to_numpy_timedelta(start_delta)
+            end_delta = _to_numpy_timedelta(end_delta)
+            assert isinstance(start_delta, np.timedelta64), (type(start_delta), start_delta)
+            assert isinstance(timedeltas[0], np.timedelta64), type(timedeltas[0])
+
+            if self._window.include_start:
+                mask = timedeltas >= start_delta
+            else:
+                mask = timedeltas > start_delta
+            if self._window.include_end:
+                mask &= timedeltas <= end_delta
+            else:
+                mask &= timedeltas < end_delta
+
+            out[f"data:{group}"] = too_much_data[f"data:{group}"][..., mask]
+            out[f"latitudes:{group}"] = too_much_data[f"latitudes:{group}"][..., mask]
+            out[f"longitudes:{group}"] = too_much_data[f"longitudes:{group}"][..., mask]
+            out[f"timedeltas:{group}"] = too_much_data[f"timedeltas:{group}"][..., mask]
+            out[f"metadata:{group}"] = too_much_data[f"metadata:{group}"]
+
+        return out
+
+    def tree(self):
+        return Node(self, [self.dataset.tree()], **self.reason)
 
 
 class FieldsRecords(RecordsForward):

@@ -238,3 +238,15 @@ class WindowsSpec:
             return (not other_window.include_end) or self.include_end
         print(my_end >= other_end)
         return my_end >= other_end
+
+    def __truediv__(self, n: int):
+        """Divide the window into a smaller windows, shrinked by a factor n."""
+        assert isinstance(n, int), f"n must be an int, got {type(n)}"
+        assert n > 0, f"n must be positive, got {n}"
+
+        return WindowsSpec(
+            start=self.start / n,
+            end=self.end / n,
+            include_start=self.include_start,
+            include_end=self.include_end,
+        )
