@@ -1378,7 +1378,6 @@ def test_cropping() -> None:
 
 @mockup_open_zarr
 def test_rolling_average() -> None:
-    """Test cropping a dataset."""
     initial = DatasetTester("test-2021-2021-6h-o96-abcd")
     test = DatasetTester(
         "test-2021-2021-6h-o96-abcd",
