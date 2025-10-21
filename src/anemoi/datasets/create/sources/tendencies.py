@@ -87,11 +87,13 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
 class TendenciesSource(LegacySource):
 
     @staticmethod
-    def _execute(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
+    def _execute(context: Any, dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
         """Computes tendencies for the given dates and time increment.
 
         Parameters
         ----------
+        context : Any
+            The source context - passed through directly to the mars source.
         dates : List[datetime.datetime]
             A list of datetime objects.
         time_increment : Any
@@ -110,10 +112,9 @@ class TendenciesSource(LegacySource):
         shifted_dates = [d - time_increment for d in dates]
         all_dates = sorted(list(set(dates + shifted_dates)))
 
-        # from .mars import execute as mars
-        from anemoi.datasets.create.mars import execute as mars
+        from .mars import mars
 
-        ds = mars(dates=all_dates, **kwargs)
+        ds = mars(context, dates=all_dates, **kwargs)
 
         dates_in_data = ds.unique_values("valid_datetime", progress_bar=False)["valid_datetime"]
         for d in all_dates:
