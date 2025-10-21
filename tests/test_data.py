@@ -1377,6 +1377,20 @@ def test_cropping() -> None:
 
 
 @mockup_open_zarr
+def test_rolling_average() -> None:
+    initial = DatasetTester("test-2021-2021-6h-o96-abcd")
+    test = DatasetTester(
+        "test-2021-2021-6h-o96-abcd",
+        rolling_average=(-2, 2, "freq"),
+    )
+    assert initial.ds.shape == (365 * 4, 4, 1, 10)
+    assert test.ds.shape == (365 * 4 - 4, 4, 1, 10)
+
+    diff = test.ds[0] - (initial.ds[0:5].sum(axis=0) / 5)
+    assert np.abs(diff).max() < 1e-5
+
+
+@mockup_open_zarr
 def test_invalid_trim_edge() -> None:
     """Test that exception raised when attempting to trim a 1D dataset"""
     with pytest.raises(ValueError):
