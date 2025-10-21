@@ -10,6 +10,7 @@
 import os
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.use.gridded.stores import open_zarr
@@ -183,6 +184,13 @@ class Comparer:
             msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
             errors.append(msg)
             return
+
+        # convert a and b from frequency strings to timedeltas when :
+        #  - path ends with .period.0 or .period.n were n is int
+        #  - key is "frequency"
+        if (path.split(".")[-2] == "period" and path.split(".")[-1].isdigit()) or (path.split(".")[-1] == "frequency"):
+            a = frequency_to_timedelta(a)
+            b = frequency_to_timedelta(b)
 
         if a != b:
             msg = f"❌ {path} actual != expected : {a} != {b}"
