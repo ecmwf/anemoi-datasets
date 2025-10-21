@@ -293,10 +293,17 @@ class FieldResult(Result):
             self.group_of_dates, GroupOfDates
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
+        self._origins = []
+
     @property
     def data_request(self) -> dict[str, Any]:
         """Returns a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
+
+    @property
+    def origins(self) -> dict[str, Any]:
+        """Returns a dictionary with the parameters needed to retrieve the data."""
+        return {"version": 1, "origins": self._origins}
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -309,26 +316,26 @@ class FieldResult(Result):
 
         ds: Any = self.datasource
 
-        remapping: Any = self.context.remapping
-        order_by: Any = self.context.order_by
-        flatten_grid: Any = self.context.flatten_grid
-        start: float = time.time()
-        LOG.debug("Sorting dataset %s %s", dict(order_by), remapping)
-        assert order_by, order_by
+        self.remapping: Any = self.context.remapping
+        self.order_by: Any = self.context.order_by
+        self.flatten_grid: Any = self.context.flatten_grid
+        self.start: float = time.time()
+        LOG.debug("Sorting dataset %s %s", dict(self.order_by), self.remapping)
+        assert self.order_by, self.order_by
 
-        patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
+        self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
 
         try:
             cube: Any = ds.cube(
-                order_by,
-                remapping=remapping,
-                flatten_values=flatten_grid,
-                patches=patches,
+                self.order_by,
+                remapping=self.remapping,
+                flatten_values=self.flatten_grid,
+                patches=self.patches,
             )
             cube = cube.squeeze()
-            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-start)}.")
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
         except ValueError:
-            self.explain(ds, order_by, remapping=remapping, patches=patches)
+            self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             # raise ValueError(f"Error in {self}")
             exit(1)
 
@@ -555,6 +562,41 @@ class FieldResult(Result):
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
         self._cube: Any = cube
+
+        name_key = list(self.order_by.keys())[1]
+
+        p = None
+        origins_per_number = defaultdict(lambda: defaultdict(set))
+
+        for fs in self.datasource:
+            o = fs.metadata("anemoi_origin", remapping=self.remapping, patches=self.patches)
+            name = fs.metadata(name_key, remapping=self.remapping, patches=self.patches)
+            number = fs.metadata("number", remapping=self.remapping, patches=self.patches)
+
+            assert name not in origins_per_number[number][o], name
+            origins_per_number[number][o].add(name)
+
+            if p is not o:
+                LOG.info(f"🔥🔥🔥🔥🔥🔥 Source: {name}, {o}")
+                p = o
+
+        origins_per_variables = defaultdict(lambda: defaultdict(set))
+        for number, origins in origins_per_number.items():
+            for origin, names in origins.items():
+                for name in names:
+                    origins_per_variables[name][origin].add(number)
+
+        origins = defaultdict(set)
+
+        # Check if all members of a variable have the same origins
+        for name, origin_number in origins_per_variables.items():
+            # For now we do not support variables with members from different origins
+            assert len(origin_number) == 1, origin_number
+            origins[list(origin_number.keys())[0]].add(name)
+
+        self._origins = []
+        for k, v in origins.items():
+            self._origins.append({"origin": k.as_dict(), "variables": sorted(v)})
 
         self._coords_already_built: bool = True
 

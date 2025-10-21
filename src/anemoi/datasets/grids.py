@@ -477,7 +477,7 @@ def nearest_grid_points(
     """
     # TODO: Use the one from anemoi.utils.grids instead
     # from anemoi.utils.grids import ...
-    from scipy.spatial import cKDTree
+    from scipy.spatial import KDTree
 
     source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
     source_points = np.array(source_xyz).transpose()
@@ -485,7 +485,7 @@ def nearest_grid_points(
     target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
     target_points = np.array(target_xyz).transpose()
     if max_distance is None:
-        distances, indices = cKDTree(source_points).query(target_points, k=k)
+        distances, indices = KDTree(source_points).query(target_points, k=k)
     else:
-        distances, indices = cKDTree(source_points).query(target_points, k=k, distance_upper_bound=max_distance)
+        distances, indices = KDTree(source_points).query(target_points, k=k, distance_upper_bound=max_distance)
     return distances, indices

@@ -10,6 +10,8 @@
 
 from typing import Any
 
+from anemoi.transform.fields import new_field_with_metadata
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
 from ..result.field import FieldResult
@@ -52,3 +54,20 @@ class FieldContext(Context):
         from anemoi.datasets.dates.groups import GroupOfDates
 
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
+
+    def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
+
+        origin = action.origin()
+
+        result = []
+        for fs in data:
+            previous = fs.metadata("anemoi_origin", default=None)
+            fall_through = fs.metadata("anemoi_fall_through", default=False)
+            if fall_through:
+                # The field has pass unchanges in a filter
+                result.append(fs)
+            else:
+                anemoi_origin = origin.combine(previous, action, action_arguments)
+                result.append(new_field_with_metadata(fs, anemoi_origin=anemoi_origin))
+
+        return new_fieldlist_from_list(result)

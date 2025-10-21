@@ -200,6 +200,12 @@ class Thinning(Masked):
         """
         return dict(thinning=self.thinning, method=self.method)
 
+    def origin_transformation(self, variable, origins):
+        return {
+            "name": "thinning",
+            "config": dict(thinning=self.thinning, method=self.method),
+        }
+
 
 class Cropping(Masked):
     """A class to represent a cropped dataset."""
@@ -249,6 +255,9 @@ class Cropping(Masked):
             The metadata specific to the Cropping subclass.
         """
         return dict(area=self.area)
+
+    def origin_transformation(self, variable, origins):
+        return {"name": "cropping", "config": dict(area=self.area)}
 
 
 class TrimEdge(Masked):

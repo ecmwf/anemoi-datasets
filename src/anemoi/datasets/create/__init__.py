@@ -743,6 +743,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         metadata["end_date"] = dates[-1].isoformat()
         metadata["frequency"] = frequency
         metadata["missing_dates"] = [_.isoformat() for _ in missing]
+        metadata["origins"] = self.minimal_input.origins
 
         metadata["version"] = VERSION
 

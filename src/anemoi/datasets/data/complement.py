@@ -353,7 +353,7 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
     }[interpolation]
 
     if interpolation == "nearest":
-        k = kwargs.pop("k", "1")
+        k = kwargs.pop("k", 1)
         complement = Class(target=target, source=source, k=k)._subset(**kwargs)
 
     else:

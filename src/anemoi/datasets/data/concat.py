@@ -255,6 +255,15 @@ class Concat(ConcatMixin, Combined):
         """
         return {}
 
+    def project(self, projection):
+        result = []
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p))
+
+        return projection.list_or_single(result)
+
 
 def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:
     """Factory function to create a Concat object.

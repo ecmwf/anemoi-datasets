@@ -8,20 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from abc import ABC
+from abc import abstractmethod
 
 from anemoi.datasets.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
 
 
-class Action:
-    """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
-    pipe, join, etc.
-
-    See :ref:`operations` for more details.
-
-    """
-
+class Action(ABC):
     def __init__(self, config, *path):
         self.config = config
         self.path = path
@@ -29,6 +24,13 @@ class Action:
             "input",
             "data_sources",
         ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
+
+    @abstractmethod
+    def __call__(self, context, argument):
+        pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({'.'.join(str(x) for x in self.path)}, {self.config})"
 
 
 class Concat(Action):
@@ -65,6 +67,7 @@ class Concat(Action):
 
         for i, item in enumerate(config):
 
+            assert "dates" in item, f"Value must contain the key 'dates' {item}"
             dates = item["dates"]
             filtering_dates = DatesProvider.from_config(**dates)
             action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
@@ -186,7 +189,13 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(context.source_argument(argument))
+        result = source.execute(context.source_argument(argument))
+        return context.origin(result, self, argument)
+
+    def origin(self):
+        from .origin import Source
+
+        return Source(self.path[-1], self.config)
 
 
 class TransformSourceMixin:
@@ -196,6 +205,15 @@ class TransformSourceMixin:
         from anemoi.transform.sources import create_source as create_transform_source
 
         return create_transform_source(context, config)
+
+    def combine_origins(self, current, previous):
+        assert previous is None, f"Cannot combine origins, previous already exists: {previous}"
+        return current
+
+    def origin(self):
+        from .origin import Source
+
+        return Source(self.path[-1], self.config)
 
 
 class TransformFilterMixin:
@@ -207,14 +225,16 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return filter.forward(context.filter_argument(argument))
+        result = filter.forward(context.filter_argument(argument))
+        return context.origin(result, self, argument)
 
+    def origin(self):
+        from .origin import Filter
 
-class FilterFunction(Function):
-    """Action to call a filter on the argument (e.g. rename, regrid, etc.)."""
+        return Filter(self.path[-1], self.config)
 
-    def __call__(self, context, argument):
-        return self.call(context, argument, context.filter_argument)
+    def combine_origins(self, current, previous):
+        return {"_apply": current, **(previous or {})}
 
 
 def _make_name(name, what):
