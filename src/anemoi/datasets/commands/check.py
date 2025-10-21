@@ -90,7 +90,7 @@ class Check(Command):
 
     def _check_zarr(self, zarr: str) -> None:
 
-        from anemoi.datasets.check import check_zarr
+        from anemoi.datasets.misc.check import check_zarr
 
         check_zarr(zarr)
 
