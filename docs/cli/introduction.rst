@@ -1,8 +1,8 @@
 .. _cli-introduction:
 
-##################
-Command line tool
-##################
+############
+Introduction
+############
 
 When you install the `anemoi-datasets` package, this will also install command line tool
 called ``anemoi-datasets`` which can be used to manage the zarr datasets.
