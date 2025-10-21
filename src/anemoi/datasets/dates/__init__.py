@@ -58,6 +58,8 @@ def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
 class DatesProvider:
     """Base class for date generation.
 
+    Examples
+    --------
     >>> DatesProvider.from_config(**{"start": "2023-01-01 00:00", "end": "2023-01-02 00:00", "frequency": "1d"}).values
     [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 2, 0, 0)]
 

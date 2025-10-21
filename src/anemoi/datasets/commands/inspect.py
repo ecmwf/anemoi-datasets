@@ -396,13 +396,9 @@ class Version:
             )
             return
 
-        if self.build_flags is None:
-            print("🪫 Dataset not initialised")
-            return
+        build_flags = self.build_flags or np.array([], dtype=bool)
 
-        build_flags = self.build_flags
-
-        build_lengths = self.build_lengths
+        build_lengths = self.build_lengths or np.array([], dtype=bool)
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")

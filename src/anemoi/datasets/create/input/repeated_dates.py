@@ -22,7 +22,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from .action import Action
 from .action import action_factory
 from .join import JoinResult
-from .result import Result
+from .result.field import Result
 from .trace import trace_select
 
 LOG = logging.getLogger(__name__)
@@ -345,6 +345,8 @@ class RepeatedDatesAction(Action):
 
         self.source: Any = action_factory(source, context, action_path + ["source"])
         self.mapper: DateMapper = DateMapper.from_mode(mode, self.source, kwargs)
+        self.mode = mode
+        self.kwargs = kwargs
 
     @trace_select
     def select(self, group_of_dates: Any) -> JoinResult:
