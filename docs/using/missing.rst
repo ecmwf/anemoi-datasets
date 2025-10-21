@@ -71,7 +71,7 @@ the dates in the dataset, and the red cells are the missing dates. Given
 matching dates that are not missing (in blue). The interval between each
 date of a group is guaranteed to be constant across all groups.
 
-.. image:: ../../_static/skip-missing.png
+.. image:: ../_static/skip-missing.png
    :align: center
 
 .. code:: python

@@ -67,7 +67,7 @@ concatenate datasets that have gaps between them, check the
 
    ds = open_dataset(concat=["dataset-1979-2000", "dataset-2001-2022"])
 
-.. image:: ../../_static/concat.png
+.. image:: ../_static/concat.png
    :align: center
    :alt: Concatenation
 
@@ -101,7 +101,7 @@ variables.
 
    ds = open_dataset(join=["dataset1-1979-2022", "dataset2-1979-2022"])
 
-.. image:: ../../_static/join.png
+.. image:: ../_static/join.png
    :align: center
    :alt: Join
 
@@ -109,7 +109,7 @@ If a variable is present in more than one file, the last occurrence of
 that variable will be used and will be at the position of the first
 occurrence of that name.
 
-.. image:: ../../_static//overlay.png
+.. image:: ../_static//overlay.png
    :align: center
    :alt: Overlay
 
@@ -164,14 +164,14 @@ the bounding box of the second dataset.
 
 The image below shows the global dataset:
 
-.. image:: ../../_static/cutout-1.png
+.. image:: ../_static/cutout-1.png
    :width: 75%
    :align: center
    :alt: Cutout
 
 The image below shows the LAM dataset:
 
-.. image:: ../../_static//cutout-2.png
+.. image:: ../_static//cutout-2.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -180,7 +180,7 @@ A 'cutout' is performed by removing the grid points from the global
 dataset that are contained in the LAM dataset. The result is shown
 below:
 
-.. image:: ../../_static//cutout-3.png
+.. image:: ../_static//cutout-3.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -188,7 +188,7 @@ below:
 The final dataset is the concatenation of the LAM dataset and the
 cutout:
 
-.. image:: ../../_static//cutout-4.png
+.. image:: ../_static//cutout-4.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -206,11 +206,11 @@ The plots below illustrate how the cutout differs if `min_distance_km`
 is not given (top) or if `min_distance_km` is set to `0` (bottom). The
 difference can be seen at the boundary between the two grids:
 
-.. image:: ../../_static//cutout-5.png
+.. image:: ../_static//cutout-5.png
    :align: center
    :alt: Cutout
 
-.. image:: ../../_static//cutout-6.png
+.. image:: ../_static//cutout-6.png
    :align: center
    :alt: Cutout
 
