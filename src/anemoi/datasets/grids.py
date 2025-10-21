@@ -8,11 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
-import base64
 import logging
 from typing import Any
 
 import numpy as np
+from anemoi.utils.grids import latlon_to_xyz
 from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
@@ -86,71 +86,6 @@ def plot_mask(
     plt.ylim(np.amin(lats) - 1, np.amax(lats) + 1)
     if isinstance(path, str):
         plt.savefig(path + "-global-zoomed.png")
-
-
-# TODO: Use the one from anemoi.utils.grids instead
-# from anemoi.utils.grids import ...
-def xyz_to_latlon(x: NDArray[Any], y: NDArray[Any], z: NDArray[Any]) -> tuple[NDArray[Any], NDArray[Any]]:
-    """Convert Cartesian coordinates to latitude and longitude.
-
-    Parameters
-    ----------
-    x : NDArray[Any]
-        X coordinates.
-    y : NDArray[Any]
-        Y coordinates.
-    z : NDArray[Any]
-        Z coordinates.
-
-    Returns
-    -------
-    Tuple[NDArray[Any], NDArray[Any]]
-        Latitude and longitude coordinates.
-    """
-    return (
-        np.rad2deg(np.arcsin(np.minimum(1.0, np.maximum(-1.0, z)))),
-        np.rad2deg(np.arctan2(y, x)),
-    )
-
-
-# TODO: Use the one from anemoi.utils.grids instead
-# from anemoi.utils.grids import ...
-def latlon_to_xyz(
-    lat: NDArray[Any], lon: NDArray[Any], radius: float = 1.0
-) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
-    """Convert latitude and longitude to Cartesian coordinates.
-
-    Parameters
-    ----------
-    lat : NDArray[Any]
-        Latitude coordinates.
-    lon : NDArray[Any]
-        Longitude coordinates.
-    radius : float, optional
-        Radius of the sphere. Defaults to 1.0.
-
-    Returns
-    -------
-    Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]
-        X, Y, and Z coordinates.
-    """
-    # https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
-    # We assume that the Earth is a sphere of radius 1 so N(phi) = 1
-    # We assume h = 0
-    #
-    phi = np.deg2rad(lat)
-    lda = np.deg2rad(lon)
-
-    cos_phi = np.cos(phi)
-    cos_lda = np.cos(lda)
-    sin_phi = np.sin(phi)
-    sin_lda = np.sin(lda)
-
-    x = cos_phi * cos_lda * radius
-    y = cos_phi * sin_lda * radius
-    z = sin_phi * radius
-
-    return x, y, z
 
 
 class Triangle3D:
@@ -509,92 +444,6 @@ def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> list
     return outside
 
 
-def deserialise_mask(encoded: str) -> NDArray[Any]:
-    """Deserialise a mask from a base64 encoded string.
-
-    Parameters
-    ----------
-    encoded : str
-        Base64 encoded string.
-
-    Returns
-    -------
-    NDArray[Any]
-        Deserialised mask array.
-    """
-    import pickle
-    import zlib
-
-    packed = pickle.loads(zlib.decompress(base64.b64decode(encoded)))
-
-    mask = []
-    value = False
-    for count in packed:
-        mask.extend([value] * count)
-        value = not value
-    return np.array(mask, dtype=bool)
-
-
-def _serialise_mask(mask: NDArray[Any]) -> str:
-    """Serialise a mask to a base64 encoded string.
-
-    Parameters
-    ----------
-    mask : NDArray[Any]
-        Mask array.
-
-    Returns
-    -------
-    str
-        Base64 encoded string.
-    """
-    import pickle
-    import zlib
-
-    assert len(mask.shape) == 1
-    assert len(mask)
-
-    packed = []
-    last = mask[0]
-    count = 1
-
-    for value in mask[1:]:
-        if value == last:
-            count += 1
-        else:
-            packed.append(count)
-            last = value
-            count = 1
-
-    packed.append(count)
-
-    # We always start with an 'off' value
-    # So if the first value is 'on', we need to add a zero
-    if mask[0]:
-        packed.insert(0, 0)
-
-    return base64.b64encode(zlib.compress(pickle.dumps(packed))).decode("utf-8")
-
-
-def serialise_mask(mask: NDArray[Any]) -> str:
-    """Serialise a mask and ensure it can be deserialised.
-
-    Parameters
-    ----------
-    mask : NDArray[Any]
-        Mask array.
-
-    Returns
-    -------
-    str
-        Base64 encoded string.
-    """
-    result = _serialise_mask(mask)
-    # Make sure we can deserialise it
-    assert np.all(mask == deserialise_mask(result))
-    return result
-
-
 def nearest_grid_points(
     source_latitudes: NDArray[Any],
     source_longitudes: NDArray[Any],
@@ -640,29 +489,3 @@ def nearest_grid_points(
     else:
         distances, indices = cKDTree(source_points).query(target_points, k=k, distance_upper_bound=max_distance)
     return distances, indices
-
-
-if __name__ == "__main__":
-    global_lats, global_lons = np.meshgrid(
-        np.linspace(90, -90, 90),
-        np.linspace(-180, 180, 180),
-    )
-    global_lats = global_lats.flatten()
-    global_lons = global_lons.flatten()
-
-    lats, lons = np.meshgrid(
-        np.linspace(50, 40, 100),
-        np.linspace(-10, 15, 100),
-    )
-    lats = lats.flatten()
-    lons = lons.flatten()
-
-    mask = cutout_mask(lats, lons, global_lats, global_lons, cropping_distance=5.0)
-
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(10, 5))
-    plt.scatter(global_lons, global_lats, s=0.01, marker="o", c="r")
-    plt.scatter(global_lons[mask], global_lats[mask], s=0.1, c="k")
-    # plt.scatter(lons, lats, s=0.01)
-    plt.savefig("cutout.png")
