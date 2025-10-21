@@ -294,7 +294,7 @@ class Dataset(ABC, Sized):
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
         if "rolling_average" in kwargs:
-            from .rolling_average import RollingAverage
+            from anemoi.datasets.use.gridded.rolling_average import RollingAverage
 
             rolling_average = kwargs.pop("rolling_average")
             return RollingAverage(self, rolling_average)._subset(**kwargs).mutate()

@@ -95,7 +95,7 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     ds._check()
 
     if trace:
-        from anemoi.datasets.misc import Trace
+        from anemoi.datasets.misc.testing import Trace
 
         ds = Trace(ds)
 
