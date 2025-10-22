@@ -8,10 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import json
 import logging
 from copy import deepcopy
 from typing import Any
 
+import md5
 import numpy as np
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_field_with_valid_datetime
@@ -200,8 +202,8 @@ class Accumulator:
 def _compute_accumulations(
     context: Any,
     dates: list[datetime.datetime],
-    action: Any,
-    request: dict[str, Any],
+    source_name: Any,
+    source_request: dict[str, Any],
     user_accumulation_period: datetime.timedelta,
     data_accumulation_period: datetime.timedelta,
 ) -> Any:
@@ -218,9 +220,9 @@ def _compute_accumulations(
         The dataset building context (will be updated with trace of accumulation)
     dates: list[datetime.datetime]
         The list of valid dates on which to perform accumulations.
-    action: Any,
+    source_name: Any,
         The abstract AccumulationAction object containing the accumulation source
-    request: dict[str,Any]
+    source_request: dict[str,Any]
         The parameters from the accumulation recipe, except for user/data accumulation periods
     user_accumulation_period: datetime.timedelta,
         The interval over which to accumulate (user-defined)
@@ -234,9 +236,9 @@ def _compute_accumulations(
     """
 
     # timeline class depends on data source ; split between Era-like timelines and Default ones
-    timeline_class = tl.find_timeline_class(request)
+    timeline_class = tl.find_timeline_class(source_request)
 
-    request, param, number = _prep_request(request, timeline_class)
+    source_request, param, number = _prep_request(source_request, timeline_class)
 
     # building accumulators
     accumulators = []
@@ -255,7 +257,7 @@ def _compute_accumulations(
                         data_accumulation_period=data_accumulation_period,
                         param=p,
                         number=n,
-                        **request,
+                        **source_request,
                     )
                 )
 
@@ -269,16 +271,21 @@ def _compute_accumulations(
             requests.append(r)
 
     # these arguments are needed for the database to retrieve the fields with the right valid time
-    action.source.kwargs = {"request_already_using_valid_datetime": True, "shift_time_request": True}
-    action.source.args = requests
-    action.source.context = context
+
+    source = context.create_source(
+        dict(source_name=dict(requests=requests, request_already_using_valid_datetime=True, shift_time_request=True)),
+        "data_sources",
+        "accumulate",
+        md5(json.dumps([source_name, requests], sort_keys=True).encode()).hexdigest(),
+    )
+
     # get the data (requests are packed to make a minimal number of queries to database)
-    ds_to_accum = action.source.execute(dates)
+    ds_to_accum = source.execute(dates)
 
     assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_timelines), (
         f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",
         f"but total number of periods requested is {len(overlapping_timelines)}",
-        f"❌❌❌ error in {action.source}",
+        f"❌❌❌ error in {source_name}",
     )
 
     # send each field to each accumulator
@@ -304,11 +311,13 @@ def _compute_accumulations(
     return ds
 
 
-@source_registry.register("accumulations2")
+@source_registry.register("accumulate")
 class Accumulations2Source(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[datetime.datetime], action: Any, **request: dict[str, Any]) -> Any:
+    def _execute(
+        context: Any, dates: list[datetime.datetime], source: Any, accumulation_period, data_accumulation_period="1h"
+    ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
 
@@ -318,8 +327,8 @@ class Accumulations2Source(LegacySource):
             The dataset building context (will be updated with trace of accumulation)
         dates: list[datetime.datetime]
             The list of valid dates on which to perform accumulations.
-        action: Any,
-            The abstract AccumulationAction object containing the accumulation source
+        source: Any,
+            The accumulation source
         request: dict[str,Any]
             The parameters from the accumulation recipe
 
@@ -328,23 +337,21 @@ class Accumulations2Source(LegacySource):
         The accumulated data source.
 
         """
-        try:
-            utils._to_list(request["param"])
-        except KeyError:
-            raise ValueError("Accumulate action should provide at least one `param`, found none.")
-        try:
-            user_accumulation_period = request.pop("accumulation_period")
-            data_accumulation_period = request.pop("data_accumulation_period", "1h")
-        except KeyError:
-            raise ValueError("Accumulate action should provide 'accumulation_period', but none was found.")
 
-        context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
+        assert isinstance(source, dict)
+        assert len(source) == 1
+        assert "param" not in source, "param should be defined inside source for accumulate action"
+
+        user_accumulation_period = accumulation_period
+
+        source_name, source_request = next(iter(source.items()))
+        source_request = source_request.copy()
 
         return _compute_accumulations(
             context,
             dates,
-            action,
-            request,
+            source_name,
+            source_request,
             user_accumulation_period=frequency_to_timedelta(user_accumulation_period),
             data_accumulation_period=frequency_to_timedelta(data_accumulation_period),
         )

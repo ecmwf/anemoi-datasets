@@ -16,7 +16,7 @@ from typing import List
 from earthkit.data import FieldList
 
 from ...dates.groups import GroupOfDates
-from ..sources.accumulations2 import accumulations
+from ..sources.accumulate import accumulations
 from .action import Action
 from .action import action_factory
 from .misc import _tidy
