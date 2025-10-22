@@ -19,11 +19,11 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.datasets.create.sources import source_registry
 
 from .accumulation_utils import timelines as tl
 from .accumulation_utils import utils
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -304,75 +304,47 @@ def _compute_accumulations(
     return ds
 
 
-@legacy_source(__file__)
-def accumulations(context: Any, dates: list[datetime.datetime], action: Any, **request: dict[str, Any]) -> Any:
-    """Accumulation source callable function.
-    Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
+@source_registry.register("accumulations2")
+class Accumulations2Source(LegacySource):
 
-    Parameters:
-    ----------
-    context: Any,
-        The dataset building context (will be updated with trace of accumulation)
-    dates: list[datetime.datetime]
-        The list of valid dates on which to perform accumulations.
-    action: Any,
-        The abstract AccumulationAction object containing the accumulation source
-    request: dict[str,Any]
-        The parameters from the accumulation recipe
+    @staticmethod
+    def _execute(context: Any, dates: list[datetime.datetime], action: Any, **request: dict[str, Any]) -> Any:
+        """Accumulation source callable function.
+        Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
 
-    Return
-    ------
-    The accumulated data source.
+        Parameters:
+        ----------
+        context: Any,
+            The dataset building context (will be updated with trace of accumulation)
+        dates: list[datetime.datetime]
+            The list of valid dates on which to perform accumulations.
+        action: Any,
+            The abstract AccumulationAction object containing the accumulation source
+        request: dict[str,Any]
+            The parameters from the accumulation recipe
 
-    """
-    try:
-        utils._to_list(request["param"])
-    except KeyError:
-        raise ValueError("Accumulate action should provide at least one `param`, found none.")
-    try:
-        user_accumulation_period = request.pop("accumulation_period")
-        data_accumulation_period = request.pop("data_accumulation_period", "1h")
-    except KeyError:
-        raise ValueError("Accumulate action should provide 'accumulation_period', but none was found.")
+        Return
+        ------
+        The accumulated data source.
 
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
-
-    return _compute_accumulations(
-        context,
-        dates,
-        action,
-        request,
-        user_accumulation_period=frequency_to_timedelta(user_accumulation_period),
-        data_accumulation_period=frequency_to_timedelta(data_accumulation_period),
-    )
-
-
-execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
         """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-      accumulation_period: 2
-    """
-    )
-    dates = yaml.safe_load("[2022-12-31 00:00, 2022-12-31 06:00]")
-    dates = to_datetime_list(dates)
+        try:
+            utils._to_list(request["param"])
+        except KeyError:
+            raise ValueError("Accumulate action should provide at least one `param`, found none.")
+        try:
+            user_accumulation_period = request.pop("accumulation_period")
+            data_accumulation_period = request.pop("data_accumulation_period", "1h")
+        except KeyError:
+            raise ValueError("Accumulate action should provide 'accumulation_period', but none was found.")
 
-    class Context:
-        use_grib_paramid = True
+        context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
 
-        def trace(self, *args):
-            print(*args)
-
-    for f in accumulations(Context, dates, **config):
-        print(f, f.to_numpy().mean())
+        return _compute_accumulations(
+            context,
+            dates,
+            action,
+            request,
+            user_accumulation_period=frequency_to_timedelta(user_accumulation_period),
+            data_accumulation_period=frequency_to_timedelta(data_accumulation_period),
+        )

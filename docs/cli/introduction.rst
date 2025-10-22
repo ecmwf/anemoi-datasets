@@ -1,8 +1,8 @@
 .. _cli-introduction:
 
-##################
-Command line tool
-##################
+############
+Introduction
+############
 
 When you install the `anemoi-datasets` package, this will also install command line tool
 called ``anemoi-datasets`` which can be used to manage the zarr datasets.
@@ -20,4 +20,5 @@ The commands are:
 - :ref:`Inspect Command <Inspect_command>`
 - :ref:`Compare Command <compare_command>`
 - :ref:`Scan Command <scan_command>`
+- :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`

@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import datetime
 import logging
 import os
 import sqlite3
@@ -20,7 +19,8 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -576,106 +576,46 @@ class GribIndex:
             yield data
 
 
-def format_and_map_requests(requests: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep in requests only what is needed to fetch data in grib-index"""
+@source_registry.register("grib-index")
+class GribIndexSource(LegacySource):
+    @staticmethod
+    def _execute(
+        context: Any,
+        dates: list[Any],
+        indexdb: str,
+        flavour: str | None = None,
+        **kwargs: Any,
+    ) -> FieldArray:
+        """Execute the GRIB data retrieval process.
 
-    stripped_requests = []
-    to_keep = {"param", "number", "levtype", "step", "valid_datetime"}
+        Parameters
+        ----------
+        context : Any
+            The execution context.
+        dates : List[Any]
+            List of dates to retrieve data for.
+        indexdb : str
+            Path to the GRIB index database.
+        flavour : Optional[str], optional
+            Flavour configuration for mapping fields, by default None.
+        **kwargs : Any
+            Additional filtering criteria.
 
-    for r in requests:
-        r_strip = {k: v for k, v in r.items() if k in to_keep}
-        stripped_requests.append(r_strip)
-        r["valid_datetime"] = datetime.datetime.strptime(str(r["date"]), "%Y%m%d") + datetime.timedelta(
-            hours=(r["time"] // 100)
-        )
+        Returns
+        -------
+        FieldArray
+            An array of retrieved GRIB fields.
+        """
+        index = GribIndex(indexdb)
+        result = []
 
-    mapped_requests = {k: list(set([r[k] for r in requests])) for k in to_keep}
-    return mapped_requests
+        if flavour is not None:
+            flavour = RuleBasedFlavour(flavour)
 
+        for grib in index.retrieve(dates, **kwargs):
+            field = ekd.from_source("memory", grib)[0]
+            if flavour:
+                field = flavour.apply(field)
+            result.append(field)
 
-def grib_index_retrieve(
-    context: Any,
-    dates: list[Any],
-    indexdb: str,
-    flavour: str | None = None,
-    **kwargs: Any,
-) -> FieldArray:
-    """Execute the GRIB data retrieval process.
-
-    Parameters
-    ----------
-    context : Any
-        The execution context.
-    dates : list[Any]
-        list of dates to retrieve data for.
-    indexdb : str
-        Path to the GRIB index database.
-    flavour : Optional[str], optional
-        Flavour configuration for mapping fields, by default None.
-    **kwargs : Any
-        Additional filtering criteria.
-
-    Returns
-    -------
-    FieldArray
-        An array of retrieved GRIB fields.
-    """
-
-    index = GribIndex(indexdb)
-    result = []
-
-    if flavour is not None:
-        flavour = RuleBasedFlavour(flavour)
-
-    if "valid_datetime" in kwargs.keys():
-        dates = kwargs.pop("valid_datetime")
-
-    for grib in index.retrieve(dates, **kwargs):
-        field = ekd.from_source("memory", grib)[0]
-        if flavour:
-            field = flavour.apply(field)
-        result.append(field)
-
-    return FieldArray(result)
-
-
-@legacy_source(__file__)
-def execute(
-    context: Any,
-    dates: list[Any],
-    *requests: tuple | list,
-    flavour: str | None = None,
-    **kwargs: Any,
-) -> FieldArray:
-    """Execute the GRIB data retrieval process.
-
-    Parameters
-    ----------
-    context : Any
-        The execution context.
-    dates : list[Any]
-        list of dates to retrieve data for.
-    requests : Optional[Union[tuple,list]] = None
-        requests to the indexdb database
-        Either requests[0] or kwargs must have an indexdb key
-        referring to database path
-    flavour : Optional[str], optional
-        Flavour configuration for mapping fields, by default None.
-    **kwargs : Any
-        Additional filtering criteria or requests.
-        Either requests[0] or kwargs must have an indexdb key
-        referring to database path
-
-    Returns
-    -------
-    FieldArray
-        An array of retrieved GRIB fields.
-    """
-
-    if requests:
-        indexdb = requests[0].pop("indexdb")
-        assert all([(indexdb == r.pop("indexdb") for r in requests[1:])])
-        kwargs = kwargs | format_and_map_requests(requests)
-    else:
-        indexdb = kwargs.pop("indexdb")
-    return grib_index_retrieve(context, dates, indexdb, flavour=flavour, **kwargs)
+        return FieldArray(result)

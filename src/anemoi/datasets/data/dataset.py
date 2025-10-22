@@ -293,6 +293,12 @@ class Dataset(ABC, Sized):
             if skip_missing_dates:
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
+        if "rolling_average" in kwargs:
+            from .rolling_average import RollingAverage
+
+            rolling_average = kwargs.pop("rolling_average")
+            return RollingAverage(self, rolling_average)._subset(**kwargs).mutate()
+
         if "interpolate_frequency" in kwargs:
             from .interpolate import InterpolateFrequency
 

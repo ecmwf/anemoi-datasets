@@ -51,16 +51,19 @@ dependencies = [
   "anemoi-transform>=0.1.10",
   "anemoi-utils[provenance]>=0.4.32",
   "cfunits",
+  "glom",
+  "jsonschema",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pyyaml",
+  "ruamel-yaml",
   "semantic-version",
   "tqdm",
   "zarr<=2.18.4",
 ]
 
 optional-dependencies.all = [
-  "anemoi-datasets[create,remote,xarray,comparelam]",
+  "anemoi-datasets[comparelam,create,remote,xarray]",
 ]
 
 optional-dependencies.comparelam = [
@@ -136,6 +139,7 @@ profile = "black"
 testpaths = "tests"
 addopts = [
   "--numprocesses=auto",
+  "--maxprocesses=16",
   "--strict-config",
 ]
 
