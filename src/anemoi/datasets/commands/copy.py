@@ -238,11 +238,10 @@ class ZarrCopier:
         target_data = (
             target["data"]
             if "data" in target
-            else target.create_dataset(
+            else target.create_array(
                 "data",
                 shape=source_data.shape,
                 chunks=self.data_chunks,
-                dtype=source_data.dtype,
                 fill_value=source_data.fill_value,
             )
         )
@@ -344,7 +343,7 @@ class ZarrCopier:
                     LOG.info(f"Skipping {name}")
                 continue
 
-            if isinstance(source[name], zarr.hierarchy.Group):
+            if isinstance(source[name], zarr.Group):
                 group = target[name] if name in target else target.create_group(name)
                 self.copy_group(
                     source[name],
@@ -404,7 +403,7 @@ class ZarrCopier:
             try:
                 zarr.open(self._store(self.target), mode="r")
                 return True
-            except ValueError:
+            except FileNotFoundError:
                 return False
 
         def target_finished() -> bool:
