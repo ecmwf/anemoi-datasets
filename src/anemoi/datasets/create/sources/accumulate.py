@@ -8,12 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import hashlib
 import json
 import logging
 from copy import deepcopy
 from typing import Any
 
-import md5
 import numpy as np
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_field_with_valid_datetime
@@ -273,14 +273,20 @@ def _compute_accumulations(
     # these arguments are needed for the database to retrieve the fields with the right valid time
 
     source = context.create_source(
-        dict(source_name=dict(requests=requests, request_already_using_valid_datetime=True, shift_time_request=True)),
+        {
+            source_name: dict(
+                requests=requests,
+                request_already_using_valid_datetime=True,
+                shift_time_request=True,
+            )
+        },
         "data_sources",
         "accumulate",
-        md5(json.dumps([source_name, requests], sort_keys=True).encode()).hexdigest(),
+        hashlib.md5(json.dumps([source_name, requests], sort_keys=True).encode()).hexdigest(),
     )
 
     # get the data (requests are packed to make a minimal number of queries to database)
-    ds_to_accum = source.execute(dates)
+    ds_to_accum = source(context, dates)
 
     assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_timelines), (
         f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",

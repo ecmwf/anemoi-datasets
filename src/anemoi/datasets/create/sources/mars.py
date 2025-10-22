@@ -136,9 +136,9 @@ def _normalise_time(t: int | str) -> str:
 
 
 def _shift_time_request(request: dict[str, int]) -> dict[str, int]:
-    date = request.get("date")
-    time = request.get("time")
-    step = request.get("step")
+    date = request["date"]
+    time = request["time"]
+    step = request["step"]
 
     end_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
     base_datetime = end_datetime - datetime.timedelta(hours=step)
