@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.check import DatasetName
+from anemoi.datasets.build.gridded.check import DatasetName
 
 from . import Command
 
@@ -90,7 +90,7 @@ class Check(Command):
 
     def _check_zarr(self, zarr: str) -> None:
 
-        from anemoi.datasets.check import check_zarr
+        from anemoi.datasets.misc.check import check_zarr
 
         check_zarr(zarr)
 

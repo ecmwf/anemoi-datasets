@@ -17,8 +17,8 @@ from glom import assign
 from glom import delete
 from glom import glom
 
-from anemoi.datasets.create import validate_config
-from anemoi.datasets.dumper import yaml_dump
+from anemoi.datasets.build.gridded import validate_config
+from anemoi.datasets.misc.dumper import yaml_dump
 
 LOG = logging.getLogger(__name__)
 

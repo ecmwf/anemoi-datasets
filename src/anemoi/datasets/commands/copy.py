@@ -19,7 +19,7 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
-from anemoi.datasets.check import check_zarr
+from anemoi.datasets.misc.check import check_zarr
 
 from . import Command
 
