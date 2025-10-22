@@ -101,7 +101,7 @@ class S3Store(ReadOnlyStore):
         target = self.url + "/" + key
 
         try:
-            return get_object(target).bytes()
+            return get_object(target)
         except FileNotFoundError:
             raise KeyError(target)
 
