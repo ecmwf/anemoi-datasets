@@ -322,7 +322,7 @@ class Accumulations2Source(LegacySource):
 
     @staticmethod
     def _execute(
-        context: Any, dates: list[datetime.datetime], source: Any, accumulation_period, data_accumulation_period="1h"
+        context: Any, dates: list[datetime.datetime], source: Any
     ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
@@ -348,16 +348,16 @@ class Accumulations2Source(LegacySource):
         assert len(source) == 1
         assert "param" not in source, "param should be defined inside source for accumulate action"
 
-        user_accumulation_period = accumulation_period
-
         source_name, source_request = next(iter(source.items()))
         source_request = source_request.copy()
+
+        assert "accumulation_period" in source_request, "'accumulation_period' keyword necessary"
 
         return _compute_accumulations(
             context,
             dates,
             source_name,
             source_request,
-            user_accumulation_period=frequency_to_timedelta(user_accumulation_period),
-            data_accumulation_period=frequency_to_timedelta(data_accumulation_period),
+            user_accumulation_period=frequency_to_timedelta(source_request.pop("accumulation_period")),
+            data_accumulation_period=frequency_to_timedelta(source_request.get("data_accumulation_period","1h")),
         )

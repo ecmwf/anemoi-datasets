@@ -154,7 +154,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
                                 "levtype": "sfc",
                                 "param": ["tp"],
-                                "accumulation_period": 3,
+                        "accumulation_period": 3,
                             },
                         },
                     }
@@ -176,7 +176,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     )
 
     # this construction should fail because dates are missing
-    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["grib-index"]["accumulation_period"] = 24
+    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["accumulation_period"] = 24
 
     with pytest.raises(Exception):
         created = create_dataset(config=config_grib_index, output=None)
