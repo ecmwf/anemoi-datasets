@@ -269,8 +269,18 @@ class IncreaseFrequency(RecordsForward):
         return len(self.dataset) * self._n
 
     @property
+    def dates(self):
+        dates = []
+        for date in self.dataset.dates:
+            dates += [date + i * self._frequency for i in range(self._n)]
+        return dates
+
+    @property
     def frequency(self):
         return self._frequency
+
+    def metadata(self):
+        return self.dataset.metadata
 
     def _load_data(self, i):
         j = i // self._n
@@ -284,8 +294,8 @@ class IncreaseFrequency(RecordsForward):
             if timedeltas.dtype != "timedelta64[s]":
                 raise ValueError(f"Wrong type for {group}")
 
-            start_delta = k * self.frequency + self._window.start
-            end_delta = k * self.frequency + self._window.end
+            start_delta = self.dataset._window.start + k * self.frequency
+            end_delta = start_delta + self._window.end - self._window.start
 
             def _to_numpy_timedelta(td):
                 if isinstance(td, np.timedelta64):
@@ -295,8 +305,7 @@ class IncreaseFrequency(RecordsForward):
 
             start_delta = _to_numpy_timedelta(start_delta)
             end_delta = _to_numpy_timedelta(end_delta)
-            assert isinstance(start_delta, np.timedelta64), (type(start_delta), start_delta)
-            assert isinstance(timedeltas[0], np.timedelta64), type(timedeltas[0])
+            assert timedeltas.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {timedeltas.dtype}"
 
             if self._window.include_start:
                 mask = timedeltas >= start_delta
