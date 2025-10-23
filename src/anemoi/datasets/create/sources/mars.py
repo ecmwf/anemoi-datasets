@@ -263,6 +263,9 @@ def factorise_requests(
     Generator[dict[str, Any], None, None]
         Factorized requests.
     """
+    if isinstance(requests, tuple) and len(requests) == 1 and "requests" in requests[0]:
+        requests = requests[0]["requests"]
+
     updates = []
     for req in requests:
         req = _shift_time_request(req) if shift_time_request else req
