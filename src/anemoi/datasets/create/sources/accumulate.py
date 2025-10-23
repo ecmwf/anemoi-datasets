@@ -321,9 +321,7 @@ def _compute_accumulations(
 class Accumulations2Source(LegacySource):
 
     @staticmethod
-    def _execute(
-        context: Any, dates: list[datetime.datetime], source: Any
-    ) -> Any:
+    def _execute(context: Any, dates: list[datetime.datetime], source: Any) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
 
@@ -359,5 +357,5 @@ class Accumulations2Source(LegacySource):
             source_name,
             source_request,
             user_accumulation_period=frequency_to_timedelta(source_request.pop("accumulation_period")),
-            data_accumulation_period=frequency_to_timedelta(source_request.get("data_accumulation_period","1h")),
+            data_accumulation_period=frequency_to_timedelta(source_request.get("data_accumulation_period", "1h")),
         )
