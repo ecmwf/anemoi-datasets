@@ -275,6 +275,7 @@ def _compute_accumulations(
     source = context.create_source(
         {
             source_name: dict(
+                **source_request,
                 requests=requests,
                 request_already_using_valid_datetime=True,
                 shift_time_request=True,
