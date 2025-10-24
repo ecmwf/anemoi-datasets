@@ -39,20 +39,25 @@ def _prep_request(request: dict[str, Any], timeline_class: type[tl.Timeline]) ->
     number = request.pop("number", [0])
     if not isinstance(number, (list, tuple)):
         number = [number]
-
     assert isinstance(number, (list, tuple))
-    request["stream"] = request.get("stream", "oper")
+    
+    stream = request.pop("stream", "oper")
 
-    type_ = request.get("type", "an")
+    type_ = request.pop("type", "an")
     if type_ == "an":
         type_ = "fc"
-    request["type"] = type_
-    request["levtype"] = request.get("levtype", "sfc")
-    if request["levtype"] != "sfc":
-        # LOG.warning("'type' should be 'sfc', found %s", request['type'])
+    
+    levtype = request.pop("levtype", "sfc")
+    if levtype != "sfc":
         raise NotImplementedError("Only sfc leveltype is supported")
 
-    return request, param, number
+    additional_request = {
+        "stream" :  stream,
+        "type" :  type_,
+        "levtype" :  levtype
+    }
+
+    return request, param, number, additional_request
 
 
 class Accumulator:
@@ -142,6 +147,7 @@ class Accumulator:
             return
 
         period = self.timeline.find_matching_period(field)
+        
         if not period:
             return
 
@@ -238,7 +244,7 @@ def _compute_accumulations(
     # timeline class depends on data source ; split between Era-like timelines and Default ones
     timeline_class = tl.find_timeline_class(source_request)
 
-    source_request, param, number = _prep_request(source_request, timeline_class)
+    main_request, param, number, additional = _prep_request(source_request, timeline_class)
 
     # building accumulators
     accumulators = []
@@ -257,7 +263,7 @@ def _compute_accumulations(
                         data_accumulation_period=data_accumulation_period,
                         param=p,
                         number=n,
-                        **source_request,
+                        **additional,
                     )
                 )
 
@@ -269,8 +275,6 @@ def _compute_accumulations(
     for a in accumulators:
         for r in a.requests:
             requests.append(r)
-
-    # these arguments are needed for the database to retrieve the fields with the right valid time
 
     source = context.create_source(
         {
@@ -287,8 +291,8 @@ def _compute_accumulations(
     )
 
     # get the data (requests are packed to make a minimal number of queries to database)
-    ds_to_accum = source(context, dates)
-
+    ds_to_accum = source(context,dates)
+    
     assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_timelines), (
         f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",
         f"but total number of periods requested is {len(overlapping_timelines)}",
