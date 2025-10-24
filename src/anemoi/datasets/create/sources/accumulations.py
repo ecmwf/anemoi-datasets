@@ -806,7 +806,6 @@ def _compute_accumulations(
         List of base times. Defaults to None.
     use_cdsapi_dataset : Optional[str], optional
         CDSAPI dataset to use. Defaults to None.
-
     Returns
     -------
     Any
@@ -884,7 +883,11 @@ def _compute_accumulations(
                 requests.append(patch(r))
 
     ds = mars(
-        context, dates, *requests, request_already_using_valid_datetime=True, use_cdsapi_dataset=use_cdsapi_dataset
+        context,
+        dates,
+        *requests,
+        request_already_using_valid_datetime=True,
+        use_cdsapi_dataset=use_cdsapi_dataset,
     )
 
     accumulations = {}
@@ -998,7 +1001,7 @@ class AccumulationsSource(LegacySource):
             and request.get("stream", "oper") == "oper"
             and request.get("accumulation_period") == 24
         ):
-            from .accumulations2 import Accumulations2Source
+            from .accumulate import Accumulations2Source
 
             LOG.warning(
                 "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"

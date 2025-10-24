@@ -36,7 +36,7 @@ assert NAMES, "No yaml files found in " + HERE
 
 # Used by pipe.yaml
 @filter_registry.register("filter")
-class TestFilter(Filter):
+class FilterForTesting(Filter):
 
     def __init__(self, **kwargs):
 
