@@ -40,22 +40,18 @@ def _prep_request(request: dict[str, Any], timeline_class: type[tl.Timeline]) ->
     if not isinstance(number, (list, tuple)):
         number = [number]
     assert isinstance(number, (list, tuple))
-    
+
     stream = request.pop("stream", "oper")
 
     type_ = request.pop("type", "an")
     if type_ == "an":
         type_ = "fc"
-    
+
     levtype = request.pop("levtype", "sfc")
     if levtype != "sfc":
         raise NotImplementedError("Only sfc leveltype is supported")
 
-    additional_request = {
-        "stream" :  stream,
-        "type" :  type_,
-        "levtype" :  levtype
-    }
+    additional_request = {"stream": stream, "type": type_, "levtype": levtype}
 
     return request, param, number, additional_request
 
@@ -147,7 +143,7 @@ class Accumulator:
             return
 
         period = self.timeline.find_matching_period(field)
-        
+
         if not period:
             return
 
@@ -291,8 +287,8 @@ def _compute_accumulations(
     )
 
     # get the data (requests are packed to make a minimal number of queries to database)
-    ds_to_accum = source(context,dates)
-    
+    ds_to_accum = source(context, dates)
+
     assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_timelines), (
         f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",
         f"but total number of periods requested is {len(overlapping_timelines)}",
