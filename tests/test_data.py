@@ -42,6 +42,8 @@ from anemoi.datasets.testing import default_test_indexing
 
 VALUES = 10
 
+true_zarr_open = zarr.open
+
 
 def mockup_open_zarr(func: Callable) -> Callable:
     """Decorator to mock the open_zarr function.
@@ -237,6 +239,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         Zarr dataset.
     """
     # Format: test-2021-2021-6h-o96-abcd-0
+    if "/" in name:
+        return true_zarr_open(name)
 
     args = dict(
         test="test",

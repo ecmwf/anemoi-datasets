@@ -161,7 +161,7 @@ class Comparer:
                     "description",
                     "config_path",
                     "total_size",
-                    "total_number_of_files", # these are expected to differ between zarr 2 and zarr 3
+                    "total_number_of_files",  # these are expected to differ between zarr 2 and zarr 3
                 ]:
                     if type(a[k]) is not type(b[k]):
                         errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
