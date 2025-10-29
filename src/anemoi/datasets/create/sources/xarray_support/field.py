@@ -130,7 +130,7 @@ class XArrayField(Field):
         if flatten:
             return values.values.flatten()
 
-        return values  # .reshape(self.shape)
+        return values.values
 
     @cached_property
     def _metadata(self) -> XArrayMetadata:
