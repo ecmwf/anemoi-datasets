@@ -243,6 +243,7 @@ class ZarrCopier:
                 shape=source_data.shape,
                 chunks=self.data_chunks,
                 fill_value=source_data.fill_value,
+                dtype=source_data.dtype,
             )
         )
 
@@ -300,7 +301,8 @@ class ZarrCopier:
             return
 
         LOG.info(f"Copying {name}")
-        target[name] = source[name]
+        data = source[name][...]
+        target.create_dataset(name, data=data, shape=data.shape)
         LOG.info(f"Copied {name}")
 
     def copy_group(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
@@ -372,11 +374,11 @@ class ZarrCopier:
         verbosity : int
             Verbosity level of logging.
         """
-        import zarr
 
         if "_copy" not in target:
-            target["_copy"] = zarr.zeros(
-                source["data"].shape[0],
+            target.create_dataset(
+                "_copy",
+                shape=(source["data"].shape[0],),
                 dtype=bool,
             )
         _copy = target["_copy"]
