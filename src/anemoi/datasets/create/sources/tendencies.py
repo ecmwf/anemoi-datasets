@@ -110,8 +110,7 @@ class TendenciesSource(LegacySource):
         shifted_dates = [d - time_increment for d in dates]
         all_dates = sorted(list(set(dates + shifted_dates)))
 
-        # from .mars import execute as mars
-        from anemoi.datasets.create.mars import execute as mars
+        from .mars import mars
 
         ds = mars(dates=all_dates, **kwargs)
 

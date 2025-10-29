@@ -4,9 +4,9 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-#  jobs:
-#    pre_build:
-#    - bash docs/scripts/api_build.sh
+  jobs:
+    pre_build:
+    - (cd docs/scripts && make rst)
 
 sphinx:
   configuration: docs/conf.py

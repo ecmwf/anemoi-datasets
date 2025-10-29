@@ -998,12 +998,12 @@ class AccumulationsSource(LegacySource):
             and request.get("stream", "oper") == "oper"
             and request.get("accumulation_period") == 24
         ):
-            from .accumulations2 import accumulations as accumulations2
+            from .accumulations2 import Accumulations2Source
 
             LOG.warning(
                 "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"
             )
-            return accumulations2(context, dates, **request)
+            return Accumulations2Source._execute(context, dates, **request)
 
         _to_list(request["param"])
         class_ = request.get("class", "od")
