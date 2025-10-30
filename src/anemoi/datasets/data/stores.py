@@ -63,14 +63,20 @@ class S3Store(zarr.storage.ObjectStore):
 
         super().__init__(objectstore, read_only=True)
 
+    def __init__(self, url: str) -> None:
+        """Initialize the S3Store with a URL."""
 
-class HTTPStore(zarr.storage.ObjectStore):
+        self.url = url
 
-    def __init__(self, url):
+    def __getitem__(self, key: str) -> bytes:
+        """Retrieve an item from the store."""
+        from anemoi.utils.remote.s3 import get_object
 
-        from obstore.store import from_url
+        try:
+            return get_object(os.path.join(self.url, key))
+        except FileNotFoundError:
+            raise KeyError(key)
 
-        objectstore = from_url(url)
 
         super().__init__(objectstore, read_only=True)
 
