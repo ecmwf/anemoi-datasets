@@ -85,21 +85,19 @@ class S3Store(ReadOnlyStore):
     options using the anemoi configs.
     """
 
-    def __init__(self, url: str, region: str | None = None) -> None:
-        """Initialize the S3Store with a URL and optional region."""
-        from anemoi.utils.remote.s3 import s3_client
+    def __init__(self, url: str) -> None:
+        """Initialize the S3Store with a URL."""
 
-        _, _, self.bucket, self.key = url.split("/", 3)
-        self.s3 = s3_client(self.bucket, region=region)
+        self.url = url
 
     def __getitem__(self, key: str) -> bytes:
         """Retrieve an item from the store."""
-        try:
-            response = self.s3.get_object(Bucket=self.bucket, Key=self.key + "/" + key)
-        except self.s3.exceptions.NoSuchKey:
-            raise KeyError(key)
+        from anemoi.utils.remote.s3 import get_object
 
-        return response["Body"].read()
+        try:
+            return get_object(os.path.join(self.url, key))
+        except FileNotFoundError:
+            raise KeyError(key)
 
 
 class DebugStore(ReadOnlyStore):
