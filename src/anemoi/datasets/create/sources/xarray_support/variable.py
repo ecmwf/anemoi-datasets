@@ -75,7 +75,7 @@ class Variable:
         self.coordinates = coordinates
 
         self._metadata = metadata.copy()
-        self._metadata.update({"param": variable.name})
+        self._metadata.update({"variable": variable.name, "param": variable.name})
 
         self.time = time
 
