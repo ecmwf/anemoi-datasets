@@ -14,6 +14,10 @@ import sys
 from unittest.mock import patch
 
 import pytest
+from anemoi.transform.filter import Filter
+from anemoi.transform.filters import filter_registry
+from anemoi.utils.testing import GetTestArchive
+from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
 from .utils.compare import Comparer
@@ -30,14 +34,26 @@ NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
 
+# Used by pipe.yaml
+@filter_registry.register("filter")
+class TestFilter(Filter):
+
+    def __init__(self, **kwargs):
+
+        self.kwargs = kwargs
+
+    def forward(self, data):
+        return data.sel(**self.kwargs)
+
+
 @pytest.fixture
-def load_source(get_test_data: callable) -> LoadSource:
+def load_source(get_test_data: GetTestData) -> LoadSource:
     return LoadSource(get_test_data)
 
 
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
-def test_run(name: str, get_test_archive: callable, load_source: LoadSource) -> None:
+def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSource) -> None:
     """Run the test for the specified dataset.
 
     Parameters

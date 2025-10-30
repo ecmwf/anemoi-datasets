@@ -16,8 +16,6 @@ import uuid
 import warnings
 from functools import cached_property
 from typing import Any
-from typing import Optional
-from typing import Union
 
 import cftime
 import numpy as np
@@ -102,8 +100,8 @@ def json_tidy(o: Any) -> Any:
 
 def build_statistics_dates(
     dates: list[datetime.datetime],
-    start: Optional[datetime.datetime],
-    end: Optional[datetime.datetime],
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
 ) -> tuple[str, str]:
     """Compute the start and end dates for the statistics.
 
@@ -359,7 +357,7 @@ class Actor:  # TODO: rename to Creator
 
     dataset_class = WritableDataset
 
-    def __init__(self, path: str, cache: Optional[str] = None):
+    def __init__(self, path: str, cache: str | None = None):
         """Initialize an Actor instance.
 
         Parameters
@@ -577,10 +575,10 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         check_name: bool = False,
         overwrite: bool = False,
         use_threads: bool = False,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         progress: Any = None,
         test: bool = False,
-        cache: Optional[str] = None,
+        cache: str | None = None,
         **kwargs: Any,
     ):
         """Initialize an Init instance.
@@ -809,11 +807,11 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
     def __init__(
         self,
         path: str,
-        parts: Optional[str] = None,
+        parts: str | None = None,
         use_threads: bool = False,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         progress: Any = None,
-        cache: Optional[str] = None,
+        cache: str | None = None,
         **kwargs: Any,
     ):
         """Initialize a Load instance.
@@ -867,7 +865,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(group_of_dates=group)
+            result = self.input.select(argument=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -907,8 +905,8 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
                 print("Requested dates", compress_dates(dates))
                 print("Cube dates", compress_dates(dates_in_data))
 
-                a = set(as_datetime(_) for _ in dates)
-                b = set(as_datetime(_) for _ in dates_in_data)
+                a = {as_datetime(_) for _ in dates}
+                b = {as_datetime(_) for _ in dates_in_data}
 
                 print("Missing dates", compress_dates(a - b))
                 print("Extra dates", compress_dates(b - a))
@@ -958,7 +956,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         array.flush()
         LOG.info("Flushed data array")
 
-    def _get_allow_nans(self) -> Union[bool, list]:
+    def _get_allow_nans(self) -> bool | list:
         """Get the allow_nans configuration.
 
         Returns
@@ -991,7 +989,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         total = cube.count(reading_chunks)
         LOG.debug(f"Loading datacube: {cube}")
 
-        def position(x: Any) -> Optional[int]:
+        def position(x: Any) -> int | None:
             if isinstance(x, str) and "/" in x:
                 x = x.split("/")
                 return int(x[0])
@@ -1038,7 +1036,7 @@ class Cleanup(Actor, HasRegistryMixin, HasStatisticTempMixin):
     def __init__(
         self,
         path: str,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         delta: list = [],
         use_threads: bool = False,
         **kwargs: Any,
@@ -1217,19 +1215,19 @@ class _InitAdditions(Actor, HasRegistryMixin, AdditionsMixin):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _RunAdditions(Actor, HasRegistryMixin, AdditionsMixin):
+class _LoadAdditions(Actor, HasRegistryMixin, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
         self,
         path: str,
         delta: str,
-        parts: Optional[str] = None,
+        parts: str | None = None,
         use_threads: bool = False,
         progress: Any = None,
         **kwargs: Any,
     ):
-        """Initialize a _RunAdditions instance.
+        """Initialize a _LoadAdditions instance.
 
         Parameters
         ----------
@@ -1469,7 +1467,7 @@ def multi_addition(cls: type) -> type:
 
 
 InitAdditions = multi_addition(_InitAdditions)
-RunAdditions = multi_addition(_RunAdditions)
+LoadAdditions = multi_addition(_LoadAdditions)
 FinaliseAdditions = multi_addition(_FinaliseAdditions)
 
 
@@ -1480,7 +1478,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         self,
         path: str,
         use_threads: bool = False,
-        statistics_temp_dir: Optional[str] = None,
+        statistics_temp_dir: str | None = None,
         progress: Any = None,
         **kwargs: Any,
     ):
@@ -1539,7 +1537,7 @@ class Statistics(Actor, HasStatisticTempMixin, HasRegistryMixin):
         LOG.info(f"Wrote statistics in {self.path}")
 
     @cached_property
-    def allow_nans(self) -> Union[bool, list]:
+    def allow_nans(self) -> bool | list:
         """Check if NaNs are allowed."""
         import zarr
 
@@ -1581,7 +1579,7 @@ def chain(tasks: list) -> type:
     return Chain
 
 
-def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> Any:
+def creator_factory(name: str, trace: str | None = None, **kwargs: Any) -> Any:
     """Create a dataset creator.
 
     Parameters
@@ -1612,10 +1610,50 @@ def creator_factory(name: str, trace: Optional[str] = None, **kwargs: Any) -> An
         cleanup=Cleanup,
         verify=Verify,
         init_additions=InitAdditions,
-        load_additions=RunAdditions,
-        run_additions=RunAdditions,
+        load_additions=LoadAdditions,
         finalise_additions=chain([FinaliseAdditions, Size]),
-        additions=chain([InitAdditions, RunAdditions, FinaliseAdditions, Size, Cleanup]),
+        additions=chain([InitAdditions, LoadAdditions, FinaliseAdditions, Size, Cleanup]),
     )[name]
     LOG.debug(f"Creating {cls.__name__} with {kwargs}")
     return cls(**kwargs)
+
+
+def validate_config(config: Any) -> None:
+
+    import json
+
+    import jsonschema
+
+    def _tidy(d):
+        if isinstance(d, dict):
+            return {k: _tidy(v) for k, v in d.items()}
+
+        if isinstance(d, list):
+            return [_tidy(v) for v in d if v is not None]
+
+        # jsonschema does not support datetime.date
+        if isinstance(d, datetime.datetime):
+            return d.isoformat()
+
+        if isinstance(d, datetime.date):
+            return d.isoformat()
+
+        return d
+
+    # https://json-schema.org
+
+    with open(
+        os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "schemas",
+            "recipe.json",
+        )
+    ) as f:
+        schema = json.load(f)
+
+    try:
+        jsonschema.validate(instance=_tidy(config), schema=schema)
+    except jsonschema.exceptions.ValidationError as e:
+        LOG.error("❌ Config validation failed (jsonschema):")
+        LOG.error(e.message)
+        raise

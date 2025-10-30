@@ -11,10 +11,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -25,171 +21,19 @@ from .dataset import FullIndex
 from .dataset import Shape
 from .dataset import TupleIndex
 from .debug import Node
-from .debug import debug_indexing
-from .forwards import Combined
 from .forwards import GivenAxis
 from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
 from .indexing import index_to_slices
-from .indexing import length_to_slices
-from .indexing import update_tuple
 from .misc import _auto_adjust
 from .misc import _open
 
 LOG = logging.getLogger(__name__)
 
 
-class Concat(Combined):
-    """A class to represent concatenated datasets."""
-
-    def __len__(self) -> int:
-        """Returns the total length of the concatenated datasets.
-
-        Returns
-        -------
-        int
-            Total length of the concatenated datasets.
-        """
-        return sum(len(i) for i in self.datasets)
-
-    @debug_indexing
-    @expand_list_indexing
-    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """Retrieves a tuple of data from the concatenated datasets based on the given index.
-
-        Parameters
-        ----------
-        index : TupleIndex
-            Index specifying the data to retrieve.
-
-        Returns
-        -------
-        NDArray[Any]
-            Concatenated data array from the specified index.
-        """
-        index, changes = index_to_slices(index, self.shape)
-        # print(index, changes)
-        lengths = [d.shape[0] for d in self.datasets]
-        slices = length_to_slices(index[0], lengths)
-        # print("slies", slices)
-        result = [d[update_tuple(index, 0, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
-        result = np.concatenate(result, axis=0)
-        return apply_index_to_slices_changes(result, changes)
-
-    @debug_indexing
-    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """Retrieves data from the concatenated datasets based on the given index.
-
-        Parameters
-        ----------
-        n : FullIndex
-            Index specifying the data to retrieve.
-
-        Returns
-        -------
-        NDArray[Any]
-            Data array from the concatenated datasets based on the index.
-        """
-        if isinstance(n, tuple):
-            return self._get_tuple(n)
-
-        if isinstance(n, slice):
-            return self._get_slice(n)
-
-        # TODO: optimize
-        k = 0
-        while n >= self.datasets[k]._len:
-            n -= self.datasets[k]._len
-            k += 1
-        return self.datasets[k][n]
-
-    @debug_indexing
-    def _get_slice(self, s: slice) -> NDArray[Any]:
-        """Retrieves a slice of data from the concatenated datasets.
-
-        Parameters
-        ----------
-        s : slice
-            Slice object specifying the range of data to retrieve.
-
-        Returns
-        -------
-        NDArray[Any]
-            Concatenated data array from the specified slice.
-        """
-        result = []
-
-        lengths = [d.shape[0] for d in self.datasets]
-        slices = length_to_slices(s, lengths)
-
-        result = [d[i] for (d, i) in zip(self.datasets, slices) if i is not None]
-
-        return np.concatenate(result)
-
-    def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
-        """Check the compatibility of two datasets for concatenation.
-
-        Parameters
-        ----------
-        d1 : Dataset
-            The first dataset.
-        d2 : Dataset
-            The second dataset.
-        """
-        super().check_compatibility(d1, d2)
-        self.check_same_sub_shapes(d1, d2, drop_axis=0)
-
-    def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if the lengths of two datasets are the same.
-
-        Parameters
-        ----------
-        d1 : Dataset
-            The first dataset.
-        d2 : Dataset
-            The second dataset.
-        """
-        # Turned off because we are concatenating along the first axis
-        pass
-
-    def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
-        """Check if the dates of two datasets are the same.
-
-        Parameters
-        ----------
-        d1 : Dataset
-            The first dataset.
-        d2 : Dataset
-            The second dataset.
-        """
-        # Turned off because we are concatenating along the dates axis
-        pass
-
-    @property
-    def dates(self) -> NDArray[np.datetime64]:
-        """Returns the concatenated dates of all datasets."""
-        return np.concatenate([d.dates for d in self.datasets])
-
-    @property
-    def shape(self) -> Shape:
-        """Returns the shape of the concatenated datasets."""
-        return (len(self),) + self.datasets[0].shape[1:]
-
-    def tree(self) -> Node:
-        """Generates a hierarchical tree structure for the concatenated datasets.
-
-        Returns
-        -------
-        Node
-            A Node object representing the concatenated datasets.
-        """
-        return Node(self, [d.tree() for d in self.datasets])
-
-
 class GridsBase(GivenAxis):
     """A base class for handling grids in datasets."""
 
-    def __init__(self, datasets: List[Any], axis: int) -> None:
+    def __init__(self, datasets: list[Any], axis: int) -> None:
         """Initializes a GridsBase object.
 
         Parameters
@@ -229,7 +73,7 @@ class GridsBase(GivenAxis):
         # We don't check the resolution, because we want to be able to combine
         pass
 
-    def metadata_specific(self, **kwargs: Any) -> Dict[str, Any]:
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the GridsBase object.
 
         Parameters
@@ -246,7 +90,7 @@ class GridsBase(GivenAxis):
             multi_grids=True,
         )
 
-    def collect_input_sources(self, collected: List[Any]) -> None:
+    def collect_input_sources(self, collected: list[Any]) -> None:
         """Collects input sources from the datasets.
 
         Parameters
@@ -275,7 +119,7 @@ class Grids(GridsBase):
         return np.concatenate([d.longitudes for d in self.datasets])
 
     @property
-    def grids(self) -> Tuple[Any, ...]:
+    def grids(self) -> tuple[Any, ...]:
         """Returns the grids of all datasets."""
         result = []
         for d in self.datasets:
@@ -292,7 +136,7 @@ class Grids(GridsBase):
         """
         return Node(self, [d.tree() for d in self.datasets], mode="concat")
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
 
         Returns:
@@ -306,12 +150,12 @@ class Cutout(GridsBase):
 
     def __init__(
         self,
-        datasets: List[Any],
+        datasets: list[Any],
         axis: int = 3,
         cropping_distance: float = 2.0,
         neighbours: int = 5,
-        min_distance_km: Optional[float] = None,
-        plot: Optional[bool] = None,
+        min_distance_km: float | None = None,
+        plot: bool | None = None,
     ) -> None:
         """Initializes a Cutout object for hierarchical management of Limited Area
         Models (LAMs) and a global dataset, handling overlapping regions.
@@ -487,7 +331,7 @@ class Cutout(GridsBase):
 
         return apply_index_to_slices_changes(result, changes)
 
-    def collect_supporting_arrays(self, collected: List[Any], *path: Any) -> None:
+    def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:
         """Collect supporting arrays, including masks for each LAM and the global dataset.
 
         Parameters
@@ -577,7 +421,7 @@ class Cutout(GridsBase):
         """
         return Node(self, [d.tree() for d in self.datasets])
 
-    def forwards_subclass_metadata_specific(self) -> Dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Returns metadata specific to the Cutout object.
 
         Returns
@@ -588,7 +432,7 @@ class Cutout(GridsBase):
         return {}
 
 
-def grids_factory(args: Tuple[Any, ...], kwargs: dict) -> Dataset:
+def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
     """Factory function to create a Grids object.
 
     Parameters
@@ -618,7 +462,7 @@ def grids_factory(args: Tuple[Any, ...], kwargs: dict) -> Dataset:
     return Grids(datasets, axis=axis)._subset(**kwargs)
 
 
-def cutout_factory(args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Dataset:
+def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create a Cutout object.
 
     Parameters

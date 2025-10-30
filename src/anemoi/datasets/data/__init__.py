@@ -8,9 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Set
 
 # from .dataset import FullIndex
 # from .dataset import Shape
@@ -82,6 +82,9 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     Dataset
         The opened dataset.
     """
+
+    trace = int(os.environ.get("ANEMOI_DATASETS_TRACE", 0))
+
     # That will get rid of OmegaConf objects
 
     args, kwargs = _convert(args), _convert(kwargs)
@@ -90,22 +93,28 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     ds = ds.mutate()
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
+
+    if trace:
+        from anemoi.datasets.testing import Trace
+
+        ds = Trace(ds)
+
     return ds
 
 
-def save_dataset(recipe: dict, zarr_path: str, n_workers: int = 1) -> None:
+def save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> None:
     """Open a dataset and save it to disk.
 
     Parameters
     ----------
-    recipe : dict
-        Recipe used with open_dataset (not a dataset creation recipe).
+    dataset : Dataset
+        anemoi-dataset opened from python to save to Zarr store
     zarr_path : str
         Path to store the obtained anemoi dataset to disk.
     n_workers : int
         Number of workers to use for parallel processing. If none, sequential processing will be performed.
     """
-    _save_dataset(recipe, zarr_path, n_workers)
+    _save_dataset(dataset, zarr_path, n_workers)
 
 
 def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
@@ -124,6 +133,6 @@ def list_dataset_names(*args: Any, **kwargs: Any) -> list[str]:
         The list of dataset names.
     """
     ds = _open_dataset(*args, **kwargs)
-    names: Set[str] = set()
+    names: set[str] = set()
     ds.get_dataset_names(names)
     return sorted(names)

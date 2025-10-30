@@ -13,7 +13,6 @@ import os
 import warnings
 from contextlib import contextmanager
 from typing import Any
-from typing import Union
 
 import numpy as np
 from earthkit.data import settings
@@ -95,48 +94,6 @@ def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
     )
 
     return to_datetime_(*args, **kwargs)
-
-
-def make_list_int(value: Union[str, list, tuple, int]) -> list[int]:
-    """Convert a string, list, tuple, or integer to a list of integers.
-
-    Parameters
-    ----------
-    value : str or list or tuple or int
-        The value to convert.
-
-    Returns
-    -------
-    list[int]
-        A list of integers.
-
-    Raises
-    ------
-    ValueError
-        If the value cannot be converted to a list of integers.
-    """
-    # Convert a string like "1/2/3" or "1/to/3" or "1/to/10/by/2" to a list of integers.
-    # Moved to anemoi.utils.humanize
-    # replace with from anemoi.utils.humanize import make_list_int
-    # when anemoi-utils is released and pyproject.toml is updated
-    if isinstance(value, str):
-        if "/" not in value:
-            return [value]
-        bits = value.split("/")
-        if len(bits) == 3 and bits[1].lower() == "to":
-            value = list(range(int(bits[0]), int(bits[2]) + 1, 1))
-
-        elif len(bits) == 5 and bits[1].lower() == "to" and bits[3].lower() == "by":
-            value = list(range(int(bits[0]), int(bits[2]) + int(bits[4]), int(bits[4])))
-
-    if isinstance(value, list):
-        return value
-    if isinstance(value, tuple):
-        return value
-    if isinstance(value, int):
-        return [value]
-
-    raise ValueError(f"Cannot make list from {value}")
 
 
 def normalize_and_check_dates(

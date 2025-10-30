@@ -10,9 +10,6 @@
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Union
 
 from earthkit.data import FieldList
 
@@ -20,7 +17,7 @@ from ...dates.groups import GroupOfDates
 from .action import Action
 from .action import action_factory
 from .misc import _tidy
-from .result import Result
+from .result.field import Result
 
 LOG = logging.getLogger(__name__)
 
@@ -31,9 +28,9 @@ class DataSourcesAction(Action):
     def __init__(
         self,
         context: object,
-        action_path: List[str],
-        sources: Union[Dict[str, Any], List[Dict[str, Any]]],
-        input: Dict[str, Any],
+        action_path: list[str],
+        sources: dict[str, Any] | list[dict[str, Any]],
+        input: dict[str, Any],
     ) -> None:
         """Initializes a DataSourcesAction instance.
 
@@ -58,6 +55,7 @@ class DataSourcesAction(Action):
 
         self.sources = [action_factory(config, context, ["data_sources"] + [a_path]) for a_path, config in configs]
         self.input = action_factory(input, context, ["input"])
+        self.names = [a_path for a_path, config in configs]
 
     def select(self, group_of_dates: GroupOfDates) -> "DataSourcesResult":
         """Selects the data sources result for the given group of dates.
@@ -93,10 +91,10 @@ class DataSourcesResult(Result):
     def __init__(
         self,
         context: object,
-        action_path: List[str],
+        action_path: list[str],
         dates: object,
         input_result: Result,
-        sources_results: List[Result],
+        sources_results: list[Result],
     ) -> None:
         """Initializes a DataSourcesResult instance.
 

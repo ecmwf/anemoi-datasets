@@ -13,7 +13,6 @@ from abc import ABC
 from abc import abstractmethod
 from functools import cached_property
 from typing import Any
-from typing import Tuple
 
 import numpy as np
 
@@ -38,7 +37,7 @@ class Grid(ABC):
 
     @property
     @abstractmethod
-    def grid_points(self) -> Tuple[Any, Any]:
+    def grid_points(self) -> tuple[Any, Any]:
         """Get the grid points."""
         pass
 
@@ -85,7 +84,7 @@ class MeshedGrid(LatLonGrid):
     """Grid class for meshed latitude and longitude coordinates."""
 
     @cached_property
-    def grid_points(self) -> Tuple[Any, Any]:
+    def grid_points(self) -> tuple[Any, Any]:
         """Get the grid points for the meshed grid."""
 
         if self.variable_dims == (self.lon.variable.name, self.lat.variable.name):
@@ -128,7 +127,7 @@ class UnstructuredGrid(LatLonGrid):
         assert set(self.variable_dims) == set(self.grid_dims), (self.variable_dims, self.grid_dims)
 
     @cached_property
-    def grid_points(self) -> Tuple[Any, Any]:
+    def grid_points(self) -> tuple[Any, Any]:
         """Get the grid points for the unstructured grid."""
         assert 1 <= len(self.variable_dims) <= 2
 
@@ -191,7 +190,7 @@ class MeshProjectionGrid(ProjectionGrid):
     """Grid class for meshed projected coordinates."""
 
     @cached_property
-    def grid_points(self) -> Tuple[Any, Any]:
+    def grid_points(self) -> tuple[Any, Any]:
         """Get the grid points for the mesh projection grid."""
         transformer = self.transformer()
         xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
@@ -199,10 +198,17 @@ class MeshProjectionGrid(ProjectionGrid):
         return lat.flatten(), lon.flatten()
 
 
-class UnstructuredProjectionGrid(XYGrid):
+class UnstructuredProjectionGrid(ProjectionGrid):
     """Grid class for unstructured projected coordinates."""
 
     @cached_property
-    def grid_points(self) -> Tuple[Any, Any]:
-        """Get the grid points for the unstructured projection grid."""
-        raise NotImplementedError("UnstructuredProjectionGrid")
+    def grid_points(self) -> tuple[Any, Any]:
+        """Get the grid points for the unstructured grid."""
+        if self.projection == "epsg:4326":
+            # WGS84, no transformation needed
+            return self.y.variable.values.flatten(), self.x.variable.values.flatten()
+        transformer = self.transformer()
+        xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
+        lon, lat = transformer.transform(xv, yv)
+
+        return lat.flatten(), lon.flatten()

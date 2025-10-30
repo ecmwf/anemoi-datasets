@@ -13,6 +13,7 @@ good starting point.
 -  :ref:`create-grib-data`
 -  :ref:`create-cf-data`
 -  :ref:`constant-data`
+-  :ref:`create-with-filter`
 
 .. toctree::
    :maxdepth: 1
@@ -34,4 +35,4 @@ good starting point.
    :hidden:
    :caption: Using anemoi-datasets
 
-   usage/*
+   using/*

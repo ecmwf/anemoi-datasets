@@ -84,6 +84,7 @@ def create_ds(var_name, standard_name, long_name, units, coord_length=5):
         ("vertical", "vertical", None, "hPa", LevelCoordinate),
         ("depth", "depth", None, "m", LevelCoordinate),
         ("depth", "depth", None, None, LevelCoordinate),
+        ("model_level_number", "model_level_number", None, None, LevelCoordinate),
         # number
         ("realization", None, None, None, EnsembleCoordinate),
         ("number", None, None, None, EnsembleCoordinate),

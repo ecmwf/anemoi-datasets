@@ -28,7 +28,7 @@ authors = [
   { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
 ]
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -36,7 +36,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -50,18 +49,21 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.10",
-  "anemoi-utils[provenance]>=0.4.26",
+  "anemoi-utils[provenance]>=0.4.38",
   "cfunits",
+  "glom",
+  "jsonschema",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pyyaml",
+  "ruamel-yaml",
   "semantic-version",
   "tqdm",
   "zarr<=2.18.4",
 ]
 
 optional-dependencies.all = [
-  "anemoi-datasets[create,remote,xarray,comparelam]",
+  "anemoi-datasets[comparelam,create,remote,xarray]",
 ]
 
 optional-dependencies.comparelam = [
@@ -100,6 +102,7 @@ optional-dependencies.remote = [
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pytest",
+  "pytest-skip-slow",
   "pytest-xdist",
 ]
 
@@ -136,6 +139,7 @@ profile = "black"
 testpaths = "tests"
 addopts = [
   "--numprocesses=auto",
+  "--maxprocesses=16",
   "--strict-config",
 ]
 

@@ -14,10 +14,6 @@ import os
 from copy import deepcopy
 from functools import cached_property
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
 
 import numpy as np
 import semantic_version
@@ -39,7 +35,7 @@ from . import Command
 LOG = logging.getLogger(__name__)
 
 
-def compute_directory_size(path: str) -> Union[tuple[int, int], tuple[None, None]]:
+def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
     """Compute the total size and number of files in a directory.
 
     Parameters
@@ -104,7 +100,7 @@ def cos_local_time_bug(lon: float, date: datetime.datetime) -> float:
     return np.cos(radians)
 
 
-def find(config: Union[dict, list], name: str) -> Any:
+def find(config: dict | list, name: str) -> Any:
     """Recursively search for a key in a nested dictionary or list.
 
     Parameters
@@ -167,7 +163,7 @@ class Version:
         print(f"🔢 Format version: {self.version}")
 
     @property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Get a mapping of variable names to their indices."""
         return find(self.metadata, "name_to_index")
 
@@ -208,30 +204,30 @@ class Version:
         return self.metadata["resolution"]
 
     @property
-    def field_shape(self) -> Optional[tuple]:
+    def field_shape(self) -> tuple | None:
         """Get the field shape of the dataset."""
         return self.metadata.get("field_shape")
 
     @property
-    def proj_string(self) -> Optional[str]:
+    def proj_string(self) -> str | None:
         """Get the projection string of the dataset."""
         return self.metadata.get("proj_string")
 
     @property
-    def shape(self) -> Optional[tuple]:
+    def shape(self) -> tuple | None:
         """Get the shape of the dataset."""
         if self.data and hasattr(self.data, "shape"):
             return self.data.shape
 
     @property
-    def n_missing_dates(self) -> Optional[int]:
+    def n_missing_dates(self) -> int | None:
         """Get the number of missing dates in the dataset."""
         if "missing_dates" in self.metadata:
             return len(self.metadata["missing_dates"])
         return None
 
     @property
-    def uncompressed_data_size(self) -> Optional[int]:
+    def uncompressed_data_size(self) -> int | None:
         """Get the uncompressed data size of the dataset."""
         if self.data and hasattr(self.data, "dtype") and hasattr(self.data, "size"):
             return self.data.dtype.itemsize * self.data.size
@@ -258,7 +254,7 @@ class Version:
         print()
         shape_str = "📐 Shape      : "
         if self.shape:
-            shape_str += " × ".join(["{:,}".format(s) for s in self.shape])
+            shape_str += " × ".join([f"{s:,}" for s in self.shape])
         if self.uncompressed_data_size:
             shape_str += f" ({bytes(self.uncompressed_data_size)})"
         print(shape_str)
@@ -293,17 +289,17 @@ class Version:
         print()
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Get the list of variables in the dataset."""
         return [v[0] for v in sorted(self.name_to_index.items(), key=lambda x: x[1])]
 
     @property
-    def total_size(self) -> Optional[int]:
+    def total_size(self) -> int | None:
         """Get the total size of the dataset."""
         return self.zarr.attrs.get("total_size")
 
     @property
-    def total_number_of_files(self) -> Optional[int]:
+    def total_number_of_files(self) -> int | None:
         """Get the total number of files in the dataset."""
         return self.zarr.attrs.get("total_number_of_files")
 
@@ -348,7 +344,7 @@ class Version:
         return False
 
     @property
-    def statistics_started(self) -> Optional[datetime.datetime]:
+    def statistics_started(self) -> datetime.datetime | None:
         """Get the timestamp when statistics computation started."""
         for d in reversed(self.metadata.get("history", [])):
             if d["action"] == "compute_statistics_start":
@@ -356,12 +352,12 @@ class Version:
         return None
 
     @property
-    def build_flags(self) -> Optional[NDArray[Any]]:
+    def build_flags(self) -> NDArray[Any] | None:
         """Get the build flags of the dataset."""
         return self.zarr.get("_build_flags")
 
     @cached_property
-    def copy_flags(self) -> Optional[NDArray[Any]]:
+    def copy_flags(self) -> NDArray[Any] | None:
         """Get the copy flags of the dataset."""
         if "_copy" not in self.zarr:
             return None
@@ -381,7 +377,7 @@ class Version:
         return not all(self.copy_flags)
 
     @property
-    def build_lengths(self) -> Optional[NDArray]:
+    def build_lengths(self) -> NDArray | None:
         """Get the build lengths of the dataset."""
         return self.zarr.get("_build_lengths")
 
@@ -396,17 +392,13 @@ class Version:
             print(
                 "📈 Progress:",
                 progress(built, total, width=50),
-                "{:.0f}%".format(built / total * 100),
+                f"{built / total * 100:.0f}%",
             )
             return
 
-        if self.build_flags is None:
-            print("🪫 Dataset not initialised")
-            return
+        build_flags = self.build_flags or np.array([], dtype=bool)
 
-        build_flags = self.build_flags
-
-        build_lengths = self.build_lengths
+        build_lengths = self.build_lengths or np.array([], dtype=bool)
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
@@ -422,7 +414,7 @@ class Version:
             print(
                 "📈 Progress:",
                 progress(built, total, width=50),
-                "{:.0f}%".format(built / total * 100),
+                f"{built / total * 100:.0f}%",
             )
             start = self.initialised
             if self.initialised:
@@ -623,7 +615,7 @@ class Version0_6(Version):
     """Represents version 0.6 of a dataset."""
 
     @property
-    def initialised(self) -> Optional[datetime.datetime]:
+    def initialised(self) -> datetime.datetime | None:
         """Get the initialization timestamp of the dataset."""
         for record in self.metadata.get("history", []):
             if record["action"] == "initialised":
@@ -659,12 +651,12 @@ class Version0_6(Version):
         return all(build_flags)
 
     @property
-    def name_to_index(self) -> Dict[str, int]:
+    def name_to_index(self) -> dict[str, int]:
         """Get a mapping of variable names to their indices."""
         return {n: i for i, n in enumerate(self.metadata["variables"])}
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         """Get the list of variables in the dataset."""
         return self.metadata["variables"]
 
@@ -706,7 +698,7 @@ class Version0_13(Version0_12):
     """Represents version 0.13 of a dataset."""
 
     @property
-    def build_flags(self) -> Optional[NDArray]:
+    def build_flags(self) -> NDArray | None:
         """Get the build flags for the dataset."""
         if "_build" not in self.zarr:
             return None
@@ -714,7 +706,7 @@ class Version0_13(Version0_12):
         return build.get("flags")
 
     @property
-    def build_lengths(self) -> Optional[NDArray]:
+    def build_lengths(self) -> NDArray | None:
         """Get the build lengths for the dataset."""
         if "_build" not in self.zarr:
             return None
@@ -792,10 +784,10 @@ class InspectZarr(Command):
 
         try:
             if progress:
-                return version.progress()
+                version.progress()
 
             if statistics:
-                return version.brute_force_statistics()
+                version.brute_force_statistics()
 
             version.info(detailed, size)
 

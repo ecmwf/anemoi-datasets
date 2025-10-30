@@ -10,14 +10,9 @@
 import datetime
 import logging
 import warnings
+from collections.abc import Generator
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
@@ -25,12 +20,13 @@ from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
-from anemoi.datasets.create.utils import to_datetime_list
+from anemoi.datasets.create.sources import source_registry
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 from .mars import mars
 
 LOG = logging.getLogger(__name__)
+MISSING_VALUE = 1e-38
 
 
 def _member(field: Any) -> int:
@@ -66,10 +62,10 @@ class Accumulation:
         date: int,
         time: int,
         number: int,
-        step: List[int],
+        step: list[int],
         frequency: int,
-        accumulations_reset_frequency: Optional[int] = None,
-        user_date: Optional[str] = None,
+        accumulations_reset_frequency: int | None = None,
+        user_date: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialises an Accumulation instance.
@@ -103,10 +99,10 @@ class Accumulation:
         self.time = time
         self.steps = step
         self.number = number
-        self.values: Optional[NDArray[None]] = None
+        self.values: NDArray[None] | None = None
         self.seen = set()
-        self.startStep: Optional[int] = None
-        self.endStep: Optional[int] = None
+        self.startStep: int | None = None
+        self.endStep: int | None = None
         self.done = False
         self.frequency = frequency
         self.accumulations_reset_frequency = accumulations_reset_frequency
@@ -114,7 +110,7 @@ class Accumulation:
         self.user_date = user_date
 
     @property
-    def key(self) -> Tuple[str, int, int, List[int], int]:
+    def key(self) -> tuple[str, int, int, list[int], int]:
         """Returns the key for the accumulation."""
         return (self.param, self.date, self.time, self.steps, self.number)
 
@@ -173,6 +169,7 @@ class Accumulation:
         # are used to store the end step
 
         edition = template.metadata("edition")
+        assert np.all(self.values != MISSING_VALUE)
 
         if edition == 1 and self.endStep > 254:
             self.out.write(
@@ -181,6 +178,7 @@ class Accumulation:
                 stepType="instant",
                 step=self.endStep,
                 check_nans=True,
+                missing_value=MISSING_VALUE,
             )
         else:
             self.out.write(
@@ -190,6 +188,7 @@ class Accumulation:
                 startStep=self.startStep,
                 endStep=self.endStep,
                 check_nans=True,
+                missing_value=MISSING_VALUE,
             )
         self.values = None
         self.done = True
@@ -209,9 +208,6 @@ class Accumulation:
         step = field.metadata("step")
         if step not in self.steps:
             return
-
-        if not np.all(values >= 0):
-            warnings.warn(f"Negative values for {field}: {np.nanmin(values)} {np.nanmax(values)}")
 
         assert not self.done, (self.key, step)
         assert step not in self.seen, (self.key, step)
@@ -235,15 +231,15 @@ class Accumulation:
     def mars_date_time_steps(
         cls,
         *,
-        dates: List[datetime.datetime],
+        dates: list[datetime.datetime],
         step1: int,
         step2: int,
-        frequency: Optional[int],
-        base_times: List[int],
+        frequency: int | None,
+        base_times: list[int],
         adjust_step: bool,
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-    ) -> Generator[Tuple[int, int, Tuple[int, ...]], None, None]:
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+    ) -> Generator[tuple[int, int, tuple[int, ...]], None, None]:
         """Generates MARS date-time steps.
 
         Parameters
@@ -327,11 +323,11 @@ class Accumulation:
         step1: int,
         step2: int,
         add_step: int,
-        frequency: Optional[int],
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        frequency: int | None,
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -364,7 +360,7 @@ class Accumulation:
 class AccumulationFromStart(Accumulation):
     """Class to handle data accumulation from the start of the forecast."""
 
-    def adjust_steps(self, startStep: int, endStep: int) -> Tuple[int, int]:
+    def adjust_steps(self, startStep: int, endStep: int) -> tuple[int, int]:
         """Adjusts the start and end steps.
 
         Parameters
@@ -427,11 +423,11 @@ class AccumulationFromStart(Accumulation):
         step1: int,
         step2: int,
         add_step: int,
-        frequency: Optional[int],
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        frequency: int | None,
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -518,10 +514,10 @@ class AccumulationFromLastStep(Accumulation):
         step2: int,
         add_step: int,
         frequency: int,
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str] = None,
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        accumulations_reset_frequency: int | None,
+        user_date: str | None = None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -568,7 +564,7 @@ class AccumulationFromLastStep(Accumulation):
 class AccumulationFromLastReset(Accumulation):
     """Class to handle data accumulation from the last step of the forecast."""
 
-    def adjust_steps(self, startStep: int, endStep: int) -> Tuple[int, int]:
+    def adjust_steps(self, startStep: int, endStep: int) -> tuple[int, int]:
         """Adjusts the start and end steps.
 
         Parameters
@@ -588,7 +584,7 @@ class AccumulationFromLastReset(Accumulation):
     @classmethod
     def _adjust_steps(
         self, startStep: int, endStep: int, frequency: int, accumulations_reset_frequency: int
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Adjusts the start and end steps.
 
         Parameters
@@ -620,7 +616,7 @@ class AccumulationFromLastReset(Accumulation):
         base_date: datetime.datetime,
         frequency: int,
         accumulations_reset_frequency: int,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Calculates the steps for accumulation.
 
         Parameters
@@ -704,10 +700,10 @@ class AccumulationFromLastReset(Accumulation):
         step2: int,
         add_step: int,
         frequency: int,
-        accumulations_reset_frequency: Optional[int],
-        user_date: Optional[str],
-        requested_date: Optional[datetime.datetime] = None,
-    ) -> Tuple[int, int, Tuple[int, ...]]:
+        accumulations_reset_frequency: int | None,
+        user_date: str | None,
+        requested_date: datetime.datetime | None = None,
+    ) -> tuple[int, int, tuple[int, ...]]:
         """Generates a MARS date-time step.
 
         Parameters
@@ -776,15 +772,15 @@ def _identity(x: Any) -> Any:
 
 def _compute_accumulations(
     context: Any,
-    dates: List[datetime.datetime],
-    request: Dict[str, Any],
-    user_accumulation_period: Union[int, Tuple[int, int]] = 6,
-    data_accumulation_period: Optional[int] = None,
-    accumulations_reset_frequency: Optional[int] = None,
-    user_date: Optional[str] = None,
+    dates: list[datetime.datetime],
+    request: dict[str, Any],
+    user_accumulation_period: int | tuple[int, int] = 6,
+    data_accumulation_period: int | None = None,
+    accumulations_reset_frequency: int | None = None,
+    user_date: str | None = None,
     patch: Any = _identity,
-    base_times: Optional[List[int]] = None,
-    use_cdsapi_dataset: Optional[str] = None,
+    base_times: list[int] | None = None,
+    use_cdsapi_dataset: str | None = None,
 ) -> Any:
     """Computes accumulations based on the provided parameters.
 
@@ -933,7 +929,7 @@ def _compute_accumulations(
     return ds
 
 
-def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
+def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -951,7 +947,7 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
     return [x]
 
 
-def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
+def _scda(request: dict[str, Any]) -> dict[str, Any]:
     """Modifies the request stream based on the time.
 
     Parameters
@@ -971,97 +967,76 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
     return request
 
 
-@legacy_source(__file__)
-def accumulations(
-    context: Any, dates: List[datetime.datetime], use_cdsapi_dataset: Optional[str] = None, **request: Any
-) -> Any:
-    """Computes accumulations based on the provided context, dates, and request parameters.
+@source_registry.register("accumulations")
+class AccumulationsSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        Context for the computation.
-    dates : List[datetime.datetime]
-        List of dates.
-    use_cdsapi_dataset : Optional[str], optional
-        CDSAPI dataset to use. Defaults to None.
-    **request : Any
-        Additional request parameters.
+    @staticmethod
+    def _execute(
+        context: Any, dates: list[datetime.datetime], use_cdsapi_dataset: str | None = None, **request: Any
+    ) -> Any:
+        """Computes accumulations based on the provided context, dates, and request parameters.
 
-    Returns
-    -------
-    Any
-        The computed accumulations.
-    """
+        Parameters
+        ----------
+        context : Any
+            Context for the computation.
+        dates : List[datetime.datetime]
+            List of dates.
+        use_cdsapi_dataset : Optional[str], optional
+            CDSAPI dataset to use. Defaults to None.
+        **request : Any
+            Additional request parameters.
 
-    if (
-        request.get("class") == "ea"
-        and request.get("stream", "oper") == "oper"
-        and request.get("accumulation_period") == 24
-    ):
-        from .accumulations2 import accumulations as accumulations2
-
-        LOG.warning(
-            "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"
-        )
-        return accumulations2(context, dates, **request)
-
-    _to_list(request["param"])
-    class_ = request.get("class", "od")
-    stream = request.get("stream", "oper")
-
-    user_accumulation_period = request.pop("accumulation_period", 6)
-    accumulations_reset_frequency = request.pop("accumulations_reset_frequency", None)
-    user_date = request.pop("date", None)
-
-    # If `data_accumulation_period` is not set, this means that the accumulations are from the start
-    # of the forecast.
-
-    KWARGS = {
-        ("od", "oper"): dict(patch=_scda),
-        ("od", "elda"): dict(base_times=(6, 18)),
-        ("od", "enfo"): dict(base_times=(0, 6, 12, 18)),
-        ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
-        ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
-        ("rr", "oper"): dict(base_times=(0, 3, 6, 9, 12, 15, 18, 21)),
-        ("l5", "oper"): dict(data_accumulation_period=1, base_times=(0,)),
-    }
-
-    kwargs = KWARGS.get((class_, stream), {})
-
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
-
-    return _compute_accumulations(
-        context,
-        dates,
-        request,
-        user_accumulation_period=user_accumulation_period,
-        accumulations_reset_frequency=accumulations_reset_frequency,
-        use_cdsapi_dataset=use_cdsapi_dataset,
-        user_date=user_date,
-        **kwargs,
-    )
-
-
-execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
+        Returns
+        -------
+        Any
+            The computed accumulations.
         """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-    """
-    )
-    dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
 
-    for f in accumulations(None, dates, **config):
-        print(f, f.to_numpy().mean())
+        if (
+            request.get("class") == "ea"
+            and request.get("stream", "oper") == "oper"
+            and request.get("accumulation_period") == 24
+        ):
+            from .accumulations2 import Accumulations2Source
+
+            LOG.warning(
+                "🧪️ Experimental features: Using accumulations2, because class=ea stream=oper and accumulation_period=24"
+            )
+            return Accumulations2Source._execute(context, dates, **request)
+
+        _to_list(request["param"])
+        class_ = request.get("class", "od")
+        stream = request.get("stream", "oper")
+
+        user_accumulation_period = request.pop("accumulation_period", 6)
+        accumulations_reset_frequency = request.pop("accumulations_reset_frequency", None)
+        user_date = request.pop("date", None)
+
+        # If `data_accumulation_period` is not set, this means that the accumulations are from the start
+        # of the forecast.
+
+        KWARGS = {
+            ("od", "oper"): dict(patch=_scda),
+            ("od", "elda"): dict(base_times=(6, 18)),
+            ("od", "enfo"): dict(base_times=(0, 6, 12, 18)),
+            ("ea", "oper"): dict(data_accumulation_period=1, base_times=(6, 18)),
+            ("ea", "enda"): dict(data_accumulation_period=3, base_times=(6, 18)),
+            ("rr", "oper"): dict(base_times=(0, 3, 6, 9, 12, 15, 18, 21)),
+            ("l5", "oper"): dict(data_accumulation_period=1, base_times=(0,)),
+        }
+
+        kwargs = KWARGS.get((class_, stream), {})
+
+        context.trace("🌧️", f"accumulations {request} {user_accumulation_period} {kwargs}")
+
+        return _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=user_accumulation_period,
+            accumulations_reset_frequency=accumulations_reset_frequency,
+            use_cdsapi_dataset=use_cdsapi_dataset,
+            user_date=user_date,
+            **kwargs,
+        )

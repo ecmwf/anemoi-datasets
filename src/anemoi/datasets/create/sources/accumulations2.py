@@ -12,20 +12,16 @@ import logging
 from abc import abstractmethod
 from copy import deepcopy
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-from typing import Union
 
 import earthkit.data as ekd
 import numpy as np
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
+from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.sources.mars import mars
-from anemoi.datasets.create.utils import to_datetime_list
 
-from .legacy import legacy_source
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -477,8 +473,8 @@ class Accumulator:
 
 def _compute_accumulations(
     context: Any,
-    dates: List[datetime.datetime],
-    request: Dict[str, Any],
+    dates: list[datetime.datetime],
+    request: dict[str, Any],
     user_accumulation_period: datetime.timedelta,
     # data_accumulation_period: Optional[int] = None,
     # patch: Any = _identity,
@@ -565,7 +561,7 @@ def _compute_accumulations(
     return ds
 
 
-def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
+def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -583,7 +579,7 @@ def _to_list(x: Union[List[Any], Tuple[Any], Any]) -> List[Any]:
     return [x]
 
 
-def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
+def _scda(request: dict[str, Any]) -> dict[str, Any]:
     """Modifies the request stream based on the time.
 
     Parameters
@@ -603,49 +599,20 @@ def _scda(request: Dict[str, Any]) -> Dict[str, Any]:
     return request
 
 
-@legacy_source(__file__)
-def accumulations(context, dates, **request):
-    _to_list(request["param"])
-    user_accumulation_period = request.pop("accumulation_period", 6)
-    user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
+@source_registry.register("accumulations2")
+class Accumulations2Source(LegacySource):
 
-    context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
+    @staticmethod
+    def _execute(context, dates, **request):
+        _to_list(request["param"])
+        user_accumulation_period = request.pop("accumulation_period", 6)
+        user_accumulation_period = datetime.timedelta(hours=user_accumulation_period)
 
-    return _compute_accumulations(
-        context,
-        dates,
-        request,
-        user_accumulation_period=user_accumulation_period,
-    )
+        context.trace("🌧️", f"accumulations {request} {user_accumulation_period}")
 
-
-execute = accumulations
-
-if __name__ == "__main__":
-    import yaml
-
-    config = yaml.safe_load(
-        """
-      class: ea
-      expver: '0001'
-      grid: 20./20.
-      levtype: sfc
-#      number: [0, 1]
-#      stream: enda
-      param: [cp, tp]
-#      accumulation_period: 6h
-      accumulation_period: 2
-    """
-    )
-    dates = yaml.safe_load("[2022-12-31 00:00, 2022-12-31 06:00]")
-    # dates = yaml.safe_load("[2022-12-30 18:00, 2022-12-31 00:00, 2022-12-31 06:00, 2022-12-31 12:00]")
-    dates = to_datetime_list(dates)
-
-    class Context:
-        use_grib_paramid = True
-
-        def trace(self, *args):
-            print(*args)
-
-    for f in accumulations(Context, dates, **config):
-        print(f, f.to_numpy().mean())
+        return _compute_accumulations(
+            context,
+            dates,
+            request,
+            user_accumulation_period=user_accumulation_period,
+        )

@@ -4,10 +4,6 @@
  Welcome to `anemoi-datasets` documentation!
 #############################################
 
-.. warning::
-
-   This documentation is a work in progress.
-
 An *Anemoi dataset* is a thin wrapper around a Zarr_ store that is
 optimised for training data-driven weather forecasting models.
 anemoi-datasets are organised in such a way that I/O operations are
@@ -58,8 +54,7 @@ datasets for compatibility with machine learning models.
 In the rest of this documentation, you will learn how to configure and
 create anemoi datasets using YAML files, as well as how to load and read
 existing ones. A full example of a dataset preparation process can be
-found in the :ref:`Create Your First Dataset <usage-getting-started>`
-section.
+found in the :ref:`redo-sample-dataset` section.
 
 ************
  Installing
@@ -125,24 +120,15 @@ You may also have to install pandoc on macOS:
    :caption: Introduction
 
    overview
-   cli/introduction
    installing
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Recipe examples
-
-   usage/getting_started
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :caption: User Guide
 
-   datasets/introduction
-   datasets/building/introduction
-   datasets/using/introduction
+   building/introduction
+   using/introduction
 
 .. toctree::
    :maxdepth: 3
@@ -156,6 +142,7 @@ You may also have to install pandoc on macOS:
    :hidden:
    :caption: CLI
 
+   cli/introduction
    cli/create
    cli/inspect
    cli/grib-index
@@ -164,6 +151,7 @@ You may also have to install pandoc on macOS:
    cli/scan
    cli/patch
    cli/compare-lam
+   cli/validate
 
 .. toctree::
    :maxdepth: 1

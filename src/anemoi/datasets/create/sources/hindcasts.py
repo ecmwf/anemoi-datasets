@@ -9,20 +9,18 @@
 
 import logging
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Union
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.create.sources.mars import mars
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
+def _to_list(x: list | tuple | Any) -> list[Any]:
     """Converts the input to a list if it is not already a list or tuple.
 
     Parameters
@@ -40,57 +38,57 @@ def _to_list(x: Union[list, tuple, Any]) -> List[Any]:
     return [x]
 
 
-@legacy_source(__file__)
-def hindcasts(context: Any, dates: List[Any], **request: Dict[str, Any]) -> MultiFieldList:
-    """Generates hindcast requests based on the provided dates and request parameters.
+@source_registry.register("hindcasts")
+class HindcastsSource(LegacySource):
 
-    Parameters
-    ----------
-    context : Any
-        The context containing the dates provider and trace method.
-    dates : List[Any]
-        A list of dates for which to generate hindcast requests.
-    request : Dict[str, Any]
-        Additional request parameters.
+    @staticmethod
+    def _execute(context: Any, dates: list[Any], **request: dict[str, Any]) -> MultiFieldList:
+        """Generates hindcast requests based on the provided dates and request parameters.
 
-    Returns
-    -------
-    MultiFieldList
-        A MultiFieldList containing the hindcast data.
-    """
-    from anemoi.datasets.dates import HindcastsDates
+        Parameters
+        ----------
+        context : Any
+            The context containing the dates provider and trace method.
+        dates : List[Any]
+            A list of dates for which to generate hindcast requests.
+        request : Dict[str, Any]
+            Additional request parameters.
 
-    provider = context.dates_provider
-    assert isinstance(provider, HindcastsDates)
+        Returns
+        -------
+        MultiFieldList
+            A MultiFieldList containing the hindcast data.
+        """
+        from anemoi.datasets.dates import HindcastsDates
 
-    context.trace("H️", f"hindcasts {len(dates)=}")
+        provider = context.dates_provider
+        assert isinstance(provider, HindcastsDates)
 
-    request["param"] = _to_list(request["param"])
-    request["step"] = _to_list(request.get("step", 0))
-    request["step"] = [int(_) for _ in request["step"]]
+        context.trace("H️", f"hindcasts {len(dates)=}")
 
-    context.trace("H️", f"hindcast {request}")
+        request["param"] = _to_list(request["param"])
+        request["step"] = _to_list(request.get("step", 0))
+        request["step"] = [int(_) for _ in request["step"]]
 
-    requests = []
-    for d in dates:
-        r = request.copy()
-        hindcast = provider.mapping[d]
-        r["hdate"] = hindcast.hdate.strftime("%Y-%m-%d")
-        r["date"] = hindcast.refdate.strftime("%Y-%m-%d")
-        r["time"] = hindcast.refdate.strftime("%H")
-        r["step"] = hindcast.step
-        requests.append(r)
+        context.trace("H️", f"hindcast {request}")
 
-    if len(requests) == 0:
-        return MultiFieldList([])
+        requests = []
+        for d in dates:
+            r = request.copy()
+            hindcast = provider.mapping[d]
+            r["hdate"] = hindcast.hdate.strftime("%Y-%m-%d")
+            r["date"] = hindcast.refdate.strftime("%Y-%m-%d")
+            r["time"] = hindcast.refdate.strftime("%H")
+            r["step"] = hindcast.step
+            requests.append(r)
 
-    return mars(
-        context,
-        dates,
-        *requests,
-        date_key="hdate",
-        request_already_using_valid_datetime=True,
-    )
+        if len(requests) == 0:
+            return MultiFieldList([])
 
-
-execute = hindcasts
+        return mars(
+            context,
+            dates,
+            *requests,
+            date_key="hdate",
+            request_already_using_valid_datetime=True,
+        )
