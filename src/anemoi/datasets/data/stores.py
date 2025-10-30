@@ -77,7 +77,6 @@ class S3Store(zarr.storage.ObjectStore):
         except FileNotFoundError:
             raise KeyError(key)
 
-
         super().__init__(objectstore, read_only=True)
 
 
