@@ -16,6 +16,7 @@ from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.sources import source_registry
 
+from ...dates.groups import GroupOfDates
 from .legacy import LegacySource
 
 
@@ -87,15 +88,15 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
 class TendenciesSource(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
+    def _execute(context: Any, dates: GroupOfDates, time_increment: Any, **kwargs: Any) -> Any:
         """Computes tendencies for the given dates and time increment.
 
         Parameters
         ----------
         context : Any
             The source context - passed through directly to the mars source.
-        dates : List[datetime.datetime]
-            A list of datetime objects.
+        dates : GroupOfDates
+            An object representing the dates for which to compute tendencies.
         time_increment : Any
             A time increment string ending with 'h' or a datetime.timedelta object.
         **kwargs : Any
