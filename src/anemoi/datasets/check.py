@@ -31,7 +31,11 @@ def _check_group(group, verbosity: int, *path) -> None:
                 LOG.info(f"Check group: skipping {name}")
             continue
 
-        if isinstance(group[name], zarr.hierarchy.Group):
+        try:
+            is_group = isinstance(group[name], zarr.Group)
+        except AttributeError:
+            is_group = isinstance(group[name], zarr.hierarchy.Group)
+        if is_group:
             _check_group(group[name], verbosity, *path, name)
         else:
             _check_array(group[name], verbosity, *path, name)
@@ -48,24 +52,33 @@ def _check_array(array, verbosity: int, *path) -> None:
     chunks = array.chunks
 
     count = 0
-    for f in os.listdir(full):
-        if verbosity > 1:
-            LOG.info(f"Check array: checking {f}")
-
-        if f.startswith("."):
+    for root, _, files in os.walk(full):
+        for f in files:
             if verbosity > 1:
-                LOG.info(f"Check array: skipping {f}")
-            continue
+                LOG.info(f"Check array: checking {f}")
 
-        bits = f.split(".")
+            if os.path.join(root, f).endswith(os.path.join("has_nans", "zarr.json")):
+                # known issue, has_nans is empty
+                if not os.path.exists(os.path.join(root, "c", "0")):
+                    count += 1
 
-        if len(bits) != len(chunks):
-            raise ValueError(f"File {f} is not a valid chunk file.")
+            if f.startswith(".") or f == "zarr.json":
+                if verbosity > 1:
+                    LOG.info(f"Check array: skipping {f}")
+                continue
 
-        if not all(re.match(r"^\d+$", bit) for bit in bits):
-            raise ValueError(f"File {f} is not a valid chunk file.")
+            import zarr
 
-        count += 1
+            if zarr.__version__ < "3.0.0":
+                bits = f.split(".")
+
+                if len(bits) != len(chunks):
+                    raise ValueError(f"File {f} is not a valid chunk file.")
+
+                if not all(re.match(r"^\d+$", bit) for bit in bits):
+                    raise ValueError(f"File {f} is not a valid chunk file.")
+
+            count += 1
 
     if count != file_count:
         raise ValueError(f"File count {count} does not match expected {file_count} for {array.name}.")

@@ -238,12 +238,12 @@ class ZarrCopier:
         target_data = (
             target["data"]
             if "data" in target
-            else target.create_dataset(
+            else target.create_array(
                 "data",
                 shape=source_data.shape,
                 chunks=self.data_chunks,
-                dtype=source_data.dtype,
                 fill_value=source_data.fill_value,
+                dtype=source_data.dtype,
             )
         )
 
@@ -301,7 +301,8 @@ class ZarrCopier:
             return
 
         LOG.info(f"Copying {name}")
-        target[name] = source[name]
+        data = source[name][...]
+        target.create_dataset(name, data=data, shape=data.shape)
         LOG.info(f"Copied {name}")
 
     def copy_group(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
@@ -344,7 +345,7 @@ class ZarrCopier:
                     LOG.info(f"Skipping {name}")
                 continue
 
-            if isinstance(source[name], zarr.hierarchy.Group):
+            if isinstance(source[name], zarr.Group):
                 group = target[name] if name in target else target.create_group(name)
                 self.copy_group(
                     source[name],
@@ -373,11 +374,11 @@ class ZarrCopier:
         verbosity : int
             Verbosity level of logging.
         """
-        import zarr
 
         if "_copy" not in target:
-            target["_copy"] = zarr.zeros(
-                source["data"].shape[0],
+            target.create_dataset(
+                "_copy",
+                shape=(source["data"].shape[0],),
                 dtype=bool,
             )
         _copy = target["_copy"]
@@ -404,7 +405,7 @@ class ZarrCopier:
             try:
                 zarr.open(self._store(self.target), mode="r")
                 return True
-            except ValueError:
+            except FileNotFoundError:
                 return False
 
         def target_finished() -> bool:

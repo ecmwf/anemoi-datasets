@@ -152,9 +152,9 @@ def _path_readable(path: str) -> bool:
     import zarr
 
     try:
-        zarr.open(path, "r")
+        zarr.open(path, mode="r")
         return True
-    except zarr.errors.PathNotFoundError:
+    except FileNotFoundError:
         return False
 
 
@@ -190,10 +190,9 @@ class Dataset:
         zarr.Array
             The added dataset.
         """
-        import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from .zarr import add_zarr_dataset
+        from .misc import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -208,7 +207,7 @@ class Dataset:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="w+")
+        z = zarr.open(self.path, mode="a")
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
                 v = v.astype(datetime.datetime)
@@ -443,7 +442,7 @@ class Actor:  # TODO: rename to Creator
             """
             import zarr
 
-            z = zarr.open(path, "r")
+            z = zarr.open(path, mode="r")
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
@@ -515,7 +514,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from .zarr import ZarrBuiltRegistry
+        from .misc import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 

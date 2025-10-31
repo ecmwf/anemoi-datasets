@@ -59,7 +59,7 @@ dependencies = [
   "ruamel-yaml",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.4",
+  "zarr",                             # will use zarr3 for python >=3.11
 ]
 
 optional-dependencies.all = [
@@ -96,6 +96,7 @@ optional-dependencies.docs = [
 
 optional-dependencies.remote = [
   "boto3",
+  "obstore",
   "requests",
 ]
 
