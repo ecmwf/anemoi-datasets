@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.29](https://github.com/ecmwf/anemoi-datasets/compare/0.5.28...0.5.29) (2025-10-31)
+
+
+### Bug Fixes
+
+* '--test' changes grid/number  ([#386](https://github.com/ecmwf/anemoi-datasets/issues/386)) ([71238c6](https://github.com/ecmwf/anemoi-datasets/commit/71238c69d307f2266e495f5c39f60d36fe9dcc76))
+
+
+### Documentation
+
+* Fix interpolate to interpolation key in combining page ([#461](https://github.com/ecmwf/anemoi-datasets/issues/461)) ([990a5c3](https://github.com/ecmwf/anemoi-datasets/commit/990a5c3f54706aacd8252b832ad45b598c7252b2))
+
 ## [0.5.28](https://github.com/ecmwf/anemoi-datasets/compare/0.5.27...0.5.28) (2025-10-30)
 
 
