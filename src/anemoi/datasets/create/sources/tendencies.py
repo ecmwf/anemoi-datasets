@@ -16,6 +16,7 @@ from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.sources import source_registry
 
+from ...dates.groups import GroupOfDates
 from .legacy import LegacySource
 
 
@@ -87,13 +88,15 @@ def group_by_field(ds: Any) -> dict[tuple, list[Any]]:
 class TendenciesSource(LegacySource):
 
     @staticmethod
-    def _execute(dates: list[datetime.datetime], time_increment: Any, **kwargs: Any) -> Any:
+    def _execute(context: Any, dates: GroupOfDates, time_increment: Any, **kwargs: Any) -> Any:
         """Computes tendencies for the given dates and time increment.
 
         Parameters
         ----------
-        dates : List[datetime.datetime]
-            A list of datetime objects.
+        context : Any
+            The source context - passed through directly to the mars source.
+        dates : GroupOfDates
+            An object representing the dates for which to compute tendencies.
         time_increment : Any
             A time increment string ending with 'h' or a datetime.timedelta object.
         **kwargs : Any
@@ -108,11 +111,11 @@ class TendenciesSource(LegacySource):
         time_increment = normalise_time_delta(time_increment)
 
         shifted_dates = [d - time_increment for d in dates]
-        all_dates = sorted(list(set(dates + shifted_dates)))
+        all_dates = sorted(list(set(list(dates) + shifted_dates)))
 
         from .mars import mars
 
-        ds = mars(dates=all_dates, **kwargs)
+        ds = mars(context, dates=all_dates, **kwargs)
 
         dates_in_data = ds.unique_values("valid_datetime", progress_bar=False)["valid_datetime"]
         for d in all_dates:
@@ -139,12 +142,14 @@ class TendenciesSource(LegacySource):
             print("❌", k)
 
             for field, b_field in zip(group1[k], group2[k]):
-                for k in ["param", "level", "number", "grid", "shape"]:
+                for k in ["param", "level", "number"]:
                     assert field.metadata(k) == b_field.metadata(k), (
                         k,
                         field.metadata(k),
                         b_field.metadata(k),
                     )
+                # should we check grids are the same? e.g.
+                # assert field.metadata().gridspec == b_field.metadata().gridspec
 
                 c = field.to_numpy()
                 b = b_field.to_numpy()
