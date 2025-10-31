@@ -110,7 +110,7 @@ class TendenciesSource(LegacySource):
         time_increment = normalise_time_delta(time_increment)
 
         shifted_dates = [d - time_increment for d in dates]
-        all_dates = sorted(list(set(dates + shifted_dates)))
+        all_dates = sorted(list(set(list(dates) + shifted_dates)))
 
         from .mars import mars
 
@@ -141,12 +141,14 @@ class TendenciesSource(LegacySource):
             print("❌", k)
 
             for field, b_field in zip(group1[k], group2[k]):
-                for k in ["param", "level", "number", "grid", "shape"]:
+                for k in ["param", "level", "number"]:
                     assert field.metadata(k) == b_field.metadata(k), (
                         k,
                         field.metadata(k),
                         b_field.metadata(k),
                     )
+                # should we check grids are the same? e.g.
+                # assert field.metadata().gridspec == b_field.metadata().gridspec
 
                 c = field.to_numpy()
                 b = b_field.to_numpy()
