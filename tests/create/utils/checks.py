@@ -18,7 +18,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
 
 
-class Check:
+class _Check:
 
     def __init__(
         self,
@@ -37,7 +37,7 @@ class Check:
         self.kwargs = kwargs
 
 
-class CompareToReferenceCheck(Check):
+class CompareToReferenceCheck(_Check):
     """Class to compare datasets and their metadata."""
 
     def __init__(
@@ -59,7 +59,7 @@ class CompareToReferenceCheck(Check):
             The path to the reference dataset.
         """
 
-        super().__init__(name, config_path, dataset_path, get_test_archive, ignore_keys, **kwargs)
+        super().__init__(name, config_path, dataset_path, get_test_archive, **kwargs)
 
         directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
         reference = os.path.join(directory, name + ".zarr")
@@ -246,10 +246,40 @@ class CompareToReferenceCheck(Check):
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
-class NoneCheck(Check):
+class NoneCheck(_Check):
 
     def run(self) -> None:
         pass
+
+
+class _ItemCheck(_Check):
+
+    def normalise(self, item: Any) -> Any:
+        """Normalize the item for comparison."""
+        return item
+
+    def run(self) -> None:
+        item = self.normalise(self.kwargs.get(self.item_name))
+
+        ds = open_dataset(self.dataset_path)
+        dataset_item = self.normalise(getattr(ds, self.item_name))
+
+        assert item == dataset_item, (item, dataset_item)
+
+
+class VariablesCheck(_ItemCheck):
+    """Check for variables presence in the dataset."""
+
+    item_name = "variables"
+
+
+class DatesCheck(_ItemCheck):
+    """Check for dates presence in the dataset."""
+
+    item_name = "dates"
+
+    def normalise(self, item):
+        return [np.datetime64(v) for v in item]
 
 
 def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archive: callable) -> None:
@@ -263,7 +293,13 @@ def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archi
 
     for c in checks:
 
-        check, kwargs = next(iter(c.items()))
+        if isinstance(c, str):
+            check = c
+            kwargs = {}
+        else:
+            check, kwargs = next(iter(c.items()))
+            if not isinstance(kwargs, dict):
+                kwargs = {check: kwargs}
 
         check = "".join(word.capitalize() for word in check.split("_")) + "Check"
 
