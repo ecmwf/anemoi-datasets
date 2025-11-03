@@ -85,5 +85,7 @@ input:
           - sin_local_time
           - insolation
 
+
+slow_test: true
 checks:
   - none: {}

@@ -29,5 +29,6 @@ input:
 build:
   variable_naming: "{param}_{pressure}_{altitude}"
 
+slow_test: true
 checks:
-  - none: {}
+- none: {}
