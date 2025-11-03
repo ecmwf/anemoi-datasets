@@ -225,3 +225,11 @@ class Comparer:
         self.compare_datasets(self.ds_output, self.ds_reference)
         self.compare_statistics(self.ds_output, self.ds_reference)
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
+
+
+def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archive: callable) -> None:
+    """Check the created dataset against a set of checks."""
+    print(f"Checking dataset created with config: {config_path}")
+    directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
+    reference = os.path.join(directory, name + ".zarr")
+    Comparer(output_path=dataset_path, reference_path=reference).compare()

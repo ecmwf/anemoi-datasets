@@ -20,7 +20,7 @@ from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from .utils.checks import Comparer
+from .utils.checks import check_dataset
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 
@@ -77,10 +77,7 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
 
         create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
 
-        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
-        reference = os.path.join(directory, name + ".zarr")
-
-        Comparer(output_path=output, reference_path=reference).compare()
+        check_dataset(name, config, output, get_test_archive)
 
 
 if __name__ == "__main__":
