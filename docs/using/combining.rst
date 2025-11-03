@@ -234,16 +234,16 @@ variables of `dataset1` and return the result.
        complement=dataset1,
        source=dataset2,
        what="variables",
-       interpolate="nearest",
+       interpolation="nearest",
        k=1,
    )
 
 Currently ``what`` can only be ``variables`` and can be omitted.
 
-The value for ``interpolate`` can be one of ``none`` (default) or
+The value for ``interpolation`` can be one of ``none`` (default) or
 ``nearest``. In the case of ``none``, the grids of the two datasets must
-match. In case of ``interpolate``, an additional parameter ``k`` can be
-set to specify the number of nearest neighbors to use.
+match. In case of ``interpolation``, an additional parameter ``k`` can
+be set to specify the number of nearest neighbors to use.
 
 This feature was originally designed to be used in conjunction with
 ``cutout``, where `dataset1` is the lam, and `dataset2` is the global
