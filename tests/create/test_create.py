@@ -20,7 +20,7 @@ from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from .utils.compare import Comparer
+from .utils.checks import Comparer
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 

@@ -1,0 +1,30 @@
+name: test_s3_winds_dataset
+description: Test creation of a dataset from S3-hosted wind data
+attribution: DMI
+license: CC-BY-4.0
+
+dates:
+  start: 2020-01-01T00:00:00
+  end: 2020-01-01T12:00:00
+  frequency: 12h
+
+input:
+  join:
+  - pipe:
+    - xarray-zarr:
+        url: s3://dmi-danra-05/single_levels.zarr
+        options:
+          storage_options:
+            anon: true
+        param:
+        - u10m
+        - v10m
+    - uv-to-ddff:
+        u_component: u10m
+        v_component: v10m
+        wind_speed: ws
+        wind_direction: wdir
+        convention: meteo
+        radians: false
+build:
+  variable_naming: "{param}_{pressure}_{altitude}"
