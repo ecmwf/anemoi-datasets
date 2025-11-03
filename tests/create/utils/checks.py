@@ -8,26 +8,47 @@
 # nor does it submit to any jurisdiction.
 
 import os
+from typing import Any
 
 import numpy as np
+import yaml
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.data.stores import open_zarr
 
 
-class Comparer:
-    """Class to compare datasets and their metadata.
+class Check:
 
-    Parameters
-    ----------
-    output_path : str, optional
-        The path to the output dataset.
-    reference_path : str, optional
-        The path to the reference dataset.
-    """
+    def __init__(
+        self,
+        name: str,
+        config_path: str,
+        dataset_path: str,
+        get_test_archive: callable,
+        ignore_keys=None,
+        **kwargs: Any,
+    ) -> None:
+        self.name = name
+        self.config_path = config_path
+        self.dataset_path = dataset_path
+        self.get_test_archive = get_test_archive
+        self.ignore_keys = ignore_keys
+        self.kwargs = kwargs
 
-    def __init__(self, output_path: str = None, reference_path: str = None) -> None:
+
+class CompareToReferenceCheck(Check):
+    """Class to compare datasets and their metadata."""
+
+    def __init__(
+        self,
+        name: str,
+        config_path: str,
+        dataset_path: str,
+        get_test_archive: callable,
+        ignore_keys=None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize the Comparer instance.
 
         Parameters
@@ -37,19 +58,35 @@ class Comparer:
         reference_path : str, optional
             The path to the reference dataset.
         """
-        self.output_path = output_path
-        self.reference_path = reference_path
-        print(f"Comparing {self.output_path} and {self.reference_path}")
 
-        self.z_output = open_zarr(self.output_path)
+        super().__init__(name, config_path, dataset_path, get_test_archive, ignore_keys, **kwargs)
+
+        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
+        reference = os.path.join(directory, name + ".zarr")
+
+        self.reference_path = reference
+        print(f"Comparing {self.dataset_path} and {self.reference_path}")
+
+        self.z_output = open_zarr(self.dataset_path)
         self.z_reference = open_zarr(self.reference_path)
 
         self.z_reference["data"]
-        self.ds_output = open_dataset(self.output_path)
+        self.ds_output = open_dataset(self.dataset_path)
         self.ds_reference = open_dataset(self.reference_path)
+        self.ignore_keys = set(ignore_keys) if ignore_keys else set()
 
-    @staticmethod
-    def compare_datasets(a: object, b: object) -> None:
+        self.ignore_keys.update(
+            {
+                "metadata.latest_write_timestamp",
+                "metadata.uuid",
+                "metadata.provenance_load",
+                "metadata.total_size",
+                "metadata.history",
+                "metadata.recipe.checks",
+            }
+        )
+
+    def compare_datasets(self, a: object, b: object) -> None:
         """Compare two datasets.
 
         Parameters
@@ -71,8 +108,10 @@ class Comparer:
         assert a.missing == b.missing, "Missing are different"
 
         for i_date, date in zip(range(a.shape[0]), a.dates):
+
             if i_date in a.missing:
                 continue
+
             for i_param in range(a.shape[1]):
                 param = a.variables[i_param]
                 assert param == b.variables[i_param], (
@@ -98,8 +137,7 @@ class Comparer:
                 rel_error = np.abs(a_ - b_) / (np.abs(b_) + 1e-10)  # Avoid division by zero
                 assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta, np.max(abs_error), np.max(rel_error))
 
-    @staticmethod
-    def compare_statistics(ds1: object, ds2: object) -> None:
+    def compare_statistics(self, ds1: object, ds2: object) -> None:
         """Compare the statistics of two datasets.
 
         Parameters
@@ -125,48 +163,37 @@ class Comparer:
             assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
-    @staticmethod
-    def compare_dot_zattrs(a: dict, b: dict, path: str, errors: list) -> None:
-        """Compare the attributes of two Zarr datasets.
+    def compare_dot_zattrs(self, a: dict, b: dict, errors: list, *path) -> None:
+        """Compare the attributes of two Zarr datasets."""
 
-        Parameters
-        ----------
-        a : dict
-            The attributes of the first dataset.
-        b : dict
-            The attributes of the second dataset.
-        path : str
-            The current path in the attribute hierarchy.
-        errors : list
-            The list to store error messages.
-        """
+        name = ".".join(path)
+        if name in self.ignore_keys:
+            return
+
+        if type(a) is not type(b):
+            msg = f"❌ {name} type mismatch actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
+            errors.append(msg)
+            return
+
         if isinstance(a, dict):
             a_keys = list(a.keys())
             b_keys = list(b.keys())
             for k in set(a_keys) | set(b_keys):
+
+                name = ".".join(path + (k,))
+
+                if name in self.ignore_keys:
+                    continue
+
                 if k not in a_keys:
-                    errors.append(f"❌ {path}.{k} : missing key (only in reference)")
+                    errors.append(f"❌ {name} : missing key (only in reference)")
                     continue
+
                 if k not in b_keys:
-                    errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
+                    errors.append(f"❌ {name} : additional key (missing in reference)")
                     continue
 
-                if k in [
-                    "timestamp",
-                    "uuid",
-                    "latest_write_timestamp",
-                    "history",
-                    "provenance",
-                    "provenance_load",
-                    "description",
-                    "config_path",
-                    "total_size",
-                ]:
-                    if type(a[k]) is not type(b[k]):
-                        errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
-                    continue
-
-                Comparer.compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
+                self.compare_dot_zattrs(a[k], b[k], errors, *path, k)
 
             return
 
@@ -176,27 +203,20 @@ class Comparer:
                 return
 
             for i, (v, w) in enumerate(zip(a, b)):
-                Comparer.compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+                self.compare_dot_zattrs(v, w, errors, *path, str(i))
 
             return
 
-        if type(a) is not type(b):
-            msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
-            errors.append(msg)
-            return
-
-        # convert a and b from frequency strings to timedeltas when :
-        #  - path ends with .period.0 or .period.n were n is int
-        #  - key is "frequency"
-        if (path.split(".")[-2] == "period" and path.split(".")[-1].isdigit()) or (path.split(".")[-1] == "frequency"):
-            a = frequency_to_timedelta(a)
-            b = frequency_to_timedelta(b)
+        try:
+            a, b = frequency_to_timedelta(a), frequency_to_timedelta(b)
+        except Exception:
+            pass
 
         if a != b:
-            msg = f"❌ {path} actual != expected : {a} != {b}"
+            msg = f"❌ {name} actual != expected : {a} != {b}"
             errors.append(msg)
 
-    def compare(self) -> None:
+    def run(self) -> None:
         """Compare the output dataset with the reference dataset.
 
         Raises
@@ -205,31 +225,51 @@ class Comparer:
             If the datasets or their metadata do not match.
         """
         errors = []
-        self.compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), "metadata", errors)
+        self.compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), errors, "metadata")
+
         if errors:
+            print()
             print("Comparison failed")
             print("\n".join(errors))
 
-        if errors:
-            print()
-
             print()
             print("⚠️ To update the reference data, run this:")
-            print("cd " + os.path.dirname(self.output_path))
-            base = os.path.basename(self.output_path)
+            print("cd " + os.path.dirname(self.dataset_path))
+            base = os.path.basename(self.dataset_path)
             print(f"tar zcf {base}.tgz {base}")
             print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
             print()
-            raise AssertionError("Comparison failed")
+            raise AssertionError("\n".join(errors))
 
         self.compare_datasets(self.ds_output, self.ds_reference)
         self.compare_statistics(self.ds_output, self.ds_reference)
         # do not compare tendencies statistics yet, as we don't know yet if they should stay
 
 
+class NoneCheck(Check):
+
+    def run(self) -> None:
+        pass
+
+
 def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archive: callable) -> None:
     """Check the created dataset against a set of checks."""
-    print(f"Checking dataset created with config: {config_path}")
-    directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
-    reference = os.path.join(directory, name + ".zarr")
-    Comparer(output_path=dataset_path, reference_path=reference).compare()
+
+    config = yaml.safe_load(open(config_path))
+    checks = config.get("checks")
+
+    if not checks:
+        raise ValueError(f"No checks defined in {config_path}")
+
+    for c in checks:
+
+        check, kwargs = next(iter(c.items()))
+
+        check = "".join(word.capitalize() for word in check.split("_")) + "Check"
+
+        if check not in globals():
+            raise ValueError(f"Check {check} not implemented")
+
+        print(f"Running check: {check} with args: {kwargs}")
+        check = globals()[check](name, config_path, dataset_path, get_test_archive, **kwargs)
+        check.run()

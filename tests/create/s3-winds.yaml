@@ -28,3 +28,6 @@ input:
         radians: false
 build:
   variable_naming: "{param}_{pressure}_{altitude}"
+
+checks:
+  - none: {}

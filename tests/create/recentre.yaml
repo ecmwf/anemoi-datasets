@@ -84,3 +84,6 @@ input:
           - sin_julian_day
           - sin_local_time
           - insolation
+
+checks:
+  - none: {}

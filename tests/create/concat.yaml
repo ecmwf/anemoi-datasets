@@ -32,4 +32,4 @@ statistics:
   end: 2021
 
 checks:
-- check: time-continuity
+  - compare_to_reference: {}

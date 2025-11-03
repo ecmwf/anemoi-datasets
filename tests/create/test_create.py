@@ -27,9 +27,7 @@ from .utils.mock_sources import LoadSource
 HERE = os.path.dirname(__file__)
 # find_yamls
 NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
-SKIP = ["recentre"]
-SKIP += ["accumulation"]  # test not in s3 yet
-SKIP += ["regrid"]
+SKIP = []
 NAMES = [name for name in NAMES if name not in SKIP]
 assert NAMES, "No yaml files found in " + HERE
 
@@ -73,9 +71,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     with patch("earthkit.data.from_source", load_source):
         config = os.path.join(HERE, name + ".yaml")
         output = os.path.join(HERE, name + ".zarr")
-        is_test = False
 
-        create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
+        create_dataset(config=config, output=output, delta=["12h"])
 
         check_dataset(name, config, output, get_test_archive)
 

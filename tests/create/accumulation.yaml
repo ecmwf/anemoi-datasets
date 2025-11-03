@@ -18,3 +18,6 @@ input:
         param: [ tp , cp]
         # accumulation_period: [0, 6]
         accumulation_period: 24
+
+checks:
+  - none: {}
