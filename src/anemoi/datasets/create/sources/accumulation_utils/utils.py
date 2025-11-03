@@ -9,31 +9,6 @@
 
 from typing import Any
 
-
-class TodoList:
-    def __init__(self, keys):
-        self._todo = set(keys)
-        self._len = len(keys)
-        self._done = set()
-        assert self._len == len(self._todo), (self._len, len(self._todo))
-
-    def is_todo(self, key):
-        return key in self._todo
-
-    def is_done(self, key):
-        return key in self._done
-
-    def set_done(self, key):
-        self._done.add(key)
-        self._todo.remove(key)
-
-    def all_done(self):
-        if not self._todo:
-            assert len(self._done) == self._len, (len(self._done), self._len)
-            return True
-        return False
-
-
 def _member(field: Any) -> int:
     """Retrieves the member number from the field metadata.
 

@@ -23,14 +23,14 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
 
-from .accumulation_utils import timelines as tl
+from .accumulation_utils import intervals as itv
 from .accumulation_utils import utils
 from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
 
-def _prep_request(request: dict[str, Any], timeline_class: type[tl.Timeline]) -> dict[str, Any]:
+def _prep_request(request: dict[str, Any], interval_class: type[itv.IntervalsCollection]) -> dict[str, Any]:
     request = deepcopy(request)
 
     param = request.pop("param")
@@ -61,7 +61,7 @@ class Accumulator:
 
     def __init__(
         self,
-        timeline_class: type[tl.Timeline],
+        interval_class: type[itv.IntervalsCollection],
         valid_date: datetime.datetime,
         user_accumulation_period: datetime.timedelta,
         data_accumulation_period: datetime.timedelta,
@@ -71,14 +71,14 @@ class Accumulator:
 
         Parameters:
         ---------
-        timeline_class: type[tl.Timeline]
-            The type of Timeline that should be used by this accumulator (depends on data source)
+        interval_class: type[itv.IntervalsCollection]
+            The type of IntervalsCollection that should be used by this accumulator (depends on data source)
         valid_date: datetime.datetime
             the valid date at which the Accumulator refers (final value will indicate accumulation up to this date)
         user_accumulation_period: datetime.timedelta
-            User-defined accumulation period
+            User-defined accumulation interval
         data_accumulation_period: datetime.timedelta,
-            Source data accumulation period
+            Source data accumulation interval
         **kwargs: dict
             Additional kwargs coming from accumulation recipe
         """
@@ -97,19 +97,19 @@ class Accumulator:
 
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
-        # instantiate Timeline object
-        if timeline_class != tl.DefaultTimeline:
-            LOG.warning("Non-default data Timeline (e.g MARS): ignoring data_accumulation_period")
+        # instantiate IntervalsCollection object
+        if interval_class != itv.DefaultIntervalsCollection:
+            LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
             data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
-        self.timeline = timeline_class(self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs)
+        self.interval_coll = interval_class(self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs)
 
     @property
     def requests(self) -> dict:
         """build the full data requests, merging the time requests with the key.
         This will be used to query the source data database.
         """
-        for period in self.timeline:
-            yield {**self.kwargs.copy(), **dict(period.time_request)}
+        for interval in self.interval_coll:
+            yield {**self.kwargs.copy(), **dict(interval.time_request)}
 
     def is_field_needed(self, field: Any):
         """Check whether the given field is needed by the accumulator (correct param, etc...)"""
@@ -121,8 +121,8 @@ class Accumulator:
         return True
 
     def compute(self, field: Any, values: NDArray) -> None:
-        """Verify the field time metadata, find the associated period
-        and perform accumulation with the values array on this period.
+        """Verify the field time metadata, find the associated interval
+        and perform accumulation with the values array on this interval.
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
 
@@ -142,23 +142,23 @@ class Accumulator:
         if not self.is_field_needed(field):
             return
 
-        period = self.timeline.find_matching_period(field)
+        interval = self.interval_coll.find_matching_interval(field)
 
-        if not period:
+        if not interval:
             return
 
         # each field must be seen once
-        assert self.timeline.is_todo(period), (self.timeline, period)
-        assert not self.timeline.is_done(period), f"Field {field} for period {period} already done"
+        assert self.interval_coll.is_todo(interval), (self.interval_coll, interval)
+        assert not self.interval_coll.is_done(interval), f"Field {field} for interval {interval} already done"
 
-        print(f"{self} field ✅ ({period.sign}) {field} for {period}")
+        print(f"{self} field ✅ ({interval.sign}) {field} for {interval}")
 
         # actual accumulation computation
-        self.values = period.apply(self.values, values)
-        self.timeline.set_done(period)
+        self.values = interval.apply(self.values, values)
+        self.interval_coll.set_done(interval)
 
-        if self.timeline.all_done():
-            # all periods for accumulation have been processed
+        if self.interval_coll.all_done():
+            # all intervals for accumulation have been processed
             # final list of outputs is ready to be updated
             self.write(field)  # field is used as a template
             print("accumulator", self, " : data written ✅ ")
@@ -176,7 +176,7 @@ class Accumulator:
         ------
         None
         """
-        assert self.timeline.all_done(), self.timeline
+        assert self.interval_coll.all_done(), self.interval_coll
 
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         if np.any(self.values < 0):
@@ -185,7 +185,7 @@ class Accumulator:
             )
 
         startStep = datetime.timedelta(hours=0)
-        endStep = self.timeline.accumulation_period
+        endStep = self.interval_coll.accumulation_period
 
         accumfield = new_field_from_numpy(
             self.values, template=field, startStep=startStep, endStep=endStep, stepType="accum"
@@ -211,7 +211,7 @@ def _compute_accumulations(
 ) -> Any:
     """Concrete accumulation logic.
 
-    - identify the needed timelines for each date/parameter/member defined in recipe
+    - identify the needed intervals for each date/parameter/member defined in recipe
     - fetch the source data via a database (mars or grib-index)
     - create Accumulator objects and fill them will accumulated values from source data
     - return the datasource with accumulated values
@@ -237,15 +237,15 @@ def _compute_accumulations(
 
     """
 
-    # timeline class depends on data source ; split between Era-like timelines and Default ones
-    timeline_class = tl.find_timeline_class(source_request)
+    # interval_coll class depends on data source ; split between Era-like interval collections and Default ones
+    interval_class = itv.find_IntervalsCollection_class(source_request)
 
-    main_request, param, number, additional = _prep_request(source_request, timeline_class)
+    main_request, param, number, additional = _prep_request(source_request, interval_class)
 
     # building accumulators
     accumulators = []
-    # some valid dates might have identical/overlapping timelines
-    overlapping_timelines = set()
+    # some valid dates might have identical/overlapping interval collections
+    overlapping_intervals = set()
 
     # one accumulator per valid date, output field and ensemble member
     for valid_date in dates:
@@ -253,7 +253,7 @@ def _compute_accumulations(
             for n in number:
                 accumulators.append(
                     Accumulator(
-                        timeline_class,
+                        interval_class,
                         valid_date,
                         user_accumulation_period=user_accumulation_period,
                         data_accumulation_period=data_accumulation_period,
@@ -263,8 +263,8 @@ def _compute_accumulations(
                     )
                 )
 
-        # this is the exact number of periods that should be retrieved from action.source
-        overlapping_timelines.update({period for period in accumulators[-1].timeline})
+        # this is the exact number of intervals that should be retrieved from action.source
+        overlapping_intervals.update({interval for interval in accumulators[-1].interval_coll})
 
     # get all needed data requests
     requests = []
@@ -289,9 +289,9 @@ def _compute_accumulations(
     # get the data (requests are packed to make a minimal number of queries to database)
     ds_to_accum = source(context, dates)
 
-    assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_timelines), (
+    assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_intervals), (
         f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",
-        f"but total number of periods requested is {len(overlapping_timelines)}",
+        f"but total number of periods requested is {len(overlapping_intervals)}",
         f"❌❌❌ error in {source_name}",
     )
 
@@ -303,7 +303,7 @@ def _compute_accumulations(
             a.compute(field, values)
 
     for a in accumulators:
-        assert a.timeline.all_done(), f"missing periods for accumulator {a}"
+        assert a.interval_coll.all_done(), f"missing periods for accumulator {a}"
 
     # final data source
     ds = new_fieldlist_from_list([a.out for a in accumulators])
