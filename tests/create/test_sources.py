@@ -154,15 +154,19 @@ def test_grib_gridfile_with_refinement_level(
         },
         "build": {
             "variable_naming": "{param}_{level:d}",
-        }
+        },
     }
 
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     assert ds.shape == shape
     assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
-    assert np.all(ds.data[ds.to_index(date=0, variable="u_101.0", member=0)] == 42.0), "artificially constant data day 0"
-    assert np.all(ds.data[ds.to_index(date=1, variable="v_119.0", member=0)] == 21.0), "artificially constant data day 1"
+    assert np.all(
+        ds.data[ds.to_index(date=0, variable="u_101.0", member=0)] == 42.0
+    ), "artificially constant data day 0"
+    assert np.all(
+        ds.data[ds.to_index(date=1, variable="v_119.0", member=0)] == 21.0
+    ), "artificially constant data day 1"
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].max() > 0.9
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].min() >= 0
     assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].max() > 0.9

@@ -92,10 +92,11 @@ after that, the parameters are the same as for the `grib` source.
  Selecting GRIB messages
 *************************
 
-You can select GRIB messages using the MARS language and GRIB keys recognised by eccodes_. For example, to
-select all the GRIB messages with a specific parameter, you can use the
-``param`` keyword. For example, to select all the GRIB messages with the
-parameters ``2t``, ``10u`` and ``10v``, you can use the following:
+You can select GRIB messages using the MARS language and GRIB keys
+recognised by eccodes_. For example, to select all the GRIB messages
+with a specific parameter, you can use the ``param`` keyword. For
+example, to select all the GRIB messages with the parameters ``2t``,
+``10u`` and ``10v``, you can use the following:
 
 .. literalinclude:: yaml/grib-recipe4.yaml
 
@@ -114,12 +115,11 @@ For example, to select variables by their non-integer `topLevel` value,
 `topLevel:d` can be used. This instructs eccodes_ to retrieve `topLevel`
 as a double instead of the default integer type.
 
-`:d` instructs eccodes_ to retrieve `topLevel` as double instead
-of the default type integer. The `build.variable_naming` option or the
-`rename` filter (see :ref:`anemoi-transform
-<anemoi-transform:list-of-filters>`) can be used to include the exact
-`topLevel` value in the anemoi-dataset variable name.
-
+`:d` instructs eccodes_ to retrieve `topLevel` as double instead of the
+default type integer. The `build.variable_naming` option or the `rename`
+filter (see :ref:`anemoi-transform <anemoi-transform:list-of-filters>`)
+can be used to include the exact `topLevel` value in the anemoi-dataset
+variable name.
 
 .. literalinclude:: yaml/grib-recipe6.yaml
 
