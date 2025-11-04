@@ -123,15 +123,15 @@ def test_grib_gridfile_with_refinement_level(
     path = os.path.dirname(data1)
 
     param = ["pres", "t", "u", "v", "q"]
-    level = [101, 119]
+    level = [101.0, 119.0]
     forcings = ["cos_latitude", "sin_latitude", "cos_julian_day"]
     assert len(param) * len(level) + len(forcings) == shape[1]
 
     grib = {
         "path": os.path.join(path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"),
-        "grid_definition": {"icon": {"path": gridfile, "refinement_level_c": refinement_level_c}},
+        "grid_definition": {"icon": {"path": gridfile}},
         "param": param,
-        "level": level,
+        "level:d": level,
     }
     refinement_filter = {"icon_refinement_level": {"grid": gridfile, "refinement_level_c": refinement_level_c}}
 
@@ -152,14 +152,17 @@ def test_grib_gridfile_with_refinement_level(
                 refinement_filter,
             ]
         },
+        "build": {
+            "variable_naming": "{param}_{level:d}",
+        }
     }
 
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
     assert ds.shape == shape
     assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
-    assert np.all(ds.data[ds.to_index(date=0, variable="u_101", member=0)] == 42.0), "artificially constant data day 0"
-    assert np.all(ds.data[ds.to_index(date=1, variable="v_119", member=0)] == 21.0), "artificially constant data day 1"
+    assert np.all(ds.data[ds.to_index(date=0, variable="u_101.0", member=0)] == 42.0), "artificially constant data day 0"
+    assert np.all(ds.data[ds.to_index(date=1, variable="v_119.0", member=0)] == 21.0), "artificially constant data day 1"
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].max() > 0.9
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].min() >= 0
     assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].max() > 0.9
