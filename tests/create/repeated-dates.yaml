@@ -3,16 +3,6 @@ dates:
   end: 2021-01-03 12:00:00
   frequency: 12h
 
-common:
-  mars_request: &mars_request
-    expver: "0001"
-    class: ea
-    grid: 20./20.
-    levtype: sfc
-    stream: oper
-    type: an
-    param: [ 2t ]
-
 input:
   repeated_dates:
     mode: constant
