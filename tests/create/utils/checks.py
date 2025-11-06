@@ -26,14 +26,12 @@ class _Check:
         config_path: str,
         dataset_path: str,
         get_test_archive: callable,
-        ignore_keys=None,
         **kwargs: Any,
     ) -> None:
         self.name = name
         self.config_path = config_path
         self.dataset_path = dataset_path
         self.get_test_archive = get_test_archive
-        self.ignore_keys = ignore_keys
         self.kwargs = kwargs
 
 
@@ -280,6 +278,35 @@ class DatesCheck(_ItemCheck):
 
     def normalise(self, item):
         return [np.datetime64(v) for v in item]
+
+
+class ValuesCheck(_Check):
+    def __init__(
+        self,
+        name: str,
+        config_path: str,
+        dataset_path: str,
+        get_test_archive: callable,
+        variable: str,
+        maximum: float,
+        minimum: float,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(name, config_path, dataset_path, get_test_archive, **kwargs)
+        self.variable = variable
+        self.maximum = maximum
+        self.minimum = minimum
+
+    def run(self) -> None:
+        ds = open_dataset(self.dataset_path)
+        idx = ds.name_to_index[self.variable]
+        data = ds.data[:, idx]
+
+        actual_max = np.nanmax(data)
+        actual_min = np.nanmin(data)
+
+        assert actual_max == self.maximum, (self.variable, actual_max, self.maximum)
+        assert actual_min == self.minimum, (self.variable, actual_min, self.minimum)
 
 
 def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archive: callable) -> None:
