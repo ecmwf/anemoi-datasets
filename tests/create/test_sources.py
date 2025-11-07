@@ -116,7 +116,7 @@ def test_grib_gridfile_with_refinement_level(
     path = os.path.dirname(data1)
 
     param = ["pres", "t", "u", "v", "q"]
-    level = [101.0, 119.0]
+    level = [101, 119]
     forcings = ["cos_latitude", "sin_latitude", "cos_julian_day"]
     assert len(param) * len(level) + len(forcings) == shape[1]
 
@@ -124,7 +124,7 @@ def test_grib_gridfile_with_refinement_level(
         "path": os.path.join(path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"),
         "grid_definition": {"icon": {"path": gridfile}},
         "param": param,
-        "level:d": level,
+        "level": level,
     }
     refinement_filter = {"icon_refinement_level": {"grid": gridfile, "refinement_level_c": refinement_level_c}}
 
@@ -145,6 +145,50 @@ def test_grib_gridfile_with_refinement_level(
                 refinement_filter,
             ]
         },
+    }
+
+    created = create_dataset(config=config, output=None)
+    ds = open_dataset(created)
+    assert ds.shape == shape
+    assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
+    assert np.all(ds.data[ds.to_index(date=0, variable="u_101", member=0)] == 42.0), "artificially constant data day 0"
+    assert np.all(ds.data[ds.to_index(date=1, variable="v_119", member=0)] == 21.0), "artificially constant data day 1"
+    assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].max() > 0.9
+    assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].min() >= 0
+    assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].max() > 0.9
+    assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].min() < -0.9
+
+
+def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
+    """Test the creation of a dataset from GRIB files with an unstructured grid.
+
+    This function tests eccodes key type formatters.
+    """
+
+    p = "anemoi-datasets/create/test_grib_gridfile_with_refinement_level/"
+    data1 = get_test_data(p + "2023010103+fc_R03B07_rea_ml.2023010100")
+    data2 = get_test_data(p + "2023010106+fc_R03B07_rea_ml.2023010103")
+    gridfile = get_test_data("dwd/2024-12-11_00/icon_grid_0026_R03B07_subsetAICON.nc")
+    assert os.path.dirname(data1) == os.path.dirname(data2)
+
+    path = os.path.dirname(data1)
+
+    config = {
+        "dates": {
+            "start": "2023-01-01T00:00:00",
+            "end": "2023-01-01T03:00:00",
+            "frequency": "3h",
+        },
+        "input": {
+            "grib": {
+                "path": os.path.join(
+                    path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"
+                ),
+                "grid_definition": {"icon": {"path": gridfile}},
+                "param": ["u"],
+                "level:d": [101.0, 119.0],
+            },
+        },
         "build": {
             "variable_naming": "{param}_{level:d}",
         },
@@ -152,18 +196,12 @@ def test_grib_gridfile_with_refinement_level(
 
     created = create_dataset(config=config, output=None)
     ds = open_dataset(created)
-    assert ds.shape == shape
-    assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
-    assert np.all(
-        ds.data[ds.to_index(date=0, variable="u_101.0", member=0)] == 42.0
-    ), "artificially constant data day 0"
-    assert np.all(
-        ds.data[ds.to_index(date=1, variable="v_119.0", member=0)] == 21.0
-    ), "artificially constant data day 1"
-    assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].max() > 0.9
-    assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].min() >= 0
-    assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].max() > 0.9
-    assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].min() < -0.9
+    assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(date=0, variable="u_119.0", member=0)
+
+    with pytest.raises(ValueError):
+        ds.to_index(date=0, variable="u_101", member=0)  # param does not exist
+    with pytest.raises(ValueError):
+        ds.to_index(date=0, variable="u_119", member=0)  # param does not exist
 
 
 @skip_if_offline
