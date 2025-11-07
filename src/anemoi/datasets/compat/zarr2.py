@@ -48,7 +48,7 @@ class HTTPStore(_ReadOnlyStore):
         """Retrieve an item from the store."""
         import requests
 
-        r = requests.get(self.url + "/" + key)
+        r = requests.get(self.url + "/" + key, timeout=10)
 
         if r.status_code == 404:
             raise KeyError(key)

@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import os
 
 import zarr
 
@@ -19,19 +18,19 @@ class S3Store(zarr.storage.ObjectStore):
     """We use our class to manage per bucket credentials"""
 
     def __init__(self, url: str) -> None:
-        """Initialize the S3Store with a URL."""
-
-        self.url = url
-
-    def __getitem__(self, key: str) -> bytes:
-        """Retrieve an item from the store."""
-        from anemoi.utils.remote.s3 import get_object
+        from obstore.store import S3Store
 
         try:
-            return get_object(os.path.join(self.url, key))
-        except FileNotFoundError:
-            raise KeyError(key)
+            from anemoi.utils.remote.s3 import s3_options
+        except ImportError:
+            from anemoi.utils.remote.s3 import _s3_options as s3_options
+
+        store = S3Store.from_url(url, **s3_options(url))
+        super().__init__(store=store, read_only=True)
+
+
+def HTTPStore(url: str) -> zarr.storage.FsspecStore:
+    return zarr.storage.FsspecStore.from_url(url)
 
 
 DebugStore = zarr.storage.LoggingStore
-HTTPStore = zarr.storage.ObjectStore
