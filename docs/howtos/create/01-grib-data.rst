@@ -115,11 +115,11 @@ For example, to select variables by their non-integer ``topLevel``
 value, ``topLevel:d`` can be used. This instructs eccodes_ to retrieve
 ``topLevel`` as a double instead of the default integer type.
 
-``:d`` instructs eccodes_ to retrieve ``topLevel`` as double instead of
-the default type integer. The ``build.variable_naming`` option or the
-``rename`` filter (see :ref:`anemoi-transform
-<anemoi-transform:list-of-filters>`) can be used to include the exact
-``topLevel`` value in the anemoi-dataset variable name.
+The ``build.variable_naming`` option or the ``rename`` filter (see
+:ref:`anemoi-transform <anemoi-transform:list-of-filters>`) can be used
+to include the exact ``topLevel`` value in the anemoi-dataset variable
+name. (Be cautious with exact matching of float values when using
+``:d``.)
 
 .. literalinclude:: yaml/grib-recipe6.yaml
 
