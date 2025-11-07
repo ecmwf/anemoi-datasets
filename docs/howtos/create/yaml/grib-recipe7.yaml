@@ -10,4 +10,4 @@ input:
         param: ["T_SO"]
         topLevel:d: [0.0, 0.01, 0.8099999999999999, 7.290000000000001]
     - rename:
-        parame: "{param}_{topLevel:d}"
+        param: "{param}_{topLevel:d}"
