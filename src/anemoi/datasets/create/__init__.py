@@ -38,6 +38,7 @@ from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
 
 from ..compat import ZarrFileNotFoundError
+from ..compat import zarr_append_mode
 from .check import DatasetName
 from .check import check_data_values
 from .chunks import ChunkFilter
@@ -208,7 +209,7 @@ class Dataset:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="a")
+        z = zarr.open(self.path, mode=zarr_append_mode)
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
                 v = v.astype(datetime.datetime)

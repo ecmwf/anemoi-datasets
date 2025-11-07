@@ -12,6 +12,7 @@ import os
 import zarr
 
 ZarrFileNotFoundError = FileNotFoundError
+zarr_append_mode = "a"
 
 
 class S3Store(zarr.storage.ObjectStore):
@@ -33,3 +34,4 @@ class S3Store(zarr.storage.ObjectStore):
 
 
 DebugStore = zarr.storage.LoggingStore
+HTTPStore = zarr.storage.ObjectStore

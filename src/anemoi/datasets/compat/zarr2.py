@@ -14,6 +14,7 @@ import zarr
 from zarr.hierarchy import Group
 
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
+zarr_append_mode = "w+"
 
 
 class _ReadOnlyStore(zarr.storage.BaseStore):
