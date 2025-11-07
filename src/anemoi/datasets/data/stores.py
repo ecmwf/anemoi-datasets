@@ -21,6 +21,9 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from ..compat import DebugStore
+from ..compat import HTTPStore
+from ..compat import S3Store
 from . import MissingDateError
 from .dataset import Dataset
 from .dataset import FullIndex
@@ -34,53 +37,6 @@ from .indexing import expand_list_indexing
 from .misc import load_config
 
 LOG = logging.getLogger(__name__)
-
-
-class S3Store(zarr.storage.ObjectStore):
-    """We use our class to manage per bucket credentials"""
-
-    def __init__(self, url):
-
-        import boto3
-        from anemoi.utils.remote.s3 import s3_options
-        from obstore.auth.boto3 import Boto3CredentialProvider
-        from obstore.store import from_url
-
-        options = s3_options(url)
-
-        credential_provider = Boto3CredentialProvider(
-            session=boto3.session.Session(
-                aws_access_key_id=options["aws_access_key_id"],
-                aws_secret_access_key=options["aws_secret_access_key"],
-            ),
-        )
-
-        objectstore = from_url(
-            url,
-            credential_provider=credential_provider,
-            endpoint=options["endpoint_url"],
-        )
-
-        super().__init__(objectstore, read_only=True)
-
-    def __init__(self, url: str) -> None:
-        """Initialize the S3Store with a URL."""
-
-        self.url = url
-
-    def __getitem__(self, key: str) -> bytes:
-        """Retrieve an item from the store."""
-        from anemoi.utils.remote.s3 import get_object
-
-        try:
-            return get_object(os.path.join(self.url, key))
-        except FileNotFoundError:
-            raise KeyError(key)
-
-        super().__init__(objectstore, read_only=True)
-
-
-DebugStore = zarr.storage.LoggingStore
 
 
 def name_to_zarr_store(path_or_url: str) -> Any:

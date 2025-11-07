@@ -37,6 +37,7 @@ from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
 
+from ..compat import ZarrFileNotFoundError
 from .check import DatasetName
 from .check import check_data_values
 from .chunks import ChunkFilter
@@ -154,7 +155,7 @@ def _path_readable(path: str) -> bool:
     try:
         zarr.open(path, mode="r")
         return True
-    except FileNotFoundError:
+    except ZarrFileNotFoundError:
         return False
 
 
