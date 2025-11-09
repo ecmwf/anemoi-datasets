@@ -9,7 +9,9 @@
 
 import zarr
 
-if zarr.__version__.startswith("2."):
+zarr_version = int(zarr.__version__.split(".")[0])
+
+if zarr_version < 3:
     from .zarr2 import DebugStore
     from .zarr2 import HTTPStore
     from .zarr2 import S3Store
@@ -22,4 +24,11 @@ else:
     from .zarr3 import ZarrFileNotFoundError
     from .zarr3 import zarr_append_mode
 
-__all__ = ["ZarrFileNotFoundError", "HTTPStore", "S3Store", "DebugStore", "zarr_append_mode"]
+__all__ = [
+    "ZarrFileNotFoundError",
+    "HTTPStore",
+    "S3Store",
+    "DebugStore",
+    "zarr_append_mode",
+    "zarr_version",
+]
