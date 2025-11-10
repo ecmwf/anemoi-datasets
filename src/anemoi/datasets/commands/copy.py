@@ -20,18 +20,15 @@ from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.check import check_zarr
+from anemoi.datasets.data.stores import name_to_zarr_store
 
 from ..compat import ZarrFileNotFoundError
 from ..compat import zarr_append_mode
+from ..compat import zarr_private_files
 from ..compat import zarr_version
 from . import Command
 
 LOG = logging.getLogger(__name__)
-
-try:
-    isatty = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
-except AttributeError:
-    isatty = False
 
 
 class ZarrCopier:
@@ -70,7 +67,6 @@ class ZarrCopier:
         overwrite: bool,
         resume: bool,
         verbosity: int,
-        nested: bool,
         rechunk: str,
         reshard: str = None,
         **kwargs: Any,
@@ -93,8 +89,6 @@ class ZarrCopier:
             Flag to resume copying an existing dataset.
         verbosity : int
             Verbosity level of logging.
-        nested : bool
-            Flag to use ZARR's nested directory backend.
         rechunk : str
             Rechunk size for the target data array.
         reshard : str
@@ -109,41 +103,24 @@ class ZarrCopier:
         self.overwrite = overwrite
         self.resume = resume
         self.verbosity = verbosity
-        self.nested = nested
 
         self.rechunking = rechunk.split(",") if rechunk else []
         self.resharding = reshard.split(",") if reshard else []
 
-        source_is_ssh = self.source.startswith("ssh://")
-        target_is_ssh = self.target.startswith("ssh://")
-
-        if source_is_ssh or target_is_ssh:
-            if self.rechunking:
-                raise NotImplementedError("Rechunking with SSH not implemented.")
-            if self.resharding:
-                raise NotImplementedError("Resharding with SSH not implemented.")
-            assert NotImplementedError("SSH not implemented.")
-
-    def _store(self, path: str, nested: bool = False) -> Any:
+    def _store(self, path: str) -> Any:
         """Get the storage path.
 
         Parameters
         ----------
         path : str
             Path to the storage.
-        nested : bool, optional
-            Flag to use nested directory storage.
 
         Returns
         -------
         Any
             Storage path.
         """
-        if nested:
-            import zarr
-
-            return zarr.storage.NestedDirectoryStore(path)
-        return path
+        return name_to_zarr_store(path)
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
@@ -260,6 +237,7 @@ class ZarrCopier:
                 if zarr_version >= 3:
                     LOG.warning(f"Existing target data array shards: {target_data.shards}")
         else:
+            extra.setdefault("chunks", source_data.chunks)
             target_data = target.create_array(
                 "data",
                 shape=source_data.shape,
@@ -270,7 +248,8 @@ class ZarrCopier:
 
         size = 1
         size = target_data.chunks[0] if target_data.chunks else size
-        size = target_data.shards[0] if target_data.shards else size
+        if zarr_version >= 3:
+            size = target_data.shards[0] if target_data.shards else size
 
         block_size = self.block_size
 
@@ -280,7 +259,7 @@ class ZarrCopier:
 
         if block_size != self.block_size:
             LOG.info(
-                f"Adjusted block size from {self.block_size} to {block_size} to be multiple of chunk/shard size {size}."
+                f"Adjusted block size from {self.block_size} to {block_size} to be multiple of chunk/shard size {size} {target_data.chunks}."
             )
             self.block_size = block_size
 
@@ -340,7 +319,7 @@ class ZarrCopier:
             self.copy_data(source, target, _copy, verbosity)
             return
 
-        LOG.info(f"Copying {name}")
+        LOG.info(f"Copying {name} {source[name].shape}")
         data = source[name][...]
         if name in target:
             del target[name]
@@ -351,7 +330,7 @@ class ZarrCopier:
         children = list(group.keys())
         # https://github.com/zarr-developers/zarr-python/issues/3575
         children = [k for k in children if k != ""]
-        children = [k for k in children if k not in (".zgroup", ".zattrs", ".zarray", "zarr.json")]
+        children = [k for k in children if k not in zarr_private_files]
         children = sorted(children)
         return children
 
@@ -446,10 +425,12 @@ class ZarrCopier:
         # assert ext == ".zarr", ext
         # assert "." not in base, base
         LOG.info(f"Copying {self.source} to {self.target}")
+        LOG.info(f"Zarr version {zarr.__version__}")
 
         def target_exists() -> bool:
             try:
-                zarr.open(self._store(self.target), mode="r")
+                z = zarr.open(self._store(self.target), mode="r")
+                print(z.info)
                 return True
             except ZarrFileNotFoundError:
                 return False
@@ -474,12 +455,14 @@ class ZarrCopier:
 
         def open_target(source) -> Any:
 
+            target = self._store(self.target)
+
             if not target_exists():
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr.open(target, mode="w")
 
             if self.overwrite:
                 LOG.error("Target already exists, overwriting.")
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr.open(target, mode="w")
 
             if self.resume:
                 if target_finished(source):
@@ -487,7 +470,7 @@ class ZarrCopier:
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr.open(self._store(self.target, self.nested), mode=zarr_append_mode)
+                return zarr.open(target, mode=zarr_append_mode)
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
@@ -542,7 +525,6 @@ class CopyMixin:
             help="Verbosity level. 0 is silent, 1 is normal, 2 is verbose.",
             default=1,
         )
-        command_parser.add_argument("--nested", action="store_true", help="Use ZARR's nested directory backend.")
 
         command_parser.add_argument(
             "--block-size",
@@ -579,7 +561,12 @@ class CopyMixin:
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
-        if not args.rechunk:
+        if zarr_version >= 3:
+            reshaping_requested = args.rechunk or args.reshard
+        else:
+            reshaping_requested = args.rechunk
+
+        if not reshaping_requested:
             # rechunking is only supported for ZARR datasets, it is implemented in this package
             try:
                 if args.source.startswith("s3://") and not args.source.endswith("/"):

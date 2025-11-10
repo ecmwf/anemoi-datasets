@@ -404,6 +404,10 @@ QUIET = set()
 def zarr_lookup(name: str, fail: bool = True) -> str | None:
     """Look up a zarr dataset by name."""
 
+    urlparsed = urlparse(name)
+    if urlparsed.scheme:
+        return name
+
     config = load_config()["datasets"]
     use_search_path_not_found = config.get("use_search_path_not_found", False)
 

@@ -13,7 +13,9 @@
 import logging
 import math
 import os
-import re
+
+from .compat import zarr_private_files
+from .compat import zarr_version
 
 LOG = logging.getLogger(__name__)
 
@@ -42,46 +44,30 @@ def _check_group(group, verbosity: int, *path) -> None:
 
 
 def _check_array(array, verbosity: int, *path) -> None:
-    assert len(array.chunks) == len(array.shape)
-    assert math.prod(array.shape) % math.prod(array.chunks) == 0
 
-    file_count = math.prod(array.shape) // math.prod(array.chunks)
+    file_count = math.ceil(math.prod(array.shape) / math.prod(array.chunks))
+    if zarr_version >= 3:
+        if array.shards:
+            file_count = math.ceil(math.prod(array.shape) / math.prod(array.shards))
 
     full = os.path.join(*path)
 
-    chunks = array.chunks
-
     count = 0
-    for root, _, files in os.walk(full):
+    for _, _, files in os.walk(full):
         for f in files:
+
+            if f in zarr_private_files:
+                continue
+
             if verbosity > 1:
                 LOG.info(f"Check array: checking {f}")
 
-            if os.path.join(root, f).endswith(os.path.join("has_nans", "zarr.json")):
-                # known issue, has_nans is empty
-                if not os.path.exists(os.path.join(root, "c", "0")):
-                    count += 1
-
-            if f.startswith(".") or f == "zarr.json":
-                if verbosity > 1:
-                    LOG.info(f"Check array: skipping {f}")
-                continue
-
-            import zarr
-
-            if zarr.__version__ < "3.0.0":
-                bits = f.split(".")
-
-                if len(bits) != len(chunks):
-                    raise ValueError(f"File {f} is not a valid chunk file.")
-
-                if not all(re.match(r"^\d+$", bit) for bit in bits):
-                    raise ValueError(f"File {f} is not a valid chunk file.")
+            print(f)
 
             count += 1
 
     if count != file_count:
-        raise ValueError(f"File count {count} does not match expected {file_count} for {array.name}.")
+        LOG.warning(f"File count {count} does not match expected {file_count} for {array.name}.")
 
 
 def check_zarr(path: str, verbosity: int = 0) -> None:

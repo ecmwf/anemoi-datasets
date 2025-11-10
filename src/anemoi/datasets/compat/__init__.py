@@ -11,6 +11,8 @@ import zarr
 
 zarr_version = int(zarr.__version__.split(".")[0])
 
+zarr_private_files = (".zgroup", ".zattrs", ".zarray", "zarr.json")
+
 if zarr_version < 3:
     from .zarr2 import DebugStore
     from .zarr2 import HTTPStore
@@ -31,4 +33,5 @@ __all__ = [
     "DebugStore",
     "zarr_append_mode",
     "zarr_version",
+    "zarr_private_files",
 ]
