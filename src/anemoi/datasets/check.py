@@ -62,8 +62,6 @@ def _check_array(array, verbosity: int, *path) -> None:
             if verbosity > 1:
                 LOG.info(f"Check array: checking {f}")
 
-            print(f)
-
             count += 1
 
     if count != file_count:
