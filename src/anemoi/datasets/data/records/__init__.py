@@ -144,10 +144,13 @@ class BaseRecordsDataset:
         frequency = kwargs.pop("frequency", self.frequency)
 
         if frequency:
+
             frequency = frequency_to_timedelta(frequency)
-            if self.frequency.total_seconds() % frequency.total_seconds() == 0:
+            current = self.frequency.total_seconds()
+            new = frequency.total_seconds()
+            if current != new and current % new == 0:
                 return IncreaseFrequency(self, frequency)
-            elif frequency.total_seconds() % self.frequency.total_seconds() == 0:
+            elif current != new and new % current == 0:
                 raise NotImplementedError("Decreasing frequency not implemented yet")
                 # return DecreaseFrequency(self, frequency)
             assert self.frequency == frequency, (self.frequency, frequency)
