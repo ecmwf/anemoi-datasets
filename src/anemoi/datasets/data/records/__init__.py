@@ -42,6 +42,13 @@ else:
         return func
 
 
+def _to_numpy_timedelta(td):
+    if isinstance(td, np.timedelta64):
+        assert td.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {td.dtype}"
+        return td
+    return np.timedelta64(int(td.total_seconds()), "s")
+
+
 def open_records_dataset(dataset, **kwargs):
     metadata_path = os.path.join(dataset, "metadata.json")
     if not os.path.exists(metadata_path):
@@ -139,6 +146,10 @@ class BaseRecordsDataset:
         raise NotImplementedError("Must be implemented in subclass")
 
     def _subset(self, **kwargs):
+        window = kwargs.pop("window", None)
+        if window is not None:
+            return Rewindowed(self, window)._subset(**kwargs)
+
         frequency = kwargs.pop("frequency", self.frequency)
         if frequency:
             frequency = frequency_to_timedelta(frequency)
@@ -171,10 +182,6 @@ class BaseRecordsDataset:
         select = kwargs.pop("select", None)
         if select is not None:
             return Select(self, select)._subset(**kwargs)
-
-        window = kwargs.pop("window", None)
-        if window is not None:
-            return Rewindowed(self, window)._subset(**kwargs)
 
         set_group = kwargs.pop("set_group", None)
         if set_group is not None:
@@ -220,7 +227,7 @@ class RecordsForward(BaseRecordsDataset):
 
     @property
     def dates(self):
-        return self.forward.dates
+        return np.array(self.forward.dates, dtype="datetime64[s]")
 
     @property
     def name_to_index(self):
@@ -248,6 +255,7 @@ class RecordsForward(BaseRecordsDataset):
 class IncreaseFrequency(RecordsForward):
     # change the frequency of a records dataset by splitting the windows to fit the new frequency
     # the new frequency must be a divisor of the original frequency (e.g. 6h -> 3h, but not 3h -> 6h) (and not 6h -> 5h)
+    # and the window length should match the frequency
     def __init__(self, dataset, frequency):
         super().__init__(dataset)
         self.dataset = dataset
@@ -258,6 +266,11 @@ class IncreaseFrequency(RecordsForward):
         if int(self._n) != self._n:
             raise ValueError(f"Cannot split frequency {self.dataset.frequency} to {frequency}, not a multiple")
         self._n = int(self._n)
+
+        if self.dataset._window.end - self.dataset._window.start != self.dataset.frequency:
+            raise ValueError(
+                f"Cannot split frequency {self.dataset.frequency} to {frequency}, window {self.dataset._window} does not match frequency"
+            )
 
     @cached_property
     def _window(self):
@@ -272,9 +285,10 @@ class IncreaseFrequency(RecordsForward):
     @property
     def dates(self):
         dates = []
+        freq = _to_numpy_timedelta(self._frequency)
         for date in self.dataset.dates:
-            dates += [date + i * self._frequency for i in range(self._n)]
-        return dates
+            dates += [date + i * freq for i in range(self._n)]
+        return np.array(dates, dtype="datetime64[s]")
 
     @property
     def frequency(self):
@@ -286,6 +300,26 @@ class IncreaseFrequency(RecordsForward):
     def _load_data(self, i):
         j = i // self._n
         k = i % self._n
+        # k = 0 -> shift of (self._n - 1) * self.frequency
+        # k = ...
+        # k = self._n - 1 -> shift of 0 (0 * self.frequency)
+        # so we need to shift by (self._n - 1 - k) * self.frequency
+        assert k < self._n, (k, self._n)
+        assert k >= 0
+
+        s = self._window.start
+        e = self._window.end
+
+        ref_timedelta = -self.dataset.frequency + (k + 1) * self.frequency
+        start_delta = ref_timedelta + s
+        end_delta = ref_timedelta + e
+        # print(
+        #    f" {i}={j}*{self._n}+{k} ({self.dates[i]})  -> ref_timedelta={ref_timedelta.total_seconds()/3600}, [start, end] = [{start_delta.total_seconds()/3600}, {end_delta.total_seconds()/3600}]"
+        # )
+
+        start_delta = _to_numpy_timedelta(start_delta)
+        end_delta = _to_numpy_timedelta(end_delta)
+        ref_timedelta = _to_numpy_timedelta(ref_timedelta)
 
         too_much_data = self.dataset._load_data(j)
 
@@ -294,19 +328,6 @@ class IncreaseFrequency(RecordsForward):
             timedeltas = too_much_data[f"timedeltas:{group}"]
             if timedeltas.dtype != "timedelta64[s]":
                 raise ValueError(f"Wrong type for {group}")
-
-            start_delta = self.dataset._window.start + k * self.frequency
-            end_delta = start_delta + self._window.end - self._window.start
-
-            def _to_numpy_timedelta(td):
-                if isinstance(td, np.timedelta64):
-                    assert td.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {td.dtype}"
-                    return td
-                return np.timedelta64(int(td.total_seconds()), "s")
-
-            start_delta = _to_numpy_timedelta(start_delta)
-            end_delta = _to_numpy_timedelta(end_delta)
-            assert timedeltas.dtype == "timedelta64[s]", f"expecting np.timedelta64[s], got {timedeltas.dtype}"
 
             if self._window.include_start:
                 mask = timedeltas >= start_delta
@@ -320,7 +341,7 @@ class IncreaseFrequency(RecordsForward):
             out[f"data:{group}"] = too_much_data[f"data:{group}"][..., mask]
             out[f"latitudes:{group}"] = too_much_data[f"latitudes:{group}"][..., mask]
             out[f"longitudes:{group}"] = too_much_data[f"longitudes:{group}"][..., mask]
-            out[f"timedeltas:{group}"] = too_much_data[f"timedeltas:{group}"][..., mask]
+            out[f"timedeltas:{group}"] = too_much_data[f"timedeltas:{group}"][..., mask] - ref_timedelta
             out[f"metadata:{group}"] = too_much_data[f"metadata:{group}"]
 
         return out
@@ -383,7 +404,7 @@ class FieldsRecords(RecordsForward):
 
     @property
     def dates(self):
-        return self.forward.dates
+        return np.array(self.forward.dates, dtype="datetime64[s]")
 
     @property
     def longitudes(self):
@@ -537,7 +558,7 @@ class Rewindowed(RecordsForward):
 
     @property
     def dates(self):
-        return self._dates
+        return np.array(self._dates, dtype="datetime64[s]")
 
     def __len__(self):
         return len(self.dates)
@@ -686,7 +707,7 @@ class RecordsSubset(RecordsForward):
     @cached_property
     def dates(self):
         dates = self.dataset.dates
-        return [dates[i] for i in self._indices]
+        return np.array([dates[i] for i in self._indices], dtype="datetime64[s]")
 
     def _load_data(self, i):
         return self.dataset._load_data(self._indices[i])
@@ -770,7 +791,7 @@ class RecordsDataset(BaseRecordsDataset):
         while d <= self.end_date:
             result.append(d)
             d += delta
-        return np.array(result)
+        return np.array(result, dtype="datetime64[s]")
 
     @counter
     def _load_data(self, i):
