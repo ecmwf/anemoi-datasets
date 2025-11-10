@@ -685,7 +685,8 @@ class RecordsSubset(RecordsForward):
 
     @cached_property
     def dates(self):
-        return self.dataset.dates[self._indices]
+        dates = self.dataset.dates
+        return [dates[i] for i in self._indices]
 
     def _load_data(self, i):
         return self.dataset._load_data(self._indices[i])
