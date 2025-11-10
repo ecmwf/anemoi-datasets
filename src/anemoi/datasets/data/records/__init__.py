@@ -139,22 +139,20 @@ class BaseRecordsDataset:
         raise NotImplementedError("Must be implemented in subclass")
 
     def _subset(self, **kwargs):
-        start = kwargs.pop("start", None)
-        end = kwargs.pop("end", None)
         frequency = kwargs.pop("frequency", self.frequency)
-
         if frequency:
-
             frequency = frequency_to_timedelta(frequency)
             current = self.frequency.total_seconds()
             new = frequency.total_seconds()
             if current != new and current % new == 0:
-                return IncreaseFrequency(self, frequency)
+                return IncreaseFrequency(self, frequency)._subset(**kwargs)
             elif current != new and new % current == 0:
                 raise NotImplementedError("Decreasing frequency not implemented yet")
-                # return DecreaseFrequency(self, frequency)
+                # return DecreaseFrequency(self, frequency)._subset(**kwargs)
             assert self.frequency == frequency, (self.frequency, frequency)
 
+        start = kwargs.pop("start", None)
+        end = kwargs.pop("end", None)
         if start is not None or end is not None:
 
             def _dates_to_indices(start, end):
