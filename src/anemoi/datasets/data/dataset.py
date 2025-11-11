@@ -128,6 +128,16 @@ class Dataset:
                 .mutate()
             )
 
+        if "fake_forecasts" in kwargs:
+            from .subset import Subset
+
+            fake_forecasts = kwargs.pop("fake_forecasts")
+            return (
+                Subset(self, self._fake_forecasts_to_indices(**fake_forecasts), dict(fake_forecasts=fake_forecasts))
+                ._subset(**kwargs)
+                .mutate()
+            )
+
         if "select" in kwargs:
             from .select import Select
 
@@ -282,6 +292,40 @@ class Dataset:
         indices = []
         for i, (_, hdate, step) in enumerate(fake_to_real.values()):
             if start <= hdate <= end and step in steps:
+                indices.append(i)
+
+        return indices
+
+    def _fake_forecasts_to_indices(self, start=None, end=None, steps=None):
+        from .misc import as_first_date
+        from .misc import as_last_date
+
+        usteps = set()
+
+        rdates = set()
+        for _, (real_date, step) in self.fake_forecasts.items():
+            rdates.add(real_date)
+            usteps.add(step)
+
+        if steps is None:
+            steps = sorted(usteps)
+
+        if not isinstance(steps, (list, tuple)):
+            steps = [steps]
+
+        if not set(steps) <= usteps:
+            raise ValueError(f"Unknown steps: {sorted(set(steps) - usteps)} (available: {sorted(usteps)})")
+
+        rdates = sorted(rdates)
+
+        start = rdates[0] if start is None else as_first_date(start, rdates)
+        end = rdates[-1] if end is None else as_last_date(end, rdates)
+
+        steps = set(steps)
+
+        indices = []
+        for i, (rdate, step) in enumerate(self.fake_forecasts.values()):
+            if start <= rdate <= end and step in steps:
                 indices.append(i)
 
         return indices
