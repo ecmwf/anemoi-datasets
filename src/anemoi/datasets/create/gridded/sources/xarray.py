@@ -11,7 +11,7 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from anemoi.datasets.build.gridded.typing import DateList
+from anemoi.datasets.create.gridded.typing import DateList
 
 from ..source import Source
 from .xarray_support import XarrayFieldList

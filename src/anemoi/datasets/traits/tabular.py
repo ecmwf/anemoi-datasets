@@ -1,0 +1,2 @@
+class Tabular:
+    pass

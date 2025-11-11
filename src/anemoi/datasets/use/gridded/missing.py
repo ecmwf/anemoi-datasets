@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.build.gridded.utils import to_datetime
+from anemoi.datasets.create.gridded.utils import to_datetime
 from anemoi.datasets.use.gridded import MissingDateError
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
-    from anemoi.datasets.build.input.action import Recipe
+    from anemoi.datasets.create.input.action import Recipe
 
 
 class InputBuilder:
@@ -38,8 +38,8 @@ class InputBuilder:
     @cached_property
     def action(self) -> "Recipe":
         """Returns the action object based on the configuration."""
-        from anemoi.datasets.build.input.action import Recipe
-        from anemoi.datasets.build.input.action import action_factory
+        from anemoi.datasets.create.input.action import Recipe
+        from anemoi.datasets.create.input.action import action_factory
 
         sources = action_factory(self.data_sources, "data_sources")
         input = action_factory(self.config, "input")
@@ -59,7 +59,7 @@ class InputBuilder:
         Any
             Selected data.
         """
-        from anemoi.datasets.build.gridded.context import GriddedContext
+        from anemoi.datasets.create.gridded.context import GriddedContext
 
         context = GriddedContext(argument, **self.kwargs)
         return context.create_result(self.action(context, argument))

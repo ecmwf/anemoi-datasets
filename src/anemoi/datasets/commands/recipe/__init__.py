@@ -15,7 +15,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.build.gridded import validate_config
+from anemoi.datasets.create.gridded import validate_config
 
 from .. import Command
 from .format import format_recipe

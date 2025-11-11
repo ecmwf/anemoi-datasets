@@ -83,7 +83,7 @@ class GribIndexCmd(Command):
             """
             return fnmatch.fnmatch(os.path.basename(path), args.match)
 
-        from anemoi.datasets.build.gridded.sources.grib_index import GribIndex
+        from anemoi.datasets.create.gridded.sources.grib_index import GribIndex
 
         index = GribIndex(
             args.index,

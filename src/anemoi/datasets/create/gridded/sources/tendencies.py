@@ -14,7 +14,7 @@ from typing import Any
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.build.gridded.sources import source_registry
+from anemoi.datasets.create.gridded.sources import source_registry
 
 from .legacy import LegacySource
 

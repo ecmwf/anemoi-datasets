@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.build.gridded.check import DatasetName
+from anemoi.datasets.create.gridded.check import DatasetName
 
 from . import Command
 

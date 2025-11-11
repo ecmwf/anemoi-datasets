@@ -12,7 +12,7 @@ import os
 import xarray as xr
 from multiurl import download
 
-from anemoi.datasets.build.gridded.sources.xarray import XarrayFieldList
+from anemoi.datasets.create.gridded.sources.xarray import XarrayFieldList
 
 URLS = {
     "https://get.ecmwf.int/repository/test-data/earthkit-data/examples/efas.nc": dict(length=3),

@@ -11,18 +11,18 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import DateCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import EnsembleCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import LatitudeCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import LevelCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import LongitudeCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import ScalarCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import StepCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import TimeCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import UnsupportedCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import XCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.coordinates import YCoordinate
-from anemoi.datasets.build.gridded.sources.xarray_support.flavour import DefaultCoordinateGuesser
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import DateCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import EnsembleCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import LatitudeCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import LevelCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import LongitudeCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import ScalarCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import StepCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import TimeCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import UnsupportedCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import XCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.coordinates import YCoordinate
+from anemoi.datasets.create.gridded.sources.xarray_support.flavour import DefaultCoordinateGuesser
 
 
 def create_ds(var_name, standard_name, long_name, units, coord_length=5):

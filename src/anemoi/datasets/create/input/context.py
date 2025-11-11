@@ -55,7 +55,7 @@ class Context(ABC):
         return config
 
     def create_source(self, config: Any, *path) -> Any:
-        from anemoi.datasets.build.input.action import action_factory
+        from anemoi.datasets.create.input.action import action_factory
 
         if not isinstance(config, dict):
             # It is already a result (e.g. ekd.FieldList), loaded from ${a.b.c}
