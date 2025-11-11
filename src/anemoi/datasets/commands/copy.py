@@ -9,8 +9,8 @@
 
 
 import logging
-import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
@@ -19,7 +19,6 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
-from anemoi.datasets.check import check_zarr
 from anemoi.datasets.data.stores import name_to_zarr_store
 
 from ..compat import ZarrFileNotFoundError
@@ -96,8 +95,8 @@ class ZarrCopier:
         **kwargs : Any
             Additional keyword arguments.
         """
-        self.source = source
-        self.target = target
+        self.source = name_to_zarr_store(source)
+        self.target = name_to_zarr_store(target)
         self.transfers = transfers
         self.block_size = block_size
         self.overwrite = overwrite
@@ -106,21 +105,6 @@ class ZarrCopier:
 
         self.rechunking = rechunk.split(",") if rechunk else []
         self.resharding = reshard.split(",") if reshard else []
-
-    def _store(self, path: str) -> Any:
-        """Get the storage path.
-
-        Parameters
-        ----------
-        path : str
-            Path to the storage.
-
-        Returns
-        -------
-        Any
-            Storage path.
-        """
-        return name_to_zarr_store(path)
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
@@ -204,6 +188,7 @@ class ZarrCopier:
         """
         LOG.info("Copying data")
         source_data = source["data"]
+        start = time.time()
 
         extra = {}
         if self.rechunking:
@@ -263,7 +248,7 @@ class ZarrCopier:
             )
             self.block_size = block_size
 
-        LOG.info(f"Using block size {self.block_size}")
+        LOG.info(f"Using block size {self.block_size}, parallel transfers {self.transfers}")
         self.block_size = block_size
 
         executor = ThreadPoolExecutor(max_workers=self.transfers)
@@ -291,7 +276,8 @@ class ZarrCopier:
 
         target["_copy"] = _copy
 
-        LOG.info("Copied data")
+        end = time.time()
+        LOG.info(f"Copied data in {end - start:.2f} seconds")
 
     def copy_array(self, name: str, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy an array from source to target.
@@ -429,15 +415,14 @@ class ZarrCopier:
 
         def target_exists() -> bool:
             try:
-                z = zarr.open(self._store(self.target), mode="r")
-                print(z.info)
+                zarr.open(self.target, mode="r")
                 return True
             except ZarrFileNotFoundError:
                 return False
 
-        def target_finished(source) -> bool:
-            target = zarr.open(self._store(self.target), mode="r")
-            last_key = list(self.children(source))[-1]
+        def target_finished() -> bool:
+            target = zarr.open(self.target, mode="r")
+            last_key = list(self.children(self.source))[-1]
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
                 todo = target["_copy"].shape[0]
@@ -453,46 +438,38 @@ class ZarrCopier:
 
             return False
 
-        def open_target(source) -> Any:
-
-            target = self._store(self.target)
+        def open_target() -> Any:
 
             if not target_exists():
-                return zarr.open(target, mode="w")
+                return zarr.open(self.target, mode="w")
 
             if self.overwrite:
                 LOG.error("Target already exists, overwriting.")
-                return zarr.open(target, mode="w")
+                return zarr.open(self.target, mode="w")
 
             if self.resume:
-                if target_finished(source):
+                if target_finished():
                     LOG.error("Target already exists and is finished.")
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr.open(target, mode=zarr_append_mode)
+                return zarr.open(self.target, mode=zarr_append_mode)
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
 
-        source = zarr.open(self._store(self.source), mode="r")
+        source = zarr.open(self.source, mode="r")
         if self.verbosity > 0:
             LOG.info(f"Open source: {self.source}")
 
         if self.verbosity > 0:
             LOG.info(f"Open target: {self.target}")
-        target = open_target(source)
+
+        target = open_target()
 
         assert target is not None, target
 
-        # zarr.consolidate_metadata(source)
-
         self.copy(source, target, self.verbosity)
-        if os.path.exists(self.target) and os.path.isdir(self.target):
-            LOG.info(f"Checking target: {self.target}")
-            check_zarr(self.target, self.verbosity)
-        else:
-            LOG.info(f"Target {self.target} is not a local directory, skipping check.")
 
 
 class CopyMixin:
