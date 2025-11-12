@@ -12,8 +12,7 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from anemoi.datasets.create.gridded.sources import source_registry
-
+from . import source_registry
 from .legacy import LegacySource
 
 

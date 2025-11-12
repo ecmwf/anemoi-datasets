@@ -17,7 +17,7 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.datasets.create.input.repeated_dates import DateMapper
 
 from ..source import Source
-from ..sources import source_registry
+from . import source_registry
 
 LOG = logging.getLogger(__name__)
 

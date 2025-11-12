@@ -12,7 +12,7 @@ from typing import Any
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.create.gridded.sources import source_registry
+from anemoi.datasets.create.sources import source_registry
 
 from .legacy import LegacySource
 from .mars import mars
