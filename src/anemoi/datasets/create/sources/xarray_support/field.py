@@ -121,16 +121,16 @@ class XArrayField(Field):
             Index to select a specific element, by default None.
         """
         if index is not None:
-            values = self.selection[index]
+            values = self.selection[index].values
         else:
-            values = self.selection
+            values = self.selection.values
 
         assert dtype is None
 
         if flatten:
-            return values.values.flatten()
+            return values.flatten()
 
-        return values  # .reshape(self.shape)
+        return values
 
     @cached_property
     def _metadata(self) -> XArrayMetadata:

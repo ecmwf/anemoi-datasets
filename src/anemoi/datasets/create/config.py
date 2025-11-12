@@ -18,8 +18,6 @@ from anemoi.utils.config import DotDict
 from anemoi.utils.config import load_any_dict_format
 from earthkit.data.core.order import normalize_order_by
 
-from anemoi.datasets.dates.groups import Groups
-
 LOG = logging.getLogger(__name__)
 
 
@@ -340,61 +338,13 @@ def _prepare_serialisation(o: Any) -> Any:
     return str(o)
 
 
-def set_to_test_mode(cfg: dict) -> None:
-    """Modifies the configuration to run in test mode.
-
-    Parameters
-    ----------
-    cfg : dict
-        The configuration dictionary.
-    """
-    NUMBER_OF_DATES = 4
-
-    LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
-    groups = Groups(**LoadersConfig(cfg).dates)
-
-    dates = groups.provider.values
-    cfg["dates"] = dict(
-        start=dates[0],
-        end=dates[NUMBER_OF_DATES - 1],
-        frequency=groups.provider.frequency,
-        group_by=NUMBER_OF_DATES,
-    )
-
-    def set_element_to_test(obj):
-        if isinstance(obj, (list, tuple)):
-            for v in obj:
-                set_element_to_test(v)
-            return
-        if isinstance(obj, (dict, DotDict)):
-            if "grid" in obj:
-                previous = obj["grid"]
-                obj["grid"] = "20./20."
-                LOG.warning(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
-            if "number" in obj:
-                if isinstance(obj["number"], (list, tuple)):
-                    previous = obj["number"]
-                    obj["number"] = previous[0:3]
-                    LOG.warning(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
-            for k, v in obj.items():
-                set_element_to_test(v)
-            if "constants" in obj:
-                constants = obj["constants"]
-                if "param" in constants and isinstance(constants["param"], list):
-                    constants["param"] = ["cos_latitude"]
-
-    set_element_to_test(cfg)
-
-
-def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
+def loader_config(config: dict) -> LoadersConfig:
     """Loads and validates the configuration for dataset loaders.
 
     Parameters
     ----------
     config : dict
         The configuration dictionary.
-    is_test : bool, optional
-        Whether to run in test mode. Defaults to False.
 
     Returns
     -------
@@ -402,8 +352,6 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
         The validated configuration object.
     """
     config = Config(config)
-    if is_test:
-        set_to_test_mode(config)
     obj = LoadersConfig(config)
 
     # yaml round trip to check that serialisation works as expected
@@ -424,6 +372,9 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
             LOG.info(f"Setting env variable {k}={v}")
             os.environ[k] = str(v)
 
+    # Used by pytest only
+    # copy.pop('checks', None)
+
     return copy
 
 
@@ -443,3 +394,49 @@ def build_output(*args, **kwargs) -> OutputSpecs:
         The output specifications object.
     """
     return OutputSpecs(*args, **kwargs)
+
+
+def flatten_list_of_sets(list_of_sets: list[set]) -> set:
+    return {element for subset in list_of_sets for element in subset}
+
+
+def mars_str_to_set(s: str) -> set[str]:
+    """Mars strings are like 1/to/2 or 1/to/2/by/1
+
+    Returns a set of strings, e.g. {'1', '2'}
+    """
+    assert "/" in s, "mars_str_to_set expects a string with '/'"
+    lst = s.split("/")
+    assert len(lst) in (3, 5), f"mars_str_to_set expects a string like 1/to/2 or 1/to/4/by/1, got {s}"
+    if len(lst) == 3:
+        assert "to" in lst
+        start, _, end = lst
+        step = 1
+    elif len(lst) == 5:
+        assert "by" in lst and "to" in lst
+        start, _, end, _, step = lst
+    return {str(i) for i in range(int(start), int(end) + 1, int(step))}
+
+
+def get_ensembles_set(obj):
+    """Counts the number of ensembles in the configuration."""
+    if isinstance(obj, dict):
+        if "number" in obj:
+            if isinstance(obj["number"], (list, tuple)):
+                return set([str(element) for element in obj["number"]])
+            if isinstance(obj["number"], (str, int)):
+                if "/" in str(obj["number"]):
+                    return mars_str_to_set(obj["number"])
+                else:
+                    return {str(obj["number"])}
+    if isinstance(obj, (dict)):
+        return flatten_list_of_sets([get_ensembles_set(v) for v in obj.values()])
+    if isinstance(obj, (list, tuple)):
+        return flatten_list_of_sets([get_ensembles_set(v) for v in obj])
+    return {}
+
+
+def count_ensembles(config: Config) -> int:
+    """Counts the number of ensembles in the configuration."""
+    ensembles = get_ensembles_set(config.input)
+    return len(ensembles) if ensembles else 1
