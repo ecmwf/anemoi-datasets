@@ -7,27 +7,36 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 
-from anemoi.datasets.create.gridded.typing import DateList
-
-from ..source import Source
-from . import source_registry
+from anemoi.datasets.create.source import ObservationsSource
+from anemoi.datasets.create.sources import source_registry
 
 
 @source_registry.register("csv")
-class CsvSource(Source):
-    """CSV data source."""
+class CSVSource(ObservationsSource):
+    """A source that reads data from a CSV file."""
 
-    emoji = "?"
+    emoji = "📄"  # For tracing
 
-    def __init__(
-        self,
-        context,
-        **kwargs: dict[str, Any],
-    ):
+    def __init__(self, context: any, path: str, *args: tuple, **kwargs: dict):
+        """Initialise the CSVSource.
 
-        super().__init__(context)
+        Parameters
+        ----------
+        context : Any
+            The context for the data source.
+        filepath : str
+            The path to the CSV file.
+        *args : tuple
+            Additional positional arguments.
+        **kwargs : dict
+            Additional keyword arguments.
+        """
+        super().__init__(context, *args, **kwargs)
+        self.path = path
 
-    def execute(self, dates: DateList):
-        raise NotImplementedError("To be developed")
+    def execute(self, dates):
+        import pandas as pd
+
+        frame = pd.read_csv(self.path)
+        print(frame)

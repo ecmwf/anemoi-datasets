@@ -44,6 +44,9 @@ def create_dataset(
     str
         The path to the created dataset.
     """
+
+    from anemoi.datasets.create.tasks import task_factory
+
     if isinstance(config, dict):
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml")
         yaml.dump(config, temp_file)
@@ -52,21 +55,21 @@ def create_dataset(
     if output is None:
         output = tempfile.mkdtemp(suffix=".zarr")
 
-    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
-    creator_factory("load", path=output).run()
-    creator_factory("finalise", path=output).run()
-    creator_factory("patch", path=output).run()
+    task_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
+    task_factory("load", path=output).run()
+    task_factory("finalise", path=output).run()
+    task_factory("patch", path=output).run()
 
     if delta is not None:
         creator_factory("init_additions", path=output, delta=delta).run()
         creator_factory("load_additions", path=output, delta=delta).run()
         creator_factory("finalise_additions", path=output, delta=delta).run()
 
-    creator_factory("cleanup", path=output).run()
+    task_factory("cleanup", path=output).run()
 
     if delta is not None:
-        creator_factory("cleanup", path=output, delta=delta).run()
+        task_factory("cleanup", path=output, delta=delta).run()
 
-    creator_factory("verify", path=output).run()
+    task_factory("verify", path=output).run()
 
     return output

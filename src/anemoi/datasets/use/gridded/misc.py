@@ -349,7 +349,6 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     """
     from anemoi.datasets.use.gridded.dataset import Dataset
     from anemoi.datasets.use.gridded.stores import Zarr
-    from anemoi.datasets.use.gridded.stores import zarr_lookup
 
     if isinstance(a, str) and len(a.split(".")) in [2, 3]:
 
@@ -370,7 +369,28 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         return Zarr(a).mutate()
 
     if isinstance(a, str):
-        return Zarr(zarr_lookup(a)).mutate()
+        from anemoi.datasets.use.gridded.stores import dataset_lookup
+
+        path = dataset_lookup(a)
+
+        if path and path.endswith(".zarr") or path.endswith(".zip"):
+            return Zarr(path).mutate()
+
+        if path and path.endswith(".vz"):
+
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"File not found: {path}")
+
+            metadata_path = os.path.join(path, "metadata.json")
+            if os.path.exists(metadata_path):
+                if "backend" not in load_any_dict_format(metadata_path):
+                    raise ValueError(f"Metadata for {path} does not contain 'backend' key")
+
+                from anemoi.datasets.data.records import open_records_dataset
+
+                return open_records_dataset(path)
+
+        raise ValueError(f"Unsupported dataset path: {path}. ")
 
     if isinstance(a, PurePath):
         return _open(str(a)).mutate()
@@ -586,6 +606,18 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
                 sets.append(_open(a))
 
     assert len(sets) > 0, (args, kwargs)
+
+    if "set_group" in kwargs:
+        from anemoi.datasets.data.records import FieldsRecords
+
+        set_group = kwargs.pop("set_group")
+        assert len(sets) == 1, "set_group can only be used with a single dataset"
+        dataset = sets[0]
+
+        from anemoi.datasets.data.dataset import Dataset
+
+        if isinstance(dataset, Dataset):  # Fields dataset
+            return FieldsRecords(dataset, **kwargs, name=set_group).mutate()
 
     if len(sets) > 1:
         dataset, kwargs = _concat_or_join(sets, kwargs)

@@ -16,20 +16,20 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.gridded.dataset import Dataset
-from anemoi.datasets.use.gridded.dataset import FullIndex
-from anemoi.datasets.use.gridded.dataset import Shape
-from anemoi.datasets.use.gridded.dataset import TupleIndex
-from anemoi.datasets.use.gridded.debug import Node
-from anemoi.datasets.use.gridded.debug import debug_indexing
-from anemoi.datasets.use.gridded.forwards import Combined
-from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.gridded.indexing import expand_list_indexing
-from anemoi.datasets.use.gridded.indexing import index_to_slices
-from anemoi.datasets.use.gridded.indexing import length_to_slices
-from anemoi.datasets.use.gridded.indexing import update_tuple
-from anemoi.datasets.use.gridded.misc import _auto_adjust
-from anemoi.datasets.use.gridded.misc import _open
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import Shape
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.use.griddedanemoi.datasets.data.debug import Node
+from anemoi.datasets.use.griddedanemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.use.griddedanemoi.datasets.data.forwards import Combined
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import length_to_slices
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import update_tuple
+from anemoi.datasets.use.griddedanemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.use.griddedanemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 
@@ -254,6 +254,15 @@ class Concat(ConcatMixin, Combined):
             The metadata specific to the forwards subclass.
         """
         return {}
+
+    def project(self, projection):
+        result = []
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p))
+
+        return projection.list_or_single(result)
 
 
 def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:

@@ -84,6 +84,11 @@ class DataSourcesAction(Action):
         content = "\n".join([str(i) for i in self.sources])
         return self._repr(content)
 
+    def python_code(self, code) -> str:
+        for n, s in zip(self.names, self.sources):
+            code.source(n, s.python_code(code))
+        return code
+
 
 class DataSourcesResult(Result):
     """Class to represent the result of data sources actions in the dataset creation process."""

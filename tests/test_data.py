@@ -59,7 +59,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with patch("zarr.convenience.open", zarr_from_str):
+        with patch("zarr.open", zarr_from_str):
             with patch("anemoi.datasets.use.gridded.stores.zarr_lookup", lambda name: name):
                 return func(*args, **kwargs)
 
@@ -1398,6 +1398,18 @@ def test_invalid_trim_edge() -> None:
             "test-2021-2021-6h-o96-abcd",
             trim_edge=(1, 2, 3, 4),
         )
+
+
+@mockup_open_zarr
+def test_fields_to_records() -> None:
+    """Test joining datasets (case 2)."""
+
+    key = "grp"
+    ds = open_dataset(dataset="test-2021-2021-6h-o96-abcd-1", set_group=key)
+    # unwrapped = open_dataset(dataset="test-2021-2021-6h-o96-abcd-2")
+
+    assert ds.groups == [key]
+    assert ds.variables == {key: ["a", "b", "c", "d"]}
 
 
 def test_save_dataset() -> None:

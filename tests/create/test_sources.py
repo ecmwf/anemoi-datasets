@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import os
-import sys
 
 import numpy as np
 import pytest
@@ -51,9 +50,6 @@ def test_grib(get_test_data: callable) -> None:
     assert ds.shape == (8, 12, 1, 162)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
-)
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
@@ -91,9 +87,6 @@ def test_grib_gridfile(get_test_data) -> None:
     assert ds.variables == ["2t"]
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
-)
 @skip_if_offline
 @pytest.mark.parametrize(
     "input_refinement_level_c,output_refinement_level_c,shape",
@@ -293,8 +286,7 @@ def test_planetary_computer_conus404() -> None:
 
 
 if __name__ == "__main__":
-    test_planetary_computer_conus404()
-    exit(0)
+
     from anemoi.utils.testing import run_tests
 
     run_tests(globals())

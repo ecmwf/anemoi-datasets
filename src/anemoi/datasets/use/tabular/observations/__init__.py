@@ -66,7 +66,10 @@ class ObservationsBase(Dataset):
         return len(self.dates)
 
     def tree(self):
-        return Node(self)
+        return Node(
+            self,
+            [],
+        )
 
     def __getitem__(self, i):
         if isinstance(i, int):
@@ -231,6 +234,7 @@ class ObservationsZarr(ObservationsBase):
         assert latitudes.shape == longitudes.shape, f"Expected {latitudes.shape}, got {longitudes.shape}"
         assert timedeltas.shape == latitudes.shape, f"Expected {timedeltas.shape}, got {latitudes.shape}"
 
+        assert timedeltas.dtype == "timedelta64[s]", f"Expected timedelta64[s], got {timedeltas.dtype}"
         return latitudes, longitudes, timedeltas
 
     def getitem(self, i):

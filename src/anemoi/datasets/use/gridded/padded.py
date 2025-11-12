@@ -12,11 +12,13 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
+from typing import Dict
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.use.gridded import MissingDateError
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.dataset import Shape
@@ -32,11 +34,16 @@ LOG = logging.getLogger(__name__)
 
 
 class Padded(Forwards):
-    _before: int = 0
-    _after: int = 0
-    _inside: int = 0
 
-    def __init__(self, dataset: Dataset, start: str, end: str, frequency: str, reason: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        dataset: Dataset,
+        start: str,
+        end: str,
+        frequency: str,
+        reason: Dict[str, Any],
+        padding: str,
+    ) -> None:
         """Create a padded subset of a dataset.
 
         Attributes:
@@ -46,6 +53,7 @@ class Padded(Forwards):
         frequency (str): The frequency of the subset.
         reason (Dict[str, Any]): The reason for the padding.
         """
+        self.padding = padding
 
         self.reason = {k: v for k, v in reason.items() if v is not None}
 
@@ -53,6 +61,9 @@ class Padded(Forwards):
             frequency = dataset.frequency
 
         self._frequency = frequency_to_timedelta(frequency)
+        self._before: int = 0
+        self._after: int = 0
+        self._inside: int = 0
 
         if start is None:
             # default is to start at the first date
@@ -164,12 +175,20 @@ class Padded(Forwards):
         return [self[i] for i in n]
 
     def empty_item(self):
-        return self.dataset.empty_item()
+        if self.padding == "empty":
+            return self.dataset.empty_item()
+        elif self.padding == "raise":
+            raise ValueError("Padding is set to 'raise', cannot return an empty item.")
+        elif self.padding == "missing":
+            raise MissingDateError("Padding is set to 'missing'")
+        assert False, self.padding
 
     def get_aux(self, i: FullIndex) -> NDArray[np.timedelta64]:
         if self._i_out_of_range(i):
-            arr = np.array([], dtype=np.float32)
-            aux = arr, arr, arr
+            lats = np.array([], dtype=np.float32)
+            lons = lats
+            timedeltas = np.ones_like(lons, dtype="timedelta64[s]") * 0
+            aux = lats, lons, timedeltas
         else:
             aux = self.dataset.get_aux(i - self._before)
 

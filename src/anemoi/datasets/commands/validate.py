@@ -12,7 +12,7 @@ from typing import Any
 
 from anemoi.datasets.misc.validate import validate_dataset
 
-from . import Command
+from .. import Command
 
 LOG = logging.getLogger(__name__)
 

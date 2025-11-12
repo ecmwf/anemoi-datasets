@@ -15,7 +15,7 @@ import yaml
 
 from anemoi.datasets.create.gridded.check import DatasetName
 
-from . import Command
+from .. import Command
 
 LOG = logging.getLogger(__name__)
 

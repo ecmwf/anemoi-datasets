@@ -30,13 +30,16 @@ def build(input, output, backend, overwrite=False):
 
     from anemoi.datasets.use.tabular.records.backends import writer_backend_factory
 
+    if not isinstance(backend, dict):
+        backend = {"name": backend}
+
     if os.path.exists(output):
         if overwrite:
             LOG.warning(f"Output directory {output} already exists, removing it")
             shutil.rmtree(output)
         else:
             raise FileExistsError(f"Output directory {output} already exists, use --overwrite to remove it")
-    writer = writer_backend_factory(backend, output)
+    writer = writer_backend_factory(**backend, target=output)
 
     for i in tqdm.tqdm(range(len(ds))):
         writer.write(i, ds[i])

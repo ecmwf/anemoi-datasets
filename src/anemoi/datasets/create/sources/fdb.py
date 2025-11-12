@@ -18,8 +18,8 @@ from anemoi.transform.grids import grid_registry
 
 from anemoi.datasets.create.gridded.typing import DateList
 
-from ..source import Source
 from . import source_registry
+from .source import Source
 
 
 @source_registry.register("fdb")

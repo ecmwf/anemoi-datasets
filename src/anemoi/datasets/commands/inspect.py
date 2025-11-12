@@ -30,7 +30,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.use.gridded.stores import open_zarr
 from anemoi.datasets.use.gridded.stores import zarr_lookup
 
-from . import Command
+from .. import Command
 
 LOG = logging.getLogger(__name__)
 

@@ -16,20 +16,20 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.gridded.dataset import Dataset
-from anemoi.datasets.use.gridded.dataset import FullIndex
-from anemoi.datasets.use.gridded.dataset import Shape
-from anemoi.datasets.use.gridded.dataset import TupleIndex
-from anemoi.datasets.use.gridded.debug import Node
-from anemoi.datasets.use.gridded.debug import Source
-from anemoi.datasets.use.gridded.debug import debug_indexing
-from anemoi.datasets.use.gridded.forwards import Combined
-from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.gridded.indexing import expand_list_indexing
-from anemoi.datasets.use.gridded.indexing import index_to_slices
-from anemoi.datasets.use.gridded.indexing import update_tuple
-from anemoi.datasets.use.gridded.misc import _auto_adjust
-from anemoi.datasets.use.gridded.misc import _open
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import Dataset
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import FullIndex
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import Shape
+from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import TupleIndex
+from anemoi.datasets.use.griddedanemoi.datasets.data.debug import Node
+from anemoi.datasets.use.griddedanemoi.datasets.data.debug import Source
+from anemoi.datasets.use.griddedanemoi.datasets.data.debug import debug_indexing
+from anemoi.datasets.use.griddedanemoi.datasets.data.forwards import Combined
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import apply_index_to_slices_changes
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import expand_list_indexing
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import index_to_slices
+from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import update_tuple
+from anemoi.datasets.use.griddedanemoi.datasets.data.misc import _auto_adjust
+from anemoi.datasets.use.griddedanemoi.datasets.data.misc import _open
 
 LOG = logging.getLogger(__name__)
 
@@ -290,6 +290,30 @@ class Join(Combined):
             The metadata specific to the forwards subclass.
         """
         return {}
+
+    def origin(self, index):
+        assert (
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+        ), tuple
+
+        i = index[1]
+        for dataset in self.datasets:
+            if i < dataset.shape[1]:
+                return dataset.origin((index[0], i, index[2], index[3]))
+            i -= dataset.shape[1]
+
+        raise ValueError(f"Invalid index {index} {[d.shape for d in self.datasets]}")
+
+    def project(self, projection):
+        result = []
+        offset = 0
+
+        for dataset in self.datasets:
+            for p in projection.ensure_list():
+                result.append(dataset.project(p.offset(axis=1, amount=-offset)))
+            offset += dataset.shape[1]
+
+        return projection.list_or_single(result)
 
 
 def join_factory(args: tuple, kwargs: dict) -> Dataset:
