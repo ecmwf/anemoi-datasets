@@ -149,12 +149,13 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
             "pipe": [
                 {
                     "accumulate": {
+                        "period": 24,
+                        "data_accumulation_period": "1h",
                         "source": {
                             "grib-index": {
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
                                 "levtype": "sfc",
                                 "param": ["tp"],
-                                "accumulation_period": 3,
                             },
                         },
                     }

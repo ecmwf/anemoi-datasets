@@ -196,7 +196,7 @@ class IntervalsCollection:
     def todo(self):
         if self._todo is None:
             self._todo = set([p.time_request for p in self._intervals])
-            self._len = len(keys)
+            self._len = len(self._todo)
             self._done = set()
             assert self._len == len(self._todo), (self._len, len(self._todo))
 

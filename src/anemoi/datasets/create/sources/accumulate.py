@@ -30,7 +30,7 @@ from .legacy import LegacySource
 LOG = logging.getLogger(__name__)
 
 
-def _prep_request(request: dict[str, Any], interval_class: type[itv.IntervalsCollection]) -> dict[str, Any]:
+def _prep_request(request: dict[str, Any]) -> dict[str, Any]:
     request = deepcopy(request)
 
     param = request.pop("param")
@@ -61,7 +61,7 @@ class Accumulator:
 
     def __init__(
         self,
-        interval_class: type[itv.IntervalsCollection],
+        source_request: dict[str, Any],
         valid_date: datetime.datetime,
         user_accumulation_period: datetime.timedelta,
         data_accumulation_period: datetime.timedelta,
@@ -98,9 +98,10 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         # instantiate IntervalsCollection object
-        #if interval_class != itv.DefaultIntervalsCollection:
+        # if interval_class != itv.DefaultIntervalsCollection:
         #    LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
         #    data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
+        interval_class = itv.find_IntervalsCollection_class(source_request)
         self.interval_coll = interval_class(
             self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs
         )
@@ -239,10 +240,9 @@ def _compute_accumulations(
 
     """
 
-    # interval_coll class depends on data source ; split between Era-like interval collections and Default ones
-    interval_class = itv.find_IntervalsCollection_class(source_request)
+    print("💬 source_request:", source_request)
 
-    main_request, param, number, additional = _prep_request(source_request, interval_class)
+    main_request, param, number, additional = _prep_request(source_request)
 
     # building accumulators
     accumulators = []
@@ -255,7 +255,7 @@ def _compute_accumulations(
             for n in number:
                 accumulators.append(
                     Accumulator(
-                        interval_class,
+                        source_request,
                         valid_date,
                         user_accumulation_period=user_accumulation_period,
                         data_accumulation_period=data_accumulation_period,
@@ -274,7 +274,9 @@ def _compute_accumulations(
         for r in a.requests:
             r = {**main_request, **r}
             requests.append(r)
+            print(f"💬 Accumulator {a} needs request: {r}")
 
+    print(f"💬 Creating source '{source_name}' with {len(requests)} requests for accumulation")
     source = context.create_source(
         {
             source_name: dict(
@@ -330,7 +332,7 @@ class Accumulations2Source(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period,
-        data_accumulation_period="1h",
+        data_accumulation_period=None,
     ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
@@ -354,7 +356,9 @@ class Accumulations2Source(LegacySource):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         user_accumulation_period = frequency_to_timedelta(period)
-        data_accumulation_period = frequency_to_timedelta(data_accumulation_period)
+        data_accumulation_period = (
+            frequency_to_timedelta(data_accumulation_period) if data_accumulation_period is not None else None
+        )
 
         source_request = source
 
@@ -363,10 +367,6 @@ class Accumulations2Source(LegacySource):
 
         source_name, source_request = next(iter(source.items()))
         source_request = source_request.copy()
-        assert "param" in source_request, (
-            "param should be defined inside source for accumulate action",
-            source_request,
-        )
 
         return _compute_accumulations(
             context,
