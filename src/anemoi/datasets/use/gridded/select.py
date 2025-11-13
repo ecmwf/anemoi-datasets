@@ -224,17 +224,6 @@ class Select(Forwards):
         # return dict(indices=self.indices)
         return dict(reason=self.reason)
 
-    def forward_subclass_origin(self, index):
-        assert (
-            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
-        ), tuple
-
-        return self.dataset.origin((index[0], self.indices[index[1]], index[2], index[3]))
-
-    def project(self, projection):
-        projection = projection.from_indices(axis=1, indices=self.indices)
-        return self.dataset.project(projection)
-
 
 class Rename(Forwards):
     """Class to rename variables in a dataset."""

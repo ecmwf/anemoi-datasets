@@ -124,12 +124,6 @@ class Number(Forwards):
         """Returns metadata specific to the Number object."""
         return {}
 
-    def origin_transformation(self, variable, origins):
-        return {
-            "name": "number",
-            "config": {"members": self.members},
-        }
-
 
 class Ensemble(GivenAxis):
     """A class to represent an ensemble of datasets combined along a given axis."""

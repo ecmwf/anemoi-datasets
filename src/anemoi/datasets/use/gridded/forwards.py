@@ -240,9 +240,6 @@ class Forwards(Dataset):
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
-    def project(self, projection):
-        return self.forward.project(projection).add_transformation(self)
-
 
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""

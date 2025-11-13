@@ -16,20 +16,20 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import Dataset
-from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import FullIndex
-from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import Shape
-from anemoi.datasets.use.griddedanemoi.datasets.data.dataset import TupleIndex
-from anemoi.datasets.use.griddedanemoi.datasets.data.debug import Node
-from anemoi.datasets.use.griddedanemoi.datasets.data.debug import Source
-from anemoi.datasets.use.griddedanemoi.datasets.data.debug import debug_indexing
-from anemoi.datasets.use.griddedanemoi.datasets.data.forwards import Combined
-from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import expand_list_indexing
-from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import index_to_slices
-from anemoi.datasets.use.griddedanemoi.datasets.data.indexing import update_tuple
-from anemoi.datasets.use.griddedanemoi.datasets.data.misc import _auto_adjust
-from anemoi.datasets.use.griddedanemoi.datasets.data.misc import _open
+from anemoi.datasets.use.gridded.dataset import Dataset
+from anemoi.datasets.use.gridded.dataset import FullIndex
+from anemoi.datasets.use.gridded.dataset import Shape
+from anemoi.datasets.use.gridded.dataset import TupleIndex
+from anemoi.datasets.use.gridded.debug import Node
+from anemoi.datasets.use.gridded.debug import Source
+from anemoi.datasets.use.gridded.debug import debug_indexing
+from anemoi.datasets.use.gridded.forwards import Combined
+from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.use.gridded.indexing import expand_list_indexing
+from anemoi.datasets.use.gridded.indexing import index_to_slices
+from anemoi.datasets.use.gridded.indexing import update_tuple
+from anemoi.datasets.use.gridded.misc import _auto_adjust
+from anemoi.datasets.use.gridded.misc import _open
 
 LOG = logging.getLogger(__name__)
 
