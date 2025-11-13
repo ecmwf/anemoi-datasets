@@ -21,6 +21,10 @@
 
 The documentation can be found at https://anemoi-datasets.readthedocs.io/.
 
+## Contributing
+
+You can find information about contributing to Anemoi at our [Contribution page](https://anemoi.readthedocs.io/en/latest/contributing/contributing.html).
+
 ## Install
 
 Install via `pip` with:
