@@ -98,9 +98,9 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         # instantiate IntervalsCollection object
-        if interval_class != itv.DefaultIntervalsCollection:
-            LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
-            data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
+        #if interval_class != itv.DefaultIntervalsCollection:
+        #    LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
+        #    data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
         self.interval_coll = interval_class(
             self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs
         )
@@ -329,7 +329,7 @@ class Accumulations2Source(LegacySource):
         context: Any,
         dates: list[datetime.datetime],
         source: Any,
-        accumulation_period="1h",
+        period,
         data_accumulation_period="1h",
     ) -> Any:
         """Accumulation source callable function.
@@ -352,8 +352,8 @@ class Accumulations2Source(LegacySource):
 
         """
         if "accumulation_period" in source:
-            raise ValueError("'accumulation_period' should be define outside source for accumulate action")
-        user_accumulation_period = frequency_to_timedelta(accumulation_period)
+            raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
+        user_accumulation_period = frequency_to_timedelta(period)
         data_accumulation_period = frequency_to_timedelta(data_accumulation_period)
 
         source_request = source

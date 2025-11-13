@@ -597,7 +597,8 @@ def find_IntervalsCollection_class(request: dict[str, Any]) -> type[IntervalsCol
     """
     try:
         return {
-            ("ea", "oper"): EaOperIntervalsCollection,  # runs ok
+            ("ea", "oper"): EaOperIntervalsCollection,
+            ("ea", None): EaOperIntervalsCollection,
             ("ea", "enda"): EaEndaIntervalsCollection,
             ("rr", "oper"): RrOperIntervalsCollection,
             ("l5", "oper"): L5OperIntervalsCollection,
