@@ -68,19 +68,19 @@ class OdbSource(Source):
             List of column names - values in these columns will
             be spread across different values of the columns. For instance,
             "observed_value" and "quality_control_value".
+        kwargs : dict, optional
+            Additional keyword arguments.
 
-        Note: All columns not specified in "columns" and "values" will be
-            assumed to be "index" values (i.e. are the same within a given
-            observation group).
+        Note: All columns not specified in "pivot_columns" and "pivot_values"
+            will be assumed to be "index" values (i.e. are the same within a
+            given observation group).
+
         Note: Pivot values are named according to the unique values in the
             pivot columns. For instance, if
             `pivot_columns=["channel_number@body"]`
             with two unique channel numbers 1 and 2 that identify rows, and
             `pivot_values=["initial_obsvalue@body"]`, then the resulting columns
             will be named "observed_value_1" and "observed_value_2".
-
-        kwargs : dict, optional
-            Additional keyword arguments.
 
         """
         super().__init__(context)
@@ -140,26 +140,52 @@ def odb2df(
     """
     Read an ODB file using the given parameters and create a pandas DataFrame.
 
-    Parameters:
-    start (str): Start datetime (ISO8601 format)
-    end (str): End datetime (ISO8601 format)
-    path_str (str): Path to the ODB file
-    select (str): SQL SELECT statement excluding FROM clause and SELECT keyword
-    where (str): SQL WHERE clause excluding WHERE keyword
-    pivot_columns (list, optional):
+    Parameters
+    ----------
+    start : str
+        Start datetime in ISO8601 format.
+    end : str
+        End datetime in ISO8601 format.
+    path_str : str
+        Path to the ODB file.
+    select : str, optional
+        SQL SELECT statement excluding the FROM clause and SELECT keyword.
+    where : str, optional
+        SQL WHERE clause excluding the WHERE keyword.
+    pivot_columns : list, optional
         List of column names - values in these columns will be used to
         define the new columns after the reshaping.
         Typically these identify entries in `pivot_values` as belonging to
         a particular observation type: for instance "channel_number" or
         "varno".
-    pivot_values (list, optional):
+    pivot_values : list, optional
         List of column names - values in these columns will
         be spread across different values of the columns. For instance,
         "observed_value" and "quality_control_value".
-    keep_temp_odb (bool): Whether to keep the intermediate ODB file.
+    flavour : dict, optional
+        Naming of the latitude, longitude, date and time columns. Defaults to
+        {"latitude column name": "lat",
+        "longitude column name": "lon",
+        "date column name": "date",
+        "time column name": "time"}.
+    keep_temp_odb : bool, optional
+        Whether to keep the intermediate ODB file.
 
-    Returns:
-    pandas.DataFrame: DataFrame containing the parsed data.
+    Note: All columns not specified in "pivot_columns" and "pivot_values"
+        will be assumed to be "index" values (i.e. are the same within a
+        given observation group).
+
+    Note: Pivot values are named according to the unique values in the
+        pivot columns. For instance, if
+        `pivot_columns=["channel_number@body"]`
+        with two unique channel numbers 1 and 2 that identify rows, and
+        `pivot_values=["initial_obsvalue@body"]`, then the resulting columns
+        will be named "observed_value_1" and "observed_value_2".
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing the parsed data.
     """
     path = Path(path_str)
 
@@ -200,11 +226,15 @@ def iso8601_to_datetime(iso8601_str: str) -> str:
     """
     Convert ISO8601 datetime string to YYYYMMDDHHMMSS string.
 
-    Parameters:
-    iso8601_str (str): ISO8601 datetime string.
+    Parameters
+    ----------
+    iso8601_str : str
+        ISO8601 datetime string.
 
-    Returns:
-    str: Datetime string in YYYYMMDDHHMMSS format.
+    Returns
+    -------
+    str
+        Datetime string in YYYYMMDDHHMMSS format.
     """
     dt = datetime.fromisoformat(iso8601_str)
     return dt.strftime("%Y%m%d%H%M%S")
@@ -221,17 +251,25 @@ def odb_sql_str(
     """
     Construct an SQL query string for querying the ODB file.
 
-    Parameters:
-    start_datetime (str): Start datetime in YYYYMMDDHHMMSS format
-    end_datetime (str): End datetime in YYYYMMDDHHMMSS format
-    select (str): SQL SELECT statement excluding FROM clause and SELECT keyword
-    where (str): SQL WHERE clause excluding WHERE keyword
-    flavour (dict): Dictionary containing specific options for the flavour.
-    required_columns (list): List of required columns to include in the SELECT
-        statement.
+    Parameters
+    ----------
+    start_datetime : str
+        Start datetime in YYYYMMDDHHMMSS format.
+    end_datetime : str
+        End datetime in YYYYMMDDHHMMSS format.
+    select : str
+        SQL SELECT statement excluding the FROM clause and SELECT keyword.
+    where : str
+        SQL WHERE clause excluding the WHERE keyword.
+    flavour : dict
+        Dictionary containing specific options for the flavour.
+    required_columns : list, optional
+        List of required columns to include in the SELECT statement.
 
-    Returns:
-    str: Constructed SQL query string.
+    Returns
+    -------
+    str
+        Constructed SQL query string.
     """
     date_col = flavour["date column name"]
     time_col = flavour["time column name"]
@@ -296,17 +334,25 @@ def subselect_odb_using_odc_sql(
     output_odb_path: Path,
     sql_query_string: str,
 ):
-    """Subselect ODB data based on an SQL query string using ODC command line tool and
-    write to a new ODB file.
+    """
+    Subselect ODB data based on an SQL query string using the ODC command-line tool
+    and write to a new ODB file.
 
-    Args:
-        input_odb_path (Path): Path to input ODB file.
-        output_odb_path (Path): Path to output ODB file.
-        sql_query_string (str): SQL query string for ODC.
+    Parameters
+    ----------
+    input_odb_path : Path
+        Path to the input ODB file.
+    output_odb_path : Path
+        Path to the output ODB file.
+    sql_query_string : str
+        SQL query string for ODC.
 
-    Raises:
-        FileNotFoundError: If the input ODB file does not exist.
-        RuntimeError: If the ODC command in subprocess fails.
+    Raises
+    ------
+    FileNotFoundError
+        If the input ODB file does not exist.
+    RuntimeError
+        If the ODC command in subprocess fails.
     """
     if not Path(input_odb_path).is_file():
         raise FileNotFoundError(f"Input ODB file not found: {input_odb_path}")
@@ -341,32 +387,55 @@ def subselect_odb_using_odc_sql(
 
 def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.DataFrame:
     """
-    Reshape the dataframe, organised by the values in particular columns.
-    For instance, the following dataframe:
-    A  B
-    1  0.5
-    2  0.1
-    3  0.6
-    1  0.3
-    3  0.7
-    Using columns=A and values=B, would be reshaped to become:
-    B_1  B_2  B_3
-    0.5  0.1  0.6
-    0.3  NaN  0.7
+    Reshape the DataFrame, organized by the values in particular columns.
 
-    Parameters:
-        df (pandas.DataFrame): Input DataFrame to pivot.
-        columns (list): List of column names - values in these columns will
-            be used to define the new columns after the reshaping. For
-            instance, channel number or varno.
-        values (list): List of column names - values in these columns will
-            be spread across different values of the columns. For instance,
-            observed value, quality control values.
-        Note: all columns not specified in "columns" and "values" will be
-            assumed to be "index" values (i.e. are the same within a given
-            observation group).
-    Returns:
-        pandas.DataFrame: Pivoted DataFrame.
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame to pivot.
+    values : list
+        List of column names. Values in these columns will be spread across
+        different values of the columns, such as observed value or quality
+        control values.
+    columns : list
+        List of column names. Values in these columns will be used to define
+        the new columns after reshaping, such as channel number or varno.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Pivoted DataFrame.
+
+    Notes
+    -----
+    The function reshapes the DataFrame based on the specified `columns` and
+    `values`. All columns not specified in `columns` and `values` are assumed
+    to be "index" values (i.e., they remain the same within a given observation
+    group).
+
+    For example, given the following DataFrame:
+
+    +---+---+
+    | A | B |
+    +---+---+
+    | 1 | 0.5 |
+    | 2 | 0.1 |
+    | 3 | 0.6 |
+    | 1 | 0.3 |
+    | 3 | 0.7 |
+    +---+---+
+
+    Using `columns=["A"]` and `values=["B"]`, the reshaped DataFrame would be:
+
+    +-----+-----+-----+
+    | B_1 | B_2 | B_3 |
+    +-----+-----+-----+
+    | 0.5 | 0.1 | 0.6 |
+    | 0.3 | NaN | 0.7 |
+    +-----+-----+-----+
+
+    The column names in the resulting DataFrame are flattened to include the
+    original column name and the unique values from the `columns` parameter.
     """
     # Calculate the index variables, based on all variables not in columns or values.
     indices = list(filter(lambda a: a not in values + columns, df.columns))
