@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.gridded import creator_factory
+from anemoi.datasets.create.tasks import task_factory
 
 
 class TestingContext:
@@ -45,8 +45,6 @@ def create_dataset(
         The path to the created dataset.
     """
 
-    from anemoi.datasets.create.tasks import task_factory
-
     if isinstance(config, dict):
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml")
         yaml.dump(config, temp_file)
@@ -61,9 +59,9 @@ def create_dataset(
     task_factory("patch", path=output).run()
 
     if delta is not None:
-        creator_factory("init_additions", path=output, delta=delta).run()
-        creator_factory("load_additions", path=output, delta=delta).run()
-        creator_factory("finalise_additions", path=output, delta=delta).run()
+        task_factory("init_additions", path=output, delta=delta).run()
+        task_factory("load_additions", path=output, delta=delta).run()
+        task_factory("finalise_additions", path=output, delta=delta).run()
 
     task_factory("cleanup", path=output).run()
 

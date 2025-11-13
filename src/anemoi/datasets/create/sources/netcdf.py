@@ -12,34 +12,30 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from . import source_registry
-from .legacy import LegacySource
-from .xarray import load_many
+from anemoi.datasets.create.sources.legacy import legacy_source
+from anemoi.datasets.create.sources.xarray import load_many
 
 
-@source_registry.register("netcdf")
-class NetCDFSource(LegacySource):
+@legacy_source(__file__)
+def execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Execute the loading of multiple NetCDF files.
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-        """Execute the loading of multiple NetCDF files.
+    Parameters
+    ----------
+    context : object
+        The context in which the function is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    path : str
+        Path to the directory containing the NetCDF files.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments.
 
-        Parameters
-        ----------
-        context : object
-            The context in which the function is executed.
-        dates : list
-            List of dates for which data is to be loaded.
-        path : str
-            Path to the directory containing the NetCDF files.
-        *args : tuple
-            Additional positional arguments.
-        **kwargs : dict
-            Additional keyword arguments.
-
-        Returns
-        -------
-        object
-            The loaded data.
-        """
-        return load_many("📁", context, dates, path, *args, **kwargs)
+    Returns
+    -------
+    object
+        The loaded data.
+    """
+    return load_many("📁", context, dates, path, *args, **kwargs)

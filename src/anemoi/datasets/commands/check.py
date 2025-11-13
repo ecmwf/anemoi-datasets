@@ -13,9 +13,8 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.gridded.check import DatasetName
-
-from .. import Command
+from anemoi.datasets.commands import Command
+from anemoi.datasets.create.check import DatasetName
 
 LOG = logging.getLogger(__name__)
 
@@ -90,7 +89,7 @@ class Check(Command):
 
     def _check_zarr(self, zarr: str) -> None:
 
-        from anemoi.datasets.misc.check import check_zarr
+        from anemoi.datasets.check import check_zarr
 
         check_zarr(zarr)
 

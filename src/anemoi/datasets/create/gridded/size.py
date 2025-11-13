@@ -7,41 +7,42 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-
 import logging
-import os
+from typing import Any
 
-import tqdm
-from anemoi.utils.humanize import bytes_to_human
+from anemoi.datasets import open_dataset
+
+from ..gridded.tasks import FieldTask
 
 LOG = logging.getLogger(__name__)
 
 
-def compute_directory_sizes(path: str) -> dict[str, int] | None:
-    """Computes the total size and number of files in a directory.
+class Size(FieldTask):
+    """A class to compute the size of a dataset."""
 
-    Parameters
-    ----------
-    path : str
-        The path to the directory.
+    def __init__(self, path: str, **kwargs: Any):
+        """Initialize a Size instance.
 
-    Returns
-    -------
-    dict of str to int or None
-        A dictionary with the total size and number of files, or None if the path is not a directory.
-    """
-    if not os.path.isdir(path):
-        return None
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        """
+        super().__init__(path)
 
-    size, n = 0, 0
-    bar = tqdm.tqdm(iterable=os.walk(path), desc=f"Computing size of {path}")
-    for dirpath, _, filenames in bar:
-        for filename in filenames:
-            file_path = os.path.join(dirpath, filename)
-            size += os.path.getsize(file_path)
-            n += 1
+    def run(self) -> None:
+        """Run the size computation."""
+        from anemoi.datasets.create.size import compute_directory_sizes
 
-    LOG.info(f"Total size: {bytes_to_human(size)}")
-    LOG.info(f"Total number of files: {n}")
+        metadata = compute_directory_sizes(self.path)
+        self.update_metadata(**metadata)
 
-    return dict(total_size=size, total_number_of_files=n)
+        # Look for constant fields
+        ds = open_dataset(self.path)
+        constants = ds.computed_constant_fields()
+
+        variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
+        for k in constants:
+            variables_metadata[k]["constant_in_time"] = True
+
+        self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)

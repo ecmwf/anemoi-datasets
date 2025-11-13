@@ -11,42 +11,41 @@ from typing import Any
 
 from earthkit.data import from_source
 
-from . import source_registry
-from .legacy import LegacySource
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 
-@source_registry.register("constants")
-class ConstantsSource(LegacySource):
+@legacy_source(__file__)
+def constants(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:
+    """Deprecated function to retrieve constants data.
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], template: dict[str, Any], param: str) -> Any:
-        """Deprecated function to retrieve constants data.
+    Parameters
+    ----------
+    context : Any
+        The context object for tracing.
+    dates : list of str
+        List of dates for which data is required.
+    template : dict of str to Any
+        Template dictionary for the data source.
+    param : str
+        Parameter to retrieve.
 
-        Parameters
-        ----------
-        context : Any
-            The context object for tracing.
-        dates : list of str
-            List of dates for which data is required.
-        template : dict of str to Any
-            Template dictionary for the data source.
-        param : str
-            Parameter to retrieve.
+    Returns
+    -------
+    Any
+        Data retrieved from the source.
+    """
+    from warnings import warn
 
-        Returns
-        -------
-        Any
-            Data retrieved from the source.
-        """
-        from warnings import warn
+    warn(
+        "The source `constants` is deprecated, use `forcings` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    context.trace("✅", f"from_source(constants, {template}, {param}")
+    if len(template) == 0:
+        raise ValueError("Forcings template is empty.")
 
-        warn(
-            "The source `constants` is deprecated, use `forcings` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        context.trace("✅", f"from_source(constants, {template}, {param}")
-        if len(template) == 0:
-            raise ValueError("Forcings template is empty.")
+    return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
 
-        return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
+
+execute: Any = constants

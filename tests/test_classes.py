@@ -28,7 +28,7 @@ def zarr_tests(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with patch("anemoi.datasets.use.gridded.stores.zarr_lookup", _tests_zarrs):
+        with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", _tests_zarrs):
             return func(*args, **kwargs)
 
     return wrapper
@@ -43,9 +43,9 @@ def _test_dataset(ds, variables=None):
             ds.variables,
         )
 
-    for p in ds.components():
-        print(p)
-        print(p.origins())
+    # for p in ds.components():
+    #     print(p)
+    #     print(p.origins())
 
 
 not_ready = pytest.mark.skip(reason="Not ready yet")
@@ -66,6 +66,7 @@ def test_class_complement_none():
 @skip_if_offline
 @zarr_tests
 def test_class_complement_nearest_1():
+
     ds = open_dataset(
         complement="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         source="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",

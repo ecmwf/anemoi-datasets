@@ -141,9 +141,9 @@ class ObservationsZarr(ObservationsBase):
         if isinstance(dataset, zarr.hierarchy.Group):
             dataset = dataset._store.path
 
-        from anemoi.datasets.use.gridded.stores import zarr_lookup
+        from anemoi.datasets.use.gridded.stores import dataset_lookup
 
-        dataset = zarr_lookup(dataset)
+        dataset = dataset_lookup(dataset)
         self.path = dataset
         assert self._probe_attributes["is_observations"], f"Expected observations dataset, got {self.path}"
 
@@ -179,7 +179,7 @@ class ObservationsZarr(ObservationsBase):
         # last_window_end must be the end of the time window of the last item
         last_window_end = int(end.strftime("%Y%m%d%H%M%S"))
 
-        from anemoi.datasets.use.tabular.observations.legacy_obs_dataset import ObsDataset
+        from anemoi.datasets.use.gridded.tabular.observations.legacy_obs_dataset import ObsDataset
 
         args = [self.path, first_window_begin, last_window_end]
         kwargs = dict(

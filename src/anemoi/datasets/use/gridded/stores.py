@@ -23,7 +23,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.gridded import MissingDateError
+from anemoi.datasets import MissingDateError
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.dataset import Shape
@@ -101,7 +101,7 @@ class S3Store(ReadOnlyStore):
         target = self.url + "/" + key
 
         try:
-            return get_object(target)
+            return get_object(target).bytes()
         except FileNotFoundError:
             raise KeyError(target)
 
@@ -223,7 +223,7 @@ class Zarr(Dataset):
         """Create a Zarr dataset from a name."""
         if name.endswith(".zip") or name.endswith(".zarr"):
             return Zarr(name)
-        return Zarr(zarr_lookup(name))
+        return Zarr(dataset_lookup(name))
 
     def __len__(self) -> int:
         """Return the length of the dataset."""
@@ -540,10 +540,6 @@ class ZarrWithMissingDates(Zarr):
 QUIET = set()
 
 
-def zarr_lookup(*args, **kwargs) -> Optional[str]:
-    return dataset_lookup(*args, **kwargs)
-
-
 def dataset_lookup(name: str, fail: bool = True) -> Optional[str]:
     """Look up a zarr dataset by name."""
 
@@ -581,7 +577,7 @@ def dataset_lookup(name: str, fail: bool = True) -> Optional[str]:
         tried.append(full)
         try:
 
-            from anemoi.datasets.use.tabular.records import open_records_dataset
+            from anemoi.datasets.use.gridded.records import open_records_dataset
 
             z = open_records_dataset(full)
             if z is not None:

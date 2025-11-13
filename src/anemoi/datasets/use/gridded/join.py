@@ -14,6 +14,7 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+import rich
 from numpy.typing import NDArray
 
 from anemoi.datasets.use.gridded.dataset import Dataset
@@ -174,6 +175,8 @@ class Join(Combined):
                 LOG.warning("Dataset %r completely overridden.", d)
 
         from anemoi.datasets.use.gridded.select import Select
+
+        rich.print("Overlaying join with", variables, len(indices), [d.shape for d in self.datasets])
 
         return Select(self, indices, {"overlay": variables})
 

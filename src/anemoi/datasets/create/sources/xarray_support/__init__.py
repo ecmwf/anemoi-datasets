@@ -15,11 +15,9 @@ import earthkit.data as ekd
 import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
+from anemoi.datasets.create.sources.legacy import legacy_source
 from anemoi.datasets.create.sources.patterns import iterate_patterns
-
-from .. import source_registry
-from ..legacy import LegacySource
-from .fieldlist import XarrayFieldList
+from anemoi.datasets.create.sources.xarray_support.fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
 
@@ -153,30 +151,26 @@ def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern:
     return MultiFieldList(result)
 
 
-@source_registry.register("xarray")
-class LegacyXarraySource(LegacySource):
-    name = "xarray"
+@legacy_source("xarray")
+def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Executes the loading of datasets.
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-        """Executes the loading of datasets.
+    Parameters
+    ----------
+    context : Any
+        Context object.
+    dates : List[str]
+        List of dates.
+    url : str
+        URL pattern for loading datasets.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
 
-        Parameters
-        ----------
-        context : Any
-            Context object.
-        dates : List[str]
-            List of dates.
-        url : str
-            URL pattern for loading datasets.
-        *args : Any
-            Additional arguments.
-        **kwargs : Any
-            Additional keyword arguments.
-
-        Returns
-        -------
-        ekd.FieldList
-            The loaded datasets.
-        """
-        return load_many("🌐", context, dates, url, *args, **kwargs)
+    Returns
+    -------
+    ekd.FieldList
+        The loaded datasets.
+    """
+    return load_many("🌐", context, dates, url, *args, **kwargs)

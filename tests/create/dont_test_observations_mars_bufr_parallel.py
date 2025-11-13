@@ -11,13 +11,14 @@ import datetime
 import logging
 
 import pandas as pd
-from bufr2df import bufr2df
+
+# from bufr2df_parallel import bufr2df_parallel
 from earthkit.data import from_source
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
-from anemoi.datasets.use.records import Interval
-from anemoi.datasets.use.records import window_from_str
+from anemoi.datasets.use.gridded.records import Interval
+from anemoi.datasets.use.gridded.records import window_from_str
 
 log = logging.getLogger(__name__)
 
@@ -108,13 +109,14 @@ source = MarsObsSource(
     },
     pre_process_dict={
         # "target": odb2df.process_odb,
+        "nproc": 12,
         "per_report": {
             "latitude": "latitudes",
             "longitude": "longitudes",
             "radarRainfallIntensity": "obsvalue_precip1h_0",
         },
     },
-    process_func=bufr2df,
+    # process_func=bufr2df_parallel,
 )
 filter = ColFilter("obsvalue_precip1h_0")
 

@@ -14,8 +14,8 @@ import pandas as pd
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
-from anemoi.datasets.use.records import Interval
-from anemoi.datasets.use.records import window_from_str
+from anemoi.datasets.use.tabular.windows import Interval
+from anemoi.datasets.use.tabular.windows import window_from_str
 
 
 class DummpySource(ObservationsSource):

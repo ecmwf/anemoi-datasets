@@ -46,9 +46,9 @@ def chain(tasks: list) -> type:
     return Chain
 
 
-def task_factory(name: str, trace: str | None = None, **kwargs):
+def task_factory(name: str, fields: bool = True, trace: str | None = None, **kwargs):
 
-    if True:
+    if fields:
         from anemoi.datasets.create.gridded.tasks import TaskCreator
 
         creator = TaskCreator()

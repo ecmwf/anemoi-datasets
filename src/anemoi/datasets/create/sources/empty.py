@@ -12,29 +12,25 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from . import source_registry
-from .legacy import LegacySource
+from anemoi.datasets.create.sources.legacy import legacy_source
 
 
-@source_registry.register("empty")
-class EmptySource(LegacySource):
+@legacy_source(__file__)
+def execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
+    """Executes the loading of an empty data source.
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
-        """Executes the loading of an empty data source.
+    Parameters
+    ----------
+    context : object
+        The context in which the function is executed.
+    dates : list
+        List of dates for which data is to be loaded.
+    **kwargs : dict
+        Additional keyword arguments.
 
-        Parameters
-        ----------
-        context : object
-            The context in which the function is executed.
-        dates : list
-            List of dates for which data is to be loaded.
-        **kwargs : dict
-            Additional keyword arguments.
-
-        Returns
-        -------
-        ekd.FieldList
-            Loaded empty data source.
-        """
-        return ekd.from_source("empty")
+    Returns
+    -------
+    ekd.FieldList
+        Loaded empty data source.
+    """
+    return ekd.from_source("empty")

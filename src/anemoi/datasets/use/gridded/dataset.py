@@ -178,8 +178,6 @@ class Dataset(ABC, Sized):
             padding = kwargs.pop("padding", None)
 
             if padding:
-                if padding != "empty":
-                    raise ValueError(f"Only 'empty' padding is supported, got {padding=}")
                 from anemoi.datasets.use.gridded.padded import Padded
 
                 frequency = kwargs.pop("frequency", self.frequency)
@@ -246,7 +244,7 @@ class Dataset(ABC, Sized):
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
-            from anemoi.datasets.use.gridded import open_dataset
+            from anemoi.datasets.use import open_dataset
             from anemoi.datasets.use.gridded.statistics import Statistics
 
             statistics = kwargs.pop("statistics")
@@ -300,12 +298,6 @@ class Dataset(ABC, Sized):
 
             if skip_missing_dates:
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
-
-        if "rolling_average" in kwargs:
-            from anemoi.datasets.use.gridded.rolling_average import RollingAverage
-
-            rolling_average = kwargs.pop("rolling_average")
-            return RollingAverage(self, rolling_average)._subset(**kwargs).mutate()
 
         if "interpolate_frequency" in kwargs:
             from anemoi.datasets.use.gridded.interpolate import InterpolateFrequency
@@ -1026,7 +1018,7 @@ class Dataset(ABC, Sized):
             print(p.origins())
 
     def components(self) -> Any:
-        from anemoi.datasets.use.components import Projection
+        from anemoi.datasets.use.gridded.components import Projection
 
         slices = tuple(slice(0, i, 1) for i in self.shape)
         return self.project(Projection(slices))

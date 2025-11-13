@@ -9,17 +9,13 @@
 
 from copy import deepcopy
 from functools import cached_property
-from typing import TYPE_CHECKING
 from typing import Any
-
-if TYPE_CHECKING:
-    from anemoi.datasets.create.input.action import Recipe
 
 
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: dict | list, **kwargs: Any) -> None:
+    def __init__(self, config: dict, data_sources: dict | list) -> None:
         """Initialize the InputBuilder.
 
         Parameters
@@ -31,12 +27,11 @@ class InputBuilder:
         **kwargs : Any
             Additional keyword arguments.
         """
-        self.kwargs = kwargs
         self.config = deepcopy(config)
         self.data_sources = deepcopy(dict(data_sources=data_sources))
 
     @cached_property
-    def action(self) -> "Recipe":
+    def action(self) -> Any:
         """Returns the action object based on the configuration."""
         from anemoi.datasets.create.input.action import Recipe
         from anemoi.datasets.create.input.action import action_factory
@@ -46,11 +41,13 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument) -> Any:
+    def select(self, context, argument) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
+        context : Any
+            The context for the data selection.
         argument : GroupOfDates
             Group of dates to select data for.
 
@@ -59,10 +56,15 @@ class InputBuilder:
         Any
             Selected data.
         """
-        from anemoi.datasets.create.gridded.context import GriddedContext
+        # TODO: move me elsewhere
 
-        context = GriddedContext(argument, **self.kwargs)
-        return context.create_result(self.action(context, argument))
+        return context.create_result(
+            argument,
+            self.action(context, argument),
+        )
+
+    def python_code(self, code):
+        return self.action.python_code(code)
 
 
 def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:

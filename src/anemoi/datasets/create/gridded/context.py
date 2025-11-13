@@ -8,26 +8,31 @@
 # nor does it submit to any jurisdiction.
 
 
+import logging
 from typing import Any
 
+from anemoi.transform.fields import new_field_with_metadata
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
-from anemoi.datasets.create.gridded.result import GriddedResult
 from anemoi.datasets.create.input.context import Context
 
+LOG = logging.getLogger(__name__)
 
-class GriddedContext(Context):
+
+class FieldContext(Context):
 
     def __init__(
         self,
         /,
-        argument: Any,
         order_by: str,
         flatten_grid: bool,
         remapping: dict[str, Any],
         use_grib_paramid: bool,
     ) -> None:
-        super().__init__(argument)
+
+        super().__init__()
+
         self.order_by = order_by
         self.flatten_grid = flatten_grid
         self.remapping = build_remapping(remapping)
@@ -45,10 +50,29 @@ class GriddedContext(Context):
     def filter_argument(self, argument: Any) -> Any:
         return argument
 
-    def create_result(self, data):
-        return GriddedResult(self, data)
+    def create_result(self, argument, data):
+        from anemoi.datasets.create.gridded.result import FieldResult
+
+        return FieldResult(self, argument, data)
 
     def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
         from anemoi.datasets.dates.groups import GroupOfDates
 
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
+
+    def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
+
+        origin = action.origin()
+
+        result = []
+        for fs in data:
+            previous = fs.metadata("anemoi_origin", default=None)
+            fall_through = fs.metadata("anemoi_fall_through", default=False)
+            if fall_through:
+                # The field has pass unchanges in a filter
+                result.append(fs)
+            else:
+                anemoi_origin = origin.combine(previous, action, action_arguments)
+                result.append(new_field_with_metadata(fs, anemoi_origin=anemoi_origin))
+
+        return new_fieldlist_from_list(result)

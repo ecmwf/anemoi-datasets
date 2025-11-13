@@ -8,25 +8,17 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..source import Source
-from . import source_registry
+from anemoi.datasets.create.source import ObservationsSource
+from anemoi.datasets.create.sources import source_registry
 
 
 @source_registry.register("csv")
-class CSVSource(Source):
+class CSVSource(ObservationsSource):
     """A source that reads data from a CSV file."""
 
     emoji = "📄"  # For tracing
 
-    def __init__(
-        self,
-        context: any,
-        path: str,
-        columns: list = None,
-        flavour: dict = None,
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, context: any, path: str, *args: tuple, **kwargs: dict):
         """Initialise the CSVSource.
 
         Parameters
@@ -35,36 +27,16 @@ class CSVSource(Source):
             The context for the data source.
         filepath : str
             The path to the CSV file.
-        columns : list, optional
-            The list of columns to read from the CSV file.
         *args : tuple
             Additional positional arguments.
         **kwargs : dict
             Additional keyword arguments.
         """
         super().__init__(context, *args, **kwargs)
-
         self.path = path
-        self.columns = columns
-
-        self.flavour = {
-            "latitude": "latitude",
-            "longitude": "longitude",
-            "time": "time",
-        }
-
-        if flavour is not None:
-            self.flavour.update(flavour)
 
     def execute(self, dates):
         import pandas as pd
 
-        if self.columns is None:
-            frame = pd.read_csv(self.path)
-        else:
-            frame = pd.read_csv(self.path, usecols=self.columns)
-
-        start, end = dates.window.start_date, dates.window.end_date
-        mask = (frame[self.flavour["time"]] >= start) & (frame[self.flavour["time"]] <= end)
-        frame = frame.loc[mask]
-        return frame
+        frame = pd.read_csv(self.path)
+        print(frame)

@@ -11,10 +11,8 @@ from copy import deepcopy
 from typing import Any
 
 from anemoi.datasets.compute.recentre import recentre as _recentre
-
-from . import source_registry
-from .legacy import LegacySource
-from .mars import mars
+from anemoi.datasets.create.sources.legacy import legacy_source
+from anemoi.datasets.create.sources.mars import mars
 
 
 def to_list(x: list | tuple | str) -> list:
@@ -106,43 +104,43 @@ def load_if_needed(context: Any, dates: Any, dict_or_dataset: dict | Any) -> Any
     return dict_or_dataset
 
 
-@source_registry.register("recentre")
-class RecentreSource(LegacySource):
+@legacy_source(__file__)
+def recentre(
+    context: Any,
+    dates: Any,
+    members: dict | Any,
+    centre: dict | Any,
+    alpha: float = 1.0,
+    remapping: dict = {},
+    patches: dict = {},
+) -> Any:
+    """Recentres the members dataset using the centre dataset.
 
-    @staticmethod
-    def _execute(
-        context: Any,
-        dates: Any,
-        members: dict | Any,
-        centre: dict | Any,
-        alpha: float = 1.0,
-        remapping: dict = {},
-        patches: dict = {},
-    ) -> Any:
-        """Recentres the members dataset using the centre dataset.
+    Parameters
+    ----------
+    context : Any
+        The context for recentering.
+    dates : Any
+        The dates for recentering.
+    members : Union[dict, Any]
+        The members dataset or request dictionary.
+    centre : Union[dict, Any]
+        The centre dataset or request dictionary.
+    alpha : float, optional
+        The alpha value for recentering. Defaults to 1.0.
+    remapping : dict, optional
+        The remapping dictionary. Defaults to {}.
+    patches : dict, optional
+        The patches dictionary. Defaults to {}.
 
-        Parameters
-        ----------
-        context : Any
-            The context for recentering.
-        dates : Any
-            The dates for recentering.
-        members : Union[dict, Any]
-            The members dataset or request dictionary.
-        centre : Union[dict, Any]
-            The centre dataset or request dictionary.
-        alpha : float, optional
-            The alpha value for recentering. Defaults to 1.0.
-        remapping : dict, optional
-            The remapping dictionary. Defaults to {}.
-        patches : dict, optional
-            The patches dictionary. Defaults to {}.
+    Returns
+    -------
+    Any
+        The recentred dataset.
+    """
+    members = load_if_needed(context, dates, members)
+    centre = load_if_needed(context, dates, centre)
+    return _recentre(members=members, centre=centre, alpha=alpha)
 
-        Returns
-        -------
-        Any
-            The recentred dataset.
-        """
-        members = load_if_needed(context, dates, members)
-        centre = load_if_needed(context, dates, centre)
-        return _recentre(members=members, centre=centre, alpha=alpha)
+
+execute = recentre

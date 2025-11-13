@@ -154,6 +154,7 @@ def test_open_with_window():
     _test(ds, nb_dates=8)
 
 
+@pytest.mark.skipif(not os.path.exists(TEST_DATASET), reason="File not found")
 def test_open_bad_window():
     subset = dict(end="2018-11-30")
     with pytest.raises(ValueError, match="No dates left after rewindowing"):

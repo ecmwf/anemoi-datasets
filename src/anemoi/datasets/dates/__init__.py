@@ -27,13 +27,15 @@ from anemoi.utils.humanize import print_dates
 def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
-    Args:
-        x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
+    Parameters
+    ----------
+    x : Union[str, List[Any], Tuple[Any, ...]]
+        A date range string or list/tuple of dates.
 
-    Returns
-    -------
-    Iterator[datetime.datetime]
-        An iterator of datetime objects.
+    Yields
+    ------
+    datetime.datetime
+        Individual datetime objects.
     """
 
     if isinstance(x, (list, tuple)):

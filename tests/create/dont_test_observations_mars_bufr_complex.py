@@ -11,13 +11,14 @@ import datetime
 import logging
 
 import pandas as pd
-from bufr2df_parallel import bufr2df_parallel
+
+# from bufr2df_parallel import bufr2df_parallel
 from earthkit.data import from_source
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
-from anemoi.datasets.use.records import Interval
-from anemoi.datasets.use.records import window_from_str
+from anemoi.datasets.use.gridded.records import Interval
+from anemoi.datasets.use.gridded.records import window_from_str
 
 log = logging.getLogger(__name__)
 
@@ -95,29 +96,47 @@ class ColFilter(ObservationsFilter):
         return self._check(df)
 
 
-dates = [datetime.datetime(2025, 1, 1, 0, 0) + datetime.timedelta(hours=i * 8) for i in range(3)]
+dates = [datetime.datetime(2015, 10, 1, 0, 0) + datetime.timedelta(hours=i * 8) for i in range(3)]
 
 source = MarsObsSource(
     request_dict={
         "class": "od",
         "expver": "0001",
-        "stream": "LWDA",
+        "stream": "DCDA/LWDA",
         "type": "ai",
-        "obstype": "nexrad_rr",
+        "obstype": "ssmis",
         "times": "00/06/12/18",
     },
     pre_process_dict={
         # "target": odb2df.process_odb,
         "nproc": 12,
+        "prefilter_msg_header": {"satelliteID": 286.0},
+        "datetime_position_prefix": "#1#",
         "per_report": {
-            "latitude": "latitudes",
-            "longitude": "longitudes",
-            "radarRainfallIntensity": "obsvalue_precip1h_0",
+            "satelliteID": "satelliteID",
+            "#1#latitude": "latitudes",
+            "#1#longitude": "longitudes",
+            # bearingOrAzimuth: azimuth
+            "fieldOfViewNumber": "fov_num",
+            "#9#brightnessTemperature": "obsvalue_rawbt_9",
+            "#10#brightnessTemperature": "obsvalue_rawbt_10",
+            "#11#brightnessTemperature": "obsvalue_rawbt_11",
+            "#12#brightnessTemperature": "obsvalue_rawbt_12",
+            "#13#brightnessTemperature": "obsvalue_rawbt_13",
+            "#14#brightnessTemperature": "obsvalue_rawbt_14",
+            "#15#brightnessTemperature": "obsvalue_rawbt_15",
+            "#16#brightnessTemperature": "obsvalue_rawbt_16",
+            "#17#brightnessTemperature": "obsvalue_rawbt_17",
+            "#18#brightnessTemperature": "obsvalue_rawbt_18",
+        },
+        "filters": {
+            "longitudes": "lambda x: np.isfinite(x)",
+            "latitudes": "lambda x: np.isfinite(x)",
         },
     },
-    process_func=bufr2df_parallel,
+    # process_func=bufr2df_parallel,
 )
-filter = ColFilter("obsvalue_precip1h_0")
+filter = ColFilter("obsvalue_rawbt_9")
 
 for d in dates:
     window = window_from_str("(-5h, 1h]").to_interval(d)
@@ -126,3 +145,4 @@ for d in dates:
     d = filter(d)
     print(window)
     print(d)
+    print(d["satelliteID"].unique())

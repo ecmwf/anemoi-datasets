@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.misc.grids import cropping_mask
+from anemoi.datasets.grids import cropping_mask
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.dataset import Shape
@@ -200,6 +200,12 @@ class Thinning(Masked):
         """
         return dict(thinning=self.thinning, method=self.method)
 
+    def origin_transformation(self, variable, origins):
+        return {
+            "name": "thinning",
+            "config": dict(thinning=self.thinning, method=self.method),
+        }
+
 
 class Cropping(Masked):
     """A class to represent a cropped dataset."""
@@ -214,7 +220,7 @@ class Cropping(Masked):
         area : Union[Dataset, Tuple[float, float, float, float]]
             The cropping area.
         """
-        from ..data import open_dataset
+        from anemoi.datasets.use import open_dataset
 
         area = area if isinstance(area, (list, tuple)) else open_dataset(area)
 
