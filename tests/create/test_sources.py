@@ -315,7 +315,8 @@ def test_csv(get_test_data: callable) -> None:
         }
     )
 
-    source.execute(window)
+    frame = source.execute(window)
+    print(frame)
 
 
 @pytest.mark.skip(reason="ODB source currently not functional")
