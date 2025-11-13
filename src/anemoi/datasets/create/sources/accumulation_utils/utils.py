@@ -9,6 +9,7 @@
 
 from typing import Any
 
+
 def _member(field: Any) -> int:
     """Retrieves the member number from the field metadata.
 

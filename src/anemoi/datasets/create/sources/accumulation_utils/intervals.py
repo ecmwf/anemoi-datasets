@@ -16,6 +16,7 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+
 class Interval:
     sign: int | None = None
 
@@ -110,7 +111,7 @@ class Interval:
 
 class IntervalsCollection:
     _todo: set | None = None
-    
+
     def __init__(
         self,
         valid_date: datetime.datetime,
