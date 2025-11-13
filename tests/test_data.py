@@ -9,6 +9,7 @@
 
 
 import datetime
+import os
 import tempfile
 from collections.abc import Callable
 from functools import cache
@@ -60,7 +61,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", lambda name: name):
+            with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", lambda name: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
@@ -239,6 +240,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
     """
     # Format: test-2021-2021-6h-o96-abcd-0
 
+    name, _ = os.path.splitext(name)
+
     args = dict(
         test="test",
         start=2021,
@@ -386,6 +389,8 @@ class DatasetTester:
         regular_shape : bool, optional
             Whether the dataset has a regular shape, by default True.
         """
+        from anemoi.datasets import open_dataset
+
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
 
@@ -1431,6 +1436,47 @@ def test_save_dataset() -> None:
     saved = open_dataset(tmp_dir)
     assert saved.variables == ["a", "b"]
     assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
+
+
+@mockup_open_zarr
+def test_trim_edge_simple() -> None:
+    """Test trimming the edges of a dataset."""
+    test = DatasetTester(
+        "test-2021-2021-15,14-6h-o96-abcd",
+        trim_edge=(2, 3, 4, 5),
+    )
+
+    expected_field_shape = (10, 5)
+    assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+    assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+
+@mockup_open_zarr
+def test_trim_edge_zeros() -> None:
+    """Test trimming the edges of a dataset when edges are 0"""
+    for dim in range(2):
+        trim_edge = [0, 0, 0, 0]
+        trim_edge[dim] = 1
+        test = DatasetTester(
+            "test-2021-2021-15,14-6h-o96-abcd",
+            trim_edge=trim_edge,
+        )
+
+        expected_field_shape = (14, 14)
+        assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+    for dim in range(2, 4):
+        trim_edge = [0, 0, 0, 0]
+        trim_edge[dim] = 1
+        test = DatasetTester(
+            "test-2021-2021-15,14-6h-o96-abcd",
+            trim_edge=trim_edge,
+        )
+
+        expected_field_shape = (15, 13)
+        assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
 if __name__ == "__main__":

@@ -220,7 +220,7 @@ class Cropping(Masked):
         area : Union[Dataset, Tuple[float, float, float, float]]
             The cropping area.
         """
-        from anemoi.datasets.use import open_dataset
+        from anemoi.datasets import open_dataset
 
         area = area if isinstance(area, (list, tuple)) else open_dataset(area)
 

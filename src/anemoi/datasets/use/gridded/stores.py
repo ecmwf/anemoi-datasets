@@ -543,6 +543,10 @@ QUIET = set()
 def dataset_lookup(name: str, fail: bool = True) -> Optional[str]:
     """Look up a zarr dataset by name."""
 
+    parsed = urlparse(name)
+    if parsed.scheme:
+        return name
+
     config = load_config()["datasets"]
     use_search_path_not_found = config.get("use_search_path_not_found", False)
 
