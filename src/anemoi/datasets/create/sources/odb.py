@@ -233,10 +233,10 @@ def odb_sql_str(
     Returns:
     str: Constructed SQL query string.
     """
-    date_col = flavour.get("date column name", "date")
-    time_col = flavour.get("time column name", "time")
-    lat_col = flavour.get("latitude column name", "lat")
-    lon_col = flavour.get("longitude column name", "lon")
+    date_col = flavour["date column name"]
+    time_col = flavour["time column name"]
+    lat_col = flavour["latitude column name"]
+    lon_col = flavour["longitude column name"]
 
     required_columns = [col.strip() for col in required_columns]
     if select != "":
