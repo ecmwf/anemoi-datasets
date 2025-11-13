@@ -53,13 +53,32 @@ class OdbSource(Source):
         where : str
             The where clause.
         flavour : dict, optional
-            Naming of the latitude, longitude, date and time columns.
+            Naming of the latitude, longitude, date and time columns. Defaults to
+            {"latitude column name": "lat",
+            "longitude column name": "lon",
+            "date column name": "date",
+            "time column name": "time"}.
         pivot_columns : list, optional
-            List of column names to use as values in the pivot - these will be
-            named according to the unique values in the given columns. If empty,
-            no pivoting is performed.
+            List of column names - values in these columns will be used to
+            define the new columns after the reshaping.
+            Typically these identify entries in `pivot_values` as belonging to
+            a particular observation type: for instance "channel_number" or
+            "varno".
         pivot_values : list, optional
-            List of column names with unique values to pivot on.
+            List of column names - values in these columns will
+            be spread across different values of the columns. For instance,
+            "observed_value" and "quality_control_value".
+
+        Note: All columns not specified in "columns" and "values" will be
+            assumed to be "index" values (i.e. are the same within a given
+            observation group).
+        Note: Pivot values are named according to the unique values in the
+            pivot columns. For instance, if
+            `pivot_columns=["channel_number@body"]`
+            with two unique channel numbers 1 and 2 that identify rows, and
+            `pivot_values=["initial_obsvalue@body"]`, then the resulting columns
+            will be named "observed_value_1" and "observed_value_2".
+
         kwargs : dict, optional
             Additional keyword arguments.
 
@@ -69,7 +88,13 @@ class OdbSource(Source):
         self.path = path
         self.select = select
         self.where = where
-        self.flavour = flavour
+        self.flavour = {
+            "latitude column name": "lat",
+            "longitude column name": "lon",
+            "date column name": "date",
+            "time column name": "time",
+        }
+        self.flavour.update(flavour)
         self.pivot_columns = pivot_columns
         self.pivot_values = pivot_values
 
@@ -121,11 +146,16 @@ def odb2df(
     path_str (str): Path to the ODB file
     select (str): SQL SELECT statement excluding FROM clause and SELECT keyword
     where (str): SQL WHERE clause excluding WHERE keyword
-    pivot_columns (list):  List of column names to use as values in the pivot -
-            these will be named according to the unique values in the given
-            columns. If empty, no pivoting is performed.
-    pivot_values (list): List of column names with unique values to pivot on.
-    flavour (dict): Dictionary containing specific options for the ODB file.
+    pivot_columns (list, optional):
+        List of column names - values in these columns will be used to
+        define the new columns after the reshaping.
+        Typically these identify entries in `pivot_values` as belonging to
+        a particular observation type: for instance "channel_number" or
+        "varno".
+    pivot_values (list, optional):
+        List of column names - values in these columns will
+        be spread across different values of the columns. For instance,
+        "observed_value" and "quality_control_value".
     keep_temp_odb (bool): Whether to keep the intermediate ODB file.
 
     Returns:
