@@ -15,8 +15,8 @@ from typing import Any
 import zarr
 from anemoi.utils.sanitise import sanitise
 
-from anemoi.datasets.create.config import loader_config
-from anemoi.datasets.create.utils import normalize_and_check_dates
+from anemoi.datasets.create.gridded.config import loader_config
+from anemoi.datasets.create.gridded.utils import normalize_and_check_dates
 
 from .tasks import FieldTask
 from .tasks import HasElementForDataMixin

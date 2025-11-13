@@ -21,11 +21,11 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.chunks import ChunkFilter
+from anemoi.datasets.create.gridded.statistics import Summary
+from anemoi.datasets.create.gridded.statistics import check_variance
+from anemoi.datasets.create.gridded.statistics import compute_statistics
+from anemoi.datasets.create.gridded.statistics import fix_variance
 from anemoi.datasets.create.persistent import build_storage
-from anemoi.datasets.create.statistics import Summary
-from anemoi.datasets.create.statistics import check_variance
-from anemoi.datasets.create.statistics import compute_statistics
-from anemoi.datasets.create.statistics import fix_variance
 
 from .tasks import FieldTask
 from .tasks import HasRegistryMixin

@@ -18,7 +18,7 @@ import numpy as np
 from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.data.debug import Node
+from anemoi.datasets.use.debug import Node
 
 from .records.backends import backend_factory
 from .windows import window_from_str
@@ -364,7 +364,7 @@ class FieldsRecords(RecordsForward):
         .
         """
         self.forward = fields_dataset
-        from anemoi.datasets.data.dataset import Dataset
+        from anemoi.datasets.use.dataset import Dataset
 
         assert isinstance(fields_dataset, Dataset), f"fields_dataset must be a Dataset, got {type(fields_dataset)}"
         self._name = name

@@ -17,9 +17,9 @@ from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.create.check import check_data_values
 from anemoi.datasets.create.chunks import ChunkFilter
-from anemoi.datasets.create.statistics import compute_statistics
+from anemoi.datasets.create.gridded.check import check_data_values
+from anemoi.datasets.create.gridded.statistics import compute_statistics
 from anemoi.datasets.create.writer import ViewCacheArray
 
 from .tasks import FieldTask

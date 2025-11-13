@@ -1026,7 +1026,7 @@ class Dataset(ABC, Sized):
             print(p.origins())
 
     def components(self) -> Any:
-        from anemoi.datasets.data.components import Projection
+        from anemoi.datasets.use.components import Projection
 
         slices = tuple(slice(0, i, 1) for i in self.shape)
         return self.project(Projection(slices))

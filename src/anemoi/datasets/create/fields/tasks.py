@@ -21,16 +21,16 @@ from anemoi.utils.dates import frequency_to_string
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.check import DatasetName
-from anemoi.datasets.create.config import build_output
-from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.fields.context import FieldContext
+from anemoi.datasets.create.gridded.check import DatasetName
+from anemoi.datasets.create.gridded.config import build_output
+from anemoi.datasets.create.gridded.config import loader_config
+from anemoi.datasets.create.gridded.statistics import TmpStatistics
+from anemoi.datasets.create.gridded.statistics import default_statistics_dates
 from anemoi.datasets.create.input import InputBuilder
-from anemoi.datasets.create.statistics import TmpStatistics
-from anemoi.datasets.create.statistics import default_statistics_dates
-from anemoi.datasets.data.misc import as_first_date
-from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
+from anemoi.datasets.use.gridded.misc import as_first_date
+from anemoi.datasets.use.gridded.misc import as_last_date
 
 from ..tasks import chain
 
@@ -151,7 +151,7 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from anemoi.datasets.create.zarr import add_zarr_dataset
+        from anemoi.datasets.create.gridded.zarr import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -355,7 +355,7 @@ class FieldTask:
         Any
             The cache context.
         """
-        from anemoi.datasets.create.utils import cache_context
+        from anemoi.datasets.create.gridded.utils import cache_context
 
         return cache_context(self.cache)
 
@@ -419,7 +419,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from anemoi.datasets.create.zarr import ZarrBuiltRegistry
+        from anemoi.datasets.create.gridded.zarr import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 

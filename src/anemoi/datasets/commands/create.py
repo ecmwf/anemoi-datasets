@@ -32,7 +32,7 @@ def task(what: str, fields: bool, options: dict, *args: Any, **kwargs: Any) -> A
 
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = task_factory(what.replace("-", "_"), fields, **options)
+    c = task_factory(what.replace("-", "_"), **options)
     result = c.run()
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")

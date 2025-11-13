@@ -386,7 +386,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
                 if "backend" not in load_any_dict_format(metadata_path):
                     raise ValueError(f"Metadata for {path} does not contain 'backend' key")
 
-                from anemoi.datasets.data.records import open_records_dataset
+                from anemoi.datasets.use.records import open_records_dataset
 
                 return open_records_dataset(path)
 
@@ -608,13 +608,13 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     assert len(sets) > 0, (args, kwargs)
 
     if "set_group" in kwargs:
-        from anemoi.datasets.data.records import FieldsRecords
+        from anemoi.datasets.use.records import FieldsRecords
 
         set_group = kwargs.pop("set_group")
         assert len(sets) == 1, "set_group can only be used with a single dataset"
         dataset = sets[0]
 
-        from anemoi.datasets.data.dataset import Dataset
+        from anemoi.datasets.use.dataset import Dataset
 
         if isinstance(dataset, Dataset):  # Fields dataset
             return FieldsRecords(dataset, **kwargs, name=set_group).mutate()

@@ -16,8 +16,8 @@ from odb2df import process_odb
 
 from anemoi.datasets.create.sources.observations import ObservationsFilter
 from anemoi.datasets.create.sources.observations import ObservationsSource
-from anemoi.datasets.data.records import Interval
-from anemoi.datasets.data.records import window_from_str
+from anemoi.datasets.use.records import Interval
+from anemoi.datasets.use.records import window_from_str
 
 log = logging.getLogger(__name__)
 
