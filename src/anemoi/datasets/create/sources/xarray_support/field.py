@@ -17,9 +17,9 @@ from earthkit.data import Field
 from earthkit.data.core.fieldlist import math
 from numpy.typing import NDArray
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import extract_single_value
-from anemoi.datasets.create.sources.xarray_support.coordinates import is_scalar
-from anemoi.datasets.create.sources.xarray_support.metadata import XArrayMetadata
+from .coordinates import extract_single_value
+from .coordinates import is_scalar
+from .metadata import XArrayMetadata
 
 LOG = logging.getLogger(__name__)
 

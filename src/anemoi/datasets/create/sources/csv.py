@@ -8,12 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 
-from anemoi.datasets.create.source import ObservationsSource
-from anemoi.datasets.create.sources import source_registry
+from ..source import Source
+from . import source_registry
 
 
 @source_registry.register("csv")
-class CSVSource(ObservationsSource):
+class CSVSource(Source):
     """A source that reads data from a CSV file."""
 
     emoji = "📄"  # For tracing

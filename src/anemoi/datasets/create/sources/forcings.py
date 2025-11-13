@@ -32,11 +32,11 @@ class ForcingsSource(LegacySource):
             Template for the data source.
         param : str
             Parameter for the data source.
+
         Returns
         -------
         object
             Loaded forcing data.
         """
-
         context.trace("✅", f"from_source(forcings, {template}, {param}")
         return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)

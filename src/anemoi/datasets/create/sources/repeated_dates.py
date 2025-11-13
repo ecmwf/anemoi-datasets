@@ -10,8 +10,8 @@
 
 import logging
 from collections import defaultdict
-from collections.abc import Generator
 from typing import Any
+from typing import Generator
 
 import numpy as np
 from anemoi.transform.fields import new_field_with_valid_datetime
@@ -19,18 +19,8 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.source import Source
-from anemoi.datasets.create.sources import source_registry
-
-# (C) Copyright 2024 Anemoi contributors.
-#
-# This software is licensed under the terms of the Apache Licence Version 2.0
-# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
-#
-# In applying this licence, ECMWF does not waive the privileges and immunities
-# granted to it by virtue of its status as an intergovernmental organisation
-# nor does it submit to any jurisdiction.
-
+from ..source import Source
+from . import source_registry
 
 LOG = logging.getLogger(__name__)
 
