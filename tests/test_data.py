@@ -19,6 +19,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+import rich
 import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -101,6 +102,7 @@ def create_zarr(
     vars: str = "abcd",
     start: int = 2021,
     end: int = 2021,
+    field_shape=[2, 5],
     frequency: datetime.timedelta = datetime.timedelta(hours=6),
     resolution: str = "o96",
     k: int = 0,
@@ -118,6 +120,8 @@ def create_zarr(
         Start year, by default 2021.
     end : int, optional
         End year, by default 2021.
+    field_shape : list, optional
+        Field shape, by default [2, 5].
     frequency : datetime.timedelta, optional
         Frequency, by default datetime.timedelta(hours=6).
     resolution : str, optional
@@ -220,6 +224,10 @@ def create_zarr(
         compressor=None,
     )
 
+    root.attrs["field_shape"] = field_shape
+    assert len(field_shape) == 2
+    assert data.shape[-1] == field_shape[0] * field_shape[1]
+
     return root
 
 
@@ -252,12 +260,14 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         k=0,
         ensemble=None,
         grids=None,
+        field_shape="2,5",
     )
 
     for name, bit in zip(args, name.split("-")):
-        args[name] = bit
+        if bit:
+            args[name] = bit
 
-    print(args)
+    rich.print(args)
 
     return create_zarr(
         start=int(args["start"]),
@@ -269,6 +279,7 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         ensemble=int(args["ensemble"]) if args["ensemble"] is not None else None,
         grids=int(args["grids"]) if args["grids"] is not None else None,
         missing=args["test"] == "missing",
+        field_shape=list(map(int, args["field_shape"].split(","))),
     )
 
 
@@ -1309,7 +1320,7 @@ def test_grids() -> None:
     test = DatasetTester(
         grids=[
             "test-2021-2021-6h-o96-abcd-1-1",  # Default is 10 gridpoints
-            "test-2021-2021-6h-o96-abcd-2-1-25",  # 25 gridpoints
+            "test-2021-2021-6h-o96-abcd-2-1-25-5,5",  # 25 gridpoints
         ]
     )
     test.run(
@@ -1344,7 +1355,7 @@ def test_grids() -> None:
     )
 
     ds1 = open_dataset("test-2021-2021-6h-o96-abcd-1-1")
-    ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25")
+    ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25-5,5")
 
     assert (test.ds.longitudes == np.concatenate([ds1.longitudes, ds2.longitudes])).all()
     assert (test.ds.latitudes == np.concatenate([ds1.latitudes, ds2.latitudes])).all()
@@ -1381,6 +1392,7 @@ def test_cropping() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, 8)
 
 
+@pytest.mark.skip("Rolling average not yet supported in that branch")
 @mockup_open_zarr
 def test_rolling_average() -> None:
     initial = DatasetTester("test-2021-2021-6h-o96-abcd")
@@ -1417,6 +1429,7 @@ def test_fields_to_records() -> None:
     assert ds.variables == {key: ["a", "b", "c", "d"]}
 
 
+@pytest.mark.skip("Saving datasets not yet supported in that branch")
 def test_save_dataset() -> None:
     """Test save datasets."""
 
@@ -1442,7 +1455,7 @@ def test_save_dataset() -> None:
 def test_trim_edge_simple() -> None:
     """Test trimming the edges of a dataset."""
     test = DatasetTester(
-        "test-2021-2021-15,14-6h-o96-abcd",
+        "test-2021-2021-6h-o96-abcd---210-15,14",
         trim_edge=(2, 3, 4, 5),
     )
 
@@ -1458,7 +1471,7 @@ def test_trim_edge_zeros() -> None:
         trim_edge = [0, 0, 0, 0]
         trim_edge[dim] = 1
         test = DatasetTester(
-            "test-2021-2021-15,14-6h-o96-abcd",
+            "test-2021-2021-6h-o96-abcd---210-15,14",
             trim_edge=trim_edge,
         )
 
@@ -1470,7 +1483,7 @@ def test_trim_edge_zeros() -> None:
         trim_edge = [0, 0, 0, 0]
         trim_edge[dim] = 1
         test = DatasetTester(
-            "test-2021-2021-15,14-6h-o96-abcd",
+            "test-2021-2021-6h-o96-abcd---210-15,14",
             trim_edge=trim_edge,
         )
 

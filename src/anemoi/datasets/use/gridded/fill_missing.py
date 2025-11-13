@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.use import MissingDateError
+from anemoi.datasets import MissingDateError
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.dataset import TupleIndex

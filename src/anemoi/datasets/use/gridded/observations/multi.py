@@ -10,7 +10,7 @@
 import logging
 import os
 
-from anemoi.datasets.use import open_dataset
+from anemoi.datasets import open_dataset
 
 LOG = logging.getLogger(__name__)
 

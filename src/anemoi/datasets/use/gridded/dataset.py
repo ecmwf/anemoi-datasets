@@ -244,7 +244,7 @@ class Dataset(ABC, Sized):
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
-            from anemoi.datasets.use import open_dataset
+            from anemoi.datasets import open_dataset
             from anemoi.datasets.use.gridded.statistics import Statistics
 
             statistics = kwargs.pop("statistics")

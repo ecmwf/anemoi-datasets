@@ -64,7 +64,10 @@ class CSVSource(Source):
         else:
             frame = pd.read_csv(self.path, usecols=self.columns)
 
-        start, end = dates.window.start_date, dates.window.end_date
-        mask = (frame[self.flavour["time"]] >= start) & (frame[self.flavour["time"]] <= end)
+        print(sorted(frame.columns))
+
+        mask = (frame[self.flavour["time"]] >= dates.start_date) & (frame[self.flavour["time"]] <= dates.end_date)
+
         frame = frame.loc[mask]
+
         return frame

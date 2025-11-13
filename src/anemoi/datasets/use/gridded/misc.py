@@ -595,7 +595,7 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     assert len(sets) > 0, (args, kwargs)
 
     if "set_group" in kwargs:
-        from anemoi.datasets.use.gridded.records import FieldsRecords
+        from anemoi.datasets.use.tabular.records import FieldsRecords
 
         set_group = kwargs.pop("set_group")
         assert len(sets) == 1, "set_group can only be used with a single dataset"
