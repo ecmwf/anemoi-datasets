@@ -309,14 +309,22 @@ def test_csv(get_test_data: callable) -> None:
     )
     window = DatesProvider.from_config(
         {
-            "start": "2020-01-01T00:00:00",
-            "end": "2020-01-02:23:59:59",
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-12-21T23:59:59",
             "window": "(-3h:+3h]",
         }
     )
 
     frame = source.execute(window)
-    print(frame)
+    assert len(frame) == 2526
+
+    assert "latitude" in frame.columns, frame.columns
+    assert "longitude" in frame.columns, frame.columns
+    assert "time" in frame.columns, frame.columns
+
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
 
 
 @pytest.mark.skip(reason="ODB source currently not functional")

@@ -97,7 +97,8 @@ class CSVSource(Source):
 
     def make_lat_lon_columns(self, frame, name, to_drop):
         frame[name] = frame[self.flavour[name]].astype(float)
-        to_drop.append(self.flavour[name])
+        if self.flavour[name] != name:
+            to_drop.append(self.flavour[name])
 
     def make_time_column_1(self, frame, time_col, to_drop):
         import pandas as pd
