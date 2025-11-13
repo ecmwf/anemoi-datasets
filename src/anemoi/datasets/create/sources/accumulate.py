@@ -101,7 +101,9 @@ class Accumulator:
         if interval_class != itv.DefaultIntervalsCollection:
             LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
             data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
-        self.interval_coll = interval_class(self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs)
+        self.interval_coll = interval_class(
+            self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs
+        )
 
     @property
     def requests(self) -> dict:
@@ -270,6 +272,7 @@ def _compute_accumulations(
     requests = []
     for a in accumulators:
         for r in a.requests:
+            r = {**main_request, **r}
             requests.append(r)
 
     source = context.create_source(
@@ -322,7 +325,13 @@ def _compute_accumulations(
 class Accumulations2Source(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[datetime.datetime], source: Any) -> Any:
+    def _execute(
+        context: Any,
+        dates: list[datetime.datetime],
+        source: Any,
+        accumulation_period="1h",
+        data_accumulation_period="1h",
+    ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
 
@@ -342,21 +351,28 @@ class Accumulations2Source(LegacySource):
         The accumulated data source.
 
         """
+        if "accumulation_period" in source:
+            raise ValueError("'accumulation_period' should be define outside source for accumulate action")
+        user_accumulation_period = frequency_to_timedelta(accumulation_period)
+        data_accumulation_period = frequency_to_timedelta(data_accumulation_period)
+
+        source_request = source
 
         assert isinstance(source, dict)
         assert len(source) == 1
-        assert "param" not in source, "param should be defined inside source for accumulate action"
 
         source_name, source_request = next(iter(source.items()))
         source_request = source_request.copy()
-
-        assert "accumulation_period" in source_request, "'accumulation_period' keyword necessary"
+        assert "param" in source_request, (
+            "param should be defined inside source for accumulate action",
+            source_request,
+        )
 
         return _compute_accumulations(
             context,
             dates,
             source_name,
             source_request,
-            user_accumulation_period=frequency_to_timedelta(source_request.pop("accumulation_period")),
-            data_accumulation_period=frequency_to_timedelta(source_request.get("data_accumulation_period", "1h")),
+            user_accumulation_period=user_accumulation_period,
+            data_accumulation_period=data_accumulation_period,
         )

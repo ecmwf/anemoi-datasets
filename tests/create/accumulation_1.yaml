@@ -5,16 +5,18 @@ dates:
 
 input:
   accumulate:
-    mars:
-      expver: "0001"
-      class: ea
+    accumulation_period: 6h
+    source:
+      mars:
+        expver: "0001"
+        class: ea
+        #stream: oper
 
-      stream: enda
+        #stream: enda
 
-      grid: 20./20.
-      levtype: sfc
-      param: [ tp, cp ]
-    accumulation_period: 24
+        grid: 20./20.
+        levtype: sfc
+        param: [ tp, cp ]
 
 checks:
   none: {}
