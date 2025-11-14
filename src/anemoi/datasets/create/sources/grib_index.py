@@ -70,7 +70,7 @@ class GribIndex:
                 if keys.startswith("+"):
                     keys = set(KEYS) | set(keys[1:].split(","))
                 else:
-                    keys = set(",".split(keys.split(",")))
+                    keys = set(keys.split(","))
                 keys = list(keys)
 
         self.conn = sqlite3.connect(database)
