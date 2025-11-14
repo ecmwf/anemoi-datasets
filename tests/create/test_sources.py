@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import os
-import sys
 
 import numpy as np
 import pytest
@@ -51,9 +50,6 @@ def test_grib(get_test_data: callable) -> None:
     assert ds.shape == (8, 12, 1, 162)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
-)
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
@@ -91,9 +87,6 @@ def test_grib_gridfile(get_test_data) -> None:
     assert ds.variables == ["2t"]
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
-)
 @skip_if_offline
 @pytest.mark.parametrize(
     "input_refinement_level_c,output_refinement_level_c,shape",
@@ -292,9 +285,84 @@ def test_planetary_computer_conus404() -> None:
     assert ds.shape == (2, 1, 1, 1387505), ds.shape
 
 
-if __name__ == "__main__":
-    test_planetary_computer_conus404()
-    exit(0)
-    from anemoi.utils.testing import run_tests
+@skip_if_offline
+def test_csv(get_test_data: callable) -> None:
+    """Test for CSV source registration."""
+    from anemoi.datasets.create.sources import create_source
+    from anemoi.datasets.dates import DatesProvider
 
-    run_tests(globals())
+    data = get_test_data("anemoi-datasets/obs/dribu.csv")
+
+    source = create_source(
+        context=None,
+        config={
+            "csv": {
+                "path": data,
+                "flavour": {
+                    "time": [
+                        "typicalDate",
+                        "typicalTime",
+                    ]
+                },
+            }
+        },
+    )
+    window = DatesProvider.from_config(
+        {
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-12-21T23:59:59",
+            "window": "(-3h:+3h]",
+        }
+    )
+
+    frame = source.execute(window)
+    assert len(frame) == 2526
+
+    assert "latitude" in frame.columns, frame.columns
+    assert "longitude" in frame.columns, frame.columns
+    assert "time" in frame.columns, frame.columns
+
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
+
+
+@pytest.mark.skip(reason="ODB source currently not functional")
+@skip_if_offline
+def test_odb(get_test_data: callable) -> None:
+    from anemoi.datasets.create.sources import create_source
+    from anemoi.datasets.dates import DatesProvider
+
+    data = get_test_data("anemoi-datasets/obs/dribu.odb")
+
+    source = create_source(context=None, config={"odb": {"path": data}})
+    window = DatesProvider.from_config(
+        {
+            "start": "2020-01-01T00:00:00",
+            "end": "2020-01-02:23:59:59",
+            "window": "(-3h:+3h]",
+        }
+    )
+
+    source.execute(window)
+
+
+@pytest.mark.skip(reason="BUFR source currently not functional")
+@skip_if_offline
+def test_bufr(get_test_data: callable) -> None:
+
+    from anemoi.datasets.create.sources import create_source
+    from anemoi.datasets.dates import DatesProvider
+
+    data = get_test_data("anemoi-datasets/obs/dribu.bufr")
+
+    source = create_source(context=None, config={"bufr": {"path": data}})
+    window = DatesProvider.from_config(
+        {
+            "start": "2020-01-01T00:00:00",
+            "end": "2020-01-02:23:59:59",
+            "window": "(-3h:+3h]",
+        }
+    )
+
+    source.execute(window)

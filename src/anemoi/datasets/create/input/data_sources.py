@@ -13,10 +13,10 @@ from typing import Any
 
 from earthkit.data import FieldList
 
-from anemoi.datasets.create.gridded.result import Result
 from anemoi.datasets.create.input.action import Action
 from anemoi.datasets.create.input.action import action_factory
 from anemoi.datasets.create.input.misc import _tidy
+from anemoi.datasets.create.input.result.field import Result
 from anemoi.datasets.dates.groups import GroupOfDates
 
 LOG = logging.getLogger(__name__)
@@ -83,6 +83,11 @@ class DataSourcesAction(Action):
         """Returns a string representation of the DataSourcesAction instance."""
         content = "\n".join([str(i) for i in self.sources])
         return self._repr(content)
+
+    def python_code(self, code) -> str:
+        for n, s in zip(self.names, self.sources):
+            code.source(n, s.python_code(code))
+        return code
 
 
 class DataSourcesResult(Result):

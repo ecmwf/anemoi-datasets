@@ -16,8 +16,8 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.create.gridded.utils import to_datetime
-from anemoi.datasets.use.gridded import MissingDateError
+from anemoi.datasets import MissingDateError
+from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.dataset import TupleIndex
@@ -58,14 +58,14 @@ class MissingDates(Forwards):
 
         self._missing = set()
 
-        other = []
+        other = set()
         for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
                 self.missing_dates.append(dataset.dates[date])
             else:
                 date = to_datetime(date)
-                other.append(date)
+                other.add(date)
 
         if other:
             for i, date in enumerate(dataset.dates):

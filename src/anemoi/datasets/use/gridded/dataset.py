@@ -136,7 +136,8 @@ class Dataset(ABC, Sized):
         if not kwargs:
             return self.mutate()
 
-        name = kwargs.pop("name", None)
+        name = kwargs.pop("set_group", None)  # TODO(Florian)
+        name = kwargs.pop("name", name)
         result = self.__subset(**kwargs)
         result._name = name
 
@@ -177,13 +178,18 @@ class Dataset(ABC, Sized):
             padding = kwargs.pop("padding", None)
 
             if padding:
-                if padding != "empty":
-                    raise ValueError(f"Only 'empty' padding is supported, got {padding=}")
                 from anemoi.datasets.use.gridded.padded import Padded
 
                 frequency = kwargs.pop("frequency", self.frequency)
                 return (
-                    Padded(self, start, end, frequency, dict(start=start, end=end, frequency=frequency))
+                    Padded(
+                        self,
+                        start=start,
+                        end=end,
+                        frequency=frequency,
+                        padding=padding,
+                        reason=dict(start=start, end=end, frequency=frequency, padding=padding),
+                    )
                     ._subset(**kwargs)
                     .mutate()
                 )
@@ -238,7 +244,7 @@ class Dataset(ABC, Sized):
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
-            from anemoi.datasets.use.gridded import open_dataset
+            from anemoi.datasets import open_dataset
             from anemoi.datasets.use.gridded.statistics import Statistics
 
             statistics = kwargs.pop("statistics")
@@ -292,12 +298,6 @@ class Dataset(ABC, Sized):
 
             if skip_missing_dates:
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
-
-        if "rolling_average" in kwargs:
-            from anemoi.datasets.use.gridded.rolling_average import RollingAverage
-
-            rolling_average = kwargs.pop("rolling_average")
-            return RollingAverage(self, rolling_average)._subset(**kwargs).mutate()
 
         if "interpolate_frequency" in kwargs:
             from anemoi.datasets.use.gridded.interpolate import InterpolateFrequency
@@ -410,6 +410,9 @@ class Dataset(ABC, Sized):
         if not isinstance(vars, (list, tuple)):
             vars = [vars]
 
+        for v in vars:
+            if v not in self.name_to_index:
+                raise ValueError(f"select: unknown variable: {v}, available: {list(self.name_to_index)}")
         return [self.name_to_index[v] for v in vars]
 
     def _drop_to_columns(self, vars: str | Sequence[str]) -> list[int]:
@@ -1009,6 +1012,21 @@ class Dataset(ABC, Sized):
     def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables in the dataset."""
         pass
+
+    def origins(self) -> Any:
+        for p in self.components().ensure_list():
+            print(p.origins())
+
+    def components(self) -> Any:
+        from anemoi.datasets.use.gridded.components import Projection
+
+        slices = tuple(slice(0, i, 1) for i in self.shape)
+        return self.project(Projection(slices))
+
+    # @abstractmethod
+    def project(self, projection) -> Any:
+        """Return the project of the variable at the specified index."""
+        raise NotImplementedError(f"project() is not implemented for `{self.__class__.__name__}`")
 
     @abstractmethod
     @cached_property

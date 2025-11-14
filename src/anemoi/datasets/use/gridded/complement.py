@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.misc.grids import nearest_grid_points
+from anemoi.datasets.grids import nearest_grid_points
 from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.dataset import Shape
@@ -249,7 +249,13 @@ class ComplementNearest(Complement):
         """
         super().__init__(target, source)
 
+        if isinstance(k, str):
+            assert False
+            LOG.warning(f"ComplementNearest: Interpreting k={k} ({type(k)}) as integer")
+            k = int(k)
+
         self.k = k
+
         self._distances, self._nearest_grid_points = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
@@ -353,7 +359,7 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
     }[interpolation]
 
     if interpolation == "nearest":
-        k = kwargs.pop("k", "1")
+        k = kwargs.pop("k", 1)
         complement = Class(target=target, source=source, k=k)._subset(**kwargs)
 
     else:

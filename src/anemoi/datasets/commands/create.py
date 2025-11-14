@@ -18,38 +18,21 @@ from typing import Any
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-from . import Command
+from anemoi.datasets.commands import Command
 
 LOG = logging.getLogger(__name__)
 
 
-def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
-    """Make sure `import Creator` is done in the sub-processes, and not in the main one.
-
-    Parameters
-    ----------
-    what : str
-        The task to be executed.
-    options : dict
-        Options for the task.
-    *args : Any
-        Additional arguments.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    Any
-        The result of the task.
-    """
+def task(what: str, fields: bool, options: dict, *args: Any, **kwargs: Any) -> Any:
+    """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
-    from anemoi.datasets.create.gridded import creator_factory
+    from anemoi.datasets.create.tasks import task_factory
 
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = creator_factory(what.replace("-", "_"), **options)
+    c = task_factory(what.replace("-", "_"), fields, **options)
     result = c.run()
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
@@ -115,18 +98,20 @@ class Create(Command):
         options.pop("threads")
         options.pop("processes")
 
-        task("init", options)
-        task("load", options)
-        task("finalise", options)
+        fields = args.path.endswith(".zarr") or args.path.endswith(".zarr/")
 
-        task("init_additions", options)
-        task("load_additions", options)
-        task("finalise_additions", options)
+        task("init", fields, options)
+        task("load", fields, options)
+        task("finalise", fields, options)
 
-        task("patch", options)
+        task("init_additions", fields, options)
+        task("load_additions", fields, options)
+        task("finalise_additions", fields, options)
 
-        task("cleanup", options)
-        task("verify", options)
+        task("patch", fields, options)
+
+        task("cleanup", fields, options)
+        task("verify", fields, options)
 
     def parallel_create(self, args: Any) -> None:
         """Create the dataset in parallel mode.
@@ -147,6 +132,7 @@ class Create(Command):
 
         threads = options.pop("threads")
         processes = options.pop("processes")
+        fields = args.path.endswith(".zarr") or args.path.endswith(".zarr/")
 
         use_threads = threads > 0
         options["use_threads"] = use_threads
@@ -157,7 +143,7 @@ class Create(Command):
             ExecutorClass = ProcessPoolExecutor
 
         with ExecutorClass(max_workers=1) as executor:
-            total = executor.submit(task, "init", options).result()
+            total = executor.submit(task, "init", fields, options).result()
 
         futures = []
 
@@ -166,7 +152,7 @@ class Create(Command):
             for n in range(total):
                 opt = options.copy()
                 opt["parts"] = f"{n+1}/{total}"
-                futures.append(executor.submit(task, "load", opt))
+                futures.append(executor.submit(task, "load", fields, opt))
 
             for future in tqdm.tqdm(
                 as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
@@ -177,7 +163,7 @@ class Create(Command):
             executor.submit(task, "finalise", options).result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "init-additions", options).result()
+            executor.submit(task, "init-additions", fields, options).result()
 
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(total):
@@ -195,10 +181,10 @@ class Create(Command):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "finalise-additions", options).result()
-            executor.submit(task, "patch", options).result()
-            executor.submit(task, "cleanup", options).result()
-            executor.submit(task, "verify", options).result()
+            executor.submit(task, "finalise-additions", fields, options).result()
+            executor.submit(task, "patch", fields, options).result()
+            executor.submit(task, "cleanup", fields, options).result()
+            executor.submit(task, "verify", fields, options).result()
 
 
 command = Create

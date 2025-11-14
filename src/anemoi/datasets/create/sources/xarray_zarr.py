@@ -11,34 +11,30 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from . import source_registry
-from .legacy import LegacySource
-from .xarray import load_many
+from anemoi.datasets.create.sources.legacy import legacy_source
+from anemoi.datasets.create.sources.xarray import load_many
 
 
-@source_registry.register("xarray_zarr")
-class XarrayZarrSource(LegacySource):
+@legacy_source(__file__)
+def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    """Execute the data loading process.
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-        """Execute the data loading process.
+    Parameters
+    ----------
+    context : Any
+        The context in which the execution occurs.
+    dates : List[str]
+        List of dates for which data is to be loaded.
+    url : str
+        The URL from which data is to be loaded.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments.
 
-        Parameters
-        ----------
-        context : Any
-            The context in which the execution occurs.
-        dates : List[str]
-            List of dates for which data is to be loaded.
-        url : str
-            The URL from which data is to be loaded.
-        *args : tuple
-            Additional positional arguments.
-        **kwargs : dict
-            Additional keyword arguments.
-
-        Returns
-        -------
-        ekd.FieldList
-            The loaded data.
-        """
-        return load_many("🇿", context, dates, url, *args, **kwargs)
+    Returns
+    -------
+    ekd.FieldList
+        The loaded data.
+    """
+    return load_many("🇿", context, dates, url, *args, **kwargs)
