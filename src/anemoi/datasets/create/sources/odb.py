@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from turtle import pd
 from typing import Any
 
 import codc as odc
@@ -55,10 +56,10 @@ class OdbSource(Source):
             The where clause.
         flavour : dict, optional
             Naming of the latitude, longitude, date and time columns. Defaults to
-            {"latitude column name": "lat",
-            "longitude column name": "lon",
-            "date column name": "date",
-            "time column name": "time"}.
+            {"latitude_column_name": "lat",
+            "longitude_column_name": "lon",
+            "date_column_name": "date",
+            "time_column_name": "time"}.
         pivot_columns : list, optional
             List of column names - values in these columns will be used to
             define the new columns after the reshaping.
@@ -90,10 +91,10 @@ class OdbSource(Source):
         self.select = select
         self.where = where
         self.flavour = {
-            "latitude column name": "lat",
-            "longitude column name": "lon",
-            "date column name": "date",
-            "time column name": "time",
+            "latitude_column_name": "lat@hdr",
+            "longitude_column_name": "lon@hdr",
+            "date_column_name": "date@hdr",
+            "time_column_name": "time@hdr",
         }
         self.flavour.update(flavour)
         self.pivot_columns = pivot_columns
@@ -124,6 +125,8 @@ class OdbSource(Source):
             pivot_columns=self.pivot_columns,
             pivot_values=self.pivot_values,
         )
+        LOG.info(f"ODB source read {len(df)} rows from {self.path}")
+        LOG.info(df)
         return df
 
 
@@ -164,10 +167,10 @@ def odb2df(
         "observed_value" and "quality_control_value".
     flavour : dict, optional
         Naming of the latitude, longitude, date and time columns. Defaults to
-        {"latitude column name": "lat",
-        "longitude column name": "lon",
-        "date column name": "date",
-        "time column name": "time"}.
+        {"latitude_column_name": "lat",
+        "longitude_column_name": "lon",
+        "date_column_name": "date",
+        "time_column_name": "time"}.
     keep_temp_odb : bool, optional
         Whether to keep the intermediate ODB file.
 
@@ -227,6 +230,21 @@ def odb2df(
 
     df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
 
+    # Add date-time to the dataframe
+    date_strings = [f'{d}{t:06}' for d, t in zip(df_pivotted[flavour["date_column_name"]],
+                                                 df_pivotted[flavour["time_column_name"]])]
+    df_pivotted.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
+    df_pivotted['time'] = pandas.to_datetime(
+            date_strings,
+            format="%Y%m%d%H%M%S",
+        )
+
+    # Drop original lat/lon columns if they were renamed
+    if flavour["latitude_column_name"] != 'latitude':
+        df_pivotted.drop(columns=[flavour["latitude_column_name"]], inplace=True)
+    if flavour["longitude_column_name"] != 'longitude':
+        df_pivotted.drop(columns=[flavour["longitude_column_name"]], inplace=True)
+
     return df_pivotted
 
 
@@ -277,10 +295,10 @@ def odb_sql_str(
     str
         Constructed SQL query string.
     """
-    date_col = flavour["date column name"]
-    time_col = flavour["time column name"]
-    lat_col = flavour["latitude column name"]
-    lon_col = flavour["longitude column name"]
+    date_col = flavour["date_column_name"]
+    time_col = flavour["time_column_name"]
+    lat_col = flavour["latitude_column_name"]
+    lon_col = flavour["longitude_column_name"]
 
     required_columns = [col.strip() for col in required_columns]
     if select != "":
