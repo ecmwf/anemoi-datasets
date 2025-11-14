@@ -12,7 +12,6 @@ import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from turtle import pd
 from typing import Any
 
 import codc as odc
@@ -232,18 +231,19 @@ def odb2df(
     df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
 
     # Add date-time to the dataframe
-    date_strings = [f'{d}{t:06}' for d, t in zip(df_pivotted[flavour["date_column_name"]],
-                                                 df_pivotted[flavour["time_column_name"]])]
+    date_strings = [
+        f"{d}{t:06}" for d, t in zip(df_pivotted[flavour["date_column_name"]], df_pivotted[flavour["time_column_name"]])
+    ]
     df_pivotted.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
-    df_pivotted['time'] = pandas.to_datetime(
-            date_strings,
-            format="%Y%m%d%H%M%S",
-        )
+    df_pivotted["time"] = pandas.to_datetime(
+        date_strings,
+        format="%Y%m%d%H%M%S",
+    )
 
     # Drop original lat/lon columns if they were renamed
-    if flavour["latitude_column_name"] != 'latitude':
+    if flavour["latitude_column_name"] != "latitude":
         df_pivotted.drop(columns=[flavour["latitude_column_name"]], inplace=True)
-    if flavour["longitude_column_name"] != 'longitude':
+    if flavour["longitude_column_name"] != "longitude":
         df_pivotted.drop(columns=[flavour["longitude_column_name"]], inplace=True)
 
     return df_pivotted
