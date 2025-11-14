@@ -7,15 +7,14 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import subprocess
+import tempfile
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-import codc
-import pandas
-from pathlib import Path
-from datetime import datetime
-import subprocess
 import codc as odc
-import tempfile
+import pandas
 
 from anemoi.datasets.create.gridded.typing import DateList
 
@@ -137,8 +136,7 @@ def odb2df(
     flavour: dict = {},
     keep_temp_odb: bool = False,
 ) -> pandas.DataFrame:
-    """
-    Read an ODB file using the given parameters and create a pandas DataFrame.
+    """Read an ODB file using the given parameters and create a pandas DataFrame.
 
     Parameters
     ----------
@@ -171,16 +169,18 @@ def odb2df(
     keep_temp_odb : bool, optional
         Whether to keep the intermediate ODB file.
 
-    Note: All columns not specified in "pivot_columns" and "pivot_values"
-        will be assumed to be "index" values (i.e. are the same within a
-        given observation group).
+    Notes
+    -----
+    All columns not specified in "pivot_columns" and "pivot_values"
+    will be assumed to be "index" values (i.e. are the same within a
+    given observation group).
 
-    Note: Pivot values are named according to the unique values in the
-        pivot columns. For instance, if
-        `pivot_columns=["channel_number@body"]`
-        with two unique channel numbers 1 and 2 that identify rows, and
-        `pivot_values=["initial_obsvalue@body"]`, then the resulting columns
-        will be named "observed_value_1" and "observed_value_2".
+    Pivot values are named according to the unique values in the
+    pivot columns. For instance, if
+    `pivot_columns=["channel_number@body"]`
+    with two unique channel numbers 1 and 2 that identify rows, and
+    `pivot_values=["initial_obsvalue@body"]`, then the resulting columns
+    will be named "observed_value_1" and "observed_value_2".
 
     Returns
     -------
@@ -204,9 +204,7 @@ def odb2df(
     )
     print(f"Using SQL query: {sql}")
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".odb", delete=not keep_temp_odb
-    ) as intermediate_odb_path:
+    with tempfile.NamedTemporaryFile(suffix=".odb", delete=not keep_temp_odb) as intermediate_odb_path:
         subselect_odb_using_odc_sql(
             input_odb_path=path,
             output_odb_path=intermediate_odb_path.name,
@@ -223,8 +221,7 @@ def odb2df(
 
 
 def iso8601_to_datetime(iso8601_str: str) -> str:
-    """
-    Convert ISO8601 datetime string to YYYYMMDDHHMMSS string.
+    """Convert ISO8601 datetime string to YYYYMMDDHHMMSS string.
 
     Parameters
     ----------
@@ -248,8 +245,7 @@ def odb_sql_str(
     flavour: dict,
     required_columns: list = [],
 ) -> str:
-    """
-    Construct an SQL query string for querying the ODB file.
+    """Construct an SQL query string for querying the ODB file.
 
     Parameters
     ----------
@@ -282,29 +278,18 @@ def odb_sql_str(
             required_columns = []
         else:
             # Check for overlap between required_columns and select
-            select_columns = [
-                col.strip() for col in select.split(",")
-            ]  # Strip whitespace from select columns
-            overlapping_columns = [
-                col for col in required_columns if col in select_columns
-            ]
+            select_columns = [col.strip() for col in select.split(",")]  # Strip whitespace from select columns
+            overlapping_columns = [col for col in required_columns if col in select_columns]
             if overlapping_columns:
-                required_columns = [
-                    col for col in required_columns if col not in overlapping_columns
-                ]
-            missing_columns = [
-                col for col in required_columns if col not in overlapping_columns
-            ]
+                required_columns = [col for col in required_columns if col not in overlapping_columns]
+            missing_columns = [col for col in required_columns if col not in overlapping_columns]
             if missing_columns:
                 print(
                     "Warning: Not all required columns are included in the "
                     f"SELECT statement. Missing columns: {missing_columns}"
                 )  # todo - switch to anemoi warning system.
 
-    default_select = (
-        f"timestamp({date_col}, {time_col}) as time, "
-        f"{lat_col} as latitude, {lon_col} as longitude"
-    )
+    default_select = f"timestamp({date_col}, {time_col}) as time, " f"{lat_col} as latitude, {lon_col} as longitude"
     if required_columns:
         default_select += ", " + ", ".join(required_columns)
     if select == "":
@@ -333,9 +318,8 @@ def subselect_odb_using_odc_sql(
     input_odb_path: Path,
     output_odb_path: Path,
     sql_query_string: str,
-):
-    """
-    Subselect ODB data based on an SQL query string using the ODC command-line tool
+) -> None:
+    """Subselect ODB data based on an SQL query string using the ODC command-line tool
     and write to a new ODB file.
 
     Parameters
@@ -380,14 +364,11 @@ def subselect_odb_using_odc_sql(
 
     except subprocess.CalledProcessError as e:
         print(f"Error output: {e.stderr}")
-        raise RuntimeError(
-            f"ODC SQL command failed with exit code {e.returncode}"
-        ) from e
+        raise RuntimeError(f"ODC SQL command failed with exit code {e.returncode}") from e
 
 
 def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.DataFrame:
-    """
-    Reshape the DataFrame, organized by the values in particular columns.
+    """Reshape the DataFrame, organized by the values in particular columns.
 
     Parameters
     ----------
