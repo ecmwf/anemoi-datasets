@@ -344,7 +344,18 @@ def test_odb(get_test_data: callable) -> None:
         }
     )
 
-    source.execute(window)
+    frame = source.execute(window)
+
+    assert "latitude" in frame.columns
+    assert "longitude" in frame.columns
+    assert "time" in frame.columns
+
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
+
+    assert len(frame) == 6838
+    assert len(frame.columns) == 70
 
 
 @pytest.mark.skip(reason="BUFR source currently not functional")
