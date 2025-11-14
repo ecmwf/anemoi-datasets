@@ -151,18 +151,6 @@ class BaseRecordsDataset:
         if window is not None:
             return Rewindowed(self, window)._subset(**kwargs)
 
-        frequency = kwargs.pop("frequency", self.frequency)
-        if frequency:
-            frequency = frequency_to_timedelta(frequency)
-            current = self.frequency.total_seconds()
-            new = frequency.total_seconds()
-            if current != new and current % new == 0:
-                return IncreaseFrequency(self, frequency)._subset(**kwargs)
-            elif current != new and new % current == 0:
-                raise NotImplementedError("Decreasing frequency not implemented yet")
-                # return DecreaseFrequency(self, frequency)._subset(**kwargs)
-            assert self.frequency == frequency, (self.frequency, frequency)
-
         start = kwargs.pop("start", None)
         end = kwargs.pop("end", None)
         if start is not None or end is not None:
@@ -176,9 +164,19 @@ class BaseRecordsDataset:
 
                 return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
-            return RecordsSubset(
-                self, _dates_to_indices(start, end), {"start": start, "end": end, "frequency": frequency}
-            )._subset(**kwargs)
+            return RecordsSubset(self, _dates_to_indices(start, end), {"start": start, "end": end})._subset(**kwargs)
+
+        frequency = kwargs.pop("frequency", self.frequency)
+        if frequency:
+            frequency = frequency_to_timedelta(frequency)
+            current = self.frequency.total_seconds()
+            new = frequency.total_seconds()
+            if current != new and current % new == 0:
+                return IncreaseFrequency(self, frequency)._subset(**kwargs)
+            elif current != new and new % current == 0:
+                raise NotImplementedError("Decreasing frequency not implemented yet")
+                # return DecreaseFrequency(self, frequency)._subset(**kwargs)
+            assert self.frequency == frequency, (self.frequency, frequency)
 
         select = kwargs.pop("select", None)
         if select is not None:
@@ -287,7 +285,7 @@ class IncreaseFrequency(RecordsForward):
     def __len__(self):
         return len(self.dataset) * self._n
 
-    @property
+    @cached_property
     def dates(self):
         dates = []
         freq = _to_numpy_timedelta(self._frequency)
@@ -932,3 +930,7 @@ class Tabular:
     @property
     def statistics(self):
         return self.dataset.statistics[self.name]
+
+    @property
+    def metadata(self):
+        return self.dataset.metadata
