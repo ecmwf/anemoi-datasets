@@ -103,6 +103,7 @@ optional-dependencies.tests = [
   "pytest",
   "pytest-skip-slow",
   "pytest-xdist",
+  "pyodc>=1.6.0",
 ]
 
 optional-dependencies.xarray = [

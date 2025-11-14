@@ -21,6 +21,8 @@ from anemoi.datasets.create.gridded.typing import DateList
 from ..source import Source
 from . import source_registry
 
+import logging
+LOG = logging.getLogger(__name__)
 
 @source_registry.register("odb")
 class OdbSource(Source):
@@ -32,8 +34,8 @@ class OdbSource(Source):
         self,
         context,
         path: str,
-        select: str,
-        where: str,
+        select: str | None = None,
+        where: str | None = None,
         flavour: dict = {},
         pivot_columns: list = [],
         pivot_values: list = [],
@@ -129,12 +131,12 @@ def odb2df(
     start: str,
     end: str,
     path_str: str,
-    select: str = "",
-    where: str = "",
+    select: str | None = None,
+    where: str | None = None,
     pivot_columns: list = [],
     pivot_values: list = [],
     flavour: dict = {},
-    keep_temp_odb: bool = False,
+    keep_temp_odb: bool = True,
 ) -> pandas.DataFrame:
     """Read an ODB file using the given parameters and create a pandas DataFrame.
 
@@ -192,7 +194,15 @@ def odb2df(
     # Convert ISO8601 datetimes to YYYYMMDDHHMMSS
     start_datetime = iso8601_to_datetime(start)
     end_datetime = iso8601_to_datetime(end)
-    print(f"Querying ODB file at {path} from {start_datetime} to {end_datetime}")
+    LOG.info(f"Querying ODB file at {path} from {start_datetime} to {end_datetime}")
+
+    if select is None:
+        select = "*"
+        LOG.warning("No SELECT clause provided; defaulting to all columns.")
+    
+    if where is None:
+        where = ""
+        LOG.warning("No WHERE clause provided; defaulting to no additional filtering.")
 
     sql = odb_sql_str(
         start_datetime,
@@ -202,7 +212,7 @@ def odb2df(
         flavour,
         pivot_columns + pivot_values,
     )
-    print(f"Using SQL query: {sql}")
+    LOG.info(f"Using SQL query: {sql}")
 
     with tempfile.NamedTemporaryFile(suffix=".odb", delete=not keep_temp_odb) as intermediate_odb_path:
         subselect_odb_using_odc_sql(
@@ -211,9 +221,9 @@ def odb2df(
             sql_query_string=sql,
         )
         df = odc.read_odb(intermediate_odb_path.name, single=True, aggregated=True)
-        print(f"Intermediate ODB file created at: {intermediate_odb_path.name}")
+        LOG.info(f"Intermediate ODB file created at: {intermediate_odb_path.name}")
     if keep_temp_odb:
-        print(f"Intermediate ODB file kept at: {intermediate_odb_path.name}")
+        LOG.info(f"Intermediate ODB file kept at: {intermediate_odb_path.name}")
 
     df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
 
@@ -284,8 +294,8 @@ def odb_sql_str(
                 required_columns = [col for col in required_columns if col not in overlapping_columns]
             missing_columns = [col for col in required_columns if col not in overlapping_columns]
             if missing_columns:
-                print(
-                    "Warning: Not all required columns are included in the "
+                LOG.warning(
+                    "Not all required columns are included in the "
                     f"SELECT statement. Missing columns: {missing_columns}"
                 )  # todo - switch to anemoi warning system.
 
@@ -360,10 +370,10 @@ def subselect_odb_using_odc_sql(
             capture_output=True,
             text=True,
         )
-        print(f"Subsetted ODB written to: {output_odb_path}")
+        LOG.info(f"Subsetted ODB written to: {output_odb_path}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Error output: {e.stderr}")
+        LOG.error(f"Error output: {e.stderr}")
         raise RuntimeError(f"ODC SQL command failed with exit code {e.returncode}") from e
 
 
