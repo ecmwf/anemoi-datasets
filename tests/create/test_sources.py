@@ -327,7 +327,7 @@ def test_csv(get_test_data: callable) -> None:
     assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
 
 
-@pytest.mark.skip(reason="ODB source currently not functional")
+#@pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
 def test_odb(get_test_data: callable) -> None:
     from anemoi.datasets.create.sources import create_source
@@ -338,8 +338,8 @@ def test_odb(get_test_data: callable) -> None:
     source = create_source(context=None, config={"odb": {"path": data}})
     window = DatesProvider.from_config(
         {
-            "start": "2020-01-01T00:00:00",
-            "end": "2020-01-02:23:59:59",
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-01-02:23:59:59",
             "window": "(-3h:+3h]",
         }
     )
