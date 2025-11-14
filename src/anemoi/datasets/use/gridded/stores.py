@@ -581,7 +581,7 @@ def dataset_lookup(name: str, fail: bool = True) -> Optional[str]:
         tried.append(full)
         try:
 
-            from anemoi.datasets.use.gridded.records import open_records_dataset
+            from anemoi.datasets.use.tabular.records import open_records_dataset
 
             z = open_records_dataset(full)
             if z is not None:

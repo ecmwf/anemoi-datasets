@@ -239,6 +239,10 @@ class RecordsForward(BaseRecordsDataset):
         return self.forward.frequency
 
     @property
+    def metadata(self):
+        return self.forward.metadata
+
+    @property
     def _window(self):
         return self.forward._window
 

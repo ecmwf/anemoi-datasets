@@ -373,7 +373,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
                 if "backend" not in load_any_dict_format(metadata_path):
                     raise ValueError(f"Metadata for {path} does not contain 'backend' key")
 
-                from anemoi.datasets.use.gridded.records import open_records_dataset
+                from anemoi.datasets.use.tabular.records import open_records_dataset
 
                 return open_records_dataset(path)
 
