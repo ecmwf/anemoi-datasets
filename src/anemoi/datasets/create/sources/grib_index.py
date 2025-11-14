@@ -123,7 +123,7 @@ class GribIndex:
             _path_id INTEGER not null,
             _offset INTEGER not null,
             _length INTEGER not null,
-            {', '.join(f"{key} TEXT not null default ''" for key in columns)},
+            {', '.join(f"`{key}` TEXT not null default ''" for key in columns)},
             FOREIGN KEY(_path_id) REFERENCES paths(id))
         """
         )  # ,
@@ -138,15 +138,15 @@ class GribIndex:
         self.cursor.execute(
             f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({', '.join(columns)})
+        ON grib_index ({', '.join(f'`{c}`' for c in columns)})
         """
         )
 
         for key in columns:
             self.cursor.execute(
                 f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
-            ON grib_index ({key})
+            CREATE INDEX IF NOT EXISTS `idx_grib_index_{key}`
+            ON grib_index (`{key}`)
             """
             )
 
@@ -198,11 +198,14 @@ class GribIndex:
         """
         assert self.update
 
+        for k in kwargs.keys():
+            assert "`" not in k, "SQL injection detected"
+
         try:
 
             self.cursor.execute(
                 f"""
-            INSERT INTO grib_index ({', '.join(kwargs.keys())})
+            INSERT INTO grib_index ({', '.join(f'`{k}`' for k in kwargs.keys())})
             VALUES ({', '.join('?' for _ in kwargs)})
             """,
                 tuple(kwargs.values()),
@@ -215,7 +218,7 @@ class GribIndex:
             for n in ("_path_id", "_offset", "_length"):
                 kwargs.pop(n)
             self.cursor.execute(
-                "SELECT * FROM grib_index WHERE " + " AND ".join(f"{key} = ?" for key in kwargs.keys()),
+                "SELECT * FROM grib_index WHERE " + " AND ".join(f"`{key}` = ?" for key in kwargs.keys()),
                 tuple(kwargs.values()),
             )
             existing_record = self.cursor.fetchone()
@@ -259,7 +262,8 @@ class GribIndex:
         self._columns = None
 
         for column in new_columns:
-            self.cursor.execute(f"ALTER TABLE grib_index ADD COLUMN {column} TEXT not null default ''")
+            assert "`" not in column, "SQL injection detected"
+            self.cursor.execute(f"ALTER TABLE grib_index ADD COLUMN `{column}` TEXT not null default ''")
 
         self.cursor.execute("""DROP INDEX IF EXISTS idx_grib_index_all_keys""")
         all_columns = self._all_columns()
@@ -267,15 +271,17 @@ class GribIndex:
         self.cursor.execute(
             f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({', '.join(all_columns)})
+        ON grib_index ({', '.join(f'`{c}`' for c in all_columns)})
         """
         )
 
+
         for key in all_columns:
+            assert "`" not in key, "SQL injection detected"
             self.cursor.execute(
                 f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
-            ON grib_index ({key})
+            CREATE INDEX IF NOT EXISTS `idx_grib_index_{key}`
+            ON grib_index (`{key}`)
             """
             )
 
@@ -546,10 +552,10 @@ class GribIndex:
 
         for k, v in kwargs.items():
             if isinstance(v, list):
-                query += f" AND {k} IN ({', '.join('?' for _ in v)})"
+                query += f" AND `{k}` IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
             else:
-                query += f" AND {k} = ?"
+                query += f" AND `{k}` = ?"
                 params.append(str(v))
 
         print("SELECT", query)
