@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import logging
 import subprocess
 import tempfile
 from datetime import datetime
@@ -22,8 +23,8 @@ from anemoi.datasets.create.gridded.typing import DateList
 from ..source import Source
 from . import source_registry
 
-import logging
 LOG = logging.getLogger(__name__)
+
 
 @source_registry.register("odb")
 class OdbSource(Source):
@@ -202,7 +203,7 @@ def odb2df(
     if select is None:
         select = "*"
         LOG.warning("No SELECT clause provided; defaulting to all columns.")
-    
+
     if where is None:
         where = ""
         LOG.warning("No WHERE clause provided; defaulting to no additional filtering.")
