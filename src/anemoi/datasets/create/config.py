@@ -391,6 +391,8 @@ def set_to_test_mode(cfg: dict) -> None:
 def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     """Loads and validates the configuration for dataset loaders.
 
+    Also sets environment variables provided in the config["env"] dict.
+
     Parameters
     ----------
     config : dict
