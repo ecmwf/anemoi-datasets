@@ -217,9 +217,7 @@ def odb2df(
     )
     LOG.info(f"Using SQL query: {sql}")
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".odb", delete=not keep_temp_odb
-    ) as intermediate_odb_path:
+    with tempfile.NamedTemporaryFile(suffix=".odb", delete=not keep_temp_odb) as intermediate_odb_path:
         subselect_odb_using_odc_sql(
             input_odb_path=path,
             output_odb_path=intermediate_odb_path.name,
@@ -240,9 +238,7 @@ def odb2df(
             df_pivotted[flavour["time_column_name"]],
         )
     ]
-    df_pivotted.drop(
-        columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True
-    )
+    df_pivotted.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
     df_pivotted["time"] = pandas.to_datetime(
         date_strings,
         format="%Y%m%d%H%M%S",
@@ -315,29 +311,18 @@ def odb_sql_str(
             required_columns = []
         else:
             # Check for overlap between required_columns and select
-            select_columns = [
-                col.strip() for col in select.split(",")
-            ]  # Strip whitespace from select columns
-            overlapping_columns = [
-                col for col in required_columns if col in select_columns
-            ]
+            select_columns = [col.strip() for col in select.split(",")]  # Strip whitespace from select columns
+            overlapping_columns = [col for col in required_columns if col in select_columns]
             if overlapping_columns:
-                required_columns = [
-                    col for col in required_columns if col not in overlapping_columns
-                ]
-            missing_columns = [
-                col for col in required_columns if col not in overlapping_columns
-            ]
+                required_columns = [col for col in required_columns if col not in overlapping_columns]
+            missing_columns = [col for col in required_columns if col not in overlapping_columns]
             if missing_columns:
                 LOG.warning(
                     "Not all required columns are included in the "
                     f"SELECT statement. Missing columns: {missing_columns}"
                 )  # todo - switch to anemoi warning system.
 
-    default_select = (
-        f"timestamp({date_col}, {time_col}) as time, "
-        f"{lat_col} as latitude, {lon_col} as longitude"
-    )
+    default_select = f"timestamp({date_col}, {time_col}) as time, " f"{lat_col} as latitude, {lon_col} as longitude"
     if required_columns:
         default_select += ", " + ", ".join(required_columns)
     if select == "":
@@ -413,9 +398,7 @@ def subselect_odb_using_odc_sql(
 
     except subprocess.CalledProcessError as e:
         LOG.error(f"Error output: {e.stderr}")
-        raise RuntimeError(
-            f"ODC SQL command failed with exit code {e.returncode}"
-        ) from e
+        raise RuntimeError(f"ODC SQL command failed with exit code {e.returncode}") from e
 
 
 def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.DataFrame:
