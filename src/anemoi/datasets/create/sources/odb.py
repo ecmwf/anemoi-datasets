@@ -172,7 +172,8 @@ def odb2df(
         "date_column_name": "date",
         "time_column_name": "time"}.
     keep_temp_odb : bool, optional
-        Whether to keep the intermediate ODB file in temporary directory, default is False.
+        Whether to keep the intermediate ODB file in temporary directory,
+        default is False.
 
     Notes
     -----
