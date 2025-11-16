@@ -139,7 +139,7 @@ def odb2df(
     pivot_columns: list = [],
     pivot_values: list = [],
     flavour: dict = {},
-    keep_temp_odb: bool = True,
+    keep_temp_odb: bool = False,
 ) -> pandas.DataFrame:
     """Read an ODB file using the given parameters and create a pandas DataFrame.
 
@@ -172,7 +172,7 @@ def odb2df(
         "date_column_name": "date",
         "time_column_name": "time"}.
     keep_temp_odb : bool, optional
-        Whether to keep the intermediate ODB file.
+        Whether to keep the intermediate ODB file in temporary directory, default is False.
 
     Notes
     -----
@@ -372,7 +372,7 @@ def subselect_odb_using_odc_sql(
         If the ODC command in subprocess fails.
     """
     if not Path(input_odb_path).is_file():
-        log.error(f"Input ODB file not found: {input_odb_path}")
+        LOG.error(f"Input ODB file not found: {input_odb_path}")
         raise FileNotFoundError(f"Input ODB file not found: {input_odb_path}")
 
     command = [
