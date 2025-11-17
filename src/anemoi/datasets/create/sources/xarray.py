@@ -11,11 +11,12 @@ from typing import Any
 
 import earthkit.data as ekd
 
-from anemoi.datasets.create.source import Source
-from anemoi.datasets.create.sources.xarray_support import XarrayFieldList
-from anemoi.datasets.create.sources.xarray_support import load_many
-from anemoi.datasets.create.sources.xarray_support import load_one
 from anemoi.datasets.create.typing import DateList
+
+from ..source import Source
+from .xarray_support import XarrayFieldList
+from .xarray_support import load_many
+from .xarray_support import load_one
 
 __all__ = ["load_many", "load_one", "XarrayFieldList"]
 
