@@ -8,10 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 from copy import deepcopy
-from functools import cached_property
 from typing import Any
+from typing import Union
 
-from anemoi.datasets.create.input.context.field import FieldContext
+from anemoi.datasets.dates.groups import GroupOfDates
+
+from .trace import trace_select
+
+LOG = logging.getLogger(__name__)
+
+
+class Context:
+    """Context for building input data."""
+
+    pass
 
 
 class InputBuilder:
@@ -30,17 +40,17 @@ class InputBuilder:
             Additional keyword arguments.
         """
         self.kwargs = kwargs
-        self.config = deepcopy(config)
-        self.data_sources = deepcopy(dict(data_sources=data_sources))
 
-    @cached_property
-    def action(self) -> Any:
-        """Returns the action object based on the configuration."""
-        from .action import Recipe
-        from .action import action_factory
-
-        sources = action_factory(self.data_sources, "data_sources")
-        input = action_factory(self.config, "input")
+        config = deepcopy(config)
+        if data_sources:
+            config = dict(
+                data_sources=dict(
+                    sources=data_sources,
+                    input=config,
+                )
+            )
+        self.config = config
+        self.action_path = ["input"]
 
         return Recipe(input, sources)
 
@@ -57,28 +67,45 @@ class InputBuilder:
         Any
             Selected data.
         """
-        context = FieldContext(argument, **self.kwargs)
-        return context.create_result(self.action(context, argument))
+        from .action import ActionContext
+        from .action import action_factory
 
-    def python_code(self, code):
-        return self.action.python_code(code)
+        """This changes the context."""
+        context = ActionContext(**self.kwargs)
+        action = action_factory(self.config, context, self.action_path)
+        return action.select(group_of_dates)
 
+    def __repr__(self) -> str:
+        """Return a string representation of the InputBuilder.
 
-def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
-    """Build an InputBuilder instance.
+        Returns
+        -------
+        str
+            String representation.
+        """
+        from .action import ActionContext
+        from .action import action_factory
 
-    Parameters
-    ----------
-    config : dict
-        Configuration dictionary.
-    data_sources : Union[dict, list]
-        Data sources.
-    **kwargs : Any
-        Additional keyword arguments.
+        context = ActionContext(**self.kwargs)
+        a = action_factory(self.config, context, self.action_path)
+        return repr(a)
 
-    Returns
-    -------
-    InputBuilder
-        An instance of InputBuilder.
-    """
-    return InputBuilder(config, data_sources, **kwargs)
+    def _trace_select(self, config: dict, data_sources: Union[dict, list], **kwargs) -> str:
+        """Trace the select operation.
+
+        Parameters
+        ----------
+        config : dict
+            Configuration dictionary.
+        data_sources : Union[dict, list]
+            Data sources.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        InputBuilder
+            An instance of InputBuilder.
+        """
+
+        return InputBuilder(config, data_sources, **kwargs)

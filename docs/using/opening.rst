@@ -157,7 +157,7 @@ it with standard Python tools. For example:
    ax.gridlines(draw_labels=True)
    plt.colorbar(p, label="K", orientation="horizontal")
 
-.. figure:: ../../_static/2t_map_example.png
+.. figure:: ../_static/2t_map_example.png
    :alt: example map plot
    :align: center
 
