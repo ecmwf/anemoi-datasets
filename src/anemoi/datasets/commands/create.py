@@ -115,20 +115,18 @@ class Create(Command):
         options.pop("threads")
         options.pop("processes")
 
-        fields = args.path.endswith(".zarr") or args.path.endswith(".zarr/")
+        task("init", options)
+        task("load", options)
+        task("finalise", options)
 
-        task("init", fields, options)
-        task("load", fields, options)
-        task("finalise", fields, options)
+        task("init_additions", options)
+        task("load_additions", options)
+        task("finalise_additions", options)
 
-        task("init_additions", fields, options)
-        task("load_additions", fields, options)
-        task("finalise_additions", fields, options)
+        task("patch", options)
 
-        task("patch", fields, options)
-
-        task("cleanup", fields, options)
-        task("verify", fields, options)
+        task("cleanup", options)
+        task("verify", options)
 
     def parallel_create(self, args: Any) -> None:
         """Create the dataset in parallel mode.
@@ -149,7 +147,6 @@ class Create(Command):
 
         threads = options.pop("threads")
         processes = options.pop("processes")
-        fields = args.path.endswith(".zarr") or args.path.endswith(".zarr/")
 
         use_threads = threads > 0
         options["use_threads"] = use_threads
@@ -160,7 +157,7 @@ class Create(Command):
             ExecutorClass = ProcessPoolExecutor
 
         with ExecutorClass(max_workers=1) as executor:
-            total = executor.submit(task, "init", fields, options).result()
+            total = executor.submit(task, "init", options).result()
 
         futures = []
 
@@ -169,7 +166,7 @@ class Create(Command):
             for n in range(total):
                 opt = options.copy()
                 opt["parts"] = f"{n+1}/{total}"
-                futures.append(executor.submit(task, "load", fields, opt))
+                futures.append(executor.submit(task, "load", opt))
 
             for future in tqdm.tqdm(
                 as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
@@ -180,7 +177,7 @@ class Create(Command):
             executor.submit(task, "finalise", options).result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "init-additions", fields, options).result()
+            executor.submit(task, "init-additions", options).result()
 
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(total):
@@ -198,10 +195,10 @@ class Create(Command):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "finalise-additions", fields, options).result()
-            executor.submit(task, "patch", fields, options).result()
-            executor.submit(task, "cleanup", fields, options).result()
-            executor.submit(task, "verify", fields, options).result()
+            executor.submit(task, "finalise-additions", options).result()
+            executor.submit(task, "patch", options).result()
+            executor.submit(task, "cleanup", options).result()
+            executor.submit(task, "verify", options).result()
 
 
 command = Create
