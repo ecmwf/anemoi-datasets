@@ -95,6 +95,8 @@ class Recipe(Command):
             f.close()
 
         if args.python:
+            from anemoi.datasets.create import config_to_python
+
             if args.inplace:
                 argparse.ArgumentError(None, "Inplace conversion to Python is not supported.")
 
