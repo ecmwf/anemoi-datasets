@@ -134,6 +134,7 @@ def _normalise_time(t: int | str) -> str:
         t * 100
     return f"{t:04d}"
 
+
 def _expand_mars_request(
     request: dict[str, Any],
     date: datetime.datetime,
@@ -202,12 +203,12 @@ def _expand_mars_request(
                 if isinstance(r[pproc], (list, tuple)):
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
-        #if user_date is not None:
+        # if user_date is not None:
         #    if not user_date.match(r[date_key]):
         #        print(f"SKIP ! {user_date, r[date_key]}")
         #        continue
 
-        #if user_time is not None:
+        # if user_time is not None:
         #    print(f'user_time : {user_time}')
         #    # It time is provided by the user, we only keep the requests that match the time
         #    if r["time"] not in user_time:
@@ -249,7 +250,7 @@ def factorise_requests(
     updates = []
     for d in sorted(dates):
         for req in requests:
-            if d.strftime("%Y%m%d%H%M") != (str(req['date']) + str(req['time']).zfill(4)):
+            if d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4)):
                 continue
             new_req = _expand_mars_request(
                 req,
@@ -258,7 +259,7 @@ def factorise_requests(
                 date_key=date_key,
             )
             updates += new_req
-            
+
     if not updates:
         return
     compressed = Availability(updates)

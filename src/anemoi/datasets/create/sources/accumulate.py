@@ -104,7 +104,7 @@ class Accumulator:
             data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
         self.interval_coll = interval_class(
             self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs
-        )       
+        )
 
     @property
     def requests(self) -> tuple[dict, datetime.datetime]:
@@ -152,7 +152,9 @@ class Accumulator:
 
         # each field must be seen once
         assert self.interval_coll.is_todo(interval.time_request), (self.interval_coll, interval)
-        assert not self.interval_coll.is_done(interval.time_request), f"Field {field} for interval {interval} already done"
+        assert not self.interval_coll.is_done(
+            interval.time_request
+        ), f"Field {field} for interval {interval} already done"
 
         print(f"{self} field ✅ ({interval.sign}) {field} for {interval}")
 

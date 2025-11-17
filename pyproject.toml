@@ -52,10 +52,10 @@ dependencies = [
   "cfunits",
   "glom",
   "jsonschema",
-  "numcodecs<0.16", # Until we move to zarr3
+  "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pytest>=8.4.1",
-  "pytest-xdist>=3.7.0",
+  "pytest-xdist>=3.7",
   "pyyaml",
   "ruamel-yaml",
   "semantic-version",

@@ -148,7 +148,7 @@ class IntervalsCollection:
         self.check_merged_interval()
 
         self.template_field = None
-        
+
         self._todo = set([p.time_request for p in self._intervals])
         self._len = len(self._todo)
         self._done = set()

@@ -185,7 +185,6 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
 @pytest.mark.skipif(
     sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
 )
-
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
