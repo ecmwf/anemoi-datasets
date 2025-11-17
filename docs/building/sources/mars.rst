@@ -1,5 +1,3 @@
-.. _mars-source:
-
 ######
  mars
 ######

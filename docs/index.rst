@@ -149,10 +149,17 @@ You may also have to install pandoc on macOS:
    cli/compare
    cli/copy
    cli/scan
-   cli/recipe
+   cli/patch
    cli/compare-lam
    cli/validate
-   cli/patch
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+   :hidden:
+   :caption: API Reference
+
+   modules/*
 
 .. toctree::
    :maxdepth: 1

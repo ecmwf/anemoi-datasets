@@ -1,4 +1,4 @@
-.. _grib-index-source:
+.. _grib-index_source:
 
 ############
  grib-index

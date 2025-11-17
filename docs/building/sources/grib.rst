@@ -1,4 +1,4 @@
-.. _grib-source:
+.. _grib_source:
 
 ######
  grib

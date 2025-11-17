@@ -1,7 +1,7 @@
 .. _validate_command:
 
 Validate Command
-================
+============
 
 Use this command to validate a zarr dataset, or a class that implements the
 :class:`anemoi.datasets.Dataset` interface.

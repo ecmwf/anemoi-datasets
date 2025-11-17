@@ -1,5 +1,3 @@
-.. _xarray-kerchunk-source:
-
 #################
  xarray-kerchunk
 #################

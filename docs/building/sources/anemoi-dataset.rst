@@ -1,4 +1,4 @@
-.. _anemoi-dataset-source:
+.. _anemoi-dataset_source:
 
 ################
  anemoi-dataset

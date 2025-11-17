@@ -1,5 +1,3 @@
-.. _opendap-source:
-
 #########
  opendap
 #########

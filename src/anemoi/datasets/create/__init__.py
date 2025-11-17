@@ -866,7 +866,6 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             result = self.input.select(argument=group)
-            result = self.input.select(argument=group)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.

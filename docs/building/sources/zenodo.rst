@@ -1,5 +1,3 @@
-.. _zenodo-source:
-
 ########
  zenodo
 ########

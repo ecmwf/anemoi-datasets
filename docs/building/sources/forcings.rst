@@ -1,4 +1,4 @@
-.. _forcings-source:
+.. _forcing_variables:
 
 ##########
  forcings
