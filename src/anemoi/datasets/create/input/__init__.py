@@ -63,9 +63,6 @@ class InputBuilder:
             self.action(context, argument),
         )
 
-    def python_code(self, code):
-        return self.action.python_code(code)
-
 
 def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
     """Build an InputBuilder instance.
