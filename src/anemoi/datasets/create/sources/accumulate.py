@@ -284,8 +284,7 @@ def _compute_accumulations(
             source_name: dict(
                 **source_request,
                 requests=requests,
-                request_already_using_valid_datetime=True,
-                shift_time_request=True,
+                request_already_using_valid_datetime=False,
             )
         },
         "data_sources",

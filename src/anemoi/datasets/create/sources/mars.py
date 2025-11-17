@@ -134,21 +134,6 @@ def _normalise_time(t: int | str) -> str:
         t * 100
     return f"{t:04d}"
 
-
-def _shift_time_request(request: dict[str, int]) -> dict[str, int]:
-    date = request["date"]
-    time = request["time"]
-    step = request["step"]
-
-    end_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
-    base_datetime = end_datetime - datetime.timedelta(hours=step)
-
-    request["date"] = int(base_datetime.strftime("%Y%m%d"))
-    request["time"] = int(base_datetime.strftime("%H%M"))
-
-    return request
-
-
 def _expand_mars_request(
     request: dict[str, Any],
     date: datetime.datetime,
@@ -178,7 +163,6 @@ def _expand_mars_request(
     user_step = to_list(expand_to_by(request.get("step", [0])))
     user_time = None
     user_date = None
-
     if not request_already_using_valid_datetime:
         user_time = request.get("time")
         if user_time is not None:
@@ -199,7 +183,6 @@ def _expand_mars_request(
         r = request.copy()
 
         if not request_already_using_valid_datetime:
-
             if isinstance(step, str) and "-" in step:
                 assert step.count("-") == 1, step
 
@@ -214,25 +197,25 @@ def _expand_mars_request(
                     "step": step,
                 }
             )
-
         for pproc in ("grid", "rotation", "frame", "area", "bitmap", "resol"):
             if pproc in r:
                 if isinstance(r[pproc], (list, tuple)):
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
-        if user_date is not None:
-            if not user_date.match(r[date_key]):
-                continue
+        #if user_date is not None:
+        #    if not user_date.match(r[date_key]):
+        #        print(f"SKIP ! {user_date, r[date_key]}")
+        #        continue
 
-        if user_time is not None:
-            # It time is provided by the user, we only keep the requests that match the time
-            if r["time"] not in user_time:
-                continue
+        #if user_time is not None:
+        #    print(f'user_time : {user_time}')
+        #    # It time is provided by the user, we only keep the requests that match the time
+        #    if r["time"] not in user_time:
+        #       continue
 
         requests.append(r)
 
     # assert requests, requests
-
     return requests
 
 
@@ -240,7 +223,6 @@ def factorise_requests(
     dates: list[datetime.datetime],
     *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
-    shift_time_request: bool = False,
     date_key: str = "date",
 ) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
@@ -253,8 +235,6 @@ def factorise_requests(
         The input requests to be factorized.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
-    shift_time_request: bool, optional
-        Flag to shift request valid time request from end to base time, default False
     date_key : str, optional
         The key for the date in the requests.
 
@@ -267,19 +247,20 @@ def factorise_requests(
         requests = requests[0]["requests"]
 
     updates = []
-    for req in requests:
-        req = _shift_time_request(req) if shift_time_request else req
-        for d in dates:
-            updates += _expand_mars_request(
+    for d in sorted(dates):
+        for req in requests:
+            if d.strftime("%Y%m%d%H%M") != (str(req['date']) + str(req['time']).zfill(4)):
+                continue
+            new_req = _expand_mars_request(
                 req,
                 date=d,
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
                 date_key=date_key,
             )
-
+            updates += new_req
+            
     if not updates:
         return
-
     compressed = Availability(updates)
     for r in compressed.iterate():
         for k, v in r.items():
@@ -391,7 +372,6 @@ class MarsSource(LegacySource):
         dates: list[datetime.datetime],
         *requests: dict[str, Any],
         request_already_using_valid_datetime: bool = False,
-        shift_time_request: bool = False,
         date_key: str = "date",
         use_cdsapi_dataset: str | None = None,
         **kwargs: Any,
@@ -408,8 +388,6 @@ class MarsSource(LegacySource):
             The input requests to be executed.
         request_already_using_valid_datetime : bool, optional
             Flag indicating if the requests already use valid datetime.
-        shift_time_request: bool, optional
-            Flag to shift request valid time request from end to base time, default False
         date_key : str, optional
             The key for the date in the requests.
         use_cdsapi_dataset : Optional[str], optional
@@ -455,14 +433,13 @@ class MarsSource(LegacySource):
                 dates,
                 *requests,
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
-                shift_time_request=shift_time_request,
                 date_key=date_key,
             )
 
         requests = list(requests)
 
         ds = from_source("empty")
-        context.trace("✅", f"{[str(d) for d in dates]}")
+        context.trace("✅", f"{[str(d) for d in dates]}, {len(dates)}")
         context.trace("✅", f"Will run {len(requests)} requests")
         for r in requests:
             r = {k: v for k, v in r.items() if v != ("-",)}
