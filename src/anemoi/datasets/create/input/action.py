@@ -8,15 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from abc import ABC
-from abc import abstractmethod
 
 from anemoi.datasets.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
 
 
-class Action(ABC):
+class Action:
+    """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
+    pipe, join, etc.
+
+    See :ref:`operations` for more details.
+
+    """
+
     def __init__(self, config, *path):
         self.config = config
         self.path = path
@@ -25,15 +30,32 @@ class Action(ABC):
             "data_sources",
         ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
 
-    @abstractmethod
-    def __call__(self, context, argument):
-        pass
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({'.'.join(str(x) for x in self.path)}, {self.config})"
-
 
 class Concat(Action):
+    """The Concat contruct is used to concat different actions that are responsible
+    for delivery fields for different dates.
+
+    See :ref:`building-concat` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            concat:
+                - dates:
+                    start: 2023-01-01
+                    end: 2023-01-31
+                    frequency: 1d
+                  action: # some action
+                     ...
+
+                - dates:
+                    start: 2023-02-01
+                    end: 2023-02-28
+                    frequency: 1d
+                  action: # some action
+
+    """
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "concat")
 
@@ -43,7 +65,6 @@ class Concat(Action):
 
         for i, item in enumerate(config):
 
-            assert "dates" in item, f"Value must contain the key 'dates' {item}"
             dates = item["dates"]
             filtering_dates = DatesProvider.from_config(**dates)
             action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
@@ -66,10 +87,26 @@ class Concat(Action):
 
 
 class Join(Action):
+    """Implement the join operation to combine results from multiple actions.
+
+    See :ref:`building-join` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            join:
+                - grib:
+                     ...
+
+                - netcdf: # some other action
+                     ...
+
+    """
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "join")
 
-        assert isinstance(config, list), f"Value must be a list {config}"
+        assert isinstance(config, list), f"Value of Join Action must be a list, got: {config}"
 
         self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
@@ -86,8 +123,25 @@ class Join(Action):
 
 
 class Pipe(Action):
+    """Implement the pipe operation to chain results from a
+    source through multiple filters.
+
+    See :ref:`building-pipe` for more details.
+
+    .. block-code:: yaml
+
+        input:
+            pipe:
+                - grib:
+                     ...
+
+                - rename:
+                     ...
+
+    """
+
     def __init__(self, config, *path):
-        assert isinstance(config, list), f"Value must be a list {config}"
+        assert isinstance(config, list), f"Value of Pipe Action must be a list, got {config}"
         super().__init__(config, *path, "pipe")
         self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
@@ -107,6 +161,8 @@ class Pipe(Action):
 
 
 class Function(Action):
+    """Base class for sources and filters."""
+
     def __init__(self, config, *path):
         super().__init__(config, *path, self.name)
 
@@ -122,54 +178,43 @@ class Function(Action):
 
 
 class DatasetSourceMixin:
+    """Mixin class for sources defined in anemoi-datasets"""
+
     def create_object(self, context, config):
         from anemoi.datasets.create.sources import create_source as create_datasets_source
 
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        result = source.execute(context.source_argument(argument))
-        return context.origin(result, self, argument)
-
-    def origin(self):
-        from anemoi.datasets.create.input.origin import Source
-
-        return Source(self.path[-1], self.config)
+        return source.execute(context.source_argument(argument))
 
 
 class TransformSourceMixin:
+    """Mixin class for sources defined in anemoi-transform"""
+
     def create_object(self, context, config):
         from anemoi.transform.sources import create_source as create_transform_source
 
         return create_transform_source(context, config)
 
-    def combine_origins(self, current, previous):
-        assert previous is None, f"Cannot combine origins, previous already exists: {previous}"
-        return current
-
-    def origin(self):
-        from anemoi.datasets.create.input.origin import Source
-
-        return Source(self.path[-1], self.config)
-
 
 class TransformFilterMixin:
+    """Mixin class for filters defined in anemoi-transform"""
+
     def create_object(self, context, config):
         from anemoi.transform.filters import create_filter as create_transform_filter
 
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        result = filter.forward(context.filter_argument(argument))
-        return context.origin(result, self, argument)
+        return filter.forward(context.filter_argument(argument))
 
-    def origin(self):
-        from anemoi.datasets.create.input.origin import Filter
 
-        return Filter(self.path[-1], self.config)
+class FilterFunction(Function):
+    """Action to call a filter on the argument (e.g. rename, regrid, etc.)."""
 
-    def combine_origins(self, current, previous):
-        return {"_apply": current, **(previous or {})}
+    def __call__(self, context, argument):
+        return self.call(context, argument, context.filter_argument)
 
 
 def _make_name(name, what):
@@ -195,6 +240,8 @@ def new_filter(name, mixin):
 
 
 class DataSources(Action):
+    """Action to call a source (e.g. mars, netcdf, grib, etc.)."""
+
     def __init__(self, config, *path):
         super().__init__(config, *path)
         assert isinstance(config, (dict, list)), f"Invalid config type: {type(config)}"
@@ -209,6 +256,8 @@ class DataSources(Action):
 
 
 class Recipe(Action):
+    """Action that represent a recipe (i.e. a sequence of data_sources and input)."""
+
     def __init__(self, input, data_sources):
         self.input = input
         self.data_sources = data_sources
@@ -227,7 +276,6 @@ KLASS = {
 }
 
 LEN_KLASS = len(KLASS)
-TYPES = {}
 
 
 def make(key, config, *path):
@@ -244,28 +292,17 @@ def make(key, config, *path):
         for name in dataset_source_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_source(name, DatasetSourceMixin)
-                TYPES[name.replace("_", "-")] = "source"
 
         for name in transform_source_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_source(name, TransformSourceMixin)
-                TYPES[name.replace("_", "-")] = "source"
 
         # Register filters
         for name in transform_filter_registry.registered:
             if name not in KLASS:
                 KLASS[name.replace("_", "-")] = new_filter(name, TransformFilterMixin)
-                TYPES[name.replace("_", "-")] = "filter"
 
-    key = key.replace("_", "-")
-
-    if key not in KLASS:
-        LOG.error(f"Unknown action '{key}' in {'.'.join(x for x in path)}")
-        for available in sorted(KLASS):
-            LOG.error(f"  Available: {available} (type={TYPES.get(available, 'built-in')})")
-        raise ValueError(f"Unknown action '{key}' in {'.'.join(x for x in path)}")
-
-    return KLASS[key](config, *path)
+    return KLASS[key.replace("_", "-")](config, *path)
 
 
 def action_factory(data, *path):
