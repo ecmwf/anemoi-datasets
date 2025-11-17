@@ -28,7 +28,7 @@ def build(input, output, backend, overwrite=False):
     print(f"Dataset has {len(ds)} records, from {ds.start_date} to {ds.end_date}")
     print(f"Converting dataset to {output} using new backend '{backend}'")
 
-    from anemoi.datasets.use.gridded.tabular.records.backends import writer_backend_factory
+    from anemoi.datasets.use.tabular.records.backends import writer_backend_factory
 
     if not isinstance(backend, dict):
         backend = {"name": backend}
