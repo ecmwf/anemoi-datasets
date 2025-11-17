@@ -491,39 +491,3 @@ class Recipe:
 
             args = parser.parse_args(["create", path, output, "--overwrite", "--test"])
             cmd.run(args)
-
-
-if __name__ == "__main__":
-
-    r = Recipe()
-    r.description = "test"
-
-    r.dates = ("2023-01-01 00:00:00", "2023-12-31 18:00:00", "6h")
-
-    m1 = r.mars(expver="0001", grid=[20, 20])
-    m2 = r.mars(expver="0002")
-    m3 = r.mars(expver="0003")
-
-    r.input = m1
-
-    r.input += r.forcings(template=m1, param=["cos_latitude", "sin_latitude"])
-
-    # m0 = r.mars(expver="0000")
-    # c = r.concat(
-    #     {
-    #         ("190", "2000"): m0,
-    #         ("2001", "2020"): r.mars(expver="0002"),
-    #         ("2021", "2023"): (r.mars(expver="0003") + r.forcings(template=m1, param=["cos_lat", "sin_lat"])),
-    #     },
-    # )
-
-    # c[("2031", "2033")] = r.mars(expver="0005")
-
-    # r.input += c
-
-    r.output.group_by = "day"
-    r.build.additions = True
-    r.statistics.end = "80%"
-
-    r.dump()
-    r.test()

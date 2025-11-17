@@ -18,12 +18,6 @@ if TYPE_CHECKING:
     from anemoi.datasets.create.input.action import Recipe
 
 
-class Context:
-    """Context for building input data."""
-
-    pass
-
-
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
