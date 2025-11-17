@@ -148,6 +148,10 @@ class IntervalsCollection:
         self.check_merged_interval()
 
         self.template_field = None
+        
+        self._todo = set([p.time_request for p in self._intervals])
+        self._len = len(self._todo)
+        self._done = set()
 
     def check_merged_interval(self):
         """Check the IntervalsCollection:
@@ -190,15 +194,6 @@ class IntervalsCollection:
         if len(found) > 1:
             raise ValueError(f"Found more than one interval for {field}")
         return None
-
-    # flagging logic to check whether all intervals in the IntervalsCollection have been accumulated
-    @property
-    def todo(self):
-        if self._todo is None:
-            self._todo = set([p.time_request for p in self._intervals])
-            self._len = len(self._todo)
-            self._done = set()
-            assert self._len == len(self._todo), (self._len, len(self._todo))
 
     def is_todo(self, key):
         return key in self._todo

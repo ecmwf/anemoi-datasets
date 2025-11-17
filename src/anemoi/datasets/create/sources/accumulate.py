@@ -98,21 +98,21 @@ class Accumulator:
         self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
 
         # instantiate IntervalsCollection object
-        # if interval_class != itv.DefaultIntervalsCollection:
-        #    LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
-        #    data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
         interval_class = itv.find_IntervalsCollection_class(source_request)
+        if interval_class != itv.DefaultIntervalsCollection:
+            LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
+            data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
         self.interval_coll = interval_class(
             self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs
-        )
+        )       
 
     @property
-    def requests(self) -> dict:
+    def requests(self) -> tuple[dict, datetime.datetime]:
         """build the full data requests, merging the time requests with the key.
         This will be used to query the source data database.
         """
         for interval in self.interval_coll:
-            yield {**self.kwargs.copy(), **dict(interval.time_request)}
+            yield {**self.kwargs.copy(), **dict(interval.time_request)}, interval.end_datetime
 
     def is_field_needed(self, field: Any):
         """Check whether the given field is needed by the accumulator (correct param, etc...)"""
@@ -151,14 +151,14 @@ class Accumulator:
             return
 
         # each field must be seen once
-        assert self.interval_coll.is_todo(interval), (self.interval_coll, interval)
-        assert not self.interval_coll.is_done(interval), f"Field {field} for interval {interval} already done"
+        assert self.interval_coll.is_todo(interval.time_request), (self.interval_coll, interval)
+        assert not self.interval_coll.is_done(interval.time_request), f"Field {field} for interval {interval} already done"
 
         print(f"{self} field ✅ ({interval.sign}) {field} for {interval}")
 
         # actual accumulation computation
         self.values = interval.apply(self.values, values)
-        self.interval_coll.set_done(interval)
+        self.interval_coll.set_done(interval.time_request)
 
         if self.interval_coll.all_done():
             # all intervals for accumulation have been processed
@@ -270,10 +270,12 @@ def _compute_accumulations(
 
     # get all needed data requests
     requests = []
+    requested_dates = set()
     for a in accumulators:
-        for r in a.requests:
+        for r, date in a.requests:
             r = {**main_request, **r}
             requests.append(r)
+            requested_dates = requested_dates | {date}
             print(f"💬 Accumulator {a} needs request: {r}")
 
     print(f"💬 Creating source '{source_name}' with {len(requests)} requests for accumulation")
@@ -290,9 +292,9 @@ def _compute_accumulations(
         "accumulate",
         hashlib.md5(json.dumps([source_name, requests], sort_keys=True).encode()).hexdigest(),
     )
-
     # get the data (requests are packed to make a minimal number of queries to database)
-    ds_to_accum = source(context, dates)
+    requested_dates = list(requested_dates)
+    ds_to_accum = source(context, requested_dates)
 
     assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_intervals), (
         f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",

@@ -61,10 +61,10 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     """
 
     filelist = [
-        "2021-01-01_23h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-02_00h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-02_01h00/PAAROME_1S100_ECH1_SOL.grib",
-        "2021-01-02_02h00/PAAROME_1S100_ECH1_SOL.grib",
+        "2021-01-01_23h00/mod_precip.grib",
+        "2021-01-02_00h00/mod_precip.grib",
+        "2021-01-02_01h00/mod_precip.grib",
+        "2021-01-02_02h00/mod_precip.grib",
     ]
 
     keys = [
@@ -149,7 +149,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
             "pipe": [
                 {
                     "accumulate": {
-                        "period": 24,
+                        "period": 3,
                         "data_accumulation_period": "1h",
                         "source": {
                             "grib-index": {
