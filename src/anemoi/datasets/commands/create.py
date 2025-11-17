@@ -18,13 +18,30 @@ from typing import Any
 import tqdm
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.commands import Command
+from . import Command
 
 LOG = logging.getLogger(__name__)
 
 
-def task(what: str, fields: bool, options: dict, *args: Any, **kwargs: Any) -> Any:
-    """Make sure `import Creator` is done in the sub-processes, and not in the main one."""
+def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
+    """Make sure `import Creator` is done in the sub-processes, and not in the main one.
+
+    Parameters
+    ----------
+    what : str
+        The task to be executed.
+    options : dict
+        Options for the task.
+    *args : Any
+        Additional arguments.
+    **kwargs : Any
+        Additional keyword arguments.
+
+    Returns
+    -------
+    Any
+        The result of the task.
+    """
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
@@ -32,7 +49,7 @@ def task(what: str, fields: bool, options: dict, *args: Any, **kwargs: Any) -> A
 
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = task_factory(what.replace("-", "_"), fields, **options)
+    c = task_factory(what.replace("-", "_"), **options)
     result = c.run()
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")

@@ -17,7 +17,7 @@ import earthkit.data as ekd
 import tqdm
 import yaml
 
-from anemoi.datasets.commands import Command
+from . import Command
 
 KEYS = ("class", "type", "stream", "expver", "levtype", "domain")
 

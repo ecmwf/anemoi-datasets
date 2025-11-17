@@ -27,9 +27,10 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.commands import Command
-from anemoi.datasets.use.gridded.stores import dataset_lookup
-from anemoi.datasets.use.gridded.stores import open_zarr
+from anemoi.datasets.data.stores import open_zarr
+from anemoi.datasets.data.stores import zarr_lookup
+
+from . import Command
 
 LOG = logging.getLogger(__name__)
 
@@ -395,13 +396,9 @@ class Version:
             )
             return
 
-        if self.build_flags is None:
-            print("🪫 Dataset not initialised")
-            return
+        build_flags = self.build_flags or np.array([], dtype=bool)
 
-        build_flags = self.build_flags
-
-        build_lengths = self.build_lengths
+        build_lengths = self.build_lengths or np.array([], dtype=bool)
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
@@ -813,7 +810,7 @@ class InspectZarr(Command):
         Version
             The version object of the dataset.
         """
-        z = open_zarr(dataset_lookup(path))
+        z = open_zarr(zarr_lookup(path))
 
         metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")
