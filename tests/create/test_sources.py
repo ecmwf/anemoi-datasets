@@ -9,6 +9,7 @@
 
 import os
 import sys
+
 import numpy as np
 import pytest
 from anemoi.utils.testing import skip_if_offline
