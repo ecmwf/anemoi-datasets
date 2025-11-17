@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.28](https://github.com/ecmwf/anemoi-datasets/compare/0.5.27...0.5.28) (2025-10-30)
+
+
+### Features
+
+* Added rolling average on read ([#448](https://github.com/ecmwf/anemoi-datasets/issues/448)) ([5cef720](https://github.com/ecmwf/anemoi-datasets/commit/5cef7207b7900190272d970bf44f35a7011e3708))
+* Fix repeat dates ([#458](https://github.com/ecmwf/anemoi-datasets/issues/458)) ([16b5c83](https://github.com/ecmwf/anemoi-datasets/commit/16b5c836172a37c13b210b35baee1a5e97731e5d))
+* Refactor dataset create ([#379](https://github.com/ecmwf/anemoi-datasets/issues/379)) ([c5408da](https://github.com/ecmwf/anemoi-datasets/commit/c5408dafd34c80bcb4b0cd9623dbebfe00959151))
+
+
+### Bug Fixes
+
+* Allow grib source to be used for constant data ([#428](https://github.com/ecmwf/anemoi-datasets/issues/428)) ([c1d7ff1](https://github.com/ecmwf/anemoi-datasets/commit/c1d7ff1035848e26d3034903577c267973985c07))
+* Broken source imports ([#450](https://github.com/ecmwf/anemoi-datasets/issues/450)) ([#454](https://github.com/ecmwf/anemoi-datasets/issues/454)) ([d6ed174](https://github.com/ecmwf/anemoi-datasets/commit/d6ed174cf4f6da22464c050d3304b026fc0ae4a3))
+* Ensure missing value indicator in not a valid value in accumulat… ([#316](https://github.com/ecmwf/anemoi-datasets/issues/316)) ([3541a1f](https://github.com/ecmwf/anemoi-datasets/commit/3541a1f7068b54ceeb35dff93c3f94b4b138cb9d))
+* S3 access [#453](https://github.com/ecmwf/anemoi-datasets/issues/453) ([#459](https://github.com/ecmwf/anemoi-datasets/issues/459)) ([2d810e3](https://github.com/ecmwf/anemoi-datasets/commit/2d810e3775ace78ffe2c43cc9bac66d704c0754d))
+* Xarray-zarr filters ([#457](https://github.com/ecmwf/anemoi-datasets/issues/457)) ([5f2973f](https://github.com/ecmwf/anemoi-datasets/commit/5f2973fb7d128a3f6de5ed538e39cc7421eeb5dc))
+
+
+### Documentation
+
+* Documentation updates ([#419](https://github.com/ecmwf/anemoi-datasets/issues/419)) ([4588175](https://github.com/ecmwf/anemoi-datasets/commit/458817533e805652527945eef4de781c62d3abf9))
+
 ## [0.5.27](https://github.com/ecmwf/anemoi-datasets/compare/0.5.26...0.5.27) (2025-10-06)
 
 

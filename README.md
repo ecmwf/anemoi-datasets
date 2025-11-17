@@ -1,15 +1,29 @@
 # anemoi-datasets
 
-**DISCLAIMER**
-This project is **BETA** and will be **Experimental** for the foreseeable future.
-Interfaces and functionality are likely to change, and the project itself may be scrapped.
-**DO NOT** use this software in any project/software that is operational.
+<p align="center">
+  <a href="https://github.com/ecmwf/codex/raw/refs/heads/main/Project Maturity">
+    <img src="https://github.com/ecmwf/codex/raw/refs/heads/main/Project Maturity/incubating_badge.svg" alt="Maturity Level">
+  </a>
+  <a href="https://opensource.org/licenses/apache-2-0">
+    <img src="https://img.shields.io/badge/Licence-Apache 2.0-blue.svg" alt="Licence">
+  </a>
+  <a href="https://github.com/ecmwf/anemoi-datasets/releases">
+    <img src="https://img.shields.io/github/v/release/ecmwf/anemoi-datasets?color=purple&label=Release" alt="Latest Release">
+  </a>
+</p>
+
+> \[!IMPORTANT\]
+> This software is **Incubating** and subject to ECMWF's guidelines on [Software Maturity](https://github.com/ecmwf/codex/raw/refs/heads/main/Project%20Maturity).
 
 
 
 ## Documentation
 
 The documentation can be found at https://anemoi-datasets.readthedocs.io/.
+
+## Contributing
+
+You can find information about contributing to Anemoi at our [Contribution page](https://anemoi.readthedocs.io/en/latest/contributing/contributing.html).
 
 ## Install
 

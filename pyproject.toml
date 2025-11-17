@@ -39,7 +39,6 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
@@ -49,7 +48,7 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.10",
-  "anemoi-utils[provenance]>=0.4.32",
+  "anemoi-utils[provenance]>=0.4.38",
   "cfunits",
   "glom",
   "jsonschema",

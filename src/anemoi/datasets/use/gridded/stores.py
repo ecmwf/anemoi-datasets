@@ -89,21 +89,16 @@ class S3Store(ReadOnlyStore):
     def __init__(self, url: str) -> None:
         """Initialize the S3Store with a URL."""
 
-        LOG.warning("Accessing dataset using %s", url)
-        LOG.warning("Data access may be slow")
-
         self.url = url
 
     def __getitem__(self, key: str) -> bytes:
         """Retrieve an item from the store."""
         from anemoi.utils.remote.s3 import get_object
 
-        target = self.url + "/" + key
-
         try:
-            return get_object(target).bytes()
+            return get_object(os.path.join(self.url, key))
         except FileNotFoundError:
-            raise KeyError(target)
+            raise KeyError(key)
 
 
 class DebugStore(ReadOnlyStore):
