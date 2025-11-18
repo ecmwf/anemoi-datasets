@@ -294,8 +294,8 @@ class ComplementNearest(Complement):
         source_index = [self._source.name_to_index[x] for x in self.variables[previous]]
         source_data = self._source[index[0], source_index, index[2], ...]
         if any(self._nearest_grid_points >= source_data.shape[-1]):
-            target_data = np.empty(source_data.shape[:-1] + self._target.shape[-1:], dtype=self._target.dtype)
-            target_data.fill(np.nan)
+            target_shape = source_data.shape[:-1] + self._target.shape[-1:]
+            target_data = np.full(target_shape, np.nan, dtype=self._target.dtype)
             cond = self._nearest_grid_points < source_data.shape[-1]
             reachable = np.where(cond)[0]
             nearest_reachable = self._nearest_grid_points[cond]
