@@ -10,7 +10,6 @@
 
 import datetime
 import logging
-from abc import abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -443,7 +442,6 @@ class MissingDataset(Forwards):
         return {"start": self.start, "end": self.end}
 
     @property
-    @abstractmethod
     def shape(self) -> tuple[int, ...]:
         """Return the shape of the dataset."""
         return (len(self),) + self.forward.shape[1:]
