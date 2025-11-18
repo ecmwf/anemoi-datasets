@@ -12,8 +12,6 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 from typing import Any
 
-from anemoi.datasets.create.input.context.field import FieldContext
-
 if TYPE_CHECKING:
     from anemoi.datasets.create.input.action import Recipe
 
@@ -48,11 +46,13 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument) -> Any:
+    def select(self, context, argument) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
+        context : Any
+            The context for the data selection.
         argument : GroupOfDates
             Group of dates to select data for.
 
@@ -61,8 +61,12 @@ class InputBuilder:
         Any
             Selected data.
         """
-        context = FieldContext(argument, **self.kwargs)
-        return context.create_result(self.action(context, argument))
+        # TODO: move me elsewhere
+
+        return context.create_result(
+            argument,
+            self.action(context, argument),
+        )
 
 
 def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:

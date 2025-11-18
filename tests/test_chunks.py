@@ -7,11 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-"""Test suite for the ChunkFilter class in the anemoi.datasets.create.chunks module."""
+"""Test suite for the ChunkFilter class in the anemoi.datasets.build.gridded.chunks module."""
 
 import pytest
 
-from anemoi.datasets.create.chunks import ChunkFilter
+from anemoi.datasets.create.gridded.chunks import ChunkFilter
 
 
 def test_chunk_filter():

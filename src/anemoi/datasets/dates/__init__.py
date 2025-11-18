@@ -83,7 +83,7 @@ class DatesProvider:
     3
     """
 
-    def __init__(self, missing: list[str | datetime.datetime] | None = None) -> None:
+    def __init__(self, missing: list[str | datetime.datetime] | None = None, window: Any = None) -> None:
         """Initialize the DatesProvider with optional missing dates.
 
         Parameters
@@ -93,16 +93,21 @@ class DatesProvider:
         """
         if not missing:
             missing = []
+
         self.missing = list(extend(missing))
+
         if set(self.missing) - set(self.values):
             diff = set(self.missing) - set(self.values)
             warnings.warn(f"Missing dates {len(diff)=} not in list.")
 
+        self.window = window
+
     @classmethod
-    def from_config(cls, **kwargs: Any) -> "DatesProvider":
+    def from_config(cls, *args, **kwargs: Any) -> "DatesProvider":
         """Create a DatesProvider instance from configuration.
 
         Args:
+            *args (Any): Positional arguments.
             **kwargs (Any): Configuration parameters.
 
         Returns
@@ -110,13 +115,22 @@ class DatesProvider:
         DatesProvider
             An instance of DatesProvider.
         """
-        if kwargs.pop("hindcasts", False):
-            return HindcastsDates(**kwargs)
 
-        if "values" in kwargs:
-            return ValuesDates(**kwargs)
+        options = {}
+        for a in args:
+            if not isinstance(a, dict):
+                raise ValueError(f"Unexpected argument type {type(a)}")
+            options.update(a)
 
-        return StartEndDates(**kwargs)
+        options.update(kwargs)
+
+        if options.pop("hindcasts", False):
+            return HindcastsDates(**options)
+
+        if "values" in options:
+            return ValuesDates(**options)
+
+        return StartEndDates(**options)
 
     def __iter__(self) -> Iterator[datetime.datetime]:
         """Iterate over the dates.
@@ -250,11 +264,12 @@ class StartEndDates(DatesProvider):
         self.frequency = frequency
 
         missing = kwargs.pop("missing", [])
+        window = kwargs.pop("window", None)
 
         self.values = list(DateTimes(start, end, increment=frequency, **kwargs))
         self.kwargs = kwargs
 
-        super().__init__(missing=missing)
+        super().__init__(missing=missing, window=window)
 
     def as_dict(self) -> dict[str, Any]:
         """Convert the StartEndDates instance to a dictionary.
@@ -269,6 +284,14 @@ class StartEndDates(DatesProvider):
             "end": self.end.isoformat(),
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
+
+    @property
+    def start_date(self) -> datetime.datetime:
+        return self.start
+
+    @property
+    def end_date(self) -> datetime.datetime:
+        return self.end
 
 
 class Hindcast:
