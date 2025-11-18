@@ -229,28 +229,30 @@ def odb2df(
     if keep_temp_odb:
         LOG.info(f"Intermediate ODB file kept at: {intermediate_odb_path.name}")
 
-    df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
+    assert isinstance(df, pandas.DataFrame)
 
-    # Add date-time to the dataframe
-    date_strings = [
-        f"{d}{t:06}"
-        for d, t in zip(
-            df_pivotted[flavour["date_column_name"]],
-            df_pivotted[flavour["time_column_name"]],
-        )
-    ]
-    df_pivotted.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
-    df_pivotted["time"] = pandas.to_datetime(
-        date_strings,
+    # The new "time" column has to be constructed from the existing date and
+    # time columns which have them as YYYYMMDD and HHMMSS integers
+    df["time"] = pandas.to_datetime(
+        df[flavour["date_column_name"]].astype(str).str.zfill(8)
+        + df[flavour["time_column_name"]].astype(str).str.zfill(6),
         format="%Y%m%d%H%M%S",
     )
+    df.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
 
-    # Drop original lat/lon columns if they were renamed
+    # The latitude and longitude columns may need renaming to standard names
     if flavour["latitude_column_name"] != "latitude":
-        df_pivotted.drop(columns=[flavour["latitude_column_name"]], inplace=True)
+        df.rename(
+            columns={flavour["latitude_column_name"]: "latitude"},
+            inplace=True,
+        )
     if flavour["longitude_column_name"] != "longitude":
-        df_pivotted.drop(columns=[flavour["longitude_column_name"]], inplace=True)
+        df.rename(
+            columns={flavour["longitude_column_name"]: "longitude"},
+            inplace=True,
+        )
 
+    df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
     return df_pivotted
 
 
@@ -299,7 +301,9 @@ def odb_sql_str(
     Returns
     -------
     str
-        Constructed SQL query string.
+        Constructed SQL query string which will extract the required data with
+        guaranteed columns given by the flavour along with any additional
+        required columns. Others can be included via the `select` parameter.
     """
     date_col = flavour["date_column_name"]
     time_col = flavour["time_column_name"]
@@ -312,7 +316,7 @@ def odb_sql_str(
             required_columns = []
         else:
             # Check for overlap between required_columns and select
-            select_columns = [col.strip() for col in select.split(",")]  # Strip whitespace from select columns
+            select_columns = [col.strip() for col in select.split(",")]  # Strip whitespace
             overlapping_columns = [col for col in required_columns if col in select_columns]
             if overlapping_columns:
                 required_columns = [col for col in required_columns if col not in overlapping_columns]
@@ -321,9 +325,9 @@ def odb_sql_str(
                 LOG.warning(
                     "Not all required columns are included in the "
                     f"SELECT statement. Missing columns: {missing_columns}"
-                )  # todo - switch to anemoi warning system.
+                )
 
-    default_select = f"timestamp({date_col}, {time_col}) as time, " f"{lat_col} as latitude, {lon_col} as longitude"
+    default_select = f"{date_col}, {time_col}, {lat_col}, {lon_col}"
     if required_columns:
         default_select += ", " + ", ".join(required_columns)
     if select == "":
@@ -334,6 +338,9 @@ def odb_sql_str(
     # strip any trailing commas and whitespace - these are in the final query
     select = select.rstrip(", ").strip()
 
+    # Note that whilst the where clause uses timestamp, outputting this directly
+    # can cause large negative values instead of the expected YYYYMMDDHHMMSS
+    # format.
     default_where = (
         f"(timestamp({date_col}, {time_col}) >= {start_datetime} "
         f"AND timestamp({date_col}, {time_col}) <= {end_datetime})"
@@ -349,8 +356,8 @@ def odb_sql_str(
 
 
 def subselect_odb_using_odc_sql(
-    input_odb_path: Path,
-    output_odb_path: Path,
+    input_odb_path: Path | str,
+    output_odb_path: Path | str,
     sql_query_string: str,
 ) -> None:
     """Subselect ODB data based on an SQL query string using the ODC command-line tool
