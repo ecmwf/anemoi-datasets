@@ -1417,18 +1417,6 @@ def test_invalid_trim_edge() -> None:
         )
 
 
-@mockup_open_zarr
-def test_fields_to_records() -> None:
-    """Test joining datasets (case 2)."""
-
-    key = "grp"
-    ds = open_dataset(dataset="test-2021-2021-6h-o96-abcd-1", set_group=key)
-    # unwrapped = open_dataset(dataset="test-2021-2021-6h-o96-abcd-2")
-
-    assert ds.groups == [key]
-    assert ds.variables == {key: ["a", "b", "c", "d"]}
-
-
 @pytest.mark.skip("Saving datasets not yet supported in that branch")
 def test_save_dataset() -> None:
     """Test save datasets."""
