@@ -10,6 +10,7 @@
 
 import datetime
 import logging
+from abc import abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -380,6 +381,8 @@ class MissingDataset(Forwards):
             dates.append(date)
             date += dataset.frequency
 
+        print(f"MissingDataset from {start} to {end}, total {len(dates)} dates")
+
         self._dates = np.array(dates, dtype="datetime64")
         self._missing = set(range(len(dates)))
 
@@ -440,3 +443,9 @@ class MissingDataset(Forwards):
             Metadata specific to the subclass.
         """
         return {"start": self.start, "end": self.end}
+
+    @property
+    @abstractmethod
+    def shape(self) -> tuple[int, ...]:
+        """Return the shape of the dataset."""
+        return (len(self),) + self.forward.shape[1:]
