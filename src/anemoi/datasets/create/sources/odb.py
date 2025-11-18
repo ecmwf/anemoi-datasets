@@ -197,7 +197,9 @@ def odb2df(
     Returns
     -------
     pandas.DataFrame
-        DataFrame containing the parsed data.
+        DataFrame containing the parsed data. The first three columns are
+        "time", "latitude", and "longitude", followed by any other selected
+        columns.
     """
     path = Path(path_str)
 
@@ -249,6 +251,13 @@ def odb2df(
             columns={flavour["longitude_column_name"]: "longitude"},
             inplace=True,
         )
+
+    # Make sure first 3 columns are time, latitude, longitude
+    cols = df.columns.tolist()
+    cols.remove("time")
+    cols.remove("latitude")
+    cols.remove("longitude")
+    df = df[["time", "latitude", "longitude"] + cols]
 
     df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
     return df_pivotted
