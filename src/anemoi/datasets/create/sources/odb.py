@@ -309,9 +309,12 @@ def odb_sql_str(
     lon_col = flavour["longitude_column_name"]
 
     required_columns = [col.strip() for col in required_columns]
+    default_select = f"{date_col}, {time_col}, {lat_col}, {lon_col}"
+
     if select != "":
         if "*" in select:
             required_columns = []
+            default_select = ""
         else:
             # Check for overlap between required_columns and select
             select_columns = [col.strip() for col in select.split(",")]  # Strip whitespace
@@ -325,13 +328,13 @@ def odb_sql_str(
                     f"SELECT statement. Missing columns: {missing_columns}"
                 )
 
-    default_select = f"{date_col}, {time_col}, {lat_col}, {lon_col}"
     if required_columns:
         default_select += ", " + ", ".join(required_columns)
+
     if select == "":
         select = default_select
     else:
-        select = default_select + ", " + select
+        select = f"{default_select}, {select}".strip(", ")  # Ensure no leading ", " if default_select is empty
 
     # strip any trailing commas and whitespace - these are in the final query
     select = select.rstrip(", ").strip()
