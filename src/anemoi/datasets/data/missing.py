@@ -381,8 +381,6 @@ class MissingDataset(Forwards):
             dates.append(date)
             date += dataset.frequency
 
-        print(f"MissingDataset from {start} to {end}, total {len(dates)} dates")
-
         self._dates = np.array(dates, dtype="datetime64")
         self._missing = set(range(len(dates)))
 

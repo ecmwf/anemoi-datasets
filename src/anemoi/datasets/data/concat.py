@@ -220,8 +220,6 @@ class Concat(ConcatMixin, Combined):
 
         # For now we should have the datasets in order with no gaps
 
-        print(ranges)
-
         frequency = frequency_to_timedelta(datasets[0].frequency)
         result = []
 
@@ -232,8 +230,6 @@ class Concat(ConcatMixin, Combined):
             if r[1] + frequency != s[0]:
                 if fill_missing_gaps:
                     from .missing import MissingDataset
-
-                    print(f"Filling gap between {r} and {s} with MissingDataset")
 
                     result.append(MissingDataset(datasets[i], r[1] + frequency, s[0] - frequency))
                 else:
