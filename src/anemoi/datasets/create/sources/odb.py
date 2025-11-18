@@ -469,6 +469,8 @@ def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.Da
 
     The column names in the resulting DataFrame are flattened to include the
     original column name and the unique values from the `columns` parameter.
+
+    The new columns are appended to the "index" columns.
     """
     # Calculate the index variables, based on all variables not in columns or values.
     indices = list(filter(lambda a: a not in values + columns, df.columns))
