@@ -50,10 +50,10 @@ class OdbSource(Source):
             The context.
         path : str
             The path to the ODB file.
-        select : str
-            The select clause.
-        where : str
-            The where clause.
+        select : str, optional
+            The select clause. Defaults to all columns ("*").
+        where : str, optional
+            The where clause. Defaults to no additional filtering ("").
         flavour : dict, optional
             Naming of the latitude, longitude, date and time columns. Defaults to
             {"latitude_column_name": "lat",
@@ -65,11 +65,11 @@ class OdbSource(Source):
             define the new columns after the reshaping.
             Typically these identify entries in `pivot_values` as belonging to
             a particular observation type: for instance "channel_number" or
-            "varno".
+            "varno". Defaults to [].
         pivot_values : list, optional
             List of column names - values in these columns will
             be spread across different values of the columns. For instance,
-            "observed_value" and "quality_control_value".
+            "observed_value" and "quality_control_value". Defaults to [].
         kwargs : dict, optional
             Additional keyword arguments.
 
@@ -88,6 +88,12 @@ class OdbSource(Source):
         super().__init__(context)
 
         self.path = path
+        if not select:
+            select = "*"
+            LOG.warning("No SELECT clause provided; defaulting to all columns.")
+        if not where:
+            where = ""
+            LOG.warning("No WHERE clause provided; defaulting to no additional filtering.")
         self.select = select
         self.where = where
         self.flavour = {
@@ -134,8 +140,8 @@ def odb2df(
     start: str,
     end: str,
     path_str: str,
-    select: str | None = None,
-    where: str | None = None,
+    select: str = "",
+    where: str = "",
     pivot_columns: list = [],
     pivot_values: list = [],
     flavour: dict = {},
@@ -199,14 +205,6 @@ def odb2df(
     start_datetime = iso8601_to_datetime(start)
     end_datetime = iso8601_to_datetime(end)
     LOG.info(f"Querying ODB file at {path} from {start_datetime} to {end_datetime}")
-
-    if select is None:
-        select = "*"
-        LOG.warning("No SELECT clause provided; defaulting to all columns.")
-
-    if where is None:
-        where = ""
-        LOG.warning("No WHERE clause provided; defaulting to no additional filtering.")
 
     sql = odb_sql_str(
         start_datetime,
