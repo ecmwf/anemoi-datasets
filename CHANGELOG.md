@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.29](https://github.com/ecmwf/anemoi-datasets/compare/0.5.28...0.5.29) (2025-11-18)
+
+
+### Bug Fixes
+
+* '--test' changes grid/number  ([#386](https://github.com/ecmwf/anemoi-datasets/issues/386)) ([71238c6](https://github.com/ecmwf/anemoi-datasets/commit/71238c69d307f2266e495f5c39f60d36fe9dcc76))
+* Issue [#477](https://github.com/ecmwf/anemoi-datasets/issues/477) ([#478](https://github.com/ecmwf/anemoi-datasets/issues/478)) ([42b9e27](https://github.com/ecmwf/anemoi-datasets/commit/42b9e27c621be292cea77358c738a6c90590a2a9))
+* Update README to reflect project maturity status ([#465](https://github.com/ecmwf/anemoi-datasets/issues/465)) ([ec8a15e](https://github.com/ecmwf/anemoi-datasets/commit/ec8a15eac36743502d8850070ce8f1d892a40ef0))
+
+
+### Documentation
+
+* Document the option to specify types when selecting a GRIB message ([#466](https://github.com/ecmwf/anemoi-datasets/issues/466)) ([8940839](https://github.com/ecmwf/anemoi-datasets/commit/8940839ed6f2b7f606e20465f45dbad0c68e2096))
+* Fix interpolate to interpolation key in combining page ([#461](https://github.com/ecmwf/anemoi-datasets/issues/461)) ([990a5c3](https://github.com/ecmwf/anemoi-datasets/commit/990a5c3f54706aacd8252b832ad45b598c7252b2))
+
 ## [0.5.28](https://github.com/ecmwf/anemoi-datasets/compare/0.5.27...0.5.28) (2025-10-30)
 
 
