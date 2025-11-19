@@ -40,3 +40,6 @@ input:
 
 statistics:
   end: 2021
+
+checks:
+  - compare_to_reference: {}

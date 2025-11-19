@@ -97,6 +97,7 @@ def load_one(
     if isinstance(dataset, xr.Dataset):
         data = dataset
     else:
+        print(f"Opening dataset {dataset} with options {options}")
         data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
