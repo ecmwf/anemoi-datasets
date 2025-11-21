@@ -81,13 +81,12 @@ class Interval:
         endStep = field.metadata("endStep")
         date = field.metadata("date")
         time = field.metadata("time")
-
+        
         assert stepType == "accum", f"Not an accumulated variable: {stepType}"
 
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
         start = base_datetime + datetime.timedelta(hours=startStep)
         flag = start == self.start_datetime
-
         end = base_datetime + datetime.timedelta(hours=endStep)
         flag = flag and (end == self.end_datetime)
         return flag
@@ -445,24 +444,69 @@ class L5OperIntervalsCollection(EraIntervalsCollection):
 
 
 class EaEndaIntervalsCollection(EraIntervalsCollection):
-    def available_steps(self, start, end) -> dict:
+    
+    forecast_period: int = datetime.timedelta(hours=12)
+    
+    def available_steps(self) -> dict:
         """Return the IntervalsCollection time steps available to build/search an available interval
-
-        Parameters:
-        ----------
-            start (datetime.datetime): step (=leadtime) from the forecast where interval begins
-            end (datetime.datetime): step (=leadtime) from the forecast where interval ends
 
         Return:
         -------
             _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
 
         """
-        print("❌❌❌ untested")
         return {
             6: [[i, i + 3] for i in range(0, 18, 1)],
             18: [[i, i + 3] for i in range(0, 18, 1)],
         }
+    
+    def search_interval(self, current: datetime.datetime) -> Interval:
+
+        steps = self.available_steps()
+        current_hour = current.hour
+        if (current_hour - 6) % 24 <= int(self.forecast_period.seconds // 3600) and (current_hour - 6) > 0:
+            start_guess = 6
+        else:
+            start_guess = 18
+        print(start_guess, current_hour,[i[1] for i in steps[start_guess]])
+        end_times = [i[1] for i in steps[start_guess]]
+        assert (current_hour - start_guess) % 24 in end_times, f"No available forecast for {current}"
+
+        delta = datetime.timedelta(hours=((current_hour - start_guess) % 24))
+        print(current_hour, int(self.forecast_period.seconds // 3600), delta, start_guess)
+        assert delta <= self.forecast_period, f"{current} is too far from a forecast start"
+        start = current - delta
+
+        return Interval(current - datetime.timedelta(hours=3), current, start)
+
+    def build_intervals(self) -> list[Interval]:
+        """Build the list of intervals to accumulate the data on the IntervalsCollection
+
+        available steps --> checking the closest base datetime for each hour
+        difference should be implemented
+        """
+
+        start = self.valid_date - self.accumulation_period
+        current = self.valid_date
+        lst = []
+        while current > start:
+            chosen = self.search_interval(current)
+            current = current - (chosen.end_datetime - chosen.start_datetime)
+            chosen.sign = 1
+            # avoid infinite loop
+            assert current < chosen.end_datetime
+            # if start matches a forecast start, no additional interval needed
+            lst.append(chosen)
+
+        # if start does not match a forecast start, one additional interval needed
+        if current < start:
+            assert start - current < self.forecast_period, f"{current} selects a forecast too far in the past"
+            assert current.hour in self.available_steps()
+            chosen = Interval(start - datetime.timedelta(hours=3), start, current)
+            # must substract the accumulated value from forecast start
+            chosen.sign = -1
+            lst.append(chosen)
+        return lst
 
 
 class RrOperIntervalsCollection(IntervalsCollection):
