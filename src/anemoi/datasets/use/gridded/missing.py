@@ -439,3 +439,8 @@ class MissingDataset(Forwards):
             Metadata specific to the subclass.
         """
         return {"start": self.start, "end": self.end}
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Return the shape of the dataset."""
+        return (len(self),) + self.forward.shape[1:]
