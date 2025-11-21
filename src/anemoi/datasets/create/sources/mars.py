@@ -204,13 +204,13 @@ def _expand_mars_request(
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
         if user_date is not None:
-           if not user_date.match(r["date"]):
-               continue
+            if not user_date.match(r["date"]):
+                continue
 
         if user_time is not None:
             # If time is provided by the user, we only keep the requests that match the time
             if r["time"] not in user_time:
-               continue
+                continue
 
         requests.append(r)
 
@@ -246,8 +246,12 @@ def factorise_requests(
 
     updates = []
     for d in sorted(dates):
-        for req in requests: 
-            if ("date" in req) and ("time" in req) and d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4)):
+        for req in requests:
+            if (
+                ("date" in req)
+                and ("time" in req)
+                and d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4))
+            ):
                 continue
             new_req = _expand_mars_request(
                 req,
