@@ -81,7 +81,7 @@ class Interval:
         endStep = field.metadata("endStep")
         date = field.metadata("date")
         time = field.metadata("time")
-        
+
         assert stepType == "accum", f"Not an accumulated variable: {stepType}"
 
         base_datetime = datetime.datetime.strptime(str(date) + str(time).zfill(4), "%Y%m%d%H%M")
@@ -444,9 +444,9 @@ class L5OperIntervalsCollection(EraIntervalsCollection):
 
 
 class EaEndaIntervalsCollection(EraIntervalsCollection):
-    
+
     forecast_period: int = datetime.timedelta(hours=12)
-    
+
     def available_steps(self) -> dict:
         """Return the IntervalsCollection time steps available to build/search an available interval
 
@@ -459,7 +459,7 @@ class EaEndaIntervalsCollection(EraIntervalsCollection):
             6: [[i, i + 3] for i in range(0, 18, 1)],
             18: [[i, i + 3] for i in range(0, 18, 1)],
         }
-    
+
     def search_interval(self, current: datetime.datetime) -> Interval:
 
         steps = self.available_steps()
@@ -468,7 +468,7 @@ class EaEndaIntervalsCollection(EraIntervalsCollection):
             start_guess = 6
         else:
             start_guess = 18
-        print(start_guess, current_hour,[i[1] for i in steps[start_guess]])
+        print(start_guess, current_hour, [i[1] for i in steps[start_guess]])
         end_times = [i[1] for i in steps[start_guess]]
         assert (current_hour - start_guess) % 24 in end_times, f"No available forecast for {current}"
 
