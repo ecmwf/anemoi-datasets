@@ -50,9 +50,12 @@ data_sources:
       - mars:
           <<: *ensembles
           <<: *pl
-      - accumulations:
-          <<: *ensembles
-          <<: *acc
+      - accumulate:
+          period: 6h
+          source:
+            mars:
+              <<: *ensembles
+              <<: *acc
   centre:
     join:
       - mars:
@@ -61,9 +64,12 @@ data_sources:
       - mars:
           <<: *centre
           <<: *pl
-      - accumulations:
-          <<: *centre
-          <<: *acc
+      - accumulate:
+          period: 6h
+          source:
+            mars:
+              <<: *centre
+              <<: *acc
 
 input:
   join:

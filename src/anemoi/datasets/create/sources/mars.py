@@ -165,10 +165,10 @@ def _expand_mars_request(
     user_time = None
     user_date = None
     if not request_already_using_valid_datetime:
-        req_time = request.get("time")
-        if req_time is not None:
-            req_time = to_list(req_time)
-            req_time = [_normalise_time(t) for t in req_time]
+        user_time = request.get("user_time")
+        if user_time is not None:
+            user_time = to_list(user_time)
+            user_time = [_normalise_time(t) for t in user_time]
 
         user_date = request.get(date_key)
         if user_date is not None:
@@ -193,7 +193,7 @@ def _expand_mars_request(
             base = date - datetime.timedelta(hours=hours)
             r.update(
                 {
-                    date_key: base.strftime("%Y%m%d"),
+                    "date": base.strftime("%Y%m%d"),
                     "time": base.strftime("%H%M"),
                     "step": step,
                 }
@@ -204,7 +204,7 @@ def _expand_mars_request(
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
         if user_date is not None:
-           if not user_date.match(r[date_key]):
+           if not user_date.match(r["date"]):
                continue
 
         if user_time is not None:
@@ -246,14 +246,14 @@ def factorise_requests(
 
     updates = []
     for d in sorted(dates):
-        for req in requests:
-            if d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4)):
+        for req in requests: 
+            if ("date" in req) and ("time" in req) and d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4)):
                 continue
             new_req = _expand_mars_request(
                 req,
                 date=d,
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
-                date_key=date_key,
+                date_key="user_date",
             )
             updates += new_req
 
