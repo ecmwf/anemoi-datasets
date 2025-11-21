@@ -148,6 +148,7 @@ class Accumulator:
         interval = self.interval_coll.find_matching_interval(field)
 
         if not interval:
+            print('no interval matching')
             return
 
         # each field must be seen once
