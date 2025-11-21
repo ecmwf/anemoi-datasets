@@ -165,10 +165,10 @@ def _expand_mars_request(
     user_time = None
     user_date = None
     if not request_already_using_valid_datetime:
-        user_time = request.get("time")
-        if user_time is not None:
-            user_time = to_list(user_time)
-            user_time = [_normalise_time(t) for t in user_time]
+        req_time = request.get("time")
+        if req_time is not None:
+            req_time = to_list(req_time)
+            req_time = [_normalise_time(t) for t in req_time]
 
         user_date = request.get(date_key)
         if user_date is not None:
@@ -203,20 +203,17 @@ def _expand_mars_request(
                 if isinstance(r[pproc], (list, tuple)):
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
-        # if user_date is not None:
-        #    if not user_date.match(r[date_key]):
-        #        print(f"SKIP ! {user_date, r[date_key]}")
-        #        continue
+        if user_date is not None:
+           if not user_date.match(r[date_key]):
+               continue
 
-        # if user_time is not None:
-        #    print(f'user_time : {user_time}')
-        #    # It time is provided by the user, we only keep the requests that match the time
-        #    if r["time"] not in user_time:
-        #       continue
+        if user_time is not None:
+            # If time is provided by the user, we only keep the requests that match the time
+            if r["time"] not in user_time:
+               continue
 
         requests.append(r)
 
-    # assert requests, requests
     return requests
 
 
