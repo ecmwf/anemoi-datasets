@@ -147,22 +147,27 @@ class Thinning(Masked):
         if thinning is not None:
 
             shape = forward.field_shape
-            if len(shape) != 2:
-                raise ValueError("Thinning only works latitude/longitude fields")
+            if len(shape) == 2:
+                # raise ValueError("Thinning only works latitude/longitude fields")
 
-            # Make a copy, so we read the data only once from zarr
-            forward_latitudes = forward.latitudes.copy()
-            forward_longitudes = forward.longitudes.copy()
+                # Make a copy, so we read the data only once from zarr
+                forward_latitudes = forward.latitudes.copy()
+                forward_longitudes = forward.longitudes.copy()
 
-            latitudes = forward_latitudes.reshape(shape)
-            longitudes = forward_longitudes.reshape(shape)
-            latitudes = latitudes[::thinning, ::thinning].flatten()
-            longitudes = longitudes[::thinning, ::thinning].flatten()
+                latitudes = forward_latitudes.reshape(shape)
+                longitudes = forward_longitudes.reshape(shape)
+                latitudes = latitudes[::thinning, ::thinning].flatten()
+                longitudes = longitudes[::thinning, ::thinning].flatten()
 
-            # TODO: This is not very efficient
+                # TODO: This is not very efficient
 
-            mask = [lat in latitudes and lon in longitudes for lat, lon in zip(forward_latitudes, forward_longitudes)]
-            mask = np.array(mask, dtype=bool)
+                mask = [
+                    lat in latitudes and lon in longitudes for lat, lon in zip(forward_latitudes, forward_longitudes)
+                ]
+                mask = np.array(mask, dtype=bool)
+            else:
+                mask = np.zeros(shape, dtype=bool).flatten()
+                mask[::thinning] = True
         else:
             mask = None
 
