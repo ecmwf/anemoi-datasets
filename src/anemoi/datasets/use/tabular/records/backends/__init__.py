@@ -80,6 +80,62 @@ class Npz1Backend(Backend):
         return dic
 
 
+class NpyBackend(Backend):
+
+    def __init__(self, *args, number_of_files_per_subdirectory=100, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.number_of_files_per_subdirectory = number_of_files_per_subdirectory
+        self._cache = LRUCache(maxsize=5)
+        self._metadata_cache = LRUCache(maxsize=500)
+
+    def read(self, i, **kwargs):
+        if i in self._cache:
+            return self._cache[i]
+
+        d = str(int(i / self.number_of_files_per_subdirectory))
+        dir_path = os.path.join(self.path, "data", d)
+        path = os.path.join(dir_path, f"{i}.npy")
+        metadata_path = os.path.join(dir_path, f"{i}.json")
+
+        if i not in self._metadata_cache:
+            with open(metadata_path, "r") as f:
+                self._metadata_cache[i] = json.load(f)
+        metadata = self._metadata_cache[i]
+
+        flattened = np.load(path)
+        key_order = metadata["key_order"]
+        data = {}
+        for k in key_order:
+            arr_meta = metadata["arrays"][k]
+            if k.startswith("metadata:"):
+                data[k] = arr_meta["metadata"]
+                continue
+            dtype = arr_meta["dtype"]
+            shape = tuple(arr_meta["shape"])
+            size = arr_meta["size"]
+            arr_flat = flattened[:size]
+            flattened = flattened[size:]
+            data[k] = arr_flat.reshape(shape).astype(dtype)
+
+        self._cache[i] = data
+
+        return data
+
+    def read_metadata(self):
+        with open(os.path.join(self.path, "metadata.json")) as f:
+            return json.load(f)
+
+    def read_statistics(self):
+        path = os.path.join(self.path, "statistics.npz")
+        dic = {}
+        for k, v in dict(np.load(path)).items():
+            key, group = k.split(":")
+            if group not in dic:
+                dic[group] = {}
+            dic[group][key] = v
+        return dic
+
+
 class Nc1Backend(Backend):
     number_of_files_per_subdirectory = 100
 
@@ -114,6 +170,7 @@ def backend_factory(name, *args, **kwargs):
     BACKENDS = dict(
         npz1=Npz1Backend,
         nc1=Nc1Backend,
+        npy=NpyBackend,
     )
     cls = BACKENDS[name]
     return cls(*args, **kwargs)
@@ -216,6 +273,85 @@ class Npz1WriteBackend(WriteBackend):
         np.savez(path, **flatten)
 
 
+class NpyWriteBackend(WriteBackend):
+
+    def write(self, i, data, number_of_files_per_subdirectory=100, **kwargs):
+        self.number_of_files_per_subdirectory = number_of_files_per_subdirectory
+        self._check_data(data)
+        d = str(int(i / self.number_of_files_per_subdirectory))
+        dir_path = os.path.join(self.path, "data", d)
+
+        out_path = os.path.join(dir_path, f"{i}.npy")
+        tmp_path = os.path.join(dir_path, f"{i}.tmp.npy")
+        metadata_path = os.path.join(dir_path, f"{i}.json")
+        metadata_tmp_path = os.path.join(dir_path, f"{i}.tmp.json")
+
+        os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+
+        cast_data = {}
+        metadata = {"arrays": {}}
+        for k, v in data.items():
+            metadata["arrays"][k] = {}
+            if k.startswith("metadata:"):
+                metadata["arrays"][k]["metadata"] = str(v)
+                continue
+            dtype = str(v.dtype)
+            shape = v.shape
+
+            new_v = v
+            if k.startswith("timedeltas:"):
+                assert dtype == "timedelta64[s]", f"Expected timedelta64[s], got {dtype}"
+                new_v = v.astype(np.float32)
+                if new_v.size:
+                    roundtrip = new_v.astype(dtype)
+                    assert roundtrip.shape == v.shape, (roundtrip.shape, shape)
+                    assert roundtrip.dtype == v.dtype, (roundtrip.dtype, dtype)
+                    assert roundtrip.size == v.size, (roundtrip.size, v.size)
+                    assert np.abs(roundtrip.astype(np.int64) - v.astype(np.int64)).max() < 1e-6, (
+                        roundtrip.astype(np.int64),
+                        v.astype(np.int64),
+                    )
+
+            metadata["arrays"][k]["dtype"] = dtype
+            metadata["arrays"][k]["shape"] = v.shape
+            metadata["arrays"][k]["size"] = v.size
+            cast_data[k] = new_v
+
+        metadata["key_order"] = list(cast_data.keys())
+        cast_data = np.concatenate([a.ravel() for a in cast_data.values()])
+
+        np.save(tmp_path, cast_data)
+        json.dump(metadata, open(metadata_tmp_path, "w"), indent=2)
+        os.rename(tmp_path, out_path)
+        os.rename(metadata_tmp_path, metadata_path)
+
+    def write_metadata(self, metadata):
+        from anemoi.datasets.create.gridded.tasks import _json_tidy
+
+        os.makedirs(self.path, exist_ok=True)
+
+        path = os.path.join(self.path, "metadata.json")
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(metadata, f, indent=2, default=_json_tidy)
+        os.rename(tmp_path, path)
+
+    def write_statistics(self, statistics):
+        os.makedirs(self.path, exist_ok=True)
+        flatten = {}
+        for name, d in statistics.items():
+            assert isinstance(d, dict), f"Statistics for {name} must be a dict, got {type(d)}"
+            assert "mean" in d, f"Statistics for {name} must contain 'mean' key but got {d.keys()}"
+            for k, v in d.items():
+                assert isinstance(
+                    v, (int, float, np.ndarray)
+                ), f"Statistics value for {k} in {name} must be int, float or ndarray, got {type(v)}"
+                flatten[k + ":" + name] = v
+
+        path = os.path.join(self.path, "statistics.npz")
+        np.savez(path, **flatten)
+
+
 class Nc1WriteBackend(WriteBackend):
     number_of_files_per_subdirectory = 100
 
@@ -269,5 +405,6 @@ def writer_backend_factory(name, **kwargs):
     WRITE_BACKENDS = dict(
         npz1=Npz1WriteBackend,
         nc1=Nc1WriteBackend,
+        npy=NpyWriteBackend,
     )
     return WRITE_BACKENDS[name](**kwargs)
