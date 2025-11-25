@@ -105,22 +105,28 @@ class NpyBackend(Backend):
         flattened = np.load(path)
         key_order = metadata["key_order"]
         data = {}
+        offset = 0
         for k in key_order:
             arr_meta = metadata["arrays"][k]
             if k.startswith("metadata:"):
                 data[k] = arr_meta["metadata"]
                 continue
-            dtype = arr_meta["dtype"]
+
             shape = tuple(arr_meta["shape"])
             size = arr_meta["size"]
-            arr_flat = flattened[:size]
-            flattened = flattened[size:]
+            arr_flat = flattened[offset : offset + size]
+            offset += size
             array = arr_flat.reshape(shape)
+
+            dtype = arr_meta["dtype"]
             if k.startswith("timedeltas:"):
+                assert dtype == "timedelta64[s]", (k, dtype)
                 array = array.astype(dtype)
+            else:
+                assert dtype == "float32", (k, dtype)
+
             assert array.dtype == np.dtype(dtype), (array.dtype, dtype)
             data[k] = array
-
         self._cache[i] = data
 
         return data
