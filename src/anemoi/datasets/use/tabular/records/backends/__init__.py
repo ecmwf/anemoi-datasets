@@ -115,7 +115,11 @@ class NpyBackend(Backend):
             size = arr_meta["size"]
             arr_flat = flattened[:size]
             flattened = flattened[size:]
-            data[k] = arr_flat.reshape(shape).astype(dtype)
+            array = arr_flat.reshape(shape)
+            if k.startswith("timedeltas:"):
+                array = array.astype(dtype)
+            assert array.dtype == np.dtype(dtype), (array.dtype, dtype)
+            data[k] = array
 
         self._cache[i] = data
 
