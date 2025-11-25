@@ -27,3 +27,6 @@ input:
 
 statistics:
   end: 2021-01-02
+
+checks:
+  - compare_to_reference: {}
