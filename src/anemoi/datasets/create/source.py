@@ -34,7 +34,7 @@ class Source(ABC):
         self.context = context
 
     @abstractmethod
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def _run(self, dates: DateList) -> ekd.FieldList:
         """Execute the filter.
 
         Parameters
@@ -71,7 +71,7 @@ class FieldSource(Source):
         super().__init__(context, *args, **kwargs)
         self.data = data
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def _run(self, dates: DateList) -> ekd.FieldList:
         """Return the predefined FieldList.
 
         Parameters

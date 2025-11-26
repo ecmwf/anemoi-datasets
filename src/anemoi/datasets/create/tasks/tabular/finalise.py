@@ -16,7 +16,7 @@ class Finalise(FinaliseTask):
     def __init__(self, *, path: str, **kwargs: Any):
         self.path = path
 
-    def run(self) -> None:
+    def _run(self) -> None:
         print(f"Finalise dataset at {self.path}")
         # Here would be the logic to finalise the dataset
 

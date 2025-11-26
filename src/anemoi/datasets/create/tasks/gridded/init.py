@@ -122,17 +122,6 @@ class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
-    def run(self) -> int:
-        """Run the initialization.
-
-        Returns
-        -------
-        int
-            The number of groups to process.
-        """
-        with self._cache_context():
-            return self._run()
-
     def _run(self) -> int:
         """Internal method to run the initialization.
 

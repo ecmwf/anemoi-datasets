@@ -30,7 +30,7 @@ class Size(FieldTask):
         """
         super().__init__(path)
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the size computation."""
         from anemoi.datasets.create.size import compute_directory_sizes
 

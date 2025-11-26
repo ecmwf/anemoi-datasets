@@ -50,6 +50,7 @@ def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
     options = {k: v for k, v in options.items() if v is not None}
 
     c = task_factory(what.replace("-", "_"), **options, **kwargs)
+
     result = c.run()
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")

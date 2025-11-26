@@ -139,7 +139,7 @@ class _InitAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
         self.use_threads = use_threads
         self.progress = progress
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the additions initialization."""
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
@@ -193,7 +193,7 @@ class _LoadAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         LOG.info(f"Writing in {self.tmp_storage_path}")
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the additions."""
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}")
@@ -258,7 +258,7 @@ class _FinaliseAdditions(FieldTask, HasRegistryMixin, AdditionsMixin):
         self.tmp_storage = build_storage(directory=self.tmp_storage_path, create=False)
         LOG.info(f"Reading from {self.tmp_storage_path}.")
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the additions finalization."""
         if self.skip():
             LOG.info(f"Skipping delta={self.delta}.")
@@ -400,7 +400,7 @@ def multi_addition(cls: type) -> type:
             if not self.tasks:
                 LOG.warning("No delta found in kwargs, no additions will be computed.")
 
-        def run(self) -> None:
+        def _run(self) -> None:
             """Run the additions."""
             for actor in self.tasks:
                 actor.run()

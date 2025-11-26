@@ -51,7 +51,7 @@ class Statistics(FieldTask, HasStatisticTempMixin, HasRegistryMixin):
         self.progress = progress
         self.statistics_temp_dir = statistics_temp_dir
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the statistics computation."""
         start, end = (
             self.dataset.zarr_metadata["statistics_start_date"],

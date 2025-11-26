@@ -28,7 +28,7 @@ class Verify(FieldTask):
         """
         super().__init__(path)
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the verification."""
         LOG.info(f"Verifying dataset at {self.path}")
         LOG.info(str(self.dataset.anemoi_dataset))

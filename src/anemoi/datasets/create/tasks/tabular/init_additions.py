@@ -16,7 +16,7 @@ class InitAdditions(InitAdditionsTask):
     def __init__(self, *, path: str, **kwargs: Any):
         self.path = path
 
-    def run(self) -> None:
+    def _run(self) -> None:
         print(f"Init additions for dataset at {self.path}")
         # Here would be the logic to initialize additions
 

@@ -15,13 +15,20 @@ from typing import Any
 
 class Task(ABC):
 
-    def __init__(self, path, **kwargs: Any):
+    def __init__(self, /, path, config, overwrite=False, cache=None, **kwargs: Any):
         self.path = path
+        self.cache = cache
+        self.config = config
+        self.overwrite = overwrite
+
+    def run(self):
+        from anemoi.datasets.create.utils import cache_context
+
+        with cache_context(self.cache):
+            return self._run()
 
     @abstractmethod
-    def run(self) -> None:
-        """Run the task."""
-        pass
+    def _run(self) -> None: ...
 
 
 class Chain(Task):
@@ -29,11 +36,11 @@ class Chain(Task):
         self.tasks = tasks
         self.kwargs = kwargs
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the chained tasks."""
         for cls in self.tasks:
             t = cls(**self.kwargs)
-            t.run()
+            t._run()
 
 
 def task_factory(name: str, observations: bool = False, trace: str | None = None, **kwargs):
@@ -43,5 +50,7 @@ def task_factory(name: str, observations: bool = False, trace: str | None = None
     module = importlib.import_module(f".{kind}.{name}", package=__package__)
 
     task = getattr(module, "task")
+
+    print(module.__file__)
 
     return task(trace=trace, **kwargs)

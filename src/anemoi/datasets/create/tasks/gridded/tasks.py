@@ -345,18 +345,6 @@ class FieldTask:
         """
         self.dataset.update_metadata(**kwargs)
 
-    def _cache_context(self) -> Any:
-        """Get the cache context.
-
-        Returns
-        -------
-        Any
-            The cache context.
-        """
-        from anemoi.datasets.create.utils import cache_context
-
-        return cache_context(self.cache)
-
     def check_unkown_kwargs(self, kwargs: dict) -> None:
         """Check for unknown keyword arguments.
 

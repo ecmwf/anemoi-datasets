@@ -22,11 +22,11 @@ from anemoi.datasets.create.chunks import ChunkFilter
 from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.writer import ViewCacheArray
 
-from ..tasks.gridded.tasks import FieldTask
-from ..tasks.gridded.tasks import HasElementForDataMixin
-from ..tasks.gridded.tasks import HasRegistryMixin
-from ..tasks.gridded.tasks import HasStatisticTempMixin
-from ..tasks.gridded.tasks import WritableDataset
+from .tasks import FieldTask
+from .tasks import HasElementForDataMixin
+from .tasks import HasRegistryMixin
+from .tasks import HasStatisticTempMixin
+from .tasks import WritableDataset
 
 LOG = logging.getLogger(__name__)
 
@@ -78,10 +78,6 @@ class Load(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
 
-    def run(self) -> None:
-        """Run the data loading."""
-        with self._cache_context():
-            self._run()
 
     def _run(self) -> None:
         """Internal method to run the data loading."""
@@ -258,3 +254,6 @@ class Load(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
             f"load time: {seconds_to_human(load)}, "
             f"write time: {seconds_to_human(save)}."
         )
+
+
+task = Load

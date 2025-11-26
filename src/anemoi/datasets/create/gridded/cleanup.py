@@ -51,7 +51,7 @@ class Cleanup(FieldTask, HasRegistryMixin, HasStatisticTempMixin):
             for d in delta
         ]
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the cleanup."""
 
         self.tmp_statistics.delete()

@@ -31,7 +31,7 @@ class Patch(FieldTask):
         self.path = path
         self.options = options or {}
 
-    def run(self) -> None:
+    def _run(self) -> None:
         """Run the patch."""
         from anemoi.datasets.create.patch import apply_patch
 

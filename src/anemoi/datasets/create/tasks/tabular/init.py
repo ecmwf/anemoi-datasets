@@ -7,21 +7,14 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 
 from ..init import InitTask
 
 
 class Init(InitTask):
-    def __init__(self, *, config: str, path: str, overwrite: bool = False, test: bool = False, **kwargs: Any):
-        self.config = config
-        self.path = path
-        self.overwrite = overwrite
-        self.test = test
 
-    def run(self) -> None:
-        print(f"Init dataset at {self.path} with config {self.config}, overwrite={self.overwrite}, test={self.test}")
-        # Here would be the logic to initialize the dataset
+    def _run(self) -> None:
+        print(f"Init dataset at {self.path}")
 
 
 task = Init
