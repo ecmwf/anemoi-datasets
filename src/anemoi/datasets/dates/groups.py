@@ -83,6 +83,14 @@ class GroupOfDates:
         """
         return isinstance(other, GroupOfDates) and self.dates == other.dates
 
+    @property
+    def start_date(self) -> datetime.datetime:
+        return self.provider.start_date
+
+    @property
+    def end_date(self) -> datetime.datetime:
+        return self.provider.end_date
+
 
 class Groups:
     """A collection of groups of dates.
