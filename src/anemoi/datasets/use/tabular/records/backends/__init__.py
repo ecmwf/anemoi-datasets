@@ -257,7 +257,7 @@ class Npz1WriteBackend(WriteBackend):
         os.rename(tmp_path, out_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.gridded.tasks import _json_tidy
+        from anemoi.datasets.create.tasks.gridded.tasks import _json_tidy
 
         os.makedirs(self.path, exist_ok=True)
 
@@ -336,7 +336,7 @@ class NpyWriteBackend(WriteBackend):
         os.rename(metadata_tmp_path, metadata_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.gridded.tasks import _json_tidy
+        from anemoi.datasets.create.tasks.gridded.tasks import _json_tidy
 
         os.makedirs(self.path, exist_ok=True)
 
@@ -380,7 +380,7 @@ class Nc1WriteBackend(WriteBackend):
         ds.to_netcdf(out_path)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create.gridded.tasks import _json_tidy
+        from anemoi.datasets.create.tasks.gridded.tasks import _json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:

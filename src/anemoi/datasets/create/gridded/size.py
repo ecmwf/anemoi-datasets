@@ -12,7 +12,7 @@ from typing import Any
 
 from anemoi.datasets import open_dataset
 
-from ..gridded.tasks import FieldTask
+from ..tasks.gridded.tasks import FieldTask
 
 LOG = logging.getLogger(__name__)
 

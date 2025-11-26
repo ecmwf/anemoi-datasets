@@ -15,9 +15,9 @@ from typing import Any
 import numpy as np
 import zarr
 
-from ..gridded.tasks import FieldTask
-from ..gridded.tasks import HasRegistryMixin
-from ..gridded.tasks import HasStatisticTempMixin
+from ..tasks.gridded.tasks import FieldTask
+from ..tasks.gridded.tasks import HasRegistryMixin
+from ..tasks.gridded.tasks import HasStatisticTempMixin
 
 LOG = logging.getLogger(__name__)
 

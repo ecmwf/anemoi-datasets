@@ -22,11 +22,11 @@ from anemoi.datasets.create.chunks import ChunkFilter
 from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.writer import ViewCacheArray
 
-from ..gridded.tasks import FieldTask
-from ..gridded.tasks import HasElementForDataMixin
-from ..gridded.tasks import HasRegistryMixin
-from ..gridded.tasks import HasStatisticTempMixin
-from ..gridded.tasks import WritableDataset
+from ..tasks.gridded.tasks import FieldTask
+from ..tasks.gridded.tasks import HasElementForDataMixin
+from ..tasks.gridded.tasks import HasRegistryMixin
+from ..tasks.gridded.tasks import HasStatisticTempMixin
+from ..tasks.gridded.tasks import WritableDataset
 
 LOG = logging.getLogger(__name__)
 

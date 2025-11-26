@@ -32,8 +32,6 @@ from anemoi.datasets.dates.groups import Groups
 from anemoi.datasets.use.gridded.misc import as_first_date
 from anemoi.datasets.use.gridded.misc import as_last_date
 
-from ..tasks import chain
-
 LOG = logging.getLogger(__name__)
 
 
@@ -511,72 +509,72 @@ def validate_config(config: Any) -> None:
         raise
 
 
-class TaskCreator:
-    """A class to create and run dataset creation tasks."""
+# class TaskCreator:
+#     """A class to create and run dataset creation tasks."""
 
-    def init(self, *args: Any, **kwargs: Any):
-        from .init import Init
+#     def init(self, *args: Any, **kwargs: Any):
+#         from ..tasks.gridded.init import Init
 
-        return Init(*args, **kwargs)
+#         return Init(*args, **kwargs)
 
-    def load(self, *args: Any, **kwargs: Any):
-        from .load import Load
+#     def load(self, *args: Any, **kwargs: Any):
+#         from .load import Load
 
-        return Load(*args, **kwargs)
+#         return Load(*args, **kwargs)
 
-    def size(self, *args: Any, **kwargs: Any):
-        from .size import Size
+#     def size(self, *args: Any, **kwargs: Any):
+#         from .size import Size
 
-        return Size(*args, **kwargs)
+#         return Size(*args, **kwargs)
 
-    def patch(self, *args: Any, **kwargs: Any):
-        from .patch import Patch
+#     def patch(self, *args: Any, **kwargs: Any):
+#         from .patch import Patch
 
-        return Patch(*args, **kwargs)
+#         return Patch(*args, **kwargs)
 
-    def statistics(self, *args: Any, **kwargs: Any):
-        from .statistics import Statistics
+#     def statistics(self, *args: Any, **kwargs: Any):
+#         from .statistics import Statistics
 
-        return Statistics(*args, **kwargs)
+#         return Statistics(*args, **kwargs)
 
-    def finalise(self, *args: Any, **kwargs: Any):
-        from .cleanup import Cleanup
-        from .size import Size
-        from .statistics import Statistics
+#     def finalise(self, *args: Any, **kwargs: Any):
+#         from .cleanup import Cleanup
+#         from .size import Size
+#         from .statistics import Statistics
 
-        return chain([Statistics, Size, Cleanup])(*args, **kwargs)
+#         return chain([Statistics, Size, Cleanup])(*args, **kwargs)
 
-    def cleanup(self, *args: Any, **kwargs: Any):
-        from .cleanup import Cleanup
+#     def cleanup(self, *args: Any, **kwargs: Any):
+#         from .cleanup import Cleanup
 
-        return Cleanup(*args, **kwargs)
+#         return Cleanup(*args, **kwargs)
 
-    def verify(self, *args: Any, **kwargs: Any):
-        from .verify import Verify
+#     def verify(self, *args: Any, **kwargs: Any):
+#         from .verify import Verify
 
-        return Verify(*args, **kwargs)
+#         return Verify(*args, **kwargs)
 
-    def init_additions(self, *args: Any, **kwargs: Any):
-        from .additions import InitAdditions
+#     def init_additions(self, *args: Any, **kwargs: Any):
+#         from .additions import InitAdditions
 
-        return InitAdditions(*args, **kwargs)
+#         return InitAdditions(*args, **kwargs)
 
-    def load_additions(self, *args: Any, **kwargs: Any):
-        from .additions import LoadAdditions
+#     def load_additions(self, *args: Any, **kwargs: Any):
+#         from .additions import LoadAdditions
 
-        return LoadAdditions(*args, **kwargs)
+#         return LoadAdditions(*args, **kwargs)
 
-    def finalise_additions(self, *args: Any, **kwargs: Any):
-        from .additions import FinaliseAdditions
-        from .size import Size
+#     def finalise_additions(self, *args: Any, **kwargs: Any):
+#         from .additions import FinaliseAdditions
+#         from .size import Size
 
-        return chain([FinaliseAdditions, Size])(*args, **kwargs)
+#         return chain([FinaliseAdditions, Size])(*args, **kwargs)
 
-    def additions(self, *args: Any, **kwargs: Any):
-        from .additions import FinaliseAdditions
-        from .additions import InitAdditions
-        from .additions import LoadAdditions
-        from .cleanup import Cleanup
-        from .size import Size
+#     def additions(self, *args: Any, **kwargs: Any):
+#         from .additions import FinaliseAdditions
+#         from .additions import InitAdditions
+#         from .additions import LoadAdditions
+#         from .cleanup import Cleanup
+#         from .size import Size
 
-        return chain([InitAdditions, LoadAdditions, FinaliseAdditions, Size, Cleanup])(*args, **kwargs)
+#         return chain([InitAdditions, LoadAdditions, FinaliseAdditions, Size, Cleanup])(*args, **kwargs)

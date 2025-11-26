@@ -12,49 +12,21 @@ import logging
 import uuid
 from typing import Any
 
-import zarr
 from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.utils import normalize_and_check_dates
 
-from ..gridded.tasks import FieldTask
-from ..gridded.tasks import HasElementForDataMixin
-from ..gridded.tasks import HasRegistryMixin
-from ..gridded.tasks import HasStatisticTempMixin
-from ..gridded.tasks import NewDataset
-from ..gridded.tasks import _build_statistics_dates
-
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.30"
+
+class ObsTask:
+
+    def __init__(self, path, cache):
+        self.path = path
 
 
-def _path_readable(path: str) -> bool:
-    """Check if the path is readable.
-
-    Parameters
-    ----------
-    path : str
-        The path to check.
-
-    Returns
-    -------
-    bool
-        True if the path is readable, False otherwise.
-    """
-
-    try:
-        zarr.open(path, "r")
-        return True
-    except zarr.errors.PathNotFoundError:
-        return False
-
-
-class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
-    """A class to initialize a new dataset."""
-
-    dataset_class = NewDataset
+class Init(ObsTask):
 
     def __init__(
         self,
@@ -69,31 +41,9 @@ class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         cache: str | None = None,
         **kwargs: Any,
     ):
-        """Initialize an Init instance.
 
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        config : dict
-            The configuration.
-        check_name : bool, optional
-            Whether to check the dataset name.
-        overwrite : bool, optional
-            Whether to overwrite the existing dataset.
-        use_threads : bool, optional
-            Whether to use threads.
-        statistics_temp_dir : Optional[str], optional
-            The directory for temporary statistics.
-        progress : Any, optional
-            The progress indicator.
-        test : bool, optional
-            Whether this is a test.
-        cache : Optional[str], optional
-            The cache directory.
-        """
-        if _path_readable(path) and not overwrite:
-            raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
+        # if _path_readable(path) and not overwrite:
+        #     raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
 
         super().__init__(path, cache=cache)
         self.config = config
@@ -236,7 +186,7 @@ class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         metadata["missing_dates"] = [_.isoformat() for _ in missing]
         metadata["origins"] = self.minimal_input.origins
 
-        metadata["version"] = VERSION
+        # metadata["version"] = VERSION
 
         self.dataset.check_name(
             raise_exception=self.check_name,
@@ -277,13 +227,13 @@ class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         self.tmp_statistics.create(exist_ok=False)
         self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
 
-        statistics_start, statistics_end = _build_statistics_dates(
-            dates,
-            self.main_config.statistics.get("start"),
-            self.main_config.statistics.get("end"),
-        )
-        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
-        LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
+        # statistics_start, statistics_end = _build_statistics_dates(
+        #     dates,
+        #     self.main_config.statistics.get("start"),
+        #     self.main_config.statistics.get("end"),
+        # )
+        # self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
+        # LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
 
         self.registry.add_to_history("init finished")
 

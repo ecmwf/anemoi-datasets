@@ -10,9 +10,9 @@
 import logging
 from typing import Any
 
-from ..gridded.tasks import FieldTask
-from ..gridded.tasks import HasRegistryMixin
-from ..gridded.tasks import HasStatisticTempMixin
+from ..tasks.gridded.tasks import FieldTask
+from ..tasks.gridded.tasks import HasRegistryMixin
+from ..tasks.gridded.tasks import HasStatisticTempMixin
 from .additions import _InitAdditions
 
 LOG = logging.getLogger(__name__)

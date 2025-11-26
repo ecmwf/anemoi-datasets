@@ -27,8 +27,8 @@ from anemoi.datasets.create.statistics import check_variance
 from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.statistics import fix_variance
 
-from ..gridded.tasks import FieldTask
-from ..gridded.tasks import HasRegistryMixin
+from ..tasks.gridded.tasks import FieldTask
+from ..tasks.gridded.tasks import HasRegistryMixin
 
 LOG = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@
 import logging
 from typing import Any
 
-from ..gridded.tasks import FieldTask
+from ..tasks.gridded.tasks import FieldTask
 
 LOG = logging.getLogger(__name__)
 

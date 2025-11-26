@@ -49,7 +49,7 @@ def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
 
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = task_factory(what.replace("-", "_"), **options)
+    c = task_factory(what.replace("-", "_"), **options, **kwargs)
     result = c.run()
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
@@ -79,6 +79,11 @@ class Create(Command):
             "--test",
             action="store_true",
             help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
+        )
+        command_parser.add_argument(
+            "--observations",
+            action="store_true",
+            help="Observations.",
         )
         command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")
