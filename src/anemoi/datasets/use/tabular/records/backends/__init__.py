@@ -52,7 +52,7 @@ class Npz1Backend(Backend):
     def __init__(self, *args, number_of_files_per_subdirectory=100, **kwargs):
         super().__init__(*args, **kwargs)
         self.number_of_files_per_subdirectory = number_of_files_per_subdirectory
-        self._cache = LRUCache(maxsize=5)
+        self._cache = LRUCache(maxsize=50)
 
     def read(self, i, **kwargs):
         if i in self._cache:
