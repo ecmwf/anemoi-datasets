@@ -627,7 +627,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         one_date = self.groups.one_date()
         # assert False, (type(one_date), type(self.groups))
-        self.minimal_input = self.input.select(one_date)
+        self.minimal_input = self.input.select(one_date, self)
         LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
@@ -865,7 +865,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(argument=group)
+            result = self.input.select(argument=group, actor=self)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
@@ -923,16 +923,25 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             if _dates_in_data != _requested_dates:
                 LOG.error("Dates in data are not the requested ones:")
 
-                dates_in_data = set(dates_in_data)
-                requested_dates = set(requested_dates)
+                def np_dates_to_iso(dates):
+                    return [str(np.datetime_as_string(d, unit="s")) for d in dates]
+
+                dates_in_data = set(np_dates_to_iso(_dates_in_data))
+                requested_dates = set(np_dates_to_iso(_requested_dates))
 
                 missing = sorted(requested_dates - dates_in_data)
                 extra = sorted(dates_in_data - requested_dates)
 
+                # Convert numpy.datetime64 to ISO format for logging
+
+                if missing or extra:
+                    LOG.error(f"Requested dates: {requested_dates}")
+                    LOG.error(f"Dates in data: {dates_in_data}")
+
                 if missing:
-                    LOG.error(f"Missing dates: {[_.isoformat() for _ in missing]}")
+                    LOG.error(f"Missing dates: {missing}")
                 if extra:
-                    LOG.error(f"Extra dates: {[_.isoformat() for _ in extra]}")
+                    LOG.error(f"Extra dates: {extra}")
 
                 raise ValueError("Dates in data are not the requested ones")
 

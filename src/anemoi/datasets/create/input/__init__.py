@@ -48,38 +48,20 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument) -> Any:
+    def select(self, argument, actor) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
         argument : GroupOfDates
             Group of dates to select data for.
+        actor: Any
+            The actor performing the selection.
 
         Returns
         -------
         Any
             Selected data.
         """
-        context = FieldContext(argument, **self.kwargs)
+        context = FieldContext(argument, actor, **self.kwargs)
         return context.create_result(self.action(context, argument))
-
-
-def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
-    """Build an InputBuilder instance.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration dictionary.
-    data_sources : Union[dict, list]
-        Data sources.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    InputBuilder
-        An instance of InputBuilder.
-    """
-    return InputBuilder(config, data_sources, **kwargs)

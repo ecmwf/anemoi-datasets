@@ -24,6 +24,7 @@ from anemoi.datasets.create.sources import source_registry
 
 from .legacy import LegacySource
 from .mars import mars
+from .mars import valid_date_to_base_date_given_user_step
 
 LOG = logging.getLogger(__name__)
 MISSING_VALUE = 1e-38
@@ -47,6 +48,14 @@ def _member(field: Any) -> int:
     if number is None:
         number = 0
     return number
+
+
+def _valid_date_to_base_date_given_user_step(date, user_steps, first_date):
+    p = int((date - first_date).total_seconds() // 3600)
+    # time = (12 - p // len(steps) * 6) % 24
+    step = p % len(user_steps) + user_steps[0]
+    base = date - datetime.timedelta(hours=step)
+    return base.strftime("%Y%m%d"), base.strftime("%H%M"), step
 
 
 class Accumulation:
@@ -239,6 +248,8 @@ class Accumulation:
         adjust_step: bool,
         accumulations_reset_frequency: int | None,
         user_date: str | None,
+        user_steps: list[int] | None = None,
+        first_date: datetime.datetime | None = None,
     ) -> Generator[tuple[int, int, tuple[int, ...]], None, None]:
         """Generates MARS date-time steps.
 
@@ -260,6 +271,10 @@ class Accumulation:
             Frequency at which accumulations reset. Defaults to None.
         user_date : Optional[str], optional
             User-defined date. Defaults to None.
+        user_steps : Optional[List[int]], optional
+            User-defined steps. Defaults to None.
+        first_date : Optional[datetime.datetime], optional
+            The first date of the recipe for reference.
 
         Returns
         -------
@@ -269,26 +284,32 @@ class Accumulation:
         # assert step1 > 0, (step1, step2, frequency)
 
         for valid_date in dates:
-            add_step = 0
-            base_date = valid_date - datetime.timedelta(hours=step2)
-            if user_date is not None:
-                assert user_date == "????-??-01", user_date
-                new_base_date = base_date.replace(day=1)
-                assert new_base_date <= base_date, (new_base_date, base_date)
-                add_step = int((base_date - new_base_date).total_seconds() // 3600)
 
-                base_date = new_base_date
+            if user_steps is not None:
+                valid_date_to_base_date_given_user_step(valid_date, user_steps, first_date)
 
-            if base_date.hour not in base_times:
-                if not adjust_step:
-                    raise ValueError(
-                        f"Cannot find a base time in {base_times} that validates on {valid_date.isoformat()} for step={step2}"
-                    )
+            else:
 
-                while base_date.hour not in base_times:
-                    # print(f'{base_date=}, {base_times=}, {add_step=} {frequency=}')
-                    base_date -= datetime.timedelta(hours=1)
-                    add_step += 1
+                add_step = 0
+                base_date = valid_date - datetime.timedelta(hours=step2)
+                if user_date is not None:
+                    assert user_date == "????-??-01", user_date
+                    new_base_date = base_date.replace(day=1)
+                    assert new_base_date <= base_date, (new_base_date, base_date)
+                    add_step = int((base_date - new_base_date).total_seconds() // 3600)
+
+                    base_date = new_base_date
+
+                if base_date.hour not in base_times:
+                    if not adjust_step:
+                        raise ValueError(
+                            f"Cannot find a base time in {base_times} that validates on {valid_date.isoformat()} for step={step2}"
+                        )
+
+                    while base_date.hour not in base_times:
+                        # print(f'{base_date=}, {base_times=}, {add_step=} {frequency=}')
+                        base_date -= datetime.timedelta(hours=1)
+                        add_step += 1
 
             yield cls._mars_date_time_step(
                 base_date=base_date,
@@ -840,16 +861,45 @@ def _compute_accumulations(
 
     base_times = [t // 100 if t > 100 else t for t in base_times]
 
-    mars_date_time_steps = AccumulationClass.mars_date_time_steps(
-        dates=dates,
-        step1=step1,
-        step2=step2,
-        frequency=data_accumulation_period,
-        base_times=base_times,
-        adjust_step=adjust_step,
-        accumulations_reset_frequency=accumulations_reset_frequency,
-        user_date=user_date,
-    )
+    user_steps = request.get("step")
+    if user_steps is not None:
+        assert accumulations_reset_frequency is None
+        assert user_date is None
+        assert user_accumulation_period[0] == 0
+
+        first_date = context.actor.groups.provider.start
+        user_steps = sorted(_to_list(user_steps))
+        mars_date_time_steps = []
+
+        for valid_date in dates:
+            base, time, step = valid_date_to_base_date_given_user_step(valid_date, user_steps, first_date)
+
+            ts = AccumulationClass.mars_date_time_steps(
+                dates=[valid_date],
+                step1=step - user_accumulation_period[1],
+                step2=step,
+                frequency=data_accumulation_period,
+                base_times=[int(time) // 100],
+                adjust_step=adjust_step,
+                accumulations_reset_frequency=accumulations_reset_frequency,
+                user_date=user_date,
+            )
+            mars_date_time_steps += list(ts)
+
+        mars_date_time_steps = sorted(set(mars_date_time_steps))
+        # assert False, (mars_date_time_steps, dates, dict(bases))
+
+    else:
+        mars_date_time_steps = AccumulationClass.mars_date_time_steps(
+            dates=dates,
+            step1=step1,
+            step2=step2,
+            frequency=data_accumulation_period,
+            base_times=base_times,
+            adjust_step=adjust_step,
+            accumulations_reset_frequency=accumulations_reset_frequency,
+            user_date=user_date,
+        )
 
     request = deepcopy(request)
 

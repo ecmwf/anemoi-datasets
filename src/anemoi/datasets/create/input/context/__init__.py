@@ -18,10 +18,11 @@ LOG = logging.getLogger(__name__)
 class Context(ABC):
     """Context for building input data."""
 
-    def __init__(self, /, argument: Any) -> None:
+    def __init__(self, /, argument: Any, actor: Any) -> None:
         self.results = {}
         self.cache = {}
         self.argument = argument
+        self.actor = actor
 
     def trace(self, emoji, *message) -> None:
 
