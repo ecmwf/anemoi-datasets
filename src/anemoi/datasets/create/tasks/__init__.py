@@ -7,15 +7,20 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import importlib
 from abc import ABC
 from abc import abstractmethod
 from typing import Any
+
+import numpy as np
 
 
 class Task(ABC):
 
     def __init__(self, /, path, config, overwrite=False, cache=None, **kwargs: Any):
+        # Catch all floating point errors, including overflow, sqrt(<0), etc
+
+        np.seterr(all="raise", under="warn")
+
         self.path = path
         self.cache = cache
         self.config = config
@@ -43,14 +48,67 @@ class Chain(Task):
             t._run()
 
 
+class TaskCreator:
+    """A class to create and run dataset creation tasks."""
+
+    def __init__(self, context, **kwargs: Any):
+        self.context = context
+        self.kwargs = kwargs
+
+    def init(self):
+        return self.context.init()
+
+    def load(self):
+        return self.context.load()
+
+    def size(self):
+        return self.context.size()
+
+    def patch(self):
+        return self.context.patch()
+
+    def statistics(self):
+        return self.context.statistics()
+
+    def finalise(self):
+        self.context.statistics()
+        self.context.size()
+        self.context.cleanup()
+
+    def cleanup(self):
+        self.context.cleanup()
+
+    def verify(self):
+        self.context.verify()
+
+    def init_additions(self):
+        self.context.init_additions()
+
+    def load_additions(self):
+        self.context.load_additions()
+
+    def finalise_additions(self):
+        self.context.finalise_additions()
+        self.context.size()
+
+    def additions(self):
+        self.context.init_additions()
+        self.context.load_additions()
+        self.context.finalise_additions()
+        self.context.size()
+        self.context.cleanup()
+
+
 def task_factory(name: str, observations: bool = False, trace: str | None = None, **kwargs):
 
-    kind = "tabular" if observations else "gridded"
+    if observations:
+        from anemoi.datasets.create.tabular.create_context import TabularCreateContext
 
-    module = importlib.import_module(f".{kind}.{name}", package=__package__)
+        context = TabularCreateContext(**kwargs)
+    else:
+        from anemoi.datasets.create.gridded.create_context import GriddedCreateContext
 
-    task = getattr(module, "task")
+        context = GriddedCreateContext(**kwargs)
 
-    print(module.__file__)
-
-    return task(trace=trace, **kwargs)
+    dispatch = TaskCreator(context)
+    return getattr(dispatch, name)()

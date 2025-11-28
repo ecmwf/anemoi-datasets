@@ -10,10 +10,10 @@
 import logging
 from typing import Any
 
-from ..tasks.gridded.tasks import FieldTask
-from ..tasks.gridded.tasks import HasRegistryMixin
-from ..tasks.gridded.tasks import HasStatisticTempMixin
 from .additions import _InitAdditions
+from .tasks import FieldTask
+from .tasks import HasRegistryMixin
+from .tasks import HasStatisticTempMixin
 
 LOG = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class Cleanup(FieldTask, HasRegistryMixin, HasStatisticTempMixin):
     def __init__(
         self,
         path: str,
+        config: dict,
         statistics_temp_dir: str | None = None,
         delta: list = [],
         use_threads: bool = False,
@@ -42,7 +43,7 @@ class Cleanup(FieldTask, HasRegistryMixin, HasStatisticTempMixin):
         use_threads : bool, optional
             Whether to use threads.
         """
-        super().__init__(path)
+        super().__init__(path, config)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
         self.additinon_temp_dir = statistics_temp_dir

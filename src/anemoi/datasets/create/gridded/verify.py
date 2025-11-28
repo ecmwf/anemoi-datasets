@@ -8,25 +8,14 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from typing import Any
 
-from ..tasks.gridded.tasks import FieldTask
+from .tasks import FieldTask
 
 LOG = logging.getLogger(__name__)
 
 
 class Verify(FieldTask):
     """A class to verify the integrity of a dataset."""
-
-    def __init__(self, path: str, **kwargs: Any):
-        """Initialize a Verify instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        """
-        super().__init__(path)
 
     def _run(self) -> None:
         """Run the verification."""

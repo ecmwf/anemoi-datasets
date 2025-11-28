@@ -15,9 +15,9 @@ from typing import Any
 import numpy as np
 import zarr
 
-from ..tasks.gridded.tasks import FieldTask
-from ..tasks.gridded.tasks import HasRegistryMixin
-from ..tasks.gridded.tasks import HasStatisticTempMixin
+from .tasks import FieldTask
+from .tasks import HasRegistryMixin
+from .tasks import HasStatisticTempMixin
 
 LOG = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ class Statistics(FieldTask, HasStatisticTempMixin, HasRegistryMixin):
     def __init__(
         self,
         path: str,
+        config: dict | None = None,
         use_threads: bool = False,
         statistics_temp_dir: str | None = None,
         progress: Any = None,
@@ -46,7 +47,7 @@ class Statistics(FieldTask, HasStatisticTempMixin, HasRegistryMixin):
         progress : Any, optional
             The progress indicator.
         """
-        super().__init__(path)
+        super().__init__(path, config)
         self.use_threads = use_threads
         self.progress = progress
         self.statistics_temp_dir = statistics_temp_dir

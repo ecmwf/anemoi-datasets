@@ -27,8 +27,8 @@ from anemoi.datasets.create.statistics import check_variance
 from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.statistics import fix_variance
 
-from ..tasks.gridded.tasks import FieldTask
-from ..tasks.gridded.tasks import HasRegistryMixin
+from .tasks import FieldTask
+from .tasks import HasRegistryMixin
 
 LOG = logging.getLogger(__name__)
 
@@ -400,7 +400,7 @@ def multi_addition(cls: type) -> type:
             if not self.tasks:
                 LOG.warning("No delta found in kwargs, no additions will be computed.")
 
-        def _run(self) -> None:
+        def run(self) -> None:
             """Run the additions."""
             for actor in self.tasks:
                 actor.run()

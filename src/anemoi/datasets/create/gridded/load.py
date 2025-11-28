@@ -37,6 +37,7 @@ class Load(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
     def __init__(
         self,
         path: str,
+        config: dict | None = None,
         parts: str | None = None,
         use_threads: bool = False,
         statistics_temp_dir: str | None = None,
@@ -61,7 +62,7 @@ class Load(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         cache : Optional[str], optional
             The cache directory.
         """
-        super().__init__(path, cache=cache)
+        super().__init__(path, config=config, cache=cache)
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
         self.progress = progress
@@ -77,7 +78,6 @@ class Load(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
 
         self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
-
 
     def _run(self) -> None:
         """Internal method to run the data loading."""

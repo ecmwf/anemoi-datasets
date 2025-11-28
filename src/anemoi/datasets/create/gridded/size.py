@@ -12,7 +12,7 @@ from typing import Any
 
 from anemoi.datasets import open_dataset
 
-from ..tasks.gridded.tasks import FieldTask
+from .tasks import FieldTask
 
 LOG = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 class Size(FieldTask):
     """A class to compute the size of a dataset."""
 
-    def __init__(self, path: str, **kwargs: Any):
+    def __init__(self, path: str, config: dict | None = None, **kwargs: Any):
         """Initialize a Size instance.
 
         Parameters
@@ -28,7 +28,7 @@ class Size(FieldTask):
         path : str
             The path to the dataset.
         """
-        super().__init__(path)
+        super().__init__(path, config)
 
     def _run(self) -> None:
         """Run the size computation."""

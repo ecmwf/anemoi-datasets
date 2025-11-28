@@ -7,14 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 
 from ..verify import VerifyTask
 
 
 class Verify(VerifyTask):
-    def __init__(self, *, path: str, **kwargs: Any):
-        self.path = path
 
     def _run(self) -> None:
         print(f"Verify dataset at {self.path}")

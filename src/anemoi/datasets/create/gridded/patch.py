@@ -10,7 +10,7 @@
 import logging
 from typing import Any
 
-from ..tasks.gridded.tasks import FieldTask
+from .tasks import FieldTask
 
 LOG = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 class Patch(FieldTask):
     """A class to apply patches to a dataset."""
 
-    def __init__(self, path: str, options: dict = None, **kwargs: Any):
+    def __init__(self, path: str, config: dict | None = None, options: dict | None = None, **kwargs: Any):
         """Initialize a Patch instance.
 
         Parameters
@@ -28,7 +28,7 @@ class Patch(FieldTask):
         options : dict, optional
             The patch options.
         """
-        self.path = path
+        super().__init__(path, config)
         self.options = options or {}
 
     def _run(self) -> None:

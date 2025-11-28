@@ -92,10 +92,10 @@ class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForData
         cache : Optional[str], optional
             The cache directory.
         """
+        super().__init__(path, config, overwrite=overwrite, cache=cache)
         if _path_readable(path) and not overwrite:
             raise Exception(f"{path} already exists. Use overwrite=True to overwrite.")
 
-        super().__init__(path, cache=cache)
         self.config = config
         self.check_name = check_name
         self.use_threads = use_threads

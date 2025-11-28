@@ -28,6 +28,7 @@ from anemoi.datasets.create.gridded.context import FieldContext
 from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.create.statistics import TmpStatistics
 from anemoi.datasets.create.statistics import default_statistics_dates
+from anemoi.datasets.create.tasks import Task
 from anemoi.datasets.dates.groups import Groups
 from anemoi.datasets.use.gridded.misc import as_first_date
 from anemoi.datasets.use.gridded.misc import as_last_date
@@ -308,12 +309,12 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class FieldTask:
+class FieldTask(Task):
     """A base class for dataset creation tasks."""
 
     dataset_class = WritableDataset
 
-    def __init__(self, path: str, cache: str | None = None):
+    def __init__(self, *args: Any, **kwargs: Any):
         """Initialize an Actor instance.
 
         Parameters
@@ -323,17 +324,8 @@ class FieldTask:
         cache : Optional[str], optional
             The cache directory.
         """
-        # Catch all floating point errors, including overflow, sqrt(<0), etc
-        np.seterr(all="raise", under="warn")
-
-        self.path = path
-        self.cache = cache
+        super().__init__(*args, **kwargs)
         self.dataset = self.dataset_class(self.path)
-
-    def run(self) -> None:
-        """Run the actor."""
-        # to be implemented in the sub-classes
-        raise NotImplementedError()
 
     def update_metadata(self, **kwargs: Any) -> None:
         """Update the metadata of the dataset.
@@ -495,74 +487,3 @@ def validate_config(config: Any) -> None:
         LOG.error("❌ Config validation failed (jsonschema):")
         LOG.error(e.message)
         raise
-
-
-# class TaskCreator:
-#     """A class to create and run dataset creation tasks."""
-
-#     def init(self, *args: Any, **kwargs: Any):
-#         from ..tasks.gridded.init import Init
-
-#         return Init(*args, **kwargs)
-
-#     def load(self, *args: Any, **kwargs: Any):
-#         from .load import Load
-
-#         return Load(*args, **kwargs)
-
-#     def size(self, *args: Any, **kwargs: Any):
-#         from .size import Size
-
-#         return Size(*args, **kwargs)
-
-#     def patch(self, *args: Any, **kwargs: Any):
-#         from .patch import Patch
-
-#         return Patch(*args, **kwargs)
-
-#     def statistics(self, *args: Any, **kwargs: Any):
-#         from .statistics import Statistics
-
-#         return Statistics(*args, **kwargs)
-
-#     def finalise(self, *args: Any, **kwargs: Any):
-#         from .cleanup import Cleanup
-#         from .size import Size
-#         from .statistics import Statistics
-
-#         return chain([Statistics, Size, Cleanup])(*args, **kwargs)
-
-#     def cleanup(self, *args: Any, **kwargs: Any):
-#         from .cleanup import Cleanup
-
-#         return Cleanup(*args, **kwargs)
-
-#     def verify(self, *args: Any, **kwargs: Any):
-#         from .verify import Verify
-
-#         return Verify(*args, **kwargs)
-
-#     def init_additions(self, *args: Any, **kwargs: Any):
-#         from .additions import InitAdditions
-
-#         return InitAdditions(*args, **kwargs)
-
-#     def load_additions(self, *args: Any, **kwargs: Any):
-#         from .additions import LoadAdditions
-
-#         return LoadAdditions(*args, **kwargs)
-
-#     def finalise_additions(self, *args: Any, **kwargs: Any):
-#         from .additions import FinaliseAdditions
-#         from .size import Size
-
-#         return chain([FinaliseAdditions, Size])(*args, **kwargs)
-
-#     def additions(self, *args: Any, **kwargs: Any):
-#         from .additions import FinaliseAdditions
-#         from .additions import InitAdditions
-#         from .additions import LoadAdditions
-#         from .cleanup import Cleanup
-#         from .size import Size
-
-#         return chain([InitAdditions, LoadAdditions, FinaliseAdditions, Size, Cleanup])(*args, **kwargs)
