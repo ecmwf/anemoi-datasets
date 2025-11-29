@@ -1,14 +1,10 @@
-from earthkit.data.core.order import build_remapping
-
-from anemoi.datasets.create.gridded.context import FieldContext
-
 from ..creator import Creator
 
 
 class TabularCreator(Creator):
 
     def init(self):
-        print(self.minimal_input)  # Ensure minimal_input is initialized
+        raise NotImplementedError("Init method not implemented yet.")
 
     def load(self):
         raise NotImplementedError("Load method not implemented yet.")
@@ -36,13 +32,3 @@ class TabularCreator(Creator):
 
     def verify(self):
         raise NotImplementedError("Verify method not implemented yet.")
-
-    ######################################################
-
-    def context(self):
-        return FieldContext(
-            order_by=self.output.order_by,
-            flatten_grid=self.output.flatten_grid,
-            remapping=build_remapping(self.output.remapping),
-            use_grib_paramid=self.main_config.build.use_grib_paramid,
-        )

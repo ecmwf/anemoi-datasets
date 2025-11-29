@@ -1,4 +1,13 @@
+# (C) Copyright 2024 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
 import datetime
+import json
 import logging
 import os
 import time
@@ -7,6 +16,7 @@ import warnings
 from functools import cached_property
 from typing import Any
 
+import cftime
 import numpy as np
 import tqdm
 import zarr
@@ -20,61 +30,323 @@ from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.check import DatasetName
-from anemoi.datasets.create.check import check_data_values
-from anemoi.datasets.create.gridded.chunks import ChunkFilter
-from anemoi.datasets.create.gridded.context import FieldContext
-from anemoi.datasets.create.persistent import build_storage
-from anemoi.datasets.create.statistics import Summary
-from anemoi.datasets.create.statistics import TmpStatistics
-from anemoi.datasets.create.statistics import check_variance
-from anemoi.datasets.create.statistics import compute_statistics
-from anemoi.datasets.create.statistics import fix_variance
-from anemoi.datasets.create.utils import normalize_and_check_dates
-from anemoi.datasets.create.writer import ViewCacheArray
+from anemoi.datasets.create.config import loader_config
+from anemoi.datasets.create.statistics import default_statistics_dates
+from anemoi.datasets.use.gridded.misc import as_first_date
+from anemoi.datasets.use.gridded.misc import as_last_date
 
+from ..check import DatasetName
+from ..check import check_data_values
 from ..creator import Creator
-from .tasks import NewDataset
-from .tasks import WritableDataset
+from .chunks import ChunkFilter
+from .context import FieldContext
+from .persistent import build_storage
+from .statistics import Summary
+from .statistics import TmpStatistics
+from .statistics import check_variance
+from .statistics import compute_statistics
+from .statistics import fix_variance
 from .tasks import _build_statistics_dates
+from .utils import normalize_and_check_dates
+from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
 VERSION = "0.30"
 
 
-class DeltaDataset:
-    """A class to represent a dataset with delta values."""
+def json_tidy(o: Any) -> Any:
+    """Convert various types to JSON serializable format.
 
-    def __init__(self, ds: Any, idelta: int):
-        """Initialize a DeltaDataset instance.
+    Parameters
+    ----------
+    o : Any
+        The object to convert.
+
+    Returns
+    -------
+    Any
+        The JSON serializable object.
+    """
+    if isinstance(o, datetime.datetime):
+        return o.isoformat()
+
+    if isinstance(o, datetime.datetime):
+        return o.isoformat()
+
+    if isinstance(o, datetime.timedelta):
+        return frequency_to_string(o)
+
+    if isinstance(o, cftime.DatetimeJulian):
+        import pandas as pd
+
+        o = pd.Timestamp(
+            o.year,
+            o.month,
+            o.day,
+            o.hour,
+            o.minute,
+            o.second,
+        )
+        return o.isoformat()
+
+    if isinstance(o, (np.float32, np.float64)):
+        return float(o)
+
+    raise TypeError(f"{repr(o)} is not JSON serializable {type(o)}")
+
+
+def build_statistics_dates(
+    dates: list[datetime.datetime],
+    start: datetime.datetime | None,
+    end: datetime.datetime | None,
+) -> tuple[str, str]:
+    """Compute the start and end dates for the statistics.
+
+    Parameters
+    ----------
+    dates : list of datetime.datetime
+        The list of dates.
+    start : Optional[datetime.datetime]
+        The start date.
+    end : Optional[datetime.datetime]
+        The end date.
+
+    Returns
+    -------
+    tuple of str
+        The start and end dates in ISO format.
+    """
+    # if not specified, use the default statistics dates
+    default_start, default_end = default_statistics_dates(dates)
+    if start is None:
+        start = default_start
+    if end is None:
+        end = default_end
+
+    # in any case, adapt to the actual dates in the dataset
+    start = as_first_date(start, dates)
+    end = as_last_date(end, dates)
+
+    # and convert to datetime to isoformat
+    start = start.astype(datetime.datetime)
+    end = end.astype(datetime.datetime)
+    return (start.isoformat(), end.isoformat())
+
+
+def _path_readable(path: str) -> bool:
+    """Check if the path is readable.
+
+    Parameters
+    ----------
+    path : str
+        The path to check.
+
+    Returns
+    -------
+    bool
+        True if the path is readable, False otherwise.
+    """
+    import zarr
+
+    try:
+        zarr.open(path, "r")
+        return True
+    except zarr.errors.PathNotFoundError:
+        return False
+
+
+class Dataset:
+    """A class to represent a dataset."""
+
+    def __init__(self, path: str):
+        """Initialize a Dataset instance.
 
         Parameters
         ----------
-        ds : Any
-            The dataset.
-        idelta : int
-            The delta value.
+        path : str
+            The path to the dataset.
         """
-        self.ds = ds
-        self.idelta = idelta
+        self.path = path
 
-    def __getitem__(self, i: int) -> Any:
-        """Get an item from the dataset.
+        _, ext = os.path.splitext(self.path)
+        if ext != ".zarr":
+            raise ValueError(f"Unsupported extension={ext} for path={self.path}")
+
+    def add_dataset(self, mode: str = "r+", **kwargs: Any) -> zarr.Array:
+        """Add a dataset to the Zarr store.
 
         Parameters
         ----------
-        i : int
-            The index.
+        mode : str, optional
+            The mode to open the Zarr store.
+        **kwargs
+            Additional arguments for the dataset.
+
+        Returns
+        -------
+        zarr.Array
+            The added dataset.
+        """
+        import zarr
+
+        z = zarr.open(self.path, mode=mode)
+        from .zarr import add_zarr_dataset
+
+        return add_zarr_dataset(zarr_root=z, **kwargs)
+
+    def update_metadata(self, **kwargs: Any) -> None:
+        """Update the metadata of the dataset.
+
+        Parameters
+        ----------
+        **kwargs
+            The metadata to update.
+        """
+        import zarr
+
+        LOG.debug(f"Updating metadata {kwargs}")
+        z = zarr.open(self.path, mode="w+")
+        for k, v in kwargs.items():
+            if isinstance(v, np.datetime64):
+                v = v.astype(datetime.datetime)
+            if isinstance(v, datetime.date):
+                v = v.isoformat()
+            z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
+
+    @cached_property
+    def anemoi_dataset(self) -> Any:
+        """Get the Anemoi dataset."""
+        return open_dataset(self.path)
+
+    @cached_property
+    def zarr_metadata(self) -> dict:
+        """Get the Zarr metadata."""
+        import zarr
+
+        return dict(zarr.open(self.path, mode="r").attrs)
+
+    def print_info(self) -> None:
+        """Print information about the dataset."""
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        try:
+            LOG.info(z["data"].info)
+        except Exception as e:
+            LOG.info(e)
+
+    def get_zarr_chunks(self) -> tuple:
+        """Get the chunks of the Zarr dataset.
+
+        Returns
+        -------
+        tuple
+            The chunks of the Zarr dataset.
+        """
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        return z["data"].chunks
+
+    def check_name(
+        self,
+        resolution: str,
+        dates: list[datetime.datetime],
+        frequency: datetime.timedelta,
+        raise_exception: bool = True,
+        is_test: bool = False,
+    ) -> None:
+        """Check the name of the dataset.
+
+        Parameters
+        ----------
+        resolution : str
+            The resolution of the dataset.
+        dates : list of datetime.datetime
+            The dates of the dataset.
+        frequency : datetime.timedelta
+            The frequency of the dataset.
+        raise_exception : bool, optional
+            Whether to raise an exception if the name is invalid.
+        is_test : bool, optional
+            Whether this is a test.
+        """
+        basename, _ = os.path.splitext(os.path.basename(self.path))
+        try:
+            DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
+        except Exception as e:
+            if raise_exception and not is_test:
+                raise e
+            else:
+                LOG.warning(f"Dataset name error: {e}")
+
+    def get_main_config(self) -> Any:
+        """Get the main configuration of the dataset.
 
         Returns
         -------
         Any
-            The item.
+            The main configuration.
         """
-        j = i - self.idelta
-        if j < 0:
-            raise MissingDateError(f"Missing date {j}")
-        return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
+        import zarr
+
+        z = zarr.open(self.path, mode="r")
+        config = loader_config(z.attrs.get("_create_yaml_config"))
+
+        if "env" in config:
+            for k, v in config["env"].items():
+                LOG.info(f"Setting env variable {k}={v}")
+                os.environ[k] = str(v)
+
+        return config
+
+
+class WritableDataset(Dataset):
+    """A class to represent a writable dataset."""
+
+    def __init__(self, path: str):
+        """Initialize a WritableDataset instance.
+
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        """
+        super().__init__(path)
+        self.path = path
+
+        import zarr
+
+        self.z = zarr.open(self.path, mode="r+")
+
+    @cached_property
+    def data_array(self) -> Any:
+        """Get the data array of the dataset."""
+        import zarr
+
+        return zarr.open(self.path, mode="r+")["data"]
+
+
+class NewDataset(Dataset):
+    """A class to represent a new dataset."""
+
+    def __init__(self, path: str, overwrite: bool = False):
+        """Initialize a NewDataset instance.
+
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        overwrite : bool, optional
+            Whether to overwrite the existing dataset.
+        """
+        super().__init__(path)
+        self.path = path
+
+        import zarr
+
+        self.z = zarr.open(self.path, mode="w")
+        self.z.create_group("_build")
 
 
 class GriddedCreator(Creator):
@@ -518,58 +790,17 @@ class GriddedCreator(Creator):
             f"write time: {seconds_to_human(save)}."
         )
 
-    ######################################################
+    def cleanup(self):
+        self.tmp_statistics.delete()
+        self.registry.clean()
+        for delta in self.kwargs.get("delta", []):
+            self._cleanup_addition(frequency_to_timedelta(delta))
 
-    def statistics(self):
+    def verify(self):
+        """Run the verification."""
         self.dataset = WritableDataset(self.path)
-        """Run the statistics computation."""
-        start, end = (
-            self.dataset.zarr_metadata["statistics_start_date"],
-            self.dataset.zarr_metadata["statistics_end_date"],
-        )
-        start, end = np.datetime64(start), np.datetime64(end)
-        dates = self.dataset.anemoi_dataset.dates
-
-        assert type(dates[0]) is type(start), (type(dates[0]), type(start))
-
-        dates = [d for d in dates if d >= start and d <= end]
-        dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
-        variables = self.dataset.anemoi_dataset.variables
-        stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
-
-        LOG.info(stats)
-
-        if not all(self.registry.get_flags(sync=False)):
-            raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
-
-        for k in [
-            "mean",
-            "stdev",
-            "minimum",
-            "maximum",
-            "sums",
-            "squares",
-            "count",
-            "has_nans",
-        ]:
-            self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
-
-        self.registry.add_to_history("compute_statistics_end")
-        LOG.info(f"Wrote statistics in {self.path}")
-
-    @cached_property
-    def allow_nans(self) -> bool | list:
-        """Check if NaNs are allowed."""
-
-        z = zarr.open(self.path, mode="r")
-        if "allow_nans" in z.attrs:
-            return z.attrs["allow_nans"]
-
-        if "variables_with_nans" in z.attrs:
-            return z.attrs["variables_with_nans"]
-
-        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
-        return True
+        LOG.info(f"Verifying dataset at {self.path}")
+        LOG.info(str(self.dataset.anemoi_dataset))
 
     def size(self):
         """Run the size computation."""
@@ -589,14 +820,6 @@ class GriddedCreator(Creator):
             variables_metadata[k]["constant_in_time"] = True
 
         self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
-
-    def cleanup(self):
-        self.tmp_statistics.delete()
-        self.registry.clean()
-        for delta in self.kwargs.get("delta", []):
-            self._cleanup_addition(frequency_to_timedelta(delta))
-
-    #######################################################
 
     def skip(self, delta: datetime.timedelta) -> bool:
         """Check if the additions should be skipped.
@@ -830,8 +1053,88 @@ class GriddedCreator(Creator):
         options = self.kwargs.get("options", {})
         apply_patch(self.path, **options)
 
-    def verify(self):
-        """Run the verification."""
+    def statistics(self):
         self.dataset = WritableDataset(self.path)
-        LOG.info(f"Verifying dataset at {self.path}")
-        LOG.info(str(self.dataset.anemoi_dataset))
+        """Run the statistics computation."""
+        start, end = (
+            self.dataset.zarr_metadata["statistics_start_date"],
+            self.dataset.zarr_metadata["statistics_end_date"],
+        )
+        start, end = np.datetime64(start), np.datetime64(end)
+        dates = self.dataset.anemoi_dataset.dates
+
+        assert type(dates[0]) is type(start), (type(dates[0]), type(start))
+
+        dates = [d for d in dates if d >= start and d <= end]
+        dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
+        variables = self.dataset.anemoi_dataset.variables
+        stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
+
+        LOG.info(stats)
+
+        if not all(self.registry.get_flags(sync=False)):
+            raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
+
+        for k in [
+            "mean",
+            "stdev",
+            "minimum",
+            "maximum",
+            "sums",
+            "squares",
+            "count",
+            "has_nans",
+        ]:
+            self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
+
+        self.registry.add_to_history("compute_statistics_end")
+        LOG.info(f"Wrote statistics in {self.path}")
+
+    @cached_property
+    def allow_nans(self) -> bool | list:
+        """Check if NaNs are allowed."""
+
+        z = zarr.open(self.path, mode="r")
+        if "allow_nans" in z.attrs:
+            return z.attrs["allow_nans"]
+
+        if "variables_with_nans" in z.attrs:
+            return z.attrs["variables_with_nans"]
+
+        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
+        return True
+
+
+class DeltaDataset:
+    """A class to represent a dataset with delta values."""
+
+    def __init__(self, ds: Any, idelta: int):
+        """Initialize a DeltaDataset instance.
+
+        Parameters
+        ----------
+        ds : Any
+            The dataset.
+        idelta : int
+            The delta value.
+        """
+        self.ds = ds
+        self.idelta = idelta
+
+    def __getitem__(self, i: int) -> Any:
+        """Get an item from the dataset.
+
+        Parameters
+        ----------
+        i : int
+            The index.
+
+        Returns
+        -------
+        Any
+            The item.
+        """
+        j = i - self.idelta
+        if j < 0:
+            raise MissingDateError(f"Missing date {j}")
+        return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]

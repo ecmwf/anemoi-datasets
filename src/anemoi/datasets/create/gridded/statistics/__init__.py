@@ -24,7 +24,7 @@ from anemoi.utils.provenance import gather_provenance_info
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.check import check_data_values
-from anemoi.datasets.create.gridded.stats.summary import Summary
+from anemoi.datasets.create.gridded.statistics.summary import Summary
 
 LOG = logging.getLogger(__name__)
 
