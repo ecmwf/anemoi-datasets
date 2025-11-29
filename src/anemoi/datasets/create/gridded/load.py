@@ -22,7 +22,8 @@ from anemoi.datasets.create.chunks import ChunkFilter
 from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.writer import ViewCacheArray
 
-from .tasks import FieldTask
+from ..base.load import LoadTask
+from .tasks import FieldTaskMixin
 from .tasks import HasElementForDataMixin
 from .tasks import HasRegistryMixin
 from .tasks import HasStatisticTempMixin
@@ -31,7 +32,7 @@ from .tasks import WritableDataset
 LOG = logging.getLogger(__name__)
 
 
-class Load(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+class Load(LoadTask, FieldTaskMixin, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     """A class to load data into a dataset."""
 
     def __init__(

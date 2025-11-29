@@ -9,12 +9,13 @@
 
 import logging
 
-from .tasks import FieldTask
+from ..base.verify import VerifyTask
+from .tasks import FieldTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Verify(FieldTask):
+class Verify(VerifyTask, FieldTaskMixin):
     """A class to verify the integrity of a dataset."""
 
     def _run(self) -> None:

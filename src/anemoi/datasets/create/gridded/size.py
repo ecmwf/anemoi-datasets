@@ -12,12 +12,13 @@ from typing import Any
 
 from anemoi.datasets import open_dataset
 
-from .tasks import FieldTask
+from ..base.size import SizeTask
+from .tasks import FieldTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Size(FieldTask):
+class Size(SizeTask, FieldTaskMixin):
     """A class to compute the size of a dataset."""
 
     def __init__(self, path: str, config: dict | None = None, **kwargs: Any):

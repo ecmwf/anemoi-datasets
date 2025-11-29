@@ -10,15 +10,16 @@
 import logging
 from typing import Any
 
+from ..base.cleanup import CleanupTask
 from .additions import _InitAdditions
-from .tasks import FieldTask
+from .tasks import FieldTaskMixin
 from .tasks import HasRegistryMixin
 from .tasks import HasStatisticTempMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Cleanup(FieldTask, HasRegistryMixin, HasStatisticTempMixin):
+class Cleanup(CleanupTask, FieldTaskMixin, HasRegistryMixin, HasStatisticTempMixin):
     """A class to clean up temporary data and registry entries."""
 
     def __init__(

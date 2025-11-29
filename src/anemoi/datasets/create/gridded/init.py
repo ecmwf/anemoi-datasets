@@ -15,10 +15,11 @@ from typing import Any
 import zarr
 from anemoi.utils.sanitise import sanitise
 
+from anemoi.datasets.create.base.init import InitTask
 from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.utils import normalize_and_check_dates
 
-from .tasks import FieldTask
+from .tasks import FieldTaskMixin
 from .tasks import HasElementForDataMixin
 from .tasks import HasRegistryMixin
 from .tasks import HasStatisticTempMixin
@@ -51,7 +52,7 @@ def _path_readable(path: str) -> bool:
         return False
 
 
-class Init(FieldTask, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+class Init(InitTask, FieldTaskMixin, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
     """A class to initialize a new dataset."""
 
     dataset_class = NewDataset

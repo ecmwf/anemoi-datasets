@@ -15,14 +15,15 @@ from typing import Any
 import numpy as np
 import zarr
 
-from .tasks import FieldTask
+from ..base.statistics import StatisticsTask
+from .tasks import FieldTaskMixin
 from .tasks import HasRegistryMixin
 from .tasks import HasStatisticTempMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Statistics(FieldTask, HasStatisticTempMixin, HasRegistryMixin):
+class Statistics(StatisticsTask, FieldTaskMixin, HasStatisticTempMixin, HasRegistryMixin):
     """A class to compute statistics for a dataset."""
 
     def __init__(

@@ -309,22 +309,13 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class FieldTask(Task):
+class FieldTaskMixin(Task):
     """A base class for dataset creation tasks."""
 
     dataset_class = WritableDataset
 
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Initialize an Actor instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        cache : Optional[str], optional
-            The cache directory.
-        """
-        super().__init__(*args, **kwargs)
+    @cached_property
+    def dataset(self) -> WritableDataset:
         self.dataset = self.dataset_class(self.path)
 
     def update_metadata(self, **kwargs: Any) -> None:

@@ -26,12 +26,16 @@ class CreateContextBase(ABC):
 
     @abstractmethod
     def init(self): ...
+
     @abstractmethod
     def load(self): ...
+
     @abstractmethod
     def statistics(self): ...
+
     @abstractmethod
     def size(self): ...
+
     @abstractmethod
     def cleanup(self): ...
 

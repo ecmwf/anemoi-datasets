@@ -10,12 +10,13 @@
 import logging
 from typing import Any
 
-from .tasks import FieldTask
+from ..base.patch import PatchTask
+from .tasks import FieldTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Patch(FieldTask):
+class Patch(PatchTask, FieldTaskMixin):
     """A class to apply patches to a dataset."""
 
     def __init__(self, path: str, config: dict | None = None, options: dict | None = None, **kwargs: Any):

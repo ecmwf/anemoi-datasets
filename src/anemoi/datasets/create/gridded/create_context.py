@@ -1,4 +1,4 @@
-from ..base.create_context import CreateContextBase
+from ..create_context import CreateContextBase
 
 
 class GriddedCreateContext(CreateContextBase):
