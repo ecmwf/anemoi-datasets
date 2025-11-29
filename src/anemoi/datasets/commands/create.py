@@ -45,7 +45,7 @@ def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
-    from anemoi.datasets.create.tasks import task_factory
+    from anemoi.datasets.create.base import task_factory
 
     options = {k: v for k, v in options.items() if v is not None}
 

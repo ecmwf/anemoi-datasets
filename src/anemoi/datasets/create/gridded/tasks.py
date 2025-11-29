@@ -21,6 +21,7 @@ from anemoi.utils.dates import frequency_to_string
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.create.base import Task
 from anemoi.datasets.create.check import DatasetName
 from anemoi.datasets.create.config import build_output
 from anemoi.datasets.create.config import loader_config
@@ -28,7 +29,6 @@ from anemoi.datasets.create.gridded.context import FieldContext
 from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.create.statistics import TmpStatistics
 from anemoi.datasets.create.statistics import default_statistics_dates
-from anemoi.datasets.create.tasks import Task
 from anemoi.datasets.dates.groups import Groups
 from anemoi.datasets.use.gridded.misc import as_first_date
 from anemoi.datasets.use.gridded.misc import as_last_date

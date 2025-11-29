@@ -12,6 +12,8 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
+from anemoi.datasets.create.config import loader_config
+
 LOG = logging.getLogger(__name__)
 
 
@@ -20,6 +22,7 @@ class CreateContextBase(ABC):
         self.path = path
         self.config = config
         self.kwargs = kwargs
+        self.main_config = loader_config(config)
 
     @abstractmethod
     def init(self): ...

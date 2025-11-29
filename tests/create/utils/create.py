@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.tasks import task_factory
+from anemoi.datasets.create.base import task_factory
 
 
 class TestingContext:
