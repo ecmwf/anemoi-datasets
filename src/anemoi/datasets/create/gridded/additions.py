@@ -35,7 +35,7 @@ from .tasks import FieldTaskMixin
 LOG = logging.getLogger(__name__)
 
 
-class AdditionsMixin:
+class AdditionsMixin(FieldTaskMixin):
     """A mixin class to handle dataset additions."""
 
     def skip(self) -> bool:
@@ -119,7 +119,7 @@ class DeltaDataset:
         return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
 
 
-class _InitAdditions(InitAdditionsTask, FieldTaskMixin, AdditionsMixin):
+class _InitAdditions(InitAdditionsTask, AdditionsMixin):
     """A class to initialize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
@@ -159,7 +159,7 @@ class _InitAdditions(InitAdditionsTask, FieldTaskMixin, AdditionsMixin):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _LoadAdditions(LoadAdditionsTask, FieldTaskMixin, AdditionsMixin):
+class _LoadAdditions(LoadAdditionsTask, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
@@ -235,7 +235,7 @@ class _LoadAdditions(LoadAdditionsTask, FieldTaskMixin, AdditionsMixin):
         return True
 
 
-class _FinaliseAdditions(FinaliseAdditionsTask, FieldTaskMixin, AdditionsMixin):
+class _FinaliseAdditions(FinaliseAdditionsTask, AdditionsMixin):
     """A class to finalize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
