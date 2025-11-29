@@ -24,15 +24,12 @@ from anemoi.datasets.create.writer import ViewCacheArray
 
 from ..base.load import LoadTask
 from .tasks import FieldTaskMixin
-from .tasks import HasElementForDataMixin
-from .tasks import HasRegistryMixin
-from .tasks import HasStatisticTempMixin
 from .tasks import WritableDataset
 
 LOG = logging.getLogger(__name__)
 
 
-class Load(LoadTask, FieldTaskMixin, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+class Load(LoadTask, FieldTaskMixin):
     """A class to load data into a dataset."""
 
     def __init__(

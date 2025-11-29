@@ -316,7 +316,7 @@ class FieldTaskMixin(Task):
 
     @cached_property
     def dataset(self) -> WritableDataset:
-        self.dataset = self.dataset_class(self.path)
+        return self.dataset_class(self.path)
 
     def update_metadata(self, **kwargs: Any) -> None:
         """Update the metadata of the dataset.
@@ -381,10 +381,6 @@ class FieldTaskMixin(Task):
 
         check_missing_dates(self.missing_dates)
 
-
-class HasRegistryMixin:
-    """A mixin class to provide registry functionality."""
-
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
@@ -392,19 +388,11 @@ class HasRegistryMixin:
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 
-
-class HasStatisticTempMixin:
-    """A mixin class to provide temporary statistics functionality."""
-
     @cached_property
     def tmp_statistics(self) -> TmpStatistics:
         """Get the temporary statistics."""
         directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
         return TmpStatistics(directory)
-
-
-class HasElementForDataMixin:
-    """A mixin class to provide element creation functionality for data."""
 
     def create_elements(self, config: Any) -> None:
         """Create elements for the dataset.

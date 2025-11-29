@@ -29,9 +29,8 @@ from anemoi.datasets.create.statistics import fix_variance
 
 from ..base.finalise_additions import FinaliseAdditionsTask
 from ..base.init_additions import InitAdditionsTask
-from ..base.load_additions import FieldAdditionsTask
+from ..base.load_additions import LoadAdditionsTask
 from .tasks import FieldTaskMixin
-from .tasks import HasRegistryMixin
 
 LOG = logging.getLogger(__name__)
 
@@ -120,7 +119,7 @@ class DeltaDataset:
         return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
 
 
-class _InitAdditions(InitAdditionsTask, FieldTaskMixin, HasRegistryMixin, AdditionsMixin):
+class _InitAdditions(InitAdditionsTask, FieldTaskMixin, AdditionsMixin):
     """A class to initialize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):
@@ -160,7 +159,7 @@ class _InitAdditions(InitAdditionsTask, FieldTaskMixin, HasRegistryMixin, Additi
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path}")
 
 
-class _LoadAdditions(FieldAdditionsTask, FieldTaskMixin, HasRegistryMixin, AdditionsMixin):
+class _LoadAdditions(LoadAdditionsTask, FieldTaskMixin, AdditionsMixin):
     """A class to run dataset additions."""
 
     def __init__(
@@ -236,7 +235,7 @@ class _LoadAdditions(FieldAdditionsTask, FieldTaskMixin, HasRegistryMixin, Addit
         return True
 
 
-class _FinaliseAdditions(FinaliseAdditionsTask, FieldTaskMixin, HasRegistryMixin, AdditionsMixin):
+class _FinaliseAdditions(FinaliseAdditionsTask, FieldTaskMixin, AdditionsMixin):
     """A class to finalize dataset additions."""
 
     def __init__(self, path: str, delta: str, use_threads: bool = False, progress: Any = None, **kwargs: Any):

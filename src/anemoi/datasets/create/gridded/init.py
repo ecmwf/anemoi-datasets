@@ -20,9 +20,6 @@ from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.utils import normalize_and_check_dates
 
 from .tasks import FieldTaskMixin
-from .tasks import HasElementForDataMixin
-from .tasks import HasRegistryMixin
-from .tasks import HasStatisticTempMixin
 from .tasks import NewDataset
 from .tasks import _build_statistics_dates
 
@@ -52,7 +49,7 @@ def _path_readable(path: str) -> bool:
         return False
 
 
-class Init(InitTask, FieldTaskMixin, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixin):
+class Init(InitTask, FieldTaskMixin):
     """A class to initialize a new dataset."""
 
     dataset_class = NewDataset

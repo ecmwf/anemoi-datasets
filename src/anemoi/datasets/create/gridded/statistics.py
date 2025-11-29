@@ -17,13 +17,11 @@ import zarr
 
 from ..base.statistics import StatisticsTask
 from .tasks import FieldTaskMixin
-from .tasks import HasRegistryMixin
-from .tasks import HasStatisticTempMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Statistics(StatisticsTask, FieldTaskMixin, HasStatisticTempMixin, HasRegistryMixin):
+class Statistics(StatisticsTask, FieldTaskMixin):
     """A class to compute statistics for a dataset."""
 
     def __init__(

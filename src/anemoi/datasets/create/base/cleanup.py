@@ -8,7 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..tabular import Task
+from . import Task
 
 
 class CleanupTask(Task):
