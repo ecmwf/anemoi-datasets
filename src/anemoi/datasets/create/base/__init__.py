@@ -11,62 +11,62 @@
 class TaskDispatcher:
     """A class to create and run dataset creation tasks."""
 
-    def __init__(self, context):
-        self.context = context
+    def __init__(self, creator):
+        self.creator = creator
 
     def init(self):
-        return self.context.init()
+        return self.creator.init()
 
     def load(self):
-        return self.context.load()
+        return self.creator.load()
 
     def size(self):
-        return self.context.size()
+        return self.creator.size()
 
     def patch(self):
-        return self.context.patch()
+        return self.creator.patch()
 
     def statistics(self):
-        return self.context.statistics()
+        return self.creator.statistics()
 
     def finalise(self):
-        self.context.statistics()
-        self.context.size()
-        self.context.cleanup()
+        self.creator.statistics()
+        self.creator.size()
+        self.creator.cleanup()
 
     def cleanup(self):
-        self.context.cleanup()
+        self.creator.cleanup()
 
     def verify(self):
-        self.context.verify()
+        self.creator.verify()
 
     def init_additions(self):
-        self.context.init_additions()
+        self.creator.init_additions()
 
     def load_additions(self):
-        self.context.load_additions()
+        self.creator.load_additions()
 
     def finalise_additions(self):
-        self.context.finalise_additions()
-        self.context.size()
+        self.creator.finalise_additions()
+        self.creator.size()
 
     def additions(self):
-        self.context.init_additions()
-        self.context.load_additions()
-        self.context.finalise_additions()
-        self.context.cleanup()
+        self.creator.init_additions()
+        self.creator.load_additions()
+        self.creator.finalise_additions()
+        self.creator.cleanup()
 
 
-def task_factory(name: str, observations: bool = False, trace: str | None = None, **kwargs):
+def run_task(name: str, config=None, observations: bool = False, trace: str | None = None, **kwargs):
 
     if observations:
-        from anemoi.datasets.create.tabular.create_context import TabularCreateContext
+        from anemoi.datasets.create.tabular.creator import TabularCreator
 
-        context = TabularCreateContext(**kwargs)
+        creator = TabularCreator(config=config, **kwargs)
     else:
-        from anemoi.datasets.create.gridded.create_context import GriddedCreateContext
+        from anemoi.datasets.create.gridded.creator import GriddedCreator
 
-        context = GriddedCreateContext(**kwargs)
+        creator = GriddedCreator(config=config, **kwargs)
 
-    dispatch = TaskDispatcher(context)
+    dispatch = TaskDispatcher(creator)
     return getattr(dispatch, name)()
