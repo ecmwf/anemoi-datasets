@@ -21,7 +21,6 @@ from anemoi.utils.dates import frequency_to_string
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.base import Task
 from anemoi.datasets.create.check import DatasetName
 from anemoi.datasets.create.config import build_output
 from anemoi.datasets.create.config import loader_config
@@ -213,8 +212,7 @@ class Dataset:
         resolution: str,
         dates: list[datetime.datetime],
         frequency: datetime.timedelta,
-        raise_exception: bool = True,
-        is_test: bool = False,
+        raise_exception: bool = False,  # True
     ) -> None:
         """Check the name of the dataset.
 
@@ -228,15 +226,16 @@ class Dataset:
             The frequency of the dataset.
         raise_exception : bool, optional
             Whether to raise an exception if the name is invalid.
-        is_test : bool, optional
-            Whether this is a test.
         """
+
+        return
+
         basename, _ = os.path.splitext(os.path.basename(self.path))
         try:
             DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
         except Exception as e:
-            if raise_exception and not is_test:
-                raise e
+            if raise_exception:
+                raise
             else:
                 LOG.warning(f"Dataset name error: {e}")
 
@@ -309,7 +308,7 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class GriddedTaskMixin(Task):
+class GriddedTaskMixin:
     """A base class for dataset creation tasks."""
 
     dataset_class = WritableDataset

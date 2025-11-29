@@ -1,2 +1,0 @@
-class TabularTaskMixin:
-    pass

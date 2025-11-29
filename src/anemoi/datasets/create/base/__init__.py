@@ -7,53 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from abc import ABC
-from abc import abstractmethod
-from typing import Any
 
-import numpy as np
-
-
-class Task(ABC):
-
-    def __init__(self, /, path, config, overwrite=False, cache=None, **kwargs: Any):
-        # Catch all floating point errors, including overflow, sqrt(<0), etc
-
-        np.seterr(all="raise", under="warn")
-
-        self.path = path
-        self.cache = cache
-        self.config = config
-        self.overwrite = overwrite
-
-    def run(self):
-        from anemoi.datasets.create.utils import cache_context
-
-        with cache_context(self.cache):
-            return self._run()
-
-    @abstractmethod
-    def _run(self) -> None: ...
-
-
-class Chain(Task):
-    def __init__(self, tasks, **kwargs: Any):
-        self.tasks = tasks
-        self.kwargs = kwargs
-
-    def _run(self) -> None:
-        """Run the chained tasks."""
-        for cls in self.tasks:
-            t = cls(**self.kwargs)
-            t._run()
-
-
-class TaskCreator:
+class TaskDispatcher:
     """A class to create and run dataset creation tasks."""
 
-    def __init__(self, context, **kwargs: Any):
+    def __init__(self, context):
         self.context = context
-        self.kwargs = kwargs
 
     def init(self):
         return self.context.init()
@@ -95,7 +54,6 @@ class TaskCreator:
         self.context.init_additions()
         self.context.load_additions()
         self.context.finalise_additions()
-        self.context.size()
         self.context.cleanup()
 
 
@@ -110,5 +68,5 @@ def task_factory(name: str, observations: bool = False, trace: str | None = None
 
         context = GriddedCreateContext(**kwargs)
 
-    dispatch = TaskCreator(context)
+    dispatch = TaskDispatcher(context)
     return getattr(dispatch, name)()

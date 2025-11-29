@@ -1,54 +1,48 @@
+from earthkit.data.core.order import build_remapping
+
+from anemoi.datasets.create.gridded.context import FieldContext
+
 from ..create_context import CreateContextBase
 
 
 class TabularCreateContext(CreateContextBase):
 
     def init(self):
-        from .init import Init
-
-        return Init(self.path, self.config, **self.kwargs).run()
+        print(self.minimal_input)  # Ensure minimal_input is initialized
 
     def load(self):
-        from .load import Load
-
-        return Load(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Load method not implemented yet.")
 
     def statistics(self):
-        from .statistics import Statistics
-
-        return Statistics(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Statistics method not implemented yet.")
 
     def size(self):
-        from .size import Size
-
-        return Size(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Size method not implemented yet.")
 
     def cleanup(self):
-        from .cleanup import Cleanup
-
-        return Cleanup(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Cleanup method not implemented yet.")
 
     def init_additions(self):
-        from .init_additions import InitAdditions
-
-        return InitAdditions(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Init additions method not implemented yet.")
 
     def load_additions(self):
-        from .load_additions import LoadAdditions
-
-        return LoadAdditions(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Load additions method not implemented yet.")
 
     def finalise_additions(self):
-        from .finalise_additions import FinaliseAdditions
-
-        return FinaliseAdditions(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Finalise additions method not implemented yet.")
 
     def patch(self):
-        from .patch import Patch
-
-        return Patch(self.path, self.config, **self.kwargs).run()
+        raise NotImplementedError("Patch method not implemented yet.")
 
     def verify(self):
-        from .verify import Verify
+        raise NotImplementedError("Verify method not implemented yet.")
 
-        return Verify(self.path, self.config, **self.kwargs).run()
+    ######################################################
+
+    def context(self):
+        return FieldContext(
+            order_by=self.output.order_by,
+            flatten_grid=self.output.flatten_grid,
+            remapping=build_remapping(self.output.remapping),
+            use_grib_paramid=self.main_config.build.use_grib_paramid,
+        )

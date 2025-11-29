@@ -14,5 +14,9 @@ from . import TabularTaskMixin
 
 class Init(InitTask, TabularTaskMixin):
 
+    def context(self):
+        return TabularTaskMixin.context(self)
+
     def _run(self) -> None:
         print(f"Init dataset at {self.path}")
+        self.minimal_input

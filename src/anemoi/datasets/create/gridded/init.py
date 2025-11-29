@@ -278,6 +278,3 @@ class Init(InitTask, GriddedTaskMixin):
 
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)
-
-
-task = Init
