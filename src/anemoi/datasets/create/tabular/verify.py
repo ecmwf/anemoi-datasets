@@ -8,14 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..verify import VerifyTask
+from ..base.verify import VerifyTask
+from . import TabularTaskMixin
 
 
-class Verify(VerifyTask):
+class Verify(VerifyTask, TabularTaskMixin):
 
     def _run(self) -> None:
         print(f"Verify dataset at {self.path}")
         # Here would be the logic to verify the dataset
-
-
-task = Verify

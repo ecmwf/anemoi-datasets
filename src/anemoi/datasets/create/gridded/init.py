@@ -19,7 +19,7 @@ from anemoi.datasets.create.base.init import InitTask
 from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.utils import normalize_and_check_dates
 
-from .tasks import FieldTaskMixin
+from .tasks import GriddedTaskMixin
 from .tasks import NewDataset
 from .tasks import _build_statistics_dates
 
@@ -49,7 +49,7 @@ def _path_readable(path: str) -> bool:
         return False
 
 
-class Init(InitTask, FieldTaskMixin):
+class Init(InitTask, GriddedTaskMixin):
     """A class to initialize a new dataset."""
 
     dataset_class = NewDataset

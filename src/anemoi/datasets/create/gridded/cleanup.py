@@ -12,12 +12,12 @@ from typing import Any
 
 from ..base.cleanup import CleanupTask
 from .additions import _InitAdditions
-from .tasks import FieldTaskMixin
+from .tasks import GriddedTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Cleanup(CleanupTask, FieldTaskMixin):
+class Cleanup(CleanupTask, GriddedTaskMixin):
     """A class to clean up temporary data and registry entries."""
 
     def __init__(

@@ -30,12 +30,12 @@ from anemoi.datasets.create.statistics import fix_variance
 from ..base.finalise_additions import FinaliseAdditionsTask
 from ..base.init_additions import InitAdditionsTask
 from ..base.load_additions import LoadAdditionsTask
-from .tasks import FieldTaskMixin
+from .tasks import GriddedTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class AdditionsMixin(FieldTaskMixin):
+class AdditionsMixin(GriddedTaskMixin):
     """A mixin class to handle dataset additions."""
 
     def skip(self) -> bool:

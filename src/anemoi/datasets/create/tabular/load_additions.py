@@ -7,18 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 
-from ..load_additions import LoadAdditionsTask
+from ..base.load_additions import LoadAdditionsTask
+from . import TabularTaskMixin
 
 
-class LoadAdditions(LoadAdditionsTask):
-    def __init__(self, *, path: str, **kwargs: Any):
-        self.path = path
-
+class LoadAdditions(LoadAdditionsTask, TabularTaskMixin):
     def _run(self) -> None:
         print(f"Run additions for dataset at {self.path}")
         # Here would be the logic to run additions
-
-
-task = LoadAdditions

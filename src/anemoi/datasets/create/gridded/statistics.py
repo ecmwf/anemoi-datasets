@@ -16,12 +16,12 @@ import numpy as np
 import zarr
 
 from ..base.statistics import StatisticsTask
-from .tasks import FieldTaskMixin
+from .tasks import GriddedTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Statistics(StatisticsTask, FieldTaskMixin):
+class Statistics(StatisticsTask, GriddedTaskMixin):
     """A class to compute statistics for a dataset."""
 
     def __init__(

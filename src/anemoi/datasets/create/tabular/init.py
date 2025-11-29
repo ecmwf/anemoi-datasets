@@ -8,13 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..init import InitTask
+from ..base.init import InitTask
+from . import TabularTaskMixin
 
 
-class Init(InitTask):
+class Init(InitTask, TabularTaskMixin):
 
     def _run(self) -> None:
         print(f"Init dataset at {self.path}")
-
-
-task = Init

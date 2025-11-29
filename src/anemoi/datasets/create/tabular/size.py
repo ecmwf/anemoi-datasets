@@ -8,12 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..base.patch import PatchTask
+from ..base.size import SizeTask
 from . import TabularTaskMixin
 
 
-class Patch(PatchTask, TabularTaskMixin):
-
+class Size(SizeTask, TabularTaskMixin):
     def _run(self) -> None:
-        print(f"Patch dataset at {self.path}")
-        # Here would be the logic to patch the dataset
+        print(f"Calculate size of dataset at {self.path}")
+        # Here would be the logic to calculate the size of the dataset

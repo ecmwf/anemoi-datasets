@@ -309,7 +309,7 @@ class NewDataset(Dataset):
         self.z.create_group("_build")
 
 
-class FieldTaskMixin(Task):
+class GriddedTaskMixin(Task):
     """A base class for dataset creation tasks."""
 
     dataset_class = WritableDataset

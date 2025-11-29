@@ -7,18 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 
-from ..finalise_additions import FinaliseAdditionsTask
+from ..base.finalise_additions import FinaliseAdditionsTask
+from . import TabularTaskMixin
 
 
-class FinaliseAdditions(FinaliseAdditionsTask):
-    def __init__(self, *, path: str, **kwargs: Any):
-        self.path = path
-
-    def run(self) -> None:
+class FinaliseAdditions(FinaliseAdditionsTask, TabularTaskMixin):
+    def _run(self) -> None:
         print(f"Finalise additions for dataset at {self.path}")
         # Here would be the logic to finalise additions
-
-
-task = FinaliseAdditions

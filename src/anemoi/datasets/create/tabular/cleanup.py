@@ -7,18 +7,13 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from typing import Any
 
-from ..cleanup import CleanupTask
+from ..base.cleanup import CleanupTask
+from . import TabularTaskMixin
 
 
-class Cleanup(CleanupTask):
-    def __init__(self, *, path: str, **kwargs: Any):
-        self.path = path
+class Cleanup(CleanupTask, TabularTaskMixin):
 
-    def run(self) -> None:
+    def _run(self) -> None:
         print(f"Cleanup dataset at {self.path}")
         # Here would be the logic to Cleanup the dataset
-
-
-task = Cleanup

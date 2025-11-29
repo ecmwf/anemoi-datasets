@@ -3,22 +3,52 @@ from ..create_context import CreateContextBase
 
 class TabularCreateContext(CreateContextBase):
 
-    def init(self): ...
+    def init(self):
+        from .init import Init
 
-    def load(self): ...
+        return Init(self.path, self.config, **self.kwargs).run()
 
-    def statistics(self): ...
+    def load(self):
+        from .load import Load
 
-    def size(self): ...
+        return Load(self.path, self.config, **self.kwargs).run()
 
-    def cleanup(self): ...
+    def statistics(self):
+        from .statistics import Statistics
 
-    def init_additions(self): ...
+        return Statistics(self.path, self.config, **self.kwargs).run()
 
-    def load_additions(self): ...
+    def size(self):
+        from .size import Size
 
-    def finalise_additions(self): ...
+        return Size(self.path, self.config, **self.kwargs).run()
 
-    def patch(self): ...
+    def cleanup(self):
+        from .cleanup import Cleanup
 
-    def verify(self): ...
+        return Cleanup(self.path, self.config, **self.kwargs).run()
+
+    def init_additions(self):
+        from .init_additions import InitAdditions
+
+        return InitAdditions(self.path, self.config, **self.kwargs).run()
+
+    def load_additions(self):
+        from .load_additions import LoadAdditions
+
+        return LoadAdditions(self.path, self.config, **self.kwargs).run()
+
+    def finalise_additions(self):
+        from .finalise_additions import FinaliseAdditions
+
+        return FinaliseAdditions(self.path, self.config, **self.kwargs).run()
+
+    def patch(self):
+        from .patch import Patch
+
+        return Patch(self.path, self.config, **self.kwargs).run()
+
+    def verify(self):
+        from .verify import Verify
+
+        return Verify(self.path, self.config, **self.kwargs).run()

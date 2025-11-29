@@ -11,12 +11,12 @@ import logging
 from typing import Any
 
 from ..base.patch import PatchTask
-from .tasks import FieldTaskMixin
+from .tasks import GriddedTaskMixin
 
 LOG = logging.getLogger(__name__)
 
 
-class Patch(PatchTask, FieldTaskMixin):
+class Patch(PatchTask, GriddedTaskMixin):
     """A class to apply patches to a dataset."""
 
     def __init__(self, path: str, config: dict | None = None, options: dict | None = None, **kwargs: Any):

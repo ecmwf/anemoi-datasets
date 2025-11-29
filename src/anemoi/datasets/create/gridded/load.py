@@ -23,13 +23,13 @@ from anemoi.datasets.create.statistics import compute_statistics
 from anemoi.datasets.create.writer import ViewCacheArray
 
 from ..base.load import LoadTask
-from .tasks import FieldTaskMixin
+from .tasks import GriddedTaskMixin
 from .tasks import WritableDataset
 
 LOG = logging.getLogger(__name__)
 
 
-class Load(LoadTask, FieldTaskMixin):
+class Load(LoadTask, GriddedTaskMixin):
     """A class to load data into a dataset."""
 
     def __init__(

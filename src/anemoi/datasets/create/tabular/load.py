@@ -8,14 +8,12 @@
 # nor does it submit to any jurisdiction.
 
 
-from ..load import LoadTask
+from ..base.load import LoadTask
+from . import TabularTaskMixin
 
 
-class Load(LoadTask):
+class Load(LoadTask, TabularTaskMixin):
 
     def _run(self) -> None:
         print(f"Load data into dataset at {self.path}")
         # Here would be the logic to load data into the dataset
-
-
-task = Load
