@@ -57,9 +57,9 @@ class TaskDispatcher:
         self.creator.cleanup()
 
 
-def run_task(name: str, config=None, observations: bool = False, trace: str | None = None, **kwargs):
+def run_task(name: str, config=None, tabular: bool = False, trace: str | None = None, **kwargs):
 
-    if observations:
+    if tabular:
         from anemoi.datasets.create.tabular.creator import TabularCreator
 
         creator = TabularCreator(config=config, **kwargs)

@@ -315,7 +315,7 @@ class TmpStatistics:
             return
         out = dict(provenance=gather_provenance_info(), **kwargs)
         with open(path, "w") as f:
-            json.dump(out, f)
+            json.dump(out, f, default=str)
 
     def create(self, exist_ok: bool) -> None:
         """Create the directory for storing statistics.
