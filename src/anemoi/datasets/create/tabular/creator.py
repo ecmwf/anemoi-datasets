@@ -1,10 +1,13 @@
+import rich
+
 from ..creator import Creator
+from .context import TabularContext
 
 
 class TabularCreator(Creator):
 
     def init(self):
-        raise NotImplementedError("Init method not implemented yet.")
+        rich.print(self.minimal_input)
 
     def load(self):
         raise NotImplementedError("Load method not implemented yet.")
@@ -32,3 +35,8 @@ class TabularCreator(Creator):
 
     def verify(self):
         raise NotImplementedError("Verify method not implemented yet.")
+
+    ######################################################
+
+    def context(self):
+        return TabularContext()
