@@ -27,18 +27,18 @@ from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.testing import default_test_indexing
 from anemoi.datasets.use import save_dataset
-from anemoi.datasets.use.concat import Concat
-from anemoi.datasets.use.ensemble import Ensemble
-from anemoi.datasets.use.grids import GridsBase
-from anemoi.datasets.use.join import Join
-from anemoi.datasets.use.misc import as_first_date
-from anemoi.datasets.use.misc import as_last_date
-from anemoi.datasets.use.padded import Padded
-from anemoi.datasets.use.select import Rename
-from anemoi.datasets.use.select import Select
-from anemoi.datasets.use.statistics import Statistics
-from anemoi.datasets.use.stores import Zarr
-from anemoi.datasets.use.subset import Subset
+from anemoi.datasets.use.gridded.concat import Concat
+from anemoi.datasets.use.gridded.ensemble import Ensemble
+from anemoi.datasets.use.gridded.grids import GridsBase
+from anemoi.datasets.use.gridded.join import Join
+from anemoi.datasets.use.gridded.misc import as_first_date
+from anemoi.datasets.use.gridded.misc import as_last_date
+from anemoi.datasets.use.gridded.padded import Padded
+from anemoi.datasets.use.gridded.select import Rename
+from anemoi.datasets.use.gridded.select import Select
+from anemoi.datasets.use.gridded.statistics import Statistics
+from anemoi.datasets.use.gridded.stores import Zarr
+from anemoi.datasets.use.gridded.subset import Subset
 
 VALUES = 10
 

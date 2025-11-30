@@ -11,7 +11,7 @@ import os
 import numpy as np
 import pytest
 
-from anemoi.datasets.use import open_dataset
+from anemoi.datasets import open_dataset
 from anemoi.datasets.use.records import Record
 from anemoi.datasets.use.records import Tabular
 
