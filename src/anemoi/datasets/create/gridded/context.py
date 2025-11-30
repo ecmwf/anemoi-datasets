@@ -51,9 +51,9 @@ class GriddedContext(Context):
         return argument
 
     def create_result(self, argument, data):
-        from anemoi.datasets.create.gridded.result import FieldResult
+        from anemoi.datasets.create.gridded.result import GriddedResult
 
-        return FieldResult(self, argument, data)
+        return GriddedResult(self, argument, data)
 
     def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
         from anemoi.datasets.dates.groups import GroupOfDates
