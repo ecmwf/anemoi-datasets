@@ -276,7 +276,7 @@ def _data_request(data: Any) -> dict[str, Any]:
     return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
-class FieldResult(Result):
+class GriddedResult(Result):
     """Class to represent the result of an action in the dataset creation process."""
 
     empty: bool = False

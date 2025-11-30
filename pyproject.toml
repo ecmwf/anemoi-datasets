@@ -145,7 +145,7 @@ addopts = [
 [tool.mypy]
 strict = false
 exclude = [
-  "docs/**",
+  "docs/.*",
 ]
 
 [tool.pydocstringformatter]

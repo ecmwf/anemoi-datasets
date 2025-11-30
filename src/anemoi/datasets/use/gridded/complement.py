@@ -16,18 +16,18 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.grids import nearest_grid_points
-from anemoi.datasets.use.gridded.dataset import Dataset
-from anemoi.datasets.use.gridded.dataset import FullIndex
-from anemoi.datasets.use.gridded.dataset import Shape
-from anemoi.datasets.use.gridded.dataset import TupleIndex
-from anemoi.datasets.use.gridded.debug import Node
-from anemoi.datasets.use.gridded.forwards import Combined
-from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.gridded.indexing import index_to_slices
-from anemoi.datasets.use.gridded.indexing import update_tuple
-from anemoi.datasets.use.gridded.misc import _auto_adjust
-from anemoi.datasets.use.gridded.misc import _open_dataset
+from ..grids import nearest_grid_points
+from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
+from .debug import Node
+from .forwards import Combined
+from .indexing import apply_index_to_slices_changes
+from .indexing import index_to_slices
+from .indexing import update_tuple
+from .misc import _auto_adjust
+from .misc import _open_dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -249,13 +249,7 @@ class ComplementNearest(Complement):
         """
         super().__init__(target, source)
 
-        if isinstance(k, str):
-            assert False
-            LOG.warning(f"ComplementNearest: Interpreting k={k} ({type(k)}) as integer")
-            k = int(k)
-
         self.k = k
-
         self._distances, self._nearest_grid_points = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
@@ -299,21 +293,29 @@ class ComplementNearest(Complement):
         index, previous = update_tuple(index, variable_index, slice(None))
         source_index = [self._source.name_to_index[x] for x in self.variables[previous]]
         source_data = self._source[index[0], source_index, index[2], ...]
-        target_data = source_data[..., self._nearest_grid_points]
+        if any(self._nearest_grid_points >= source_data.shape[-1]):
+            target_shape = source_data.shape[:-1] + self._target.shape[-1:]
+            target_data = np.full(target_shape, np.nan, dtype=self._target.dtype)
+            cond = self._nearest_grid_points < source_data.shape[-1]
+            reachable = np.where(cond)[0]
+            nearest_reachable = self._nearest_grid_points[cond]
+            target_data[..., reachable] = source_data[..., nearest_reachable]
+            result = target_data[..., index[3]]
+        else:
+            target_data = source_data[..., self._nearest_grid_points]
+            epsilon = 1e-8  # prevent division by zero
+            weights = 1.0 / (self._distances + epsilon)
+            weights = weights.astype(target_data.dtype)
+            weights /= weights.sum(axis=1, keepdims=True)  # normalize
 
-        epsilon = 1e-8  # prevent division by zero
-        weights = 1.0 / (self._distances + epsilon)
-        weights = weights.astype(target_data.dtype)
-        weights /= weights.sum(axis=1, keepdims=True)  # normalize
+            # Reshape weights to broadcast correctly
+            # Add leading singleton dimensions so it matches target_data shape
+            while weights.ndim < target_data.ndim:
+                weights = np.expand_dims(weights, axis=0)
 
-        # Reshape weights to broadcast correctly
-        # Add leading singleton dimensions so it matches target_data shape
-        while weights.ndim < target_data.ndim:
-            weights = np.expand_dims(weights, axis=0)
-
-        # Compute weighted average along the last dimension
-        final_point = np.sum(target_data * weights, axis=-1)
-        result = final_point[..., index[3]]
+            # Compute weighted average along the last dimension
+            final_point = np.sum(target_data * weights, axis=-1)
+            result = final_point[..., index[3]]
 
         return apply_index_to_slices_changes(result, changes)
 
@@ -360,7 +362,8 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
 
     if interpolation == "nearest":
         k = kwargs.pop("k", 1)
-        complement = Class(target=target, source=source, k=k)._subset(**kwargs)
+        max_distance = kwargs.pop("max_distance", None)
+        complement = Class(target=target, source=source, k=k, max_distance=max_distance)._subset(**kwargs)
 
     else:
         complement = Class(target=target, source=source)._subset(**kwargs)

@@ -24,7 +24,7 @@ from anemoi.utils.provenance import gather_provenance_info
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.check import check_data_values
-from anemoi.datasets.create.statistics.summary import Summary
+from anemoi.datasets.create.gridded.statistics.summary import Summary
 
 LOG = logging.getLogger(__name__)
 
@@ -315,7 +315,7 @@ class TmpStatistics:
             return
         out = dict(provenance=gather_provenance_info(), **kwargs)
         with open(path, "w") as f:
-            json.dump(out, f, default=str, indent=4)
+            json.dump(out, f, default=str)
 
     def create(self, exist_ok: bool) -> None:
         """Create the directory for storing statistics.
