@@ -51,7 +51,7 @@ class GriddedContext(Context):
         return argument
 
     def create_result(self, argument, data):
-        from anemoi.datasets.create.gridded.result import GriddedResult
+        from .result import GriddedResult
 
         return GriddedResult(self, argument, data)
 
