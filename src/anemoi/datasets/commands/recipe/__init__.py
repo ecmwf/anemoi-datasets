@@ -57,7 +57,7 @@ class Recipe(Command):
         assert isinstance(config, dict)
 
         if args.validate:
-            from anemoi.datasets.create.tasks.gridded.tasks import validate_config
+            from anemoi.datasets.create.gridded.tasks import validate_config
 
             if args.inplace and (not args.format and not args.migrate and not args.python):
                 argparse.ArgumentError(None, "--inplace is not supported with --validate.")

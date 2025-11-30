@@ -368,8 +368,7 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
 
     if interpolation == "nearest":
         k = kwargs.pop("k", 1)
-        max_distance = kwargs.pop("max_distance", None)
-        complement = Class(target=target, source=source, k=k, max_distance=max_distance)._subset(**kwargs)
+        complement = Class(target=target, source=source, k=k)._subset(**kwargs)
 
     else:
         complement = Class(target=target, source=source)._subset(**kwargs)

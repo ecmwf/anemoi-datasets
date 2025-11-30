@@ -31,7 +31,7 @@ class TransformFilter:
         self.name = name
         self.transform_filter = create_filter(context, config)
 
-    def _run(self, input: ekd.FieldList) -> ekd.FieldList:
+    def execute(self, input: ekd.FieldList) -> ekd.FieldList:
         """Execute the transformation filter.
 
         Parameters

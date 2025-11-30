@@ -17,7 +17,7 @@ import xarray as xr
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from anemoi.datasets.validate import validate_dataset
+from anemoi.datasets.misc.validate import validate_dataset
 
 
 @pytest.fixture

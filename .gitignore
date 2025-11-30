@@ -146,3 +146,6 @@ trace.txt
 *.prof
 prof/
 *.gz
+*.odb
+*.bufr
+*.csv

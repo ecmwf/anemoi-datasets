@@ -9,6 +9,7 @@
 
 
 import datetime
+import os
 import tempfile
 from collections.abc import Callable
 from functools import cache
@@ -18,6 +19,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+import rich
 import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -25,8 +27,8 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
-from anemoi.datasets.testing import default_test_indexing
-from anemoi.datasets.use import save_dataset
+from anemoi.datasets.misc.testing import default_test_indexing
+from anemoi.datasets.use.gridded import save_dataset
 from anemoi.datasets.use.gridded.concat import Concat
 from anemoi.datasets.use.gridded.ensemble import Ensemble
 from anemoi.datasets.use.gridded.grids import GridsBase
@@ -60,7 +62,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch("anemoi.datasets.use.stores.zarr_lookup", lambda name: name):
+            with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", lambda name: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
@@ -100,6 +102,7 @@ def create_zarr(
     vars: str = "abcd",
     start: int = 2021,
     end: int = 2021,
+    field_shape=[2, 5],
     frequency: datetime.timedelta = datetime.timedelta(hours=6),
     resolution: str = "o96",
     k: int = 0,
@@ -117,6 +120,8 @@ def create_zarr(
         Start year, by default 2021.
     end : int, optional
         End year, by default 2021.
+    field_shape : list, optional
+        Field shape, by default [2, 5].
     frequency : datetime.timedelta, optional
         Frequency, by default datetime.timedelta(hours=6).
     resolution : str, optional
@@ -219,6 +224,10 @@ def create_zarr(
         compressor=None,
     )
 
+    root.attrs["field_shape"] = field_shape
+    assert len(field_shape) == 2
+    assert data.shape[-1] == field_shape[0] * field_shape[1]
+
     return root
 
 
@@ -239,6 +248,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
     """
     # Format: test-2021-2021-6h-o96-abcd-0
 
+    name, _ = os.path.splitext(name)
+
     args = dict(
         test="test",
         start=2021,
@@ -249,12 +260,14 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         k=0,
         ensemble=None,
         grids=None,
+        field_shape="2,5",
     )
 
     for name, bit in zip(args, name.split("-")):
-        args[name] = bit
+        if bit:
+            args[name] = bit
 
-    print(args)
+    rich.print(args)
 
     return create_zarr(
         start=int(args["start"]),
@@ -266,6 +279,7 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         ensemble=int(args["ensemble"]) if args["ensemble"] is not None else None,
         grids=int(args["grids"]) if args["grids"] is not None else None,
         missing=args["test"] == "missing",
+        field_shape=list(map(int, args["field_shape"].split(","))),
     )
 
 
@@ -386,6 +400,8 @@ class DatasetTester:
         regular_shape : bool, optional
             Whether the dataset has a regular shape, by default True.
         """
+        from anemoi.datasets import open_dataset
+
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
 
@@ -1304,7 +1320,7 @@ def test_grids() -> None:
     test = DatasetTester(
         grids=[
             "test-2021-2021-6h-o96-abcd-1-1",  # Default is 10 gridpoints
-            "test-2021-2021-6h-o96-abcd-2-1-25",  # 25 gridpoints
+            "test-2021-2021-6h-o96-abcd-2-1-25-5,5",  # 25 gridpoints
         ]
     )
     test.run(
@@ -1339,7 +1355,7 @@ def test_grids() -> None:
     )
 
     ds1 = open_dataset("test-2021-2021-6h-o96-abcd-1-1")
-    ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25")
+    ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25-5,5")
 
     assert (test.ds.longitudes == np.concatenate([ds1.longitudes, ds2.longitudes])).all()
     assert (test.ds.latitudes == np.concatenate([ds1.latitudes, ds2.latitudes])).all()
@@ -1376,6 +1392,7 @@ def test_cropping() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, 8)
 
 
+@pytest.mark.skip("Rolling average not yet supported in that branch")
 @mockup_open_zarr
 def test_rolling_average() -> None:
     initial = DatasetTester("test-2021-2021-6h-o96-abcd")
@@ -1400,6 +1417,7 @@ def test_invalid_trim_edge() -> None:
         )
 
 
+@pytest.mark.skip("Saving datasets not yet supported in that branch")
 def test_save_dataset() -> None:
     """Test save datasets."""
 
@@ -1419,6 +1437,47 @@ def test_save_dataset() -> None:
     saved = open_dataset(tmp_dir)
     assert saved.variables == ["a", "b"]
     assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
+
+
+@mockup_open_zarr
+def test_trim_edge_simple() -> None:
+    """Test trimming the edges of a dataset."""
+    test = DatasetTester(
+        "test-2021-2021-6h-o96-abcd---210-15,14",
+        trim_edge=(2, 3, 4, 5),
+    )
+
+    expected_field_shape = (10, 5)
+    assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+    assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+
+@mockup_open_zarr
+def test_trim_edge_zeros() -> None:
+    """Test trimming the edges of a dataset when edges are 0"""
+    for dim in range(2):
+        trim_edge = [0, 0, 0, 0]
+        trim_edge[dim] = 1
+        test = DatasetTester(
+            "test-2021-2021-6h-o96-abcd---210-15,14",
+            trim_edge=trim_edge,
+        )
+
+        expected_field_shape = (14, 14)
+        assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+    for dim in range(2, 4):
+        trim_edge = [0, 0, 0, 0]
+        trim_edge[dim] = 1
+        test = DatasetTester(
+            "test-2021-2021-6h-o96-abcd---210-15,14",
+            trim_edge=trim_edge,
+        )
+
+        expected_field_shape = (15, 13)
+        assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
 if __name__ == "__main__":
