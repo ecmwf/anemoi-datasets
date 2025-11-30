@@ -625,8 +625,7 @@ class GriddedCreator(Creator):
         resolution: str,
         dates: list[datetime.datetime],
         frequency: datetime.timedelta,
-        raise_exception: bool = True,
-        is_test: bool = False,
+        raise_exception: bool = False,  # True
     ) -> None:
         """Check the name of the dataset.
 
@@ -647,7 +646,7 @@ class GriddedCreator(Creator):
         try:
             DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
         except Exception as e:
-            if raise_exception and not is_test:
+            if raise_exception:
                 raise e
             else:
                 LOG.warning(f"Dataset name error: {e}")
