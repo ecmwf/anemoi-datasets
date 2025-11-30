@@ -124,7 +124,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools.package-data]
-"anemoi.datasets.use" = [
+"anemoi.datasets.data" = [
   "*.css",
 ]
 
@@ -144,8 +144,10 @@ addopts = [
 
 [tool.mypy]
 strict = false
+allow_redefinition = true
+ignore_missing_imports = true
 exclude = [
-  "docs/**",
+  "docs/.*",
 ]
 
 [tool.pydocstringformatter]

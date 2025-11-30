@@ -46,7 +46,6 @@ from .statistics import TmpStatistics
 from .statistics import check_variance
 from .statistics import compute_statistics
 from .statistics import fix_variance
-from .tasks import _build_statistics_dates
 from .utils import normalize_and_check_dates
 from .writer import ViewCacheArray
 
@@ -351,13 +350,129 @@ class NewDataset(Dataset):
 
 class GriddedCreator(Creator):
 
+    check_name = False
+
+    def update_metadata(self, **kwargs: Any) -> None:
+        """Update the metadata of the dataset.
+
+        Parameters
+        ----------
+        **kwargs
+            The metadata to update.
+        """
+        self.dataset.update_metadata(**kwargs)
+
+    def check_unkown_kwargs(self, kwargs: dict) -> None:
+        """Check for unknown keyword arguments.
+
+        Parameters
+        ----------
+        kwargs : dict
+            The keyword arguments.
+        """
+        # remove this latter
+        LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
+
+    def read_dataset_metadata(self, path: str) -> None:
+        """Read the metadata of the dataset.
+
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        """
+        ds = open_dataset(path)
+        self.dataset_shape = ds.shape
+        self.variables_names = ds.variables
+        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
+        self.dates = ds.dates
+
+        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
+
+        def check_missing_dates(expected: list[np.datetime64]) -> None:
+            """Check if the missing dates in the dataset match the expected dates.
+
+            Parameters
+            ----------
+            expected : list of np.datetime64
+                The expected missing dates.
+
+            Raises
+            ------
+            ValueError
+                If the missing dates in the dataset do not match the expected dates.
+            """
+            import zarr
+
+            z = zarr.open(path, "r")
+            missing_dates = z.attrs.get("missing_dates", [])
+            missing_dates = sorted([np.datetime64(d) for d in missing_dates])
+            if missing_dates != expected:
+                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+
+        check_missing_dates(self.missing_dates)
+
+    def patch(self):
+        from anemoi.datasets.create.patch import apply_patch
+
+        options = self.kwargs.get("options", {})
+        apply_patch(self.path, **options)
+
+    def size(self):
+        """Run the size computation."""
+        from anemoi.datasets.create.size import compute_directory_sizes
+
+        self.dataset = WritableDataset(self.path)
+
+        metadata = compute_directory_sizes(self.path)
+        self.update_metadata(**metadata)
+
+        # Look for constant fields
+        ds = open_dataset(self.path)
+        constants = ds.computed_constant_fields()
+
+        variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
+        for k in constants:
+            variables_metadata[k]["constant_in_time"] = True
+
+        self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
+
+    @cached_property
+    def registry(self) -> Any:
+        """Get the registry."""
+        from .zarr import ZarrBuiltRegistry
+
+        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
+
+    @cached_property
+    def tmp_statistics(self) -> TmpStatistics:
+        """Get the temporary statistics."""
+        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
+        return TmpStatistics(directory)
+
     def init(self):
         LOG.info("Config loaded ok:")
         # LOG.info(self.main_config)
 
         self.dataset = NewDataset(self.path)
         self.tmp_statistics.delete()
+        """Internal method to run the initialization.
 
+        Returns
+        -------
+        int
+            The number of groups to process.
+        """
+        """Create an empty dataset of the right final shape.
+
+        Read a small part of the data to get the shape of the data and the resolution and more metadata.
+        """
+
+        LOG.info("Config loaded ok:")
+        # LOG.info(self.main_config)
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
         missing = self.groups.provider.missing
@@ -443,7 +558,6 @@ class GriddedCreator(Creator):
         metadata["end_date"] = dates[-1].isoformat()
         metadata["frequency"] = frequency
         metadata["missing_dates"] = [_.isoformat() for _ in missing]
-        metadata["origins"] = self.minimal_input.origins
 
         metadata["version"] = VERSION
 
@@ -485,7 +599,7 @@ class GriddedCreator(Creator):
         self.tmp_statistics.create(exist_ok=False)
         self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
 
-        statistics_start, statistics_end = _build_statistics_dates(
+        statistics_start, statistics_end = build_statistics_dates(
             dates,
             self.main_config.statistics.get("start"),
             self.main_config.statistics.get("end"),
@@ -620,103 +734,6 @@ class GriddedCreator(Creator):
             use_grib_paramid=self.main_config.build.use_grib_paramid,
         )
 
-    def check_name(
-        self,
-        resolution: str,
-        dates: list[datetime.datetime],
-        frequency: datetime.timedelta,
-        raise_exception: bool = True,
-        is_test: bool = False,
-    ) -> None:
-        """Check the name of the dataset.
-
-        Parameters
-        ----------
-        resolution : str
-            The resolution of the dataset.
-        dates : list of datetime.datetime
-            The dates of the dataset.
-        frequency : datetime.timedelta
-            The frequency of the dataset.
-        raise_exception : bool, optional
-            Whether to raise an exception if the name is invalid.
-        is_test : bool, optional
-            Whether this is a test.
-        """
-        basename, _ = os.path.splitext(os.path.basename(self.path))
-        try:
-            DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
-        except Exception as e:
-            if raise_exception and not is_test:
-                raise e
-            else:
-                LOG.warning(f"Dataset name error: {e}")
-
-    def update_metadata(self, **kwargs: Any) -> None:
-        """Update the metadata of the dataset.
-
-        Parameters
-        ----------
-        **kwargs
-            The metadata to update.
-        """
-        self.dataset.update_metadata(**kwargs)
-
-    @cached_property
-    def registry(self) -> Any:
-        """Get the registry."""
-        from anemoi.datasets.create.zarr import ZarrBuiltRegistry
-
-        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
-
-    @cached_property
-    def tmp_statistics(self) -> TmpStatistics:
-        """Get the temporary statistics."""
-        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
-        return TmpStatistics(directory)
-
-    def read_dataset_metadata(self, path: str) -> None:
-        """Read the metadata of the dataset.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        """
-        ds = open_dataset(path)
-        self.dataset_shape = ds.shape
-        self.variables_names = ds.variables
-        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
-
-        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
-
-        def check_missing_dates(expected: list[np.datetime64]) -> None:
-            """Check if the missing dates in the dataset match the expected dates.
-
-            Parameters
-            ----------
-            expected : list of np.datetime64
-                The expected missing dates.
-
-            Raises
-            ------
-            ValueError
-                If the missing dates in the dataset do not match the expected dates.
-            """
-            import zarr
-
-            z = zarr.open(path, "r")
-            missing_dates = z.attrs.get("missing_dates", [])
-            missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-            if missing_dates != expected:
-                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
-                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-
-        check_missing_dates(self.missing_dates)
-
     def _get_allow_nans(self) -> bool | list:
         """Get the allow_nans configuration.
 
@@ -801,25 +818,6 @@ class GriddedCreator(Creator):
         self.dataset = WritableDataset(self.path)
         LOG.info(f"Verifying dataset at {self.path}")
         LOG.info(str(self.dataset.anemoi_dataset))
-
-    def size(self):
-        """Run the size computation."""
-        from anemoi.datasets.create.size import compute_directory_sizes
-
-        self.dataset = WritableDataset(self.path)
-
-        metadata = compute_directory_sizes(self.path)
-        self.update_metadata(**metadata)
-
-        # Look for constant fields
-        ds = open_dataset(self.path)
-        constants = ds.computed_constant_fields()
-
-        variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
-        for k in constants:
-            variables_metadata[k]["constant_in_time"] = True
-
-        self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 
     def skip(self, delta: datetime.timedelta) -> bool:
         """Check if the additions should be skipped.
@@ -1046,12 +1044,6 @@ class GriddedCreator(Creator):
             self.dataset.add_dataset(name=name, array=summary[k], dimensions=("variable",))
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
         LOG.debug(f"Wrote additions in {self.path}")
-
-    def patch(self):
-        from anemoi.datasets.create.patch import apply_patch
-
-        options = self.kwargs.get("options", {})
-        apply_patch(self.path, **options)
 
     def statistics(self):
         self.dataset = WritableDataset(self.path)
