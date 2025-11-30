@@ -36,7 +36,7 @@ from . import NewDataset
 from . import WritableDataset
 from . import build_statistics_dates
 from .chunks import ChunkFilter
-from .context import FieldContext
+from .context import GriddedContext
 from .persistent import build_storage
 from .statistics import Summary
 from .statistics import TmpStatistics
@@ -429,7 +429,7 @@ class GriddedCreator(Creator):
     ######################################################
 
     def context(self):
-        return FieldContext(
+        return GriddedContext(
             order_by=self.output.order_by,
             flatten_grid=self.output.flatten_grid,
             remapping=build_remapping(self.output.remapping),

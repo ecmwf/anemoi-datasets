@@ -20,7 +20,7 @@ from anemoi.datasets.create.input.context import Context
 LOG = logging.getLogger(__name__)
 
 
-class FieldContext(Context):
+class GriddedContext(Context):
 
     def __init__(
         self,
