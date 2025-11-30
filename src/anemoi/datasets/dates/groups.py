@@ -24,11 +24,11 @@ from anemoi.datasets.dates import as_datetime
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
     """Shorten the list of dates for display.
 
-    Args:
-        dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
+    backen    Args:
+            dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
 
-    Returns:
-        Union[str, List[str]]: The shortened list of dates.
+        Returns:
+            Union[str, List[str]]: The shortened list of dates.
     """
     if isinstance(dates, (list, tuple)):
         dates = [d.isoformat() for d in dates]
@@ -82,6 +82,14 @@ class GroupOfDates:
             bool: True if the groups are equal, False otherwise.
         """
         return isinstance(other, GroupOfDates) and self.dates == other.dates
+
+    @property
+    def start_date(self) -> datetime.datetime:
+        return self.provider.start_date
+
+    @property
+    def end_date(self) -> datetime.datetime:
+        return self.provider.end_date
 
 
 class Groups:

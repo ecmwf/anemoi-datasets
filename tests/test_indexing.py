@@ -10,7 +10,7 @@
 
 import numpy as np
 
-from anemoi.datasets.data.indexing import length_to_slices
+from anemoi.datasets.use.indexing import length_to_slices
 
 
 def test_length_to_slices() -> None:

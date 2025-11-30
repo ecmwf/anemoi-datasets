@@ -124,7 +124,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools.package-data]
-"anemoi.datasets.data" = [
+"anemoi.datasets.use" = [
   "*.css",
 ]
 

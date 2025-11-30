@@ -4,7 +4,7 @@ Validate Command
 ============
 
 Use this command to validate a zarr dataset, or a class that implements the
-:class:`anemoi.datasets.Dataset` interface.
+:class:`anemoi.datasets.useset` interface.
 
 
 This command has two modes of operation:
