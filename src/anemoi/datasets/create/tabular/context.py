@@ -19,4 +19,6 @@ class TabularContext(Context):
         return argument
 
     def create_result(self, argument, data):
-        raise NotImplementedError()
+        from .result import TabularResult
+
+        return TabularResult(self, argument, data)
