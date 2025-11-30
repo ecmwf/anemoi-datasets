@@ -100,7 +100,7 @@ class Npz1WriteBackend(WriteBackend):
         np.savez(out_path, **data)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create import json_tidy
+        from anemoi.datasets.create.creator import json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:
@@ -128,7 +128,7 @@ class Npz2WriteBackend(WriteBackend):
         np.savez(out_path, **data)
 
     def write_metadata(self, metadata):
-        from anemoi.datasets.create import json_tidy
+        from anemoi.datasets.create.creator import json_tidy
 
         os.makedirs(self.path, exist_ok=True)
         with open(os.path.join(self.path, "metadata.json"), "w") as f:
