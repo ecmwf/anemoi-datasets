@@ -25,6 +25,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
+from anemoi.datasets.testing import default_test_indexing
 from anemoi.datasets.use import save_dataset
 from anemoi.datasets.use.concat import Concat
 from anemoi.datasets.use.ensemble import Ensemble
@@ -38,7 +39,6 @@ from anemoi.datasets.use.select import Select
 from anemoi.datasets.use.statistics import Statistics
 from anemoi.datasets.use.stores import Zarr
 from anemoi.datasets.use.subset import Subset
-from anemoi.datasets.testing import default_test_indexing
 
 VALUES = 10
 
