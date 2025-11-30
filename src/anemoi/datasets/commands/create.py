@@ -80,9 +80,9 @@ class Create(Command):
             help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
         )
         command_parser.add_argument(
-            "--observations",
+            "--tabular",
             action="store_true",
-            help="Observations.",
+            help="Tabular data format.",
         )
         command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")

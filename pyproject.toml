@@ -144,8 +144,6 @@ addopts = [
 
 [tool.mypy]
 strict = false
-allow_redefinition = true
-ignore_missing_imports = true
 exclude = [
   "docs/.*",
 ]

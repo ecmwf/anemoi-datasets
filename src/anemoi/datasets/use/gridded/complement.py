@@ -16,18 +16,18 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.grids import nearest_grid_points
-from anemoi.datasets.use.gridded.dataset import Dataset
-from anemoi.datasets.use.gridded.dataset import FullIndex
-from anemoi.datasets.use.gridded.dataset import Shape
-from anemoi.datasets.use.gridded.dataset import TupleIndex
-from anemoi.datasets.use.gridded.debug import Node
-from anemoi.datasets.use.gridded.forwards import Combined
-from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.use.gridded.indexing import index_to_slices
-from anemoi.datasets.use.gridded.indexing import update_tuple
-from anemoi.datasets.use.gridded.misc import _auto_adjust
-from anemoi.datasets.use.gridded.misc import _open_dataset
+from ..grids import nearest_grid_points
+from .dataset import Dataset
+from .dataset import FullIndex
+from .dataset import Shape
+from .dataset import TupleIndex
+from .debug import Node
+from .forwards import Combined
+from .indexing import apply_index_to_slices_changes
+from .indexing import index_to_slices
+from .indexing import update_tuple
+from .misc import _auto_adjust
+from .misc import _open_dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -249,13 +249,7 @@ class ComplementNearest(Complement):
         """
         super().__init__(target, source)
 
-        if isinstance(k, str):
-            assert False
-            LOG.warning(f"ComplementNearest: Interpreting k={k} ({type(k)}) as integer")
-            k = int(k)
-
         self.k = k
-
         self._distances, self._nearest_grid_points = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
