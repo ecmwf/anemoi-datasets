@@ -8,8 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import hashlib
-import json
 import logging
 from copy import deepcopy
 from typing import Any
@@ -18,112 +16,93 @@ import numpy as np
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_field_with_valid_datetime
 from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_timedelta, frequency_to_string
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
 
-from .accumulation_utils import intervals as itv
-from .accumulation_utils import utils
+from .accumulation_utils.intervals import Link
+from .accumulation_utils.intervals import LinksCollection
+from .accumulation_utils.intervals import Vector
+from .accumulation_utils.intervals import VectorCollection
+from .accumulation_utils.intervals import build_catalogue
 from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
 
-def _prep_request(request: dict[str, Any]) -> dict[str, Any]:
-    request = deepcopy(request)
-
-    param = request.pop("param")
-    assert isinstance(param, (list, tuple))
-
-    number = request.pop("number", [0])
-    if not isinstance(number, (list, tuple)):
-        number = [number]
-    assert isinstance(number, (list, tuple))
-
-    stream = request.pop("stream", "oper")
-
-    type_ = request.pop("type", "an")
-    if type_ == "an":
-        type_ = "fc"
-
-    levtype = request.pop("levtype", "sfc")
-    if levtype != "sfc":
-        raise NotImplementedError("Only sfc leveltype is supported")
-
-    additional_request = {"stream": stream, "type": type_, "levtype": levtype}
-
-    return request, param, number, additional_request
+# flow of information in accumulation:
+#
+# main accumulate source creates Accumulator objects for each param/member/valid_date
+#    Accumulator will be a subclass of Reducer (as Averager or Maxer would also be)
+#
+# first, the Accumulators should create a list of requests to get all the needed data from the source
+#    this is done by looping on the accumulators and getting their requests
+#    each accumulator has a Cataloguer object that knows which intervals are available for the source
+#      each accumulator chat with their Cataloguer to get the intervals they need : intervals = self.cataloguer.get_intervals(date_start, date_end, source_parameters, extra1=, extra2=..)
+#      each interval has the full request needed to give to the source to retrieve the data for this interval
+#      each interval also knows how to find its data in the source response
+#
+# once all requests are built, the source is queried and data retrieved
+#
+# then, each field from the source is sent to each accumulator
+#    the accumulator checks if the field is needed, asking its intervals if some intervals need this field
+#    if yes, the accumulator accumulated the values (asking the interval how to do it)
+#    once all intervals are done, the accumulator assembles the final output field and writes in the result
 
 
 class Accumulator:
     values: NDArray | None = None
+    completed: bool = False
 
     def __init__(
         self,
-        source_request: dict[str, Any],
-        valid_date: datetime.datetime,
-        user_accumulation_period: datetime.timedelta,
-        data_accumulation_period: datetime.timedelta,
-        **kwargs: dict,
+        vector: Vector,
+        key: dict[str, Any],
     ):
-        """Accumulator object for a given param/member/valid_date
+        """Accumulator object for a given param/member/valid_date"""
+        self.vector = vector
 
-        Parameters:
-        ---------
-        interval_class: type[itv.IntervalsCollection]
-            The type of IntervalsCollection that should be used by this accumulator (depends on data source)
-        valid_date: datetime.datetime
-            the valid date at which the Accumulator refers (final value will indicate accumulation up to this date)
-        user_accumulation_period: datetime.timedelta
-            User-defined accumulation interval
-        data_accumulation_period: datetime.timedelta,
-            Source data accumulation interval
-        **kwargs: dict
-            Additional kwargs coming from accumulation recipe
-        """
+        self.period = vector.max - vector.min
+        self.valid_date = vector.max
 
-        self.valid_date = valid_date
+        assert isinstance(key, dict)
+        self.key = key
+        for k in ["date", "time", "step"]:
+            if k in self.key:
+                raise ValueError(f"Cannot use {k} for accumulation")
+
+        self.done = VectorCollection()
+        self.values = None  # will hold accumulated values array
+
+        # The accumulator only accumulates fields matching its metadata
+        # and does not know about the rest
 
         # key contains the mars request parameters except the one related to the time
         # A mars request is a dictionary with three categories of keys:
         #   - the ones related to the time (date, time, step)
         #   - the ones related to the data (param, stream, levtype, expver, number, ...)
         #   - the ones related to the processing to be done (grid, area, ...)
-        self.kwargs = kwargs
-        for k in ["date", "time", "step"]:
-            if k in kwargs:
-                raise ValueError(f"Cannot use {k} in kwargs for accumulations")
-
-        self.key = {k: v for k, v in kwargs.items() if k in ["param", "level", "levelist", "number"]}
-
-        # instantiate IntervalsCollection object
-        interval_class = itv.find_IntervalsCollection_class(source_request)
-        if interval_class != itv.DefaultIntervalsCollection:
-            LOG.warning("Non-default data IntervalsCollection (e.g MARS): ignoring data_accumulation_period")
-            data_accumulation_period = frequency_to_timedelta("1h")  # only to ensure compatibility
-        self.interval_coll = interval_class(
-            self.valid_date, user_accumulation_period, data_accumulation_period, **kwargs
-        )
-
-    @property
-    def requests(self) -> tuple[dict, datetime.datetime]:
-        """build the full data requests, merging the time requests with the key.
-        This will be used to query the source data database.
-        """
-        for interval in self.interval_coll:
-            yield {**self.kwargs.copy(), **dict(interval.time_request)}, interval.end_datetime
 
     def is_field_needed(self, field: Any):
         """Check whether the given field is needed by the accumulator (correct param, etc...)"""
         for k, v in self.key.items():
-            metadata = field.metadata(k) if k != "number" else utils._member(field)
+            metadata = field.metadata(k)
+            if k == "number":  # bug in eccodes has number=None randomly
+                if metadata is None:
+                    metadata = 0
+                if v is None:
+                    v = 0
             if metadata != v:
                 LOG.debug(f"{self} does not need field {field} because of {k}={metadata} not {v}")
                 return False
         return True
 
-    def compute(self, field: Any, values: NDArray) -> None:
+    def is_complete(self, **kwargs) -> bool:
+        """Check whether the accumulation is complete (all intervals have been processed)"""
+        return self.done.sum(**kwargs) == self.vector
+
+    def compute(self, field: Any, values: NDArray, link: Link) -> None:
         """Verify the field time metadata, find the associated interval
         and perform accumulation with the values array on this interval.
         Note: values have been extracted from field before the call to `compute`,
@@ -140,33 +119,31 @@ class Accumulator:
         ------
         None
         """
-
-        # check if field has correct parameters for the Accumulator (param, number)
-        if not self.is_field_needed(field):
-            return
-
-        interval = self.interval_coll.find_matching_interval(field)
-
-        if not interval:
-            return
-
-        # each field must be seen once
-        assert self.interval_coll.is_todo(interval.time_request), (self.interval_coll, interval)
-        assert not self.interval_coll.is_done(
-            interval.time_request
-        ), f"Field {field} for interval {interval} already done"
-
-        print(f"{self} field ✅ ({interval.sign}) {field} for {interval}")
+        vector = link.vector
+        if self.completed:
+            raise ValueError(f"Accumulator {self} already completed, cannot process vector {vector}")
 
         # actual accumulation computation
-        self.values = interval.apply(self.values, values)
-        self.interval_coll.set_done(interval.time_request)
+        if self.values is None:
+            self.values = values
+        else:
+            self.values += values
 
-        if self.interval_coll.all_done():
+        if vector in self.done:
+            raise ValueError(f"Vector {vector} already processed for accumulator {self}")
+        self.done.add(vector)
+
+        if self.is_complete():
             # all intervals for accumulation have been processed
             # final list of outputs is ready to be updated
             self.write(field)  # field is used as a template
-            print("accumulator", self, " : data written ✅ ")
+            self.completed = True
+
+    def field_to_vector(self, field: Any):
+        valid_date = field.metadata("valid_date")
+        step = field.metadata("step")
+        date = valid_date - datetime.timedelta(hours=step)
+        return Vector(date=date, step=step)
 
     def write(self, field: Any) -> None:
         """Writing output inside a new field at the end of the accumulation.
@@ -181,7 +158,7 @@ class Accumulator:
         ------
         None
         """
-        assert self.interval_coll.all_done(), self.interval_coll
+        assert self.is_complete(), self.done
 
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         if np.any(self.values < 0):
@@ -190,29 +167,30 @@ class Accumulator:
             )
 
         startStep = datetime.timedelta(hours=0)
-        endStep = self.interval_coll.accumulation_period
+        endStep = self.vector.max - self.vector.min
 
         accumfield = new_field_from_numpy(
             self.values, template=field, startStep=startStep, endStep=endStep, stepType="accum"
         )
-
         self.out = new_field_with_valid_datetime(accumfield, self.valid_date)
 
-        # resetting values as accumulation is done
-        self.values = None
+        # cleanup to avoid misuse, no more accumulation possible
+        self.values = "accumulation already done"
 
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
-        return f"{self.__class__.__name__}({self.valid_date}, {key})"
+        YELLOW = "\033[93m"
+        RESET = "\033[0m"
+        period = f"{YELLOW}{frequency_to_string(self.vector.max - self.vector.min)}{RESET}"
+        return f"{self.__class__.__name__}({self.vector}, {key})"
 
 
 def _compute_accumulations(
     context: Any,
     dates: list[datetime.datetime],
-    source_name: Any,
-    source_request: dict[str, Any],
-    user_accumulation_period: datetime.timedelta,
-    data_accumulation_period: datetime.timedelta,
+    period: datetime.timedelta,
+    source: Any,
+    hints: dict[str, Any] | None = None,
 ) -> Any:
     """Concrete accumulation logic.
 
@@ -227,14 +205,9 @@ def _compute_accumulations(
         The dataset building context (will be updated with trace of accumulation)
     dates: list[datetime.datetime]
         The list of valid dates on which to perform accumulations.
-    source_name: Any,
-        The abstract AccumulationAction object containing the accumulation source
-    source_request: dict[str,Any]
-        The parameters from the accumulation recipe, except for user/data accumulation periods
-    user_accumulation_period: datetime.timedelta,
+    source: Any,
+    period: datetime.timedelta,
         The interval over which to accumulate (user-defined)
-    data_accumulation_period: datetime.timedelta
-        The interval over which source data is already accumulated (default 1h if not user-specified, ignored for mars data).
 
     Return
     ------
@@ -242,86 +215,46 @@ def _compute_accumulations(
 
     """
 
-    print("💬 source_request:", source_request)
+    print("💬 source for accumulations:", source)
 
-    main_request, param, number, additional = _prep_request(source_request)
+    cataloguer = build_catalogue(context, hints, source)
 
-    # building accumulators
+    # building accumulators :
+    # one accumulator per valid date, per output parm and ensemble member
+    # i.e. one accumulator per output field
     accumulators = []
-    # some valid dates might have identical/overlapping interval collections
-    overlapping_intervals = set()
-
-    # one accumulator per valid date, output field and ensemble member
     for valid_date in dates:
-        for p in param:
-            for n in number:
-                accumulators.append(
-                    Accumulator(
-                        source_request,
-                        valid_date,
-                        user_accumulation_period=user_accumulation_period,
-                        data_accumulation_period=data_accumulation_period,
-                        param=p,
-                        number=n,
-                        **additional,
-                    )
-                )
+        vector = Vector.from_valid_date_and_period(valid_date, period)
+        for key in cataloguer.get_all_keys():
+            accumulators.append(Accumulator(vector, key=key))
 
-        # this is the exact number of intervals that should be retrieved from action.source
-        overlapping_intervals.update({interval for interval in accumulators[-1].interval_coll})
+    links = LinksCollection()
+    for accumulator in accumulators:
+        start = accumulator.valid_date - accumulator.period
+        end = accumulator.valid_date
+        for v in cataloguer.covering_vectors(start, end):
+            link = Link(vector=v, accumulator=accumulator, catalogue=cataloguer)
+            print("💬 link:", link)
+            links.append(link)
 
-    # get all needed data requests
-    requests = []
-    requested_dates = set()
-    for a in accumulators:
-        for r, date in a.requests:
-            r = {**main_request, **r}
-            requests.append(r)
-            requested_dates = requested_dates | {date}
-            print(f"💬 Accumulator {a} needs request: {r}")
-
-    print(f"💬 Creating source '{source_name}' with {len(requests)} requests for accumulation")
-    source = context.create_source(
-        {
-            source_name: dict(
-                **source_request,
-                requests=requests,
-                request_already_using_valid_datetime=False,
-            )
-        },
-        "data_sources",
-        "accumulate",
-        hashlib.md5(json.dumps([source_name, requests], sort_keys=True).encode()).hexdigest(),
-    )
-    # get the data (requests are packed to make a minimal number of queries to database)
-    requested_dates = list(requested_dates)
-    ds_to_accum = source(context, requested_dates)
-
-    assert len(ds_to_accum) / len(param) / len(number) == len(overlapping_intervals), (
-        f"retrieval yields {len(ds_to_accum)} fields, {len(param)} params, {len(number)} members ",
-        f"but total number of periods requested is {len(overlapping_intervals)}",
-        f"❌❌❌ error in {source_name}",
-    )
-
-    # send each field to each accumulator
-    # the field will be used only if the accumulator has requested it
-    for field in ds_to_accum:
-        values = field.values  # optimisation : reading values only once
-        for a in accumulators:
-            a.compute(field, values)
+    for field, values, link in cataloguer.retrieve_fields(links):
+        link.accumulator.compute(field, values, link)
 
     for a in accumulators:
-        assert a.interval_coll.all_done(), f"missing periods for accumulator {a}"
+        if not a.is_complete():
+            a.is_complete(debug=True)
+            LOG.error(f"Accumulator incomplete: {a}")
+            LOG.error(f"{len(a.done)} Vectors received:")
+            for v in a.done:
+                LOG.error(f"  {v}")
+            raise AssertionError("missing periods for accumulator, stopping.")
 
     # final data source
     ds = new_fieldlist_from_list([a.out for a in accumulators])
 
     # the resulting datasource has one field per valid date, parameter and ensemble member
-    assert len(ds) / len(param) / len(number) == len(dates), (
-        len(ds),
-        len(param),
-        len(dates),
-    )
+    keys = list(cataloguer.get_all_keys())
+    assert len(ds) / len(keys) == len(dates), (len(ds), len(keys), len(dates))
 
     return ds
 
@@ -335,6 +268,7 @@ class Accumulations2Source(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period,
+        hints=None,
         data_accumulation_period=None,
     ) -> Any:
         """Accumulation source callable function.
@@ -358,24 +292,18 @@ class Accumulations2Source(LegacySource):
         """
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
-        user_accumulation_period = frequency_to_timedelta(period)
-        data_accumulation_period = (
-            frequency_to_timedelta(data_accumulation_period) if data_accumulation_period is not None else None
-        )
+        period = frequency_to_timedelta(period)
+        if hints is None:
+            hints = {}
 
-        source_request = source
-
-        assert isinstance(source, dict)
-        assert len(source) == 1
-
-        source_name, source_request = next(iter(source.items()))
-        source_request = source_request.copy()
+        if data_accumulation_period is not None:
+            data_accumulation_period = frequency_to_timedelta(data_accumulation_period)
+            hints["accumulation_period"] = data_accumulation_period
 
         return _compute_accumulations(
             context,
             dates,
-            source_name,
-            source_request,
-            user_accumulation_period=user_accumulation_period,
-            data_accumulation_period=data_accumulation_period,
+            source=source,
+            period=period,
+            hints=hints,
         )

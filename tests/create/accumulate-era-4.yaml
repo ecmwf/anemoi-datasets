@@ -1,0 +1,22 @@
+dates:
+  frequency: 6h
+  start: 2021-01-10 18:00:00
+  end: 2021-01-12 12:00:00
+
+input:
+  accumulate:
+    period: 6h
+    hints:
+      accumulation_period: 3h
+    source:
+      mars:
+        expver: "0001"
+        class: ea
+        type: fc
+        stream: enda
+        grid: 20./20.
+        levtype: sfc
+        param: [ tp, cp ]
+
+checks:
+  none: {}
