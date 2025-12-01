@@ -15,7 +15,7 @@ LOG = logging.getLogger(__name__)
 ALL = object()
 
 
-class ChunkFilter:
+class PartFilter:
     """A filter to determine which chunks to process based on the specified parts.
 
     Attributes
@@ -27,7 +27,7 @@ class ChunkFilter:
     """
 
     def __init__(self, *, parts: str | list, total: int):
-        """Initializes the ChunkFilter with the given parts and total number of chunks.
+        """Initializes the PartFilter with the given parts and total number of chunks.
 
         Parameters
         ----------

@@ -29,13 +29,13 @@ from earthkit.data.core.order import build_remapping
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
 
+from ..base.parts import PartFilter
 from ..check import check_data_values
 from ..creator import Creator
 from . import DeltaDataset
 from . import NewDataset
 from . import WritableDataset
 from . import build_statistics_dates
-from .chunks import ChunkFilter
 from .context import GriddedContext
 from .persistent import build_storage
 from .statistics import Summary
@@ -47,6 +47,7 @@ from .utils import normalize_and_check_dates
 from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
+
 VERSION = "0.30"
 
 
@@ -319,7 +320,7 @@ class GriddedCreator(Creator):
     def load(self):
         self.dataset = WritableDataset(self.path)
         total = len(self.registry.get_flags())
-        self.chunk_filter = ChunkFilter(parts=self.parts, total=total)
+        self.chunk_filter = PartFilter(parts=self.parts, total=total)
 
         self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
@@ -608,7 +609,7 @@ class GriddedCreator(Creator):
         self.read_from_dataset(delta)
         self.tmp_storage = build_storage(directory=self.tmp_storage_path(delta), create=False)
         LOG.info(f"Writing in {self.tmp_storage_path(delta)}")
-        chunk_filter = ChunkFilter(parts=self.parts, total=self.total)
+        chunk_filter = PartFilter(parts=self.parts, total=self.total)
         for i in range(0, self.total):
             if not chunk_filter(i):
                 continue

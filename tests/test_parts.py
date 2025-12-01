@@ -7,15 +7,15 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-"""Test suite for the ChunkFilter class in the anemoi.datasets.build.gridded.chunks module."""
+"""Test suite for the PartFilter class in the anemoi.datasets.build.gridded.chunks module."""
 
 import pytest
 
-from anemoi.datasets.create.gridded.chunks import ChunkFilter
+from anemoi.datasets.create.base.parts import PartFilter
 
 
-def test_chunk_filter():
-    """Test the ChunkFilter class with various inputs and scenarios.
+def test_part_filter():
+    """Test the PartFilter class with various inputs and scenarios.
 
     Test cases:
     1. No filter applied.
@@ -24,31 +24,31 @@ def test_chunk_filter():
     4. Iteration over the filtered chunks.
     """
     # Test case 1: no filter
-    cf = ChunkFilter(parts=None, total=10)
+    cf = PartFilter(parts=None, total=10)
     assert cf(5) is True
     assert len(list(cf)) == len(cf)
 
-    cf = ChunkFilter(parts="", total=10)
+    cf = PartFilter(parts="", total=10)
     assert cf(5) is True
     assert len(list(cf)) == len(cf)
 
-    cf = ChunkFilter(parts=[], total=10)
+    cf = PartFilter(parts=[], total=10)
     assert cf(5) is True
     assert len(list(cf)) == len(cf)
 
     # Test case 2: wrong input
     with pytest.raises(AssertionError):
-        cf = ChunkFilter(parts="4/3", total=10)
+        cf = PartFilter(parts="4/3", total=10)
 
-    cf = ChunkFilter(parts="1/3", total=10)
+    cf = PartFilter(parts="1/3", total=10)
     with pytest.raises(AssertionError):
         cf(-1)
     with pytest.raises(AssertionError):
         cf(10)
 
     # Test case 3: parts is a string representation of fraction
-    cf = ChunkFilter(parts="1/3", total=10)
-    cf_ = ChunkFilter(parts=["1/3"], total=10)
+    cf = PartFilter(parts="1/3", total=10)
+    cf_ = PartFilter(parts=["1/3"], total=10)
     assert cf(0) is cf_(0) is True
     assert cf(1) is cf_(1) is True
     assert cf(2) is cf_(2) is True
@@ -61,8 +61,8 @@ def test_chunk_filter():
     assert cf(9) is cf_(9) is False
     assert len(list(cf)) == len(cf)
 
-    cf = ChunkFilter(parts="2/3", total=10)
-    cf_ = ChunkFilter(parts=["2/3"], total=10)
+    cf = PartFilter(parts="2/3", total=10)
+    cf_ = PartFilter(parts=["2/3"], total=10)
     assert cf(0) is cf_(0) is False
     assert cf(1) is cf_(1) is False
     assert cf(2) is cf_(2) is False
@@ -75,8 +75,8 @@ def test_chunk_filter():
     assert cf(9) is cf_(9) is False
     assert len(list(cf)) == len(cf)
 
-    cf = ChunkFilter(parts="3/3", total=10)
-    cf_ = ChunkFilter(parts=["3/3"], total=10)
+    cf = PartFilter(parts="3/3", total=10)
+    cf_ = PartFilter(parts=["3/3"], total=10)
     assert cf(0) is cf_(0) is False
     assert cf(1) is cf_(1) is False
     assert cf(2) is cf_(2) is False
@@ -90,7 +90,7 @@ def test_chunk_filter():
     assert len(list(cf)) == len(cf)
 
     # Test case 4: test __iter__
-    cf = ChunkFilter(parts="2/3", total=10)
+    cf = PartFilter(parts="2/3", total=10)
     for i in cf:
         assert cf(i) is True
     assert len(list(cf)) == 3
