@@ -1,17 +1,22 @@
-import logging
+# (C) Copyright 2025- Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
 import threading
 
 import fasteners
 import rich
 
-LOG = logging.getLogger(__name__)
-
 
 class Locking:
 
     def __init__(self, path: str):
-        rich.print(f"[green]Using locking file at {path}[/green]")
-        self.flock = fasteners.InterProcessLock(path, logger=LOG)
+        self.flock = fasteners.InterProcessLock(path)
         self.tlock = threading.RLock()
         self._acquired = 0
 
