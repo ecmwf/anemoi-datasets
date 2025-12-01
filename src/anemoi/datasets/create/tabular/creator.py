@@ -5,8 +5,8 @@ from typing import Any
 
 import rich
 
-from ..base.parts import PartFilter
 from ..creator import Creator
+from ..parts import PartFilter
 from .context import TabularContext
 
 LOG = logging.getLogger(__name__)

@@ -11,7 +11,7 @@
 
 import pytest
 
-from anemoi.datasets.create.base.parts import PartFilter
+from anemoi.datasets.create.parts import PartFilter
 
 
 def test_part_filter():

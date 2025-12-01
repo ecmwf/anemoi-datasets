@@ -29,9 +29,9 @@ from earthkit.data.core.order import build_remapping
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
 
-from ..base.parts import PartFilter
 from ..check import check_data_values
 from ..creator import Creator
+from ..parts import PartFilter
 from . import DeltaDataset
 from . import NewDataset
 from . import WritableDataset
