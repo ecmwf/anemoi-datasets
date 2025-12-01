@@ -59,6 +59,37 @@ class ObsDataset(Dataset):
 
         start_row = self.indices_start[idx]
         end_row = self.indices_end[idx]
+        if end_row < start_row:
+            LOG.warning(
+                f"ObsDataset __getitem__ request with end_row < start_row: {end_row} < {start_row}, returning empty tensor"
+            )
+            end_row = start_row
+
+        maximum_rows = 1e7
+        if end_row - start_row > maximum_rows:  # max 10 millions points at a time
+            LOG.warning(
+                f"ObsDataset __getitem__ request too large: {end_row - start_row} rows, truncating to {maximum_rows} rows"
+            )
+            # take a look at neighboring samples to determine a reasonable truncation size
+            sizes = []
+            for i in range(idx - 50, idx + 50):
+                if i == 0:
+                    continue
+                if not (0 <= i < len(self)):
+                    continue
+                start = self.indices_start[i]
+                end = self.indices_end[i]
+                if end - start < 0:
+                    continue
+                LOG.warning(("  sample:", i, "->", end - start))
+                sizes += [end - start]
+
+            truncated_size = np.percentile(sizes, 90)  # robust to outliers
+            if truncated_size > 1e8:
+                raise ValueError(f"Unable to determine reasonable truncation size, got {truncated_size} > 100 millions")
+
+            LOG.warning(f"  Truncating to {truncated_size} rows")
+            end_row = start_row + int(truncated_size)
 
         data = self.data.oindex[start_row:end_row, self.selected_cols_idx]
 
