@@ -98,6 +98,27 @@ def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: list[str]) -> Any:
     return ds
 
 
+def patch_subset_dataset(ds, selection) -> Any:
+    """Patch the dataset by selecting a subset with xarray sel.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The dataset to patch.
+    selection: dict
+        Keys should be dimension names, values the selection to apply.
+
+    Returns
+    -------
+    Any
+        The patched dataset.
+    """
+
+    ds = ds.sel(selection)
+
+    return ds
+
+
 def patch_analysis_lead_to_valid_time(ds, time_coord_names) -> Any:
     """Patch the dataset by converting analysis/lead time to valid time.
 
@@ -175,6 +196,7 @@ PATCHES = {
     "sort_coordinates": patch_sort_coordinate,
     "analysis_lead_to_valid_time": patch_analysis_lead_to_valid_time,
     "rolling_sum": patch_rolling_sum,
+    "subset_dataset": patch_subset_dataset,
 }
 
 
@@ -194,7 +216,15 @@ def patch_dataset(ds: xr.Dataset, patch: dict[str, dict[str, Any]]) -> Any:
         The patched dataset.
     """
 
-    ORDER = ["coordinates", "attributes", "rename", "sort_coordinates", "analysis_lead_to_valid_time", "rolling_sum"]
+    ORDER = [
+        "coordinates",
+        "attributes",
+        "rename",
+        "sort_coordinates",
+        "subset_dataset",
+        "analysis_lead_to_valid_time",
+        "rolling_sum",
+    ]
     for what, values in sorted(patch.items(), key=lambda x: ORDER.index(x[0])):
         if what not in PATCHES:
             raise ValueError(f"Unknown patch type {what!r}")
