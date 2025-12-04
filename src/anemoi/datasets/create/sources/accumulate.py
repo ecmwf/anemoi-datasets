@@ -9,14 +9,14 @@
 
 import datetime
 import logging
-from copy import deepcopy
 from typing import Any
 
 import numpy as np
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_field_with_valid_datetime
 from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.utils.dates import frequency_to_timedelta, frequency_to_string
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
