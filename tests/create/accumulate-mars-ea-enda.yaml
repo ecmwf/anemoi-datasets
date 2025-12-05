@@ -4,20 +4,22 @@ dates:
   end: 2021-01-12 12:00:00
 
 # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&expver=1&month=aug&year=2020&type=fc&class=ea
-# time : 6 18
-# step : 0/to/18/by/1
+#    6: "0-3/3-6/6-9/9-12/12-15/15-18"
+#    18: "0-3/3-6/6-9/9-12/12-15/15-18"
 
 input:
   accumulate:
     period: 6h
+#    hints:
+#      available_periods:
+#        6: "0-3/3-6/6-9/9-12/12-15/15-18"
+#        18: "0-3/3-6/6-9/9-12/12-15/15-18"
     source:
       mars:
         expver: "0001"
         class: ea
-        #stream: oper
-
-        #stream: enda
-
+        type: fc
+        stream: enda
         grid: 20./20.
         levtype: sfc
         param: [ tp, cp ]

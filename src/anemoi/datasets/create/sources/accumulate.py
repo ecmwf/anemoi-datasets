@@ -24,7 +24,6 @@ from anemoi.datasets.create.sources import source_registry
 from .accumulation_utils.intervals import Link
 from .accumulation_utils.intervals import LinksCollection
 from .accumulation_utils.intervals import Vector
-from .accumulation_utils.intervals import VectorCollection
 from .accumulation_utils.intervals import build_catalogue
 from .legacy import LegacySource
 
@@ -55,13 +54,11 @@ class Accumulator:
     values: NDArray | None = None
     completed: bool = False
 
-    def __init__(
-        self,
-        vector: Vector,
-        key: dict[str, Any],
-    ):
+    def __init__(self, vector: Vector, key: dict[str, Any], coverage):
         """Accumulator object for a given param/member/valid_date"""
         self.vector = vector
+        self.coverage = coverage
+        self.todo = [v for v in coverage]
 
         self.period = vector.max - vector.min
         self.valid_date = vector.max
@@ -72,7 +69,6 @@ class Accumulator:
             if k in self.key:
                 raise ValueError(f"Cannot use {k} for accumulation")
 
-        self.done = VectorCollection()
         self.values = None  # will hold accumulated values array
 
         # The accumulator only accumulates fields matching its metadata
@@ -100,7 +96,7 @@ class Accumulator:
 
     def is_complete(self, **kwargs) -> bool:
         """Check whether the accumulation is complete (all intervals have been processed)"""
-        return self.done.sum(**kwargs) == self.vector
+        return not self.todo
 
     def compute(self, field: Any, values: NDArray, link: Link) -> None:
         """Verify the field time metadata, find the associated interval
@@ -129,9 +125,9 @@ class Accumulator:
         else:
             self.values += values
 
-        if vector in self.done:
-            raise ValueError(f"Vector {vector} already processed for accumulator {self}")
-        self.done.add(vector)
+        if vector not in self.todo:
+            raise ValueError(f"Vector {vector} not in todo list of accumulator {self}")
+        self.todo.remove(vector)
 
         if self.is_complete():
             # all intervals for accumulation have been processed
@@ -158,7 +154,7 @@ class Accumulator:
         ------
         None
         """
-        assert self.is_complete(), self.done
+        assert self.is_complete(), self.todo
 
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         if np.any(self.values < 0):
@@ -174,15 +170,9 @@ class Accumulator:
         )
         self.out = new_field_with_valid_datetime(accumfield, self.valid_date)
 
-        # cleanup to avoid misuse, no more accumulation possible
-        self.values = "accumulation already done"
-
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
-        YELLOW = "\033[93m"
-        RESET = "\033[0m"
-        period = f"{YELLOW}{frequency_to_string(self.vector.max - self.vector.min)}{RESET}"
-        return f"{self.__class__.__name__}({self.vector}, {key})"
+        return f"{self.__class__.__name__}({self.vector}, {key}, {len(self.coverage)-len(self.todo)}/{len(self.coverage)} already accumulated)"
 
 
 def _compute_accumulations(
@@ -225,16 +215,16 @@ def _compute_accumulations(
     accumulators = []
     for valid_date in dates:
         vector = Vector.from_valid_date_and_period(valid_date, period)
+        coverage = cataloguer.covering_vectors(vector)
         for key in cataloguer.get_all_keys():
-            accumulators.append(Accumulator(vector, key=key))
+            accumulators.append(Accumulator(vector, key=key, coverage=coverage))
 
     links = LinksCollection()
     for accumulator in accumulators:
-        start = accumulator.valid_date - accumulator.period
-        end = accumulator.valid_date
-        for v in cataloguer.covering_vectors(start, end):
+        print(f"💬 {accumulator} will need:")
+        for v in accumulator.coverage:
             link = Link(vector=v, accumulator=accumulator, catalogue=cataloguer)
-            print("💬 link:", link)
+            print("  💬 ", link)
             links.append(link)
 
     for field, values, link in cataloguer.retrieve_fields(links):

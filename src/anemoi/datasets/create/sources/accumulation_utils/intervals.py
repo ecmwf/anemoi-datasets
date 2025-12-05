@@ -20,6 +20,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.availability import Availability
 
+from anemoi.datasets.create.sources.covering_intervals import covering_intervals
+
 LOG = logging.getLogger(__name__)
 
 
@@ -30,10 +32,6 @@ def factorise_requests(requests):
             if isinstance(v, (list, tuple)) and len(v) == 1:
                 r[k] = v[0]
         yield r
-
-
-class ForecastInterval:
-    pass
 
 
 class Vector:
@@ -91,6 +89,38 @@ class Vector:
 
         end = f"{BLUE}{self.end.strftime('%Y%m%d.%H%M')}{RESET}"
         return f"{self.__class__.__name__}({start}{period}->{end}{extra})"
+
+
+class ForecastVector(Vector):
+
+    def __init__(self, start, end, base: datetime.datetime):
+        """Defining an insecable time segment carrying all temporal information.
+
+        base: datetime.datetime
+            the date and hour referring to the beginning of the forecast run that has produced the data
+            At this base, the accumulation of the forecast is zero.
+            In the case of DefaultIntervalsCollections, this is equal to start_datetime.
+        """
+        super().__init__(start, end)
+        self.base = base
+
+        assert base <= self.start, f"invalid base date for ForecastVector: {base} > {self.start}"
+        assert base <= self.end, f"invalid base date for ForecastVector: {base} > {self.end}"
+
+    def __eq__(self, other: Any):
+        if not isinstance(other, ForecastVector):
+            return False
+        if not self.base != other.base:
+            return False
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return hash((super().__hash__(), self.base))
+
+    def __repr__(self):
+        step1 = frequency_to_string(self.min - self.base)
+        step2 = frequency_to_string(self.max - self.base)
+        return super().__repr__(f"basetime={self.base}, steps=[{step1}->{step2}]")
 
 
 class VectorCollection(set):
@@ -164,54 +194,6 @@ class VectorCollection(set):
         start = minimum + datetime.timedelta(seconds=first_nonzero * self.granularity.total_seconds())
         end = minimum + datetime.timedelta(seconds=last_nonzero * self.granularity.total_seconds())
         return Vector(start, end)
-
-
-class ForecastVector(Vector):
-
-    def __init__(self, start, end, base_datetime: datetime.datetime):
-        """Defining an insecable time segment carrying all temporal information.
-
-        base_datetime: datetime.datetime
-            the date and hour referring to the beginning of the forecast run that has produced the data
-            At this base_datetime, the accumulation of the forecast is zero.
-            In the case of DefaultIntervalsCollections, this is equal to start_datetime.
-        """
-        super().__init__(start, end)
-        self.base_datetime = base_datetime
-
-        assert base_datetime <= self.start, f"invalid base date for ForecastVector: {base_datetime} > {self.start}"
-        assert base_datetime <= self.end, f"invalid base date for ForecastVector: {base_datetime} > {self.end}"
-
-    def __eq__(self, other: Any):
-        if not isinstance(other, ForecastVector):
-            return False
-        if not self.base_datetime != other.base_datetime:
-            return False
-        return super().__eq__(other)
-
-    def __hash__(self):
-        return hash((super().__hash__(), self.base_datetime))
-
-    def __repr__(self):
-        step1 = frequency_to_string(self.min - self.base_datetime)
-        step2 = frequency_to_string(self.max - self.base_datetime)
-        return super().__repr__(f"basetime={self.base_datetime}, steps=[{step1}->{step2}]")
-
-
-class EaOperIntervalsCollection:
-    def available_steps(self, start, end) -> dict:
-        return {
-            6: [[i, i + 1] for i in range(0, 18, 1)],
-            18: [[i, i + 1] for i in range(0, 18, 1)],
-        }
-
-
-class L5OperIntervalsCollection:
-    def available_steps(self, start, end) -> dict:
-        x = 24  # need to check if 24 is the right value
-        return {
-            0: [[i, i + 1] for i in range(0, x, 1)],
-        }
 
 
 class RrOperIntervalsCollection:
@@ -321,59 +303,40 @@ class Catalogue:
 
     def _build_request(self, link) -> dict:
         vector = link.vector
-        assert isinstance(vector, ForecastVector), type(vector)
+        #       assert isinstance(vector, ForecastVector), type(vector)
         request = {}
         for k, v in self.source_request.items():
             request[k] = v
         for k, v in link.accumulator.key.items():
             request[k] = v
-        step = vector.max - vector.base_datetime
+        step = vector.max - vector.base
         hours = step.total_seconds() // 3600
         minutes = (step.total_seconds() // 60) % 60
         assert minutes == 0, "Only full hours supported in grib/mars"
         request["step"] = int(hours)
-        request["date"] = vector.base_datetime.strftime("%Y%m%d")
-        request["time"] = vector.base_datetime.strftime("%H%M")
+        request["date"] = vector.base.strftime("%Y%m%d")
+        request["time"] = vector.base.strftime("%H%M")
         return request
 
-    def covering_vectors(self, start, end) -> list[ForecastInterval]:
+    def candidate_intervals(self, current_time: datetime.datetime, **kwargs):
+        # If not overridden in subclasses, the informations must be provided in the config
+        raise NotImplementedError(f"Available periods must be provided in the config for {self.__class__.__name__}")
+
+    def covering_vectors(self, target) -> list[ForecastVector]:
+        if "available_periods" in self.hints:
+            candidates = self.hints["available_periods"]
+        else:
+            candidates = self.candidate_intervals
+
+        coverage = covering_intervals(target.start, target.end, candidates)
         intervals = []
-        check = self._covering_vectors(start, end, intervals)
-        if not check:
-            raise ValueError(f"Cannot build intervals for {start} to {end}")
-        print(f"  Found covering intervals: for {start} to {end}:")
+        for i in coverage:
+            intervals.append(i)  # ForecastVector(i.start, i.end, base=i.base))
+
+        print(f"  Found covering intervals: for {target}:")
         for c in intervals:
             print(f"    {c}")
         return intervals
-
-    def _covering_vectors(self, start, end, intervals) -> list[ForecastInterval]:
-        """Build the list of intervals to accumulate the data on the IntervalsCollection
-        available steps --> checking the closest base datetime for each hour
-        difference should be implemented
-        """
-        print(f"    Searching intervals matching {start} to {end}")
-        start_ = start
-        end_ = end
-        for c in self.search_possible_intervals(start_, end_):
-            print(f"      trying possible interval: {c}")
-
-            if c.min == start_ and c.max == end_:
-                intervals.append(c)
-                return intervals
-
-            if start_ == c.min:
-                start_ = c.max
-                intervals.append(c)
-                return self._covering_vectors(start_, end_, intervals)
-
-            if end_ == c.max:
-                end_ = c.min
-                intervals.append(c)
-                return self._covering_vectors(start_, end_, intervals)
-
-            print(f"      {c} does not work")
-
-        return False
 
 
 def match_fields_to_links(field, links: LinksCollection, debug=False):
@@ -392,13 +355,13 @@ def match_fields_to_links(field, links: LinksCollection, debug=False):
     used = False
     for link in links:
         if valid_date != link.vector.max:
-            # dprint(f"  Skipping {link} as valid_date {valid_date} does not match {link.vector.max}")
+            dprint(f"  Skipping {link} as valid_date {valid_date} does not match {link.vector.max}")
             continue
-        if base_datetime != link.vector.base_datetime:
-            # dprint(f"  Skipping {link} as base_datetime {base_datetime} does not match {link.vector.base_datetime}")
+        if link.vector.base is not None and base_datetime != link.vector.base:
+            dprint(f"  Skipping {link} as base_datetime {base_datetime} does not match {link.vector.base}")
             continue
         if not link.accumulator.is_field_needed(field):
-            # dprint(f"  Skipping {link} as field not needed by its accumulator")
+            dprint(f"  Skipping {link} as field not needed by its accumulator")
             continue
         dprint(f"   ✅ match found {field} sent to {link}")
 
@@ -431,6 +394,7 @@ class GribIndexCatalogue(Catalogue):
             #    for n in number:
             yield dict(param=p)
 
+    # use this ?
     def search_possible_intervals(self, start, end, debug=False):
         fields = self.source_object(self.context, [start, end])
         intervals = []
@@ -518,87 +482,63 @@ class MarsCatalogue(Catalogue):
                 # add level here if needed
                 yield dict(param=p, number=n)
 
-    def search_possible_intervals(self, start, end, debug=False):
-        # Search for all possible intervals matching start or end in forecast data
-        #
-        # Requested data interval:
-        #       start              end
-        #         |*****************|
-        # where start and end are datetimes
-        #
-        # Available forecast intervals:
-        #   |---------------|--------------|
-        # base          base+step1   base+step2
-        # where base, step1, step2 are in hours
-        #
-        intervals = []
-        for base, periods in self.available_forecast_steps(start, end).items():
-            for step1, step2 in periods:
-                length = datetime.timedelta(hours=step2 - step1)
 
-                if start.hour == (base + step1) % 24:
-                    # Interval starting at the requested start:
-                    # It may be longer than the wanted interval
-                    #                 start              end
-                    #                   |*****************|
-                    #   |---------------|--------------|
-                    # base          base+step1   base+step2
-                    #
-                    # or it may be shorter than the wanted interval
-                    #                 start              end
-                    #                   |*****************|
-                    #   |---------------|-----------------------|
-                    # base          base+step1             base+step2
-                    intervals.append(
-                        ForecastVector(
-                            start,
-                            start + length,
-                            base_datetime=start - datetime.timedelta(hours=step1),
-                        )
-                    )
-                if end.hour == (base + step2) % 24:
-                    # Interval ending at the requested end:
-                    # It may be shorter than the wanted interval
-                    #              start              end
-                    #                |*****************|
-                    #   |---------------|--------------|
-                    # base          base+step1   base+step2
-                    #
-                    # It may be longer than the wanted interval
-                    #              start              end
-                    #                |*****************|
-                    #   |---------|--------------------|
-                    # base          base+step1   base+step2
-                    intervals.append(
-                        ForecastVector(
-                            end - length,
-                            end,
-                            base_datetime=end - datetime.timedelta(hours=step2),
-                        )
-                    )
-        # todo : reorder intervals by closeness to start/end
-        return intervals
+class EaOperCatalogue(MarsCatalogue):
+    # todo : check wether these intervals are correct, or if it is 0-1/1-2/...
+    candidate_intervals = {
+        6: "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18",
+        18: "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18",
+    }
 
 
 class EaEndaCatalogue(MarsCatalogue):
-
-    def available_forecast_steps(self, start, end) -> dict:
-        """Return the IntervalsCollection time steps available to build/search an available interval
-
-        Return:
-        -------
-            _ (dict[List[int]]) :  dictionary listing the available steps between start and end for each base
-
-        """
-        return {
-            6: [[i, i + 3] for i in range(0, 18, 1)],
-            18: [[i, i + 3] for i in range(0, 18, 1)],
-        }
+    candidate_intervals = {
+        6: "0-3/3-6/6-9/9-12/12-15/15-18",
+        18: "0-3/3-6/6-9/9-12/12-15/15-18",
+    }
 
 
-def build_catalogue(context, hints: dict, source) -> "Catalogue":
+class OdOperCatalogue(MarsCatalogue):
+    # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
+    def candidate_intervals(self):
+        steps = [(0, end) for end in list(range(1, 91)) + list(range(93, 145, 3)) + list(range(150, 241, 6))]
+        return {0: steps, 12: steps}
+
+
+class OdEldaCatalogue(MarsCatalogue):
+    # https://apps.ecmwf.int/mars-catalogue/?stream=elda&levtype=sfc&time=06%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-31&type=fc&class=od
+    @property
+    def candidate_intervals(self):
+        # something to do here related to anoffset?
+        # ❌ not tested yet
+        steps = [f"{0}-{i}" for i in range(1, 13)]
+        return {6: steps, 18: steps}
+
+
+class OdEnfoCatalogue(MarsCatalogue):
+    # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
+    # not done. Use the config to provide available periods
+    pass
+
+
+class L5OperCatalogue(MarsCatalogue):
+    # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
+    @property
+    def candidate_intervals(self):
+        # ❌ not tested yet
+        steps = [(0, i) for i in "/".split("1/2/3/4/5/6/9/12/15/18/21/24/27")]
+        return {base: steps for base in [0, 3, 6, 9, 12, 15, 18, 21]}
+
+
+class RrOperCatalogue(MarsCatalogue):
+    # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
+    # ❌ not tested yet
+    candidate_intervals = {i: [(0, 1), (1, 2), (2, 3)] for i in range(0, 22, 3)}
+
+
+def build_catalogue(context, hints: dict, source) -> Catalogue:
     assert isinstance(source, dict)
-    assert len(source) == 1
+    assert len(source) == 1, f"Source must have exactly one key, got {list(source.keys())}"
 
     source_name, _ = next(iter(source.items()))
 
@@ -606,17 +546,25 @@ def build_catalogue(context, hints: dict, source) -> "Catalogue":
         return GribIndexCatalogue(context, hints, source)
 
     if source_name == "mars":
+        if "type" not in source[source_name]:
+            source[source_name]["type"] = "fc"
+            LOG.warning("Assuming 'type: fc' for mars source as it was not specified in the recipe")
+
+        if "levtype" not in source[source_name]:
+            source[source_name]["levtype"] = "sfc"
+            LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
+
         class_ = source[source_name].get("class", None)
         stream = source[source_name].get("stream", None)
         cls = {
-            #   ("ea", "oper"): EaOperCatalogue,
-            #   ("ea", None): EaOperCatalogue,
+            ("ea", "oper"): EaOperCatalogue,
+            ("ea", None): EaOperCatalogue,
             ("ea", "enda"): EaEndaCatalogue,
-            #   ("rr", "oper"): RrOperCatalogue,
-            #   ("l5", "oper"): L5OperCatalogue,
-            #   ("od", "oper"): OdOperCatalogue,
-            #   ("od", "enfo"): OdEnfoCatalogue,
-            #   ("od", "elda"): OdEldaCatalogue,
+            ("rr", "oper"): RrOperCatalogue,
+            ("l5", "oper"): L5OperCatalogue,
+            ("od", "oper"): OdOperCatalogue,
+            ("od", "enfo"): OdEnfoCatalogue,
+            ("od", "elda"): OdEldaCatalogue,
         }[class_, stream]
 
         return cls(context, hints, source)

@@ -6,14 +6,18 @@ dates:
 input:
   accumulate:
     period: 6h
+    #accumulation_period: [6, 12]
     hints:
-      accumulation_period: 3h
+      available_periods:
+        0: "0-6/0-12"
+        12: "0-6/0-12"
     source:
       mars:
         expver: "0001"
-        class: ea
+        class: od
+        stream: oper
         type: fc
-        stream: enda
+
         grid: 20./20.
         levtype: sfc
         param: [ tp, cp ]
