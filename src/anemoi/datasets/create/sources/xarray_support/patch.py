@@ -17,7 +17,7 @@ import xarray as xr
 LOG = logging.getLogger(__name__)
 
 
-def patch_attributes(ds: xr.Dataset, attributes: dict[str, dict[str, Any]]) -> Any:
+def patch_attributes(ds: xr.Dataset, attributes: dict[str, dict[str, Any]]) -> xr.Dataset:
     """Patch the attributes of the dataset.
 
     Parameters
@@ -39,7 +39,7 @@ def patch_attributes(ds: xr.Dataset, attributes: dict[str, dict[str, Any]]) -> A
     return ds
 
 
-def patch_coordinates(ds: xr.Dataset, coordinates: list[str]) -> Any:
+def patch_coordinates(ds: xr.Dataset, coordinates: list[str]) -> xr.Dataset:
     """Patch the coordinates of the dataset.
 
     Parameters
@@ -60,7 +60,7 @@ def patch_coordinates(ds: xr.Dataset, coordinates: list[str]) -> Any:
     return ds
 
 
-def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
+def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> xr.Dataset:
     """Rename variables in the dataset.
 
     Parameters
@@ -78,7 +78,7 @@ def patch_rename(ds: xr.Dataset, renames: dict[str, str]) -> Any:
     return ds.rename(renames)
 
 
-def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: list[str]) -> Any:
+def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: list[str]) -> xr.Dataset:
     """Sort the coordinates of the dataset.
 
     Parameters
@@ -99,7 +99,7 @@ def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: list[str]) -> Any:
     return ds
 
 
-def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> Any:
+def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> xr.Dataset:
     """Select a subset of the dataset using xarray's sel method.
 
     Parameters
@@ -143,7 +143,7 @@ def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> Any:
 def patch_analysis_lead_to_valid_time(
     ds: xr.Dataset,
     time_coord_names: dict[Literal["analysis_time_coordinate", "lead_time_coordinate", "valid_time_coordinate"], str],
-) -> Any:
+) -> xr.Dataset:
     """Convert analysis time and lead time coordinates to valid time.
 
     This function creates a new valid time coordinate by adding the analysis time
@@ -204,7 +204,7 @@ def patch_analysis_lead_to_valid_time(
 
 def patch_rolling_sum(
     ds: xr.Dataset, vars_summation_period: dict[Literal["dim", "steps", "vars"], str | int | list[str]]
-) -> Any:
+) -> xr.Dataset:
     """Apply a rolling sum to specified variables in the dataset.
 
     This function calculates a rolling sum over a specified dimension for selected
