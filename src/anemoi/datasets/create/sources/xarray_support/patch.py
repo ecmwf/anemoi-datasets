@@ -202,54 +202,60 @@ def patch_analysis_lead_to_valid_time(
     return ds
 
 
-def patch_rolling_sum(
-    ds: xr.Dataset, vars_summation_period: dict[Literal["dim", "steps", "vars"], str | int | list[str]]
+def patch_rolling_operation(
+    ds: xr.Dataset, vars_operation_config: dict[Literal["dim", "steps", "vars", "operation"], str | int | list[str]]
 ) -> xr.Dataset:
-    """Apply a rolling sum to specified variables in the dataset.
+    """Apply a rolling operation to specified variables in the dataset.
 
-    This function calculates a rolling sum over a specified dimension for selected
+    This function calculates a rolling operation over a specified dimension for selected
     variables. The rolling window requires all periods to be present (min_periods=steps).
 
     Parameters
     ----------
     ds : xr.Dataset
         The dataset to patch.
-    vars_summation_period: dict
-        Configuration for the rolling sum operation with the following keys:
+    vars_operation_config: dict
+        Configuration for the rolling operation with the following keys:
 
         - 'dim' : str
-            The dimension along which to apply the rolling sum (e.g., 'time').
+            The dimension along which to apply the rolling operation (e.g., 'time').
         - 'steps' : int
             The number of steps in the rolling window.
         - 'vars' : list[str]
-            List of variable names to apply the rolling sum to.
+            List of variable names to apply the rolling operation to.
+        - 'operation' : str
+            The operation to apply ('sum', 'mean', 'min', 'max', 'std', etc.).
 
     Returns
     -------
     xr.Dataset
-        The patched dataset with rolling sums applied to the specified variables.
+        The patched dataset with rolling operations applied to the specified variables.
 
     Examples
     --------
-    >>> patch_rolling_sum(ds, {
+    >>> patch_rolling_operation(ds, {
     ...     'dim': 'time',
     ...     'steps': 3,
-    ...     'vars': ['precipitation', 'radiation']
+    ...     'vars': ['precipitation', 'radiation'],
+    ...     'operation': 'sum'
     ... })
     """
 
-    assert vars_summation_period.keys() == {
+    assert vars_operation_config.keys() == {
         "dim",
         "steps",
         "vars",
-    }, "vars_summation_period must contain exactly keys 'dim', 'steps', and 'vars'"
+        "operation",
+    }, "vars_operation_config must contain exactly keys 'dim', 'steps', 'vars', and 'operation'"
 
-    dim = vars_summation_period["dim"]
-    steps = vars_summation_period["steps"]
-    vars = vars_summation_period["vars"]
+    dim = vars_operation_config["dim"]
+    steps = vars_operation_config["steps"]
+    vars = vars_operation_config["vars"]
+    operation = vars_operation_config["operation"]
 
     for var in vars:
-        ds[var] = ds[var].rolling(dim={dim: steps}, min_periods=steps).sum()
+        rolling = ds[var].rolling(dim={dim: steps}, min_periods=steps)
+        ds[var] = getattr(rolling, operation)()
 
     return ds
 
@@ -260,7 +266,7 @@ PATCHES = {
     "rename": patch_rename,
     "sort_coordinates": patch_sort_coordinate,
     "analysis_lead_to_valid_time": patch_analysis_lead_to_valid_time,
-    "rolling_sum": patch_rolling_sum,
+    "rolling_operation": patch_rolling_operation,
     "subset_dataset": patch_subset_dataset,
 }
 
@@ -288,7 +294,7 @@ def patch_dataset(ds: xr.Dataset, patch: dict[str, dict[str, Any]]) -> Any:
         "sort_coordinates",
         "subset_dataset",
         "analysis_lead_to_valid_time",
-        "rolling_sum",
+        "rolling_operation",
     ]
     for what, values in sorted(patch.items(), key=lambda x: ORDER.index(x[0])):
         if what not in PATCHES:
