@@ -10,6 +10,7 @@
 
 import logging
 from typing import Any
+from typing import Literal
 
 import xarray as xr
 
@@ -98,20 +99,40 @@ def patch_sort_coordinate(ds: xr.Dataset, sort_coordinates: list[str]) -> Any:
     return ds
 
 
-def patch_subset_dataset(ds, selection) -> Any:
-    """Patch the dataset by selecting a subset with xarray sel.
+def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> Any:
+    """Select a subset of the dataset using xarray's sel method.
 
     Parameters
     ----------
     ds : xr.Dataset
         The dataset to patch.
-    selection: dict
-        Keys should be dimension names, values the selection to apply.
+    selection : dict[str, Any]
+        Dictionary mapping dimension names to selection criteria.
+        Keys must be existing dimension names in the dataset.
+        Values can be any type accepted by xarray's sel method, including:
+        - Single values (int, float, str, datetime)
+        - Lists or arrays of values
+        - Slices (using slice() objects)
+        - Boolean arrays
 
     Returns
     -------
-    Any
-        The patched dataset.
+    xr.Dataset
+        The patched dataset containing only the selected subset.
+
+    Examples
+    --------
+    >>> # Select specific time and pressure level
+    >>> patch_subset_dataset(ds, {
+    ...     'time': '2020-01-01',
+    ...     'pressure': 500
+    ... })
+
+    >>> # Select a range using slice
+    >>> patch_subset_dataset(ds, {
+    ...     'lat': slice(-90, 90),
+    ...     'lon': slice(0, 180)
+    ... })
     """
 
     ds = ds.sel(selection)
@@ -119,27 +140,50 @@ def patch_subset_dataset(ds, selection) -> Any:
     return ds
 
 
-def patch_analysis_lead_to_valid_time(ds, time_coord_names) -> Any:
-    """Patch the dataset by converting analysis/lead time to valid time.
+def patch_analysis_lead_to_valid_time(
+    ds: xr.Dataset,
+    time_coord_names: dict[Literal["analysis_time_coordinate", "lead_time_coordinate", "valid_time_coordinate"], str],
+) -> Any:
+    """Convert analysis time and lead time coordinates to valid time.
+
+    This function creates a new valid time coordinate by adding the analysis time
+    and lead time coordinates, then stacks and reorganizes the dataset to use
+    valid time as the primary time dimension.
 
     Parameters
     ----------
     ds : xr.Dataset
         The dataset to patch.
     time_coord_names : dict[str, str]
-        The names of the time coordinates. The keys must be:
-        analysis_time_coordinate : str
-            The name of the analysis time coordinate.
-        lead_time_coordinate : str
-            The name of the lead time coordinate.
-        valid_time_coordinate : str
-            The name of the valid time coordinate.
+        Dictionary mapping required keys to coordinate names in the dataset:
+
+        - 'analysis_time_coordinate' : str
+            Name of the analysis/initialization time coordinate.
+        - 'lead_time_coordinate' : str
+            Name of the forecast lead time coordinate.
+        - 'valid_time_coordinate' : str
+            Name for the new valid time coordinate to create.
 
     Returns
     -------
-    Any
-        The patched dataset.
+    xr.Dataset
+        The patched dataset with valid time as the primary time coordinate.
+        The analysis and lead time coordinates are removed.
+
+    Examples
+    --------
+    >>> patch_analysis_lead_to_valid_time(ds, {
+    ...     'analysis_time_coordinate': 'forecast_reference_time',
+    ...     'lead_time_coordinate': 'step',
+    ...     'valid_time_coordinate': 'time'
+    ... })
     """
+
+    assert time_coord_names.keys() == {
+        "analysis_time_coordinate",
+        "lead_time_coordinate",
+        "valid_time_coordinate",
+    }, "time_coord_names must contain exactly keys 'analysis_time_coordinate', 'lead_time_coordinate', and 'valid_time_coordinate'"
 
     analysis_time_coordinate = time_coord_names["analysis_time_coordinate"]
     lead_time_coordinate = time_coord_names["lead_time_coordinate"]
@@ -158,27 +202,48 @@ def patch_analysis_lead_to_valid_time(ds, time_coord_names) -> Any:
     return ds
 
 
-def patch_rolling_sum(ds, vars_summation_period) -> Any:
-    """Patch the dataset by converting analysis/lead time to valid time.
+def patch_rolling_sum(
+    ds: xr.Dataset, vars_summation_period: dict[Literal["dim", "steps", "vars"], str | int | list[str]]
+) -> Any:
+    """Apply a rolling sum to specified variables in the dataset.
+
+    This function calculates a rolling sum over a specified dimension for selected
+    variables. The rolling window requires all periods to be present (min_periods=steps).
 
     Parameters
     ----------
     ds : xr.Dataset
         The dataset to patch.
     vars_summation_period: dict
-        The variables and summation period. The keys must be:
-        dim : str
-            The dimension to apply the rolling sum.
-        steps : int
-            The number of steps to sum over.
-        vars : list[str]
-            The variables to apply the rolling sum.
+        Configuration for the rolling sum operation with the following keys:
+
+        - 'dim' : str
+            The dimension along which to apply the rolling sum (e.g., 'time').
+        - 'steps' : int
+            The number of steps in the rolling window.
+        - 'vars' : list[str]
+            List of variable names to apply the rolling sum to.
 
     Returns
     -------
-    Any
-        The patched dataset.
+    xr.Dataset
+        The patched dataset with rolling sums applied to the specified variables.
+
+    Examples
+    --------
+    >>> patch_rolling_sum(ds, {
+    ...     'dim': 'time',
+    ...     'steps': 3,
+    ...     'vars': ['precipitation', 'radiation']
+    ... })
     """
+
+    assert vars_summation_period.keys() == {
+        "dim",
+        "steps",
+        "vars",
+    }, "vars_summation_period must contain exactly keys 'dim', 'steps', and 'vars'"
+
     dim = vars_summation_period["dim"]
     steps = vars_summation_period["steps"]
     vars = vars_summation_period["vars"]
