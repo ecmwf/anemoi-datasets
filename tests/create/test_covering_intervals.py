@@ -91,11 +91,13 @@ grib_index_config: Dict[int, str] = {
 }
 
 
-class Tester:
+class _Tester:
     def __init__(self, candidates):
         self.candidates = candidates
 
     def test(self, target: SignedInterval, expected: None | List[SignedInterval]):
+        from rich import print
+
         start = target.start
         end = target.end
         print("=" * 60)
@@ -174,7 +176,7 @@ ERA_TEST_CASES = [
 
 @pytest.mark.parametrize("test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES])
 def test_era(test):
-    tester = Tester(era_config)
+    tester = _Tester(era_config)
     tester.test(test[0], test[1])
 
 
@@ -244,7 +246,7 @@ ENDA_TEST_CASES = [
 
 @pytest.mark.parametrize("test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES])
 def test_enda(test):
-    tester = Tester(enda_config)
+    tester = _Tester(enda_config)
     tester.test(test[0], test[1])
 
 
@@ -258,7 +260,7 @@ GRIB_INDEX_TEST_CASE = [
 
 @pytest.mark.parametrize("test", GRIB_INDEX_TEST_CASE, ids=[str(t[0]) for t in GRIB_INDEX_TEST_CASE])
 def test_grib_index_no_basetime(test):
-    tester = Tester(grib_index_config)
+    tester = _Tester(grib_index_config)
     tester.test(test[0], test[1])
 
 

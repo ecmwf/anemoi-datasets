@@ -15,10 +15,11 @@ LOG = logging.getLogger(__name__)
 
 
 class SignedInterval:
-    def __init__(self, start: datetime, end: datetime, base: Optional[datetime] = None):
+    def __init__(self, start: datetime, end: datetime, **extras):
         self.start = start
         self.end = end
-        self.base = base
+        self.base = extras.pop("base", None)
+        self.extras = extras
 
     @property
     def length(self) -> float:
@@ -38,15 +39,44 @@ class SignedInterval:
         return max(self.start, self.end)
 
     def __neg__(self):
-        return SignedInterval(start=self.end, end=self.start, base=self.base)
+        return SignedInterval(start=self.end, end=self.start, base=self.base, **self.extras)
 
-    def __repr__(self):
+    def __eq__(self, other):
+        if not isinstance(other, SignedInterval):
+            return NotImplemented
+        if self.start != other.start or self.end != other.end or self.base != other.base:
+            return False
+        for k in set(self.extras) | set(other.extras):
+            LOG.warning(f"Comparing key: {k} in {self.__class__.__name__}")
+            if k == "base":
+                continue
+            if k not in self.extras or k not in other.extras:
+                return False
+            if self.extras[k] != other.extras[k]:
+                return False
+        return True
+
+    def __hash__(self):
+        return hash((self.start, self.end, self.base, tuple(sorted(self.extras.items()))))
+
+    def __rich__(self):
+        return self.__repr__(colored=True)
+
+    def __repr__(self, colored: bool = False):
+        try:
+            # use frequency_to_string only if available
+            # as this class should not depends on anemoi.utils
+            from anemoi.utils.dates import frequency_to_string
+        except ImportError:
+
+            def frequency_to_string(delta):
+                return str(delta)
+
         start = self.start.strftime("%Y%m%d.%H%M")
         end = self.end.strftime("%Y%m%d.%H%M")
         if start[:9] == end[:9]:
             end = " " * 9 + end[9:]
-        length = int((self.length / 3600))
-        sign = "+" if self.sign > 0 else ""
+
         if self.base is not None:
             base = self.base.strftime("%Y%m%d.%H%M")
             if self.sign > 0:
@@ -59,19 +89,30 @@ class SignedInterval:
                     -int((self.end - self.base).total_seconds() / 3600),
                     int((self.start - self.base).total_seconds() / 3600),
                 ]
-            extra = f", base={base}, [{steps[0]}-{steps[1]}]"
+            base_str = f", base={base}, [{steps[0]}-{steps[1]}]"
         else:
-            extra = ""
+            base_str = ""
 
-        return f"SignedInterval({start} -> {end}{extra} {sign}{length}h)"
+        if self.start < self.end:
+            period = f"+{frequency_to_string(self.end - self.start)}"
+        elif self.start == self.end:
+            period = "0s"
+        else:
+            period = f"-{frequency_to_string(self.start - self.end)}"
+        period = period.ljust(4)
 
-    def __eq__(self, other):
-        if not isinstance(other, SignedInterval):
-            return NotImplemented
-        return self.start == other.start and self.end == other.end and self.base == other.base
+        if colored:
+            # using rich colors
+            start = f"[blue]{start}[/blue]"
+            end = f"[blue]{end}[/blue]"
+            if self.start < self.end:
+                period = f"[green]{period}[/green]"
+            elif self.start == self.end:
+                period = f"[yellow]{period}[/yellow]"
+            else:
+                period = f"[red]{period}[/red]"
 
-    def __hash__(self):
-        return hash((self.start, self.end, self.base))
+        return f"SignedInterval({start}{period}->{end}{base_str} )"
 
 
 def normalise_candidates_function(config):
@@ -130,10 +171,6 @@ def normalise_candidates_function(config):
         # quite important to sort by -base.timestamp() to prioritise most recent base in case of ties
         # in some cases, we may want to sort by other criteria
         intervals = sorted(intervals, key=lambda x: -(x.base or x.start).timestamp())
-
-        # print('💬 Candidates intervals for', current_time, 'with base', current_base)
-        # for i in intervals:
-        #     print('💬', i)
 
         return intervals
 
