@@ -222,7 +222,7 @@ def _compute_accumulations(
     accumulators = []
     for valid_date in dates:
         interval = interval_from_valid_date_and_period(valid_date, period)
-        coverage = cataloguer.covering_intervals(interval)
+        coverage = cataloguer.covering_intervals(interval.start, interval.end)
         for key in cataloguer.get_all_keys():
             accumulators.append(Accumulator(interval, key=key, coverage=coverage))
 
@@ -265,7 +265,7 @@ class Accumulations2Source(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period,
-        hints=None,
+        hints: dict = None,
         data_accumulation_period=None,
     ) -> Any:
         """Accumulation source callable function.
@@ -279,8 +279,12 @@ class Accumulations2Source(LegacySource):
             The list of valid dates on which to perform accumulations.
         source: Any,
             The accumulation source
-        request: dict[str,Any]
-            The parameters from the accumulation recipe
+        period: str | int | datetime.timedelta,
+            The interval over which to accumulate (user-defined)
+        hints: dict, optional
+            Hints to build the catalogue for accumulation
+        data_accumulation_period: str | int | datetime.timedelta, optional
+            The period of accumulation used in the data source (e.g. 1h for hourly accumulated data)
 
         Return
         ------
@@ -302,10 +306,4 @@ class Accumulations2Source(LegacySource):
                 raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
             hints["available_periods"] = {"*": [f"{i}-{i+1}" for i in range(0, 24)]}
 
-        return _compute_accumulations(
-            context,
-            dates,
-            source=source,
-            period=period,
-            hints=hints,
-        )
+        return _compute_accumulations(context, dates, source=source, period=period, hints=hints)

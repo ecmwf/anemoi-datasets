@@ -134,13 +134,18 @@ def normalise_candidates_function(config):
         end = base + timedelta(hours=steps[1])
         return SignedInterval(start=start, end=end, base=base)
 
-    def candidates(current_time: datetime, **kwargs: Optional[datetime]) -> Iterable[SignedInterval]:
+    def candidates(
+        current_time: datetime, start: datetime, end: datetime, current_base: datetime, hints: Optional[datetime]
+    ) -> Iterable[SignedInterval]:
         # Using the config dict provided, this generates starting or ending intervals
         # for the given current_time
         # it follows the API defined in covering_intervals
         #
         # support for non-hourly steps could be added later if needed
-        del kwargs
+        del hints
+        del start
+        del end
+        del current_base
 
         # we could have "extend_to_deltas" in config, but for now we just hardcode
         # if we do that, we need to find a better name than "extend_to_deltas"
@@ -191,8 +196,10 @@ def covering_intervals(
     start: datetime,
     end: datetime,
     candidates: Callable | dict,
+    /,
+    hints: dict = {},
     switch_penalty: int = 24 * 3600 * 7,
-    max_delta: timedelta = timedelta(hours=24 * 2),  # * 7),  # 24 * 366
+    max_delta: timedelta = timedelta(hours=24 * 2),
     error_on_fail: bool = True,
 ) -> List[SignedInterval] | None:
     """Find a path of intervals covering [start, end] with minimal base switches, then minimal total absolute length.
@@ -206,6 +213,8 @@ def covering_intervals(
         candidates: A function(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]
             that provides candidate intervals covering the current time.
             Alternatively, can also be a config dict to be passed to normalise_candidates_function.
+
+        hints: Additional hints to pass to the candidates function.
 
         switch_penalty: Penalty (in seconds) for switching bases between intervals.
 
@@ -250,7 +259,9 @@ def covering_intervals(
             LOG.warning(msg)
             return None
 
-        for interval in candidates(state.current_time, current_base=state.current_base, start=start, end=end):
+        for interval in candidates(
+            state.current_time, current_base=state.current_base, start=start, end=end, hints=hints
+        ):
             if interval.end == state.current_time:
                 interval = -interval
 

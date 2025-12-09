@@ -70,18 +70,18 @@ class Catalogue:
         # If not overridden in subclasses, the informations must be provided in the config
         raise NotImplementedError(f"Available periods must be provided in the config for {self.__class__.__name__}")
 
-    def covering_intervals(self, target) -> list[SignedInterval]:
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
         if "available_periods" in self.hints:
             candidates = self.hints["available_periods"]
         else:
             candidates = self.candidate_intervals
 
-        coverage = covering_intervals(target.start, target.end, candidates)
+        coverage = covering_intervals(start, end, candidates, hints=self.hints)
         intervals = []
         for i in coverage:
             intervals.append(i)
 
-        print(f"  Found covering intervals: for {target}:")
+        print(f"  Found covering intervals: for {start} to {end}:")
         for c in intervals:
             print(f"    {c}")
         return intervals

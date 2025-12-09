@@ -264,6 +264,38 @@ def test_grib_index_no_basetime(test):
     tester.test(test[0], test[1])
 
 
+# def with_reset_candidates(current_time: datetime, current_base:datetime, start:datetime, end:datetime) -> Iterable[SignedInterval]:
+#     # Generate intervals similar to ERA but with reset frequency consideration
+#
+#     reset_frequency = 2  # days
+#     bases = [current_base] if current_base is not None else []
+#     bases += [datetime(current_time.year, current_time.month, current_time.day, h) for h in [6, 18]]
+#     bases += [b - timedelta(days=1) for b in bases]
+#     bases += [b + timedelta(days=1) for b in bases]
+#
+#     intervals = []
+#     for base in bases:
+#         # Check if the base aligns with the reset frequency
+#         if (base.day - 1) % reset_frequency == 0:
+#             for h in range(1, 19):
+#                 start_interval = base
+#                 end_interval = base + timedelta(hours=h)
+#                 intervals.append(SignedInterval(start=start_interval, end=end_interval, base=base))
+#     intervals = [i for i in intervals if i.start == current_time or current_time == i.end]
+#
+#     intervals = sorted(intervals, key=lambda x: -(x.base or x.start).timestamp())
+#     return intervals
+#
+# WITH_RESET_CANDIDATES_TEST_CASE = [
+#     # Test case where reset frequency is 2 days
+#     (_("20240102.0900 -> 20240102.1200"), [_("20240102.0900 -> 1200, base=20240102.0600")]),
+# ]
+#
+# @pytest.mark.parametrize("test", WITH_RESET_CANDIDATES_TEST_CASE, ids=[str(t[0]) for t in GRIB_INDEX_TEST_CASE])
+# def test_with_reset_candidates(test):
+#     tester = _Tester(with_reset_candidates)
+#     tester.test(test[0], test[1])
+
 if __name__ == "__main__":
     for t in ENDA_TEST_CASES:
         test_enda(t)
