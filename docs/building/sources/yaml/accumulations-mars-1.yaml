@@ -1,0 +1,8 @@
+input:
+  accumulate:
+    period: 6
+    source:
+      mars:
+        class: ea
+        param: [ tp, cp, sf ]
+        levtype: sfc

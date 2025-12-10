@@ -76,10 +76,7 @@ class Catalogue:
         else:
             candidates = self.candidate_intervals
 
-        coverage = covering_intervals(start, end, candidates, hints=self.hints)
-        intervals = []
-        for i in coverage:
-            intervals.append(i)
+        intervals = covering_intervals(start, end, candidates, hints=self.hints)
 
         print(f"  Found covering intervals: for {start} to {end}:")
         for c in intervals:
@@ -248,6 +245,7 @@ class EaEndaCatalogue(MarsCatalogue):
 
 class OdOperCatalogue(MarsCatalogue):
     # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
+    @property
     def candidate_intervals(self):
         steps = [(0, end) for end in list(range(1, 91)) + list(range(93, 145, 3)) + list(range(150, 241, 6))]
         return {0: steps, 12: steps}
@@ -281,7 +279,7 @@ class L5OperCatalogue(MarsCatalogue):
 class RrOperCatalogue(MarsCatalogue):
     # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
     # ❌ not tested yet
-    candidate_intervals = {i: [(0, 1), (1, 2), (2, 3)] for i in range(0, 22, 3)}
+    candidate_intervals = {0: [(0, i) for i in range(0, 22, 3)]}
 
 
 def build_catalogue(context, hints: dict, source) -> Catalogue:

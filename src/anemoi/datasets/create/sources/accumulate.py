@@ -28,26 +28,6 @@ from .legacy import LegacySource
 LOG = logging.getLogger(__name__)
 
 
-# flow of information in accumulation:
-#
-# main accumulate source creates Accumulator objects for each param/member/valid_date
-#    Accumulator will be a subclass of Reducer (as Averager or Maxer would also be)
-#
-# first, the Accumulators should create a list of requests to get all the needed data from the source
-#    this is done by looping on the accumulators and getting their requests
-#    each accumulator has a Cataloguer object that knows which intervals are available for the source
-#      each accumulator chat with their Cataloguer to get the intervals they need : intervals = self.cataloguer.get_intervals(date_start, date_end, source_parameters, extra1=, extra2=..)
-#      each interval has the full request needed to give to the source to retrieve the data for this interval
-#      each interval also knows how to find its data in the source response
-#
-# once all requests are built, the source is queried and data retrieved
-#
-# then, each field from the source is sent to each accumulator
-#    the accumulator checks if the field is needed, asking its intervals if some intervals need this field
-#    if yes, the accumulator accumulated the values (asking the interval how to do it)
-#    once all intervals are done, the accumulator assembles the final output field and writes in the result
-
-
 class Accumulator:
     values: NDArray | None = None
     completed: bool = False
@@ -57,6 +37,8 @@ class Accumulator:
         self.interval = interval
         self.coverage = coverage
         self.todo = [v for v in coverage]
+
+        assert interval.end > interval.start, f"Invalid interval {interval}"
 
         self.period = interval.max - interval.min
         self.valid_date = interval.max
@@ -81,6 +63,10 @@ class Accumulator:
     def is_field_needed(self, field: Any):
         """Check whether the given field is needed by the accumulator (correct param, etc...)"""
         for k, v in self.key.items():
+
+            if k == "number":
+                continue
+
             metadata = field.metadata(k)
             if k == "number":  # bug in eccodes has number=None randomly
                 if metadata is None:
