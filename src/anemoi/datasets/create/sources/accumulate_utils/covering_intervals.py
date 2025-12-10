@@ -162,9 +162,11 @@ def normalise_candidates_function(config):
 
         if not isinstance(config, (tuple, list)):
             raise ValueError(f"Expected config to be a list or tuple, got {type(config)}: {config}")
-        for base_hour_and_steps_list in config:
-            if not isinstance(base_hour_and_steps_list, (list, tuple)) or len(base_hour_and_steps_list) != 2:
-                raise ValueError(f"Invalid config entry: {base_hour_and_steps_list} in {config=}")
+        for _ in config:
+            if not isinstance(_, (list, tuple)):
+                raise ValueError(f"Invalid config entry: {_} has type({type(_)}) in {config=}")
+            if len(_) != 2:
+                raise ValueError(f"Invalid config entry: {_} has length {len(_)} in {config=}")
 
         intervals = []
         for delta in extend_to_deltas:
@@ -210,7 +212,7 @@ class HeapState:
 def covering_intervals(
     start: datetime,
     end: datetime,
-    candidates: Callable | dict,
+    candidates: Callable | list | tuple,
     /,
     hints: dict = {},
     switch_penalty: int = 24 * 3600 * 7,

@@ -327,13 +327,20 @@ class L5OperCatalogue(MarsCatalogue):
     def candidate_intervals(self):
         # ❌ not tested yet
         steps = [(0, i) for i in "/".split("1/2/3/4/5/6/9/12/15/18/21/24/27")]
-        return {base: steps for base in [0, 3, 6, 9, 12, 15, 18, 21]}
+        return [[base, steps] for base in [0, 3, 6, 9, 12, 15, 18, 21]]
 
 
-class RrOperCatalogue(MarsCatalogue):
+class RrOperFrMsEcCatalogue(MarsCatalogue):
+    # todo: check if the availability depends on the dates
     # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
     # ❌ not tested yet
-    candidate_intervals = {0: [(0, i) for i in range(0, 22, 3)]}
+    candidate_intervals = [[0, [(0, i) for i in range(1, 22, 3)]]]
+
+
+class RrOperSeAlEcCatalogue(MarsCatalogue):
+    # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
+    # ❌ not tested yet
+    candidate_intervals = [[0, [(0, i) for i in (1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30)]]]
 
 
 def build_catalogue(context, hints: dict, source) -> Catalogue:
@@ -356,16 +363,36 @@ def build_catalogue(context, hints: dict, source) -> Catalogue:
 
         class_ = source[source_name].get("class", None)
         stream = source[source_name].get("stream", None)
-        cls = {
-            ("ea", "oper"): EaOperCatalogue,
-            ("ea", None): EaOperCatalogue,
-            ("ea", "enda"): EaEndaCatalogue,
-            ("rr", "oper"): RrOperCatalogue,
-            ("l5", "oper"): L5OperCatalogue,
-            ("od", "oper"): OdOperCatalogue,
-            ("od", "enfo"): OdEnfoCatalogue,
-            ("od", "elda"): OdEldaCatalogue,
-        }[class_, stream]
+        origin = source[source_name].get("origin", None)
+
+        match (class_, stream, origin):
+            case ("ea", "oper", _) | ("ea", None, _):
+                cls = EaOperCatalogue
+            case ("ea", "enda", _):
+                cls = EaEndaCatalogue
+            case ("rr", "oper", "se-al-ec"):
+                cls = RrOperSeAlEcCatalogue
+            case ("rr", "oper", "fr-ms-ec"):
+                cls = RrOperFrMsEcCatalogue
+            # todo: implement these when needed
+            # case ("rr", "oper", "no-ar-ce"):
+            #     cls = RrOperNoArCeCatalogue
+            # case ("rr", "oper", "no-ar-cw"):
+            #     cls = RrOperNoArCwCatalogue
+            # case ("rr", "oper", "no-ar-pa"):
+            #     cls = RrOperNoArPaCatalogue
+            case ("l5", "oper", _):
+                cls = L5OperCatalogue
+            case ("od", "oper", _):
+                cls = OdOperCatalogue
+            # case ("od", "enfo", _):
+            #     cls = OdEnfoCatalogue
+            case ("od", "elda", _):
+                cls = OdEldaCatalogue
+            case _:
+                if not hints:
+                    raise ValueError("More information are required for this type of requests")
+                cls = MarsCatalogue
 
         return cls(context, hints, source)
 

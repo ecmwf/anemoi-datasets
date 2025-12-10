@@ -8,11 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 from datetime import datetime
-from datetime import timedelta
 from typing import Dict
-from typing import Iterable
 from typing import List
-from typing import Optional
 
 import pytest
 
@@ -60,40 +57,6 @@ def build_signed_interval(x):
             raise ValueError(f"Unknown extra key: {key}")
 
     return SignedInterval(start=start, end=end, **extras_dict)
-
-
-def era_func(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]:
-    # Define bases at 6:00 and 18:00 of the current day and the surrounding days
-    # then provide intervals of lengths 1 to 18 hours for each base.
-
-    bases = [current_base] if current_base is not None else []
-    bases += [datetime(current.year, current.month, current.day, h) for h in [6, 18]]
-    bases += [b - timedelta(days=1) for b in bases]
-    bases += [b + timedelta(days=1) for b in bases]
-
-    for base in bases:
-        for h in range(1, 19):
-            start = base
-            end = base + timedelta(hours=h)
-            if start <= current <= end:
-                yield SignedInterval(start=start, end=end, base=base)
-
-
-def enda_func(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]:
-    # Define bases at 6:00 and 18:00 of the current day and the surrounding days
-    # then provide intervals of lengths 1 to 18 hours for each base.
-
-    bases = [current_base] if current_base is not None else []
-    bases += [b - timedelta(days=1) for b in bases]
-    bases += [datetime(current.year, current.month, current.day, h) for h in [6, 18]]
-    bases += [b + timedelta(days=1) for b in bases]
-
-    for base in bases:
-        for h in range(3, 19, 3):
-            start = base + timedelta(hours=h)
-            end = base + timedelta(hours=h + 3)
-            if start <= current <= end:
-                yield SignedInterval(start=start, end=end, base=base)
 
 
 class _Tester:
