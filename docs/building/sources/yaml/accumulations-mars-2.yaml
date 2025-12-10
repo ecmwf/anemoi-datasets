@@ -7,6 +7,6 @@ input:
         param: [ tp, cp, sf ]
         levtype: sfc
     # todo : use list of dicts of basetime:intervals instead of dict of basetimes:intervals
-    hints:
+    available_periods:
       - 0: [[0, 6], [6, 12]]
       - 12: [[12, 18], [18, 24]]

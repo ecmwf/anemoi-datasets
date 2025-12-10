@@ -116,7 +116,7 @@ class SignedInterval:
 
 
 def normalise_candidates_function(config):
-    assert isinstance(config, dict), (type(config), config)
+    assert isinstance(config, list), (type(config), config)
 
     def interval_without_base(current_time, delta, steps):
         start = datetime(current_time.year, current_time.month, current_time.day, steps[0]) + delta
@@ -137,7 +137,7 @@ def normalise_candidates_function(config):
     def candidates(
         current_time: datetime, start: datetime, end: datetime, current_base: datetime, hints: Optional[datetime]
     ) -> Iterable[SignedInterval]:
-        # Using the config dict provided, this generates starting or ending intervals
+        # Using the config list provided, this generates starting or ending intervals
         # for the given current_time
         # it follows the API defined in covering_intervals
         #
@@ -151,9 +151,15 @@ def normalise_candidates_function(config):
         # if we do that, we need to find a better name than "extend_to_deltas"
         extend_to_deltas = [timedelta(days=d) for d in [-1, 0, 1]]
 
+        if not isinstance(config, (tuple, list)):
+            raise ValueError(f"Expected config to be a list or tuple, got {type(config)}: {config}")
+        for base_hour_and_steps_list in config:
+            if not isinstance(base_hour_and_steps_list, (list, tuple)) or len(base_hour_and_steps_list) != 2:
+                raise ValueError(f"Invalid config entry: {base_hour_and_steps_list} in {config=}")
+
         intervals = []
         for delta in extend_to_deltas:
-            for base_hour, steps_list in config.items():
+            for base_hour, steps_list in config:
                 if isinstance(steps_list, str):
                     steps_list = steps_list.split("/")
                 assert isinstance(steps_list, list), steps_list
@@ -212,7 +218,7 @@ def covering_intervals(
 
         candidates: A function(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]
             that provides candidate intervals covering the current time.
-            Alternatively, can also be a config dict to be passed to normalise_candidates_function.
+            Alternatively, can also be a config list to be passed to normalise_candidates_function.
 
         hints: Additional hints to pass to the candidates function.
 

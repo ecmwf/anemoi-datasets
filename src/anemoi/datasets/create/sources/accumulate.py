@@ -251,8 +251,8 @@ class Accumulations2Source(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period,
-        hints: dict = None,
-        data_accumulation_period=None,
+        data_accumulation_period: str | int | datetime.timedelta | None = None,
+        available=None,
     ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
@@ -267,10 +267,8 @@ class Accumulations2Source(LegacySource):
             The accumulation source
         period: str | int | datetime.timedelta,
             The interval over which to accumulate (user-defined)
-        hints: dict, optional
-            Hints to build the catalogue for accumulation
-        data_accumulation_period: str | int | datetime.timedelta, optional
-            The period of accumulation used in the data source (e.g. 1h for hourly accumulated data)
+        available: Any, optional
+            A description of the available periods in the data source. See documentation.
 
         Return
         ------
@@ -280,16 +278,14 @@ class Accumulations2Source(LegacySource):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
-        if hints is None:
-            hints = {}
 
         if data_accumulation_period is not None:
             data_accumulation_period = frequency_to_timedelta(data_accumulation_period)
-            if "available_periods" not in hints:
-                LOG.warning("'available_periods' in hints will be overridden by 'data_accumulation_period'")
+            if available is not None:
+                LOG.warning("'available' will be overridden by 'data_accumulation_period'")
             if not (data_accumulation_period.total_seconds() % 3600 == 0):
                 # only multiple of 1 hour supported for now
                 raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
-            hints["available_periods"] = {"*": [f"{i}-{i+1}" for i in range(0, 24)]}
+            available = [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
 
-        return _compute_accumulations(context, dates, source=source, period=period, hints=hints)
+        return _compute_accumulations(context, dates, source=source, period=period, hints=available)

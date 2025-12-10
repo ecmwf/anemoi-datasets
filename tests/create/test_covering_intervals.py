@@ -7,8 +7,18 @@ from typing import Optional
 
 import pytest
 
+from anemoi.datasets.create.sources.accumulation_utils.intervals import EaEndaCatalogue
+from anemoi.datasets.create.sources.accumulation_utils.intervals import EaOperCatalogue
 from anemoi.datasets.create.sources.covering_intervals import SignedInterval
 from anemoi.datasets.create.sources.covering_intervals import covering_intervals
+
+grib_index_config: Dict[int, str] = [
+    # all period [i, i+1] are available
+    (
+        None,
+        "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18/18-19/19-20/20-21/21-22/22-23/23-24",
+    )
+]
 
 
 def build_signed_interval(x):
@@ -75,20 +85,6 @@ def enda_func(current: datetime, current_base: Optional[datetime]) -> Iterable[S
             end = base + timedelta(hours=h + 3)
             if start <= current <= end:
                 yield SignedInterval(start=start, end=end, base=base)
-
-
-era_config: Dict[int, str] = {
-    6: "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18",
-    18: "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18",
-}
-enda_config: Dict[int, List[str]] = {
-    6: "0-3/3-6/6-9/9-12/12-15/15-18",
-    18: "0-3/3-6/6-9/9-12/12-15/15-18",
-}
-grib_index_config: Dict[int, str] = {
-    # all period [i, i+1] are available
-    None: "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18/18-19/19-20/20-21/21-22/22-23/23-24"
-}
 
 
 class _Tester:
@@ -176,7 +172,7 @@ ERA_TEST_CASES = [
 
 @pytest.mark.parametrize("test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES])
 def test_era(test):
-    tester = _Tester(era_config)
+    tester = _Tester(EaOperCatalogue.candidate_intervals)
     tester.test(test[0], test[1])
 
 
@@ -246,7 +242,7 @@ ENDA_TEST_CASES = [
 
 @pytest.mark.parametrize("test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES])
 def test_enda(test):
-    tester = _Tester(enda_config)
+    tester = _Tester(EaEndaCatalogue.candidate_intervals)
     tester.test(test[0], test[1])
 
 

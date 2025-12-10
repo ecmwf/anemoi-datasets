@@ -17,9 +17,8 @@ from typing import Any
 
 from earthkit.data.utils.availability import Availability
 
+from anemoi.datasets.create.sources.covering_intervals import SignedInterval
 from anemoi.datasets.create.sources.covering_intervals import covering_intervals
-
-from ..covering_intervals import SignedInterval
 
 LOG = logging.getLogger(__name__)
 
@@ -71,10 +70,7 @@ class Catalogue:
         raise NotImplementedError(f"Available periods must be provided in the config for {self.__class__.__name__}")
 
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
-        if "available_periods" in self.hints:
-            candidates = self.hints["available_periods"]
-        else:
-            candidates = self.candidate_intervals
+        candidates = self.hints or self.candidate_intervals
 
         intervals = covering_intervals(start, end, candidates, hints=self.hints)
 
@@ -230,17 +226,17 @@ class MarsCatalogue(Catalogue):
 
 class EaOperCatalogue(MarsCatalogue):
     # todo : check wether these intervals are correct, or if it is 0-1/1-2/...
-    candidate_intervals = {
-        6: "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18",
-        18: "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18",
-    }
+    candidate_intervals = [
+        (6, "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18"),
+        (18, "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12/0-13/0-14/0-15/0-16/0-17/0-18"),
+    ]
 
 
 class EaEndaCatalogue(MarsCatalogue):
-    candidate_intervals = {
-        6: "0-3/3-6/6-9/9-12/12-15/15-18",
-        18: "0-3/3-6/6-9/9-12/12-15/15-18",
-    }
+    candidate_intervals = [
+        (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
+        (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
+    ]
 
 
 class OdOperCatalogue(MarsCatalogue):

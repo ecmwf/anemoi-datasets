@@ -7,10 +7,9 @@ input:
   accumulate:
     period: 6h
     #accumulation_period: [6, 12]
-    hints:
-      available_periods:
-        0: "0-6/0-12"
-        12: "0-6/0-12"
+    available:
+        - [0, "0-6/0-12"]
+        - [12, "0-6/0-12"]
     source:
       mars:
         expver: "0001"

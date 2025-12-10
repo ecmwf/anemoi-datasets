@@ -61,14 +61,29 @@ most recent data available will be used:
 
 When the package cannot deduce how to reconstruct the accumulation from
 the source dataset, the user can provide the information with the
-`data_accumulation_period` parameter or the `hints` parameter.
+`available` parameter.
 
-Using the `data_accumulation_period` parameter, the user can specify the
-accumulation period used in the source dataset. This is useful when the
-source dataset uses a different accumulation period than the one
-requested and no ambiguity exists. For example, if the source dataset
-contains 1h accumulations, the user can specify
-`data_accumulation_period: 1h`.
+For instance: - "3h" if the sources provides 3-hourly-accumulated data
+(other values such as "1h", "6h", "12h", "24h" are also supported) - [
+period1, period2, ... ] to provide a list of available periods. where a
+period is defined by two or three values such as : either [ base_time,
+start_step, end_step] for accumulated data between start_step and
+end_step with base_time or [ start_step, end_step ] for accumulated data
+between start_step and end_step For instance: available = [ (0,1),
+(1,2), (2,3), ... ] for hourly accumulated data with explicit intervals
+or available = [ (0, ((0, 1), (1, 2), (2, 3), ... ), (6, ((0, 1), (1,
+2), (2, 3), ... ), ] for hourly accumulated data with base times 0 or 6
+hours.
+
+Some shortcuts are defined such as "0-1" instead of (0,1), and using '/'
+to separate values. available = [ "0-1", "1-2", "2-3", ... ] or
+available = [ "0-1/1-2/2-3/..." ].
+
+Using the `available` parameter, the user can specify the accumulation
+period used in the source dataset. This is useful when the source
+dataset uses a different accumulation period than the one requested and
+no ambiguity exists. For example, if the source dataset contains 1h
+accumulations, the user can specify `available: 1h`.
 
 .. literalinclude:: yaml/accumulate-grib-index.yaml
    :language: yaml
