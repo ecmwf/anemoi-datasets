@@ -17,10 +17,68 @@ from typing import Any
 
 from earthkit.data.utils.availability import Availability
 
-from anemoi.datasets.create.sources.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.covering_intervals import covering_intervals
+from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
+from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
 
 LOG = logging.getLogger(__name__)
+
+
+def _member(field: Any) -> int:
+    """Retrieves the member number from the field metadata.
+
+    Parameters:
+    ----------
+    field : Any
+        The field from which to retrieve the member number.
+
+    Return:
+    -------
+    int
+        The member number.
+    """
+    # Bug in eccodes has number=0 randomly
+    number = field.metadata("number", default=0)
+    if number is None:
+        number = 0
+    return number
+
+
+def _to_list(x: list[Any] | tuple[Any] | Any) -> list[Any]:
+    """Converts the input to a list if it is not already a list or tuple.
+
+    Parameters:
+    ----------
+    x : Union[List[Any], Tuple[Any], Any]
+        Input value.
+
+    Return:
+    -------
+    List[Any]
+        The input value as a list.
+    """
+    if isinstance(x, (list, tuple)):
+        return x
+    return [x]
+
+
+def _scda(request: dict[str, Any]) -> dict[str, Any]:
+    """Modifies the request stream based on the time.
+
+    Parameters:
+    ----------
+    request : dict[str, Any]
+        Request parameters.
+
+    Return:
+    -------
+    dict[str, Any]
+        The modified request parameters.
+    """
+    if request["time"] in (6, 18, 600, 1800):
+        request["stream"] = "scda"
+    else:
+        request["stream"] = "oper"
+    return request
 
 
 def factorise_requests(requests):

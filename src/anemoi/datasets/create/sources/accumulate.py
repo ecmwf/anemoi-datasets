@@ -20,9 +20,9 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
 
-from .accumulation_utils.intervals import Link
-from .accumulation_utils.intervals import build_catalogue
-from .covering_intervals import SignedInterval
+from .accumulate_utils.catalogues import Link
+from .accumulate_utils.catalogues import build_catalogue
+from .accumulate_utils.covering_intervals import SignedInterval
 from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)

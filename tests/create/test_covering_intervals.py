@@ -7,10 +7,10 @@ from typing import Optional
 
 import pytest
 
-from anemoi.datasets.create.sources.accumulation_utils.intervals import EaEndaCatalogue
-from anemoi.datasets.create.sources.accumulation_utils.intervals import EaOperCatalogue
-from anemoi.datasets.create.sources.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.covering_intervals import covering_intervals
+from anemoi.datasets.create.sources.accumulate_utils.catalogues import EaEndaCatalogue
+from anemoi.datasets.create.sources.accumulate_utils.catalogues import EaOperCatalogue
+from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
+from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
 
 grib_index_config: Dict[int, str] = [
     # all period [i, i+1] are available
