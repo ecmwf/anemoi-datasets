@@ -6,7 +6,6 @@ dates:
 input:
   accumulate:
     period: 6h
-    #accumulation_period: [6, 12]
     available:
         - [0, "0-6/0-12"]
         - [12, "0-6/0-12"]
