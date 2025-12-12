@@ -103,13 +103,13 @@ class Accumulator:
         if self.completed:
             raise ValueError(f"Accumulator {self} already completed, cannot process interval {interval}")
 
-        sign = 1 if interval.end > interval.start else -1
-
         # actual accumulation computation
+        if interval.end < interval.start:  # negative accumulation if interval is reversed
+            values = -values
         if self.values is None:
-            self.values = values * sign
+            self.values = values
         else:
-            self.values += values * sign
+            self.values += values
 
         if interval not in self.todo:
             raise ValueError(f"SignedInterval {interval} not in todo list of accumulator {self}")
