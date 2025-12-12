@@ -19,5 +19,8 @@ input:
         param: ["tp","ssrd","strd"]
         grid: 20./20.
 
+statistics:
+  allow_nans: [ssrd, ci]
+
 checks:
   none: {}
