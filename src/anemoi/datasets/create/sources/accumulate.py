@@ -191,7 +191,7 @@ def _compute_accumulations(
 
     """
 
-    print("💬 source for accumulations:", source)
+    LOG.debug("💬 source for accumulations: %s", source)
 
     cataloguer = build_catalogue(context, hints, source)
 
@@ -216,10 +216,10 @@ def _compute_accumulations(
 
     links = []
     for accumulator in accumulators:
-        print(f"💬 {accumulator} will need:")
+        LOG.debug(f"💬 {accumulator} will need:")
         for v in accumulator.coverage:
             link = Link(interval=v, accumulator=accumulator, catalogue=cataloguer)
-            print("  💬 ", link)
+            LOG.debug("  💬 ", link)
             links.append(link)
 
     for field, values, link in cataloguer.retrieve_fields(links):

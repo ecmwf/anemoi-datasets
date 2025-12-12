@@ -132,9 +132,9 @@ class Catalogue:
 
         intervals = covering_intervals(start, end, candidates, hints=self.hints)
 
-        print(f"  Found covering intervals: for {start} to {end}:")
+        LOG.debug(f"  Found covering intervals: for {start} to {end}:")
         for c in intervals:
-            print(f"    {c}")
+            LOG.debug(f"    {c}")
         return intervals
 
 
@@ -184,7 +184,7 @@ class GribIndexCatalogue(Catalogue):
     def retrieve_fields(self, links: list[Link], debug=False):
         dates = [link.interval.max for link in links]
         for field in self.source_object(self.context, dates):
-            print("Processing field:", field)
+            LOG.debug("Processing field:", field)
             yield from match_fields_to_links(field, links)
 
     def get_all_keys(self):
