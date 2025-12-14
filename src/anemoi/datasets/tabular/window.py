@@ -70,11 +70,9 @@ class WindowView:
     def set_start(self, start: datetime.datetime) -> "WindowView":
         # TODO: check if in-line with the way we implemented that logic for fields
 
-        start = as_first_date(start, None, frequency=self.frequency)
-
         return WindowView(
             store=self.store,
-            start_date=start,
+            start_date=as_first_date(start, None, frequency=self.frequency),
             end_date=self.end_date,
             frequency=self.frequency,
             window=self.window,
@@ -83,12 +81,11 @@ class WindowView:
 
     def set_end(self, end: datetime.datetime) -> "WindowView":
         # TODO: check if in-line with the way we implemented that logic for fields
-        end = as_last_date(end, None, frequency=self.frequency)
 
         return WindowView(
             store=self.store,
             start_date=self.start_date,
-            end_date=end,
+            end_date=as_last_date(end, None, frequency=self.frequency),
             frequency=self.frequency,
             window=self.window,
             btree=self.btree,
