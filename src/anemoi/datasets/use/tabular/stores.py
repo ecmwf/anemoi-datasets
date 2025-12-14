@@ -14,9 +14,9 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.tabular.window import WindowView
 from anemoi.datasets.use.dataset import Dataset
 from anemoi.datasets.use.dataset import Shape
 from anemoi.datasets.use.gridded.stores import open_zarr
@@ -40,38 +40,34 @@ class TabularZarr(Dataset):
 
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
-        self.frequency = datetime.timedelta(hours=1)
-
-    def set_frequency(self, frequency: str | int | datetime.timedelta) -> None:
-        self.frequency = frequency_to_timedelta(frequency)
-
-    def set_date_range(self, start: datetime.datetime | None, end: datetime.datetime | None) -> None:
-        pass
-
-    def set_window(self, window: str | tuple[int, int] | None) -> None:
-        pass
+        self._window_view = WindowView(self.z)
 
     def _subset(self, **kwargs):
         if "frequency" in kwargs:
             frequency = kwargs.pop("frequency", None)
-            self.set_frequency(frequency)
+            self._window_view = self._window_view.set_frequency(frequency)
 
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
+            if start is not None:
+                self._window_view = self._window_view.set_start(start)
+
             end = kwargs.pop("end", None)
-            self.set_date_range(start, end)
+            if end is not None:
+                self._window_view = self._window_view.set_end(end)
 
         if "window" in kwargs:
             window = kwargs.pop("window", None)
-            self.set_window(window)
+            if window is not None:
+                self._window_view = self._window_view.set_window(window)
 
         return super()._subset(**kwargs)
 
     def __getitem__(self, n):
-        raise NotImplementedError()
+        return self._window_view[n]
 
     def __len__(self) -> int:
-        raise NotImplementedError()
+        return len(self._window_view)
 
     def collect_input_sources(self, *args, **kwargs):
         raise NotImplementedError()
@@ -82,14 +78,16 @@ class TabularZarr(Dataset):
     def dates(self) -> list[datetime.datetime]:
         raise NotImplementedError()
 
+    @property
     def dtype(self) -> np.dtype:
-        raise NotImplementedError()
+        return self.data.dtype
 
     def field_shape(self) -> Shape:
         raise NotImplementedError()
 
-    def frequency(self) -> str:
-        raise NotImplementedError()
+    @property
+    def frequency(self) -> datetime.timedelta:
+        return self._frequency
 
     def get_dataset_names(self) -> list[str]:
         raise NotImplementedError()
