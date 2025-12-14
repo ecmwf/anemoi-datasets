@@ -190,18 +190,20 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
             raise zarr.errors.PathNotFoundError(path)
 
 
-class Zarr(Dataset):
+class GriddedZarr(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+    def __init__(self, path: str | zarr.hierarchy.Group, name: str = None) -> None:
         """Initialize the Zarr dataset with a path or zarr group."""
         if isinstance(path, zarr.hierarchy.Group):
             self.was_zarr = True
-            self.path = str(id(path))
+            self.path = name if name is not None else str(id(path))
             self.z = path
+            self._name = name
         else:
             self.was_zarr = False
             self.path = str(path)
+            self._name = name if name is not None else self.path
             self.z = open_zarr(self.path)
 
         # This seems to speed up the reading of the data a lot
@@ -214,11 +216,11 @@ class Zarr(Dataset):
         return self._missing
 
     @classmethod
-    def from_name(cls, name: str) -> "Zarr":
+    def from_name(cls, name: str) -> "GriddedZarr":
         """Create a Zarr dataset from a name."""
         if name.endswith(".zip") or name.endswith(".zarr"):
-            return Zarr(name)
-        return Zarr(dataset_lookup(name))
+            return GriddedZarr(name)
+        return GriddedZarr(dataset_lookup(name))
 
     def __len__(self) -> int:
         """Return the length of the dataset."""
@@ -400,7 +402,17 @@ class Zarr(Dataset):
         return Source(self, index, info=self.path)
 
     def mutate(self) -> Dataset:
-        """Mutate the dataset if it has missing dates."""
+        """Mutate the dataset if it has missing dates, or it it observational."""
+
+        format = self.z.attrs.get("format", "gridded")
+        assert format in ("gridded", "tabular"), f"Unsupported format: {format}"
+
+        if format == "tabular":
+            from anemoi.datasets.use.tabular.stores import TabularZarr
+
+            # LOG.info(f"Converting tabular dataset {self} to gridded")
+            return TabularZarr(self.path).mutate()
+
         if len(self.z.attrs.get("missing_dates", [])):
             LOG.warning(f"Dataset {self} has missing dates")
             return ZarrWithMissingDates(self.z if self.was_zarr else self.path)
@@ -454,7 +466,7 @@ class Zarr(Dataset):
         return self.z.attrs.get("recipe", {}).get("name", self.path)
 
 
-class ZarrWithMissingDates(Zarr):
+class ZarrWithMissingDates(GriddedZarr):
     """A zarr dataset with missing dates."""
 
     def __init__(self, path: str | zarr.hierarchy.Group) -> None:

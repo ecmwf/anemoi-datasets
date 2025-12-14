@@ -348,20 +348,20 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         The opened dataset.
     """
     from anemoi.datasets.use.gridded.dataset import Dataset
-    from anemoi.datasets.use.gridded.stores import Zarr
+    from anemoi.datasets.use.gridded.stores import GriddedZarr
     from anemoi.datasets.use.gridded.stores import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
 
     if isinstance(a, zarr.hierarchy.Group):
-        return Zarr(a).mutate()
+        return GriddedZarr(a).mutate()
 
     if isinstance(a, str):
         path = dataset_lookup(a)
 
         if path and path.endswith(".zarr") or path.endswith(".zip"):
-            return Zarr(path).mutate()
+            return GriddedZarr(path).mutate()
 
         if path and path.endswith(".vz"):
 

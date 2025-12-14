@@ -39,7 +39,7 @@ from anemoi.datasets.use.gridded.padded import Padded
 from anemoi.datasets.use.gridded.select import Rename
 from anemoi.datasets.use.gridded.select import Select
 from anemoi.datasets.use.gridded.statistics import Statistics
-from anemoi.datasets.use.gridded.stores import Zarr
+from anemoi.datasets.use.gridded.stores import GriddedZarr
 from anemoi.datasets.use.gridded.subset import Subset
 
 VALUES = 10
@@ -519,7 +519,7 @@ def test_simple() -> None:
     """Test a simple dataset."""
     test = DatasetTester("test-2021-2022-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 2 * 4,
         date_to_row=lambda date: simple_row(date, "abcd"),
         start_date=datetime.datetime(2021, 1, 1),
@@ -1135,7 +1135,7 @@ def test_slice_1() -> None:
     """Test slicing a dataset (case 1)."""
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 1 * 4,
         expected_shape=(365 * 1 * 4, 4, 1, VALUES),
         expected_variables="abcd",
