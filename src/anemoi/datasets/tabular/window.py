@@ -16,6 +16,9 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets.use.misc import as_first_date
+from anemoi.datasets.use.misc import as_last_date
+
 from .btree import ZarrBTree
 from .caching import ChunksCache
 
@@ -65,7 +68,10 @@ class WindowView:
         self._len = (self.end_date - self.start_date) // self.frequency + 1
 
     def set_start(self, start: datetime.datetime) -> "WindowView":
-        return self
+        # TODO: check if in-line with the way we implemented that logic for fields
+
+        start = as_first_date(start, None, frequency=self.frequency)
+
         return WindowView(
             store=self.store,
             start_date=start,
@@ -76,7 +82,9 @@ class WindowView:
         )
 
     def set_end(self, end: datetime.datetime) -> "WindowView":
-        return self
+        # TODO: check if in-line with the way we implemented that logic for fields
+        end = as_last_date(end, None, frequency=self.frequency)
+
         return WindowView(
             store=self.store,
             start_date=self.start_date,
