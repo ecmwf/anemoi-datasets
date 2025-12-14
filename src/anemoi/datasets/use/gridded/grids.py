@@ -16,12 +16,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import cKDTree
 
-from anemoi.datasets.use.gridded.dataset import Dataset
-from anemoi.datasets.use.gridded.dataset import FullIndex
-from anemoi.datasets.use.gridded.dataset import Shape
-from anemoi.datasets.use.gridded.dataset import TupleIndex
-from anemoi.datasets.use.gridded.debug import Node
-from anemoi.datasets.use.gridded.debug import debug_indexing
+from anemoi.datasets.use.dataset import Dataset
+from anemoi.datasets.use.dataset import FullIndex
+from anemoi.datasets.use.dataset import Shape
+from anemoi.datasets.use.dataset import TupleIndex
+from anemoi.datasets.use.debug import Node
+from anemoi.datasets.use.debug import debug_indexing
 from anemoi.datasets.use.gridded.forwards import Combined
 from anemoi.datasets.use.gridded.forwards import GivenAxis
 from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes

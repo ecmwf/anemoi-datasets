@@ -23,7 +23,7 @@ from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from anemoi.datasets.use.gridded.dataset import Dataset
+    from anemoi.datasets.use.dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -347,7 +347,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     Dataset
         The opened dataset.
     """
-    from anemoi.datasets.use.gridded.dataset import Dataset
+    from anemoi.datasets.use.dataset import Dataset
     from anemoi.datasets.use.gridded.stores import GriddedZarr
     from anemoi.datasets.use.gridded.stores import dataset_lookup
 

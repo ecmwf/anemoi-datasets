@@ -21,7 +21,7 @@ from anemoi.datasets.use.misc import add_dataset_path
 from anemoi.datasets.use.misc import add_named_dataset
 
 if TYPE_CHECKING:
-    from anemoi.datasets.use.gridded.dataset import Dataset
+    from anemoi.datasets.use.dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 

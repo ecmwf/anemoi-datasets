@@ -17,10 +17,10 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.use.gridded.indexing import expand_list_indexing
 
-from .dataset import Dataset
-from .dataset import FullIndex
-from .debug import Node
-from .debug import debug_indexing
+from ..dataset import Dataset
+from ..dataset import FullIndex
+from ..debug import Node
+from ..debug import debug_indexing
 from .forwards import Forwards
 
 LOG = logging.getLogger(__name__)

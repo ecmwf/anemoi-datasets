@@ -34,8 +34,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.gridded.debug import Node
-from anemoi.datasets.use.gridded.debug import Source
+from anemoi.datasets.use.debug import Node
+from anemoi.datasets.use.debug import Source
 
 if TYPE_CHECKING:
     import matplotlib

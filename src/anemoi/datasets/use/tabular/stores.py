@@ -17,8 +17,8 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.gridded.dataset import Dataset
-from anemoi.datasets.use.gridded.dataset import Shape
+from anemoi.datasets.use.dataset import Dataset
+from anemoi.datasets.use.dataset import Shape
 from anemoi.datasets.use.gridded.stores import open_zarr
 
 LOG = logging.getLogger(__name__)

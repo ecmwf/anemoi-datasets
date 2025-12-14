@@ -20,7 +20,7 @@ from anemoi.utils.text import Tree
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from anemoi.datasets.use.gridded.dataset import Dataset
+    from anemoi.datasets.use.dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
