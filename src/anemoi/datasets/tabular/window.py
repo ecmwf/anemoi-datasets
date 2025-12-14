@@ -156,3 +156,12 @@ class WindowView:
             f"WindowView(start_date={self.start_date}, end_date={self.end_date}, "
             f"frequency={self.frequency}, window={self.window})"
         )
+
+    @cached_property
+    def dates(self) -> np.ndarray:
+        dates = []
+        date = self.start_date
+        while date <= self.end_date:
+            dates.append(np.datetime64(date, "s"))
+            date += self.frequency
+        return np.array(dates)

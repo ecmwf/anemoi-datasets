@@ -38,8 +38,6 @@ class TabularZarr(Dataset):
             self._name = name if name is not None else self.path
             self.z = open_zarr(self.path)
 
-        # This seems to speed up the reading of the data a lot
-        self.data = self.z.data
         self._window_view = WindowView(self.z)
 
     def _subset(self, **kwargs):
@@ -75,8 +73,9 @@ class TabularZarr(Dataset):
     def constant_fields(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def dates(self) -> list[datetime.datetime]:
-        raise NotImplementedError()
+    @property
+    def dates(self) -> NDArray[np.datetime64]:
+        return self._window_view.dates
 
     @property
     def dtype(self) -> np.dtype:
