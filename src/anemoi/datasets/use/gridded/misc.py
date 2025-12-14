@@ -507,13 +507,6 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     for a in args:
         sets.append(_open(a))
 
-    if "observations" in kwargs:
-        from anemoi.datasets.use.gridded.observations import observations_factory
-
-        assert not sets, sets
-
-        return observations_factory(args, kwargs).mutate()
-
     if "xy" in kwargs:
         # Experimental feature, may be removed
         from anemoi.datasets.use.gridded.xy import xy_factory
@@ -593,18 +586,6 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
                 sets.append(_open(a))
 
     assert len(sets) > 0, (args, kwargs)
-
-    if "set_group" in kwargs:
-        from anemoi.datasets.use.tabular.records import FieldsRecords
-
-        set_group = kwargs.pop("set_group")
-        assert len(sets) == 1, "set_group can only be used with a single dataset"
-        dataset = sets[0]
-
-        from anemoi.datasets.use.gridded.dataset import Dataset
-
-        if isinstance(dataset, Dataset):  # Fields dataset
-            return FieldsRecords(dataset, **kwargs, name=set_group).mutate()
 
     if len(sets) > 1:
         dataset, kwargs = _concat_or_join(sets, kwargs)
