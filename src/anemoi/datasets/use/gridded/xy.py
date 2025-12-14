@@ -16,8 +16,8 @@ from anemoi.datasets.use.gridded.dataset import Dataset
 from anemoi.datasets.use.gridded.dataset import FullIndex
 from anemoi.datasets.use.gridded.debug import Node
 from anemoi.datasets.use.gridded.forwards import Combined
-from anemoi.datasets.use.gridded.misc import _auto_adjust
-from anemoi.datasets.use.gridded.misc import _open
+from anemoi.datasets.use.misc import _auto_adjust
+from anemoi.datasets.use.misc import _open
 
 LOG = logging.getLogger(__name__)
 

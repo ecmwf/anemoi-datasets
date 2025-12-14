@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.use.gridded.dataset import Dataset
@@ -39,6 +40,32 @@ class TabularZarr(Dataset):
 
         # This seems to speed up the reading of the data a lot
         self.data = self.z.data
+        self.frequency = datetime.timedelta(hours=1)
+
+    def set_frequency(self, frequency: str | int | datetime.timedelta) -> None:
+        self.frequency = frequency_to_timedelta(frequency)
+
+    def set_date_range(self, start: datetime.datetime | None, end: datetime.datetime | None) -> None:
+        pass
+
+    def set_window(self, window: str | tuple[int, int] | None) -> None:
+        pass
+
+    def _subset(self, **kwargs):
+        if "frequency" in kwargs:
+            frequency = kwargs.pop("frequency", None)
+            self.set_frequency(frequency)
+
+        if "start" in kwargs or "end" in kwargs:
+            start = kwargs.pop("start", None)
+            end = kwargs.pop("end", None)
+            self.set_date_range(start, end)
+
+        if "window" in kwargs:
+            window = kwargs.pop("window", None)
+            self.set_window(window)
+
+        return super()._subset(**kwargs)
 
     def __getitem__(self, n):
         raise NotImplementedError()

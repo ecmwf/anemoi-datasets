@@ -29,8 +29,8 @@ from anemoi.datasets.use.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.use.gridded.indexing import expand_list_indexing
 from anemoi.datasets.use.gridded.indexing import index_to_slices
 from anemoi.datasets.use.gridded.indexing import update_tuple
-from anemoi.datasets.use.gridded.misc import _auto_adjust
-from anemoi.datasets.use.gridded.misc import _open
+from anemoi.datasets.use.misc import _auto_adjust
+from anemoi.datasets.use.misc import _open
 
 LOG = logging.getLogger(__name__)
 

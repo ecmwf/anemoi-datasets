@@ -61,7 +61,7 @@ def _start(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
     Returns:
     int: The index of the start date.
     """
-    from anemoi.datasets.use.gridded.misc import as_first_date
+    from anemoi.datasets.use.misc import as_first_date
 
     c = as_first_date(a, dates)
     d = as_first_date(b, dates)
@@ -82,7 +82,7 @@ def _end(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
     Returns:
     int: The index of the end date.
     """
-    from anemoi.datasets.use.gridded.misc import as_last_date
+    from anemoi.datasets.use.misc import as_last_date
 
     c = as_last_date(a, dates)
     d = as_last_date(b, dates)

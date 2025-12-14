@@ -33,7 +33,7 @@ from anemoi.datasets.use.gridded.debug import Node
 from anemoi.datasets.use.gridded.debug import Source
 from anemoi.datasets.use.gridded.debug import debug_indexing
 from anemoi.datasets.use.gridded.indexing import expand_list_indexing
-from anemoi.datasets.use.gridded.misc import load_config
+from anemoi.datasets.use.misc import load_config
 
 LOG = logging.getLogger(__name__)
 

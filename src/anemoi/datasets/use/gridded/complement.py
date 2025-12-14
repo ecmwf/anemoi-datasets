@@ -17,6 +17,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..grids import nearest_grid_points
+from ..misc import _auto_adjust
+from ..misc import _open_dataset
 from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape
@@ -26,8 +28,6 @@ from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
 from .indexing import index_to_slices
 from .indexing import update_tuple
-from .misc import _auto_adjust
-from .misc import _open_dataset
 
 LOG = logging.getLogger(__name__)
 

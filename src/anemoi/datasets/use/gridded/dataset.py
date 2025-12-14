@@ -136,8 +136,7 @@ class Dataset(ABC, Sized):
         if not kwargs:
             return self.mutate()
 
-        name = kwargs.pop("set_group", None)  # TODO(Florian)
-        name = kwargs.pop("name", name)
+        name = kwargs.pop("name", None)
         result = self.__subset(**kwargs)
         result._name = name
 
@@ -378,8 +377,8 @@ class Dataset(ABC, Sized):
         list of int
             The list of indices.
         """
-        from anemoi.datasets.use.gridded.misc import as_first_date
-        from anemoi.datasets.use.gridded.misc import as_last_date
+        from anemoi.datasets.use.misc import as_first_date
+        from anemoi.datasets.use.misc import as_last_date
 
         # TODO: optimize
 

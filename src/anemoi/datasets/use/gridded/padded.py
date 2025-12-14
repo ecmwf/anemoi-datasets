@@ -27,8 +27,8 @@ from anemoi.datasets.use.gridded.debug import Node
 from anemoi.datasets.use.gridded.debug import debug_indexing
 from anemoi.datasets.use.gridded.forwards import Forwards
 from anemoi.datasets.use.gridded.indexing import expand_list_indexing
-from anemoi.datasets.use.gridded.misc import as_first_date
-from anemoi.datasets.use.gridded.misc import as_last_date
+from anemoi.datasets.use.misc import as_first_date
+from anemoi.datasets.use.misc import as_last_date
 
 LOG = logging.getLogger(__name__)
 
