@@ -104,13 +104,13 @@ class Link:
 
 
 class Catalogue:
-    def __init__(self, context, hints: dict, source: dict):
+    def __init__(self, context, interval_generator: dict, source: dict):
         self.context = context
-        self.hints = hints
+        self.interval_generator = interval_generator
         self.source = source
 
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
-        intervals = covering_intervals(start, end, self.hints, hints=self.hints)
+        intervals = covering_intervals(start, end, self.interval_generator)
 
         LOG.debug(f"  Found covering intervals: for {start} to {end}:")
         for c in intervals:
@@ -195,8 +195,8 @@ def match_fields_to_links(field, links: list[Link]):
 
 
 class GribIndexCatalogue(Catalogue):
-    def __init__(self, context, hints: dict, source: dict):
-        super().__init__(context, hints, source)
+    def __init__(self, context, interval_generator: dict, source: dict):
+        super().__init__(context, interval_generator, source)
         self.source_request = next(iter(source.values()))
         h = hashlib.md5(json.dumps(source, sort_keys=True).encode()).hexdigest()
         self.source_object = self.context.create_source(self.source, "data_sources", h)
@@ -257,8 +257,8 @@ def _normalise_request(request: dict[str, Any]) -> dict[str, Any]:
 
 
 class MarsCatalogue(Catalogue):
-    def __init__(self, context, hints: dict, source: dict):
-        super().__init__(context, hints, source)
+    def __init__(self, context, interval_generator: dict, source: dict):
+        super().__init__(context, interval_generator, source)
         _, self.source_request = next(iter(source.items()))
 
     def request_to_fields(self, req: dict) -> list:
@@ -317,14 +317,14 @@ class MarsCatalogue(Catalogue):
                 yield dict(param=p, number=n)
 
 
-def build_catalogue(context, hints: dict, source) -> Catalogue:
+def build_catalogue(context, interval_generator: dict, source) -> Catalogue:
     assert isinstance(source, dict)
     assert len(source) == 1, f"Source must have exactly one key, got {list(source.keys())}"
 
     source_name, _ = next(iter(source.items()))
 
     if source_name == "grib-index":
-        return GribIndexCatalogue(context, hints, source)
+        return GribIndexCatalogue(context, interval_generator, source)
 
     if source_name == "mars":
         if "type" not in source[source_name]:
@@ -335,7 +335,7 @@ def build_catalogue(context, hints: dict, source) -> Catalogue:
             source[source_name]["levtype"] = "sfc"
             LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
 
-        interval_generator = interval_generator_factory(hints)
+        interval_generator = interval_generator_factory(interval_generator)
         return MarsCatalogue(context, interval_generator, source)
 
     raise ValueError(f"Unknown source_name for catalogue: {source_name}")

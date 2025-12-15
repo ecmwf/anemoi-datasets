@@ -197,7 +197,7 @@ def _compute_accumulations(
     dates: list[datetime.datetime],
     period: datetime.timedelta,
     source: Any,
-    hints: dict[str, Any] | None = None,
+    available: dict[str, Any] | None = None,
 ) -> Any:
     """Concrete accumulation logic.
 
@@ -215,6 +215,8 @@ def _compute_accumulations(
     source: Any,
     period: datetime.timedelta,
         The interval over which to accumulate (user-defined)
+    available: Any, optional
+        A description of the available periods in the data source. See documentation.
 
     Return
     ------
@@ -224,7 +226,7 @@ def _compute_accumulations(
 
     LOG.debug("💬 source for accumulations: %s", source)
 
-    cataloguer = build_catalogue(context, hints, source)
+    cataloguer = build_catalogue(context, available, source)
 
     def interval_from_valid_date_and_period(valid_date, period):
         # helper function to build accumulation interval from valid date and period
@@ -343,4 +345,4 @@ class Accumulations2Source(LegacySource):
                 raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
             available = [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
 
-        return _compute_accumulations(context, dates, source=source, period=period, hints=available)
+        return _compute_accumulations(context, dates, source=source, period=period, available=available)

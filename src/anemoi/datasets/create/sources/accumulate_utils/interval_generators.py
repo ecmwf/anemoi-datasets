@@ -11,7 +11,6 @@
 import datetime
 import logging
 from typing import Iterable
-from typing import Optional
 
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
 
@@ -52,14 +51,12 @@ def _normalise_candidates_function(config):
         start: datetime.datetime,
         end: datetime.datetime,
         current_base: datetime.datetime,
-        hints: Optional[datetime.datetime],
     ) -> Iterable[SignedInterval]:
         # Using the config list provided, this generates starting or ending intervals
         # for the given current_time
         # it follows the API defined in covering_intervals
         #
         # support for non-hourly steps could be added later if needed
-        del hints
         del start
         del end
         del current_base

@@ -138,7 +138,6 @@ def covering_intervals(
     end: datetime,
     candidates: Callable | list | tuple,
     /,
-    hints: dict = {},
     switch_penalty: int = 24 * 3600 * 7,
     max_delta: timedelta = timedelta(hours=24 * 2),
     error_on_fail: bool = True,
@@ -153,8 +152,6 @@ def covering_intervals(
 
         candidates: A function(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]
             that provides candidate intervals covering the current time.
-
-        hints: Additional hints to pass to the candidates function.
 
         switch_penalty: Penalty (in seconds) for switching bases between intervals.
 
@@ -196,9 +193,7 @@ def covering_intervals(
             LOG.warning(msg)
             return None
 
-        for interval in candidates(
-            state.current_time, current_base=state.current_base, start=start, end=end, hints=hints
-        ):
+        for interval in candidates(state.current_time, current_base=state.current_base, start=start, end=end):
             if interval.end == state.current_time:
                 interval = -interval
 
