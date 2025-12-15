@@ -52,6 +52,7 @@ dependencies = [
   "cfunits",
   "glom",
   "jsonschema",
+  "lru-dict",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
   "pyyaml",

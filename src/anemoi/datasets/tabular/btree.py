@@ -9,17 +9,69 @@
 
 
 import logging
-from threading import Lock
 from typing import List
 from typing import Optional
 from typing import Tuple
 
 import numpy as np
 import zarr
+from lru import LRU
 
 from .caching import FullCache
 
 LOG = logging.getLogger(__name__)
+
+
+class Page:
+    def __init__(
+        self,
+        /,
+        page_id: int,
+        left: int = 0,
+        right: int = 0,
+        entries: List[dict] | None = None,
+    ):
+        assert page_id > 0, page_id
+        self.page_id = page_id
+        self.left = left
+        self.right = right
+        self.entries = [] if entries is None else entries
+        self._keys = None
+
+    @property
+    def keys(self) -> List[int]:
+        if self._keys is None or len(self._keys) != len(self.entries):
+            self._keys = np.array([entry.key for entry in self.entries], dtype=np.int64)
+        return self._keys
+
+    @property
+    def count(self) -> int:
+        return len(self.entries)
+
+
+class NodePage(Page):
+    is_node = True
+
+
+class LeafPage(Page):
+    is_node = False
+
+
+class Entry:
+    def __init__(self, /, key: int):
+        self.key = key
+
+
+class NodeEntry(Entry):
+    def __init__(self, /, key: int, child_page: int):
+        super().__init__(key=key)
+        self.child_page = child_page
+
+
+class LeafEntry(Entry):
+    def __init__(self, /, key: int, value: Tuple[int, int]):
+        super().__init__(key=key)
+        self.value = value
 
 
 class ZarrBTree:
@@ -35,9 +87,11 @@ class ZarrBTree:
         self,
         path: str,
         name: str = "time_index",
-        page_size: int = 128,
+        page_size: int = 256,
         mode: str = "r",
-        chunk_sizes: int = 1024 * 1024,
+        chunk_sizes: int = 64 * 1024 * 1024,  # 64 MB
+        page_cache_size: int = 4096,
+        compressor=None,
     ):
         """Initialize B-tree with Zarr backend.
 
@@ -48,7 +102,7 @@ class ZarrBTree:
         """
 
         self.page_size = page_size
-        self.max_entries = max(4, page_size // 2)  # Minimum 4 for proper B-tree
+        self.max_entries = max(4, page_size)  # 4 because a b-tree needs at least 2 entries per node after a split
         self.path = path
 
         if isinstance(path, str):
@@ -57,22 +111,24 @@ class ZarrBTree:
         else:
             self.store = path
 
-        # Single array stores all pages:
-        # Column layout: [page_id, is_node, count, left, right,
-        #                 key0, val0_a, val0_b, key1, val1_a, val1_b, ..., keyN, valN_a, valN_b]
-        # Keys are int64 (datetime as seconds since epoch)
-        # Values are pairs of int64
-        # Each page row has: 5 metadata cols + (max_entries * 3) data cols
-
-        cols_per_page = 5 + (self.max_entries * 3)
-
-        LOG.info(
-            f"Initializing B-tree at {self.path}, page_size={self.page_size}, max_entries={self.max_entries}, cols_per_page={cols_per_page}"
-        )
+        if name in self.store and mode == "w":
+            # Overwrite existing
+            del self.store[name]
 
         if name in self.store:
             self.pages = self.store[name]
+            self.page_size = self.pages.attrs["page_size"]
+            self.max_entries = self.pages.attrs["max_entries"]
+            self.chunk_sizes = self.pages.attrs["chunk_sizes"]
         else:
+
+            # Single array stores all pages:
+            # Column layout: [is_node, count, left, right,
+            #                 key0, val0_a, val0_b, key1, val1_a, val1_b, ..., keyN, valN_a, valN_b]
+            # Keys are int64 (datetime as seconds since epoch)
+            # Values are pairs of int64
+            # Each page row has: 4 metadata cols + (max_entries * 3) data cols
+            cols_per_page = 4 + (self.max_entries * 3)
 
             row_size = cols_per_page * 8
             chunk = round(chunk_sizes / row_size)
@@ -81,233 +137,246 @@ class ZarrBTree:
             # Initialize with root page
             self.store.create_dataset(
                 name,
-                shape=(1, cols_per_page),
+                shape=(chunk, cols_per_page),
                 chunks=(chunk, cols_per_page),
                 dtype="int64",
                 fill_value=0,
-                # compressor=None,
+                compressor=compressor,
             )
             # Initialize root page (page_id=1, is_node=0/leaf, count=0)
             self.pages = self.store[name]
-            self.pages[0] = [1, 0, 0, 0, 0] + [0] * (self.max_entries * 3)
+            self.pages[0] = [0, 0, 0, 0] + [0] * (self.max_entries * 3)
 
             # Metadata
-            self.pages.attrs["next_page_id"] = 2
-            self.pages.attrs["root_page_id"] = 1
             self.pages.attrs["_ARRAY_DIMENSIONS"] = ["pages", "payloads"]
 
+            self.pages.attrs["root_page_id"] = 1
+            self.pages.attrs["number_of_rows"] = 1
+            self.pages.attrs["page_size"] = self.page_size
+            self.pages.attrs["max_entries"] = self.max_entries
+            self.pages.attrs["chunk_sizes"] = chunk_sizes
+
         self.pages = FullCache(self.pages)
-        self.lock = Lock()
+        self._number_of_rows = None
+        self._page_cache = LRU(page_cache_size)
+
+    def __del__(self):
+        try:
+            self.flush()
+        except Exception:
+            pass
 
     def flush(self):
         """Flush cached changes to Zarr array"""
-        with self.lock:
+        if hasattr(self.pages, "flush"):
             self.pages.flush()
 
-    def _get_page_row(self, page_id: int) -> Optional[int]:
-        """Find row index for a given page_id"""
-        # Linear search through page_ids (first column)
-        page_ids = self.pages[:, 0]
-        rows = np.where(page_ids == page_id)[0]
-        return int(rows[0]) if len(rows) > 0 else None
+    def _page_id_to_row(self, page_id: int) -> int:
+        """Convert page ID to row index"""
+        return page_id - 1
+
+    def _row_to_page_id(self, row: int) -> int:
+        """Convert row index to page ID"""
+        return row + 1
 
     def _read_page(self, page_id: int) -> dict:
         """Read a page from Zarr array"""
-        row = self._get_page_row(page_id)
-        if row is None:
+
+        if page_id in self._page_cache:
+            return self._page_cache[page_id]
+
+        row = self._page_id_to_row(page_id)
+        if not (row >= 0 and row < self.pages.shape[0]):
             raise ValueError(f"Page {page_id} not found")
 
         data = self.pages[row, :]
 
-        page = {
-            "page_id": int(data[0]),
-            "is_node": bool(data[1]),
-            "count": int(data[2]),
-            "left": int(data[3]),
-            "right": int(data[4]),
-            "entries": [],
-        }
+        is_node = data[0]
+        count = data[1]
+        left = data[2]
+        right = data[3]
+
+        PageClass = NodePage if is_node else LeafPage
+
+        entries = []
 
         # Read entries (key and value pair)
-        for i in range(page["count"]):
-            key_idx = 5 + (i * 3)
-            val_a_idx = 5 + (i * 3) + 1
-            val_b_idx = 5 + (i * 3) + 2
+        for i in range(count):
+            key_idx = 4 + (i * 3)
+            val_a_idx = 4 + (i * 3) + 1
 
-            if page["is_node"]:
+            if is_node:
                 # For nodes, val_a is child page_id, val_b is unused
-                page["entries"].append({"key": int(data[key_idx]), "child_page": int(data[val_a_idx])})
+                entries.append(NodeEntry(key=int(data[key_idx]), child_page=int(data[val_a_idx])))
             else:
                 # For leaves, val_a and val_b are the actual value pair
-                page["entries"].append(
-                    {
-                        "key": int(data[key_idx]),
-                        "value": (int(data[val_a_idx]), int(data[val_b_idx])),
-                    }
+                val_b_idx = 4 + (i * 3) + 2
+                entries.append(
+                    LeafEntry(
+                        key=int(data[key_idx]),
+                        value=(int(data[val_a_idx]), int(data[val_b_idx])),
+                    )
                 )
+
+        page = PageClass(
+            page_id=page_id,
+            left=left,
+            right=right,
+            entries=entries,
+        )
+
+        self._page_cache[page_id] = page
 
         return page
 
-    def _write_page(self, page: dict):
+    def _write_page(self, page: Page):
         """Write a page to Zarr array"""
-        row = self._get_page_row(page["page_id"])
-
-        if row is None:
-            # Allocate new row
-            current_shape = self.pages.shape
-            self.pages.resize(current_shape[0] + 1, current_shape[1])
-            row = current_shape[0]
+        row = self._page_id_to_row(page.page_id)
+        if not (row >= 0 and row < self.number_of_rows):
+            raise ValueError(f"Page {page.page_id} not found")
 
         # Build row data
         data = [
-            page["page_id"],
-            int(page["is_node"]),
-            page["count"],
-            page["left"],
-            page["right"],
+            int(page.is_node),
+            page.count,
+            page.left,
+            page.right,
         ]
 
         # Add entries
-        for entry in page["entries"]:
-            data.append(entry["key"])
-            if page["is_node"]:
-                data.append(entry["child_page"])
+        for entry in page.entries:
+            data.append(entry.key)
+            if page.is_node:
+                data.append(entry.child_page)
                 data.append(0)  # Unused for nodes
             else:
-                data.append(entry["value"][0])
-                data.append(entry["value"][1])
+                data.append(entry.value[0])
+                data.append(entry.value[1])
 
         # Pad with zeros
-        while len(data) < self.pages.shape[1]:
-            data.append(0)
+        if len(data) < self.pages.shape[1]:
+            data += [0] * (self.pages.shape[1] - len(data))
 
         self.pages[row, :] = data
+        self._page_cache[page.page_id] = page
 
     def _create_page(self, is_node: bool = False) -> dict:
         """Create a new empty page"""
-        page_id = self.pages.attrs["next_page_id"]
-        self.pages.attrs["next_page_id"] = page_id + 1
+        # Allocate new row
 
-        page = {
-            "page_id": page_id,
-            "is_node": is_node,
-            "count": 0,
-            "left": 0,
-            "right": 0,
-            "entries": [],
-        }
+        if self.number_of_rows >= self.pages.shape[0]:
+            # Resize Zarr array to add more pages
+            self.pages.resize(self.pages.shape[0] + self.pages.chunks[0], self.pages.shape[1])
+
+        new_row = self.number_of_rows
+        self.number_of_rows += 1
+
+        page_id = self._row_to_page_id(new_row)
+
+        PageClass = NodePage if is_node else LeafPage
+        page = PageClass(page_id=page_id)
 
         self._write_page(page)
         return page
 
-    def _find_child(self, page: dict, key: int) -> int:
-        """Find which child page to follow in a node"""
-        if page["count"] == 0:
-            return page["left"]
+    def _find_child(self, page: Page, key: int) -> int:
+        """Find which child page to follow in a node using binary search"""
+        if page.count == 0:
+            return page.left
 
-        if key < page["entries"][0]["key"]:
-            return page["left"]
+        # Extract keys for binary search
+        keys = page.keys
 
-        # Find the rightmost entry where entry.key <= key
-        for i in range(page["count"] - 1, -1, -1):
-            if key >= page["entries"][i]["key"]:
-                return page["entries"][i]["child_page"]
+        # Find insertion point using bisect
+        idx = np.searchsorted(keys, key, "right")
 
-        return page["left"]
+        if idx == 0:
+            return page.left
+        else:
+            return page.entries[idx - 1].child_page
 
     def _search(self, page_id: int, key: int) -> Optional[Tuple[int, int]]:
         """Search for a key, return value pair if found"""
         page = self._read_page(page_id)
 
-        if page["is_node"]:
+        if page.is_node:
             child_id = self._find_child(page, key)
             return self._search(child_id, key)
 
-        # Leaf page - search entries
-        for entry in page["entries"]:
-            if entry["key"] == key:
-                return entry["value"]
+        # Leaf page - binary search in entries
+        keys = page.keys
+        idx = np.searchsorted(keys, key, "left")
+
+        if idx < len(keys) and keys[idx] == key:
+            return page.entries[idx].value
 
         return None
 
-    def _insert_in_leaf(self, page: dict, key: int, value: Tuple[int, int]) -> bool:
+    def _insert_in_leaf(self, page: Page, key: int, value: Tuple[int, int]) -> bool:
         """Insert key-value into a leaf page. Returns True if key was updated."""
-        # Find insertion point
-        insert_idx = page["count"]
-        # keys = [entry["key"] for entry in page["entries"]]
-        # insert_idx = bisect.bisect_left(keys, key)
-        for i, entry in enumerate(page["entries"]):
-            if entry["key"] == key:
-                # Update existing
-                entry["value"] = value
-                self._write_page(page)
-                return True
-            if entry["key"] > key:
-                insert_idx = i
-                break
+        # Binary search for insertion point
+        keys = page.keys
+        idx = np.searchsorted(keys, key, "left")
 
-        # Insert new entry
-        page["entries"].insert(insert_idx, {"key": key, "value": value})
-        page["count"] += 1
+        if idx < len(keys) and keys[idx] == key:
+            # Update existing
+            page.entries[idx].value = value
+            self._write_page(page)
+            return True
+
+        # Insert new entry at correct position
+        page.entries.insert(idx, LeafEntry(key=key, value=value))
         self._write_page(page)
+
         return False
 
-    def _split_leaf(self, page: dict) -> Tuple[dict, int]:
+    def _split_leaf(self, page: Page) -> Tuple[dict, int]:
         """Split a full leaf page, return (new_page, split_key)"""
-        mid = page["count"] // 2
+        mid = page.count // 2
 
         new_page = self._create_page(is_node=False)
-        new_page["entries"] = page["entries"][mid:]
-        new_page["count"] = len(new_page["entries"])
+        new_page.entries = page.entries[mid:]
 
         # Update linked list
-        new_page["right"] = page["right"]
-        new_page["left"] = page["page_id"]
-        page["right"] = new_page["page_id"]
+        new_page.right = page.right
+        new_page.left = page.page_id
+        page.right = new_page.page_id
 
-        page["entries"] = page["entries"][:mid]
-        page["count"] = len(page["entries"])
-
-        split_key = new_page["entries"][0]["key"]
+        page.entries = page.entries[:mid]
+        split_key = new_page.entries[0].key
 
         self._write_page(page)
         self._write_page(new_page)
 
         return new_page, split_key
 
-    def _split_node(self, page: dict) -> Tuple[dict, int]:
+    def _split_node(self, page: Page) -> Tuple[dict, int]:
         """Split a full node page, return (new_page, split_key)"""
-        mid = page["count"] // 2
+        mid = page.count // 2
 
         new_page = self._create_page(is_node=True)
 
         # Split key goes up to parent
-        split_key = page["entries"][mid]["key"]
+        split_key = page.entries[mid].key
 
         # Right entries go to new page
-        new_page["entries"] = page["entries"][mid + 1 :]
-        new_page["count"] = len(new_page["entries"])
-        new_page["left"] = page["entries"][mid]["child_page"]
+        new_page.entries = page.entries[mid + 1 :]
+        new_page.left = page.entries[mid].child_page
 
         # Keep left entries in original page
-        page["entries"] = page["entries"][:mid]
-        page["count"] = len(page["entries"])
+        page.entries = page.entries[:mid]
 
         self._write_page(page)
         self._write_page(new_page)
 
         return new_page, split_key
 
-    def _insert_in_node(self, page: dict, key: int, child_page_id: int):
+    def _insert_in_node(self, page: Page, key: int, child_page_id: int):
         """Insert key and child pointer into a node page"""
-        insert_idx = page["count"]
-        for i, entry in enumerate(page["entries"]):
-            if entry["key"] > key:
-                insert_idx = i
-                break
+        # Binary search for insertion point
+        idx = np.searchsorted(page.keys, key, "left")
 
-        page["entries"].insert(insert_idx, {"key": key, "child_page": child_page_id})
-        page["count"] += 1
+        page.entries.insert(idx, NodeEntry(key=key, child_page=child_page_id))
         self._write_page(page)
 
     def _insert_recursive(self, page_id: int, key: int, value: Tuple[int, int]) -> Optional[Tuple[int, int]]:
@@ -316,7 +385,7 @@ class ZarrBTree:
         """
         page = self._read_page(page_id)
 
-        if page["is_node"]:
+        if page.is_node:
             # Recurse to child
             child_id = self._find_child(page, key)
             result = self._insert_recursive(child_id, key, value)
@@ -324,31 +393,56 @@ class ZarrBTree:
             if result:
                 split_key, new_child_id = result
 
-                # Insert split key into this node
-                self._insert_in_node(page, split_key, new_child_id)
-                page = self._read_page(page_id)  # Reload after modification
-
-                # Check if this node needs splitting
-                if page["count"] >= self.max_entries:
+                # Check if this node is already full before inserting
+                if page.count >= self.max_entries:
+                    # Split the node first
                     new_page, up_key = self._split_node(page)
-                    return (up_key, new_page["page_id"])
+
+                    # Determine which page gets the new entry
+                    if split_key < up_key:
+                        # Insert into left (original) page
+                        page = self._read_page(page_id)
+                        self._insert_in_node(page, split_key, new_child_id)
+                    else:
+                        # Insert into right (new) page
+                        self._insert_in_node(new_page, split_key, new_child_id)
+
+                    return (up_key, new_page.page_id)
+                else:
+                    # Space available, insert normally
+                    self._insert_in_node(page, split_key, new_child_id)
 
             return None
         else:
-            # Leaf page
-            updated = self._insert_in_leaf(page, key, value)
+            # Leaf page - check for existing key using binary search
+            keys = page.keys
+            idx = np.searchsorted(keys, key, "left")
 
-            if updated:
-                return None  # Just updated existing key, no split
+            if idx < len(keys) and keys[idx] == key:
+                # Update existing key (no split needed)
+                page.entries[idx].value = value
+                self._write_page(page)
+                return None
 
-            page = self._read_page(page_id)  # Reload
-
-            # Check if split needed
-            if page["count"] >= self.max_entries:
+            # Check if leaf is already full before inserting
+            if page.count >= self.max_entries:
+                # Split the leaf first
                 new_page, split_key = self._split_leaf(page)
-                return (split_key, new_page["page_id"])
 
-            return None
+                # Determine which page gets the new entry
+                if key < split_key:
+                    # Insert into left (original) page
+                    page = self._read_page(page_id)
+                    self._insert_in_leaf(page, key, value)
+                else:
+                    # Insert into right (new) page
+                    self._insert_in_leaf(new_page, key, value)
+
+                return (split_key, new_page.page_id)
+            else:
+                # Space available, insert normally
+                self._insert_in_leaf(page, key, value)
+                return None
 
     @property
     def root_page_id(self) -> int:
@@ -357,6 +451,17 @@ class ZarrBTree:
     @root_page_id.setter
     def root_page_id(self, value: int):
         self.pages.attrs["root_page_id"] = value
+
+    @property
+    def number_of_rows(self) -> int:
+        if self._number_of_rows is None:
+            self._number_of_rows = self.pages.attrs["number_of_rows"]
+        return self._number_of_rows
+
+    @number_of_rows.setter
+    def number_of_rows(self, value: int):
+        self.pages.attrs["number_of_rows"] = value
+        self._number_of_rows = value
 
     def set(self, key_int: int, value: Tuple[int, int]):
         """Set a key-value pair where value is a tuple of two integers"""
@@ -371,12 +476,11 @@ class ZarrBTree:
             old_root_id = root_id
             new_root = self._create_page(is_node=True)
 
-            new_root["count"] = 1
-            new_root["left"] = old_root_id
-            new_root["entries"] = [{"key": split_key, "child_page": new_page_id}]
+            new_root.left = old_root_id
+            new_root.entries = [NodeEntry(key=split_key, child_page=new_page_id)]
 
             self._write_page(new_root)
-            self.root_page_id = new_root["page_id"]
+            self.root_page_id = new_root.page_id
 
     def get(self, key: int) -> Optional[Tuple[int, int]]:
         """Get value pair for a key"""
@@ -387,7 +491,7 @@ class ZarrBTree:
         """Find the leaf page that would contain the given key"""
         page = self._read_page(page_id)
 
-        if page["is_node"]:
+        if page.is_node:
             child_id = self._find_child(page, key)
             return self._find_leaf_for_key(child_id, key)
         else:
@@ -409,25 +513,23 @@ class ZarrBTree:
 
         while True:
             # Process entries in current leaf
-            for entry in current_page["entries"]:
-                if entry["key"] > key2:
+            for entry in current_page.entries:
+                if entry.key > key2:
                     # Past the end of range, stop
                     return
-                if entry["key"] >= key1:
+                if entry.key >= key1:
                     # Within range, add to results
-                    results.append((entry["key"], entry["value"]))
+                    results.append((entry.key, entry.value))
 
             # Move to next leaf if it exists
-            if current_page["right"] > 0:
-                current_page = self._read_page(current_page["right"])
+            if current_page.right > 0:
+                current_page = self._read_page(current_page.right)
             else:
                 # No more leaves
                 return
 
     def boundaries(self, key1: int, key2: int) -> Tuple[Tuple[int, Tuple[int, int]], Tuple[int, Tuple[int, int]]]:
         """Get all first and last entries in key range"""
-
-        assert key1 <= key2, (key1, key2)
 
         class FirstLast:
             def __init__(self):
@@ -450,29 +552,49 @@ class ZarrBTree:
         self._range_search(self.root_page_id, key1, key2, results)
         return results
 
-    def start_end(self, page_id: int = None, depth: int = 0):
-        """Print tree structure"""
-        if page_id is None:
-            page_id = self.root_page_id
+    def first_last_keys(self):
+        """Get both the first (minimum) and last (maximum) keys in the tree.
+        More efficient than calling first_key() and last_key() separately.
+        Returns (first_key, last_key)
+        """
 
-        page = self._read_page(page_id)
+        root = self._read_page(self.root_page_id)
 
-        start, end = None, None
+        # Find first key by following leftmost path
+        page = root
+        while page.is_node:
+            if page.left > 0:
+                page = self._read_page(page.left)
+            elif page.count > 0:
+                page = self._read_page(page.entries[0].child_page)
+            else:
+                return (None, None)  # Empty tree
 
-        if not page["is_node"]:
-            return (
-                (page["entries"][0]["key"], page["entries"][0]["value"]),
-                (page["entries"][-1]["key"], page["entries"][-1]["value"]),
-            )
-        else:
-            if page["left"] > 0:
-                start, end = self.start_end(page["left"], depth + 1)
-            for entry in page["entries"]:
-                s, e = self.start_end(entry["child_page"], depth + 1)
-                start = min(start, s) if start else s
-                end = max(end, e) if end else e
+        if page.count == 0:
+            return (None, None)  # Empty tree
 
-        return start, end
+        first_key = page.entries[0].key
+
+        # Find last key by following rightmost path from root
+        page = root
+        while page.is_node:
+            if page.count > 0:
+                page = self._read_page(page.entries[-1].child_page)
+            elif page.left > 0:
+                page = self._read_page(page.left)
+            else:
+                # This shouldn't happen if we found a first_key, but handle it
+                return (first_key, first_key)
+
+        # Follow right links to find rightmost leaf
+        while page.right > 0:
+            page = self._read_page(page.right)
+
+        assert page.count >= 0
+
+        last_key = page.entries[-1].key
+
+        return (first_key, last_key)
 
     def dump(self, page_id: int = None, depth: int = 0, label=lambda x: x):
         """Print tree structure"""
@@ -482,18 +604,18 @@ class ZarrBTree:
         page = self._read_page(page_id)
         indent = "  " * depth
 
-        page_type = "NODE" if page["is_node"] else "LEAF"
-        print(f"{indent}{page_type} [id={page['page_id']}, count={page['count']} right={page['right']}]")
+        page_type = "NODE" if page.is_node else "LEAF"
+        print(f"{indent}{page_type} [id={page.page_id}, count={page.count} right={page.right}]")
 
-        if not page["is_node"]:
-            for entry in page["entries"]:
-                print(f"{indent}  {label(entry['key'])} -> {entry['value']}")
+        if not page.is_node:
+            for entry in page.entries:
+                print(f"{indent}  {label(entry.key)} -> {entry.value}")
         else:
-            if page["left"] > 0:
-                self.dump(page["left"], depth + 1, label)
-            for entry in page["entries"]:
-                print(f"{indent}  key: {label(entry['key'])}")
-                self.dump(entry["child_page"], depth + 1, label)
+            if page.left > 0:
+                self.dump(page.left, depth + 1, label)
+            for entry in page.entries:
+                print(f"{indent}  key: {label(entry.key)}")
+                self.dump(entry.child_page, depth + 1, label)
 
     def height(self, page_id: int = None, depth: int = 0):
         """Print tree structure"""
@@ -504,13 +626,13 @@ class ZarrBTree:
 
         result = depth
 
-        if not page["is_node"]:
+        if not page.is_node:
             return result
         else:
-            if page["left"] > 0:
-                result = max(result, self.height(page["left"], depth + 1))
-            for entry in page["entries"]:
-                result = max(result, self.height(entry["child_page"], depth + 1))
+            if page.left > 0:
+                result = max(result, self.height(page.left, depth + 1))
+            for entry in page.entries:
+                result = max(result, self.height(entry.child_page, depth + 1))
 
         return result
 
@@ -523,13 +645,13 @@ class ZarrBTree:
 
         result = 0
 
-        if not page["is_node"]:
-            return len(page["entries"])
+        if not page.is_node:
+            return len(page.entries)
         else:
-            if page["left"] > 0:
-                result += self.size(page["left"], depth + 1)
-            for entry in page["entries"]:
-                result += self.size(entry["child_page"], depth + 1)
+            if page.left > 0:
+                result += self.size(page.left, depth + 1)
+            for entry in page.entries:
+                result += self.size(entry.child_page, depth + 1)
 
         return result
 
@@ -541,13 +663,13 @@ class ZarrBTree:
 
         result = 0
 
-        if not page["is_node"]:
-            return sum(entry["value"][1] for entry in page["entries"])
+        if not page.is_node:
+            return sum(entry.value[1] for entry in page.entries)
         else:
-            if page["left"] > 0:
-                result += self.count(page["left"], depth + 1)
-            for entry in page["entries"]:
-                result += self.count(entry["child_page"], depth + 1)
+            if page.left > 0:
+                result += self.count(page.left, depth + 1)
+            for entry in page.entries:
+                result += self.count(entry.child_page, depth + 1)
 
         return result
 
@@ -557,13 +679,13 @@ class ZarrBTree:
 
         page = self._read_page(page_id)
 
-        if not page["is_node"]:
-            yield from page["entries"]
+        if not page.is_node:
+            yield from page.entries
         else:
-            if page["left"] > 0:
-                yield from self._iter(page["left"], depth + 1)
-            for entry in page["entries"]:
-                yield from self._iter(entry["child_page"], depth + 1)
+            if page.left > 0:
+                yield from self._iter(page.left, depth + 1)
+            for entry in page.entries:
+                yield from self._iter(entry.child_page, depth + 1)
 
     def __iter__(self):
         yield from self._iter()

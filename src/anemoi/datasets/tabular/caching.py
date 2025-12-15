@@ -21,6 +21,7 @@ class ChunksCache:
         self._offset = 0
         self._dirty = 0
         self.dtype = arr.dtype
+        self.chunks = arr.chunks
 
     def __del__(self):
         self.flush()
@@ -143,6 +144,8 @@ class FullCache:
         self.dirty = 0
         self.shape = self.cache.shape
         self.attrs = arr.attrs
+        self.dtype = arr.dtype
+        self.chunks = arr.chunks
 
     def __setitem__(self, key, value):
         self.cache[key] = value
