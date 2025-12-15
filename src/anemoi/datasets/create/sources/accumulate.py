@@ -257,6 +257,7 @@ def _compute_accumulations(
     for accumulator in accumulators:
         LOG.debug(f"💬 {accumulator} will need:")
         for v in accumulator.coverage:
+            assert isinstance(v, SignedInterval), type(v)
             link = Link(interval=v, accumulator=accumulator, catalogue=cataloguer)
             LOG.debug("  💬 ", link)
             links.append(link)

@@ -15,6 +15,7 @@ from typing import Iterable
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
+from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
 
 LOG = logging.getLogger(__name__)
 
@@ -27,6 +28,9 @@ class IntervalGenerator:
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
+
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        return covering_intervals(start, end, self)
 
 
 def _normalise_candidates_function(config):

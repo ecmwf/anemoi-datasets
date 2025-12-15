@@ -13,12 +13,14 @@ import hashlib
 import json
 import logging
 from copy import deepcopy
+from typing import TYPE_CHECKING
 from typing import Any
 
 from earthkit.data.utils.availability import Availability
 
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
+if TYPE_CHECKING:
+    from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
+
 from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 
 LOG = logging.getLogger(__name__)
@@ -110,7 +112,7 @@ class Catalogue:
         self.source = source
 
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
-        intervals = covering_intervals(start, end, self.interval_generator)
+        intervals = self.interval_generator.covering_intervals(start, end)
 
         LOG.debug(f"  Found covering intervals: for {start} to {end}:")
         for c in intervals:
@@ -214,20 +216,20 @@ class GribIndexCatalogue(Catalogue):
             yield dict(param=p)
 
     # use this ?
-    def search_possible_intervals(self, start, end, debug=False):
-        fields = self.source_object(self.context, [start, end])
-        intervals = []
-        for field in fields:
-            if field.metadata("stepType") != "accum":
-                continue
-            date = str(field.metadata("date")).zfill(8)
-            time = str(field.metadata("time")).zfill(4)
-            base_datetime = datetime.datetime.strptime(f"{date}{time}", "%Y%m%d%H%M")
+    # def search_possible_intervals(self, start, end, debug=False):
+    #     fields = self.source_object(self.context, [start, end])
+    #     intervals = []
+    #     for field in fields:
+    #         if field.metadata("stepType") != "accum":
+    #             continue
+    #         date = str(field.metadata("date")).zfill(8)
+    #         time = str(field.metadata("time")).zfill(4)
+    #         base_datetime = datetime.datetime.strptime(f"{date}{time}", "%Y%m%d%H%M")
 
-            start_step, end_step = field.metadata("startStep"), field.metadata("endStep")
-            start_step, end_step = datetime.timedelta(hours=start_step), datetime.timedelta(hours=end_step)
-            intervals.append(SignedInterval(base_datetime + start_step, base_datetime + end_step, base_datetime))
-        return intervals
+    #         start_step, end_step = field.metadata("startStep"), field.metadata("endStep")
+    #         start_step, end_step = datetime.timedelta(hours=start_step), datetime.timedelta(hours=end_step)
+    #         intervals.append(SignedInterval(base_datetime + start_step, base_datetime + end_step, base_datetime))
+    #     return intervals
 
 
 def _normalise_request(request: dict[str, Any]) -> dict[str, Any]:
@@ -268,7 +270,6 @@ class MarsCatalogue(Catalogue):
 
     def _build_request(self, link) -> dict:
         interval = link.interval
-        assert isinstance(interval, SignedInterval), type(interval)
         request = {}
         for k, v in self.source_request.items():
             request[k] = v

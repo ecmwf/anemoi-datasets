@@ -136,7 +136,7 @@ class HeapState:
 def covering_intervals(
     start: datetime,
     end: datetime,
-    candidates: Callable | list | tuple,
+    candidates: Callable,
     /,
     switch_penalty: int = 24 * 3600 * 7,
     max_delta: timedelta = timedelta(hours=24 * 2),
@@ -150,7 +150,7 @@ def covering_intervals(
 
         end: End datetime of the target interval.
 
-        candidates: A function(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]
+        candidates: A function(current: datetime, current_base: Optional[datetime], start: datetime, end: datetime) -> Iterable[SignedInterval]
             that provides candidate intervals covering the current time.
 
         switch_penalty: Penalty (in seconds) for switching bases between intervals.
