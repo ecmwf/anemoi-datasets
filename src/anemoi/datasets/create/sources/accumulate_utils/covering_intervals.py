@@ -16,7 +16,6 @@ from datetime import timedelta
 from heapq import heappop
 from heapq import heappush
 from typing import Callable
-from typing import Iterable
 from typing import List
 from typing import Optional
 
@@ -124,81 +123,6 @@ class SignedInterval:
         return f"SignedInterval({start}{period}->{end}{base_str} )"
 
 
-def normalise_candidates_function(config):
-    assert isinstance(config, list), (type(config), config)
-
-    def interval_without_base(current_time, delta, steps):
-        start = datetime(current_time.year, current_time.month, current_time.day, steps[0]) + delta
-        end = start + timedelta(hours=steps[1] - steps[0])
-        return SignedInterval(start=start, end=end, base=None)
-
-    def interval_with_base(current_time, delta, steps, base_hour):
-        try:
-            base_hour = int(base_hour)
-        except ValueError:
-            raise ValueError(f"Invalid base_hour: {base_hour} ({type(base_hour)})")
-
-        base = datetime(current_time.year, current_time.month, current_time.day, base_hour) + delta
-        start = base + timedelta(hours=steps[0])
-        end = base + timedelta(hours=steps[1])
-        return SignedInterval(start=start, end=end, base=base)
-
-    def candidates(
-        current_time: datetime, start: datetime, end: datetime, current_base: datetime, hints: Optional[datetime]
-    ) -> Iterable[SignedInterval]:
-        # Using the config list provided, this generates starting or ending intervals
-        # for the given current_time
-        # it follows the API defined in covering_intervals
-        #
-        # support for non-hourly steps could be added later if needed
-        del hints
-        del start
-        del end
-        del current_base
-
-        # we could have "extend_to_deltas" in config, but for now we just hardcode
-        # if we do that, we need to find a better name than "extend_to_deltas"
-        extend_to_deltas = [timedelta(days=d) for d in [-1, 0, 1]]
-
-        if not isinstance(config, (tuple, list)):
-            raise ValueError(f"Expected config to be a list or tuple, got {type(config)}: {config}")
-        for _ in config:
-            if not isinstance(_, (list, tuple)):
-                raise ValueError(f"Invalid config entry: {_} has type({type(_)}) in {config=}")
-            if len(_) != 2:
-                raise ValueError(f"Invalid config entry: {_} has length {len(_)} in {config=}")
-
-        intervals = []
-        for delta in extend_to_deltas:
-            for base_hour, steps_list in config:
-                if isinstance(steps_list, str):
-                    steps_list = steps_list.split("/")
-                assert isinstance(steps_list, list), steps_list
-                for steps in steps_list:
-                    if isinstance(steps, str):
-                        assert "-" in steps, steps
-                        steps = tuple(map(int, steps.split("-")))
-                    assert isinstance(steps, tuple) and len(steps) == 2, steps
-
-                    if base_hour == "*":
-                        base_hour = None
-
-                    if base_hour is None:
-                        intervals.append(interval_without_base(current_time, delta, steps))
-                        continue
-                    intervals.append(interval_with_base(current_time, delta, steps, base_hour))
-
-        intervals = [i for i in intervals if i.start == current_time or current_time == i.end]
-
-        # quite important to sort by -base.timestamp() to prioritise most recent base in case of ties
-        # in some cases, we may want to sort by other criteria
-        intervals = sorted(intervals, key=lambda x: -(x.base or x.start).timestamp())
-
-        return intervals
-
-    return candidates
-
-
 @dataclass(order=True)
 class HeapState:
     total_cost: float
@@ -229,7 +153,6 @@ def covering_intervals(
 
         candidates: A function(current: datetime, current_base: Optional[datetime]) -> Iterable[SignedInterval]
             that provides candidate intervals covering the current time.
-            Alternatively, can also be a config list to be passed to normalise_candidates_function.
 
         hints: Additional hints to pass to the candidates function.
 
@@ -243,9 +166,6 @@ def covering_intervals(
         A list of SignedInterval objects covering [start, end], or None if no coverage found and error_on_fail is False.
 
     """
-    if not callable(candidates):
-        candidates = normalise_candidates_function(candidates)
-
     target_length = (end - start).total_seconds()
 
     pq: List[HeapState] = []  # pq: priority queue

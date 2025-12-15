@@ -115,19 +115,13 @@ class Accumulator:
             raise ValueError(f"SignedInterval {interval} not in todo list of accumulator {self}")
         self.todo.remove(interval)
 
-        if self.is_complete():
-            # all intervals for accumulation have been processed
-            # final list of outputs is ready to be updated
-            self.write(field)  # field is used as a template
-            self.completed = True
-
     def field_to_interval(self, field: Any):
         valid_date = field.metadata("valid_date")
         step = field.metadata("step")
         date = valid_date - datetime.timedelta(hours=step)
         return SignedInterval(date=date, step=step)
 
-    def write(self, field: Any) -> None:
+    def get_accumulated_field(self, field: Any) -> None:
         """Writing output inside a new field at the end of the accumulation.
         The field is simply used as a template.
 
@@ -148,17 +142,54 @@ class Accumulator:
                 f"Negative values when computing accumutation for {self}): min={np.amin(self.values)} max={np.amax(self.values)}"
             )
 
-        startStep = datetime.timedelta(hours=0)
-        endStep = self.interval.max - self.interval.min
-
-        accumfield = new_field_from_numpy(
-            self.values, template=field, startStep=startStep, endStep=endStep, stepType="accum"
+        self.completed = True
+        return new_accumulated_field_with_valid_time(
+            template=field,
+            values=self.values,
+            valid_date=self.valid_date,
+            period=self.interval.end - self.interval.start,
         )
-        self.out = new_field_with_valid_datetime(accumfield, self.valid_date)
 
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
         return f"{self.__class__.__name__}({self.interval}, {key}, {len(self.coverage)-len(self.todo)}/{len(self.coverage)} already accumulated)"
+
+
+def new_accumulated_field_with_valid_time(
+    template, values, valid_date: datetime.datetime, period: datetime.timedelta
+) -> Any:
+    MISSING_VALUE = 1e-38
+    assert np.all(values != MISSING_VALUE)
+
+    startStep = datetime.timedelta(hours=0)
+    endStep = period
+
+    hours = endStep.total_seconds() / 3600
+
+    if template.metadata("edition") == 1 and (hours > 254 or not hours.is_integer()):
+        # this is a special case for GRIB edition 1 which only supports integer hours up to 254
+        assert hours.is_integer(), f"edition 1 accumulation period must be integer hours, got {hours}"
+        assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
+        accumfield = new_field_from_numpy(
+            values,
+            template=template,
+            stepType="instant",
+            step=hours,
+            check_nans=True,
+            missing_value=MISSING_VALUE,
+        )
+    else:
+        # this is the normal case for GRIB edition 2. And with edition 1 when hours are integer and <=254
+        accumfield = new_field_from_numpy(
+            values,
+            template=template,
+            stepType="accum",
+            startStep=startStep,
+            endStep=endStep,
+            check_nans=True,
+            missing_value=MISSING_VALUE,
+        )
+    return new_field_with_valid_datetime(accumfield, valid_date)
 
 
 def _compute_accumulations(
@@ -196,6 +227,7 @@ def _compute_accumulations(
     cataloguer = build_catalogue(context, hints, source)
 
     def interval_from_valid_date_and_period(valid_date, period):
+        # helper function to build accumulation interval from valid date and period
         if not isinstance(valid_date, datetime.datetime):
             raise TypeError("valid_date must be a datetime.datetime instance")
         if not isinstance(period, datetime.timedelta):
@@ -214,6 +246,11 @@ def _compute_accumulations(
         for key in cataloguer.get_all_keys():
             accumulators.append(Accumulator(interval, key=key, coverage=coverage))
 
+    # building links from accumulators to intervals they need
+    # each link represent a field to fetch from the source
+    # i.e. one link per input field
+    # one accumulator may generate multiple links if it needs multiple input fields
+    # and one link may be used by multiple accumulators if they need the same input field
     links = []
     for accumulator in accumulators:
         LOG.debug(f"💬 {accumulator} will need:")
@@ -222,10 +259,29 @@ def _compute_accumulations(
             LOG.debug("  💬 ", link)
             links.append(link)
 
+    out = []
+    # for each field provided by the catalogue, find which accumulators need it and perform accumulation
     for field, values, link in cataloguer.retrieve_fields(links):
         link.accumulator.compute(field, values, link)
+        if link.accumulator.is_complete():
+            # all intervals for accumulation have been processed
+            # final list of outputs is ready to be updated
+            accumulated_field = link.accumulator.get_accumulated_field(field)  # field is used as a template
+            out.append(accumulated_field)
 
-    for a in accumulators:
+    ds = new_fieldlist_from_list(out)
+
+    # tmp = temp_file()
+    # path = tmp.path
+    # out = new_grib_output(path)
+    # for f in ds:
+    #     out.write(f)
+    # out.close()
+    # ds = ekd.from_source("file", path)
+
+    # check that each accumulator is complete
+    for link in links:
+        a = link.accumulator
         if not a.is_complete():
             a.is_complete(debug=True)
             LOG.error(f"Accumulator incomplete: {a}")
@@ -233,9 +289,6 @@ def _compute_accumulations(
             for v in a.done:
                 LOG.error(f"  {v}")
             raise AssertionError("missing periods for accumulator, stopping.")
-
-    # final data source
-    ds = new_fieldlist_from_list([a.out for a in accumulators])
 
     # the resulting datasource has one field per valid date, parameter and ensemble member
     keys = list(cataloguer.get_all_keys())

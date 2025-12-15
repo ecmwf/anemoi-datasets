@@ -14,6 +14,8 @@ import json
 import logging
 from copy import deepcopy
 from typing import Any
+from typing import Iterable
+from typing import Optional
 
 from earthkit.data.utils.availability import Availability
 
@@ -21,6 +23,8 @@ from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import S
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
 
 LOG = logging.getLogger(__name__)
+DEBUG = False  # True
+trace = print if DEBUG else lambda *args, **kwargs: None
 
 
 def _member(field: Any) -> int:
@@ -106,31 +110,8 @@ class Catalogue:
         self.hints = hints
         self.source = source
 
-    def _build_request(self, link) -> dict:
-        interval = link.interval
-        assert isinstance(interval, SignedInterval), type(interval)
-        request = {}
-        for k, v in self.source_request.items():
-            request[k] = v
-        for k, v in link.accumulator.key.items():
-            request[k] = v
-        step = interval.max - interval.base
-        hours = step.total_seconds() // 3600
-        minutes = (step.total_seconds() // 60) % 60
-        assert minutes == 0, "Only full hours supported in grib/mars"
-        request["step"] = int(hours)
-        request["date"] = interval.base.strftime("%Y%m%d")
-        request["time"] = interval.base.strftime("%H%M")
-        return request
-
-    def candidate_intervals(self, current_time: datetime.datetime, **kwargs):
-        # If not overridden in subclasses, the informations must be provided in the config
-        raise NotImplementedError(f"Available periods must be provided in the config for {self.__class__.__name__}")
-
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
-        candidates = self.hints or self.candidate_intervals
-
-        intervals = covering_intervals(start, end, candidates, hints=self.hints)
+        intervals = covering_intervals(start, end, self.hints, hints=self.hints)
 
         LOG.debug(f"  Found covering intervals: for {start} to {end}:")
         for c in intervals:
@@ -138,8 +119,7 @@ class Catalogue:
         return intervals
 
 
-def match_fields_to_links(field, links: list[Link], debug=False):
-    dprint = print if debug else lambda *args, **kwargs: None
+def match_fields_to_links(field, links: list[Link]):
     values = field.values
 
     date_str = str(field.metadata("validityDate")).zfill(8)
@@ -149,29 +129,70 @@ def match_fields_to_links(field, links: list[Link], debug=False):
     date_str = str(field.metadata("date")).zfill(8)
     time_str = str(field.metadata("time")).zfill(4)
     base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-    dprint(f"         field valid_date={valid_date}, base_datetime={base_datetime}")
+    trace("  Matching field:", field)
+
+    endStep = field.metadata("endStep")
+    startStep = field.metadata("startStep")
+    typeStep = field.metadata("stepType")
+
+    # if endStep == 0 and startStep > 0:
+    #   startStep, endStep = endStep, startStep
+
+    if startStep == endStep:
+        startStep = 0
+        assert typeStep == "instant", "If startStep == endStep, stepType must be 'instant'"
+    assert startStep < endStep, (startStep, endStep)
+
+    length = datetime.timedelta(hours=endStep) - datetime.timedelta(hours=startStep)
+
+    assert valid_date == base_datetime + datetime.timedelta(hours=endStep)
+
+    print(
+        f"    field: valid_date={valid_date}, base_datetime={base_datetime}, startStep={startStep}, endStep={endStep}, length={length}"
+    )
 
     used = False
     for link in links:
+
         if valid_date != link.interval.max:
-            dprint(f"  Skipping {link} as valid_date {valid_date} does not match {link.interval.max}")
+            trace(f"  Skipping {link} as valid_date {valid_date} does not match {link.interval.max}")
             continue
-        if link.interval.base is not None and base_datetime != link.interval.base:
-            dprint(f"  Skipping {link} as base_datetime {base_datetime} does not match {link.interval.base}")
+
+        if length != (link.interval.max - link.interval.min):
+            trace(f"  Skipping {link} as length {length} does not match {link.interval}")
             continue
+
+        if link.interval.base is not None:
+            # forecast interval, basetime is defined
+            if base_datetime != link.interval.base:
+                trace(f"  Skipping {link} as base_datetime {base_datetime} does not match {link.interval.base}")
+                continue
+            assert endStep == (link.interval.max - link.interval.base).total_seconds() / 3600, (endStep, link.interval)
+            assert startStep == (link.interval.min - link.interval.base).total_seconds() / 3600, (
+                startStep,
+                link.interval,
+            )
+
         if not link.accumulator.is_field_needed(field):
-            dprint(f"  Skipping {link} as field not needed by its accumulator")
+            trace(f"  Skipping {link} as field not needed by its accumulator")
             continue
-        dprint(f"   ✅ match found {field} sent to {link}")
+
+        # some extra checks for paranoia
+        assert valid_date == link.interval.max, (valid_date, link.interval)
+        assert length == (link.interval.max - link.interval.min), (length, link.interval)
+        if link.interval.base is not None:
+            assert base_datetime == link.interval.base, (base_datetime, link.interval)
+
+        trace(f"   ✅ match found {field} sent to {link}")
 
         used = True
         yield (field, values, link)
 
     if not used:
-        print(f"  ❌ field {field} not used by any accumulator")
-        raise ValueError("unused field, stopping")
+        LOG.error(f"  ❌ field {field} not used by any accumulator")
+        raise ValueError(f"unused field {field}, stopping")
     else:
-        dprint(f"   ✅ field {field} used by at least one accumulator")
+        trace(f"   ✅ field {field} used by at least one accumulator")
 
 
 class GribIndexCatalogue(Catalogue):
@@ -246,9 +267,24 @@ class MarsCatalogue(Catalogue):
 
         return from_source("mars", req)
 
-    def retrieve_fields(self, links: list[Link], debug=False):
-        dprint = print if debug else lambda *args, **kwargs: None
+    def _build_request(self, link) -> dict:
+        interval = link.interval
+        assert isinstance(interval, SignedInterval), type(interval)
+        request = {}
+        for k, v in self.source_request.items():
+            request[k] = v
+        for k, v in link.accumulator.key.items():
+            request[k] = v
+        step = interval.max - interval.base
+        hours = step.total_seconds() // 3600
+        minutes = (step.total_seconds() // 60) % 60
+        assert minutes == 0, "Only full hours supported in grib/mars"
+        request["step"] = int(hours)
+        request["date"] = interval.base.strftime("%Y%m%d")
+        request["time"] = interval.base.strftime("%H%M")
+        return request
 
+    def retrieve_fields(self, links: list[Link], debug=False):
         requests = [self._build_request(link) for link in links]
 
         for r in requests:
@@ -257,15 +293,15 @@ class MarsCatalogue(Catalogue):
 
                 r = use_grib_paramid(r)
 
-        dprint("💬 requests:")
+        trace("💬 requests:")
         for req in requests:
-            dprint("  request:", req)
+            trace("  request:", req)
 
         factorised = list(factorise_requests(requests))
 
-        dprint("💬 factorised requests:")
+        trace("💬 factorised requests:")
         for req in factorised:
-            dprint("  request:", req)
+            trace("  request:", req)
 
         ds = self.context.empty_result()
         for req in factorised:
@@ -282,65 +318,152 @@ class MarsCatalogue(Catalogue):
                 yield dict(param=p, number=n)
 
 
-class EaOperCatalogue(MarsCatalogue):
-    # todo : check wether these intervals are correct, or if it is 0-1/1-2/...
-    candidate_intervals = [
-        (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
-        (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
-    ]
+class IntervalGenerator:
+    def __init__(self, func):
+        if not callable(func):
+            func = _normalise_candidates_function(func)
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
 
 
-class EaEndaCatalogue(MarsCatalogue):
-    candidate_intervals = [
-        (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
-        (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
-    ]
+def _normalise_candidates_function(config):
+    assert isinstance(config, list), (type(config), config)
+
+    def interval_without_base(current_time, delta, steps):
+        start = datetime.datetime(current_time.year, current_time.month, current_time.day, steps[0]) + delta
+        end = start + datetime.timedelta(hours=steps[1] - steps[0])
+        return SignedInterval(start=start, end=end, base=None)
+
+    def interval_with_base(current_time, delta, steps, base_hour):
+        try:
+            base_hour = int(base_hour)
+        except ValueError:
+            raise ValueError(f"Invalid base_hour: {base_hour} ({type(base_hour)})")
+
+        base = datetime.datetime(current_time.year, current_time.month, current_time.day, base_hour) + delta
+        start = base + datetime.timedelta(hours=steps[0])
+        end = base + datetime.timedelta(hours=steps[1])
+        return SignedInterval(start=start, end=end, base=base)
+
+    def candidates(
+        current_time: datetime.datetime,
+        start: datetime.datetime,
+        end: datetime.datetime,
+        current_base: datetime.datetime,
+        hints: Optional[datetime.datetime],
+    ) -> Iterable[SignedInterval]:
+        # Using the config list provided, this generates starting or ending intervals
+        # for the given current_time
+        # it follows the API defined in covering_intervals
+        #
+        # support for non-hourly steps could be added later if needed
+        del hints
+        del start
+        del end
+        del current_base
+
+        # we could have "extend_to_deltas" in config, but for now we just hardcode
+        # if we do that, we need to find a better name than "extend_to_deltas"
+        extend_to_deltas = [datetime.timedelta(days=d) for d in [-1, 0, 1]]
+
+        if not isinstance(config, (tuple, list)):
+            raise ValueError(f"Expected config to be a list or tuple, got {type(config)}: {config}")
+        for _ in config:
+            if not isinstance(_, (list, tuple)):
+                raise ValueError(f"Invalid config entry: {_} has type({type(_)}) in {config=}")
+            if len(_) != 2:
+                raise ValueError(f"Invalid config entry: {_} has length {len(_)} in {config=}")
+
+        intervals = []
+        for delta in extend_to_deltas:
+            for base_hour, steps_list in config:
+                if isinstance(steps_list, str):
+                    steps_list = steps_list.split("/")
+                assert isinstance(steps_list, list), steps_list
+                for steps in steps_list:
+                    if isinstance(steps, str):
+                        assert "-" in steps, steps
+                        steps = tuple(map(int, steps.split("-")))
+                    assert isinstance(steps, tuple) and len(steps) == 2, steps
+
+                    if base_hour == "*":
+                        base_hour = None
+
+                    if base_hour is None:
+                        intervals.append(interval_without_base(current_time, delta, steps))
+                        continue
+                    intervals.append(interval_with_base(current_time, delta, steps, base_hour))
+
+        intervals = [i for i in intervals if i.start == current_time or current_time == i.end]
+
+        # quite important to sort by -base.timestamp() to prioritise most recent base in case of ties
+        # in some cases, we may want to sort by other criteria
+        intervals = sorted(intervals, key=lambda x: -(x.base or x.start).timestamp())
+
+        return intervals
+
+    return candidates
 
 
-class OdOperCatalogue(MarsCatalogue):
-    # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
-    @property
-    def candidate_intervals(self):
-        steps = [(0, end) for end in list(range(1, 91)) + list(range(93, 145, 3)) + list(range(150, 241, 6))]
-        return {0: steps, 12: steps}
+def interval_generator_factory(config) -> IntervalGenerator:
+    while not isinstance(config, IntervalGenerator):
+        config = _interval_generator_factory(config)
+    return config
 
 
-class OdEldaCatalogue(MarsCatalogue):
-    # https://apps.ecmwf.int/mars-catalogue/?stream=elda&levtype=sfc&time=06%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-31&type=fc&class=od
-    @property
-    def candidate_intervals(self):
-        # something to do here related to anoffset?
-        # ❌ not tested yet
-        steps = [f"{0}-{i}" for i in range(1, 13)]
-        return {6: steps, 18: steps}
+def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
+    match config:
+        case IntervalGenerator():
+            return config
 
+        case dict():
+            type_ = config.get("type", None)
+            raise NotImplementedError(f"IntervalGenerator of type {type_} is not implemented yet")
 
-class OdEnfoCatalogue(MarsCatalogue):
-    # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
-    # not done. Use the config to provide available periods
-    pass
+        case list() | tuple():
+            return IntervalGenerator(config)
 
+        case "era5-oper":
+            return [
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+            ]
+        case "era5-enda":
+            return [
+                (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
+                (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
+            ]
 
-class L5OperCatalogue(MarsCatalogue):
-    # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
-    @property
-    def candidate_intervals(self):
-        # ❌ not tested yet
-        steps = [(0, i) for i in "/".split("1/2/3/4/5/6/9/12/15/18/21/24/27")]
-        return [[base, steps] for base in [0, 3, 6, 9, 12, 15, 18, 21]]
+        case "od-oper":
+            # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
+            return [(0, end) for end in list(range(1, 91))]
 
+        case "od-elda":
+            # https://apps.ecmwf.int/mars-catalogue/?stream=elda&levtype=sfc&time=06%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-31&type=fc&class=od
+            steps = [f"{0}-{i}" for i in range(1, 13)]
+            return ((6, steps), (18, steps))
 
-class RrOperFrMsEcCatalogue(MarsCatalogue):
-    # todo: check if the availability depends on the dates
-    # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
-    # ❌ not tested yet
-    candidate_intervals = [[0, [(0, i) for i in range(1, 22, 3)]]]
+        case "od-enfo":
+            # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
+            raise NotImplementedError("od-enfo interval generator not implemented yet")
 
+        case "cerra-se-al-ec":
+            # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
+            return [[0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]]
+        case "cerra-fr-ms-ec":
+            # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
+            return [[0, [(0, i) for i in range(1, 22, 3)]]]
 
-class RrOperSeAlEcCatalogue(MarsCatalogue):
-    # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
-    # ❌ not tested yet
-    candidate_intervals = [[0, [(0, i) for i in (1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30)]]]
+        case "l5-oper":
+            # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
+            return [
+                [base, [(0, i) for i in "/".split("1/2/3/4/5/6/9/12/15/18/21/24/27")]]
+                for base in [0, 3, 6, 9, 12, 15, 18, 21]
+            ]
+        case _:
+            raise ValueError(f"Unknown interval generator config: {config}")
 
 
 def build_catalogue(context, hints: dict, source) -> Catalogue:
@@ -361,39 +484,7 @@ def build_catalogue(context, hints: dict, source) -> Catalogue:
             source[source_name]["levtype"] = "sfc"
             LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
 
-        class_ = source[source_name].get("class", None)
-        stream = source[source_name].get("stream", None)
-        origin = source[source_name].get("origin", None)
-
-        match (class_, stream, origin):
-            case ("ea", "oper", _) | ("ea", None, _):
-                cls = EaOperCatalogue
-            case ("ea", "enda", _):
-                cls = EaEndaCatalogue
-            case ("rr", "oper", "se-al-ec"):
-                cls = RrOperSeAlEcCatalogue
-            case ("rr", "oper", "fr-ms-ec"):
-                cls = RrOperFrMsEcCatalogue
-            # todo: implement these when needed
-            # case ("rr", "oper", "no-ar-ce"):
-            #     cls = RrOperNoArCeCatalogue
-            # case ("rr", "oper", "no-ar-cw"):
-            #     cls = RrOperNoArCwCatalogue
-            # case ("rr", "oper", "no-ar-pa"):
-            #     cls = RrOperNoArPaCatalogue
-            case ("l5", "oper", _):
-                cls = L5OperCatalogue
-            case ("od", "oper", _):
-                cls = OdOperCatalogue
-            # case ("od", "enfo", _):
-            #     cls = OdEnfoCatalogue
-            case ("od", "elda", _):
-                cls = OdEldaCatalogue
-            case _:
-                if not hints:
-                    raise ValueError("More information are required for this type of requests")
-                cls = MarsCatalogue
-
-        return cls(context, hints, source)
+        interval_generator = interval_generator_factory(hints)
+        return MarsCatalogue(context, interval_generator, source)
 
     raise ValueError(f"Unknown source_name for catalogue: {source_name}")
