@@ -15,6 +15,7 @@ import numpy as np
 import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
+from earthkit.data.utils.dates import to_datetime
 
 from anemoi.datasets.use.misc import as_first_date
 from anemoi.datasets.use.misc import as_last_date
@@ -56,14 +57,18 @@ class WindowView:
         self.btree = btree if btree is not None else ZarrBTree(self.store, mode="r")
         self.data = ChunksCache(self.store["data"])
 
-        self.start_date = start_date if start_date is not None else self.actual_start_end_dates[0]
-        self.end_date = end_date if end_date is not None else self.actual_start_end_dates[1]
+        self.start_date = to_datetime(start_date if start_date is not None else self.actual_start_end_dates[0])
+        self.end_date = to_datetime(end_date if end_date is not None else self.actual_start_end_dates[1])
 
         if self.start_date > self.end_date:
             raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
 
         self.frequency = frequency_to_timedelta(frequency)
         self.window = window if isinstance(window, Window) else Window(window)
+
+        assert isinstance(self.start_date, datetime.datetime)
+        assert isinstance(self.end_date, datetime.datetime)
+        assert isinstance(self.frequency, datetime.timedelta)
 
         self._len = (self.end_date - self.start_date) // self.frequency + 1
 
@@ -113,9 +118,8 @@ class WindowView:
 
     @cached_property
     def actual_start_end_dates(self):
-        start, end = self.btree.start_end()
-        print("actual_start_end_dates", start, end)
-        return datetime.datetime.fromtimestamp(start[0]), datetime.datetime.fromtimestamp(end[0])
+        start, end = self.btree.first_last_keys()
+        return datetime.datetime.fromtimestamp(start), datetime.datetime.fromtimestamp(end)
 
     def __len__(self):
         return self._len

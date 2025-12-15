@@ -77,6 +77,32 @@ Note that we can implement a similar scheme for fields, if needed.
  2 - When combining similar  observations from several sources, can we normalise them using the same statistics?
 
 
+### Zarr array layout
+
+#### data
+
+The `data` table contains one row per observation. It has four mandatory columns (`date`, `time`, `latitude`, `longitude`), followed by additional columns that are specific to each data source.
+
+Rows are sorted in lexicographic order of the columns.
+
+
+| Date | Time      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
+|----------------|-------------------|----------|-----------|----------------|------------------|----|----|
+| 2020-01-01               | 00:00:00  | 51.5074  | -0.1278   | 1013.2         | 7.5              | ...   | 23.5   |
+| 2020-01-01               | 06:00:--  | 48.8566  | 2.3522    | 1012.8         | 6.8              | ...   | -4.5   |
+| 2020-01-01              | 18:07:54  | 40.7128  | -74.0060  | 1014.1         | 5.2              | ...   | 12.9  |
+| 2020-01-01               | 23:02:01  | 35.6895  | 139.6917  | 1011.7         | 8.0              | ...   | 0.0  |
+| 2020-01-02             |  00:00:05   | 55.7558  | 37.6173   | 1013.5         | -2.1             | ...   | -4.2   |
+| ...  | ... | ... | ... | ... | ... | ... | ... |
+
+The `date` and `time` columns are separated because `float32` encoding is used. Dates are encoded as days since the Unix epoch. The largest integer that can be represented exactly by a 32-bit float is 2²⁴ − 1 = 16,777,215. When interpreted as seconds, this corresponds to approximately 194 days, which is insufficient. When interpreted as days, it corresponds to roughly 46,000 years, which is sufficient.
+
+### Index
+
+Ranges of rows sharing the same date/time are indexed together for fast access when extracting windows of observations.
+
+The index is a Zarr-backed [b+tree](https://en.wikipedia.org/wiki/B-tree) stored in the array `time_index`.
+
 ## Scope of Change
 
 <!--Specify which Anemoi packages/modules will be affected by this decision.-->
