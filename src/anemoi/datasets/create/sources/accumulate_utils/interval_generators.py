@@ -21,10 +21,8 @@ LOG = logging.getLogger(__name__)
 
 
 class IntervalGenerator:
-    def __init__(self, func):
-        if not callable(func):
-            func = _normalise_candidates_function(func)
-        self.func = func
+    def __init__(self, config):
+        self.func = _normalise_candidates_function(config)
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
@@ -101,7 +99,7 @@ def _normalise_candidates_function(config):
 
         intervals = [i for i in intervals if i.start == current_time or current_time == i.end]
 
-        # quite important to sort by -base.timestamp() to prioritise most recent base in case of ties
+        # quite important to reverse sort by base to prioritise most recent base in case of ties
         # in some cases, we may want to sort by other criteria
         intervals = sorted(intervals, key=lambda x: -(x.base or x.start).timestamp())
 
