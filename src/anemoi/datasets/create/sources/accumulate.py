@@ -300,7 +300,7 @@ def _compute_accumulations(
 
 
 @source_registry.register("accumulate")
-class Accumulations2Source(LegacySource):
+class AccumulateSource(LegacySource):
 
     @staticmethod
     def _execute(
@@ -308,7 +308,6 @@ class Accumulations2Source(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period,
-        data_accumulation_period: str | int | datetime.timedelta | None = None,
         available=None,
     ) -> Any:
         """Accumulation source callable function.
@@ -335,14 +334,4 @@ class Accumulations2Source(LegacySource):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
-
-        if data_accumulation_period is not None:
-            data_accumulation_period = frequency_to_timedelta(data_accumulation_period)
-            if available is not None:
-                LOG.warning("'available' will be overridden by 'data_accumulation_period'")
-            if not (data_accumulation_period.total_seconds() % 3600 == 0):
-                # only multiple of 1 hour supported for now
-                raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
-            available = [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
-
         return _compute_accumulations(context, dates, source=source, period=period, available=available)

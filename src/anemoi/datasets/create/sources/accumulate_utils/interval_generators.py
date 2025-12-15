@@ -12,6 +12,8 @@ import datetime
 import logging
 from typing import Iterable
 
+from anemoi.utils.dates import frequency_to_timedelta
+
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
 
 LOG = logging.getLogger(__name__)
@@ -153,6 +155,19 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
                 [base, [(0, i) for i in "/".split("1/2/3/4/5/6/9/12/15/18/21/24/27")]]
                 for base in [0, 3, 6, 9, 12, 15, 18, 21]
             ]
+
+        case str():
+            try:
+                data_accumulation_period = frequency_to_timedelta(config)
+            except Exception as e:
+                raise ValueError(f"Unknown interval generator config: {config}") from e
+
+            hours = data_accumulation_period.total_seconds() / 3600
+            if not (hours.is_integer() and hours > 0):
+                raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
+
+            return [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
+
         case _:
             raise ValueError(f"Unknown interval generator config: {config}")
 

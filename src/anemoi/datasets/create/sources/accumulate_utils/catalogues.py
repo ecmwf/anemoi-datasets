@@ -322,6 +322,7 @@ def build_catalogue(context, interval_generator: dict, source) -> Catalogue:
     assert len(source) == 1, f"Source must have exactly one key, got {list(source.keys())}"
 
     source_name, _ = next(iter(source.items()))
+    interval_generator = interval_generator_factory(interval_generator)
 
     if source_name == "grib-index":
         return GribIndexCatalogue(context, interval_generator, source)
@@ -335,7 +336,6 @@ def build_catalogue(context, interval_generator: dict, source) -> Catalogue:
             source[source_name]["levtype"] = "sfc"
             LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
 
-        interval_generator = interval_generator_factory(interval_generator)
         return MarsCatalogue(context, interval_generator, source)
 
     raise ValueError(f"Unknown source_name for catalogue: {source_name}")
