@@ -111,7 +111,7 @@ class Catalogue:
         self.interval_generator = interval_generator
         self.source = source
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list["SignedInterval"]:
         intervals = self.interval_generator.covering_intervals(start, end)
 
         LOG.debug(f"  Found covering intervals: for {start} to {end}:")

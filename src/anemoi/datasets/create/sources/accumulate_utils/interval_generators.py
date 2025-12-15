@@ -10,6 +10,7 @@
 
 import datetime
 import logging
+from abc import abstractmethod
 from typing import Iterable
 
 from anemoi.utils.dates import frequency_to_timedelta
@@ -21,14 +22,35 @@ LOG = logging.getLogger(__name__)
 
 
 class IntervalGenerator:
+    @abstractmethod
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        pass
+
+
+class SearchableIntervalGenerator(IntervalGenerator):
     def __init__(self, config):
         self.func = _normalise_candidates_function(config)
 
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        return covering_intervals(start, end, self.func)
+
+
+class AccumulatedFromBaseIntervalGenerator(IntervalGenerator):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
 
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
-        return covering_intervals(start, end, self)
+        raise NotImplementedError("covering_intervals not implemented yet for AccumulatedFromBaseIntervalGenerator")
+
+
+class AccumulatedFromPreviousStepIntervalGenerator(IntervalGenerator):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        raise NotImplementedError(
+            "covering_intervals not implemented yet for AccumulatedFromPreviousStepIntervalGenerator"
+        )
 
 
 def _normalise_candidates_function(config):
@@ -113,12 +135,17 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
         case IntervalGenerator():
             return config
 
+        case {"type": "accumulated-from-base", **params}:
+            return AccumulatedFromBaseIntervalGenerator(**params)
+
+        case {"type": "accumulated-from-previous-step", **params}:
+            return AccumulatedFromPreviousStepIntervalGenerator(**params)
+
         case dict():
-            type_ = config.get("type", None)
-            raise NotImplementedError(f"IntervalGenerator of type {type_} is not implemented yet")
+            raise NotImplementedError(f"Interval generator from dict not implemented yet: {config}")
 
         case list() | tuple():
-            return IntervalGenerator(config)
+            return SearchableIntervalGenerator(config)
 
         case "era5-oper":
             return [
