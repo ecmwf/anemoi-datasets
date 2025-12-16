@@ -23,11 +23,10 @@ LOG = logging.getLogger(__name__)
 
 
 class SignedInterval:
-    def __init__(self, start: datetime, end: datetime, **extras):
+    def __init__(self, start: datetime, end: datetime, base: Optional[datetime] = None):
         self.start = start
         self.end = end
-        self.base = extras.pop("base", None)
-        self.extras = extras
+        self.base = base
 
     @property
     def length(self) -> float:
@@ -47,25 +46,19 @@ class SignedInterval:
         return max(self.start, self.end)
 
     def __neg__(self):
-        return SignedInterval(start=self.end, end=self.start, base=self.base, **self.extras)
+        return SignedInterval(start=self.end, end=self.start, base=self.base)
 
     def __eq__(self, other):
         if not isinstance(other, SignedInterval):
             return NotImplemented
-        if self.start != other.start or self.end != other.end or self.base != other.base:
+        if self.start != other.start or self.end != other.end:
             return False
-        for k in set(self.extras) | set(other.extras):
-            LOG.warning(f"Comparing key: {k} in {self.__class__.__name__}")
-            if k == "base":
-                continue
-            if k not in self.extras or k not in other.extras:
-                return False
-            if self.extras[k] != other.extras[k]:
-                return False
+        if self.base != other.base:
+            return False
         return True
 
     def __hash__(self):
-        return hash((self.start, self.end, self.base, tuple(sorted(self.extras.items()))))
+        return hash((self.start, self.end, self.base))
 
     def __rich__(self):
         return self.__repr__(colored=True)

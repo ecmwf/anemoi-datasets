@@ -35,22 +35,22 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return covering_intervals(start, end, self.func)
 
 
-class AccumulatedFromBaseIntervalGenerator(IntervalGenerator):
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
+class AccumulatedFromStartIntervalGenerator(SearchableIntervalGenerator):
+    def __init__(self, basetime, frequency, last_step):
+        config = []
+        for base in basetime:
+            for i in range(0, last_step, frequency):
+                config.append([base, [f"0-{i+frequency}"]])
+        super().__init__(config)
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
-        raise NotImplementedError("covering_intervals not implemented yet for AccumulatedFromBaseIntervalGenerator")
 
-
-class AccumulatedFromPreviousStepIntervalGenerator(IntervalGenerator):
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
-        raise NotImplementedError(
-            "covering_intervals not implemented yet for AccumulatedFromPreviousStepIntervalGenerator"
-        )
+class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
+    def __init__(self, basetime, frequency, last_step):
+        config = []
+        for base in basetime:
+            for i in range(0, last_step, frequency):
+                config.append([base, [f"{i}-{i+frequency}"]])
+        super().__init__(config)
 
 
 def _normalise_candidates_function(config):
@@ -136,7 +136,13 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
             return config
 
         case {"type": "accumulated-from-base", **params}:
-            return AccumulatedFromBaseIntervalGenerator(**params)
+            return AccumulatedFromStartIntervalGenerator(**params)
+
+        case {"accumulated-from-base": params}:
+            return AccumulatedFromStartIntervalGenerator(**params)
+
+        case {"accumulated-from-previous-step": params}:
+            return AccumulatedFromPreviousStepIntervalGenerator(**params)
 
         case {"type": "accumulated-from-previous-step", **params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)

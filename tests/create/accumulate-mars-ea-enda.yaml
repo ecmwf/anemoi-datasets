@@ -10,9 +10,19 @@ dates:
 input:
   accumulate:
     period: 6h
-    available:
-      - [6, "0-3/3-6/6-9/9-12/12-15/15-18"]
-      - [18, "0-3/3-6/6-9/9-12/12-15/15-18"]
+
+    # available:
+    #   - [6, "0-3/3-6/6-9/9-12/12-15/15-18"]
+    #   - [18, "0-3/3-6/6-9/9-12/12-15/15-18"]
+
+    # available:
+    #     type: accumulated-from-previous-step
+    #     basetime: [6, 18]
+    #     frequency: 3
+    #     last_step: 18
+
+    available: 'era-enda'
+
     source:
       mars:
         expver: "0001"

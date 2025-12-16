@@ -13,18 +13,15 @@ import hashlib
 import json
 import logging
 from copy import deepcopy
-from typing import TYPE_CHECKING
 from typing import Any
 
 from earthkit.data.utils.availability import Availability
 
-if TYPE_CHECKING:
-    from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
-
+from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
 from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 
 LOG = logging.getLogger(__name__)
-DEBUG = False  # True
+DEBUG = False
 trace = print if DEBUG else lambda *args, **kwargs: None
 
 
@@ -120,17 +117,10 @@ class Catalogue:
         return intervals
 
 
-def match_fields_to_links(field, links: list[Link]):
-    values = field.values
-
-    date_str = str(field.metadata("validityDate")).zfill(8)
-    time_str = str(field.metadata("validityTime")).zfill(4)
-    valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-
+def field_to_interval(field):
     date_str = str(field.metadata("date")).zfill(8)
     time_str = str(field.metadata("time")).zfill(4)
     base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-    trace("  Matching field:", field)
 
     endStep = field.metadata("endStep")
     startStep = field.metadata("startStep")
@@ -144,56 +134,65 @@ def match_fields_to_links(field, links: list[Link]):
         assert typeStep == "instant", "If startStep == endStep, stepType must be 'instant'"
     assert startStep < endStep, (startStep, endStep)
 
-    length = datetime.timedelta(hours=endStep) - datetime.timedelta(hours=startStep)
+    start_step = datetime.timedelta(hours=startStep)
+    end_step = datetime.timedelta(hours=endStep)
 
-    assert valid_date == base_datetime + datetime.timedelta(hours=endStep)
+    trace(f"    field: {startStep=}, {endStep=}")
 
-    print(
-        f"    field: valid_date={valid_date}, base_datetime={base_datetime}, startStep={startStep}, endStep={endStep}, length={length}"
+    interval = SignedInterval(
+        start=base_datetime + start_step,
+        end=base_datetime + end_step,
+        base=base_datetime,
     )
 
-    used = False
+    date_str = str(field.metadata("validityDate")).zfill(8)
+    time_str = str(field.metadata("validityTime")).zfill(4)
+    valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
+    assert valid_date == interval.max, (valid_date, interval)
+
+    trace(f"    field interval: {interval}")
+
+    return interval
+
+
+def match_fields_to_links(field, links: list[Link]):
+    values = field.values
+    trace("  Matching field:", field)
+
+    field_interval = field_to_interval(field)
+
+    used = 0
     for link in links:
+        requested_interval = link.interval if link.interval.sign > 0 else -link.interval
 
-        if valid_date != link.interval.max:
-            trace(f"  Skipping {link} as valid_date {valid_date} does not match {link.interval.max}")
+        if field_interval.min != requested_interval.min:
+            trace(f"  Skipping {link} as start does not match {field_interval.min} != {requested_interval.min}")
             continue
 
-        if length != (link.interval.max - link.interval.min):
-            trace(f"  Skipping {link} as length {length} does not match {link.interval}")
+        if field_interval.max != requested_interval.max:
+            trace(f"  Skipping {link} as end does not match {field_interval.max} != {requested_interval.max}")
             continue
 
-        if link.interval.base is not None:
-            # forecast interval, basetime is defined
-            if base_datetime != link.interval.base:
-                trace(f"  Skipping {link} as base_datetime {base_datetime} does not match {link.interval.base}")
+        if requested_interval.base is not None:
+            # forecast interval requested : basetime is defined
+            if field_interval.base != requested_interval.base:
+                trace(f"  Skipping {link} as base does not match {field_interval.base} != {requested_interval.base}")
                 continue
-            assert endStep == (link.interval.max - link.interval.base).total_seconds() / 3600, (endStep, link.interval)
-            assert startStep == (link.interval.min - link.interval.base).total_seconds() / 3600, (
-                startStep,
-                link.interval,
-            )
 
         if not link.accumulator.is_field_needed(field):
             trace(f"  Skipping {link} as field not needed by its accumulator")
             continue
 
-        # some extra checks for paranoia
-        assert valid_date == link.interval.max, (valid_date, link.interval)
-        assert length == (link.interval.max - link.interval.min), (length, link.interval)
-        if link.interval.base is not None:
-            assert base_datetime == link.interval.base, (base_datetime, link.interval)
-
         trace(f"   ✅ match found {field} sent to {link}")
 
-        used = True
+        used += 1
         yield (field, values, link)
 
     if not used:
         LOG.error(f"  ❌ field {field} not used by any accumulator")
-        raise ValueError(f"unused field {field}, stopping")
+        raise ValueError(f"Unused field {field}, stopping. {field_interval}")
     else:
-        trace(f"   ✅ field {field} used by at least one accumulator")
+        trace(f"   ✅ field {field} used by {used} accumulator(s)")
 
 
 class GribIndexCatalogue(Catalogue):
