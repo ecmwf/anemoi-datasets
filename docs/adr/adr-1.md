@@ -191,6 +191,12 @@ When combining similar observations from several sources, can we normalise them 
 
 ### Building datasets
 
+#### Sources
+
+#### Filters
+
+#### Incremental/parallel build
+
 ## Scope of Change
 
 <!--Specify which Anemoi packages/modules will be affected by this decision.-->
