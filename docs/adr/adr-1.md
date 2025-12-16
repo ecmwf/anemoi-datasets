@@ -10,12 +10,12 @@ Proposed - 30/04/2025
 
 <!--What is the issue that we are seeing that is motivating this decision or change?-->
 
-The objective of this change is to support observations data which is not regular.
+The objective of this change is to support observations data which are not regular.
 
-In contrast with the fields data where each date contain the same number of points,
+In contrast with the fields data where each date contains the same number of points,
 in the observations data, the number of points can change for every time window.
 
-To allow storing data with irregular shape, we need to use another format than the zarr used for fields.
+To allow storing data with irregular shape, we need to use another format than the Zarr used for fields.
 An experimental implementation using xarray-zarr has been developed and is not optimised for ML training.
 
 ## High-level principles
@@ -35,12 +35,7 @@ An experimental implementation using xarray-zarr has been developed and is not o
 - Combining several types of observations (or fields and observations) will be handled by the data loader at training time.
 - Information about which data sources were used during training must be carried through to inference via the checkpoint metadata.
 - As with fields, the open_dataset call will allow users to specify run-time transformations on the data, such as thinning, sub-area extraction, etc. This feature will allow researchers to experiment without needing to recreate datasets.
-- For observations, date-time are *rounded* to the nearest second
-
-
-
-
-
+- For observations, date-times are *rounded* to the nearest second
 
 ### Zarr array layout
 
@@ -62,6 +57,10 @@ Rows are sorted in lexicographic order of the columns.
 
 The `date` and `time` columns are separated because `float32` encoding is used. Dates are encoded as days since the Unix epoch. The largest integer that can be represented exactly by a 32-bit float is 2²⁴ − 1 = 16,777,215. When interpreted as seconds, this corresponds to approximately 194 days, which is insufficient. When interpreted as days, it corresponds to roughly 46,000 years, which is sufficient.
 
+#### Chunking
+
+Because of the variability of the size of samples, it is not possible to select a "best" chunking. We will set the chunk sizes to match the best I/O block size (64MB ~ 256MB on Lustre). Chunks will also be cached in memory to avoid unnecessary reads.
+
 ### Index
 
 Ranges of rows sharing the same date/time are indexed together for fast access when extracting windows of observations.
@@ -69,7 +68,8 @@ Ranges of rows sharing the same date/time are indexed together for fast access w
 The index is a Zarr-backed [b+tree](https://en.wikipedia.org/wiki/B-tree) stored in the array `time_index`.
 
 ### Using the dataset
-Example of a call to `open_datasets`:
+
+Example of a call to `open_dataset`:
 
 
 ```python
@@ -81,11 +81,11 @@ ds = open_dataset(
   frequency="6h")
 ```
 
-The parameters `path`, `start`, `end`, and `frequency` have the same meaning as for fields. As with fields, `start` and `end` can be full date-times. If there are not, they are interaly transformed to [full dates](https://anemoi.readthedocs.io/projects/datasets/en/latest/using/subsetting.html)
+The parameters `path`, `start`, `end`, and `frequency` have the same meaning as for fields. As with fields, `start` and `end` can be full date-times. If they are not, they are internally transformed to [full dates](https://anemoi.readthedocs.io/projects/datasets/en/latest/using/subsetting.html)
 
 #### Windows
 
-Windows are **relative** time intervals that can be open or closed at each end. A round braket indicates an open end, while a square bracket indicates a closed end. The default units are hours.
+Windows are **relative** time intervals that can be open or closed at each end. A round bracket indicates an open end, while a square bracket indicates a closed end. The default units are hours.
 
 Examples:
 
@@ -99,7 +99,7 @@ Examples:
 
 Unlike for fields, where the `start` and `end` must be within the list of available dates, in the case of observations, `start` and `end` can be anything, and empty records will be returned to the user when no observations are available for a given window.
 
-The dates of the dataset is then defined as all dates between `start` and `end` with a step of `frequency`:
+The dates of the dataset are then defined as all dates between `start` and `end` with a step of `frequency`:
 
 ```python
 result = []
@@ -109,15 +109,15 @@ while date <= end:
   date += frequency
 ```
 
-The pseudo code above builds the list returned by `ds.dates`.
+The pseudo-code above builds the list returned by `ds.dates`.
 
-As a result, number of samples is:
+As a result, the number of samples is:
 
 ```python
 n = (end - start) // frequency + 1
 ```
 
-which is also the lenght of the dataset:
+which is also the length of the dataset:
 
 ```python
 len(ds)
@@ -128,55 +128,28 @@ len(ds)
 
 A sample `ds[i]` is defined by the start date and the frequency (i.e., the date of the sample). The `window` specifies how many observations around the sample date should be considered part of the sample.
 
-So the sample `ds[i]` will return all observations around the ith date according to the window (the example below ingores the open/close ends of the window):
+So the sample `ds[i]` will return all observations around the ith date according to the window (the example below ignores the open/close ends of the window):
 
 ```python
 date = start + i * frequency
 return all_records_between( date + window.start, date + window.end)
 ```
 
-When the user requests data that does not exist for a given window, an empty sample is returned, provided that the requested dates lie between `start` and `end`. Otherwise, an error is raised.
+When the user requests data that do not exist for a given window, an empty sample is returned, provided that the requested dates lie between `start` and `end`. Otherwise, an error is raised.
 
 #### Sample format
 
-What does `ds[i]` return to the user? Unlike fields, the sample needs to contain the actual dates and position of the observations, plus their time relative to the start of the window.
+What does `ds[i]` return to the user? Unlike fields, the sample needs to contain the actual dates and positions of the observations, plus their time relative to the start of the window.
 
-Sereval options for what `ds[i]` can be:
+Several options for what `ds[i]` can be:
 
-#### Option 1 (raw records)
 
-The records are returned as is, and it is the user's resposability to make sense of the information.
-
-| Date | Time      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
-|----------------|-------------------|----------|-----------|----------------|------------------|----|----|
-| 2020-01-01               | 00:00:00  | 51.5074  | -0.1278   | 1013.2         | 7.5              | ...   | 23.5   |
-| 2020-01-01               | 06:00:08  | 48.8566  | 2.3522    | 1012.8         | 6.8              | ...   | -4.5   |
-| 2020-01-01              | 18:07:54  | 40.7128  | -74.0060  | 1014.1         | 5.2              | ...   | 12.9  |
-| 2020-01-01               | 23:02:01  | 35.6895  | 139.6917  | 1011.7         | 8.0              | ...   | 0.0  |
-| 2020-01-02             |  00:00:05   | 55.7558  | 37.6173   | 1013.5         | -2.1             | ...   | -4.2   |
-| ...  | ... | ... | ... | ... | ... | ... | ... |
-
-#### Option 2 - (Recreate a date/time column)
-
-_anemoi-dataset_ can recombine the `date` and `time` into a single column. Remember that date and time were split because of the
-lack of precision of `float32`. This means that the record must be cast to a `float64` before being returned to the user.
-
-| Datetime      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
-|-----------------------------------|----------|-----------|----------------|------------------|----|----|
-| 2020-01-01T00:00:00  | 51.5074  | -0.1278   | 1013.2         | 7.5              | ...   | 23.5   |
-| 2020-01-01T06:00:08  | 48.8566  | 2.3522    | 1012.8         | 6.8              | ...   | -4.5   |
-| 2020-01-01T18:07:54  | 40.7128  | -74.0060  | 1014.1         | 5.2              | ...   | 12.9  |
-| 2020-01-01T23:02:01  | 35.6895  | 139.6917  | 1011.7         | 8.0              | ...   | 0.0  |
-| 2020-01-02T00:00:05   | 55.7558  | 37.6173   | 1013.5         | -2.1             | ...   | -4.2   |
-| ...   | ... | ... | ... | ... | ... | ... |
-
-#### Option 3 - (Return a timedelta column)
-
+#### Option 1 - (Return a timedelta column - Prefered option)
 
 _anemoi-dataset_ can compute the difference between the reference date of the sample (e.g. the "middle" of the window) and the observation date, in seconds. Example (assuming the sample date is `2020-01-02T00:00:00`)
 
 
-| Datetime      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
+| Deltatime      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
 |-----------------------------------|----------|-----------|----------------|------------------|----|----|
 | -86400  | 51.5074  | -0.1278   | 1013.2         | 7.5              | ...   | 23.5   |
 | -64792  | 48.8566  | 2.3522    | 1012.8         | 6.8              | ...   | -4.5   |
@@ -186,7 +159,7 @@ _anemoi-dataset_ can compute the difference between the reference date of the sa
 | ...   | ... | ... | ... | ... | ... | ... |
 
 
-#### Option 4 - (Mask out the four first columns)
+#### Option 2 - (Mask out the four first columns)
 
 The sample only contains the actual data (what will be fed to the model).
 
@@ -199,44 +172,29 @@ The sample only contains the actual data (what will be fed to the model).
 | 1013.5 | -2.1             | ...   | -4.2   |
 | ... | ... | ... | ... | ... |
 
-The other information are provided using and other method:
+The other information is provided using another method:
 
 ```python
 x = ds.details(i)
-x.latitudes # Return the corresponding N latitudes
-x.longitudes # Return the corresponding N longitudes
-x.dates # Return the corresponding N dates
-x.timedeltas # Return the (N) times (e.g., in seconds) of the observations relative to the end of the window
+x.latitudes # Returns the corresponding ROWS latitudes
+x.longitudes # Returns the corresponding ROWS longitudes
+x.dates # Returns the corresponding ROWS dates
+x.timedeltas # Returns the (ROWS) times (e.g., in seconds) of the observations relative to the end of the window
 ```
 
-
-#### Option 4 - (Returna Python object)
-
-Instead of returning a tensor, `ds[i]` return a python object with accessors to the various pieced of information:
-
-```python
-x = ds[i]
-x.data # Returns the [N x M] data array (masked as in option 4)
-x.latitudes # Return the corresponding N latitudes
-x.longitudes # Return the corresponding N longitudes
-x.dates # Return the corresponding N dates
-x.timedeltas # Return the (N) times (e.g., in seconds) of the observations relative to the end of the window
-```
-
-This is a departure from how _anemoi-datasets_ handles fields. Note that we can implement a similar scheme for fields, if needed, as an option.
-
+For the sake of symetry, the `ds.detail()` method can be implemented fields as well.
 
 ## Statistics
 
 (TODO)
 
-When combining similar  observations from several sources, can we normalise them using the same statistics?
+When combining similar observations from several sources, can we normalise them using the same statistics?
 
 ## Scope of Change
 
 <!--Specify which Anemoi packages/modules will be affected by this decision.-->
 - anemoi-datasets
-Not a breaking change, this only add functionality to read observations datasets.
+Not a breaking change, this only adds functionality to read observations datasets.
 
 Must be in line with the change related to multi-datasets.
 
