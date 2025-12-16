@@ -45,15 +45,14 @@ The `data` table contains one row per observation. It has four mandatory columns
 
 Rows are sorted in lexicographic order of the columns.
 
-
-| Date | Time      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
-|----------------|-------------------|----------|-----------|----------------|------------------|----|----|
-| 2020-01-01               | 00:00:00  | 51.5074  | -0.1278   | 1013.2         | 7.5              | ...   | 23.5   |
-| 2020-01-01               | 06:00:08  | 48.8566  | 2.3522    | 1012.8         | 6.8              | ...   | -4.5   |
-| 2020-01-01              | 18:07:54  | 40.7128  | -74.0060  | 1014.1         | 5.2              | ...   | 12.9  |
-| 2020-01-01               | 23:02:01  | 35.6895  | 139.6917  | 1011.7         | 8.0              | ...   | 0.0  |
-| 2020-01-02             |  00:00:05   | 55.7558  | 37.6173   | 1013.5         | -2.1             | ...   | -4.2   |
-| ...  | ... | ... | ... | ... | ... | ... | ... |
+| Date       | Time     | Latitude | Longitude | Col 1  | Col 2 | ... | Col N  |
+|------------|----------|----------|-----------|--------|-------|-----|--------|
+| 2020-01-01 | 00:00:00 | 51.5074  | -0.1278   | 1013.2 | 7.5   | ... | 23.5   |
+| 2020-01-01 | 06:00:08 | 48.8566  | 2.3522    | 1012.8 | 6.8   | ... | -4.5   |
+| 2020-01-01 | 18:07:54 | 40.7128  | -74.0060  | 1014.1 | 5.2   | ... | 12.9   |
+| 2020-01-01 | 23:02:01 | 35.6895  | 139.6917  | 1011.7 | 8.0   | ... | 0.0    |
+| 2020-01-02 | 00:00:05 | 55.7558  | 37.6173   | 1013.5 | -2.1  | ... | -4.2   |
+| ...        | ...      | ...      | ...       | ...    | ...   | ... | ...    |
 
 The `date` and `time` columns are separated because `float32` encoding is used. Dates are encoded as days since the Unix epoch. The largest integer that can be represented exactly by a 32-bit float is 2²⁴ − 1 = 16,777,215. When interpreted as seconds, this corresponds to approximately 194 days, which is insufficient. When interpreted as days, it corresponds to roughly 46,000 years, which is sufficient.
 
@@ -74,11 +73,11 @@ Example of a call to `open_dataset`:
 
 ```python
 ds = open_dataset(
-  path,
-  start=1979,
-  end=2020,
-  window="(-3,+3]",
-  frequency="6h")
+    path,
+    start=1979,
+    end=2020,
+    window="(-3,+3]",
+    frequency="6h")
 ```
 
 The parameters `path`, `start`, `end`, and `frequency` have the same meaning as for fields. As with fields, `start` and `end` can be full date-times. If they are not, they are internally transformed to [full dates](https://anemoi.readthedocs.io/projects/datasets/en/latest/using/subsetting.html)
@@ -105,8 +104,8 @@ The dates of the dataset are then defined as all dates between `start` and `end`
 result = []
 date = start
 while date <= end:
-  result.append[date]
-  date += frequency
+   result.append[date]
+   date += frequency
 ```
 
 The pseudo-code above builds the list returned by `ds.dates`.
@@ -148,29 +147,28 @@ Several options for what `ds[i]` can be:
 
 _anemoi-dataset_ can compute the difference between the reference date of the sample (e.g. the "middle" of the window) and the observation date, in seconds. Example (assuming the sample date is `2020-01-02T00:00:00`)
 
-
-| Deltatime      | Latitude | Longitude | Col 1  | Col 2 | ... | Col N |
-|-----------------------------------|----------|-----------|----------------|------------------|----|----|
-| -86400  | 51.5074  | -0.1278   | 1013.2         | 7.5              | ...   | 23.5   |
-| -64792  | 48.8566  | 2.3522    | 1012.8         | 6.8              | ...   | -4.5   |
-| -21126  | 40.7128  | -74.0060  | 1014.1         | 5.2              | ...   | 12.9  |
-| -3479  | 35.6895  | 139.6917  | 1011.7         | 8.0              | ...   | 0.0  |
-| 5   | 55.7558  | 37.6173   | 1013.5         | -2.1             | ...   | -4.2   |
-| ...   | ... | ... | ... | ... | ... | ... |
+| Deltatime | Latitude  | Longitude  | Col 1   | Col 2 | ... | Col N  |
+|-----------|-----------|------------|---------|-------|-----|--------|
+| -86400    | 51.5074   | -0.1278    | 1013.2  | 7.5   | ... | 23.5   |
+| -64792    | 48.8566   | 2.3522     | 1012.8  | 6.8   | ... | -4.5   |
+| -21126    | 40.7128   | -74.0060   | 1014.1  | 5.2   | ... | 12.9   |
+| -3479     | 35.6895   | 139.6917   | 1011.7  | 8.0   | ... | 0.0    |
+| 5         | 55.7558   | 37.6173    | 1013.5  | -2.1  | ... | -4.2   |
+| ...       | ...       | ...        | ...     | ...   | ... | ...    |
 
 
 #### Option 2 - (Mask out the four first columns)
 
 The sample only contains the actual data (what will be fed to the model).
 
-| Col 1  | Col 2 | ... | Col N |
-|----------------|------------------|----|----|
-| 1013.2 | 7.5              | ...   | 23.5   |
-| 1012.8  | 6.8              | ...   | -4.5   |
-| 1014.1 | 5.2              | ...   | 12.9  |
-| 1011.7  | 8.0              | ...   | 0.0  |
-| 1013.5 | -2.1             | ...   | -4.2   |
-| ... | ... | ... | ... | ... |
+| Col 1   | Col 2 | ...  | Col N  |
+|---------|-------|------|--------|
+| 1013.2  | 7.5   | ...  | 23.5   |
+| 1012.8  | 6.8   | ...  | -4.5   |
+| 1014.1  | 5.2   | ...  | 12.9   |
+| 1011.7  | 8.0   | ...  | 0.0    |
+| 1013.5  | -2.1  | ...  | -4.2   |
+| ...     | ...   | ...  | ...    |
 
 The other information is provided using another method:
 
@@ -184,11 +182,14 @@ x.timedeltas # Returns the (ROWS) times (e.g., in seconds) of the observations r
 
 For the sake of symetry, the `ds.detail()` method can be implemented fields as well.
 
-## Statistics
+### Statistics
 
 (TODO)
 
 When combining similar observations from several sources, can we normalise them using the same statistics?
+
+
+### Building datasets
 
 ## Scope of Change
 
