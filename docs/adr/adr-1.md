@@ -193,6 +193,15 @@ When combining similar observations from several sources, can we normalise them 
 
 #### Sources
 
+- A source is instantiated with a config (dict-like) which is derived from the yaml provided to anemoi-datasets.
+- A source is called with a range of dates (datetimes) : start and end, defining a window.
+- A source returns (when called) a Pandas df containing the following columns:
+    - Date (datetime)
+    - Latitude
+    - Longitude
+    - A number of data columns (with arbritrary names)
+- Each row in the dataframe is a different observation.    
+
 #### Filters
 
 #### Incremental/parallel build
