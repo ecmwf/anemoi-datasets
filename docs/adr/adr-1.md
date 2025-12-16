@@ -184,9 +184,11 @@ For the sake of symmetry, the `ds.detail()` method can be implemented for fields
 
 ### Statistics
 
-Only primary statistics will be computed for each column: minimum, maximum, mean and standard deviation.
+#### Global Statistics
 
-No tendency statistics will be computed in the first version.
+Statistics will be calculated per-column and stored as meta-data for the mean, min, max, standard-deviation and nan-count. This can either be done in a single postprocessing pass or using something similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the fly for each intermediate data chunk before then combining these in the postprocessing of the dataset.
+
+When combining observations from separate sources (e.g. different satellite missions or different conventional sensor type) statistics will be calculated on the full dataset and not per-observation-type. If observations-types have distinct enough distributions they should be split into separate columns or datasets.
 
 Three options:
 
@@ -194,13 +196,22 @@ Three options:
 - Compute the statistics using the first 80% of the records (or another percentage)
 - Compute the statistics using all observations within 80% of the period covered (or another percentage)
 
-> **Question:**
-> When combining similar observations from several sources, can we normalise them using the same statistics?
+#### Tendency Statistics
 
+As for fields there may eventually be the requirement to provide statistics on the variability in time of the observations. This is slightly more involved for non-stationary observations and will involve some form of defining a common grid for which to compute departures. There is an existing `dask.dataframe` implementation of this that could be used for inspiration (it also uses existing filters for assigning grid indices to each row of the dataset).
 
 ### Building datasets
 
 #### Sources
+
+- A source is instantiated with a config (dict-like) which is derived from the yaml provided to anemoi-datasets.
+- A source is called with a range of dates (datetimes) : start and end, defining a window.
+- A source returns (when called) a Pandas df containing the following columns:
+    - Date (datetime)
+    - Latitude
+    - Longitude
+    - A number of data columns (with arbritrary names)
+- Each row in the dataframe is a different observation.
 
 #### Filters
 
