@@ -187,9 +187,6 @@ def covering_intervals(
             return None
 
         for interval in candidates(state.current_time, current_base=state.current_base, start=start, end=end):
-            if interval.end == state.current_time:
-                interval = -interval
-
             if interval.start != state.current_time:
                 raise ValueError(
                     f"Candidate interval {interval} does not start or end at current_time {state.current_time}"

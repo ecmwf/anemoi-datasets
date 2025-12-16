@@ -198,6 +198,7 @@ def _compute_accumulations(
     period: datetime.timedelta,
     source: Any,
     available: dict[str, Any] | None = None,
+    **kwargs,
 ) -> Any:
     """Concrete accumulation logic.
 
@@ -226,7 +227,7 @@ def _compute_accumulations(
 
     LOG.debug("💬 source for accumulations: %s", source)
 
-    cataloguer = build_catalogue(context, available, source)
+    cataloguer = build_catalogue(context, available, source, **kwargs)
 
     def interval_from_valid_date_and_period(valid_date, period):
         # helper function to build accumulation interval from valid date and period
@@ -310,6 +311,7 @@ class AccumulateSource(LegacySource):
         source: Any,
         period,
         available=None,
+        **kwargs,
     ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
@@ -326,6 +328,10 @@ class AccumulateSource(LegacySource):
             The interval over which to accumulate (user-defined)
         available: Any, optional
             A description of the available periods in the data source. See documentation.
+        skip_checks: Any, optional
+            Lots of metadata is checked during accumulations. This will prevent computing accumulation when
+            the source is providing data with missing of wrong metadata. Some checks can be skipped
+            to allow dataset creation despite inconsistent metadata.
 
         Return
         ------
@@ -335,4 +341,4 @@ class AccumulateSource(LegacySource):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
-        return _compute_accumulations(context, dates, source=source, period=period, available=available)
+        return _compute_accumulations(context, dates, source=source, period=period, available=available, **kwargs)
