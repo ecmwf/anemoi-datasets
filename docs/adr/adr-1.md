@@ -200,7 +200,7 @@ When combining similar observations from several sources, can we normalise them 
     - Latitude
     - Longitude
     - A number of data columns (with arbritrary names)
-- Each row in the dataframe is a different observation.    
+- Each row in the dataframe is a different observation.
 
 #### Filters
 
