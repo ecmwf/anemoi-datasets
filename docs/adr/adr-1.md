@@ -184,10 +184,15 @@ For the sake of symetry, the `ds.detail()` method can be implemented fields as w
 
 ### Statistics
 
-(TODO)
+#### Global Statistics
 
-When combining similar observations from several sources, can we normalise them using the same statistics?
+Statistics will be calculated per-column and stored as meta-data for the mean, min, max, standard-deviation and nan-count. This can either be done in a single postprocessing pass or using something similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the fly for each intermediate data chunk before then combining these in the postprocessing of the dataset.
 
+When combining observations from separate sources (e.g. different satellite missions or different conventional sensor type) statistics will be calculated on the full dataset and not per-observation-type. If observations-types have distinct enough distributions they should be split into separate columns or datasets.
+
+#### Tendency Statistics
+
+As for fields there may eventually be the requirement to provide statistics on the variability in time of the observations. This is slightly more involved for non-stationary observations and will involve some form of defining a common grid for which to compute departures. There is an existing `dask.dataframe` implementation of this that could be used for inspiration (it also uses existing filters for assigning grid indices to each row of the dataset).
 
 ### Building datasets
 
