@@ -171,17 +171,18 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
         case IntervalGenerator():
             return config
 
-        case {"type": "accumulated-from-base", **params}:
+        case {"type": "accumulated-from-start", **params}:
             return AccumulatedFromStartIntervalGenerator(**params)
-
-        case {"accumulated-from-base": params}:
+        case {"accumulated-from-start": params}:
             return AccumulatedFromStartIntervalGenerator(**params)
 
         case {"accumulated-from-previous-step": params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)
-
         case {"type": "accumulated-from-previous-step", **params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)
+
+        case {"type": _, **params}:
+            raise NotImplementedError(f"Unknown availability config {config}")
 
         case dict() | list() | tuple():
             return SearchableIntervalGenerator(config)
@@ -199,7 +200,8 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
 
         case "od-oper":
             # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
-            return [(0, end) for end in list(range(1, 91))]
+            steps = [f"{0}-{i}" for i in range(1, 91)]
+            return ((0, steps), (12, steps))
 
         case "od-elda":
             # https://apps.ecmwf.int/mars-catalogue/?stream=elda&levtype=sfc&time=06%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-31&type=fc&class=od

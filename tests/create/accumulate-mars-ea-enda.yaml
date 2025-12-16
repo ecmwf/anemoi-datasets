@@ -4,8 +4,6 @@ dates:
   end: 2021-01-12 12:00:00
 
 # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&expver=1&month=aug&year=2020&type=fc&class=ea
-#    6: "0-3/3-6/6-9/9-12/12-15/15-18"
-#    18: "0-3/3-6/6-9/9-12/12-15/15-18"
 
 input:
   accumulate:
@@ -15,13 +13,13 @@ input:
     #   - [6, "0-3/3-6/6-9/9-12/12-15/15-18"]
     #   - [18, "0-3/3-6/6-9/9-12/12-15/15-18"]
 
-    # available:
-    #     type: accumulated-from-previous-step
-    #     basetime: [6, 18]
-    #     frequency: 3
-    #     last_step: 18
+    available:
+        type: accumulated-from-previous-step
+        basetime: [6, 18]
+        frequency: 3
+        last_step: 18
 
-    available: 'era-enda'
+    # available: 'era5-enda'
 
     source:
       mars:
