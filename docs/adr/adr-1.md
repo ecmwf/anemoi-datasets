@@ -15,8 +15,6 @@ The objective of this change is to support observations data which is not regula
 In contrast with the fields data where each date contain the same number of points,
 in the observations data, the number of points can change for every time window.
 
-The Zarr format fits well the fields data, but does not fit the observations data.
-
 To allow storing data with irregular shape, we need to use another format than the zarr used for fields.
 An experimental implementation using xarray-zarr has been developed and is not optimised for ML training.
 
