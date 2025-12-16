@@ -12,7 +12,7 @@ Proposed - 30/04/2025
 
 The objective of this change is to support observations data which are not regular.
 
-In contrast with the fields data where each date contains the same number of points,
+In contrast with the fields data, where each date contains the same number of points,
 in the observations data, the number of points can change for every time window.
 
 To allow storing data with irregular shape, we need to use another format than the Zarr used for fields.
@@ -35,7 +35,7 @@ An experimental implementation using xarray-zarr has been developed and is not o
 - Combining several types of observations (or fields and observations) will be handled by the data loader at training time.
 - Information about which data sources were used during training must be carried through to inference via the checkpoint metadata.
 - As with fields, the open_dataset call will allow users to specify run-time transformations on the data, such as thinning, sub-area extraction, etc. This feature will allow researchers to experiment without needing to recreate datasets.
-- For observations, date-times are *rounded* to the nearest second
+- For observations, date-times are *rounded* to the nearest second.
 
 ### Zarr array layout
 
@@ -80,7 +80,7 @@ ds = open_dataset(
     frequency="6h")
 ```
 
-The parameters `path`, `start`, `end`, and `frequency` have the same meaning as for fields. As with fields, `start` and `end` can be full date-times. If they are not, they are internally transformed to [full dates](https://anemoi.readthedocs.io/projects/datasets/en/latest/using/subsetting.html)
+The parameters `path`, `start`, `end`, and `frequency` have the same meaning as for fields. As with fields, `start` and `end` can be full date-times. If they are not, they are internally transformed to [full dates](https://anemoi.readthedocs.io/projects/datasets/en/latest/using/subsetting.html).
 
 #### Windows
 
@@ -104,7 +104,7 @@ The dates of the dataset are then defined as all dates between `start` and `end`
 result = []
 date = start
 while date <= end:
-   result.append[date]
+   result.append(date)
    date += frequency
 ```
 
@@ -131,7 +131,7 @@ So the sample `ds[i]` will return all observations around the ith date according
 
 ```python
 date = start + i * frequency
-return all_records_between( date + window.start, date + window.end)
+return all_records_between(date + window.start, date + window.end)
 ```
 
 When the user requests data that do not exist for a given window, an empty sample is returned, provided that the requested dates lie between `start` and `end`. Otherwise, an error is raised.
@@ -143,9 +143,9 @@ What does `ds[i]` return to the user? Unlike fields, the sample needs to contain
 Several options for what `ds[i]` can be:
 
 
-#### Option 1 - (Return a timedelta column - Prefered option)
+#### Option 1 - (Return a timedelta column - Preferred option)
 
-_anemoi-dataset_ can compute the difference between the reference date of the sample (e.g. the "middle" of the window) and the observation date, in seconds. Example (assuming the sample date is `2020-01-02T00:00:00`)
+_anemoi-dataset_ can compute the difference between the reference date of the sample (e.g., the "middle" of the window) and the observation date, in seconds. Example (assuming the sample date is `2020-01-02T00:00:00`)
 
 | Deltatime | Latitude  | Longitude  | Col 1   | Col 2 | ... | Col N  |
 |-----------|-----------|------------|---------|-------|-----|--------|
@@ -180,13 +180,22 @@ x.dates # Returns the corresponding ROWS dates
 x.timedeltas # Returns the (ROWS) times (e.g., in seconds) of the observations relative to the end of the window
 ```
 
-For the sake of symetry, the `ds.detail()` method can be implemented fields as well.
+For the sake of symmetry, the `ds.detail()` method can be implemented for fields as well.
 
 ### Statistics
 
-(TODO)
+Only primary statistics will be computed for each column: minimum, maximum, mean and standard deviation.
 
-When combining similar observations from several sources, can we normalise them using the same statistics?
+No tendency statistics will be computed in the first version.
+
+Three options:
+
+- Compute the statistics using all records
+- Compute the statistics using the first 80% of the records (or another percentage)
+- Compute the statistics using all observations within 80% of the period covered (or another percentage)
+
+> **Question:**
+> When combining similar observations from several sources, can we normalise them using the same statistics?
 
 
 ### Building datasets
