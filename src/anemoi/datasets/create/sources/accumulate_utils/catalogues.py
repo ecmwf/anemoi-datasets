@@ -22,12 +22,14 @@ from anemoi.datasets.create.sources.accumulate_utils.interval_generators import 
 
 LOG = logging.getLogger(__name__)
 
-
-def trace(*args, **kwargs):
-    pass
+#def trace(*args, **kwargs):
+#    pass
 
 
 # trace = print
+
+DEBUG = True
+trace = print if DEBUG else lambda *args, **kwargs: None
 
 
 def _member(field: Any) -> int:
@@ -104,7 +106,7 @@ class Link:
         self.interval = interval
 
     def __repr__(self):
-        return f"Link({self.interval})"
+        return f"Link({self.interval},{self.accumulator})"
 
 
 class Catalogue:
@@ -229,8 +231,8 @@ class GribIndexCatalogue(Catalogue):
     def retrieve_fields(self, links: list[Link]):
         h = hashlib.md5(json.dumps(self.source, sort_keys=True).encode()).hexdigest()
         source_object = self.context.create_source(self.source, "data_sources", h)
-        dates = [link.interval.max for link in links]
-        for field in source_object(self.context, dates):
+        dates = set([link.interval.max for link in links])
+        for field in source_object(self.context, list(dates)):
             LOG.debug("Processing field:", field)
             yield from self.match_fields_to_links(field, links)
 

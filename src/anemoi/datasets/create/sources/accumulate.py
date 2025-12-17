@@ -37,7 +37,7 @@ class Accumulator:
         self.interval = interval
         self.coverage = coverage
         self.todo = [v for v in coverage]
-
+        self.done = []
         assert interval.end > interval.start, f"Invalid interval {interval}"
 
         self.period = interval.max - interval.min
@@ -107,13 +107,14 @@ class Accumulator:
         if interval.end < interval.start:  # negative accumulation if interval is reversed
             values = -values
         if self.values is None:
-            self.values = values
+            self.values = values.copy()
         else:
-            self.values += values
+            self.values += values.copy()
 
         if interval not in self.todo:
             raise ValueError(f"SignedInterval {interval} not in todo list of accumulator {self}")
         self.todo.remove(interval)
+        self.done.append(interval)
 
     def field_to_interval(self, field: Any):
         valid_date = field.metadata("valid_date")
@@ -149,7 +150,7 @@ class Accumulator:
             valid_date=self.valid_date,
             period=self.interval.end - self.interval.start,
         )
-
+    
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
         return f"{self.__class__.__name__}({self.interval}, {key}, {len(self.coverage)-len(self.todo)}/{len(self.coverage)} already accumulated)"
@@ -272,7 +273,6 @@ def _compute_accumulations(
             # final list of outputs is ready to be updated
             accumulated_field = link.accumulator.get_accumulated_field(field)  # field is used as a template
             out.append(accumulated_field)
-
     ds = new_fieldlist_from_list(out)
 
     # tmp = temp_file()
@@ -297,7 +297,6 @@ def _compute_accumulations(
     # the resulting datasource has one field per valid date, parameter and ensemble member
     keys = list(cataloguer.get_all_keys())
     assert len(ds) / len(keys) == len(dates), (len(ds), len(keys), len(dates))
-
     return ds
 
 
