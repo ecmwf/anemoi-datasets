@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from datetime import datetime
 from typing import Dict
 from typing import List
 
@@ -16,46 +15,7 @@ import pytest
 from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
-
-grib_index_config: Dict[int, str] = [
-    # all period [i, i+1] are available
-    (
-        None,
-        "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18/18-19/19-20/20-21/21-22/22-23/23-24",
-    )
-]
-
-
-def build_signed_interval(x):
-    # x is like '20240101.0000 -> 20240101.0300, base=20240101.0000, ...'
-    interval_part, *extras = x.split(",")
-    interval_part = interval_part.strip()
-
-    start_str, end_str = interval_part.split("->")
-    start_str, end_str = start_str.strip(), end_str.strip()
-
-    if len(start_str) == 15:
-        start = datetime.strptime(start_str.strip(), "%Y%m%d %H:%M")
-    else:
-        start = datetime.strptime(start_str.strip(), "%Y%m%d.%H%M")
-
-    if len(end_str) == 4:  # only hour provided, reuse date from start
-        end_str = start.strftime("%Y%m%d") + "." + end_str
-
-    if len(end_str) == 15:
-        end = datetime.strptime(end_str, "%Y%m%d %H:%M")
-    else:
-        end = datetime.strptime(end_str, "%Y%m%d.%H%M")
-
-    extras_dict = {}
-    for extra in extras:
-        key, value = extra.strip().split("=")
-        if key == "base":
-            extras_dict["base"] = datetime.strptime(value.strip(), "%Y%m%d.%H%M")
-        else:
-            raise ValueError(f"Unknown extra key: {key}")
-
-    return SignedInterval(start=start, end=end, **extras_dict)
+from interval_test_data import ENDA_TEST_CASES, ERA_TEST_CASES, GRIB_INDEX_TEST_CASE
 
 
 class _Tester:
@@ -113,137 +73,28 @@ class _Tester:
                 assert exp_it == act_it, f"Expected {exp_it}, got {act_it}"
 
 
-_ = build_signed_interval
-
-
-ERA_TEST_CASES = [
-    # era
-    (_("20240101.1800 -> 20240101.2100"), [_("20240101.1800 -> 1900, base=20240101.1800"),
-                                           _("20240101.1900 -> 2000, base=20240101.1800"),
-                                           _("20240101.2000 -> 2100, base=20240101.1800")]),
-    (_("20240101.1800 -> 20240102.0600"), [_("20240101.1800 -> 1900, base=20240101.1800"),
-                                           _("20240101.1900 -> 2000, base=20240101.1800"),
-                                           _("20240101.2000 -> 2100, base=20240101.1800"),
-                                           _("20240101.2100 -> 2200, base=20240101.1800"),
-                                           _("20240101.2200 -> 2300, base=20240101.1800"),
-                                           _("20240101.2300 -> 20240102.0000, base=20240101.1800"),
-                                           _("20240102.0000 -> 0100, base=20240101.1800"),
-                                           _("20240102.0100 -> 0200, base=20240101.1800"),
-                                           _("20240102.0200 -> 0300, base=20240101.1800"),
-                                           _("20240102.0300 -> 0400, base=20240101.1800"),
-                                           _("20240102.0400 -> 0500, base=20240101.1800"),
-                                           _("20240102.0500 -> 0600, base=20240101.1800"),
-                                           ]),
-    (_("20240101.1800 -> 20240102.1200"), [_("20240101.1800 -> 20240102.1200, base=20240101.1800")]),
-    (_("20240101.1800 -> 20240101.0600"), [_("20240101.1800 -> 20240101.0600, base=20240101.0600")]),
-    (_("20240101.0000 -> 20240103.1515"), None),
-    (_("20240101.1800 -> 20290103.0000"), None),
-    (
-        _("20240102.0000 -> 0300"),
-        [
-            _("20240102.0000 -> 20240101.1800, base=20240101.1800"),
-            _("20240101.1800 -> 20240102.0300, base=20240101.1800"),
-        ],
-    ),
-    (
-        _("20240102.0900 -> 20240102.2100"),
-        [
-            _("20240102.0900 -> 20240102.0600, base=20240102.0600"),
-            _("20240102.0600 -> 20240102.2100, base=20240102.0600"),
-        ],
-    ),
-]
-
-
 @pytest.mark.parametrize("test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES])
 def test_era(test):
-    print("ERA ###############")
     tester = _Tester(interval_generator_factory("era5-oper"))
     tester.test(test[0], test[1])
 
 
-ENDA_TEST_CASES = [
-    (_("20240102.0900 -> 20240102.1200"), [_("20240102.0900 -> 20240102.1200, base=20240102.0600")]),
-    (_("20240102.0600 -> 20240102.0900"), [_("20240102.0600 -> 20240102.0900, base=20240102.0600")]),
-    (
-        _("20240102.1500 -> 20240102.2100"),
-        [
-            _("20240102.1500 -> 20240102.1800, base=20240102.0600"),
-            _("20240102.1800 -> 20240102.2100, base=20240102.0600"),  # do not use base=20240102.1800
-        ],
-    ),
-    (
-        _("20240102.0900 -> 20240102.2100"),
-        [
-            _("20240102.0900 -> 20240102.1200, base=20240102.0600"),
-            _("20240102.1200 -> 20240102.1500, base=20240102.0600"),
-            _("20240102.1500 -> 20240102.1800, base=20240102.0600"),
-            _("20240102.1800 -> 20240102.2100, base=20240102.0600"),
-        ],
-    ),
-    (
-        _("20240102.0900 -> 20240103.0600"),
-        [
-            _("20240102.0900 -> 20240102.1200, base=20240102.0600"),
-            _("20240102.1200 -> 20240102.1500, base=20240102.0600"),
-            _("20240102.1500 -> 20240102.1800, base=20240102.0600"),
-            _("20240102.1800 -> 20240102.2100, base=20240102.0600"),
-            _("20240102.2100 -> 20240103.0000, base=20240102.0600"),
-            _("20240103.0000 -> 20240103.0300, base=20240102.1800"),
-            _("20240103.0300 -> 20240103.0600, base=20240102.1800"),
-        ],
-    ),
-    (
-        _("20240102.0900 -> 20240103.2100"),
-        [
-            _("20240102.0900 -> 20240102.1200, base=20240102.0600"),
-            _("20240102.1200 -> 20240102.1500, base=20240102.0600"),
-            _("20240102.1500 -> 20240102.1800, base=20240102.0600"),
-            _("20240102.1800 -> 20240102.2100, base=20240102.0600"),
-            _("20240102.2100 -> 20240103.0000, base=20240102.0600"),
-            _("20240103.0000 -> 20240103.0300, base=20240102.1800"),
-            _("20240103.0300 -> 20240103.0600, base=20240102.1800"),
-            _(
-                "20240103.0600 -> 20240103.0900, base=20240102.1800"
-            ),  # do not use base=20240103.0600, to avoid extra base change
-            _(
-                "20240103.0900 -> 20240103.1200, base=20240102.1800"
-            ),  # do not use base=20240103.0600, to avoid extra base change
-            _(
-                "20240103.1200 -> 20240103.1500, base=20240103.0600"
-            ),  # now do use base=20240103.0600 because step [21-24] is not available
-            _("20240103.1500 -> 20240103.1800, base=20240103.0600"),
-            _("20240103.1800 -> 20240103.2100, base=20240103.0600"),
-        ],
-    ),
-    (
-        _("20240102.0600 -> 20240102.1200"),
-        [
-            _("20240102.0600 -> 20240102.0900, base=20240102.0600"),
-            _("20240102.0900 -> 20240102.1200, base=20240102.0600"),
-        ],
-    ),
-]
-
-
 @pytest.mark.parametrize("test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES])
 def test_enda(test):
-    print("ENDA ###############")
     tester = _Tester(interval_generator_factory("era5-enda"))
     tester.test(test[0], test[1])
 
-
-GRIB_INDEX_TEST_CASE = [
+grib_index_config: Dict[int, str] = [
+    # all period [i, i+1] are available
     (
-        _("20240102.0900 -> 20240102.1200"),
-        [_("20240102.0900 -> 1000"), _("20240102.1000 -> 1100"), _("20240102.1100 -> 1200")],
-    ),
+        None,
+        "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18/18-19/19-20/20-21/21-22/22-23/23-24",
+    )
 ]
-
 
 @pytest.mark.parametrize("test", GRIB_INDEX_TEST_CASE, ids=[str(t[0]) for t in GRIB_INDEX_TEST_CASE])
 def test_grib_index_no_basetime(test):
-    tester = _Tester(grib_index_config)
+    tester = _Tester(interval_generator_factory(grib_index_config))
     tester.test(test[0], test[1])
 
 
