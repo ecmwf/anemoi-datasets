@@ -225,7 +225,7 @@ As for fields,  `anemoi-dataset create` will call sources and filters with sever
 ## Scope of Change
 
 <!--Specify which Anemoi packages/modules will be affected by this decision.-->
-- anemoi-datasets
+
 Not a breaking change, this only adds functionality to read observations datasets.
 
 Must be in line with the change related to multi-datasets.
