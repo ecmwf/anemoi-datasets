@@ -11,11 +11,11 @@ import datetime
 import logging
 from typing import Any
 
+import earthkit.data
 import numpy as np
-from anemoi.transform.fields import new_field_from_numpy
-from anemoi.transform.fields import new_field_with_valid_datetime
-from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import frequency_to_timedelta
+from earthkit.data.core.temporary import temp_file
+from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
@@ -103,6 +103,8 @@ class Accumulator:
         if self.completed:
             raise ValueError(f"Accumulator {self} already completed, cannot process interval {interval}")
 
+        assert isinstance(values, np.ndarray), type(values)
+
         # actual accumulation computation
         if interval.end < interval.start:  # negative accumulation if interval is reversed
             values = -values
@@ -116,64 +118,51 @@ class Accumulator:
         self.todo.remove(interval)
         self.done.append(interval)
 
-    def field_to_interval(self, field: Any):
-        valid_date = field.metadata("valid_date")
-        step = field.metadata("step")
-        date = valid_date - datetime.timedelta(hours=step)
-        return SignedInterval(date=date, step=step)
-
-    def get_accumulated_field(self, field: Any) -> None:
-        """Writing output inside a new field at the end of the accumulation.
-        The field is simply used as a template.
-
-        Parameters:
-        ----------
-        field: Any
-            An earthkit-data-like field
-
-        Return
-        ------
-        None
-        """
+    def write_to_output(self, output, template) -> None:
         assert self.is_complete(), self.todo
-
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         if np.any(self.values < 0):
             LOG.warning(
                 f"Negative values when computing accumutation for {self}): min={np.amin(self.values)} max={np.amax(self.values)}"
             )
-
-        self.completed = True
-        return new_accumulated_field_with_valid_time(
-            template=field,
+        write_accumulated_field_with_valid_time(
+            template=template,
             values=self.values,
             valid_date=self.valid_date,
             period=self.interval.end - self.interval.start,
+            output=output,
         )
+        self.completed = True
 
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
         return f"{self.__class__.__name__}({self.interval}, {key}, {len(self.coverage)-len(self.todo)}/{len(self.coverage)} already accumulated)"
 
 
-def new_accumulated_field_with_valid_time(
-    template, values, valid_date: datetime.datetime, period: datetime.timedelta
+def write_accumulated_field_with_valid_time(
+    template, values, valid_date: datetime.datetime, period: datetime.timedelta, output
 ) -> Any:
     MISSING_VALUE = 1e-38
     assert np.all(values != MISSING_VALUE)
 
-    startStep = datetime.timedelta(hours=0)
+    date = (valid_date - period).strftime("%Y%m%d")
+    time = (valid_date - period).strftime("%H%M")
     endStep = period
 
     hours = endStep.total_seconds() / 3600
+    if not hours.is_integer():
+        raise ValueError(f"Accumulation period must be integer hours, got {hours}")
+    hours = int(hours)
 
     if template.metadata("edition") == 1 and (hours > 254 or not hours.is_integer()):
         # this is a special case for GRIB edition 1 which only supports integer hours up to 254
         assert hours.is_integer(), f"edition 1 accumulation period must be integer hours, got {hours}"
         assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
-        accumfield = new_field_from_numpy(
+        output.write(
             values,
             template=template,
+            date=int(date),
+            time=int(time),
             stepType="instant",
             step=hours,
             check_nans=True,
@@ -181,16 +170,17 @@ def new_accumulated_field_with_valid_time(
         )
     else:
         # this is the normal case for GRIB edition 2. And with edition 1 when hours are integer and <=254
-        accumfield = new_field_from_numpy(
+        output.write(
             values,
             template=template,
+            date=int(date),
+            time=int(time),
             stepType="accum",
-            startStep=startStep,
-            endStep=endStep,
+            startStep=0,
+            endStep=hours,
             check_nans=True,
             missing_value=MISSING_VALUE,
         )
-    return new_field_with_valid_datetime(accumfield, valid_date)
 
 
 def _compute_accumulations(
@@ -264,24 +254,22 @@ def _compute_accumulations(
             LOG.debug("  💬 ", link)
             links.append(link)
 
-    out = []
+    # need a temporary file to store the accumulated fields for now, because earthkit-data
+    # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
+    tmp = temp_file()
+    path = tmp.path
+    output = new_grib_output(path)
+
     # for each field provided by the catalogue, find which accumulators need it and perform accumulation
     for field, values, link in cataloguer.retrieve_fields(links):
         link.accumulator.compute(field, values, link)
         if link.accumulator.is_complete():
-            # all intervals for accumulation have been processed
-            # final list of outputs is ready to be updated
-            accumulated_field = link.accumulator.get_accumulated_field(field)  # field is used as a template
-            out.append(accumulated_field)
-    ds = new_fieldlist_from_list(out)
+            # all intervals for accumulation have been processed, write the accumulated field to output
+            link.accumulator.write_to_output(output, template=field)
 
-    # tmp = temp_file()
-    # path = tmp.path
-    # out = new_grib_output(path)
-    # for f in ds:
-    #     out.write(f)
-    # out.close()
-    # ds = ekd.from_source("file", path)
+    output.close()
+    ds = earthkit.data.from_source("file", path)
+    ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
     # check that each accumulator is complete
     for link in links:
