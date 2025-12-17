@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 import logging
-import os
 import time
 import warnings
 from functools import cached_property
@@ -21,14 +20,9 @@ from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 from earthkit.data.core.order import build_remapping
 
-from anemoi.datasets import open_dataset
-
 from ..check import check_data_values
 from ..creator import Creator
-from . import NewDataset
-from . import WritableDataset
 from .context import GriddedContext
-from .statistics import TmpStatistics
 from .statistics import compute_statistics
 from .writer import ViewCacheArray
 
@@ -41,12 +35,6 @@ class GriddedCreator(Creator):
 
     check_name = False
 
-    def creat_new_dataset(self, path: str) -> NewDataset:
-        return NewDataset(path)
-
-    def open_writable_dataset(self, path: str) -> WritableDataset:
-        return WritableDataset(path)
-
     def check_unkown_kwargs(self, kwargs: dict) -> None:
         """Check for unknown keyword arguments.
 
@@ -57,61 +45,6 @@ class GriddedCreator(Creator):
         """
         # remove this latter
         LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
-
-    def read_dataset_metadata(self, path: str) -> None:
-        """Read the metadata of the dataset.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        """
-        ds = open_dataset(path)
-        self.dataset_shape = ds.shape
-        self.variables_names = ds.variables
-        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
-
-        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
-
-        def check_missing_dates(expected: list[np.datetime64]) -> None:
-            """Check if the missing dates in the dataset match the expected dates.
-
-            Parameters
-            ----------
-            expected : list of np.datetime64
-                The expected missing dates.
-
-            Raises
-            ------
-            ValueError
-                If the missing dates in the dataset do not match the expected dates.
-            """
-            import zarr
-
-            z = zarr.open(path, "r")
-            missing_dates = z.attrs.get("missing_dates", [])
-            missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-            if missing_dates != expected:
-                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
-                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-
-        check_missing_dates(self.missing_dates)
-
-    @cached_property
-    def registry(self) -> Any:
-        """Get the registry."""
-        from .zarr import ZarrBuiltRegistry
-
-        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
-
-    @cached_property
-    def tmp_statistics(self) -> TmpStatistics:
-        """Get the temporary statistics."""
-        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
-        return TmpStatistics(directory)
 
     def load_result(self, result: Any) -> None:
         """Load the result into the dataset.
@@ -287,3 +220,14 @@ class GriddedCreator(Creator):
 
         warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
         return True
+
+    def shape_and_chunks(self, dates: Any) -> tuple[int, ...]:
+        """Get the chunks for the dataset."""
+        coords = self.minimal_input.coords
+        coords["dates"] = dates
+        total_shape = list(self.minimal_input.shape)
+        total_shape[0] = len(dates)
+        LOG.info(f"total_shape = {total_shape}")
+
+        chunks = self.output.get_chunking(coords)
+        return total_shape, chunks

@@ -30,6 +30,7 @@ class TaskDispatcher:
         return self.creator.statistics()
 
     def finalise(self):
+        self.creator.finalise()
         self.creator.statistics()
         self.creator.size()
         self.creator.cleanup()

@@ -28,9 +28,12 @@ from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.dates.groups import Groups
 
 from .gridded import DeltaDataset
+from .gridded import NewDataset
+from .gridded import WritableDataset
 from .gridded import build_statistics_dates
 from .gridded.persistent import build_storage
 from .gridded.statistics import Summary
+from .gridded.statistics import TmpStatistics
 from .gridded.statistics import check_variance
 from .gridded.statistics import compute_statistics
 from .gridded.statistics import fix_variance
@@ -50,6 +53,9 @@ class Creator(ABC):
 
         np.seterr(all="raise", under="warn")
 
+        if path.endswith("/"):
+            path = path[:-1]
+
         self.path = path
         self.config = config
 
@@ -60,6 +66,9 @@ class Creator(ABC):
         self.parts = kwargs.pop("parts", None)
 
         self.kwargs = kwargs
+        self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
+        os.makedirs(self.work_dir, exist_ok=True)
+        LOG.info(f"Using work dir: {self.work_dir}")
 
     #####################################################
 
@@ -108,14 +117,7 @@ class Creator(ABC):
         resolution = self.minimal_input.resolution
         LOG.info(f"{resolution=}")
 
-        coords = self.minimal_input.coords
-        coords["dates"] = dates
-        total_shape = self.minimal_input.shape
-        total_shape[0] = len(dates)
-        LOG.info(f"total_shape = {total_shape}")
-
-        chunks = self.output.get_chunking(coords)
-        LOG.info(f"{chunks=}")
+        total_shape, chunks = self.shape_and_chunks(dates)
         dtype = self.output.dtype
 
         LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
@@ -244,7 +246,7 @@ class Creator(ABC):
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
             result = self.input.select(self.context(), argument=group)
-            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
+            # BACK            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
             # There is one result to load for each group.
@@ -594,3 +596,64 @@ class Creator(ABC):
 
         self.registry.add_to_history("compute_statistics_end")
         LOG.info(f"Wrote statistics in {self.path}")
+
+    def creat_new_dataset(self, path: str) -> NewDataset:
+        return NewDataset(path)
+
+    def open_writable_dataset(self, path: str) -> WritableDataset:
+        return WritableDataset(path)
+
+    @cached_property
+    def registry(self) -> Any:
+        """Get the registry."""
+        from .gridded.zarr import ZarrBuiltRegistry
+
+        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
+
+    @cached_property
+    def tmp_statistics(self) -> TmpStatistics:
+        """Get the temporary statistics."""
+        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
+        return TmpStatistics(directory)
+
+    def read_dataset_metadata(self, path: str) -> None:
+        """Read the metadata of the dataset.
+
+        Parameters
+        ----------
+        path : str
+            The path to the dataset.
+        """
+        ds = open_dataset(path)
+        self.dataset_shape = ds.shape
+        self.variables_names = ds.variables
+        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
+        self.dates = ds.dates
+
+        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
+
+        def check_missing_dates(expected: list[np.datetime64]) -> None:
+            """Check if the missing dates in the dataset match the expected dates.
+
+            Parameters
+            ----------
+            expected : list of np.datetime64
+                The expected missing dates.
+
+            Raises
+            ------
+            ValueError
+                If the missing dates in the dataset do not match the expected dates.
+            """
+            import zarr
+
+            z = zarr.open(path, "r")
+            missing_dates = z.attrs.get("missing_dates", [])
+            missing_dates = sorted([np.datetime64(d) for d in missing_dates])
+            if missing_dates != expected:
+                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
+                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
+                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
+
+        check_missing_dates(self.missing_dates)

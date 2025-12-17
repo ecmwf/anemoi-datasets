@@ -99,6 +99,8 @@ def add_zarr_dataset(
         else:
             raise ValueError(f"No fill_value for dtype={dtype}")
 
+    print(f"Creating zarr dataset {name} with shape={shape}, dtype={dtype}, kwargs={kwargs}")
+
     a = zarr_root.create_dataset(
         name,
         shape=shape,

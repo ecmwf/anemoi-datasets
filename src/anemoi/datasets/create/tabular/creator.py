@@ -1,6 +1,5 @@
 import logging
 import os
-from functools import cached_property
 from typing import Any
 
 import numpy as np
@@ -26,24 +25,36 @@ class TabularDataset:
 
 class TabularCreator(Creator):
 
+    allow_nans = True
+
     ######################################################
 
     def context(self):
         return TabularContext()
 
-    @cached_property
-    def registry(self) -> Any:
-        return SimpleRegistry(self.path)
-
-    def read_dataset_metadata(self, path: str):
-        pass
-
     def load_result(self, result: Any):
+        np.save(
+            os.path.join(self.work_dir, f"{result.start_date.isoformat()}-{result.end_date.isoformat()}.npy"),
+            result.to_numpy(),
+        )
+
+    def finalise(self):
+        from .finalise import finalise_tabular_dataset
+
+        finalise_tabular_dataset(self.work_dir, self.path)
+
+    def statistics(self):
         pass
 
-    @cached_property
-    def tmp_statistics(self):
-        return TmpSatistics(self.path)
+    ######################################################
+    @property
+    def check_name(self) -> str:
+        return False
+
+    def shape_and_chunks(self, dates: Any) -> tuple[int, ...]:
+        total_shape = (len(dates), len(self.minimal_input.variables))
+        chunks = (min(100, total_shape[0]), total_shape[1])
+        return total_shape, chunks
 
 
 class SimpleRegistry:
@@ -82,11 +93,3 @@ class SimpleRegistry:
     def add_to_history(self, action: str):
         with self.lock:
             pass
-
-
-class TmpSatistics:
-    def __init__(self, path: str):
-        self.path = path
-
-    def add_provenance(self, name: str, config: Any):
-        pass

@@ -374,3 +374,6 @@ class ImportDOP(Command):
             self.btree.count(),
             self.output_zarr["data"].shape[0],
         )
+
+
+command = ImportDOP
