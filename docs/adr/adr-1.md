@@ -66,10 +66,16 @@ Ranges of rows sharing the same date/time are indexed together for fast access w
 
 The index is a Zarr-backed [b+tree](https://en.wikipedia.org/wiki/B-tree) stored in the array `time_index`.
 
+The keys to the btree are dates (as integer Unix epochs), and the values are pairs of integers `(start, length)` corresponding to the start row and number of rows of all records sharing the same date in the `data` array (which is sorted by date).
+
+The btree organises its entries in a balanced tree of pages containing several keys. If k is the number of keys per page and N the number of entries, lookups are O(log<sub>2</sub>(k) × log<sub>k</sub>(N)).
+
+Tests have been performed on a 100-year index, with values every second (3,155,760,000 entries). With pages of 256 entries, Zarr chunks of 64MB, no Zarr compression, the index is 11GB,
+and the average number of key comparisons in a lookup is ~32. It takes 24 milliseconds to look up a date.
+
 ### Using the dataset
 
 Example of a call to `open_dataset`:
-
 
 ```python
 ds = open_dataset(
@@ -92,7 +98,6 @@ Examples:
 "[-3,+3]" # Both ends are included
 "(-1d,0]" # Start is open, end is closed
 ```
-
 
 #### Dates
 
@@ -122,7 +127,6 @@ which is also the length of the dataset:
 len(ds)
 ```
 
-
 #### Sample selection
 
 A sample `ds[i]` is defined by the start date and the frequency (i.e., the date of the sample). The `window` specifies how many observations around the sample date should be considered part of the sample.
@@ -142,10 +146,9 @@ What does `ds[i]` return to the user? Unlike fields, the sample needs to contain
 
 Several options for what `ds[i]` can be:
 
-
 #### Option 1 - (Return a timedelta column - Preferred option)
 
-_anemoi-dataset_ can compute the difference between the reference date of the sample (e.g., the "middle" of the window) and the observation date, in seconds. Example (assuming the sample date is `2020-01-02T00:00:00`)
+_anemoi-dataset_ can compute the difference between the reference date of the sample (e.g., the "middle" of the window) and the observation date, in seconds. Example (assuming the sample date is `2020-01-02T00:00:00`):
 
 | Deltatime | Latitude  | Longitude  | Col 1   | Col 2 | ... | Col N  |
 |-----------|-----------|------------|---------|-------|-----|--------|
@@ -155,7 +158,6 @@ _anemoi-dataset_ can compute the difference between the reference date of the sa
 | -3479     | 35.6895   | 139.6917   | 1011.7  | 8.0   | ... | 0.0    |
 | 5         | 55.7558   | 37.6173    | 1013.5  | -2.1  | ... | -4.2   |
 | ...       | ...       | ...        | ...     | ...   | ... | ...    |
-
 
 #### Option 2 - (Mask out the four first columns)
 
@@ -186,31 +188,33 @@ For the sake of symmetry, the `ds.detail()` method can be implemented for fields
 
 #### Global Statistics
 
-Statistics will be calculated per-column and stored as meta-data for the mean, min, max, standard-deviation and nan-count. This can either be done in a single postprocessing pass or using something similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the fly for each intermediate data chunk before then combining these in the postprocessing of the dataset.
+Statistics will be calculated per-column and stored as metadata for the mean, min, max, standard deviation and nan-count. This can either be done in a single postprocessing pass or using something similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the fly for each intermediate data chunk before then combining these in the postprocessing of the dataset.
 
-When combining observations from separate sources (e.g. different satellite missions or different conventional sensor type) statistics will be calculated on the full dataset and not per-observation-type. If observations-types have distinct enough distributions they should be split into separate columns or datasets.
+When combining observations from separate sources (e.g. different satellite missions or different conventional sensor types) statistics will be calculated on the full dataset and not per-observation-type. If observation types have distinct enough distributions they should be split into separate columns or datasets.
 
-Three options:
-
-- Compute the statistics using all records
-- Compute the statistics using the first 80% of the records (or another percentage)
-- Compute the statistics using all observations within 80% of the period covered (or another percentage)
+> **Question:**
+>
+> What is the best way to compute statistics for irregular observations datasets?
+>
+> - Compute the statistics using all records
+> - Compute the statistics using the first 80% of the records (or another percentage)
+> - Compute the statistics using all observations within 80% of the period covered (or another percentage)
 
 #### Tendency Statistics
 
-As for fields there may eventually be the requirement to provide statistics on the variability in time of the observations. This is slightly more involved for non-stationary observations and will involve some form of defining a common grid for which to compute departures. There is an existing `dask.dataframe` implementation of this that could be used for inspiration (it also uses existing filters for assigning grid indices to each row of the dataset).
+As for fields, there may eventually be the requirement to provide statistics on the variability in time of the observations. This is slightly more involved for non-stationary observations and will involve some form of defining a common grid for which to compute departures. There is an existing `dask.dataframe` implementation of this that could be used for inspiration (it also uses existing filters for assigning grid indices to each row of the dataset).
 
 ### Building datasets
 
 #### Sources
 
 - A source is instantiated with a config (dict-like) which is derived from the yaml provided to anemoi-datasets.
-- A source is called with a range of dates (datetimes) : start and end, defining a window.
+- A source is called with a range of dates (datetimes): start and end, defining a window.
 - A source returns (when called) a Pandas df containing the following columns:
     - Date (datetime)
     - Latitude
     - Longitude
-    - A number of data columns (with arbritrary names)
+    - A number of data columns (with arbitrary names)
 - Each row in the dataframe is a different observation.
 
 #### Filters
