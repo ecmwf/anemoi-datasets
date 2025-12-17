@@ -188,7 +188,7 @@ For the sake of symmetry, the `ds.detail()` method can be implemented for fields
 
 #### Global Statistics
 
-Statistics will be calculated per-column and stored as metadata for the mean, min, max, standard deviation and nan-count. This can either be done in a single postprocessing pass or using something similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the fly for each intermediate data chunk before then combining these in the postprocessing of the dataset.
+Statistics will be calculated per-column and stored as metadata for the mean, min, max, standard deviation and nan-count. This can either be done in a single post-processing pass or using something similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the fly for each intermediate data chunk before then combining these in the post-processing of the dataset.
 
 When combining observations from separate sources (e.g. different satellite missions or different conventional sensor types) statistics will be calculated on the full dataset and not per-observation-type. If observation types have distinct enough distributions they should be split into separate columns or datasets.
 
@@ -208,18 +208,19 @@ As for fields, there may eventually be the requirement to provide statistics on 
 
 #### Sources
 
-- A source is instantiated with a config (dict-like) which is derived from the yaml provided to anemoi-datasets.
-- A source is called with a range of dates (datetimes): start and end, defining a window.
-- A source returns (when called) a Pandas df containing the following columns:
-    - Date (datetime)
-    - Latitude
-    - Longitude
-    - A number of data columns (with arbitrary names)
-- Each row in the dataframe is a different observation.
+A source is instantiated with a config (dict-like) which is derived from the YAML recipe provided to `anemoi-datasets create`.
+
+Sources are called several times during dataset creation with a range of dates (Python `datetime`): `start_date` and `end_date`. They must
+return a Pandas frame, with three compulsory columns: `date` (datetime64), `latitude` (float) and `longitude` (float) as well as a number of data columns (with arbitrary names).
+Each row in the dataframe is a different observation.
 
 #### Filters
 
+Filters take the output of sources or other filters (i.e. a Pandas frame) and return a modified Pandas frame. The only requirement is to ensure that the compulsory columns (`date`, `latitude` and `longitude`) are still present.
+
 #### Incremental/parallel build
+
+As for fields,  `anemoi-dataset create` will call sources and filters with several ranges of date, possibly in parallel. The size of the ranges can be controlled by the user in order to not exceed available memory resources. The output of all incremental/parallel calls are then sorted using a lexicographic order (`date`, `latitude`, `longitude`, `data1`, `data2`, ...) and stored in Zarr, the dates of each row being rounded to the nearest second. *Duplicated rows are discarded*, and the index is constructed.
 
 ## Scope of Change
 
