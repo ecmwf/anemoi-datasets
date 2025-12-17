@@ -220,7 +220,7 @@ Filters take the output of sources or other filters (i.e. a Pandas frame) and re
 
 #### Incremental/parallel build
 
-As for fields,  `anemoi-dataset create` will call sources and filters with several ranges of date, possibly in parallel. The size of the ranges can be controlled by the user in order to not exceed available memory resources. The output of all incremental/parallel calls are then sorted using a lexicographic order (`date`, `latitude`, `longitude`, `data1`, `data2`, ...) and stored in Zarr, the dates of each row being rounded to the nearest second. *Duplicated rows are discarded*, and the index is constructed.
+As for fields,  `anemoi-dataset create` will call sources and filters with several ranges of date, possibly in parallel. The size of the ranges can be controlled by the user in order to not exceed available memory resources. The output of all incremental/parallel calls are then sorted using a lexicographic order (`date`, `latitude`, `longitude`, `data1`, `data2`, ...) and stored in Zarr, the dates of each row being rounded to the nearest second. **Duplicated rows are discarded**, and the index is constructed.
 
 ## Scope of Change
 
