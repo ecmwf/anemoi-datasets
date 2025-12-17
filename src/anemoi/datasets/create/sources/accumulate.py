@@ -150,7 +150,7 @@ class Accumulator:
             valid_date=self.valid_date,
             period=self.interval.end - self.interval.start,
         )
-    
+
     def __repr__(self):
         key = ", ".join(f"{k}={v}" for k, v in self.key.items())
         return f"{self.__class__.__name__}({self.interval}, {key}, {len(self.coverage)-len(self.todo)}/{len(self.coverage)} already accumulated)"
