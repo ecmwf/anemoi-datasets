@@ -13,8 +13,7 @@ from typing import List
 
 import pytest
 
-from anemoi.datasets.create.sources.accumulate_utils.catalogues import EaEndaCatalogue
-from anemoi.datasets.create.sources.accumulate_utils.catalogues import EaOperCatalogue
+from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
 
@@ -119,8 +118,22 @@ _ = build_signed_interval
 
 ERA_TEST_CASES = [
     # era
-    (_("20240101.1800 -> 20240101.2100"), [_("20240101.1800 -> 2100, base=20240101.1800")]),
-    (_("20240101.1800 -> 20240102.0600"), [_("20240101.1800 -> 20240102.0600, base=20240101.1800")]),
+    (_("20240101.1800 -> 20240101.2100"), [_("20240101.1800 -> 1900, base=20240101.1800"),
+                                           _("20240101.1900 -> 2000, base=20240101.1800"),
+                                           _("20240101.2000 -> 2100, base=20240101.1800")]),
+    (_("20240101.1800 -> 20240102.0600"), [_("20240101.1800 -> 1900, base=20240101.1800"),
+                                           _("20240101.1900 -> 2000, base=20240101.1800"),
+                                           _("20240101.2000 -> 2100, base=20240101.1800"),
+                                           _("20240101.2100 -> 2200, base=20240101.1800"),
+                                           _("20240101.2200 -> 2300, base=20240101.1800"),
+                                           _("20240101.2300 -> 20240102.0000, base=20240101.1800"),
+                                           _("20240102.0000 -> 0100, base=20240101.1800"),
+                                           _("20240102.0100 -> 0200, base=20240101.1800"),
+                                           _("20240102.0200 -> 0300, base=20240101.1800"),
+                                           _("20240102.0300 -> 0400, base=20240101.1800"),
+                                           _("20240102.0400 -> 0500, base=20240101.1800"),
+                                           _("20240102.0500 -> 0600, base=20240101.1800"),
+                                           ]),
     (_("20240101.1800 -> 20240102.1200"), [_("20240101.1800 -> 20240102.1200, base=20240101.1800")]),
     (_("20240101.1800 -> 20240101.0600"), [_("20240101.1800 -> 20240101.0600, base=20240101.0600")]),
     (_("20240101.0000 -> 20240103.1515"), None),
@@ -144,7 +157,8 @@ ERA_TEST_CASES = [
 
 @pytest.mark.parametrize("test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES])
 def test_era(test):
-    tester = _Tester(EaOperCatalogue.candidate_intervals)
+    print("ERA ###############")
+    tester = _Tester(interval_generator_factory("era5-oper"))
     tester.test(test[0], test[1])
 
 
@@ -214,7 +228,8 @@ ENDA_TEST_CASES = [
 
 @pytest.mark.parametrize("test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES])
 def test_enda(test):
-    tester = _Tester(EaEndaCatalogue.candidate_intervals)
+    print("ENDA ###############")
+    tester = _Tester(interval_generator_factory("era5-enda"))
     tester.test(test[0], test[1])
 
 
