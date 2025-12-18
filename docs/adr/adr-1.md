@@ -218,6 +218,11 @@ Each row in the dataframe is a different observation.
 
 Filters take the output of sources or other filters (i.e. a Pandas frame) and return a modified Pandas frame. The only requirement is to ensure that the compulsory columns (`date`, `latitude` and `longitude`) are still present.
 
+Filters for tabular datasets will have a similar interface to the filters for fields. They will be class based, take a configuration object (dict-like, derived from the YAML recipe) on instantiation, implement a `transform` method that takes a pandas dataframe and returns a pandas dataframe.
+
+Filters will be selected through a registry, as is done with the existing field filters.
+
+
 #### Incremental/parallel build
 
 As for fields,  `anemoi-dataset create` will call sources and filters with several ranges of date, possibly in parallel. The size of the ranges can be controlled by the user in order to not exceed available memory resources. The output of all incremental/parallel calls are then sorted using a lexicographic order (`date`, `latitude`, `longitude`, `data1`, `data2`, ...) and stored in Zarr, the dates of each row being rounded to the nearest second. **Duplicated rows are discarded**, and the index is constructed.
