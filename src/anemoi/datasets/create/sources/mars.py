@@ -222,6 +222,7 @@ def factorise_requests(
     *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
+    no_date_here: bool = False,
 ) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
 
@@ -235,6 +236,8 @@ def factorise_requests(
         Flag indicating if the requests already use valid datetime.
     date_key : str, optional
         The key for the date in the requests.
+    no_date_here : bool, optional
+        Flag indicating if there is no date in the "dates" list.
 
     Returns
     -------
@@ -247,7 +250,7 @@ def factorise_requests(
     updates = []
     for d in sorted(dates):
         for req in requests:
-            if (
+            if not no_date_here and (
                 ("date" in req)
                 and ("time" in req)
                 and d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4))
@@ -436,10 +439,11 @@ class MarsSource(LegacySource):
             requests = requests_
             context.trace("🌧️", f"Total requests: {len(requests)}")
             requests = factorise_requests(
-                dates,
+                ["no_date_here"],
                 *requests,
                 request_already_using_valid_datetime=True,
                 date_key=date_key,
+                no_date_here=True,
             )
 
         elif len(dates) == 0:  # When using `repeated_dates`
