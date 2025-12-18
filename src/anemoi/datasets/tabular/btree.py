@@ -14,10 +14,11 @@ from typing import Optional
 from typing import Tuple
 
 import numpy as np
+import tqdm
 import zarr
 from lru import LRU
 
-from .caching import FullCache
+from .caching import ChunksCache
 
 LOG = logging.getLogger(__name__)
 
@@ -27,12 +28,14 @@ class Page:
         self,
         /,
         page_id: int,
+        is_node: bool = False,
         left: int = 0,
         right: int = 0,
         entries: List[dict] | None = None,
     ):
         assert page_id > 0, page_id
         self.page_id = page_id
+        self.is_node = is_node
         self.left = left
         self.right = right
         self.entries = [] if entries is None else entries
@@ -47,14 +50,6 @@ class Page:
     @property
     def count(self) -> int:
         return len(self.entries)
-
-
-class NodePage(Page):
-    is_node = True
-
-
-class LeafPage(Page):
-    is_node = False
 
 
 class Entry:
@@ -91,7 +86,7 @@ class ZarrBTree:
         mode: str = "r",
         chunk_sizes: int = 64 * 1024 * 1024,  # 64 MB
         page_cache_size: int = 4096,
-        compressor=zarr.storage.default_compressor,
+        compressor=None,
     ):
         """Initialize B-tree with Zarr backend.
 
@@ -141,7 +136,7 @@ class ZarrBTree:
                 chunks=(chunk, cols_per_page),
                 dtype="int64",
                 fill_value=0,
-                compressor=compressor,
+                # compressor=compressor,
             )
             # Initialize root page (page_id=1, is_node=0/leaf, count=0)
             self.pages = self.store[name]
@@ -156,7 +151,7 @@ class ZarrBTree:
             self.pages.attrs["max_entries"] = self.max_entries
             self.pages.attrs["chunk_sizes"] = chunk_sizes
 
-        self.pages = FullCache(self.pages)
+        self.pages = ChunksCache(self.pages)
         self._number_of_rows = None
         self._page_cache = LRU(page_cache_size)
 
@@ -189,14 +184,12 @@ class ZarrBTree:
         if not (row >= 0 and row < self.pages.shape[0]):
             raise ValueError(f"Page {page_id} not found")
 
-        data = self.pages[row, :]
+        data = self.pages[int(row), :]  # Cast to int for ChunksCache
 
         is_node = data[0]
         count = data[1]
         left = data[2]
         right = data[3]
-
-        PageClass = NodePage if is_node else LeafPage
 
         entries = []
 
@@ -218,8 +211,9 @@ class ZarrBTree:
                     )
                 )
 
-        page = PageClass(
+        page = Page(
             page_id=page_id,
+            is_node=is_node,
             left=left,
             right=right,
             entries=entries,
@@ -257,7 +251,7 @@ class ZarrBTree:
         if len(data) < self.pages.shape[1]:
             data += [0] * (self.pages.shape[1] - len(data))
 
-        self.pages[row, :] = data
+        self.pages[int(row), :] = data  # Cast to int for ChunksCache
         self._page_cache[page.page_id] = page
 
     def _create_page(self, is_node: bool = False) -> dict:
@@ -273,8 +267,7 @@ class ZarrBTree:
 
         page_id = self._row_to_page_id(new_row)
 
-        PageClass = NodePage if is_node else LeafPage
-        page = PageClass(page_id=page_id)
+        page = Page(page_id=page_id, is_node=is_node)
 
         self._write_page(page)
         return page
@@ -689,3 +682,114 @@ class ZarrBTree:
 
     def __iter__(self):
         yield from self._iter()
+
+    def bulk_load(self, data: np.ndarray, check_sorted: bool = True) -> None:
+        """Bulk load data into an empty B-tree.
+        Much faster than inserting one-by-one for large datasets.
+
+        Args:
+            data: 2D numpy array of shape (n, 3) with dtype int64
+                  Column 0: keys (datetime as microseconds since epoch)
+                  Column 1: value first component
+                  Column 2: value second component
+            check_sorted: bool
+
+        The data MUST be sorted by key (column 0) in ascending order.
+        The tree must be empty before calling this method.
+        """
+        if data.shape[1] != 3:
+            raise ValueError("Data must have exactly 3 columns: [key, val_a, val_b]")
+
+        if len(data) == 0:
+            return
+
+        # Verify tree is empty (only root exists with no entries)
+        root = self._read_page(self.root_page_id)
+        if root.count > 0 or root.is_node:
+            raise ValueError("Bulk load requires an empty tree. Current tree has data.")
+
+        # Verify data is sorted
+        if check_sorted:
+            LOG.info("Verifying data is sorted...")
+            if not np.all(data[:-1, 0] < data[1:, 0]):
+                raise ValueError("Data must be sorted by key (column 0) in ascending order")
+            LOG.info("Data is sorted.")
+
+        n_entries = len(data)
+        entries_per_leaf = self.max_entries
+
+        # Step 1: Create all leaf pages
+        leaf_page_ids = []
+        leaf_first_keys = []  # First key in each leaf (for building parent nodes)
+
+        for i in tqdm.tqdm(range(0, n_entries, entries_per_leaf)):
+            end_idx = min(i + entries_per_leaf, n_entries)
+            chunk = data[i:end_idx]
+
+            # Create leaf page
+            leaf = self._create_page(is_node=False)
+            leaf.entries = [
+                LeafEntry(key=int(chunk[j, 0]), value=(int(chunk[j, 1]), int(chunk[j, 2]))) for j in range(len(chunk))
+            ]
+
+            # Link to previous leaf
+            if leaf_page_ids:
+                prev_leaf = self._read_page(leaf_page_ids[-1])
+                prev_leaf.right = leaf.page_id
+                leaf.left = prev_leaf.page_id
+                self._write_page(prev_leaf)
+
+            self._write_page(leaf)
+            leaf_page_ids.append(leaf.page_id)
+            leaf_first_keys.append(int(chunk[0, 0]))
+
+        # Step 2: Build internal node levels bottom-up
+        current_level_ids = leaf_page_ids
+        current_level_keys = leaf_first_keys
+
+        while len(current_level_ids) > 1:
+            next_level_ids = []
+            next_level_keys = []
+
+            # Group current level into parent nodes
+            nodes_per_page = self.max_entries
+
+            for i in range(0, len(current_level_ids), nodes_per_page + 1):
+                # Each node has: 1 left child + up to max_entries (key, child) pairs
+                node = self._create_page(is_node=True)
+
+                # Left child is the first in this group
+                node.left = current_level_ids[i]
+
+                # Remaining children become entries
+                end_idx = min(i + nodes_per_page + 1, len(current_level_ids))
+
+                node.entries = []
+                for j in range(i + 1, end_idx):
+                    node.entries.append(NodeEntry(key=current_level_keys[j], child_page=current_level_ids[j]))
+
+                self._write_page(node)
+
+                next_level_ids.append(node.page_id)
+                next_level_keys.append(current_level_keys[i])
+
+            current_level_ids = next_level_ids
+            current_level_keys = next_level_keys
+
+        # Step 3: Update root to point to the top of the tree
+        if len(current_level_ids) == 1:
+            new_root_id = current_level_ids[0]
+
+            # If we built internal nodes, update root pointer
+            if new_root_id != leaf_page_ids[0] or len(leaf_page_ids) > 1:
+                self.root_page_id = new_root_id
+            else:
+                # Single leaf case - it becomes the root
+                # The root page (page 1) already exists as empty, so we need to copy data
+                root = self._read_page(1)
+                leaf = self._read_page(new_root_id)
+                root.entries = leaf.entries
+                root.is_node = False
+                self._write_page(root)
+
+        self.flush()

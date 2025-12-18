@@ -197,6 +197,9 @@ class ChunksCache:
     def chunks(self):
         return self._arr.chunks
 
+    def __len__(self):
+        return len(self._arr)
+
     def resize(self, *new_shape):
         for chunk in self._chunks.values():
             chunk.resize(self._chunks, new_shape)

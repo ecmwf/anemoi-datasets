@@ -68,14 +68,12 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
 
 def _unduplicate_worker(file_path: str):
 
-    return 0, Chunk.from_path(file_path)
-
     array = np.load(file_path, mmap_mode="r")
 
     duplicates, unique_array = _unduplicate_rows(array)
 
     if duplicates:
-        LOG.warning(f"Removed {duplicates} duplicate rows from {file_path}")
+        # LOG.warning(f"Removed {duplicates} duplicate rows from {file_path}")
         np.save(file_path + ".tmp", unique_array)  # Save to a temporary file first, numpy will add a .npy extension
         os.rename(file_path + ".tmp.npy", file_path)
 
@@ -132,11 +130,9 @@ def _deoverlap_worker(one, two):
     return duplicates, result
 
 
-def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = 10):
+def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = None):
 
     import os
-
-    max_workers = min(max_workers, os.cpu_count() or 1)
 
     files = [
         os.path.join(work_dir, file) for file in os.listdir(work_dir) if file.endswith(".npy") and ".tmp" not in file
@@ -145,16 +141,22 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = 10):
     chunks = {}
     total_duplicates = 0
 
+    if max_workers is None:
+        max_workers = min(os.cpu_count(), 20)
+
     with Executor(max_workers=max_workers) as executor:
 
         tasks = []
         for file in files:
             tasks.append(executor.submit(_unduplicate_worker, file))
 
+        LOG.info("Checking duplicates")
         for future in tqdm.tqdm(as_completed(tasks), total=len(tasks), desc="Checking duplicates", unit="file"):
             duplicates, chunk = future.result()
             total_duplicates += duplicates
             chunks[chunk.file_path] = chunk
+
+        LOG.info("Done")
 
         while True:
 
@@ -176,6 +178,7 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = 10):
             if not tasks:
                 break
 
+            LOG.info("Checking overlaps")
             for future in tqdm.tqdm(as_completed(tasks), total=len(tasks), desc="Checking overlaps", unit="pair"):
                 duplicates, updates = future.result()
                 total_duplicates += duplicates
@@ -185,7 +188,7 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = 10):
     return sorted(chunks.values(), key=lambda x: x.first_date)
 
 
-def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool = True, max_workers: int = 10):
+def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool = True, max_workers: int = None):
     chunks = _find_duplicate_and_overlapping_dates(work_dir, max_workers=max_workers)
     assert chunks, "No data found to finalise"
     shape = chunks[0].shape
@@ -211,13 +214,14 @@ def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool = True,
     offset = 0
 
     with ChunksCache(store["data"]) as data:
-
-        for chunk in tqdm.tqdm(chunks, desc="Writing to Zarr", unit="chunk"):
-            array = np.load(chunk.file_path, mmap_mode="r")
-            # assert array.shape == chunk.shape, f"Chunk shape mismatch: expected {chunk.shape}, got {array.shape}"
-            last = offset + chunk.shape[0]
-            data[offset:last, :] = array
-            offset = last
+        with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
+            for chunk in chunks:
+                array = np.load(chunk.file_path, mmap_mode="r")
+                # assert array.shape == chunk.shape, f"Chunk shape mismatch: expected {chunk.shape}, got {array.shape}"
+                last = offset + chunk.shape[0]
+                data[offset:last, :] = array
+                offset = last
+                pbar.update(chunk.shape[0])
 
 
 if __name__ == "__main__":

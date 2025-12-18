@@ -70,8 +70,8 @@ The keys to the btree are dates (as integer Unix epochs), and the values are pai
 
 The btree organises its entries in a balanced tree of pages containing several keys. If k is the number of keys per page and N the number of entries, lookups are O(log<sub>2</sub>(k) × log<sub>k</sub>(N)).
 
-Tests have been performed on a 100-year index, with values every second (3,155,760,000 entries). With pages of 256 entries, Zarr chunks of 64MB, no Zarr compression, the index is 11GB,
-and the average number of key comparisons in a lookup is ~32. It takes 24 milliseconds to look up a date.
+Tests have been performed on a 100-year index, with values every second (3,155,760,000 entries). With pages of 256 entries, Zarr chunks of 64MB, the index is 106M with the default Zarr compression,
+and the average number of key comparisons in a lookup is ~32. It takes ~20 milliseconds to look up a date, with some chunck level caching.
 
 ### Using the dataset
 
