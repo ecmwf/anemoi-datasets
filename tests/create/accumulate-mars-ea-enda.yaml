@@ -23,6 +23,7 @@ input:
 
     source:
       mars:
+        number: 0
         expver: "0001"
         class: ea
         type: fc
