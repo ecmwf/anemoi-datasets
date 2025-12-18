@@ -434,10 +434,15 @@ class MarsSource(LegacySource):
                     context.trace("🌧️", "  request =", r)
                     requests_.append(r)
             requests = requests_
-            request_already_using_valid_datetime = True
             context.trace("🌧️", f"Total requests: {len(requests)}")
+            requests = factorise_requests(
+                dates,
+                *requests,
+                request_already_using_valid_datetime=True,
+                date_key=date_key,
+            )
 
-        if len(dates) == 0:  # When using `repeated_dates`
+        elif len(dates) == 0:  # When using `repeated_dates`
             assert len(requests) == 1, requests
             assert "date" in requests[0], requests[0]
             if isinstance(requests[0]["date"], datetime.date):

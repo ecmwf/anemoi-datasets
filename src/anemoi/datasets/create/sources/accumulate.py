@@ -22,9 +22,8 @@ from earthkit.data.readers.grib.output import new_grib_output
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.sources import source_registry
+from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 
-from .accumulate_utils.catalogues import Link
-from .accumulate_utils.catalogues import build_catalogue
 from .accumulate_utils.covering_intervals import SignedInterval
 from .legacy import LegacySource
 
@@ -35,6 +34,13 @@ trace = print if DEBUG else lambda *args, **kwargs: None
 
 
 def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
+    # TODO:
+    # for od-oper: need to do this adjustment, should be in mars source itself?
+    # Modifies the request stream based on the time (so, not here).
+    # if request["time"] in (6, 18, 600, 1800):
+    #    request["stream"] = "scda"
+    # else:
+    #    request["stream"] = "oper"
     r = request.copy()
     if interval.base is None:
         # for some sources, we may not have a base time (grib-index)
@@ -72,7 +78,7 @@ class Accumulator:
         """Check whether the accumulation is complete (all intervals have been processed)"""
         return not self.todo
 
-    def compute(self, field: Any, values: NDArray, interval: Link) -> None:
+    def compute(self, field: Any, values: NDArray, interval) -> None:
         """Perform accumulation with the values array on this interval and record the operation.
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
@@ -286,7 +292,18 @@ def _compute_accumulations(
 
     LOG.debug("💬 source for accumulations: %s", source)
 
-    cataloguer = build_catalogue(context, available, source, **kwargs)
+    assert isinstance(source, dict)
+    assert len(source) == 1, f"Source must have exactly one key, got {list(source.keys())}"
+    source_name, _ = next(iter(source.items()))
+    if source_name == "mars":
+        if "type" not in source[source_name]:
+            source[source_name]["type"] = "fc"
+            LOG.warning("Assuming 'type: fc' for mars source as it was not specified in the recipe")
+        if "levtype" not in source[source_name]:
+            source[source_name]["levtype"] = "sfc"
+            LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
+
+    interval_generator = interval_generator_factory(available)
     if not isinstance(period, datetime.timedelta):
         period = frequency_to_timedelta(period)
 
@@ -294,7 +311,10 @@ def _compute_accumulations(
     for d in dates:
         if not isinstance(d, datetime.datetime):
             raise TypeError("valid_date must be a datetime.datetime instance")
-        coverages[d] = cataloguer.covering_intervals(d - period, d)
+        coverages[d] = interval_generator.covering_intervals(d - period, d)
+        trace(f"  Found covering intervals: for {d - period} to {d}:")
+        for c in coverages[d]:
+            trace(f"    {c}")
     # this piece of code is calling for a class Intervals()
     # dates = Intervals(dates, ...)
     dates.date_to_intervals = coverages
@@ -308,6 +328,7 @@ def _compute_accumulations(
     dates.intervals = _intervals()
 
     h = hashlib.md5(json.dumps((str(period), source), sort_keys=True).encode()).hexdigest()
+    print(source)
     source_object = context.create_source(source, "data_sources", h)
 
     # need a temporary file to store the accumulated fields for now, because earthkit-data
@@ -406,6 +427,7 @@ class AccumulateSource(LegacySource):
         source: Any,
         period,
         available=None,
+        patch: Any = None,
         **kwargs,
     ) -> Any:
         """Accumulation source callable function.
@@ -433,6 +455,20 @@ class AccumulateSource(LegacySource):
         The accumulated data source.
 
         """
+        if "skip_checks" in kwargs:
+            raise ValueError("skip_checks is not supported anymore, use patch instead (not implemented).")
+
+        if patch is not None:
+            # patch will patch the fields returned by the source to fix metadata issues
+            # such as missing base time, wrong stepType, or startStep/endStep swapped, or startStep=endStep.
+            # this is not implemented yet but is required to handle some well-known cases.
+            # The user should provide a patch description as a dictionary (API to be defined).
+            raise NotImplementedError("patch is not implemented yet for accumulate source.")
+            # patch will patch the fields returned by the source to fix metadata issues
+            # such as missing base time, wrong stepType, or startStep/endStep swapped, or startStep=endStep.
+            # this is not implemented yet but is required to handle some well-known cases.
+            # The user should provide a patch to apply
+
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
