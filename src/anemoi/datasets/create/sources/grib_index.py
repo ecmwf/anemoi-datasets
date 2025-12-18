@@ -7,9 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import hashlib
+import json
 import logging
 import os
 import sqlite3
+from collections import defaultdict
 from collections.abc import Iterator
 from typing import Any
 
@@ -607,15 +610,51 @@ class GribIndexSource(LegacySource):
             An array of retrieved GRIB fields.
         """
         index = GribIndex(indexdb)
-        result = []
 
         if flavour is not None:
             flavour = RuleBasedFlavour(flavour)
 
-        for grib in index.retrieve(dates, **kwargs):
-            field = ekd.from_source("memory", grib)[0]
-            if flavour:
-                field = flavour.apply(field)
-            result.append(field)
+        if hasattr(dates, "date_to_intervals"):
+            # When using accumulate source
+            full_requests = []
+            for d, interval in dates.intervals:
+                context.trace("🌧️", "interval:", interval)
+                valid_date, request, _ = dates._adjust_request_to_interval(interval, kwargs)
+                context.trace("🌧️", "  request =", request)
+                full_requests.append(([valid_date], request))
+        else:
+            # Normal case, without accumulate source
+            full_requests = [(dates, kwargs)]
+
+        full_requests = factorise(full_requests)
+        context.trace("🌧️", f"number of (factorised) requests: {len(full_requests)}")
+        for valid_dates, request in full_requests:
+            context.trace("🌧️", f"  dates: {valid_dates}, request: {request}")
+
+        result = []
+        for valid_dates, request in full_requests:
+            for grib in index.retrieve(valid_dates, **request):
+                field = ekd.from_source("memory", grib)[0]
+                if flavour:
+                    field = flavour.apply(field)
+                result.append(field)
 
         return FieldArray(result)
+
+
+def factorise(lst):
+    """Factorise a list of (dates, request) tuples by merging dates with identical requests."""
+    content = dict()
+
+    d = defaultdict(list)
+    for dates, request in lst:
+        assert isinstance(request, dict), type(request)
+        key = hashlib.md5(json.dumps(request, sort_keys=True).encode()).hexdigest()
+        content[key] = request
+        d[key] += dates
+
+    res = []
+    for key, dates in d.items():
+        dates = list(sorted(set(dates)))
+        res.append((dates, content[key]))
+    return res

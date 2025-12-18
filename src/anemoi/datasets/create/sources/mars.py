@@ -402,7 +402,6 @@ class MarsSource(LegacySource):
         Any
             The resulting dataset.
         """
-
         if not requests:
             requests = [kwargs]
 
@@ -424,6 +423,19 @@ class MarsSource(LegacySource):
                     raise ValueError(
                         "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
                     )
+
+        if hasattr(dates, "date_to_intervals"):
+            # When using accumulate source
+            requests_ = []
+            for request in requests:
+                for d, interval in dates.intervals:
+                    context.trace("🌧️", "interval:", interval)
+                    _, r, _ = dates._adjust_request_to_interval(interval, request)
+                    context.trace("🌧️", "  request =", r)
+                    requests_.append(r)
+            requests = requests_
+            request_already_using_valid_datetime = True
+            context.trace("🌧️", f"Total requests: {len(requests)}")
 
         if len(dates) == 0:  # When using `repeated_dates`
             assert len(requests) == 1, requests

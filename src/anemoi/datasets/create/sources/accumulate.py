@@ -8,11 +8,14 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import hashlib
+import json
 import logging
 from typing import Any
 
 import earthkit.data
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
@@ -27,64 +30,50 @@ from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
+DEBUG = True
+trace = print if DEBUG else lambda *args, **kwargs: None
+
+
+def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
+    r = request.copy()
+    if interval.base is None:
+        # for some sources, we may not have a base time (grib-index)
+        step = int((interval.end - interval.start).total_seconds() / 3600)
+        r["step"] = step
+        return interval.max, request, step
+    else:
+        step = int((interval.end - interval.base).total_seconds() / 3600)
+        r["date"] = interval.base.strftime("%Y%m%d")
+        r["time"] = interval.base.strftime("%H%M")
+        r["step"] = step
+        return interval.max, r, step
+
 
 class Accumulator:
     values: NDArray | None = None
-    completed: bool = False
+    locked: bool = False
 
-    def __init__(self, interval: SignedInterval, key: dict[str, Any], coverage):
-        """Accumulator object for a given param/member/valid_date"""
-        self.interval = interval
+    def __init__(self, valid_date: datetime.datetime, period: datetime.timedelta, key: dict[str, Any], coverage):
+        # The accumulator only accumulates fields and does not know about the rest
+        # Accumulator object for a given param/member/valid_date
+
+        self.valid_date = valid_date
+        self.period = period
+        self.key = key
+
         self.coverage = coverage
+
         self.todo = [v for v in coverage]
         self.done = []
-        assert interval.end > interval.start, f"Invalid interval {interval}"
-
-        self.period = interval.max - interval.min
-        self.valid_date = interval.max
-
-        assert isinstance(key, dict)
-        self.key = key
-        for k in ["date", "time", "step"]:
-            if k in self.key:
-                raise ValueError(f"Cannot use {k} for accumulation")
 
         self.values = None  # will hold accumulated values array
-
-        # The accumulator only accumulates fields matching its metadata
-        # and does not know about the rest
-
-        # key contains the mars request parameters except the one related to the time
-        # A mars request is a dictionary with three categories of keys:
-        #   - the ones related to the time (date, time, step)
-        #   - the ones related to the data (param, stream, levtype, expver, number, ...)
-        #   - the ones related to the processing to be done (grid, area, ...)
-
-    def is_field_needed(self, field: Any):
-        """Check whether the given field is needed by the accumulator (correct param, etc...)"""
-        for k, v in self.key.items():
-
-            if k == "number":
-                continue
-
-            metadata = field.metadata(k)
-            if k == "number":  # bug in eccodes has number=None randomly
-                if metadata is None:
-                    metadata = 0
-                if v is None:
-                    v = 0
-            if metadata != v:
-                LOG.debug(f"{self} does not need field {field} because of {k}={metadata} not {v}")
-                return False
-        return True
 
     def is_complete(self, **kwargs) -> bool:
         """Check whether the accumulation is complete (all intervals have been processed)"""
         return not self.todo
 
-    def compute(self, field: Any, values: NDArray, link: Link) -> None:
-        """Verify the field time metadata, find the associated interval
-        and perform accumulation with the values array on this interval.
+    def compute(self, field: Any, values: NDArray, interval: Link) -> None:
+        """Perform accumulation with the values array on this interval and record the operation.
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
 
@@ -99,9 +88,37 @@ class Accumulator:
         ------
         None
         """
-        interval = link.interval
-        if self.completed:
-            raise ValueError(f"Accumulator {self} already completed, cannot process interval {interval}")
+
+        def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:
+            for i in lst:
+                if i.start == interval.start or i.end == interval.end and i.base == interval.base:
+                    print(f"✅ {interval} == {i}")
+                    return i
+                if i.start == interval.start and i.end == interval.end and i.base is None:
+                    print(f"✅ {interval} ~= {i}")
+                    return i
+                print(f"❌ {interval} != {i}")
+            return None
+
+        matching = match_interval(interval, self.todo)
+
+        if not matching:
+            # interval not needed for this accumulator
+            # this happens when multiple accumulators have the same key but different valid_date
+            return False
+
+        def raise_error(msg):
+            LOG.error(f"Accumulator {self.__repr__(verbose=True)} state:")
+            LOG.error(f"Received interval: {interval}")
+            LOG.error(f"Matching interval: {matching}")
+            raise ValueError(msg)
+
+        if matching in self.done:
+            # this should not happen normally
+            raise_error(f"SignedInterval {matching} already done for accumulator")
+
+        if self.locked:
+            raise_error(f"Accumulator already used, cannot process interval {interval}")
 
         assert isinstance(values, np.ndarray), type(values)
 
@@ -109,17 +126,18 @@ class Accumulator:
         if interval.end < interval.start:  # negative accumulation if interval is reversed
             values = -values
         if self.values is None:
-            self.values = values.copy()
+            self.values = values
         else:
-            self.values += values.copy()
+            self.values += values
 
-        if interval not in self.todo:
-            raise ValueError(f"SignedInterval {interval} not in todo list of accumulator {self}")
-        self.todo.remove(interval)
-        self.done.append(interval)
+        self.todo.remove(matching)
+        self.done.append(matching)
+        return True
 
     def write_to_output(self, output, template) -> None:
-        assert self.is_complete(), self.todo
+        assert self.is_complete(), (self.todo, self.done, self)
+        assert not self.locked  # prevent double writing
+
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         if np.any(self.values < 0):
             LOG.warning(
@@ -129,14 +147,26 @@ class Accumulator:
             template=template,
             values=self.values,
             valid_date=self.valid_date,
-            period=self.interval.end - self.interval.start,
+            period=self.period,
             output=output,
         )
-        self.completed = True
+        # lock the accumulator to prevent further use
+        self.locked = True
 
-    def __repr__(self):
-        key = ", ".join(f"{k}={v}" for k, v in self.key.items())
-        return f"{self.__class__.__name__}({self.interval}, {key}, {len(self.coverage)-len(self.todo)}/{len(self.coverage)} already accumulated)"
+    def __repr__(self, verbose: bool = False) -> str:
+        key = ", ".join(f"{k}={v}" for k, v in self.key)
+        period = frequency_to_string(self.period)
+        default = f"{self.__class__.__name__}(valid_date={self.valid_date}, {period}, key={{ {key} }})"
+        if verbose:
+            extra = []
+            if self.locked:
+                extra.append("(locked)")
+            for i in self.done:
+                extra.append(f"    done: {i}")
+            for i in self.todo:
+                extra.append(f"    todo: {i}")
+            default += "\n" + "\n".join(extra)
+        return default
 
 
 def write_accumulated_field_with_valid_time(
@@ -183,6 +213,44 @@ def write_accumulated_field_with_valid_time(
         )
 
 
+def field_to_interval(field):
+    date_str = str(field.metadata("date")).zfill(8)
+    time_str = str(field.metadata("time")).zfill(4)
+    base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
+
+    endStep = field.metadata("endStep")
+    startStep = field.metadata("startStep")
+    typeStep = field.metadata("stepType")
+
+    # if endStep == 0 and startStep > 0:
+    #   startStep, endStep = endStep, startStep
+
+    if startStep == endStep:
+        startStep = 0
+        assert typeStep == "instant", "If startStep == endStep, stepType must be 'instant'"
+    assert startStep < endStep, (startStep, endStep)
+
+    start_step = datetime.timedelta(hours=startStep)
+    end_step = datetime.timedelta(hours=endStep)
+
+    trace(f"    field: {startStep=}, {endStep=}")
+
+    interval = SignedInterval(
+        start=base_datetime + start_step,
+        end=base_datetime + end_step,
+        base=base_datetime,
+    )
+
+    date_str = str(field.metadata("validityDate")).zfill(8)
+    time_str = str(field.metadata("validityTime")).zfill(4)
+    valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
+    assert valid_date == interval.max, (valid_date, interval)
+
+    trace(f"    field interval: {interval}")
+
+    return interval
+
+
 def _compute_accumulations(
     context: Any,
     dates: list[datetime.datetime],
@@ -219,40 +287,28 @@ def _compute_accumulations(
     LOG.debug("💬 source for accumulations: %s", source)
 
     cataloguer = build_catalogue(context, available, source, **kwargs)
+    if not isinstance(period, datetime.timedelta):
+        period = frequency_to_timedelta(period)
 
-    def interval_from_valid_date_and_period(valid_date, period):
-        # helper function to build accumulation interval from valid date and period
-        if not isinstance(valid_date, datetime.datetime):
+    coverages = {}
+    for d in dates:
+        if not isinstance(d, datetime.datetime):
             raise TypeError("valid_date must be a datetime.datetime instance")
-        if not isinstance(period, datetime.timedelta):
-            period = frequency_to_timedelta(period)
-        start = valid_date - period
-        end = valid_date
-        return SignedInterval(start, end)
+        coverages[d] = cataloguer.covering_intervals(d - period, d)
+    # this piece of code is calling for a class Intervals()
+    # dates = Intervals(dates, ...)
+    dates.date_to_intervals = coverages
+    dates._adjust_request_to_interval = _adjust_request_to_interval
 
-    # building accumulators :
-    # one accumulator per valid date, per output parm and ensemble member
-    # i.e. one accumulator per output field
-    accumulators = []
-    for valid_date in dates:
-        interval = interval_from_valid_date_and_period(valid_date, period)
-        coverage = cataloguer.covering_intervals(interval.start, interval.end)
-        for key in cataloguer.get_all_keys():
-            accumulators.append(Accumulator(interval, key=key, coverage=coverage))
+    def _intervals():
+        for d in dates:
+            for interval in coverages[d]:
+                yield d, interval
 
-    # building links from accumulators to intervals they need
-    # each link represent a field to fetch from the source
-    # i.e. one link per input field
-    # one accumulator may generate multiple links if it needs multiple input fields
-    # and one link may be used by multiple accumulators if they need the same input field
-    links = []
-    for accumulator in accumulators:
-        LOG.debug(f"💬 {accumulator} will need:")
-        for v in accumulator.coverage:
-            assert isinstance(v, SignedInterval), type(v)
-            link = Link(interval=v, accumulator=accumulator, catalogue=cataloguer)
-            LOG.debug("  💬 ", link)
-            links.append(link)
+    dates.intervals = _intervals()
+
+    h = hashlib.md5(json.dumps((str(period), source), sort_keys=True).encode()).hexdigest()
+    source_object = context.create_source(source, "data_sources", h)
 
     # need a temporary file to store the accumulated fields for now, because earthkit-data
     # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
@@ -260,31 +316,83 @@ def _compute_accumulations(
     path = tmp.path
     output = new_grib_output(path)
 
-    # for each field provided by the catalogue, find which accumulators need it and perform accumulation
-    for field, values, link in cataloguer.retrieve_fields(links):
-        link.accumulator.compute(field, values, link)
-        if link.accumulator.is_complete():
-            # all intervals for accumulation have been processed, write the accumulated field to output
-            link.accumulator.write_to_output(output, template=field)
+    accumulators = {}
+    for field in source_object(context, dates):
+        # for each field provided by the catalogue, find which accumulators need it and perform accumulation
+
+        values = field.values.copy()
+        # would values = field.values() be enough ?
+
+        key = field.metadata(namespace="mars")
+        key = {k: v for k, v in key.items() if k not in ["date", "time", "step"]}
+        key = tuple(sorted(key.items()))
+        print("---")
+        print(f"\033[93m FIELD {field}, key: {key}\033[0m")
+
+        interval = field_to_interval(field)
+        print(f"    -> interval: {interval}")
+
+        valid_date = interval.max
+
+        field_used = False
+        for date in dates:
+            # build accumulator if it does not exist yet
+            print(f"  \033[94mChecking output date {date}\033[0m (field valid_date={valid_date})")
+            if (date, key) not in accumulators:
+                print(f"  ❤️ Creating accumulator for date {date}, key {key}")
+                accumulators[(date, key)] = Accumulator(date, period=period, key=key, coverage=coverages[date])
+
+            # find the accumulator for this valid date and key
+            acc = accumulators[(date, key)]
+
+            # perform accumulation if needed
+            if acc.compute(field, values, interval):
+                # .compute() returned True, meaning the field was used for accumulation
+                field_used = True
+                print(f"    🆗️ Used for accumulator {acc.__repr__(verbose=True)  }")
+
+                if acc.is_complete():
+                    # all intervals for accumulation have been processed, write the accumulated field to output
+                    acc.write_to_output(output, template=field)
+                    print("   ✅ Completed : ", acc.__repr__(verbose=True))
+                    print(f"  ✅ Wrote accumulated field for date {date}, key {key}")
+
+        if not field_used:
+            for a in accumulators.values():
+                LOG.error(f"Existing accumulator: {a.__repr__(verbose=True)}")
+            raise ValueError(f"Field {field} with {interval=} was provided by the source but not used")
+
+    # Final checks
+    def check_missing_accumulators():
+        for date in dates:
+            count = sum(1 for (d, k) in accumulators.keys() if d == date)
+            LOG.debug(f"Date {date} has {count} accumulators")
+            if count != len(accumulators) // len(dates):
+                LOG.error(f"All requested dates: {dates}")
+                LOG.error(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
+                for d, k in accumulators.keys():
+                    if d == date:
+                        LOG.error(f"  Accumulator for date {d}, key {k}")
+                raise ValueError(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
+
+    check_missing_accumulators()
+
+    for acc in accumulators.values():
+        if not acc.is_complete():
+            raise ValueError(f"Accumulator not complete: {acc.__repr__(verbose=True)}")
+
+    print(f"Created {len(accumulators)} accumulated fields:")
+
+    if not accumulators:
+        raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
     output.close()
     ds = earthkit.data.from_source("file", path)
     ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
-    # check that each accumulator is complete
-    for link in links:
-        a = link.accumulator
-        if not a.is_complete():
-            a.is_complete(debug=True)
-            LOG.error(f"Accumulator incomplete: {a}")
-            LOG.error(f"{len(a.done)} SignedInterval received:")
-            for v in a.done:
-                LOG.error(f"  {v}")
-            raise AssertionError("missing periods for accumulator, stopping.")
-
-    # the resulting datasource has one field per valid date, parameter and ensemble member
-    keys = list(cataloguer.get_all_keys())
-    assert len(ds) / len(keys) == len(dates), (len(ds), len(keys), len(dates))
+    print(f"Created {len(ds)} accumulated fields:")
+    for i in ds:
+        print("  ", i)
     return ds
 
 

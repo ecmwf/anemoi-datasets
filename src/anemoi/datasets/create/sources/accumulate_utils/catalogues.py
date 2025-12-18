@@ -22,12 +22,6 @@ from anemoi.datasets.create.sources.accumulate_utils.interval_generators import 
 
 LOG = logging.getLogger(__name__)
 
-# def trace(*args, **kwargs):
-#    pass
-
-
-# trace = print
-
 DEBUG = True
 trace = print if DEBUG else lambda *args, **kwargs: None
 
@@ -186,44 +180,6 @@ class Catalogue:
             raise ValueError(f"Unused field {field}, stopping. {field_interval}")
         else:
             trace(f"   ✅ field {field} used by {used} accumulator(s)")
-
-
-def field_to_interval(field):
-    date_str = str(field.metadata("date")).zfill(8)
-    time_str = str(field.metadata("time")).zfill(4)
-    base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-
-    endStep = field.metadata("endStep")
-    startStep = field.metadata("startStep")
-    typeStep = field.metadata("stepType")
-
-    # if endStep == 0 and startStep > 0:
-    #   startStep, endStep = endStep, startStep
-
-    if startStep == endStep:
-        startStep = 0
-        assert typeStep == "instant", "If startStep == endStep, stepType must be 'instant'"
-    assert startStep < endStep, (startStep, endStep)
-
-    start_step = datetime.timedelta(hours=startStep)
-    end_step = datetime.timedelta(hours=endStep)
-
-    trace(f"    field: {startStep=}, {endStep=}")
-
-    interval = SignedInterval(
-        start=base_datetime + start_step,
-        end=base_datetime + end_step,
-        base=base_datetime,
-    )
-
-    date_str = str(field.metadata("validityDate")).zfill(8)
-    time_str = str(field.metadata("validityTime")).zfill(4)
-    valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-    assert valid_date == interval.max, (valid_date, interval)
-
-    trace(f"    field interval: {interval}")
-
-    return interval
 
 
 class GribIndexCatalogue(Catalogue):
