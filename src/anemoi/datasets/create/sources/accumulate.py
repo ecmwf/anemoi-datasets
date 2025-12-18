@@ -129,12 +129,13 @@ class Accumulator:
         assert isinstance(values, np.ndarray), type(values)
 
         # actual accumulation computation
-        if interval.end < interval.start:  # negative accumulation if interval is reversed
-            values = -values
+        # negative accumulation if interval is reversed
+        # copy is mandatory since value is shared between accumulators
+        local_values = interval.sign * values.copy()
         if self.values is None:
-            self.values = values
+            self.values = local_values
         else:
-            self.values += values
+            self.values += local_values
 
         self.todo.remove(matching)
         self.done.append(matching)
