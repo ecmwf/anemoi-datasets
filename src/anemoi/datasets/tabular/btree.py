@@ -91,7 +91,7 @@ class ZarrBTree:
         mode: str = "r",
         chunk_sizes: int = 64 * 1024 * 1024,  # 64 MB
         page_cache_size: int = 4096,
-        compressor=None,
+        compressor=zarr.storage.default_compressor,
     ):
         """Initialize B-tree with Zarr backend.
 
