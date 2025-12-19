@@ -1,0 +1,17 @@
+dates:
+  start: 2021-01-10 18:00:00
+  end: 2021-01-12 12:00:00
+  frequency: 6h
+
+input:
+    accumulate:
+      source:
+        mars:
+          expver: "0001"
+          class: ea
+          stream: oper
+          grid: 20./20.
+          levtype: sfc
+          param: [ tp, cp]
+          accumulation_period: 6
+          data_accumulation_period: 6 # this argument will be ignored because of ERA-like accumulations

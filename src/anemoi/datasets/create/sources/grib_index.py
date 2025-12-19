@@ -7,9 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import hashlib
+import json
 import logging
 import os
 import sqlite3
+from collections import defaultdict
 from collections.abc import Iterator
 from typing import Any
 
@@ -46,8 +49,8 @@ class GribIndex:
         ----------
         database : str
             Path to the SQLite database file.
-        keys : Optional[List[str] | str], optional
-            List of keys or a string of keys to use for indexing, by default None.
+        keys : Optional[list[str] | str], optional
+            list of keys or a string of keys to use for indexing, by default None.
         flavour : Optional[str], optional
             Flavour configuration for mapping fields, by default None.
         update : bool, optional
@@ -161,7 +164,7 @@ class GribIndex:
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of metadata keys stored in the database.
         """
         self.cursor.execute("SELECT key FROM metadata_keys")
@@ -229,7 +232,7 @@ class GribIndex:
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of column names.
         """
         if self._columns is not None:
@@ -245,8 +248,8 @@ class GribIndex:
 
         Parameters
         ----------
-        columns : List[str]
-            List of column names to ensure in the table.
+        columns : list[str]
+            list of column names to ensure in the table.
         """
         assert self.update
 
@@ -364,7 +367,7 @@ class GribIndex:
 
         Returns
         -------
-        List[dict]
+        list[dict]
             A list of GRIB2 parameter information.
         """
         if ("grib2", paramId) in self.cache:
@@ -524,8 +527,8 @@ class GribIndex:
 
         Parameters
         ----------
-        dates : List[Any]
-            List of dates to retrieve data for.
+        dates : list[Any]
+            list of dates to retrieve data for.
         **kwargs : Any
             Additional filtering criteria.
 
@@ -545,6 +548,9 @@ class GribIndex:
         params = dates
 
         for k, v in kwargs.items():
+            if k not in self._columns:
+                LOG.warning(f"Warning : {k} not in database columns, key discarded")
+                continue
             if isinstance(v, list):
                 query += f" AND {k} IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
@@ -552,11 +558,14 @@ class GribIndex:
                 query += f" AND {k} = ?"
                 params.append(str(v))
 
-        print("SELECT", query)
-        print("SELECT", params)
+        print("SELECT (query)", query)
+        print("SELECT (params)", params)
 
         self.cursor.execute(query, params)
-        for path_id, offset, length in self.cursor.fetchall():
+
+        fetch = self.cursor.fetchall()
+
+        for path_id, offset, length in fetch:
             if path_id in self.cache:
                 file = self.cache[path_id]
             else:
@@ -570,9 +579,8 @@ class GribIndex:
             yield data
 
 
-@source_registry.register("grib_index")
+@source_registry.register("grib-index")
 class GribIndexSource(LegacySource):
-
     @staticmethod
     def _execute(
         context: Any,
@@ -602,15 +610,51 @@ class GribIndexSource(LegacySource):
             An array of retrieved GRIB fields.
         """
         index = GribIndex(indexdb)
-        result = []
 
         if flavour is not None:
             flavour = RuleBasedFlavour(flavour)
 
-        for grib in index.retrieve(dates, **kwargs):
-            field = ekd.from_source("memory", grib)[0]
-            if flavour:
-                field = flavour.apply(field)
-            result.append(field)
+        if hasattr(dates, "date_to_intervals"):
+            # When using accumulate source
+            full_requests = []
+            for d, interval in dates.intervals:
+                context.trace("🌧️", "interval:", interval)
+                valid_date, request, _ = dates._adjust_request_to_interval(interval, kwargs)
+                context.trace("🌧️", "  request =", request)
+                full_requests.append(([valid_date], request))
+        else:
+            # Normal case, without accumulate source
+            full_requests = [(dates, kwargs)]
+
+        full_requests = factorise(full_requests)
+        context.trace("🌧️", f"number of (factorised) requests: {len(full_requests)}")
+        for valid_dates, request in full_requests:
+            context.trace("🌧️", f"  dates: {valid_dates}, request: {request}")
+
+        result = []
+        for valid_dates, request in full_requests:
+            for grib in index.retrieve(valid_dates, **request):
+                field = ekd.from_source("memory", grib)[0]
+                if flavour:
+                    field = flavour.apply(field)
+                result.append(field)
 
         return FieldArray(result)
+
+
+def factorise(lst):
+    """Factorise a list of (dates, request) tuples by merging dates with identical requests."""
+    content = dict()
+
+    d = defaultdict(list)
+    for dates, request in lst:
+        assert isinstance(request, dict), type(request)
+        key = hashlib.md5(json.dumps(request, sort_keys=True).encode()).hexdigest()
+        content[key] = request
+        d[key] += dates
+
+    res = []
+    for key, dates in d.items():
+        dates = list(sorted(set(dates)))
+        res.append((dates, content[key]))
+    return res
