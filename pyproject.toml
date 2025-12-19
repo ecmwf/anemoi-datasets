@@ -47,12 +47,12 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.10",
-  "anemoi-utils[provenance]>=0.4.38",
+  "anemoi-transform>=0.1.12",
+  "anemoi-utils>=0.4.26",
   "cfunits",
   "glom",
   "jsonschema",
-  "numcodecs<0.16",                   # Until we move to zarr3
+  "numcodecs<0.16", # Until we move to zarr3
   "numpy",
   "pytest>=8.4.1",
   "pytest-xdist>=3.7",
