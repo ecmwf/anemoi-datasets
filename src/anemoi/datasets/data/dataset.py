@@ -245,6 +245,12 @@ class Dataset(ABC, Sized):
 
             return Statistics(self, open_dataset(statistics))._subset(**kwargs).mutate()
 
+        if "mask" in kwargs:
+            from .masked import Masking
+
+            mask_file = kwargs.pop("mask")
+            return Masking(self, mask_file)._subset(**kwargs).mutate()
+
         # Note: trim_edge should go before thinning
         if "trim_edge" in kwargs:
             from .masked import TrimEdge

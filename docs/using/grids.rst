@@ -37,6 +37,22 @@ dataset:
    :width: 75%
    :align: center
 
+*********
+ masking
+*********
+
+You can apply an arbitrary spatial mask to a dataset by specifying the
+``mask`` parameter in the ``open_dataset`` function. The mask must be a
+NumPy .npy file containing a boolean array, where True indicates points
+to be kept and False indicates points to be removed.
+
+.. code:: python
+
+   ds = open_dataset(dataset, mask="path/to/mask.npy")
+
+The mask array must have the same total number of grid points and
+dimension as the dataset.
+
 ******
  area
 ******
