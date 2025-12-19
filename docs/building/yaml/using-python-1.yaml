@@ -1,0 +1,15 @@
+dates:
+  start: 2023-01-01T00:00:00Z
+  end: 2023-12-31T18:00:00Z
+  frequency: 12h
+
+input:
+  pipe:
+  - join:
+    - grib:
+        path: dir1/*.grib
+    - grib:
+        path: dir2/*.grib
+  - clip:
+      minimum: 0
+      maximum: 100
