@@ -13,6 +13,7 @@ import os
 
 # from concurrent.futures import ThreadPoolExecutor as Executor
 from concurrent.futures import ProcessPoolExecutor as Executor
+from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 import numpy as np
@@ -21,6 +22,8 @@ import tqdm
 from anemoi.datasets.tabular.caching import ChunksCache
 
 LOG = logging.getLogger(__name__)
+MMAP_KWARGS = {"mmap_mode": "r"}
+# MMAP_KWARGS = {}
 
 
 class Chunk:
@@ -29,6 +32,7 @@ class Chunk:
         self.first_date = first_date
         self.last_date = last_date
         self.shape = shape
+        self.offset = None
 
     @classmethod
     def from_array(cls, array: np.ndarray, file_path: str):
@@ -41,8 +45,36 @@ class Chunk:
 
     @classmethod
     def from_path(cls, file_path: str):
-        array = np.load(file_path, mmap_mode="r")
-        return cls.from_array(array, file_path=file_path)
+        json_path = file_path + ".json"
+        if not os.path.exists(json_path) or (os.path.getmtime(json_path) <= os.path.getmtime(file_path)):
+            array = np.load(file_path, **MMAP_KWARGS)
+            cls.from_array(array, file_path=file_path).dump(json_path)
+        return cls.from_json(json_path)
+
+    @classmethod
+    def from_json(cls, json_path: str):
+        import json
+
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        return cls(
+            first_date=datetime.datetime.fromisoformat(data["first_date"]),
+            last_date=datetime.datetime.fromisoformat(data["last_date"]),
+            shape=tuple(data["shape"]),
+            file_path=data["file_path"],
+        )
+
+    def dump(self, json_path: str):
+        import json
+
+        data = {
+            "first_date": self.first_date.isoformat(),
+            "last_date": self.last_date.isoformat(),
+            "shape": self.shape,
+            "file_path": self.file_path,
+        }
+        with open(json_path, "w") as f:
+            json.dump(data, f, indent=4)
 
 
 def _unduplicate_rows(array: np.ndarray) -> np.ndarray:
@@ -66,16 +98,20 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
-def _unduplicate_worker(file_path: str):
+def _unduplicate_worker(file_path: str, delete_file: bool):
 
-    array = np.load(file_path, mmap_mode="r")
+    array = np.load(file_path, **MMAP_KWARGS)
 
     duplicates, unique_array = _unduplicate_rows(array)
 
     if duplicates:
         # LOG.warning(f"Removed {duplicates} duplicate rows from {file_path}")
         np.save(file_path + ".tmp", unique_array)  # Save to a temporary file first, numpy will add a .npy extension
-        os.rename(file_path + ".tmp.npy", file_path)
+        if delete_file:
+            os.rename(file_path + ".tmp.npy", file_path)
+        else:
+            os.rename(file_path + ".tmp.npy", file_path + ".deduped.npy")
+            file_path = file_path + ".deduped.npy"
 
     first_date = _date(unique_array, 0)
     last_date = _date(unique_array, -1)
@@ -83,13 +119,13 @@ def _unduplicate_worker(file_path: str):
     return duplicates, Chunk(first_date=first_date, last_date=last_date, shape=unique_array.shape, file_path=file_path)
 
 
-def _deoverlap_worker(one, two):
-    array_one = np.load(one.file_path, mmap_mode="r")
-    array_two = np.load(two.file_path, mmap_mode="r")
+def _deoverlap_worker(one, two, delete_files: bool):
+    array_one = np.load(one.file_path, **MMAP_KWARGS)
+    array_two = np.load(two.file_path, **MMAP_KWARGS)
 
     i = 0
     last = _date(array_one, -1)
-    while last >= _date(array_two, i) and i < array_two.shape[0]:
+    while i < array_two.shape[0] and last >= _date(array_two, i):
         i += 1
 
     assert i > 0
@@ -106,10 +142,18 @@ def _deoverlap_worker(one, two):
     end_array_two = array_two[i:]
 
     np.save(one.file_path + ".tmp", new_array_one)
-    os.rename(one.file_path + ".tmp.npy", one.file_path)
+    if delete_files:
+        os.rename(one.file_path + ".tmp.npy", one.file_path)
+    else:
+        os.rename(one.file_path + ".tmp.npy", one.file_path + ".deduped.npy")
+        one.file_path = one.file_path + ".deduped.npy"
 
     np.save(two.file_path + ".tmp", end_array_two)
-    os.rename(two.file_path + ".tmp.npy", two.file_path)
+    if delete_files:
+        os.rename(two.file_path + ".tmp.npy", two.file_path)
+    else:
+        os.rename(two.file_path + ".tmp.npy", two.file_path + ".deduped.npy")
+        two.file_path = two.file_path + ".deduped.npy"
 
     result = []
 
@@ -130,31 +174,63 @@ def _deoverlap_worker(one, two):
     return duplicates, result
 
 
-def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = None):
+def _sort_and_chain_chunks(chunks):
+    chunks = sorted(chunks, key=lambda x: x.first_date)
+    offset = 0
+    for chunk in chunks:
+        chunk.offset = offset
+        offset += chunk.shape[0]
+    return chunks
+
+
+def _test_only(work_dir: str):
+
+    files = []
+    for file in os.listdir(work_dir):
+        if not file.endswith(".npy"):
+            continue
+        if ".tmp" in file or ".deduped" in file:
+            continue
+
+        files.append(os.path.join(work_dir, file))
+
+    result = []
+    for file in tqdm.tqdm(files, desc="Loading chunks"):
+        result.append(Chunk.from_path(file))
+
+    return _sort_and_chain_chunks(result)
+
+
+def _find_duplicate_and_overlapping_dates(work_dir: str, delete_files, max_workers: int = None):
 
     import os
-
-    files = [
-        os.path.join(work_dir, file) for file in os.listdir(work_dir) if file.endswith(".npy") and ".tmp" not in file
-    ]
 
     chunks = {}
     total_duplicates = 0
 
     if max_workers is None:
-        max_workers = min(os.cpu_count(), 20)
+        max_workers = max(int(os.cpu_count() * 0.7), 1)
 
     with Executor(max_workers=max_workers) as executor:
 
         tasks = []
-        for file in files:
-            tasks.append(executor.submit(_unduplicate_worker, file))
+        for file in os.listdir(work_dir):
+            if not file.endswith(".npy"):
+                continue
+            if ".tmp" in file or ".deduped" in file:
+                continue
+
+            full_path = os.path.join(work_dir, file)
+            tasks.append(executor.submit(_unduplicate_worker, full_path, delete_files))
 
         LOG.info("Checking duplicates")
-        for future in tqdm.tqdm(as_completed(tasks), total=len(tasks), desc="Checking duplicates", unit="file"):
-            duplicates, chunk = future.result()
-            total_duplicates += duplicates
-            chunks[chunk.file_path] = chunk
+        with tqdm.tqdm(total=len(tasks), desc="Checking duplicates", unit="file") as pbar:
+            for future in as_completed(tasks):
+                duplicates, chunk = future.result()
+                total_duplicates += duplicates
+                chunks[chunk.file_path] = chunk
+                pbar.update(1)
+                pbar.set_postfix({"duplicates": total_duplicates})
 
         LOG.info("Done")
 
@@ -168,7 +244,7 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = None
                     continue
 
                 if chunk.first_date <= prev.last_date:
-                    tasks.append(executor.submit(_deoverlap_worker, prev, chunk))
+                    tasks.append(executor.submit(_deoverlap_worker, prev, chunk, delete_files))
                     del chunks[prev.file_path]
                     del chunks[chunk.file_path]
                     prev = None
@@ -179,17 +255,25 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, max_workers: int = None
                 break
 
             LOG.info("Checking overlaps")
-            for future in tqdm.tqdm(as_completed(tasks), total=len(tasks), desc="Checking overlaps", unit="pair"):
-                duplicates, updates = future.result()
-                total_duplicates += duplicates
-                chunks.update({update.file_path: update for update in updates})
+            with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair") as pbar:
+                for future in as_completed(tasks):
+                    duplicates, updates = future.result()
+                    total_duplicates += duplicates
+                    chunks.update({update.file_path: update for update in updates})
+                    pbar.update(1)
+                    pbar.set_postfix({"duplicates": total_duplicates})
 
     LOG.info(f"Total duplicates removed: {total_duplicates}")
-    return sorted(chunks.values(), key=lambda x: x.first_date)
+    return _sort_and_chain_chunks(list(chunks.values()))
 
 
-def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool = True, max_workers: int = None):
-    chunks = _find_duplicate_and_overlapping_dates(work_dir, max_workers=max_workers)
+def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool, max_workers: int = None):
+
+    if False:
+        chunks = _test_only(work_dir)
+    else:
+        chunks = _find_duplicate_and_overlapping_dates(work_dir, max_workers=max_workers, delete_files=delete_files)
+
     assert chunks, "No data found to finalise"
     shape = chunks[0].shape
     assert all(chunk.shape[1] == shape[1] for chunk in chunks), "Inconsistent number of columns in chunks"
@@ -211,17 +295,35 @@ def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool = True,
         dtype=np.float32,
         compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
     )
-    offset = 0
 
     with ChunksCache(store["data"]) as data:
-        with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
-            for chunk in chunks:
-                array = np.load(chunk.file_path, mmap_mode="r")
-                # assert array.shape == chunk.shape, f"Chunk shape mismatch: expected {chunk.shape}, got {array.shape}"
-                last = offset + chunk.shape[0]
-                data[offset:last, :] = array
-                offset = last
-                pbar.update(chunk.shape[0])
+
+        def _load_chunk(chunk):
+            array = np.load(chunk.file_path)
+            return (chunk, array)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+
+            # Load 2 chunks ahead of time, so we have some sort of double buffering
+            # while writing to Zarr
+
+            tasks = []
+            i = 0
+            for i in range(len(chunks)):
+                tasks.append(executor.submit(_load_chunk, chunks[i]))
+                if i >= 2:
+                    break
+
+            i = len(tasks)
+
+            with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
+                while tasks:
+                    chunk, array = tasks.pop(0).result()
+                    data[chunk.offset : chunk.offset + chunk.shape[0], :] = array
+                    pbar.update(chunk.shape[0])
+                    if i < len(chunks):
+                        tasks.append(executor.submit(_load_chunk, chunks[i]))
+                        i += 1
 
 
 if __name__ == "__main__":

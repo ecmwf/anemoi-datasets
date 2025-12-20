@@ -41,7 +41,7 @@ class TabularCreator(Creator):
     def finalise(self):
         from .finalise import finalise_tabular_dataset
 
-        finalise_tabular_dataset(self.work_dir, self.path)
+        finalise_tabular_dataset(self.work_dir, self.path, delete_files=True)
 
     def statistics(self):
         pass
