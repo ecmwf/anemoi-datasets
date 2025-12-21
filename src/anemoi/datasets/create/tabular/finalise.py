@@ -544,9 +544,7 @@ def finalise_tabular_dataset(
     dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
     dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
     for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
-        dates_ranges[i, 0] = dates[start]
-        dates_ranges[i, 1] = start
-        dates_ranges[i, 2] = length
+        dates_ranges[i, :] = (dates[start], start, length)
     dates_ranges.flush()
 
     LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
