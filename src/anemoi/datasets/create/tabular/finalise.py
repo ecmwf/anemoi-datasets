@@ -95,7 +95,7 @@ class Chunk:
 
     @classmethod
     def from_path(cls, file_path: str) -> "Chunk":
-        """Create a Chunk instance from a file path, using a cached JSON if available.
+        """Create a Chunk instance from a file path.
 
         Parameters
         ----------
@@ -107,63 +107,9 @@ class Chunk:
         Chunk
             The created Chunk instance.
         """
-        json_path: str = file_path + ".json"
-        if not os.path.exists(json_path) or (os.path.getmtime(json_path) <= os.path.getmtime(file_path)):
-            try:
-                array: np.ndarray = np.load(file_path, mmap_mode="r")
-            except ValueError as e:
-                LOG.error(f"Error loading numpy array from {file_path}: {e}")
-                raise
-            cls.from_array(array, file_path=file_path).dump(json_path)
-        return cls.from_json(json_path)
 
-    @classmethod
-    def from_json(cls, json_path: str) -> "Chunk":
-        """Create a Chunk instance from a JSON file.
-
-        Parameters
-        ----------
-        json_path : str
-            Path to the JSON file containing chunk metadata.
-
-        Returns
-        -------
-        Chunk
-            The created Chunk instance.
-        """
-        import json
-
-        with open(json_path, "r") as f:
-            try:
-                data: Dict[str, Any] = json.load(f)
-            except json.JSONDecodeError as e:
-                LOG.error(f"Error decoding JSON from {json_path}: {e}")
-                raise
-        return cls(
-            first_date=datetime.datetime.fromisoformat(data["first_date"]),
-            last_date=datetime.datetime.fromisoformat(data["last_date"]),
-            shape=tuple(data["shape"]),
-            file_path=data["file_path"],
-        )
-
-    def dump(self, json_path: str) -> None:
-        """Write chunk metadata to a JSON file.
-
-        Parameters
-        ----------
-        json_path : str
-            Path to the JSON file to write.
-        """
-        import json
-
-        data: Dict[str, Any] = {
-            "first_date": self.first_date.isoformat(),
-            "last_date": self.last_date.isoformat(),
-            "shape": self.shape,
-            "file_path": self.file_path,
-        }
-        with open(json_path, "w") as f:
-            json.dump(data, f, indent=4)
+        array: np.ndarray = np.load(file_path, mmap_mode="r")
+        return cls.from_array(array, file_path=file_path)
 
 
 def _unduplicate_rows(array: np.ndarray) -> Tuple[int, np.ndarray]:
@@ -612,7 +558,6 @@ def finalise_tabular_dataset(
         LOG.info("Deleting temporary files")
         os.unlink(dates_path)
         os.unlink(dates_ranges_path)
-        return
 
 
 if __name__ == "__main__":
