@@ -29,6 +29,20 @@ LOG = logging.getLogger(__name__)
 
 
 class Chunk:
+    """Represents a chunk of tabular data with associated date range and shape information.
+
+    Parameters
+    ----------
+    first_date : datetime.datetime
+        The first date in the chunk.
+    last_date : datetime.datetime
+        The last date in the chunk.
+    shape : tuple of int
+        The shape of the chunk array.
+    file_path : str
+        Path to the file containing the chunk data.
+    """
+
     def __init__(
         self,
         /,
@@ -37,6 +51,19 @@ class Chunk:
         shape: Tuple[int, ...],
         file_path: str,
     ) -> None:
+        """Initialise a Chunk instance.
+
+        Parameters
+        ----------
+        first_date : datetime.datetime
+            The first date in the chunk.
+        last_date : datetime.datetime
+            The last date in the chunk.
+        shape : tuple of int
+            The shape of the chunk array.
+        file_path : str
+            Path to the file containing the chunk data.
+        """
         self.file_path: str = file_path
         self.first_date: datetime.datetime = first_date
         self.last_date: datetime.datetime = last_date
@@ -45,6 +72,20 @@ class Chunk:
 
     @classmethod
     def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Chunk"]:
+        """Create a Chunk instance from a numpy array.
+
+        Parameters
+        ----------
+        array : numpy.ndarray
+            The array containing the chunk data.
+        file_path : str
+            Path to the file containing the chunk data.
+
+        Returns
+        -------
+        Chunk or None
+            The created Chunk instance, or None if the array is empty.
+        """
         if len(array) == 0:
             return None
         first_date: datetime.datetime = _date(array, 0)
@@ -54,6 +95,18 @@ class Chunk:
 
     @classmethod
     def from_path(cls, file_path: str) -> "Chunk":
+        """Create a Chunk instance from a file path, using a cached JSON if available.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the file containing the chunk data.
+
+        Returns
+        -------
+        Chunk
+            The created Chunk instance.
+        """
         json_path: str = file_path + ".json"
         if not os.path.exists(json_path) or (os.path.getmtime(json_path) <= os.path.getmtime(file_path)):
             try:
@@ -66,6 +119,18 @@ class Chunk:
 
     @classmethod
     def from_json(cls, json_path: str) -> "Chunk":
+        """Create a Chunk instance from a JSON file.
+
+        Parameters
+        ----------
+        json_path : str
+            Path to the JSON file containing chunk metadata.
+
+        Returns
+        -------
+        Chunk
+            The created Chunk instance.
+        """
         import json
 
         with open(json_path, "r") as f:
@@ -82,6 +147,13 @@ class Chunk:
         )
 
     def dump(self, json_path: str) -> None:
+        """Write chunk metadata to a JSON file.
+
+        Parameters
+        ----------
+        json_path : str
+            Path to the JSON file to write.
+        """
         import json
 
         data: Dict[str, Any] = {
@@ -95,7 +167,20 @@ class Chunk:
 
 
 def _unduplicate_rows(array: np.ndarray) -> Tuple[int, np.ndarray]:
-    """Remove duplicate rows from a 2D numpy array, handling NaNs correctly."""
+    """Remove duplicate rows from a 2D numpy array, handling NaNs correctly.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        2D array from which to remove duplicate rows.
+
+    Returns
+    -------
+    int
+        Number of duplicate rows removed.
+    numpy.ndarray
+        Array with duplicates removed.
+    """
     assert len(array.shape) == 2, f"Expected 2D array, got shape {array.shape}"
     # Remove duplicate rows. np.unique does not work well with NaNs, so we replace them with a sentinel value.
 
@@ -112,10 +197,40 @@ def _unduplicate_rows(array: np.ndarray) -> Tuple[int, np.ndarray]:
 
 
 def _date(array: np.ndarray, index: int) -> datetime.datetime:
+    """Convert a row in the array to a datetime object.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        Array containing date information.
+    index : int
+        Index of the row to convert.
+
+    Returns
+    -------
+    datetime.datetime
+        The corresponding datetime object.
+    """
     return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
 def _unduplicate_worker(file_path: str, delete_file: bool) -> Tuple[int, Chunk]:
+    """Worker function to remove duplicate rows from a file and update the file as needed.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the file to process.
+    delete_file : bool
+        Whether to overwrite the original file or create a deduped copy.
+
+    Returns
+    -------
+    int
+        Number of duplicate rows removed.
+    Chunk
+        The resulting Chunk instance.
+    """
     array: np.ndarray = np.load(file_path, mmap_mode="r")
 
     duplicates, unique_array = _unduplicate_rows(array)
@@ -141,6 +256,24 @@ def _unduplicate_worker(file_path: str, delete_file: bool) -> Tuple[int, Chunk]:
 
 
 def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> Tuple[int, List[Chunk]]:
+    """Worker function to resolve overlapping date ranges between two chunks.
+
+    Parameters
+    ----------
+    one : Chunk
+        The first chunk.
+    two : Chunk
+        The second chunk.
+    delete_files : bool
+        Whether to overwrite the original files or create deduped copies.
+
+    Returns
+    -------
+    int
+        Number of duplicate rows removed.
+    list of Chunk
+        The resulting list of updated Chunk instances.
+    """
     array_one: np.ndarray = np.load(one.file_path, mmap_mode="r")
     array_two: np.ndarray = np.load(two.file_path, mmap_mode="r")
 
@@ -196,6 +329,18 @@ def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> Tuple[int, 
 
 
 def _sort_and_chain_chunks(chunks: List[Chunk]) -> List[Chunk]:
+    """Sort chunks by first date and assign offsets for chaining.
+
+    Parameters
+    ----------
+    chunks : list of Chunk
+        List of Chunk instances to sort and chain.
+
+    Returns
+    -------
+    list of Chunk
+        Sorted and offset-assigned chunks.
+    """
     chunks = sorted(chunks, key=lambda x: x.first_date)
     offset: int = 0
     for chunk in chunks:
@@ -205,6 +350,18 @@ def _sort_and_chain_chunks(chunks: List[Chunk]) -> List[Chunk]:
 
 
 def _list_files(work_dir: str) -> Any:
+    """Yield file paths for .npy files in a working directory, excluding temporary and special files.
+
+    Parameters
+    ----------
+    work_dir : str
+        Directory to search for files.
+
+    Yields
+    ------
+    str
+        Path to a valid .npy file.
+    """
     for file in os.listdir(work_dir):
         if file in ("dates.npy", "dates_ranges.npy"):
             continue
@@ -219,6 +376,18 @@ def _list_files(work_dir: str) -> Any:
 
 
 def _test_only(work_dir: str) -> List[Chunk]:
+    """Load all chunks from a working directory for testing purposes.
+
+    Parameters
+    ----------
+    work_dir : str
+        Directory containing chunk files.
+
+    Returns
+    -------
+    list of Chunk
+        List of loaded Chunk instances.
+    """
     files: List[str] = list(_list_files(work_dir))
 
     result: List[Chunk] = []
@@ -231,6 +400,22 @@ def _test_only(work_dir: str) -> List[Chunk]:
 def _find_duplicate_and_overlapping_dates(
     work_dir: str, delete_files: bool, max_workers: Optional[int] = None
 ) -> List[Chunk]:
+    """Find and resolve duplicate and overlapping date ranges in chunk files.
+
+    Parameters
+    ----------
+    work_dir : str
+        Directory containing chunk files.
+    delete_files : bool
+        Whether to overwrite original files or create deduped copies.
+    max_workers : int, optional
+        Maximum number of parallel workers to use.
+
+    Returns
+    -------
+    list of Chunk
+        List of deduplicated and deoverlapped Chunk instances.
+    """
     import os
 
     chunks: Dict[str, Chunk] = {}
@@ -290,6 +475,18 @@ def _find_duplicate_and_overlapping_dates(
 
 
 def _duplicate_ranges(a: np.ndarray) -> List[Tuple[int, int]]:
+    """Find ranges of duplicate values in a sorted array.
+
+    Parameters
+    ----------
+    a : numpy.ndarray
+        Sorted array of values.
+
+    Returns
+    -------
+    list of tuple of int
+        List of (start, length) tuples for each duplicate range.
+    """
     if a.size == 0:
         return []
 
@@ -308,6 +505,19 @@ def _duplicate_ranges(a: np.ndarray) -> List[Tuple[int, int]]:
 def finalise_tabular_dataset(
     *, store: Any, work_dir: str, delete_files: bool, max_workers: Optional[int] = None
 ) -> None:
+    """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
+
+    Parameters
+    ----------
+    store : Any
+        Zarr store or similar object to write the final dataset to.
+    work_dir : str
+        Directory containing chunk files.
+    delete_files : bool
+        Whether to delete temporary files after processing.
+    max_workers : int, optional
+        Maximum number of parallel workers to use.
+    """
     chunks: List[Chunk] = _find_duplicate_and_overlapping_dates(
         work_dir, max_workers=max_workers, delete_files=delete_files
     )
