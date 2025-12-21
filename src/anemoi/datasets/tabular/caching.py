@@ -266,26 +266,25 @@ class ChunksCache:
             if chunk_index in self._chunks:
                 return self._chunks[chunk_index]
 
-        # Create the chunk outside the lock for speed
+        # Create the chunk outside the lock so we don't block other operations while loading from disk
         chunk = _Chunk(self._arr, chunk_index)
 
         with self._lock:
             self._chunks[chunk_index] = chunk
 
-        if LOG.isEnabledFor(logging.DEBUG):
-            LOG.debug(
-                f"Loaded chunk {chunk_index} {self._chunks[chunk_index]}. Cached: {sorted(self._chunks.keys())},"
-                f" {sum(chunk.cache.nbytes for chunk in self._chunks.values()) / 1024 / 1024:.2f} MB"
-                f" dirty={sum(chunk.dirty for chunk in self._chunks.values())}",
-            )
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.debug(
+                    f"Loaded chunk {chunk_index} {self._chunks[chunk_index]}. Cached: {sorted(self._chunks.keys())},"
+                    f" {sum(chunk.cache.nbytes for chunk in self._chunks.values()) / 1024 / 1024:.2f} MB"
+                    f" dirty={sum(chunk.dirty for chunk in self._chunks.values())}",
+                )
 
-        if self._read_ahead is not None and not from_read_ahead:
-            with self._lock:
-                if chunk_index + 1 > self._last_read_ahead_chunk:
-                    self._last_read_ahead_chunk = chunk_index + 1
-                    self._read_ahead.submit(self._read_ahead_worker, chunk_index + 1)
+            if self._read_ahead is not None and not from_read_ahead:
+                with self._lock:
+                    if chunk_index + 1 > self._last_read_ahead_chunk:
+                        self._last_read_ahead_chunk = chunk_index + 1
+                        self._read_ahead.submit(self._read_ahead_worker, chunk_index + 1)
 
-        with self._lock:
             return self._chunks[chunk_index]
 
     def _normalise_slice(self, key: slice) -> slice:
