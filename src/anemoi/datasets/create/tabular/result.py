@@ -46,7 +46,13 @@ class TabularResult(Result):
         self.frame["date"] = (self.frame["date"].astype("int64") // 10**9).astype(int)
 
         # Rename columns to use private attribute naming
-        self.frame = self.frame.rename(columns={"date": "__date", "latitude": "__latitude", "longitude": "__longitude"})
+        self.frame = self.frame.rename(
+            columns={
+                "date": "__date",
+                "latitude": "__latitude",
+                "longitude": "__longitude",
+            }
+        )
 
         # Create __date and __time columns from the timestamp
         self.frame["__time"] = self.frame["__date"] % 86400

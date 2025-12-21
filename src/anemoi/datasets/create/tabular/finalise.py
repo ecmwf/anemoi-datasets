@@ -10,53 +10,70 @@
 import datetime
 import logging
 import os
-
-# from concurrent.futures import ThreadPoolExecutor as Executor
-from concurrent.futures import ProcessPoolExecutor as Executor
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import tqdm
 
+from anemoi.datasets.tabular.btree import ZarrBTree
 from anemoi.datasets.tabular.caching import ChunksCache
 
 LOG = logging.getLogger(__name__)
-MMAP_KWARGS = {"mmap_mode": "r"}
-# MMAP_KWARGS = {}
 
 
 class Chunk:
-    def __init__(self, /, first_date, last_date, shape, file_path):
-        self.file_path = file_path
-        self.first_date = first_date
-        self.last_date = last_date
-        self.shape = shape
-        self.offset = None
+    def __init__(
+        self,
+        /,
+        first_date: datetime.datetime,
+        last_date: datetime.datetime,
+        shape: Tuple[int, ...],
+        file_path: str,
+    ) -> None:
+        self.file_path: str = file_path
+        self.first_date: datetime.datetime = first_date
+        self.last_date: datetime.datetime = last_date
+        self.shape: Tuple[int, ...] = shape
+        self.offset: Optional[int] = None
 
     @classmethod
-    def from_array(cls, array: np.ndarray, file_path: str):
+    def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Chunk"]:
         if len(array) == 0:
             return None
-        first_date = _date(array, 0)
-        last_date = _date(array, -1)
-        shape = array.shape
+        first_date: datetime.datetime = _date(array, 0)
+        last_date: datetime.datetime = _date(array, -1)
+        shape: Tuple[int, ...] = array.shape
         return cls(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
 
     @classmethod
-    def from_path(cls, file_path: str):
-        json_path = file_path + ".json"
+    def from_path(cls, file_path: str) -> "Chunk":
+        json_path: str = file_path + ".json"
         if not os.path.exists(json_path) or (os.path.getmtime(json_path) <= os.path.getmtime(file_path)):
-            array = np.load(file_path, **MMAP_KWARGS)
+            try:
+                array: np.ndarray = np.load(file_path, mmap_mode="r")
+            except ValueError as e:
+                LOG.error(f"Error loading numpy array from {file_path}: {e}")
+                raise
             cls.from_array(array, file_path=file_path).dump(json_path)
         return cls.from_json(json_path)
 
     @classmethod
-    def from_json(cls, json_path: str):
+    def from_json(cls, json_path: str) -> "Chunk":
         import json
 
         with open(json_path, "r") as f:
-            data = json.load(f)
+            try:
+                data: Dict[str, Any] = json.load(f)
+            except json.JSONDecodeError as e:
+                LOG.error(f"Error decoding JSON from {json_path}: {e}")
+                raise
         return cls(
             first_date=datetime.datetime.fromisoformat(data["first_date"]),
             last_date=datetime.datetime.fromisoformat(data["last_date"]),
@@ -64,10 +81,10 @@ class Chunk:
             file_path=data["file_path"],
         )
 
-    def dump(self, json_path: str):
+    def dump(self, json_path: str) -> None:
         import json
 
-        data = {
+        data: Dict[str, Any] = {
             "first_date": self.first_date.isoformat(),
             "last_date": self.last_date.isoformat(),
             "shape": self.shape,
@@ -77,20 +94,20 @@ class Chunk:
             json.dump(data, f, indent=4)
 
 
-def _unduplicate_rows(array: np.ndarray) -> np.ndarray:
+def _unduplicate_rows(array: np.ndarray) -> Tuple[int, np.ndarray]:
     """Remove duplicate rows from a 2D numpy array, handling NaNs correctly."""
     assert len(array.shape) == 2, f"Expected 2D array, got shape {array.shape}"
     # Remove duplicate rows. np.unique does not work well with NaNs, so we replace them with a sentinel value.
 
-    b = np.ascontiguousarray(array)
-    b2 = np.nan_to_num(b, nan=np.inf)
+    b: np.ndarray = np.ascontiguousarray(array)
+    b2: np.ndarray = np.nan_to_num(b, nan=np.inf)
 
-    row_dtype = np.dtype((np.void, b2.dtype.itemsize * b2.shape[1]))
+    row_dtype: np.dtype = np.dtype((np.void, b2.dtype.itemsize * b2.shape[1]))
     _, idx = np.unique(b2.view(row_dtype), return_index=True)
 
-    unique_array = b[np.sort(idx)]
+    unique_array: np.ndarray = b[np.sort(idx)]
 
-    duplicates = len(array) - len(unique_array)
+    duplicates: int = len(array) - len(unique_array)
     return duplicates, unique_array
 
 
@@ -98,9 +115,8 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
-def _unduplicate_worker(file_path: str, delete_file: bool):
-
-    array = np.load(file_path, **MMAP_KWARGS)
+def _unduplicate_worker(file_path: str, delete_file: bool) -> Tuple[int, Chunk]:
+    array: np.ndarray = np.load(file_path, mmap_mode="r")
 
     duplicates, unique_array = _unduplicate_rows(array)
 
@@ -113,33 +129,38 @@ def _unduplicate_worker(file_path: str, delete_file: bool):
             os.rename(file_path + ".tmp.npy", file_path + ".deduped.npy")
             file_path = file_path + ".deduped.npy"
 
-    first_date = _date(unique_array, 0)
-    last_date = _date(unique_array, -1)
+    first_date: datetime.datetime = _date(unique_array, 0)
+    last_date: datetime.datetime = _date(unique_array, -1)
 
-    return duplicates, Chunk(first_date=first_date, last_date=last_date, shape=unique_array.shape, file_path=file_path)
+    return duplicates, Chunk(
+        first_date=first_date,
+        last_date=last_date,
+        shape=unique_array.shape,
+        file_path=file_path,
+    )
 
 
-def _deoverlap_worker(one, two, delete_files: bool):
-    array_one = np.load(one.file_path, **MMAP_KWARGS)
-    array_two = np.load(two.file_path, **MMAP_KWARGS)
+def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> Tuple[int, List[Chunk]]:
+    array_one: np.ndarray = np.load(one.file_path, mmap_mode="r")
+    array_two: np.ndarray = np.load(two.file_path, mmap_mode="r")
 
-    i = 0
-    last = _date(array_one, -1)
+    i: int = 0
+    last: datetime.datetime = _date(array_one, -1)
     while i < array_two.shape[0] and last >= _date(array_two, i):
         i += 1
 
     assert i > 0
 
-    duplicates = 0
+    duplicates: int = 0
 
-    beginning_array_two = array_two[:i]
+    beginning_array_two: np.ndarray = array_two[:i]
 
     if np.allclose(array_one[-1], beginning_array_two[0], equal_nan=True, rtol=0, atol=0):
         duplicates = 1
         beginning_array_two = beginning_array_two[1:]
 
-    new_array_one = np.vstack([array_one, beginning_array_two])
-    end_array_two = array_two[i:]
+    new_array_one: np.ndarray = np.vstack([array_one, beginning_array_two])
+    end_array_two: np.ndarray = array_two[i:]
 
     np.save(one.file_path + ".tmp", new_array_one)
     if delete_files:
@@ -155,7 +176,7 @@ def _deoverlap_worker(one, two, delete_files: bool):
         os.rename(two.file_path + ".tmp.npy", two.file_path + ".deduped.npy")
         two.file_path = two.file_path + ".deduped.npy"
 
-    result = []
+    result: List[Chunk] = []
 
     if new_array_one.size > 0:
         one = Chunk.from_path(one.file_path)
@@ -174,54 +195,55 @@ def _deoverlap_worker(one, two, delete_files: bool):
     return duplicates, result
 
 
-def _sort_and_chain_chunks(chunks):
+def _sort_and_chain_chunks(chunks: List[Chunk]) -> List[Chunk]:
     chunks = sorted(chunks, key=lambda x: x.first_date)
-    offset = 0
+    offset: int = 0
     for chunk in chunks:
         chunk.offset = offset
         offset += chunk.shape[0]
     return chunks
 
 
-def _test_only(work_dir: str):
-
-    files = []
+def _list_files(work_dir: str) -> Any:
     for file in os.listdir(work_dir):
+        if file in ("dates.npy", "dates_ranges.npy"):
+            continue
+
         if not file.endswith(".npy"):
             continue
+
         if ".tmp" in file or ".deduped" in file:
             continue
 
-        files.append(os.path.join(work_dir, file))
+        yield os.path.join(work_dir, file)
 
-    result = []
+
+def _test_only(work_dir: str) -> List[Chunk]:
+    files: List[str] = list(_list_files(work_dir))
+
+    result: List[Chunk] = []
     for file in tqdm.tqdm(files, desc="Loading chunks"):
         result.append(Chunk.from_path(file))
 
     return _sort_and_chain_chunks(result)
 
 
-def _find_duplicate_and_overlapping_dates(work_dir: str, delete_files, max_workers: int = None):
-
+def _find_duplicate_and_overlapping_dates(
+    work_dir: str, delete_files: bool, max_workers: Optional[int] = None
+) -> List[Chunk]:
     import os
 
-    chunks = {}
-    total_duplicates = 0
+    chunks: Dict[str, Chunk] = {}
+    total_duplicates: int = 0
 
     if max_workers is None:
-        max_workers = max(int(os.cpu_count() * 0.7), 1)
+        max_workers = os.cpu_count()
 
-    with Executor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
 
-        tasks = []
-        for file in os.listdir(work_dir):
-            if not file.endswith(".npy"):
-                continue
-            if ".tmp" in file or ".deduped" in file:
-                continue
-
-            full_path = os.path.join(work_dir, file)
-            tasks.append(executor.submit(_unduplicate_worker, full_path, delete_files))
+        tasks: List[Any] = []
+        for file in _list_files(work_dir):
+            tasks.append(executor.submit(_unduplicate_worker, file, delete_files))
 
         LOG.info("Checking duplicates")
         with tqdm.tqdm(total=len(tasks), desc="Checking duplicates", unit="file") as pbar:
@@ -237,7 +259,7 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, delete_files, max_worke
         while True:
 
             tasks = []
-            prev = None
+            prev: Optional[Chunk] = None
             for chunk in sorted(chunks.values(), key=lambda x: x.first_date):
                 if prev is None:
                     prev = chunk
@@ -267,26 +289,42 @@ def _find_duplicate_and_overlapping_dates(work_dir: str, delete_files, max_worke
     return _sort_and_chain_chunks(list(chunks.values()))
 
 
-def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool, max_workers: int = None):
+def _duplicate_ranges(a: np.ndarray) -> List[Tuple[int, int]]:
+    if a.size == 0:
+        return []
 
-    if False:
-        chunks = _test_only(work_dir)
-    else:
-        chunks = _find_duplicate_and_overlapping_dates(work_dir, max_workers=max_workers, delete_files=delete_files)
+    # True where value differs from previous => boundaries
+    boundaries: np.ndarray = np.r_[True, a[1:] != a[:-1], True]
+
+    # Indices where boundaries occur
+    idx: np.ndarray = np.flatnonzero(boundaries)
+
+    # Pair successive boundaries → (start,end) for each group
+    ranges: List[Tuple[int, int]] = list(zip(idx[:-1], idx[1:]))
+
+    return [(s, e - s) for s, e in ranges]
+
+
+def finalise_tabular_dataset(
+    *, store: Any, work_dir: str, delete_files: bool, max_workers: Optional[int] = None
+) -> None:
+    chunks: List[Chunk] = _find_duplicate_and_overlapping_dates(
+        work_dir, max_workers=max_workers, delete_files=delete_files
+    )
 
     assert chunks, "No data found to finalise"
-    shape = chunks[0].shape
+    shape: Tuple[int, int] = chunks[0].shape
     assert all(chunk.shape[1] == shape[1] for chunk in chunks), "Inconsistent number of columns in chunks"
     shape = (sum(chunk.shape[0] for chunk in chunks), chunks[0].shape[1])
 
     if "data" in store:
         del store["data"]
 
-    row_size = shape[1] * np.dtype(np.float32).itemsize
-    target_size = 64 * 1024 * 1024  # Target chunk size of 64 MB
-    chunk_size = max(1, round(target_size / row_size))
+    row_size: int = shape[1] * np.dtype(np.float32).itemsize
+    target_size: int = 64 * 1024 * 1024  # Target chunk size of 64 MB
+    chunk_size: int = max(1, round(target_size / row_size))
 
-    chunking = (min(chunk_size, shape[0]), shape[1])
+    chunking: Tuple[int, int] = (min(chunk_size, shape[0]), shape[1])
     LOG.info(f"Final dataset shape: {shape}, chunking: {chunking}")
     store.create_dataset(
         "data",
@@ -296,10 +334,15 @@ def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool, max_wo
         compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
     )
 
+    dates_path: str = os.path.join(work_dir, "dates.npy")
+    dates: np.ndarray = np.memmap(dates_path, dtype=np.int64, mode="w+", shape=(shape[0],))
+
     with ChunksCache(store["data"]) as data:
 
-        def _load_chunk(chunk):
-            array = np.load(chunk.file_path)
+        def _load_chunk(chunk: Chunk) -> Tuple[Chunk, np.ndarray]:
+            array: np.ndarray = np.load(chunk.file_path)
+            if "deduped" in chunk.file_path:
+                os.unlink(chunk.file_path)
             return (chunk, array)
 
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -307,8 +350,8 @@ def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool, max_wo
             # Load 2 chunks ahead of time, so we have some sort of double buffering
             # while writing to Zarr
 
-            tasks = []
-            i = 0
+            tasks: List[Any] = []
+            i: int = 0
             for i in range(len(chunks)):
                 tasks.append(executor.submit(_load_chunk, chunks[i]))
                 if i >= 2:
@@ -320,10 +363,46 @@ def finalise_tabular_dataset(*, store, work_dir: str, delete_files: bool, max_wo
                 while tasks:
                     chunk, array = tasks.pop(0).result()
                     data[chunk.offset : chunk.offset + chunk.shape[0], :] = array
+
+                    # Extract dates
+                    dates[chunk.offset : chunk.offset + chunk.shape[0]] = array[:, 0].astype(np.int64) * 86400 + array[
+                        :, 1
+                    ].astype(np.int64)
+
                     pbar.update(chunk.shape[0])
+
+                    if delete_files:
+                        os.unlink(chunk.file_path)
+
+                    # Pre-load next chunk
                     if i < len(chunks):
                         tasks.append(executor.submit(_load_chunk, chunks[i]))
                         i += 1
+
+    dates.flush()
+    LOG.info(f"Dates written to {dates_path}")
+    LOG.info("Compute duplicate date ranges")
+    # Assume dates are sorted
+    ranges: List[Tuple[int, int]] = _duplicate_ranges(dates)
+
+    dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
+    dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
+    for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
+        dates_ranges[i, 0] = dates[start]
+        dates_ranges[i, 1] = start
+        dates_ranges[i, 2] = length
+    dates_ranges.flush()
+
+    LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
+    btree: ZarrBTree = ZarrBTree(store)
+    btree.bulk_load(dates_ranges)
+    LOG.info("Duplicate date ranges written to B-Tree index")
+
+    if delete_files:
+        LOG.info("Deleting temporary files")
+        os.unlink(dates_path)
+        os.unlink(dates_ranges_path)
+        return
 
 
 if __name__ == "__main__":
@@ -335,3 +414,5 @@ if __name__ == "__main__":
     work_dir = sys.argv[2]
     store = zarr.open(sys.argv[1], mode="w")
     finalise_tabular_dataset(store=store, work_dir=work_dir, delete_files=False)
+    with open(os.path.basename(sys.argv[1] + ".done"), "w") as f:
+        pass

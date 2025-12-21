@@ -9,6 +9,7 @@
 
 import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from typing import Iterator
 from typing import Tuple
@@ -169,9 +170,11 @@ class ChunksCache:
         The Zarr array to cache.
     chunk_caching : int, optional
         The cache size in bytes (default is 512 * 1024 * 1024).
+    read_ahead : bool, optional
+        Whether to enable read-ahead (default is False).
     """
 
-    def __init__(self, array: zarr.Array, chunk_caching: int = 512 * 1024 * 1024):
+    def __init__(self, array: zarr.Array, chunk_caching: int = 512 * 1024 * 1024, read_ahead: bool = False):
         self._arr = array
         self._nrows_in_chunks = array.chunks[0]
 
@@ -185,8 +188,25 @@ class ChunksCache:
             f"caching {chunks_in_cache} chunks ({chunks_in_cache * chunk_size / 1024 / 1024:.2f} MB)",
         )
 
+        self._chunks_in_cache = chunks_in_cache
         self._chunks = LRU(chunks_in_cache, callback=self._evict_chunk)
         self._lock = threading.RLock()
+
+        self._last_read_ahead_chunk = 0
+
+        if read_ahead:
+            self._read_ahead = ThreadPoolExecutor(max_workers=1)
+            self._last_read_ahead_chunk = 0
+            self._read_ahead.submit(self._read_ahead_worker, 0)
+        else:
+            self._read_ahead = None
+
+    def _read_ahead_worker(self, chunk_number: int) -> None:
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug(f"Read-ahead loading chunk {chunk_number}")
+            if chunk_number > self._max_chunk_index:
+                return
+        self._ensure_chunk_in_cache(chunk_number, from_read_ahead=True)
 
     @staticmethod
     def _evict_chunk(key: int, chunk: _Chunk) -> None:
@@ -201,6 +221,7 @@ class ChunksCache:
         """
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(f"Evicting chunk {key} {chunk}")
+
         chunk.flush()
 
     def __setitem__(self, key: Any, value: Any) -> None:
@@ -209,6 +230,7 @@ class ChunksCache:
             chunk[key] = value
 
     def __getitem__(self, key: Any) -> Any:
+
         with self._lock:
             chunk, key = self._get_key_chunk(key)
             return chunk[key]
@@ -219,7 +241,12 @@ class ChunksCache:
             for chunk in self._chunks.values():
                 chunk.flush()
 
-    def _ensure_chunk_in_cache(self, chunk_index: int) -> _Chunk:
+    @property
+    def _max_chunk_index(self) -> int:
+        """The maximum chunk index based on the array size."""
+        return (self._arr.shape[0] - 1) // self._nrows_in_chunks
+
+    def _ensure_chunk_in_cache(self, chunk_index: int, from_read_ahead: bool = False) -> _Chunk:
         """Ensure a chunk is present in the cache.
 
         Parameters
@@ -227,20 +254,38 @@ class ChunksCache:
         chunk_index : int
             The index of the chunk.
 
+        from_read_ahead : bool, optional
+            Whether this call is from the read-ahead worker (default is False).
+
         Returns
         -------
         _Chunk
             The cached chunk.
         """
         with self._lock:
-            if chunk_index not in self._chunks:
-                self._chunks[chunk_index] = _Chunk(self._arr, chunk_index)
-                if LOG.isEnabledFor(logging.DEBUG):
-                    LOG.debug(
-                        f"Loaded chunk {chunk_index} {self._chunks[chunk_index]}. Cached: {sorted(self._chunks.keys())},"
-                        f" {sum(chunk.cache.nbytes for chunk in self._chunks.values()) / 1024 / 1024:.2f} MB"
-                        f" dirty={sum(chunk.dirty for chunk in self._chunks.values())}",
-                    )
+            if chunk_index in self._chunks:
+                return self._chunks[chunk_index]
+
+        # Create the chunk outside the lock for speed
+        chunk = _Chunk(self._arr, chunk_index)
+
+        with self._lock:
+            self._chunks[chunk_index] = chunk
+
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug(
+                f"Loaded chunk {chunk_index} {self._chunks[chunk_index]}. Cached: {sorted(self._chunks.keys())},"
+                f" {sum(chunk.cache.nbytes for chunk in self._chunks.values()) / 1024 / 1024:.2f} MB"
+                f" dirty={sum(chunk.dirty for chunk in self._chunks.values())}",
+            )
+
+        if self._read_ahead is not None and not from_read_ahead:
+            with self._lock:
+                if chunk_index + 1 > self._last_read_ahead_chunk:
+                    self._last_read_ahead_chunk = chunk_index + 1
+                    self._read_ahead.submit(self._read_ahead_worker, chunk_index + 1)
+
+        with self._lock:
             return self._chunks[chunk_index]
 
     def _normalise_slice(self, key: slice) -> slice:

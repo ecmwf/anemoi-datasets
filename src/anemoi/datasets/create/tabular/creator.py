@@ -34,7 +34,10 @@ class TabularCreator(Creator):
 
     def load_result(self, result: Any):
         np.save(
-            os.path.join(self.work_dir, f"{result.start_date.isoformat()}-{result.end_date.isoformat()}.npy"),
+            os.path.join(
+                self.work_dir,
+                f"{result.start_date.isoformat()}-{result.end_date.isoformat()}.npy",
+            ),
             result.to_numpy(),
         )
 
