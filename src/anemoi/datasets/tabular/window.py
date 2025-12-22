@@ -25,16 +25,35 @@ from .caching import ChunksCache
 
 
 class Window:
-    def __init__(self, window: str):
+    """Represents a time window for selecting data, with before/after offsets and inclusivity.
+
+    Main functions:
+    - Parses a window string to determine the time offsets before and after a central point.
+    - Determines whether the window is inclusive or exclusive at each end.
+    - Used by WindowView to select data slices.
+    """
+
+    def __init__(self, window: str) -> None:
+        """Parse the window string and initialise the window parameters.
+
+        Parameters
+        ----------
+        window : str
+            String representation of the window, e.g. "(-3,+0]".
+        """
+        # Parse the window string using regex to extract bounds and inclusivity
         m = re.match(r"([\[\(])(.*),(.*)([\]\)])", window)
         if not m:
             raise ValueError(f"Window: invalid window string: {window}")
+        # Convert before/after offsets to timedeltas
         self.before = frequency_to_timedelta(m.group(2))
         self.after = frequency_to_timedelta(m.group(3))
+        # Determine if window is exclusive at each end
         self.exclude_before = m.group(1) == "("
         self.exclude_after = m.group(4) == ")"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return a string representation of the window."""
         B = {True: ("(", ")"), False: ("[", "]")}
         return (
             f"{B[self.exclude_before][0]}{frequency_to_string(self.before)},"
@@ -43,27 +62,57 @@ class Window:
 
 
 class WindowView:
+    """Provides a view into a Zarr tabular dataset with windowed, frequency-based access.
+
+    Main functions:
+    - Allows subsetting of a dataset by time window, frequency, and start/end dates.
+    - Handles conversion between date indices and actual data slices.
+    - Provides methods to adjust the window, frequency, and date range, returning new WindowView instances.
+    - Implements __getitem__ for windowed data access, including filtering and time delta calculation.
+    - Caches epochs and provides date arrays for the windowed view.
+    """
 
     def __init__(
         self,
-        store,
-        start_date=None,
-        end_date=None,
-        frequency=3,
-        window="(-3,+0]",
-        btree=None,
-    ):
-        self.store = store if isinstance(store, zarr.hierarchy.Group) else zarr.open(store, mode="r")
-        self.btree = btree if btree is not None else ZarrBTree(self.store, mode="r")
-        self.data = ChunksCache(self.store["data"])
-        # self.data = self.store["data"]
+        store: zarr.hierarchy.Group | str,
+        start_date: datetime.datetime | None = None,
+        end_date: datetime.datetime | None = None,
+        frequency: int | str | datetime.timedelta = 3,
+        window: str | Window = "(-3,+0]",
+        btree: ZarrBTree | None = None,
+    ) -> None:
+        """Initialise a WindowView for a Zarr tabular dataset.
 
+        Parameters
+        ----------
+        store : zarr.hierarchy.Group or str
+            The Zarr group or path to open.
+        start_date : datetime.datetime, optional
+            The first date in the windowed view.
+        end_date : datetime.datetime, optional
+            The last date in the windowed view.
+        frequency : int, str, or timedelta, default 3
+            The frequency of the windowed view.
+        window : str or Window, default "(-3,+0]"
+            The window specification.
+        btree : ZarrBTree, optional
+            The B-tree index for the dataset.
+        """
+        # Open the zarr group if a path is provided
+        self.store = store if isinstance(store, zarr.hierarchy.Group) else zarr.open(store, mode="r")
+        # Use provided btree or create a new one for indexing
+        self.btree = btree if btree is not None else ZarrBTree(self.store, mode="r")
+        # Use a chunk cache for efficient data access
+        self.data = ChunksCache(self.store["data"])
+
+        # Determine the start and end dates for the window view
         self.start_date = to_datetime(start_date if start_date is not None else self.actual_start_end_dates[0])
         self.end_date = to_datetime(end_date if end_date is not None else self.actual_start_end_dates[1])
 
         if self.start_date > self.end_date:
             raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
 
+        # Convert frequency to timedelta and parse window if needed
         self.frequency = frequency_to_timedelta(frequency)
         self.window = window if isinstance(window, Window) else Window(window)
 
@@ -71,9 +120,11 @@ class WindowView:
         assert isinstance(self.end_date, datetime.datetime)
         assert isinstance(self.frequency, datetime.timedelta)
 
+        # Compute the number of windows in the view
         self._len = (self.end_date - self.start_date) // self.frequency + 1
 
     def set_start(self, start: datetime.datetime) -> "WindowView":
+        """Use as_first_date to align the start date to the frequency"""
         # TODO: check if in-line with the way we implemented that logic for fields
 
         return WindowView(
@@ -86,6 +137,7 @@ class WindowView:
         )
 
     def set_end(self, end: datetime.datetime) -> "WindowView":
+        """Use as_last_date to align the end date to the frequency"""
         # TODO: check if in-line with the way we implemented that logic for fields
 
         return WindowView(
@@ -98,6 +150,7 @@ class WindowView:
         )
 
     def set_frequency(self, frequency: str | int | datetime.timedelta) -> "WindowView":
+        """Create a new WindowView with the updated frequency"""
         return WindowView(
             store=self.store,
             start_date=self.start_date,
@@ -108,6 +161,7 @@ class WindowView:
         )
 
     def set_window(self, window: str | Window) -> "WindowView":
+        """Create a new WindowView with the updated window specification"""
         return WindowView(
             store=self.store,
             start_date=self.start_date,
@@ -118,14 +172,15 @@ class WindowView:
         )
 
     @cached_property
-    def actual_start_end_dates(self):
+    def actual_start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
+        """Convert first/last keys from the btree to datetime"""
         start, end = self.btree.first_last_keys()
         return datetime.datetime.fromtimestamp(start), datetime.datetime.fromtimestamp(end)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._len
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> np.ndarray:
         assert isinstance(index, int)
         if index < 0:
             index = self._len - index
@@ -133,15 +188,19 @@ class WindowView:
         if not 0 <= index < self._len:
             raise IndexError(f"Index {index} out of range (len={self._len})")
 
+        # Calculate the start and end timestamps for the window
         start = self.start_date + index * self.frequency + self.window.before
         end = self.start_date + index * self.frequency + self.window.after
 
+        # Convert datetime to integer timestamps (seconds since epoch)
         start = round(start.timestamp())
         end = round(end.timestamp())
 
+        # Find the boundaries in the btree for the window
         first, last = self.btree.boundaries(start, end)
 
         if (first, last) == (None, None):
+            # No data in this window, return an empty array with correct shape
             shape = (0,) + self.data.shape[1:]
             return self._filter(index, np.zeros(shape=shape, dtype=self.data.dtype))
 
@@ -153,25 +212,24 @@ class WindowView:
         assert first_date >= start
         assert last_date <= end
 
+        # Exclude data at the window boundaries if specified
         if self.window.exclude_before and first_date == start:
             start_idx += start_cnt
 
         if self.window.exclude_after and last_date == end:
             last_idx -= end_cnt
 
-        print(start_idx, last_idx)
-
         return self._filter(index, self.data[start_idx:last_idx])
 
     def _filter(self, index: int, array: np.ndarray) -> np.ndarray:
+        # Convert day/second columns to seconds since epoch
         dates = array[:, 0] * 86400 + array[:, 1]
-
+        # Compute time delta relative to the window epoch
         deltadate = dates - self._epochs[index]
-
         # Add time delta as first column, removing original day and second columns
         return np.concatenate([deltadate[:, np.newaxis], array[:, 2:]], axis=1)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"WindowView(start_date={self.start_date}, end_date={self.end_date}, "
             f"frequency={self.frequency}, window={self.window})"

@@ -22,8 +22,9 @@ LOG = logging.getLogger(__name__)
 
 class _Chunk:
     """Represents a chunk of a Zarr array, providing caching and synchronisation.
-    Only the first dimension is considered for caching. Other chuncking
-    dimensions cached together with the first dimension.
+
+    Only the first dimension is considered for caching. Other chunking
+    dimensions are cached together with the first dimension.
 
     Parameters
     ----------
@@ -34,6 +35,15 @@ class _Chunk:
     """
 
     def __init__(self, array: zarr.Array, chunk_index: int):
+        """Initialise a chunk for the given Zarr array and chunk index.
+
+        Parameters
+        ----------
+        array : zarr.Array
+            The Zarr array to cache chunks from.
+        chunk_index : int
+            The index of the chunk within the array.
+        """
         self.array = array
         self.chunk_index = chunk_index
         self.chunk_size = array.chunks[0]
@@ -44,19 +54,48 @@ class _Chunk:
         self.lock = threading.RLock()
 
     def __len__(self) -> int:
+        """Return the number of rows in the cached chunk.
+
+        Returns
+        -------
+        int
+            The number of rows in the chunk.
+        """
         with self.lock:
             return len(self.cache)
 
     def __repr__(self) -> str:
+        """Return a string representation of the chunk."""
         return f"<Chunk[offset={self.offset} shape={self.cache.shape} dirty={self.dirty}]>"
 
     def __setitem__(self, key: Any, value: Any) -> None:
+        """Set a value in the chunk cache and mark as dirty.
+
+        Parameters
+        ----------
+        key : Any
+            The key to set.
+        value : Any
+            The value to set.
+        """
         with self.lock:
             local_index = self._local_index(key)
             self.cache[local_index] = value
             self.dirty = True
 
     def __getitem__(self, key: Any) -> Any:
+        """Get a value from the chunk cache.
+
+        Parameters
+        ----------
+        key : Any
+            The key to access.
+
+        Returns
+        -------
+        Any
+            The value at the given key.
+        """
         with self.lock:
             local_index = self._local_index(key)
             return self.cache[local_index]
@@ -161,19 +200,20 @@ class _Chunk:
 
 
 class ChunksCache:
-    """Caches chunks of a Zarr array for efficient access and modification.
-
-    Parameters
-    ----------
-    array : zarr.Array
-        The Zarr array to cache.
-    chunk_caching : int, optional
-        The cache size in bytes (default is 512 * 1024 * 1024).
-    read_ahead : bool, optional
-        Whether to enable read-ahead (default is False).
-    """
+    """Caches chunks of a Zarr array for efficient access and modification."""
 
     def __init__(self, array: zarr.Array, chunk_caching: int = 512 * 1024 * 1024, read_ahead: bool = False):
+        """Initialise the chunk cache for a Zarr array.
+
+        Parameters
+        ----------
+        array : zarr.Array
+            The Zarr array to cache.
+        chunk_caching : int, optional
+            The cache size in bytes (default is 512 * 1024 * 1024).
+        read_ahead : bool, optional
+            Whether to enable read-ahead (default is False).
+        """
         self._arr = array
         self._nrows_in_chunks = array.chunks[0]
 
@@ -201,6 +241,13 @@ class ChunksCache:
             self._read_ahead = None
 
     def _read_ahead_worker(self, chunk_number: int) -> None:
+        """Worker function for read-ahead, loads the next chunk in the background.
+
+        Parameters
+        ----------
+        chunk_number : int
+            The chunk index to read ahead.
+        """
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(f"Read-ahead loading chunk {chunk_number}")
             if chunk_number > self._max_chunk_index:
@@ -209,7 +256,7 @@ class ChunksCache:
 
     @staticmethod
     def _evict_chunk(key: int, chunk: _Chunk) -> None:
-        """Evicts a chunk from the cache, flushing it if dirty.
+        """Callback called when a chunk is evicted from the cache.
 
         Parameters
         ----------
@@ -224,11 +271,32 @@ class ChunksCache:
         chunk.flush()
 
     def __setitem__(self, key: Any, value: Any) -> None:
+        """Set a value in the cached array.
+
+        Parameters
+        ----------
+        key : Any
+            The key to set.
+        value : Any
+            The value to set.
+        """
         with self._lock:
             chunk, key = self._get_key_chunk(key)
             chunk[key] = value
 
     def __getitem__(self, key: Any) -> Any:
+        """Get a value from the cached array.
+
+        Parameters
+        ----------
+        key : Any
+            The key to access.
+
+        Returns
+        -------
+        Any
+            The value at the given key.
+        """
 
         with self._lock:
             chunk, key = self._get_key_chunk(key)
@@ -266,6 +334,8 @@ class ChunksCache:
                 return self._lru_chunks_cache[chunk_index]
 
         # Create the chunk outside the lock so we don't block other operations while loading from disk
+        # In the unlikely event of multiple threads loading the same chunk, the LRU cache will handle duplicates
+        # and the garbage collector will clean up unreferenced chunks
         chunk = _Chunk(self._arr, chunk_index)
 
         with self._lock:
@@ -299,7 +369,11 @@ class ChunksCache:
         slice
             The normalised slice.
         """
-        return slice(*key.indices(self._arr.shape[0]))
+        result = slice(*key.indices(self._arr.shape[0]))
+        assert result.step >= 1, "Negative or zero step slices are not supported"
+        assert result.start <= result.stop, "Slice start must be less than or equal to stop"
+        assert 0 <= result.start, "Slice start negative after normalisation"
+        return result
 
     def _get_key_chunk(self, key: Any) -> tuple[Any, Any]:
         """Retrieves the appropriate chunk and a normalised key.
@@ -334,25 +408,27 @@ class ChunksCache:
                     return self._ensure_chunk_in_cache(chunk_index), key
 
                 if isinstance(key[0], slice):
-                    key = (self._normalise_slice(key[0]),) + key[1:]
-                    indices = {a // self._nrows_in_chunks for a in range(*key[0].indices(self._arr.shape[0]))}
+                    slice_0 = self._normalise_slice(key[0])
+                    key = (slice_0,) + key[1:]
 
-                    match len(indices):
+                    start, stop, step = slice_0.start, slice_0.stop, slice_0.step
 
-                        case 0:
-                            # Handle empty slice
-                            in_lru = list(self._lru_chunks_cache.keys())
-                            chunk_index = in_lru[0] if in_lru else 0
-                            return self._ensure_chunk_in_cache(chunk_index), key
+                    if start == stop:
+                        # Handle empty slice
+                        in_lru = list(self._lru_chunks_cache.keys())
+                        chunk_index = in_lru[0] if in_lru else 0
+                        return self._ensure_chunk_in_cache(chunk_index), key
 
-                        case 1:
-                            # The index is within a single chunk
-                            chunk_index = indices.pop()
-                            return self._ensure_chunk_in_cache(chunk_index), key
+                    last = start + step * ((stop - 1 - start) // step)
+                    start_chunk = start // self._nrows_in_chunks
+                    last_chunk = last // self._nrows_in_chunks
 
-                        case _:
-                            # The index spans multiple chunks, use multi-chunk handler
-                            return _MultiChunkSlice(self, key), key
+                    if start_chunk == last_chunk:
+                        # The index is within a single chunk
+                        return self._ensure_chunk_in_cache(start_chunk), key
+
+                    # The index spans multiple chunks, use multi-chunk handler
+                    return _MultiChunkSlice(self, key), key
 
                 raise TypeError(f"Unsupported key type in tuple: {type(key[0])} ({key[0]})")
 
@@ -370,11 +446,17 @@ class ChunksCache:
         return self._arr.shape
 
     @property
+    def dtype(self):
+        """The dtype of the underlying Zarr array."""
+        return self._arr.dtype
+
+    @property
     def chunks(self):
         """The chunk shape of the underlying Zarr array."""
         return self._arr.chunks
 
     def __len__(self) -> int:
+        """Return the number of elements in the underlying array."""
         return len(self._arr)
 
     def resize(self, *new_shape: int) -> None:
@@ -400,17 +482,18 @@ class ChunksCache:
 
 
 class _MultiChunkSlice:
-    """Handles multi-chunk slicing for ChunksCache.
-
-    Parameters
-    ----------
-    cache : ChunksCache
-        The chunk cache.
-    key : tuple
-        The key representing the slice.
-    """
+    """Handles multi-chunk slicing for ChunksCache."""
 
     def __init__(self, cache: ChunksCache, key: tuple[Any, ...]):
+        """Initialise a multi-chunk slice handler.
+
+        Parameters
+        ----------
+        cache : ChunksCache
+            The chunk cache.
+        key : tuple
+            The key representing the slice.
+        """
         self._cache = cache
         self._key = key
         assert isinstance(key, tuple) and isinstance(key[0], slice)
@@ -461,22 +544,45 @@ class _MultiChunkSlice:
         """
         assert self._key == key
         slice0 = key[0]
+
         # Assume slice is normalised
         start, stop, step = slice0.start, slice0.stop, slice0.step
 
-        bits = {}
-        current = start
+        # First and last indices selected by the slice
+        first_idx = start
+        last_idx = start + ((stop - start - 1) // step) * step
 
-        while current < stop:
-            chunk_index = current // self._cache._nrows_in_chunks
-            if chunk_index not in bits:
-                bits[chunk_index] = slice(current, current + 1, step)
+        chunk_size = self._cache._nrows_in_chunks
+
+        # First and last chunks touched
+        first_chunk = first_idx // chunk_size
+        last_chunk = last_idx // chunk_size
+
+        chunks = {}
+        for chunk_index in range(first_chunk, last_chunk + 1):
+            chunk_start = chunk_index * chunk_size
+            chunk_end = chunk_start + chunk_size
+
+            # Find first index in this chunk that the slice selects
+            if chunk_start <= start:
+                global_first = start
             else:
-                bits[chunk_index] = slice(bits[chunk_index].start, current + 1, step)
-            current += step
+                # Need start + k*step >= chunk_start
+                k = (chunk_start - start + step - 1) // step  # Ceiling division
+                global_first = start + k * step
+
+            # Check if this index is still in range
+            if global_first >= stop or global_first >= chunk_end:
+                continue
+
+            # Find last index in this chunk that the slice selects
+            effective_stop = min(stop, chunk_end)
+            global_last = start + ((effective_stop - start - 1) // step) * step
+
+            chunks[chunk_index] = slice(global_first, global_last + 1, step)
 
         shape = 0
-        for chunk_index, s in sorted(bits.items()):
+        for chunk_index, s in sorted(chunks.items()):
             chunk = self._cache._ensure_chunk_in_cache(chunk_index)
             end = min(len(chunk), self._cache._nrows_in_chunks, (s.stop - s.start) // s.step)
             yield chunk, (s,) + key[1:], slice(shape, shape + end)

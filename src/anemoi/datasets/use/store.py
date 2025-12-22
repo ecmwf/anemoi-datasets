@@ -332,9 +332,9 @@ class ZarrStore(Dataset):
         )
 
     @property
-    def resolution(self) -> str:
+    def resolution(self) -> str | None:
         """Return the resolution of the dataset."""
-        return self.z.attrs["resolution"]
+        return self.z.attrs.get("resolution")
 
     @property
     def variables_metadata(self) -> dict[str, Any]:
