@@ -583,23 +583,6 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         if not location.endswith("/"):
             location += "/"
 
-        full = location + name + ".vz"
-        tried.append(full)
-        try:
-
-            from anemoi.datasets.use.tabular.records import open_records_dataset
-
-            z = open_records_dataset(full)
-            if z is not None:
-                # Cache for next time
-                config["named"][name] = full
-                if name not in QUIET:
-                    LOG.info("Opening `%s` as `%s`", name, full)
-                    QUIET.add(name)
-                return full
-        except zarr.errors.PathNotFoundError:
-            pass
-
         full = location + name + ".zarr"
         tried.append(full)
         try:

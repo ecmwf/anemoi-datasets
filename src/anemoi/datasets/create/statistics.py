@@ -9,17 +9,23 @@
 
 
 import datetime
+import logging
 
 import numpy as np
 
+LOG = logging.getLogger(__name__)
+
+STATISTICS = ("mean", "minimum", "maximum", "stdev")
+
 
 class _Collector:
-    def __init__(self) -> None:
+    def __init__(self, column) -> None:
         self._sum = np.float64(0.0)
         self._count = np.int64(0)
         self._min = np.float64(np.inf)
         self._max = -np.float64(np.inf)
         self._sumsq = np.float64(0.0)
+        self._column = column
 
     def update(self, data: any) -> None:
         valid_data = data[~np.isnan(data)]
@@ -34,7 +40,8 @@ class _Collector:
 
     def statistics(self) -> dict[str, float]:
         if self._count == 0:
-            return {}
+            LOG.warning(f"Column {self._column}: no data collected")
+            return {_: np.nan for _ in STATISTICS}
 
         mean = self._sum / self._count
         stdev = (self._sumsq / self._count) - (mean**2)
@@ -43,23 +50,25 @@ class _Collector:
             "minimum": self._min,
             "maximum": self._max,
             "stdev": stdev,
-            "count": self._count,
         }
 
 
 class StatisticsCollector:
 
-    def __init__(self, cutoff_date: datetime.datetime | None = None) -> None:
+    def __init__(self, cutoff_date: datetime.datetime | None = None, columns_names: list[str] | None = None) -> None:
         self.cutoff_date = cutoff_date
 
         self._collectors = None
+        self._columns_names = columns_names
 
     def collect(self, offset: int, array: any, dates: any) -> None:
         if not self.is_active(offset, array, dates):
             return
 
         if self._collectors is None:
-            self._collectors = [_Collector() for _ in range(array.shape[1])]
+            self._collectors = [
+                _Collector(_ if self._columns_names is None else self._columns_names[_]) for _ in range(array.shape[1])
+            ]
 
         for i in range(array.shape[1]):
             self._collectors[i].update(array[:, i])
@@ -69,16 +78,17 @@ class StatisticsCollector:
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:
-            return {}
+            LOG.warning("No statistics collected")
+            return {_: np.array([np.nan]) for _ in STATISTICS}
 
-        keys = list(self._collectors[0].statistics().keys())
-        result = {key: [] for key in keys}
+        result = {key: [] for key in STATISTICS}
         for collector in self._collectors:
             stats = collector.statistics()
-            for key in keys:
+            for key in STATISTICS:
                 result[key].append(stats[key])
 
-        for key in keys:
+        for key in STATISTICS:
+            print(result[key])
             result[key] = np.array(result[key])
 
         return result

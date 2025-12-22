@@ -289,7 +289,8 @@ class Creator(ABC):
 
         variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
         for k in constants:
-            variables_metadata[k]["constant_in_time"] = True
+            if k in variables_metadata:
+                variables_metadata[k]["constant_in_time"] = True
 
         self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 

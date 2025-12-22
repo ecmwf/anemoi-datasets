@@ -4,9 +4,11 @@ from typing import Any
 
 import numpy as np
 import rich
+import zarr
 
 from ..creator import Creator
 from ..locking import Locking
+from ..statistics import StatisticsCollector
 from .context import TabularContext
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +46,20 @@ class TabularCreator(Creator):
     def finalise(self):
         from .finalise import finalise_tabular_dataset
 
-        finalise_tabular_dataset(self.work_dir, self.path, delete_files=True)
+        # TODO: use info from metadata, not minimal_input
+        collector = StatisticsCollector(columns_names=self.minimal_input.variables)
+        store = zarr.open(self.path, mode="a")
+
+        finalise_tabular_dataset(store=store, work_dir=self.work_dir, statistic_collector=collector, delete_files=True)
+
+        for name in ("mean", "minimum", "maximum", "stdev"):
+            store.create_dataset(
+                name,
+                data=collector.statistics()[name],
+                shape=collector.statistics()[name].shape,
+                dtype=collector.statistics()[name].dtype,
+                overwrite=True,
+            )
 
     def statistics(self):
         pass

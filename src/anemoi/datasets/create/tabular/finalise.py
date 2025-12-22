@@ -19,6 +19,7 @@ from typing import Optional
 
 import numpy as np
 import tqdm
+import zarr
 
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.tabular.btree import ZarrBTree
