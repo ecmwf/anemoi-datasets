@@ -40,7 +40,7 @@ from anemoi.datasets.use.gridded.statistics import Statistics
 from anemoi.datasets.use.gridded.subset import Subset
 from anemoi.datasets.use.misc import as_first_date
 from anemoi.datasets.use.misc import as_last_date
-from anemoi.datasets.use.stores import GriddedZarr
+from anemoi.datasets.use.store import GriddedZarr
 
 VALUES = 10
 

@@ -27,8 +27,8 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.use.stores import dataset_lookup
-from anemoi.datasets.use.stores import open_zarr
+from anemoi.datasets.use.store import dataset_lookup
+from anemoi.datasets.use.store import open_zarr
 
 from . import Command
 

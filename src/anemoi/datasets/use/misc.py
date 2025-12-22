@@ -11,14 +11,12 @@
 import calendar
 import datetime
 import logging
-import os
 from pathlib import PurePath
 from typing import TYPE_CHECKING
 from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.config import load_any_dict_format
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
@@ -348,36 +346,17 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         The opened dataset.
     """
     from anemoi.datasets.use.dataset import Dataset
-    from anemoi.datasets.use.stores import GriddedZarr
-    from anemoi.datasets.use.stores import dataset_lookup
+    from anemoi.datasets.use.store import ZarrStore
+    from anemoi.datasets.use.store import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
 
     if isinstance(a, zarr.hierarchy.Group):
-        return GriddedZarr(a).mutate()
+        return ZarrStore.from_group(a).mutate()
 
     if isinstance(a, str):
-        path = dataset_lookup(a)
-
-        if path and path.endswith(".zarr") or path.endswith(".zip"):
-            return GriddedZarr(path).mutate()
-
-        if path and path.endswith(".vz"):
-
-            if not os.path.exists(path):
-                raise FileNotFoundError(f"File not found: {path}")
-
-            metadata_path = os.path.join(path, "metadata.json")
-            if os.path.exists(metadata_path):
-                if "backend" not in load_any_dict_format(metadata_path):
-                    raise ValueError(f"Metadata for {path} does not contain 'backend' key")
-
-                from anemoi.datasets.use.tabular.records import open_records_dataset
-
-                return open_records_dataset(path)
-
-        raise ValueError(f"Unsupported dataset path: {path}. ")
+        return ZarrStore.from_path(dataset_lookup(a)).mutate()
 
     if isinstance(a, PurePath):
         return _open(str(a)).mutate()
