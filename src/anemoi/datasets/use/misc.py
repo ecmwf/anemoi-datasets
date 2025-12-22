@@ -348,8 +348,8 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         The opened dataset.
     """
     from anemoi.datasets.use.dataset import Dataset
-    from anemoi.datasets.use.gridded.stores import GriddedZarr
-    from anemoi.datasets.use.gridded.stores import dataset_lookup
+    from anemoi.datasets.use.stores import GriddedZarr
+    from anemoi.datasets.use.stores import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()

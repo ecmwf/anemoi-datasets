@@ -142,7 +142,7 @@ class WindowView:
 
         if (first, last) == (None, None):
             shape = (0,) + self.data.shape[1:]
-            return np.zeros(shape=shape, dtype=self.data.dtype)
+            return self._filter(index, np.zeros(shape=shape, dtype=self.data.dtype))
 
         first_date, (start_idx, start_cnt) = first
         last_date, (end_idx, end_cnt) = last
@@ -158,7 +158,13 @@ class WindowView:
         if self.window.exclude_after and last_date == end:
             last_idx -= end_cnt
 
-        return self.data[start_idx:last_idx]
+        return self._filter(index, self.data[start_idx:last_idx])
+
+    def _filter(self, index: int, array: np.ndarray) -> np.ndarray:
+        date = self.dates[index]
+        delta = array[:, 0].astype("datetime64[s]") - date.astype("datetime64[s]") + array[:, 1]
+        assert False, delta.shape
+        return np.concatenate([delta, array], axis=1)
 
     def __repr__(self):
         return (

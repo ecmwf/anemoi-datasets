@@ -37,10 +37,10 @@ from anemoi.datasets.use.gridded.padded import Padded
 from anemoi.datasets.use.gridded.select import Rename
 from anemoi.datasets.use.gridded.select import Select
 from anemoi.datasets.use.gridded.statistics import Statistics
-from anemoi.datasets.use.gridded.stores import GriddedZarr
 from anemoi.datasets.use.gridded.subset import Subset
 from anemoi.datasets.use.misc import as_first_date
 from anemoi.datasets.use.misc import as_last_date
+from anemoi.datasets.use.stores import GriddedZarr
 
 VALUES = 10
 

@@ -40,7 +40,7 @@ class _Collector:
 
     def statistics(self) -> dict[str, float]:
         if self._count == 0:
-            LOG.warning(f"Column {self._column}: no data collected")
+            LOG.warning(f"Column {self._column}: no statistics collected")
             return {_: np.nan for _ in STATISTICS}
 
         mean = self._sum / self._count
@@ -66,9 +66,8 @@ class StatisticsCollector:
             return
 
         if self._collectors is None:
-            self._collectors = [
-                _Collector(_ if self._columns_names is None else self._columns_names[_]) for _ in range(array.shape[1])
-            ]
+            names = self._columns_names
+            self._collectors = [_Collector(str(_) if names is None else names[_]) for _ in range(array.shape[1])]
 
         for i in range(array.shape[1]):
             self._collectors[i].update(array[:, i])
@@ -88,7 +87,6 @@ class StatisticsCollector:
                 result[key].append(stats[key])
 
         for key in STATISTICS:
-            print(result[key])
             result[key] = np.array(result[key])
 
         return result

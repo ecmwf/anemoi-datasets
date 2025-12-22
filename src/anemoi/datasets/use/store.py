@@ -407,7 +407,7 @@ class GriddedZarr(Dataset):
         assert format in ("gridded", "tabular"), f"Unsupported format: {format}"
 
         if format == "tabular":
-            from anemoi.datasets.use.tabular.stores import TabularZarr
+            from anemoi.datasets.use.tabular.store import TabularZarr
 
             # LOG.info(f"Converting tabular dataset {self} to gridded")
             return TabularZarr(self.path).mutate()

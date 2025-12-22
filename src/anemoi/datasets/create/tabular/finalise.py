@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import json
 import logging
 import os
 from concurrent.futures import ProcessPoolExecutor
@@ -645,6 +644,9 @@ def finalise_tabular_dataset(
     btree.bulk_load(dates_ranges)
     LOG.info("Duplicate date ranges written to B-Tree index")
 
+    # Set the format attribute to indicate this is a tabular dataset
+    store.attrs.update({"format": "tabular"})
+
     if delete_files:
         LOG.info("Deleting temporary files")
         os.unlink(all_dates_path)
@@ -671,4 +673,11 @@ if __name__ == "__main__":
     with open(os.path.basename(sys.argv[1] + ".done"), "w") as f:
         pass
 
-    print(json.dumps(collector.statistics(), indent=2, default=repr))
+    for name in ("mean", "minimum", "maximum", "stdev"):
+        store.create_dataset(
+            name,
+            data=collector.statistics()[name],
+            shape=collector.statistics()[name].shape,
+            dtype=collector.statistics()[name].dtype,
+            overwrite=True,
+        )
