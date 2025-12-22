@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import json
 import logging
 import os
 from concurrent.futures import ProcessPoolExecutor
@@ -657,13 +658,12 @@ if __name__ == "__main__":
 
     import zarr
 
-    from anemoi.datasets.create.statistics import NoStatisticsCollector
-
     logging.basicConfig(level=logging.INFO)
     work_dir = sys.argv[2]
     store = zarr.open(sys.argv[1], mode="w")
-    finalise_tabular_dataset(
-        store=store, work_dir=work_dir, statistic_collector=NoStatisticsCollector(), delete_files=False
-    )
+    collector = StatisticsCollector()
+    finalise_tabular_dataset(store=store, work_dir=work_dir, statistic_collector=collector, delete_files=False)
     with open(os.path.basename(sys.argv[1] + ".done"), "w") as f:
         pass
+
+    print(json.dumps(collector.statistics(), indent=2, default=repr))
