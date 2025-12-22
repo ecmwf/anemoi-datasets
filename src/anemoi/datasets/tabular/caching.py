@@ -9,10 +9,9 @@
 
 import logging
 import threading
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
-from typing import Iterator
-from typing import Tuple
 
 import numpy as np
 import zarr
@@ -126,7 +125,7 @@ class _Chunk:
         self.flush()
         del lru[self.chunk_index]
 
-    def resize(self, lru: LRU, new_array_shape: Tuple[int, ...]) -> None:
+    def resize(self, lru: LRU, new_array_shape: tuple[int, ...]) -> None:
         """Handles resizing of the underlying array.
 
         Parameters
@@ -302,7 +301,7 @@ class ChunksCache:
         """
         return slice(*key.indices(self._arr.shape[0]))
 
-    def _get_key_chunk(self, key: Any) -> Tuple[Any, Any]:
+    def _get_key_chunk(self, key: Any) -> tuple[Any, Any]:
         """Retrieves the appropriate chunk and a normalised key.
 
         Parameters
@@ -336,7 +335,7 @@ class ChunksCache:
 
                 if isinstance(key[0], slice):
                     key = (self._normalise_slice(key[0]),) + key[1:]
-                    indices = set(a // self._nrows_in_chunks for a in range(*key[0].indices(self._arr.shape[0])))
+                    indices = {a // self._nrows_in_chunks for a in range(*key[0].indices(self._arr.shape[0]))}
                     if len(indices) == 1:
                         chunk_index = indices.pop()
                         return self._ensure_chunk_in_cache(chunk_index), key
@@ -399,12 +398,12 @@ class _MultiChunkSlice:
         The key representing the slice.
     """
 
-    def __init__(self, cache: ChunksCache, key: Tuple[Any, ...]):
+    def __init__(self, cache: ChunksCache, key: tuple[Any, ...]):
         self._cache = cache
         self._key = key
         assert isinstance(key, tuple) and isinstance(key[0], slice)
 
-    def __setitem__(self, key: Tuple[Any, ...], value: Any) -> None:
+    def __setitem__(self, key: tuple[Any, ...], value: Any) -> None:
         """Set values across multiple chunks.
 
         Parameters
@@ -417,7 +416,7 @@ class _MultiChunkSlice:
         for chunk, idx, shape in self._split_chunks(key):
             chunk[idx] = value[shape]
 
-    def __getitem__(self, key: Tuple[Any, ...]) -> Any:
+    def __getitem__(self, key: tuple[Any, ...]) -> Any:
         """Get values across multiple chunks.
 
         Parameters
@@ -435,7 +434,7 @@ class _MultiChunkSlice:
             values.append(chunk[idx][shape])
         return np.concatenate(values, axis=0)
 
-    def _split_chunks(self, key: Tuple[Any, ...]) -> Iterator[Tuple[_Chunk, Tuple[Any, ...], slice]]:
+    def _split_chunks(self, key: tuple[Any, ...]) -> Iterator[tuple[_Chunk, tuple[Any, ...], slice]]:
         """Splits the key into per-chunk slices.
 
         Parameters

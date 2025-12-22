@@ -15,10 +15,7 @@ from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Optional
-from typing import Tuple
 
 import numpy as np
 import tqdm
@@ -50,7 +47,7 @@ class Chunk:
         /,
         first_date: datetime.datetime,
         last_date: datetime.datetime,
-        shape: Tuple[int, ...],
+        shape: tuple[int, ...],
         file_path: str,
     ) -> None:
         """Initialise a Chunk instance.
@@ -69,8 +66,8 @@ class Chunk:
         self.file_path: str = file_path
         self.first_date: datetime.datetime = first_date
         self.last_date: datetime.datetime = last_date
-        self.shape: Tuple[int, ...] = shape
-        self.offset: Optional[int] = None
+        self.shape: tuple[int, ...] = shape
+        self.offset: int | None = None
 
     @classmethod
     def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Chunk"]:
@@ -97,7 +94,7 @@ class Chunk:
         # Dates are encoded as (days, seconds) in the first two columns
         first_date: datetime.datetime = _date(array, 0)
         last_date: datetime.datetime = _date(array, -1)
-        shape: Tuple[int, ...] = array.shape
+        shape: tuple[int, ...] = array.shape
         return cls(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
 
     @classmethod
@@ -122,7 +119,7 @@ class Chunk:
         return cls.from_array(array, file_path=file_path)
 
 
-def _unduplicate_rows(array: np.ndarray) -> Tuple[int, np.ndarray]:
+def _unduplicate_rows(array: np.ndarray) -> tuple[int, np.ndarray]:
     """Remove duplicate rows from a 2D numpy array, handling NaNs correctly.
 
     This function is designed to efficiently remove duplicate rows from a 2D numpy array, even when the array contains
@@ -182,7 +179,7 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
-def _unduplicate_worker(file_path: str, delete_file: bool) -> Tuple[int, Chunk]:
+def _unduplicate_worker(file_path: str, delete_file: bool) -> tuple[int, Chunk]:
     """Worker function to remove duplicate rows from a file and update the file as needed.
 
     This function is intended to be run in parallel across multiple files. It loads a numpy array from the given file,
@@ -228,7 +225,7 @@ def _unduplicate_worker(file_path: str, delete_file: bool) -> Tuple[int, Chunk]:
     )
 
 
-def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> Tuple[int, List[Chunk]]:
+def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> tuple[int, list[Chunk]]:
     """Worker function to resolve overlapping date ranges between two chunks.
 
     This function is used to merge two chunks that have overlapping date ranges. It finds the point where the overlap ends,
@@ -292,7 +289,7 @@ def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> Tuple[int, 
         os.rename(two.file_path + ".tmp.npy", two.file_path + ".deduped.npy")
         two.file_path = two.file_path + ".deduped.npy"
 
-    result: List[Chunk] = []
+    result: list[Chunk] = []
 
     # Only keep non-empty arrays as chunks
     if new_array_one.size > 0:
@@ -312,7 +309,7 @@ def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> Tuple[int, 
     return duplicates, result
 
 
-def _sort_and_chain_chunks(chunks: List[Chunk]) -> List[Chunk]:
+def _sort_and_chain_chunks(chunks: list[Chunk]) -> list[Chunk]:
     """Sort chunks by first date and assign offsets for chaining.
 
     This function sorts a list of Chunk objects in ascending order of their first_date attribute, and then assigns
@@ -371,8 +368,8 @@ def _list_files(work_dir: str) -> Any:
 
 
 def _find_duplicate_and_overlapping_dates(
-    work_dir: str, delete_files: bool, max_workers: Optional[int] = None
-) -> List[Chunk]:
+    work_dir: str, delete_files: bool, max_workers: int | None = None
+) -> list[Chunk]:
     """Find and resolve duplicate and overlapping date ranges in chunk files.
 
     This function orchestrates the deduplication and deoverlapping of all chunk files in a working directory.
@@ -397,7 +394,7 @@ def _find_duplicate_and_overlapping_dates(
     """
     import os
 
-    chunks: Dict[str, Chunk] = {}
+    chunks: dict[str, Chunk] = {}
     total_duplicates: int = 0
 
     if max_workers is None:
@@ -407,7 +404,7 @@ def _find_duplicate_and_overlapping_dates(
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
 
         # Deduplicate all files in parallel
-        tasks: List[Any] = []
+        tasks: list[Any] = []
         for file in _list_files(work_dir):
             tasks.append(executor.submit(_unduplicate_worker, file, delete_files))
 
@@ -426,7 +423,7 @@ def _find_duplicate_and_overlapping_dates(
         while True:
 
             tasks = []
-            prev: Optional[Chunk] = None
+            prev: Chunk | None = None
             for chunk in sorted(chunks.values(), key=lambda x: x.first_date):
                 if prev is None:
                     prev = chunk
@@ -462,7 +459,7 @@ def _find_duplicate_and_overlapping_dates(
     return _sort_and_chain_chunks(list(chunks.values()))
 
 
-def _duplicate_ranges(a: np.ndarray) -> List[Tuple[int, int]]:
+def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
     """Find ranges of duplicate values in a sorted array.
 
     This function scans a sorted array and identifies contiguous runs of identical values, returning a list of
@@ -489,7 +486,7 @@ def _duplicate_ranges(a: np.ndarray) -> List[Tuple[int, int]]:
     idx: np.ndarray = np.flatnonzero(boundaries)
 
     # Each (start, end) pair defines a run of identical values
-    ranges: List[Tuple[int, int]] = list(zip(idx[:-1], idx[1:]))
+    ranges: list[tuple[int, int]] = list(zip(idx[:-1], idx[1:]))
 
     return [(s, e - s) for s, e in ranges]
 
@@ -529,7 +526,7 @@ def finalise_tabular_dataset(
     work_dir: str,
     statistic_collector: StatisticsCollector,
     delete_files: bool,
-    max_workers: Optional[int] = None,
+    max_workers: int | None = None,
 ) -> None:
     """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
 
@@ -555,12 +552,12 @@ def finalise_tabular_dataset(
     max_workers : int, optional
         Maximum number of parallel workers to use. If None, uses all available CPUs.
     """
-    chunks: List[Chunk] = _find_duplicate_and_overlapping_dates(
+    chunks: list[Chunk] = _find_duplicate_and_overlapping_dates(
         work_dir, max_workers=max_workers, delete_files=delete_files
     )
 
     assert chunks, "No data found to finalise"
-    shape: Tuple[int, int] = chunks[0].shape
+    shape: tuple[int, int] = chunks[0].shape
     assert all(chunk.shape[1] == shape[1] for chunk in chunks), "Inconsistent number of columns in chunks"
     shape = (sum(chunk.shape[0] for chunk in chunks), chunks[0].shape[1])
 
@@ -572,7 +569,7 @@ def finalise_tabular_dataset(
     target_size: int = 64 * 1024 * 1024
     chunk_size: int = max(1, round(target_size / row_size))
 
-    chunking: Tuple[int, int] = (min(chunk_size, shape[0]), shape[1])
+    chunking: tuple[int, int] = (min(chunk_size, shape[0]), shape[1])
     LOG.info(f"Final dataset shape: {shape}, chunking: {chunking}")
     store.create_dataset(
         "data",
@@ -587,7 +584,7 @@ def finalise_tabular_dataset(
 
     with ChunksCache(store["data"]) as data:
 
-        def _load_chunk(chunk: Chunk) -> Tuple[Chunk, np.ndarray]:
+        def _load_chunk(chunk: Chunk) -> tuple[Chunk, np.ndarray]:
             # Remove deduped files after loading to save disk space
             array: np.ndarray = np.load(chunk.file_path)
             if "deduped" in chunk.file_path:
@@ -599,7 +596,7 @@ def finalise_tabular_dataset(
         ) as read_ahead:  # , ThreadPoolExecutor(max_workers=1) as compute_statistics:
 
             # Double buffering: keep two chunks loaded ahead for performance
-            tasks: List[Any] = []
+            tasks: list[Any] = []
             i: int = 0
             for i in range(len(chunks)):
                 tasks.append(read_ahead.submit(_load_chunk, chunks[i]))
@@ -634,7 +631,7 @@ def finalise_tabular_dataset(
     LOG.info(f"Dates written to {all_dates_path}")
     LOG.info("Compute duplicate date ranges")
     # Assume dates are sorted for efficient duplicate range finding
-    ranges: List[Tuple[int, int]] = _duplicate_ranges(all_dates)
+    ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
 
     dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
     dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
@@ -662,7 +659,14 @@ if __name__ == "__main__":
     work_dir = sys.argv[2]
     store = zarr.open(sys.argv[1], mode="w")
     collector = StatisticsCollector()
-    finalise_tabular_dataset(store=store, work_dir=work_dir, statistic_collector=collector, delete_files=False)
+
+    finalise_tabular_dataset(
+        store=store,
+        work_dir=work_dir,
+        statistic_collector=collector,
+        delete_files=False,
+    )
+
     with open(os.path.basename(sys.argv[1] + ".done"), "w") as f:
         pass
 

@@ -482,7 +482,7 @@ def get_ensembles_set(obj):
     if isinstance(obj, dict):
         if "number" in obj:
             if isinstance(obj["number"], (list, tuple)):
-                return set([str(element) for element in obj["number"]])
+                return {str(element) for element in obj["number"]}
             if isinstance(obj["number"], (str, int)):
                 if "/" in str(obj["number"]):
                     return mars_str_to_set(obj["number"])

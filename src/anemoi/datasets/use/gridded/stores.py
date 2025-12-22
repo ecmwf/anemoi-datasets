@@ -15,7 +15,6 @@ import tempfile
 import warnings
 from functools import cached_property
 from typing import Any
-from typing import Optional
 from urllib.parse import urlparse
 
 import numpy as np
@@ -547,7 +546,7 @@ class ZarrWithMissingDates(GriddedZarr):
 QUIET = set()
 
 
-def dataset_lookup(name: str, fail: bool = True) -> Optional[str]:
+def dataset_lookup(name: str, fail: bool = True) -> str | None:
     """Look up a zarr dataset by name."""
 
     parsed = urlparse(name)

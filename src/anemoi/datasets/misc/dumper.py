@@ -20,8 +20,8 @@ def represent_date(dumper, data):
 
     if isinstance(data, datetime.datetime):
         if data.tzinfo is None:
-            data = data.replace(tzinfo=datetime.timezone.utc)
-        data = data.astimezone(datetime.timezone.utc)
+            data = data.replace(tzinfo=datetime.UTC)
+        data = data.astimezone(datetime.UTC)
         iso_str = data.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
     else:
         iso_str = data.isoformat()

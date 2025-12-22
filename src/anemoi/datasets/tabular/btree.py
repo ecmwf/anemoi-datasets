@@ -9,9 +9,6 @@
 
 
 import logging
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 import numpy as np
 import tqdm
@@ -31,7 +28,7 @@ class Page:
         is_node: bool = False,
         left: int = 0,
         right: int = 0,
-        entries: List[dict] | None = None,
+        entries: list[dict] | None = None,
     ):
         assert page_id > 0, page_id
         self.page_id = page_id
@@ -42,7 +39,7 @@ class Page:
         self._keys = None
 
     @property
-    def keys(self) -> List[int]:
+    def keys(self) -> list[int]:
         if self._keys is None or len(self._keys) != len(self.entries):
             self._keys = np.array([entry.key for entry in self.entries], dtype=np.int64)
         return self._keys
@@ -64,7 +61,7 @@ class NodeEntry(Entry):
 
 
 class LeafEntry(Entry):
-    def __init__(self, /, key: int, value: Tuple[int, int]):
+    def __init__(self, /, key: int, value: tuple[int, int]):
         super().__init__(key=key)
         self.value = value
 
@@ -288,7 +285,7 @@ class ZarrBTree:
         else:
             return page.entries[idx - 1].child_page
 
-    def _search(self, page_id: int, key: int) -> Optional[Tuple[int, int]]:
+    def _search(self, page_id: int, key: int) -> tuple[int, int] | None:
         """Search for a key, return value pair if found"""
         page = self._read_page(page_id)
 
@@ -305,7 +302,7 @@ class ZarrBTree:
 
         return None
 
-    def _insert_in_leaf(self, page: Page, key: int, value: Tuple[int, int]) -> bool:
+    def _insert_in_leaf(self, page: Page, key: int, value: tuple[int, int]) -> bool:
         """Insert key-value into a leaf page. Returns True if key was updated."""
         # Binary search for insertion point
         keys = page.keys
@@ -323,7 +320,7 @@ class ZarrBTree:
 
         return False
 
-    def _split_leaf(self, page: Page) -> Tuple[dict, int]:
+    def _split_leaf(self, page: Page) -> tuple[dict, int]:
         """Split a full leaf page, return (new_page, split_key)"""
         mid = page.count // 2
 
@@ -343,7 +340,7 @@ class ZarrBTree:
 
         return new_page, split_key
 
-    def _split_node(self, page: Page) -> Tuple[dict, int]:
+    def _split_node(self, page: Page) -> tuple[dict, int]:
         """Split a full node page, return (new_page, split_key)"""
         mid = page.count // 2
 
@@ -372,7 +369,7 @@ class ZarrBTree:
         page.entries.insert(idx, NodeEntry(key=key, child_page=child_page_id))
         self._write_page(page)
 
-    def _insert_recursive(self, page_id: int, key: int, value: Tuple[int, int]) -> Optional[Tuple[int, int]]:
+    def _insert_recursive(self, page_id: int, key: int, value: tuple[int, int]) -> tuple[int, int] | None:
         """Insert key-value pair recursively.
         Returns (split_key, new_page_id) if split occurred, None otherwise.
         """
@@ -456,7 +453,7 @@ class ZarrBTree:
         self.pages.attrs["number_of_rows"] = value
         self._number_of_rows = value
 
-    def set(self, key_int: int, value: Tuple[int, int]):
+    def set(self, key_int: int, value: tuple[int, int]):
         """Set a key-value pair where value is a tuple of two integers"""
         root_id = self.root_page_id
 
@@ -475,7 +472,7 @@ class ZarrBTree:
             self._write_page(new_root)
             self.root_page_id = new_root.page_id
 
-    def get(self, key: int) -> Optional[Tuple[int, int]]:
+    def get(self, key: int) -> tuple[int, int] | None:
         """Get value pair for a key"""
         root_id = self.root_page_id
         return self._search(root_id, key)
@@ -495,7 +492,7 @@ class ZarrBTree:
         page_id: int,
         key1: int,
         key2: int,
-        results: List[Tuple[int, Tuple[int, int]]],
+        results: list[tuple[int, tuple[int, int]]],
     ):
         """Collect all entries in range [key1, key2] using leaf linked list"""
         # Find the leaf page containing or after key1
@@ -521,7 +518,7 @@ class ZarrBTree:
                 # No more leaves
                 return
 
-    def boundaries(self, key1: int, key2: int) -> Tuple[Tuple[int, Tuple[int, int]], Tuple[int, Tuple[int, int]]]:
+    def boundaries(self, key1: int, key2: int) -> tuple[tuple[int, tuple[int, int]], tuple[int, tuple[int, int]]]:
         """Get all first and last entries in key range"""
 
         class FirstLast:
@@ -538,7 +535,7 @@ class ZarrBTree:
         self._range_search(self.root_page_id, key1, key2, collect)
         return collect.first, collect.last
 
-    def range(self, key1: int, key2: int) -> List[Tuple[int, Tuple[int, int]]]:
+    def range(self, key1: int, key2: int) -> list[tuple[int, tuple[int, int]]]:
         """Get all entries in key range"""
 
         results = []

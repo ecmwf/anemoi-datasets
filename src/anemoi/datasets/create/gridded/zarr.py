@@ -213,7 +213,7 @@ class ZarrBuiltRegistry:
         """
         new = dict(
             action=action,
-            timestamp=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(),
+            timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat(),
         )
         new.update(kwargs)
 
@@ -276,9 +276,7 @@ class ZarrBuiltRegistry:
             Value to set the flag to.
         """
         z = self._open_write()
-        z.attrs["latest_write_timestamp"] = (
-            datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
-        )
+        z.attrs["latest_write_timestamp"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat()
         z["_build"][self.name_flags][i] = value
 
     def ready(self) -> bool:

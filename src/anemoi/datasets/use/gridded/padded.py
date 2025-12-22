@@ -12,7 +12,6 @@ import datetime
 import logging
 from functools import cached_property
 from typing import Any
-from typing import Dict
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
@@ -41,7 +40,7 @@ class Padded(Forwards):
         start: str,
         end: str,
         frequency: str,
-        reason: Dict[str, Any],
+        reason: dict[str, Any],
         padding: str,
     ) -> None:
         """Create a padded subset of a dataset.
