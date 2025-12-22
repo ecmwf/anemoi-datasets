@@ -56,6 +56,7 @@ class WindowView:
         self.store = store if isinstance(store, zarr.hierarchy.Group) else zarr.open(store, mode="r")
         self.btree = btree if btree is not None else ZarrBTree(self.store, mode="r")
         self.data = ChunksCache(self.store["data"])
+        # self.data = self.store["data"]
 
         self.start_date = to_datetime(start_date if start_date is not None else self.actual_start_end_dates[0])
         self.end_date = to_datetime(end_date if end_date is not None else self.actual_start_end_dates[1])
@@ -158,13 +159,17 @@ class WindowView:
         if self.window.exclude_after and last_date == end:
             last_idx -= end_cnt
 
+        print(start_idx, last_idx)
+
         return self._filter(index, self.data[start_idx:last_idx])
 
     def _filter(self, index: int, array: np.ndarray) -> np.ndarray:
-        date = self.dates[index]
-        delta = array[:, 0].astype("datetime64[s]") - date.astype("datetime64[s]") + array[:, 1]
-        assert False, delta.shape
-        return np.concatenate([delta, array], axis=1)
+        dates = array[:, 0] * 86400 + array[:, 1]
+
+        deltadate = dates - self._epochs[index]
+
+        # Add time delta as first column, removing original day and second columns
+        return np.concatenate([deltadate[:, np.newaxis], array[:, 2:]], axis=1)
 
     def __repr__(self):
         return (
@@ -173,10 +178,15 @@ class WindowView:
         )
 
     @cached_property
+    def _epochs(self) -> np.ndarray:
+        epochs = []
+        epoch = self.start_date
+        while epoch <= self.end_date:
+            # Convert datetime to seconds since epoch for consistency
+            epochs.append(int(epoch.timestamp()))
+            epoch += self.frequency
+        return np.array(epochs)
+
+    @property
     def dates(self) -> np.ndarray:
-        dates = []
-        date = self.start_date
-        while date <= self.end_date:
-            dates.append(np.datetime64(date, "s"))
-            date += self.frequency
-        return np.array(dates)
+        return np.array([np.datetime64(datetime.datetime.fromtimestamp(_)) for _ in self._epochs])

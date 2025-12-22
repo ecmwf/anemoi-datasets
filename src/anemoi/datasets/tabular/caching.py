@@ -188,7 +188,7 @@ class ChunksCache:
         )
 
         self._chunks_in_cache = chunks_in_cache
-        self._chunks = LRU(chunks_in_cache, callback=self._evict_chunk)
+        self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_chunk)
         self._lock = threading.RLock()
 
         self._last_read_ahead_chunk = 0
@@ -237,7 +237,7 @@ class ChunksCache:
     def flush(self) -> None:
         """Flush all cached chunks to the underlying Zarr array."""
         with self._lock:
-            for chunk in self._chunks.values():
+            for chunk in self._lru_chunks_cache.values():
                 chunk.flush()
 
     @property
@@ -262,20 +262,20 @@ class ChunksCache:
             The cached chunk.
         """
         with self._lock:
-            if chunk_index in self._chunks:
-                return self._chunks[chunk_index]
+            if chunk_index in self._lru_chunks_cache:
+                return self._lru_chunks_cache[chunk_index]
 
         # Create the chunk outside the lock so we don't block other operations while loading from disk
         chunk = _Chunk(self._arr, chunk_index)
 
         with self._lock:
-            self._chunks[chunk_index] = chunk
+            self._lru_chunks_cache[chunk_index] = chunk
 
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug(
-                    f"Loaded chunk {chunk_index} {self._chunks[chunk_index]}. Cached: {sorted(self._chunks.keys())},"
-                    f" {sum(chunk.cache.nbytes for chunk in self._chunks.values()) / 1024 / 1024:.2f} MB"
-                    f" dirty={sum(chunk.dirty for chunk in self._chunks.values())}",
+                    f"Loaded chunk {chunk_index} {self._lru_chunks_cache[chunk_index]}. Cached: {sorted(self._lru_chunks_cache.keys())},"
+                    f" {sum(chunk.cache.nbytes for chunk in self._lru_chunks_cache.values()) / 1024 / 1024:.2f} MB"
+                    f" dirty={sum(chunk.dirty for chunk in self._lru_chunks_cache.values())}",
                 )
 
             if self._read_ahead is not None and not from_read_ahead:
@@ -284,7 +284,7 @@ class ChunksCache:
                         self._last_read_ahead_chunk = chunk_index + 1
                         self._read_ahead.submit(self._read_ahead_worker, chunk_index + 1)
 
-            return self._chunks[chunk_index]
+            return self._lru_chunks_cache[chunk_index]
 
     def _normalise_slice(self, key: slice) -> slice:
         """Convert a slice to absolute indices (no Nones, no negatives).
@@ -336,11 +336,23 @@ class ChunksCache:
                 if isinstance(key[0], slice):
                     key = (self._normalise_slice(key[0]),) + key[1:]
                     indices = {a // self._nrows_in_chunks for a in range(*key[0].indices(self._arr.shape[0]))}
-                    if len(indices) == 1:
-                        chunk_index = indices.pop()
-                        return self._ensure_chunk_in_cache(chunk_index), key
-                    else:
-                        return _MultiChunkSlice(self, key), key
+
+                    match len(indices):
+
+                        case 0:
+                            # Handle empty slice
+                            in_lru = list(self._lru_chunks_cache.keys())
+                            chunk_index = in_lru[0] if in_lru else 0
+                            return self._ensure_chunk_in_cache(chunk_index), key
+
+                        case 1:
+                            # The index is within a single chunk
+                            chunk_index = indices.pop()
+                            return self._ensure_chunk_in_cache(chunk_index), key
+
+                        case _:
+                            # The index spans multiple chunks, use multi-chunk handler
+                            return _MultiChunkSlice(self, key), key
 
                 raise TypeError(f"Unsupported key type in tuple: {type(key[0])} ({key[0]})")
 
@@ -374,8 +386,8 @@ class ChunksCache:
             The new shape of the array.
         """
         with self._lock:
-            for chunk in self._chunks.values():
-                chunk.resize(self._chunks, new_shape)
+            for chunk in self._lru_chunks_cache.values():
+                chunk.resize(self._lru_chunks_cache, new_shape)
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug(f"Resized underlying array from {self._arr.shape} to {new_shape}")
             self._arr.resize(*new_shape)
