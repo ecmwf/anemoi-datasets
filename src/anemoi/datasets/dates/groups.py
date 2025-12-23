@@ -85,11 +85,11 @@ class GroupOfDates:
 
     @property
     def start_date(self) -> datetime.datetime:
-        return self.provider.start_date
+        return self.dates[0]
 
     @property
     def end_date(self) -> datetime.datetime:
-        return self.provider.end_date
+        return self.dates[-1] + datetime.timedelta(seconds=86400 - 1)  # End of the day
 
 
 class Groups:

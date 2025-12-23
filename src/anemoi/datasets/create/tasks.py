@@ -58,16 +58,10 @@ class TaskDispatcher:
         self.creator.cleanup()
 
 
-def run_task(name: str, config=None, tabular: bool = False, trace: str | None = None, **kwargs):
+def run_task(name: str, config, **kwargs):
 
-    if tabular:
-        from anemoi.datasets.create.tabular.creator import TabularCreator
+    from anemoi.datasets.create.creator import Creator
 
-        creator = TabularCreator(config=config, **kwargs)
-    else:
-        from anemoi.datasets.create.gridded.creator import GriddedCreator
-
-        creator = GriddedCreator(config=config, **kwargs)
-
+    creator = Creator.from_config(config, **kwargs)
     dispatch = TaskDispatcher(creator)
     return getattr(dispatch, name)()

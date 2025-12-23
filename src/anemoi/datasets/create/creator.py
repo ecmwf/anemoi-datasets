@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import json
 import logging
 import os
 import uuid
@@ -16,6 +17,7 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+import yaml
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.sanitise import sanitise
@@ -23,7 +25,6 @@ from anemoi.utils.sanitise import sanitise
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.config import build_output
-from anemoi.datasets.create.config import loader_config
 from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.dates.groups import Groups
 
@@ -57,7 +58,7 @@ class Creator(ABC):
             path = path[:-1]
 
         self.path = path
-        self.config = config
+        self.main_config = config
 
         # self.main_config = loader_config(config)
         self.use_threads = kwargs.pop("use_threads", False)
@@ -69,6 +70,30 @@ class Creator(ABC):
         self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
         os.makedirs(self.work_dir, exist_ok=True)
         LOG.info(f"Using work dir: {self.work_dir}")
+
+    #####################################################
+
+    @classmethod
+    def from_config(cls, config: dict | str, **kwargs: Any) -> "Creator":
+        if isinstance(config, str):
+            from anemoi.datasets.create.config import loader_config
+
+            config = loader_config(config)
+            print(yaml.safe_dump(json.loads(json.dumps(config, default=str))))
+
+        format_type = config.get("format", "gridded")
+        match format_type:
+
+            case "gridded":
+                from .gridded.creator import GriddedCreator
+
+                return GriddedCreator(config=config, **kwargs)
+            case "tabular":
+                from .tabular.creator import TabularCreator
+
+                return TabularCreator(config=config, **kwargs)
+            case _:
+                raise ValueError(f"Unknown format type: {format_type}")
 
     #####################################################
 
@@ -316,12 +341,6 @@ class Creator(ABC):
             self.main_config.input,
             data_sources=self.main_config.get("data_sources", {}),
         )
-
-    @cached_property
-    def main_config(self):
-        if self.config is None:
-            return self.dataset.get_main_config()
-        return loader_config(self.config)
 
     def cleanup(self):
         self.tmp_statistics.delete()

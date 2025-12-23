@@ -220,14 +220,13 @@ class ChunksCache:
         size_per_row = np.dtype(array.dtype).itemsize * array[0].size
         chunk_size = self._nrows_in_chunks * size_per_row
         chunk_caching = max(chunk_caching, chunk_size)
-        chunks_in_cache = max(chunk_caching // chunk_size, 1)
+        chunks_in_cache = chunk_caching // chunk_size
 
         LOG.info(
             f"Initializing ChunksCache with chunk shape {array.chunks}, "
             f"caching {chunks_in_cache} chunks ({chunks_in_cache * chunk_size / 1024 / 1024:.2f} MB)",
         )
 
-        self._chunks_in_cache = chunks_in_cache
         self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_chunk)
         self._lock = threading.RLock()
 
