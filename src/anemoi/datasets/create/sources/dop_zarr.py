@@ -56,8 +56,6 @@ class DOPZarrSource(Source):
     def execute(self, dates):
         import pandas as pd
 
-        LOG.info(f"Search start index for date {type(dates)}")
-
         # Cannot use np.searchsorted because dates is 2D
 
         """A proxy to access only the first dimension of the 2D dates array."""

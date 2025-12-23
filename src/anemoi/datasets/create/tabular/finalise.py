@@ -214,6 +214,9 @@ def _unduplicate_worker(file_path: str, delete_file: bool) -> tuple[int, Chunk]:
             os.rename(file_path + ".tmp.npy", file_path + ".deduped.npy")
             file_path = file_path + ".deduped.npy"
 
+    if len(unique_array) == 0:
+        return duplicates, None
+
     first_date: datetime.datetime = _date(unique_array, 0)
     last_date: datetime.datetime = _date(unique_array, -1)
 
@@ -413,7 +416,8 @@ def _find_duplicate_and_overlapping_dates(
             for future in as_completed(tasks):
                 duplicates, chunk = future.result()
                 total_duplicates += duplicates
-                chunks[chunk.file_path] = chunk
+                if chunk is not None:
+                    chunks[chunk.file_path] = chunk
                 pbar.update(1)
                 pbar.set_postfix({"duplicates": total_duplicates})
 

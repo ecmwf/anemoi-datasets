@@ -11,6 +11,7 @@ import datetime
 import json
 import logging
 import os
+import shutil
 import uuid
 from abc import ABC
 from functools import cached_property
@@ -49,7 +50,23 @@ LOG = logging.getLogger(__name__)
 
 
 class Creator(ABC):
-    def __init__(self, path: str, config: dict, **kwargs: Any):
+    """Abstract base class for dataset creation workflows.
+
+    Provides methods for initialisation, loading, metadata management, statistics, and additions handling.
+    """
+
+    def __init__(self, path: str, config: dict, **kwargs: Any) -> None:
+        """Initialise the Creator object.
+
+        Parameters
+        ----------
+        path : str
+            Path to the dataset.
+        config : dict
+            Main configuration dictionary.
+        **kwargs : Any
+            Additional keyword arguments for customisation.
+        """
         # Catch all floating point errors, including overflow, sqrt(<0), etc
 
         np.seterr(all="raise", under="warn")
@@ -68,13 +85,26 @@ class Creator(ABC):
 
         self.kwargs = kwargs
         self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
-        os.makedirs(self.work_dir, exist_ok=True)
         LOG.info(f"Using work dir: {self.work_dir}")
 
     #####################################################
 
     @classmethod
     def from_config(cls, config: dict | str, **kwargs: Any) -> "Creator":
+        """Instantiate a Creator subclass from a configuration.
+
+        Parameters
+        ----------
+        config : dict or str
+            Configuration dictionary or path to configuration file.
+        **kwargs : Any
+            Additional keyword arguments for subclass initialisation.
+
+        Returns
+        -------
+        Creator
+            An instance of a Creator subclass.
+        """
         if isinstance(config, str):
             from anemoi.datasets.create.config import loader_config
 
@@ -97,7 +127,14 @@ class Creator(ABC):
 
     #####################################################
 
-    def init(self):
+    def init(self) -> int:
+        """Run the initialisation process for the dataset.
+
+        Returns
+        -------
+        int
+            The number of groups to process.
+        """
         LOG.info("Config loaded ok:")
         # LOG.info(self.main_config)
 
@@ -114,6 +151,14 @@ class Creator(ABC):
 
         Read a small part of the data to get the shape of the data and the resolution and more metadata.
         """
+
+        LOG.info("Cleaning temporary directories.")
+        for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
+            if d is None:
+                continue
+            os.makedirs(d, exist_ok=True)
+            for f in os.listdir(d):
+                os.remove(os.path.join(d, f))
 
         LOG.info("Config loaded ok:")
         # LOG.info(self.main_config)
@@ -251,7 +296,8 @@ class Creator(ABC):
         # Return the number of groups to process, so we can show a nice progress bar
         return len(lengths)
 
-    def load(self):
+    def load(self) -> None:
+        """Load data into the dataset, processing each group as required."""
         self.dataset = self.open_writable_dataset(self.path)
         total = len(self.registry.get_flags())
         self.chunk_filter = PartFilter(parts=self.parts, total=total)
@@ -293,13 +339,15 @@ class Creator(ABC):
         """
         self.dataset.update_metadata(**kwargs)
 
-    def patch(self):
+    def patch(self) -> None:
+        """Apply a patch to the dataset using the provided options."""
         from anemoi.datasets.create.patch import apply_patch
 
         options = self.kwargs.get("options", {})
         apply_patch(self.path, **options)
 
-    def size(self):
+    def size(self) -> None:
+        """Compute and update the size and constant fields metadata for the dataset."""
         """Run the size computation."""
         from anemoi.datasets.create.size import compute_directory_sizes
 
@@ -322,33 +370,45 @@ class Creator(ABC):
     #####################################################
 
     @cached_property
-    def groups(self):
+    def groups(self) -> Groups:
+        """Return the date groups for the dataset."""
         return Groups(**self.main_config.dates)
 
     @cached_property
-    def minimal_input(self):
+    def minimal_input(self) -> Any:
+        """Return a minimal input selection for a single date."""
         one_date = self.groups.one_date()
         return self.input.select(self.context(), one_date)
 
     @cached_property
-    def output(self):
+    def output(self) -> Any:
+        """Return the output builder for the dataset."""
         return build_output(self.main_config.output, parent=self)
 
     @cached_property
-    def input(self):
+    def input(self) -> InputBuilder:
+        """Return the input builder for the dataset."""
 
         return InputBuilder(
             self.main_config.input,
             data_sources=self.main_config.get("data_sources", {}),
         )
 
-    def cleanup(self):
+    def cleanup(self) -> None:
+        """Clean up temporary statistics and registry, and remove additions if specified."""
         self.tmp_statistics.delete()
         self.registry.clean()
         for delta in self.kwargs.get("delta", []):
             self._cleanup_addition(frequency_to_timedelta(delta))
 
-    def verify(self):
+        for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
+            if d is None:
+                continue
+            if os.path.exists(d):
+                shutil.rmtree(d)
+
+    def verify(self) -> None:
+        """Run verification on the dataset and log the results."""
         """Run the verification."""
         self.dataset = self.open_writable_dataset(self.path)
         LOG.info(f"Verifying dataset at {self.path}")
@@ -378,7 +438,19 @@ class Creator(ABC):
 
         return False
 
-    def tmp_storage_path(self, delta: datetime.timedelta = None) -> str:
+    def tmp_storage_path(self, delta: datetime.timedelta | None = None) -> str:
+        """Get the path to the temporary storage for additions.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta, optional
+            The delta for which to get the storage path.
+
+        Returns
+        -------
+        str
+            The path to the temporary storage.
+        """
         """Get the path to the temporary storage."""
         name = "storage_for_additions"
         if delta:
@@ -386,6 +458,13 @@ class Creator(ABC):
         return os.path.join(f"{self.path}.{name}.tmp")
 
     def read_from_dataset(self, delta: datetime.timedelta) -> None:
+        """Read data from the dataset for a given delta.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta
+            The delta to read from the dataset.
+        """
         """Read data from the dataset."""
         self.variables = self.dataset.anemoi_dataset.variables
         self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
@@ -403,13 +482,21 @@ class Creator(ABC):
         idelta = int(idelta)
         self.ds = DeltaDataset(ds, idelta)
 
-    def init_additions(self):
+    def init_additions(self) -> None:
+        """Initialise temporary storage and prepare for additions for all specified deltas."""
         build_storage(directory=self.tmp_storage_path(), create=True)
         self.dataset = self.open_writable_dataset(self.path)
         for delta in self.kwargs.get("delta", []):
             self._init_addition(frequency_to_timedelta(delta))
 
-    def _init_addition(self, delta: datetime.timedelta):
+    def _init_addition(self, delta: datetime.timedelta) -> None:
+        """Run the additions initialisation for a specific delta.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta
+            The delta for which to initialise additions.
+        """
         """Run the additions initialization."""
         if self.skip(delta):
             LOG.info(f"Skipping {delta=}")
@@ -420,19 +507,34 @@ class Creator(ABC):
         self.tmp_storage.create()
         LOG.info(f"Dataset {self.tmp_storage_path(delta)} additions initialised.")
 
-    def _cleanup_addition(self, delta: datetime.timedelta):
+    def _cleanup_addition(self, delta: datetime.timedelta) -> None:
+        """Clean up the temporary storage for a specific delta.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta
+            The delta for which to clean up storage.
+        """
         """Clean up the temporary storage."""
         self.tmp_storage = build_storage(directory=self.tmp_storage_path(delta), create=False)
         self.tmp_storage.delete()
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path(delta)}")
 
-    def load_additions(self):
+    def load_additions(self) -> None:
+        """Load additions for all specified deltas into the dataset."""
 
         self.dataset = self.open_writable_dataset(self.path)
         for delta in self.kwargs.get("delta", []):
             self._load_addition(frequency_to_timedelta(delta))
 
-    def _load_addition(self, delta: datetime.timedelta):
+    def _load_addition(self, delta: datetime.timedelta) -> None:
+        """Run the additions process for a specific delta.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta
+            The delta for which to load additions.
+        """
         """Run the additions."""
         if self.skip(delta):
             LOG.info(f"Skipping {delta=}")
@@ -455,12 +557,20 @@ class Creator(ABC):
         self.tmp_storage.flush()
         LOG.debug(f"Dataset {self.path} additions run.")
 
-    def finalise_additions(self):
+    def finalise_additions(self) -> None:
+        """Finalise additions for all specified deltas, aggregating and writing statistics."""
         self.dataset = self.open_writable_dataset(self.path)
         for delta in self.kwargs.get("delta", []):
             self._finalise_addition(frequency_to_timedelta(delta))
 
-    def _finalise_addition(self, delta: datetime.timedelta):
+    def _finalise_addition(self, delta: datetime.timedelta) -> None:
+        """Run the additions finalisation for a specific delta, aggregating statistics and writing results.
+
+        Parameters
+        ----------
+        delta : datetime.timedelta
+            The delta for which to finalise additions.
+        """
         """Run the additions finalization."""
         if self.skip(delta):
             LOG.info(f"Skipping {delta=}.")
@@ -565,6 +675,15 @@ class Creator(ABC):
         self.tmp_storage.delete()
 
     def _write(self, summary: Summary, delta: datetime.timedelta) -> None:
+        """Write the summary statistics to the dataset for a given delta.
+
+        Parameters
+        ----------
+        summary : Summary
+            The summary to write.
+        delta : datetime.timedelta
+            The delta value.
+        """
         """Write the summary to the dataset.
 
         Parameters
@@ -580,7 +699,8 @@ class Creator(ABC):
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
         LOG.debug(f"Wrote additions in {self.path}")
 
-    def statistics(self):
+    def statistics(self) -> None:
+        """Run the statistics computation and write results to the dataset."""
         self.dataset = self.open_writable_dataset(self.path)
         """Run the statistics computation."""
         start, end = (
@@ -618,13 +738,38 @@ class Creator(ABC):
         LOG.info(f"Wrote statistics in {self.path}")
 
     def creat_new_dataset(self, path: str) -> NewDataset:
+        """Create a new dataset at the specified path.
+
+        Parameters
+        ----------
+        path : str
+            Path to the new dataset.
+
+        Returns
+        -------
+        NewDataset
+            The created NewDataset instance.
+        """
         return NewDataset(path)
 
     def open_writable_dataset(self, path: str) -> WritableDataset:
+        """Open a writable dataset at the specified path.
+
+        Parameters
+        ----------
+        path : str
+            Path to the writable dataset.
+
+        Returns
+        -------
+        WritableDataset
+            The opened WritableDataset instance.
+        """
         return WritableDataset(path)
 
     @cached_property
     def registry(self) -> Any:
+        """Get the registry for the dataset."""
         """Get the registry."""
         from .gridded.zarr import ZarrBuiltRegistry
 
@@ -632,18 +777,20 @@ class Creator(ABC):
 
     @cached_property
     def tmp_statistics(self) -> TmpStatistics:
+        """Get the temporary statistics object for the dataset."""
         """Get the temporary statistics."""
         directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
         return TmpStatistics(directory)
 
     def read_dataset_metadata(self, path: str) -> None:
-        """Read the metadata of the dataset.
+        """Read the metadata of the dataset and check for missing dates consistency.
 
         Parameters
         ----------
         path : str
             The path to the dataset.
         """
+
         ds = open_dataset(path)
         self.dataset_shape = ds.shape
         self.variables_names = ds.variables

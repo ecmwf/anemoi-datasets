@@ -64,6 +64,9 @@ class TabularCreator(Creator):
     def statistics(self):
         pass
 
+    def size(self) -> int:
+        return 0
+
     ######################################################
     @property
     def check_name(self) -> str:
