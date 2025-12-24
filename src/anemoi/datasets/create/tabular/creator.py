@@ -3,7 +3,6 @@ import os
 from typing import Any
 
 import numpy as np
-import rich
 import zarr
 
 from ..creator import Creator
@@ -16,18 +15,14 @@ LOG = logging.getLogger(__name__)
 VERSION = "0.30"
 
 
-class TabularDataset:
-    def __init__(self, path: str):
-        self.path = path
-        self.data_array = None
-
-    def print_info(self):
-        rich.print(f"[green]TabularDataset at {self.path}[/green]")
-
-
 class TabularCreator(Creator):
 
     allow_nans = True
+
+    ######################################################
+
+    def init(self):
+        super().init()
 
     ######################################################
 

@@ -10,7 +10,6 @@
 import datetime
 import logging
 import os
-from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
@@ -339,10 +338,10 @@ def _sort_and_chain_chunks(chunks: list[Chunk]) -> list[Chunk]:
     return chunks
 
 
-def _list_files(work_dir: str) -> Any:
+def _list_files(work_dir: str) -> list[str]:
     """Yield file paths for .npy files in a working directory, excluding temporary and special files.
 
-    This generator scans the specified working directory and yields the paths of all .npy files that are not temporary
+    This function scans the specified working directory and returns a list of all .npy files that are not temporary
     or special files (such as those used for date indices or intermediate deduplication). This is used to identify all
     candidate chunk files for further processing in the finalisation pipeline.
 
@@ -351,11 +350,12 @@ def _list_files(work_dir: str) -> Any:
     work_dir : str
         Directory to search for files.
 
-    Yields
-    ------
-    str
-        Path to a valid .npy file.
+    Returns
+    -------
+    list of str
+        List of paths to valid .npy files.
     """
+    result = []
     for file in os.listdir(work_dir):
         # Exclude special and temporary files
         if file in ("dates.npy", "dates_ranges.npy"):
@@ -367,7 +367,9 @@ def _list_files(work_dir: str) -> Any:
         if ".tmp" in file or ".deduped" in file:
             continue
 
-        yield os.path.join(work_dir, file)
+        result.append(os.path.join(work_dir, file))
+
+    return result
 
 
 def _find_duplicate_and_overlapping_dates(
@@ -400,15 +402,22 @@ def _find_duplicate_and_overlapping_dates(
     chunks: dict[str, Chunk] = {}
     total_duplicates: int = 0
 
+    LOG.info("Listing files")
+    files = _list_files(work_dir)
+    LOG.info(f"Found {len(files)} files to process")
+
     if max_workers is None:
         # For some reason using too many workers causes hangs in ProcessPoolExecutor
         max_workers = min(os.cpu_count(), 128)
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    max_workers = min(max_workers, len(files))
+    LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
 
         # Deduplicate all files in parallel
         tasks: list[Any] = []
-        for file in _list_files(work_dir):
+        for file in files:
             tasks.append(executor.submit(_unduplicate_worker, file, delete_files))
 
         LOG.info("Checking duplicates")

@@ -8,20 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import json
 import logging
 import os
 import shutil
-import uuid
 from abc import ABC
 from functools import cached_property
 from typing import Any
 
 import numpy as np
-import yaml
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
-from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
@@ -32,7 +28,6 @@ from anemoi.datasets.dates.groups import Groups
 from .gridded import DeltaDataset
 from .gridded import NewDataset
 from .gridded import WritableDataset
-from .gridded import build_statistics_dates
 from .gridded.persistent import build_storage
 from .gridded.statistics import Summary
 from .gridded.statistics import TmpStatistics
@@ -40,7 +35,6 @@ from .gridded.statistics import check_variance
 from .gridded.statistics import compute_statistics
 from .gridded.statistics import fix_variance
 from .parts import PartFilter
-from .utils import normalize_and_check_dates
 
 LOG = logging.getLogger(__name__)
 
@@ -85,7 +79,7 @@ class Creator(ABC):
 
         self.kwargs = kwargs
         self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
-        LOG.info(f"Using work dir: {self.work_dir}")
+        LOG.info(f"Using work dir: {os.path.abspath(self.work_dir)}")
 
     #####################################################
 
@@ -109,7 +103,6 @@ class Creator(ABC):
             from anemoi.datasets.create.config import loader_config
 
             config = loader_config(config)
-            print(yaml.safe_dump(json.loads(json.dumps(config, default=str))))
 
         format_type = config.get("format", "gridded")
         match format_type:
@@ -139,18 +132,6 @@ class Creator(ABC):
         # LOG.info(self.main_config)
 
         self.dataset = self.creat_new_dataset(self.path)
-        self.tmp_statistics.delete()
-        """Internal method to run the initialization.
-
-        Returns
-        -------
-        int
-            The number of groups to process.
-        """
-        """Create an empty dataset of the right final shape.
-
-        Read a small part of the data to get the shape of the data and the resolution and more metadata.
-        """
 
         LOG.info("Cleaning temporary directories.")
         for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
@@ -160,8 +141,8 @@ class Creator(ABC):
             for f in os.listdir(d):
                 os.remove(os.path.join(d, f))
 
-        LOG.info("Config loaded ok:")
-        # LOG.info(self.main_config)
+        self.tmp_statistics.delete()
+
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
         missing = self.groups.provider.missing
@@ -173,128 +154,10 @@ class Creator(ABC):
         LOG.info(f"Missing dates: {len(missing)}")
         lengths = tuple(len(g) for g in self.groups)
 
-        variables = self.minimal_input.variables
-        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
-
-        variables_with_nans = self.main_config.statistics.get("allow_nans", [])
-
-        ensembles = self.minimal_input.ensembles
-        LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
-
-        grid_points = self.minimal_input.grid_points
-        LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
-
-        resolution = self.minimal_input.resolution
-        LOG.info(f"{resolution=}")
-
-        total_shape, chunks = self.shape_and_chunks(dates)
-        dtype = self.output.dtype
-
-        LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
-
-        metadata = {}
-        metadata["uuid"] = str(uuid.uuid4())
-
-        metadata.update(self.main_config.get("add_metadata", {}))
-
-        metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
-
-        recipe = sanitise(self.main_config.get_serialisable_dict())
-
-        # Remove stuff added by prepml
-        for k in [
-            "build_dataset",
-            "config_format_version",
-            "config_path",
-            "dataset_status",
-            "ecflow",
-            "metadata",
-            "platform",
-            "reading_chunks",
-            "upload",
-        ]:
-            recipe.pop(k, None)
-
-        metadata["recipe"] = recipe
-
-        metadata["description"] = self.main_config.description
-        metadata["licence"] = self.main_config["licence"]
-        metadata["attribution"] = self.main_config["attribution"]
-
-        metadata["remapping"] = self.output.remapping
-        metadata["order_by"] = self.output.order_by_as_list
-        metadata["flatten_grid"] = self.output.flatten_grid
-
-        metadata["ensemble_dimension"] = len(ensembles)
-        metadata["variables"] = variables
-        metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.main_config.build.get("allow_nans", False)
-        metadata["resolution"] = resolution
-
-        metadata["data_request"] = self.minimal_input.data_request
-        metadata["field_shape"] = self.minimal_input.field_shape
-        metadata["proj_string"] = self.minimal_input.proj_string
-        metadata["variables_metadata"] = self.minimal_input.variables_metadata
-
-        metadata["start_date"] = dates[0].isoformat()
-        metadata["end_date"] = dates[-1].isoformat()
-        metadata["frequency"] = frequency
-        metadata["missing_dates"] = [_.isoformat() for _ in missing]
-
-        metadata["version"] = VERSION
-
-        self.dataset.check_name(
-            raise_exception=self.check_name,
-            resolution=resolution,
-            dates=dates,
-            frequency=frequency,
-        )
-
-        if len(dates) != total_shape[0]:
-            raise ValueError(
-                f"Final date size {len(dates)} (from {dates[0]} to {dates[-1]}, {frequency=}) "
-                f"does not match data shape {total_shape[0]}. {total_shape=}"
-            )
-
-        dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
-
-        metadata.update(self.main_config.get("force_metadata", {}))
-
-        ###############################################################
-        # write metadata
-        ###############################################################
-
-        self.update_metadata(**metadata)
-
-        self.dataset.add_dataset(
-            name="data",
-            chunks=chunks,
-            dtype=dtype,
-            shape=total_shape,
-            dimensions=("time", "variable", "ensemble", "cell"),
-        )
-        self.dataset.add_dataset(name="dates", array=dates, dimensions=("time",))
-        self.dataset.add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
-        self.dataset.add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
-
-        self.registry.create(lengths=lengths)
+        r = self.registry
+        r.create(lengths=lengths)
         self.tmp_statistics.create(exist_ok=False)
         self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
-
-        statistics_start, statistics_end = build_statistics_dates(
-            dates,
-            self.main_config.statistics.get("start"),
-            self.main_config.statistics.get("end"),
-        )
-        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
-        LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
-
-        self.registry.add_to_history("init finished")
-
-        assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
-
-        # Return the number of groups to process, so we can show a nice progress bar
-        return len(lengths)
 
     def load(self) -> None:
         """Load data into the dataset, processing each group as required."""
@@ -302,13 +165,14 @@ class Creator(ABC):
         total = len(self.registry.get_flags())
         self.chunk_filter = PartFilter(parts=self.parts, total=total)
 
-        self.data_array = self.dataset.data_array
+        # self.data_array = self.dataset.data_array
         self.n_groups = len(self.groups)
-        self.read_dataset_metadata(self.dataset.path)
+        # self.read_dataset_metadata(self.dataset.path)
 
         for igroup, group in enumerate(self.groups):
             if not self.chunk_filter(igroup):
                 continue
+
             if self.registry.get_flag(igroup):
                 LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
                 continue

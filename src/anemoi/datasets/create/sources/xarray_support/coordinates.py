@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import datetime
 import logging
+from typing import TYPE_CHECKING
 from typing import Any
 
 import numpy as np
-import xarray as xr
 from earthkit.data.utils.dates import to_datetime
 
 LOG = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    import xarray as xr
 
 
 def is_scalar(variable: Any) -> bool:

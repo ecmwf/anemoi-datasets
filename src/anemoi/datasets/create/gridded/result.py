@@ -334,6 +334,14 @@ class GriddedResult(Result):
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
+        except AttributeError:
+            import pandas as pd
+
+            if isinstance(ds, pd.DataFrame):
+                raise ValueError(
+                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'format: tabular' in your recipe?"
+                )
+            raise
         except ValueError:
             self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             # raise ValueError(f"Error in {self}")
