@@ -648,33 +648,27 @@ def finalise_tabular_dataset(
 
     index = create_date_indexing(date_indexing, store)
 
-    if index.requires_raw_dates:
-        index.bulk_load(all_dates)
-    else:
-        LOG.info("Compute duplicate date ranges")
-        # Assume dates are sorted for efficient duplicate range finding
-        ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
+    LOG.info("Compute duplicate date ranges")
+    # Assume dates are sorted for efficient duplicate range finding
+    ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
 
-        dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
-        dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
-        for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
-            dates_ranges[i, :] = (all_dates[start], start, length)
-        dates_ranges.flush()
+    dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
+    dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
+    for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
+        dates_ranges[i, :] = (all_dates[start], start, length)
+    dates_ranges.flush()
 
-        LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
-        index.bulk_load(dates_ranges)
-        LOG.info("Duplicate date ranges written to index")
+    LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
+    index.bulk_load(dates_ranges)
+    LOG.info("Duplicate date ranges written to index")
+
+    if delete_files:
+        os.unlink(dates_ranges_path)
+        os.unlink(all_dates_path)
 
     # Set the format attribute to indicate this is a tabular dataset
     store.attrs.update({"format": "tabular"})
     store.attrs.update({"date_indexing": index.name})
-
-    if delete_files:
-        LOG.info("Deleting temporary files")
-        if os.path.exists(all_dates_path):
-            os.unlink(all_dates_path)
-        if os.path.exists(dates_ranges_path):
-            os.unlink(dates_ranges_path)
 
 
 if __name__ == "__main__":

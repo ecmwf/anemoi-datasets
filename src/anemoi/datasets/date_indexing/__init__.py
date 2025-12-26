@@ -27,16 +27,11 @@ def create_date_indexing(config: Any, store: Any) -> Any:
 
 class DateIndexing(ABC):
 
-    requires_raw_dates: bool = False
-
     @abstractmethod
-    def bulk_load(self, store, dates: Any) -> None:
+    def bulk_load(self, store, dates_ranges: Any) -> None:
         """Bulk load the date indexing structure with the provided dates.
 
-        If requires_raw_dates=true, bulk_load expects a 1D array of np.datetime64 objects, with the same
-        length as the dataset.
-
-        If requires_raw_date=false, bulk_load expects an 2D array of (epoch, start_idx, length) int64,
+        bulk_load expects an 2D array of (epoch, start_idx, length) int64,
         where 'epoch' is the date in epoch seconds, 'start_idx' is the starting index of data for that date,
         and 'length' is the number of data points for that date.
 
