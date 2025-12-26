@@ -54,7 +54,7 @@ def load_one(
     emoji: str,
     context: Any,
     dates: list[str],
-    dataset: str | "xr.Dataset",
+    dataset: Any,
     *,
     options: dict[str, Any] | None = None,
     flavour: str | None = None,

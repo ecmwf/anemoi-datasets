@@ -12,12 +12,12 @@ import logging
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import FullIndex
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.gridded.forwards import Combined
-from anemoi.datasets.use.misc import _auto_adjust
-from anemoi.datasets.use.misc import _open
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.gridded.forwards import Combined
+from anemoi.datasets.usage.misc import _auto_adjust
+from anemoi.datasets.usage.misc import _open
 
 LOG = logging.getLogger(__name__)
 

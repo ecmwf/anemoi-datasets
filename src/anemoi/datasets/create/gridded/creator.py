@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 import logging
 import time
+import uuid
 import warnings
 from functools import cached_property
 from typing import Any
@@ -18,10 +19,13 @@ import zarr
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
+from anemoi.utils.sanitise import sanitise
 from earthkit.data.core.order import build_remapping
 
 from ..check import check_data_values
 from ..creator import Creator
+from ..utils import normalize_and_check_dates
+from . import build_statistics_dates
 from .context import GriddedContext
 from .statistics import compute_statistics
 from .writer import ViewCacheArray
@@ -35,7 +39,7 @@ class GriddedCreator(Creator):
 
     check_name = False
 
-    def init(self) -> int:
+    def task_init(self) -> int:
         """Run the initialisation process for the dataset.
 
         Returns
@@ -43,7 +47,11 @@ class GriddedCreator(Creator):
         int
             The number of groups to process.
         """
-        store = super().init()
+        super().task_init()
+
+        dates = self.groups.provider.values
+        frequency = self.groups.provider.frequency
+        missing = self.groups.provider.missing
 
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
@@ -160,9 +168,6 @@ class GriddedCreator(Creator):
         self.registry.add_to_history("init finished")
 
         assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
-
-        # Return the number of groups to process, so we can show a nice progress bar
-        return len(lengths)
 
     def check_unkown_kwargs(self, kwargs: dict) -> None:
         """Check for unknown keyword arguments.

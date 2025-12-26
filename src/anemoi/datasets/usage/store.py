@@ -22,13 +22,13 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import Shape
-from anemoi.datasets.use.dataset import TupleIndex
-from anemoi.datasets.use.debug import DEBUG_ZARR_LOADING
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.debug import Source
-from anemoi.datasets.use.misc import load_config
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.misc import load_config
 
 LOG = logging.getLogger(__name__)
 
@@ -264,12 +264,12 @@ class ZarrStore(Dataset):
 
         match format:
             case "gridded":
-                from anemoi.datasets.use.gridded.store import GriddedZarr
+                from anemoi.datasets.usage.gridded.store import GriddedZarr
 
                 return GriddedZarr(group, path).mutate()
 
             case "tabular":
-                from anemoi.datasets.use.tabular.store import TabularZarr
+                from anemoi.datasets.usage.tabular.store import TabularZarr
 
                 return TabularZarr(group, path).mutate()
             case _:

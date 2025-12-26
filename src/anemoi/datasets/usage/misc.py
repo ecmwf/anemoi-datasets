@@ -21,7 +21,7 @@ from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
-    from anemoi.datasets.use.dataset import Dataset
+    from anemoi.datasets.usage.dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 
@@ -321,11 +321,11 @@ def _concat_or_join(datasets: list["Dataset"], kwargs: dict[str, Any]) -> tuple[
     ranges = [(d.dates[0].astype(object), d.dates[-1].astype(object)) for d in datasets]
 
     if len(set(ranges)) == 1:
-        from anemoi.datasets.use.gridded.join import Join
+        from anemoi.datasets.usage.gridded.join import Join
 
         return Join(datasets)._overlay(), kwargs
 
-    from anemoi.datasets.use.gridded.concat import Concat
+    from anemoi.datasets.usage.gridded.concat import Concat
 
     Concat.check_dataset_compatibility(datasets)
 
@@ -345,9 +345,9 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     Dataset
         The opened dataset.
     """
-    from anemoi.datasets.use.dataset import Dataset
-    from anemoi.datasets.use.store import ZarrStore
-    from anemoi.datasets.use.store import dataset_lookup
+    from anemoi.datasets.usage.dataset import Dataset
+    from anemoi.datasets.usage.store import ZarrStore
+    from anemoi.datasets.usage.store import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
@@ -488,70 +488,70 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
 
     if "xy" in kwargs:
         # Experimental feature, may be removed
-        from anemoi.datasets.use.gridded.xy import xy_factory
+        from anemoi.datasets.usage.gridded.xy import xy_factory
 
         assert not sets, sets
         return xy_factory(args, kwargs).mutate()
 
     if "x" in kwargs and "y" in kwargs:
         # Experimental feature, may be removed
-        from anemoi.datasets.use.gridded.xy import xy_factory
+        from anemoi.datasets.usage.gridded.xy import xy_factory
 
         assert not sets, sets
         return xy_factory(args, kwargs).mutate()
 
     if "zip" in kwargs:
         # Experimental feature, may be removed
-        from anemoi.datasets.use.gridded.xy import zip_factory
+        from anemoi.datasets.usage.gridded.xy import zip_factory
 
         assert not sets, sets
         return zip_factory(args, kwargs).mutate()
 
     if "chain" in kwargs:
         # Experimental feature, may be removed
-        from anemoi.datasets.use.gridded.unchecked import chain_factory
+        from anemoi.datasets.usage.gridded.unchecked import chain_factory
 
         assert not sets, sets
         return chain_factory(args, kwargs).mutate()
 
     if "join" in kwargs:
-        from anemoi.datasets.use.gridded.join import join_factory
+        from anemoi.datasets.usage.gridded.join import join_factory
 
         assert not sets, sets
         return join_factory(args, kwargs).mutate()
 
     if "concat" in kwargs:
-        from anemoi.datasets.use.gridded.concat import concat_factory
+        from anemoi.datasets.usage.gridded.concat import concat_factory
 
         assert not sets, sets
         return concat_factory(args, kwargs).mutate()
 
     if "merge" in kwargs:
-        from anemoi.datasets.use.gridded.merge import merge_factory
+        from anemoi.datasets.usage.gridded.merge import merge_factory
 
         assert not sets, sets
         return merge_factory(args, kwargs).mutate()
 
     if "ensemble" in kwargs:
-        from anemoi.datasets.use.gridded.ensemble import ensemble_factory
+        from anemoi.datasets.usage.gridded.ensemble import ensemble_factory
 
         assert not sets, sets
         return ensemble_factory(args, kwargs).mutate()
 
     if "grids" in kwargs:
-        from anemoi.datasets.use.gridded.grids import grids_factory
+        from anemoi.datasets.usage.gridded.grids import grids_factory
 
         assert not sets, sets
         return grids_factory(args, kwargs).mutate()
 
     if "cutout" in kwargs:
-        from anemoi.datasets.use.gridded.grids import cutout_factory
+        from anemoi.datasets.usage.gridded.grids import cutout_factory
 
         assert not sets, sets
         return cutout_factory(args, kwargs).mutate()
 
     if "complement" in kwargs:
-        from anemoi.datasets.use.gridded.complement import complement_factory
+        from anemoi.datasets.usage.gridded.complement import complement_factory
 
         assert not sets, sets
         return complement_factory(args, kwargs).mutate()

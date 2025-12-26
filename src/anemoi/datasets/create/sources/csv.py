@@ -66,6 +66,8 @@ class CSVSource(Source):
     def execute(self, dates):
         import pandas as pd
 
+        print(dates.start_date, dates.end_date)
+
         to_drop = []
 
         if self.columns is None:

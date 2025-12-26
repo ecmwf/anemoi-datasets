@@ -28,19 +28,19 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.misc.testing import default_test_indexing
-from anemoi.datasets.use.gridded import save_dataset
-from anemoi.datasets.use.gridded.concat import Concat
-from anemoi.datasets.use.gridded.ensemble import Ensemble
-from anemoi.datasets.use.gridded.grids import GridsBase
-from anemoi.datasets.use.gridded.join import Join
-from anemoi.datasets.use.gridded.padded import Padded
-from anemoi.datasets.use.gridded.select import Rename
-from anemoi.datasets.use.gridded.select import Select
-from anemoi.datasets.use.gridded.statistics import Statistics
-from anemoi.datasets.use.gridded.subset import Subset
-from anemoi.datasets.use.misc import as_first_date
-from anemoi.datasets.use.misc import as_last_date
-from anemoi.datasets.use.store import GriddedZarr
+from anemoi.datasets.usage.gridded import save_dataset
+from anemoi.datasets.usage.gridded.concat import Concat
+from anemoi.datasets.usage.gridded.ensemble import Ensemble
+from anemoi.datasets.usage.gridded.grids import GridsBase
+from anemoi.datasets.usage.gridded.join import Join
+from anemoi.datasets.usage.gridded.padded import Padded
+from anemoi.datasets.usage.gridded.select import Rename
+from anemoi.datasets.usage.gridded.select import Select
+from anemoi.datasets.usage.gridded.statistics import Statistics
+from anemoi.datasets.usage.gridded.store import GriddedZarr
+from anemoi.datasets.usage.gridded.subset import Subset
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
 
@@ -62,7 +62,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", lambda name: name + ".zarr"):
+            with patch("anemoi.datasets.use.store.dataset_lookup", lambda name: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper

@@ -99,6 +99,15 @@ class Creator(ABC):
         Creator
             An instance of a Creator subclass.
         """
+
+        if config is None:
+            # Look for config in the zarr
+            if "path" not in kwargs:
+                raise ValueError("Path must be provided in kwargs if config is None.")
+            from anemoi.datasets.create.config import loader_config_from_zarr
+
+            config = loader_config_from_zarr(kwargs["path"])
+
         if isinstance(config, str):
             from anemoi.datasets.create.config import loader_config
 
@@ -120,7 +129,7 @@ class Creator(ABC):
 
     #####################################################
 
-    def init(self) -> int:
+    def task_init(self) -> int:
         """Run the initialisation process for the dataset.
 
         Returns
@@ -159,7 +168,7 @@ class Creator(ABC):
         self.tmp_statistics.create(exist_ok=False)
         self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
 
-    def load(self) -> None:
+    def task_load(self) -> None:
         """Load data into the dataset, processing each group as required."""
         self.dataset = self.open_writable_dataset(self.path)
         total = len(self.registry.get_flags())
@@ -203,14 +212,14 @@ class Creator(ABC):
         """
         self.dataset.update_metadata(**kwargs)
 
-    def patch(self) -> None:
+    def task_patch(self) -> None:
         """Apply a patch to the dataset using the provided options."""
         from anemoi.datasets.create.patch import apply_patch
 
         options = self.kwargs.get("options", {})
         apply_patch(self.path, **options)
 
-    def size(self) -> None:
+    def task_size(self) -> None:
         """Compute and update the size and constant fields metadata for the dataset."""
         """Run the size computation."""
         from anemoi.datasets.create.size import compute_directory_sizes
@@ -258,7 +267,7 @@ class Creator(ABC):
             data_sources=self.main_config.get("data_sources", {}),
         )
 
-    def cleanup(self) -> None:
+    def task_cleanup(self) -> None:
         """Clean up temporary statistics and registry, and remove additions if specified."""
         self.tmp_statistics.delete()
         self.registry.clean()
@@ -271,7 +280,7 @@ class Creator(ABC):
             if os.path.exists(d):
                 shutil.rmtree(d)
 
-    def verify(self) -> None:
+    def task_verify(self) -> None:
         """Run verification on the dataset and log the results."""
         """Run the verification."""
         self.dataset = self.open_writable_dataset(self.path)
@@ -346,7 +355,7 @@ class Creator(ABC):
         idelta = int(idelta)
         self.ds = DeltaDataset(ds, idelta)
 
-    def init_additions(self) -> None:
+    def task_init_additions(self) -> None:
         """Initialise temporary storage and prepare for additions for all specified deltas."""
         build_storage(directory=self.tmp_storage_path(), create=True)
         self.dataset = self.open_writable_dataset(self.path)
@@ -384,7 +393,7 @@ class Creator(ABC):
         self.tmp_storage.delete()
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path(delta)}")
 
-    def load_additions(self) -> None:
+    def task_load_additions(self) -> None:
         """Load additions for all specified deltas into the dataset."""
 
         self.dataset = self.open_writable_dataset(self.path)
@@ -421,7 +430,7 @@ class Creator(ABC):
         self.tmp_storage.flush()
         LOG.debug(f"Dataset {self.path} additions run.")
 
-    def finalise_additions(self) -> None:
+    def task_finalise_additions(self) -> None:
         """Finalise additions for all specified deltas, aggregating and writing statistics."""
         self.dataset = self.open_writable_dataset(self.path)
         for delta in self.kwargs.get("delta", []):
@@ -563,7 +572,7 @@ class Creator(ABC):
         self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
         LOG.debug(f"Wrote additions in {self.path}")
 
-    def statistics(self) -> None:
+    def task_statistics(self) -> None:
         """Run the statistics computation and write results to the dataset."""
         self.dataset = self.open_writable_dataset(self.path)
         """Run the statistics computation."""

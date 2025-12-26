@@ -344,7 +344,7 @@ def test_csv(get_test_data: callable) -> None:
             "csv": {
                 "path": data,
                 "flavour": {
-                    "time": [
+                    "date": [
                         "typicalDate",
                         "typicalTime",
                     ]
@@ -352,13 +352,7 @@ def test_csv(get_test_data: callable) -> None:
             }
         },
     )
-    window = DatesProvider.from_config(
-        {
-            "start": "2025-01-01T00:00:00",
-            "end": "2025-12-21T23:59:59",
-            "window": "(-3h:+3h]",
-        }
-    )
+    window = DatesProvider.from_config({"start": "2025-01-01T00:00:00", "end": "2025-12-21T23:59:59"})
 
     frame = source.execute(window)
     assert len(frame) == 2526

@@ -6,7 +6,6 @@ import numpy as np
 import zarr
 
 from ..creator import Creator
-from ..locking import Locking
 from ..statistics import StatisticsCollector
 from .context import TabularContext
 
@@ -21,8 +20,8 @@ class TabularCreator(Creator):
 
     ######################################################
 
-    def init(self):
-        super().init()
+    def task_init(self):
+        super().task_init()
 
     ######################################################
 
@@ -33,12 +32,12 @@ class TabularCreator(Creator):
         np.save(
             os.path.join(
                 self.work_dir,
-                f"{result.start_date.isoformat()}-{result.end_date.isoformat()}.npy",
+                f"{result.start_date}-{result.end_date}.npy",
             ),
             result.to_numpy(),
         )
 
-    def finalise(self):
+    def task_finalise(self):
         from .finalise import finalise_tabular_dataset
 
         # TODO: use info from metadata, not minimal_input
@@ -56,10 +55,10 @@ class TabularCreator(Creator):
                 overwrite=True,
             )
 
-    def statistics(self):
+    def task_statistics(self):
         pass
 
-    def size(self) -> int:
+    def task_size(self) -> int:
         return 0
 
     ######################################################
@@ -71,41 +70,3 @@ class TabularCreator(Creator):
         total_shape = (len(dates), len(self.minimal_input.variables))
         chunks = (min(100, total_shape[0]), total_shape[1])
         return total_shape, chunks
-
-
-class SimpleRegistry:
-    def __init__(self, path: str):
-        self.path = os.path.join(path, "_build_registry")
-        os.makedirs(self.path, exist_ok=True)
-        self.lock = Locking(os.path.join(self.path, "registry.lock"))
-
-    def create(self, lengths: tuple[int, ...]):
-        with self.lock:
-            np_lengths = np.array(lengths, dtype="i4")
-            np_flags = np.array([False] * len(lengths), dtype=bool)
-            np.save(os.path.join(self.path, "lengths.npy"), np_lengths)
-            np.save(os.path.join(self.path, "flags.npy"), np_flags)
-            self.add_to_history("initialised")
-
-    def get_flags(self):
-        with self.lock:
-            np_flags = np.load(os.path.join(self.path, "flags.npy"))
-            return np_flags
-
-    def get_flag(self, index: int) -> bool:
-        return self.get_flags()[index]
-
-    def set_flag(self, index: int) -> bool:
-        with self.lock:
-            np_flags = np.load(os.path.join(self.path, "flags.npy"))
-            if not np_flags[index]:
-                np_flags[index] = True
-                np.save(os.path.join(self.path, "flags.npy"), np_flags)
-
-    def add_provenance(self, name: str):
-        with self.lock:
-            pass
-
-    def add_to_history(self, action: str):
-        with self.lock:
-            pass

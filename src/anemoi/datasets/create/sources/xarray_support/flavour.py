@@ -550,7 +550,7 @@ class CoordinateGuesser(ABC):
 class DefaultCoordinateGuesser(CoordinateGuesser):
     """Default implementation of CoordinateGuesser."""
 
-    def __init__(self, ds: xr.Dataset) -> None:
+    def __init__(self, ds: "xr.Dataset") -> None:
         """Initializes the DefaultCoordinateGuesser.
 
         Parameters
@@ -810,7 +810,7 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
 class FlavourCoordinateGuesser(CoordinateGuesser):
     """Implementation of CoordinateGuesser that uses a flavour for guessing."""
 
-    def __init__(self, ds: xr.Dataset, flavour: dict[str, Any]) -> None:
+    def __init__(self, ds: "xr.Dataset", flavour: dict[str, Any]) -> None:
         """Initializes the FlavourCoordinateGuesser.
 
         Parameters
@@ -823,7 +823,7 @@ class FlavourCoordinateGuesser(CoordinateGuesser):
         super().__init__(ds)
         self.flavour = flavour
 
-    def _match(self, c: xr.DataArray, key: str, attributes: CoordinateAttributes) -> dict[str, Any] | None:
+    def _match(self, c: "xr.DataArray", key: str, attributes: CoordinateAttributes) -> dict[str, Any] | None:
         """Matches the coordinate against the flavour rules.
 
         Parameters

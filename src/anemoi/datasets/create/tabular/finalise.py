@@ -408,7 +408,7 @@ def _find_duplicate_and_overlapping_dates(
 
     if max_workers is None:
         # For some reason using too many workers causes hangs in ProcessPoolExecutor
-        max_workers = min(os.cpu_count(), 128)
+        max_workers = os.cpu_count()
 
     max_workers = min(max_workers, len(files))
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")

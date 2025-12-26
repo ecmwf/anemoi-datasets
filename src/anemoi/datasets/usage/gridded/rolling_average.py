@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.use.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
 from ..dataset import Dataset
 from ..dataset import FullIndex

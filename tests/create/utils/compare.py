@@ -13,7 +13,7 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.use.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr
 
 
 class Comparer:

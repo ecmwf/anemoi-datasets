@@ -10,6 +10,7 @@
 
 import bisect
 import logging
+import time
 
 import numpy as np
 
@@ -56,6 +57,10 @@ class DOPZarrSource(Source):
     def execute(self, dates):
         import pandas as pd
 
+        start = time.time()
+        LOG.info(
+            f"Loading {dates.start_date} => {dates.end_date} ({(dates.end_date - dates.start_date).astype('timedelta64[s]').astype(object)})"
+        )
         # Cannot use np.searchsorted because dates is 2D
 
         """A proxy to access only the first dimension of the 2D dates array."""
@@ -70,9 +75,11 @@ class DOPZarrSource(Source):
             def __getitem__(self, value):
                 return self.dates[value][0]
 
+        start = time.time()
         # Search only the first dimension of the 2D dates array, without loading all dates
         start_idx = bisect.bisect_left(Proxy(self.dates), np.datetime64(dates.start_date))
         end_idx = bisect.bisect_right(Proxy(self.dates), np.datetime64(dates.end_date))
+        date_lookup_time = time.time() - start
 
         if start_idx >= end_idx:
             LOG.warning(f"No data found between {dates.start_date} and {dates.end_date}")
@@ -80,13 +87,19 @@ class DOPZarrSource(Source):
 
         # Load data slice
         LOG.info(
-            f"Loading {dates.start_date} => {dates.end_date} slice[{start_idx}:{end_idx}] -> {end_idx - start_idx} records"
+            f"Loading {dates.start_date} => {dates.end_date} slice[{start_idx}:{end_idx}] -> {end_idx - start_idx:,} records"
         )
+
+        start = time.time()
         data_slice = self.data[start_idx:end_idx]
+        data_load_time = time.time() - start
 
         # Build data frame
-
+        start = time.time()
         date_slice = self.dates[start_idx:end_idx]
+        date_load_time = time.time() - start
+
+        start = time.time()
         frame = pd.DataFrame(
             {
                 "date": pd.to_datetime(date_slice[:, 0]),
@@ -98,6 +111,12 @@ class DOPZarrSource(Source):
                     if col not in ["lat", "lon"]
                 },
             }
+        )
+        data_frame_time = time.time() - start
+        total_time = date_lookup_time + data_load_time + date_load_time + data_frame_time
+
+        LOG.info(
+            f"Loaded data frame with {len(frame):,} records in {total_time:.2f} seconds ({date_lookup_time:.2f}s dates lookup, {data_load_time:.2f}s data load, {date_load_time:.2f}s date load, {data_frame_time:.2f}s frame build)"
         )
 
         return frame

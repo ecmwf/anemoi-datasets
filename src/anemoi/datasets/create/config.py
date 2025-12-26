@@ -158,7 +158,7 @@ class OutputSpecs:
         """
         self.config = config
         if "order_by" in config:
-            assert isinstance(config.order_by, dict), config.order_by
+            assert isinstance(config.order_by, (dict, DotDict)), config.order_by
 
         self.parent = parent
 
@@ -435,6 +435,16 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
             os.environ[k] = str(v)
 
     return copy
+
+
+def loader_config_from_zarr(path: str) -> dict:
+
+    import zarr
+
+    z = zarr.open(path, mode="r")
+    if "_create_yaml_config" not in z.attrs:
+        raise ValueError(f"No _create_yaml_config found in {path}")
+    return DotDict(z.attrs["_create_yaml_config"])
 
 
 def build_output(*args, **kwargs) -> OutputSpecs:

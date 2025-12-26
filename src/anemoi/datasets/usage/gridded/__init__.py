@@ -15,13 +15,13 @@ from typing import Any
 # from .dataset import FullIndex
 # from .dataset import Shape
 # from .dataset import TupleIndex
-from anemoi.datasets.use.misc import _open_dataset
-from anemoi.datasets.use.misc import _save_dataset
-from anemoi.datasets.use.misc import add_dataset_path
-from anemoi.datasets.use.misc import add_named_dataset
+from anemoi.datasets.usage.misc import _open_dataset
+from anemoi.datasets.usage.misc import _save_dataset
+from anemoi.datasets.usage.misc import add_dataset_path
+from anemoi.datasets.usage.misc import add_named_dataset
 
 if TYPE_CHECKING:
-    from anemoi.datasets.use.dataset import Dataset
+    from anemoi.datasets.usage.dataset import Dataset
 
 LOG = logging.getLogger(__name__)
 

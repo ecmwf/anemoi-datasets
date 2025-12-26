@@ -14,54 +14,54 @@ class TaskDispatcher:
     def __init__(self, creator):
         self.creator = creator
 
-    def init(self):
-        return self.creator.init()
+    def task_init(self):
+        return self.creator.task_init()
 
-    def load(self):
-        return self.creator.load()
+    def task_load(self):
+        return self.creator.task_load()
 
-    def size(self):
-        return self.creator.size()
+    def task_size(self):
+        return self.creator.task_size()
 
-    def patch(self):
-        return self.creator.patch()
+    def task_patch(self):
+        return self.creator.task_patch()
 
-    def statistics(self):
-        return self.creator.statistics()
+    def task_statistics(self):
+        return self.creator.task_statistics()
 
-    def finalise(self):
-        self.creator.finalise()
-        self.creator.statistics()
-        self.creator.size()
-        self.creator.cleanup()
+    def task_finalise(self):
+        self.creator.task_finalise()
+        self.creator.task_statistics()
+        self.creator.task_size()
+        self.creator.task_cleanup()
 
-    def cleanup(self):
-        self.creator.cleanup()
+    def task_cleanup(self):
+        self.creator.task_cleanup()
 
-    def verify(self):
-        self.creator.verify()
+    def task_verify(self):
+        self.creator.task_verify()
 
-    def init_additions(self):
-        self.creator.init_additions()
+    def task_init_additions(self):
+        self.creator.task_init_additions()
 
-    def load_additions(self):
-        self.creator.load_additions()
+    def task_load_additions(self):
+        self.creator.task_load_additions()
 
-    def finalise_additions(self):
-        self.creator.finalise_additions()
-        self.creator.size()
+    def task_finalise_additions(self):
+        self.creator.task_finalise_additions()
+        self.creator.task_size()
 
-    def additions(self):
-        self.creator.init_additions()
-        self.creator.load_additions()
-        self.creator.finalise_additions()
-        self.creator.cleanup()
+    def task_additions(self):
+        self.creator.task_init_additions()
+        self.creator.task_load_additions()
+        self.creator.task_finalise_additions()
+        self.creator.task_cleanup()
 
 
-def run_task(name: str, config, **kwargs):
+def run_task(name: str, config=None, **kwargs):
 
     from anemoi.datasets.create.creator import Creator
 
     creator = Creator.from_config(config, **kwargs)
     dispatch = TaskDispatcher(creator)
-    return getattr(dispatch, name)()
+    return getattr(dispatch, f"task_{name}")()

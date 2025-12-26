@@ -18,14 +18,14 @@ from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets.create.utils import to_datetime
-from anemoi.datasets.use.dataset import Dataset
-from anemoi.datasets.use.dataset import FullIndex
-from anemoi.datasets.use.dataset import TupleIndex
-from anemoi.datasets.use.debug import Node
-from anemoi.datasets.use.debug import debug_indexing
-from anemoi.datasets.use.gridded.forwards import Forwards
-from anemoi.datasets.use.gridded.indexing import expand_list_indexing
-from anemoi.datasets.use.gridded.indexing import update_tuple
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.gridded.forwards import Forwards
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 

@@ -17,8 +17,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
 
-from anemoi.datasets.use.misc import as_first_date
-from anemoi.datasets.use.misc import as_last_date
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 from .btree import ZarrBTree
 from .caching import ChunksCache

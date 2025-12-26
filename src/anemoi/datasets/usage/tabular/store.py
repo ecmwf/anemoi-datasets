@@ -17,8 +17,8 @@ import zarr
 from numpy.typing import NDArray
 
 from anemoi.datasets.tabular.window import WindowView
-from anemoi.datasets.use.dataset import Shape
-from anemoi.datasets.use.store import ZarrStore
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.store import ZarrStore
 
 LOG = logging.getLogger(__name__)
 

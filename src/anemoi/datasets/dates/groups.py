@@ -85,11 +85,15 @@ class GroupOfDates:
 
     @property
     def start_date(self) -> datetime.datetime:
-        return self.provider.start_date(self.dates)
+        import numpy as np
+
+        return np.datetime64(self.provider.start_date(self.dates), "ns")
 
     @property
     def end_date(self) -> datetime.datetime:
-        return self.provider.end_date(self.dates)
+        import numpy as np
+
+        return np.datetime64(self.provider.end_date(self.dates), "ns") - np.timedelta64(1, "ns")
 
 
 class Groups:
@@ -237,6 +241,7 @@ class Grouper(ABC):
             "monthly": lambda dt: (dt.year, dt.month),
             "daily": lambda dt: (dt.year, dt.month, dt.day),
             "weekly": lambda dt: (dt.weekday(),),
+            "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
         return GrouperByKey(key)
