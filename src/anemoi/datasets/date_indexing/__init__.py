@@ -38,3 +38,7 @@ class DateIndexing(ABC):
     @abstractmethod
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
         pass
+
+    @abstractmethod
+    def boundaries(self, start: datetime.datetime, end: datetime.datetime) -> tuple[int, int]:
+        pass
