@@ -136,7 +136,7 @@ class Groups:
                 - Other keys for DatesProvider configuration.
         """
 
-        group_by = kwargs.pop("group_by")
+        group_by = kwargs.pop("group_by", "monthly")
         self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)

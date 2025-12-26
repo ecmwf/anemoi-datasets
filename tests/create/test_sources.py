@@ -32,7 +32,7 @@ def test_grib(get_test_data: callable) -> None:
 
     path = os.path.dirname(data1)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2010-01-01T00:00:00",
             "end": "2010-01-02T18:00:00",
@@ -45,7 +45,7 @@ def test_grib(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
 
@@ -66,7 +66,7 @@ def test_grib_gridfile(get_test_data) -> None:
 
     path = os.path.dirname(data1)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2025-01-01T00:00:00",
             "end": "2025-01-02T18:00:00",
@@ -81,7 +81,7 @@ def test_grib_gridfile(get_test_data) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 1, 1, 1147980)
     assert ds.variables == ["2t"]
@@ -141,7 +141,7 @@ def test_grib_gridfile_with_refinement_level(
         }
     }
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01T00:00:00",
             "end": "2023-01-01T03:00:00",
@@ -160,7 +160,7 @@ def test_grib_gridfile_with_refinement_level(
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == shape
     assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
@@ -186,7 +186,7 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
 
     path = os.path.dirname(data1)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01T00:00:00",
             "end": "2023-01-01T03:00:00",
@@ -207,7 +207,7 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(date=0, variable="u_119.0", member=0)
 
@@ -224,7 +224,7 @@ def test_netcdf(get_test_data: callable) -> None:
     This function tests the creation of a dataset from a NetCDF file.
     """
     data = get_test_data("anemoi-datasets/create/netcdf.nc")
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01",
             "end": "2023-01-02",
@@ -235,7 +235,7 @@ def test_netcdf(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (2, 2, 1, 162)
 
@@ -246,7 +246,7 @@ def test_eccs_fstd(get_test_data: callable) -> None:
     # See https://github.com/neishm/fstd2nc
 
     data = get_test_data("anemoi-datasets/create/2025031000_000_TT.fstd", gzipped=True)
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01",
             "end": "2023-01-02",
@@ -257,7 +257,7 @@ def test_eccs_fstd(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (2, 2, 1, 162)
 
@@ -275,7 +275,7 @@ def test_kerchunk(get_test_data: callable) -> None:
 
     data = get_test_data("anemoi-datasets/create/kerchunck.json", gzipped=True)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2024-03-01T00:00:00",
             "end": "2024-03-01T18:00:00",
@@ -290,7 +290,7 @@ def test_kerchunk(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (4, 1, 1, 1038240)
 
@@ -300,7 +300,7 @@ def test_kerchunk(get_test_data: callable) -> None:
 def test_planetary_computer_conus404() -> None:
     """Test loading and validating the planetary_computer_conus404 dataset."""
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2022-01-01",
             "end": "2022-01-02",
@@ -325,7 +325,7 @@ def test_planetary_computer_conus404() -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (2, 1, 1, 1387505), ds.shape
 

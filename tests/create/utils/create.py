@@ -21,7 +21,7 @@ class TestingContext:
 
 def create_dataset(
     *,
-    config: str | dict[str, Any],
+    recipe: str | dict[str, Any],
     output: str | None,
     delta: list[str] | None = None,
     is_test: bool = False,
@@ -30,7 +30,7 @@ def create_dataset(
 
     Parameters
     ----------
-    config : Union[str, Dict[str, Any]]
+    recipe : str | dict[str, Any]
         The configuration for the dataset. Can be a path to a YAML file or a dictionary.
     output : Optional[str]
         The output path for the dataset. If None, a temporary directory will be created.
@@ -45,15 +45,15 @@ def create_dataset(
         The path to the created dataset.
     """
 
-    if isinstance(config, dict):
+    if isinstance(recipe, dict):
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml")
-        yaml.dump(config, temp_file)
-        config = temp_file.name
+        yaml.dump(recipe, temp_file)
+        recipe = temp_file.name
 
     if output is None:
         output = tempfile.mkdtemp(suffix=".zarr")
 
-    run_task("init", config=config, path=output, overwrite=True, test=is_test)
+    run_task("init", recipe=recipe, path=output, overwrite=True, test=is_test)
     run_task("load", path=output)
     run_task("finalise", path=output)
     run_task("patch", path=output)

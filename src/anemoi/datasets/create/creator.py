@@ -21,8 +21,9 @@ from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.config import build_output
 from anemoi.datasets.create.input import InputBuilder
+from anemoi.datasets.create.recipe import loader_recipe_from_yaml
+from anemoi.datasets.create.recipe import loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
 
 from .gridded import DeltaDataset
@@ -49,7 +50,7 @@ class Creator(ABC):
     Provides methods for initialisation, loading, metadata management, statistics, and additions handling.
     """
 
-    def __init__(self, path: str, config: dict, **kwargs: Any) -> None:
+    def __init__(self, path: str, recipe: dict, **kwargs: Any) -> None:
         """Initialise the Creator object.
 
         Parameters
@@ -69,9 +70,9 @@ class Creator(ABC):
             path = path[:-1]
 
         self.path = path
-        self.main_config = config
+        self.recipe = recipe
 
-        # self.main_config = loader_config(config)
+        # self.recipe = loader_config(config)
         self.use_threads = kwargs.pop("use_threads", False)
         self.statistics_temp_dir = kwargs.pop("statistics_temp_dir", None)
         self.addition_temp_dir = kwargs.pop("addition_temp_dir", None)
@@ -84,12 +85,12 @@ class Creator(ABC):
     #####################################################
 
     @classmethod
-    def from_config(cls, config: dict | str, **kwargs: Any) -> "Creator":
+    def from_recipe(cls, recipe: dict | str, **kwargs: Any) -> "Creator":
         """Instantiate a Creator subclass from a configuration.
 
         Parameters
         ----------
-        config : dict or str
+        recipe : dict or str
             Configuration dictionary or path to configuration file.
         **kwargs : Any
             Additional keyword arguments for subclass initialisation.
@@ -100,30 +101,27 @@ class Creator(ABC):
             An instance of a Creator subclass.
         """
 
-        if config is None:
-            # Look for config in the zarr
+        if recipe is None:
+            # Look for recipe in the zarr
             if "path" not in kwargs:
-                raise ValueError("Path must be provided in kwargs if config is None.")
-            from anemoi.datasets.create.config import loader_config_from_zarr
+                raise ValueError("Path must be provided in kwargs if recipe is None.")
 
-            config = loader_config_from_zarr(kwargs["path"])
+            recipe = loader_recipe_from_zarr(kwargs["path"])
 
-        if isinstance(config, str):
-            from anemoi.datasets.create.config import loader_config
+        if isinstance(recipe, str):
+            recipe = loader_recipe_from_yaml(recipe)
 
-            config = loader_config(config)
-
-        format_type = config.get("format", "gridded")
+        format_type = recipe.format
         match format_type:
 
             case "gridded":
                 from .gridded.creator import GriddedCreator
 
-                return GriddedCreator(config=config, **kwargs)
+                return GriddedCreator(recipe=recipe, **kwargs)
             case "tabular":
                 from .tabular.creator import TabularCreator
 
-                return TabularCreator(config=config, **kwargs)
+                return TabularCreator(recipe=recipe, **kwargs)
             case _:
                 raise ValueError(f"Unknown format type: {format_type}")
 
@@ -137,8 +135,6 @@ class Creator(ABC):
         int
             The number of groups to process.
         """
-        LOG.info("Config loaded ok:")
-        # LOG.info(self.main_config)
 
         self.dataset = self.creat_new_dataset(self.path)
 
@@ -198,7 +194,7 @@ class Creator(ABC):
             self.registry.set_flag(igroup)
 
         self.registry.add_provenance(name="provenance_load")
-        self.tmp_statistics.add_provenance(name="provenance_load", config=self.main_config)
+        self.tmp_statistics.add_provenance(name="provenance_load", config=self.recipe)
 
         self.dataset.print_info()
 
@@ -245,7 +241,7 @@ class Creator(ABC):
     @cached_property
     def groups(self) -> Groups:
         """Return the date groups for the dataset."""
-        return Groups(**self.main_config.dates)
+        return Groups(**self.recipe.dates)
 
     @cached_property
     def minimal_input(self) -> Any:
@@ -256,15 +252,15 @@ class Creator(ABC):
     @cached_property
     def output(self) -> Any:
         """Return the output builder for the dataset."""
-        return build_output(self.main_config.output, parent=self)
+        return self.recipe.output
 
     @cached_property
     def input(self) -> InputBuilder:
         """Return the input builder for the dataset."""
 
         return InputBuilder(
-            self.main_config.input,
-            data_sources=self.main_config.get("data_sources", {}),
+            self.recipe.input,
+            data_sources=self.recipe.data_sources or {},
         )
 
     def task_cleanup(self) -> None:

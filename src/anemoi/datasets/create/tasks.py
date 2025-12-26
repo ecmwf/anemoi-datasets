@@ -58,10 +58,10 @@ class TaskDispatcher:
         self.creator.task_cleanup()
 
 
-def run_task(name: str, config=None, **kwargs):
+def run_task(name: str, recipe=None, **kwargs):
 
     from anemoi.datasets.create.creator import Creator
 
-    creator = Creator.from_config(config, **kwargs)
+    creator = Creator.from_recipe(recipe, **kwargs)
     dispatch = TaskDispatcher(creator)
     return getattr(dispatch, f"task_{name}")()

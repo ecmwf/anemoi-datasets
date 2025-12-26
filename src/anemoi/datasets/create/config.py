@@ -10,8 +10,6 @@
 import datetime
 import logging
 import os
-import subprocess
-import sys
 from copy import deepcopy
 from typing import Any
 
@@ -93,7 +91,7 @@ def check_dict_value_and_set(dic: dict, key: str, value: Any) -> None:
         if dic[key] == value:
             return
         raise ValueError(f"Cannot use {key}={dic[key]}. Must use {value}.")
-    # LOG.info(f"Setting {key}={value} in config")
+    LOG.info(f"Setting {key}={value} in config")
     dic[key] = value
 
 
@@ -134,7 +132,6 @@ class Config(DotDict):
             Additional keyword arguments to update the configuration.
         """
         if isinstance(config, str):
-            self.config_path = os.path.realpath(config)
             config = load_any_dict_format(config)
         else:
             config = deepcopy(config if config is not None else {})
@@ -145,32 +142,6 @@ class Config(DotDict):
 
 class OutputSpecs:
     """Class to handle output specifications for datasets."""
-
-    def __init__(self, config: Config, parent: Any):
-        """Initializes the OutputSpecs object.
-
-        Parameters
-        ----------
-        config : Config
-            The configuration object.
-        parent : Any
-            The parent object.
-        """
-        self.config = config
-        if "order_by" in config:
-            assert isinstance(config.order_by, (dict, DotDict)), config.order_by
-
-        self.parent = parent
-
-    @property
-    def dtype(self) -> str:
-        """Returns the data type for the output."""
-        return self.config.dtype
-
-    @property
-    def order_by_as_list(self) -> list[dict]:
-        """Returns the order_by configuration as a list of dictionaries."""
-        return [{k: v} for k, v in self.config.order_by.items()]
 
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
@@ -185,7 +156,7 @@ class OutputSpecs:
         tuple
             The chunking configuration.
         """
-        user = deepcopy(self.config.chunking)
+        user = deepcopy(self.chunking)
         chunks = []
         for k, v in coords.items():
             if k in user:
@@ -197,26 +168,6 @@ class OutputSpecs:
                 f"Unused chunking keys from config: {list(user.keys())}, not in known keys : {list(coords.keys())}"
             )
         return tuple(chunks)
-
-    @property
-    def order_by(self) -> dict:
-        """Returns the order_by configuration."""
-        return self.config.order_by
-
-    @property
-    def remapping(self) -> dict:
-        """Returns the remapping configuration."""
-        return self.config.remapping
-
-    @property
-    def flatten_grid(self) -> bool:
-        """Returns whether the grid should be flattened."""
-        return self.config.flatten_grid
-
-    @property
-    def statistics(self) -> str:
-        """Returns the statistics configuration."""
-        return self.config.statistics
 
 
 class LoadersConfig(Config):
@@ -364,19 +315,17 @@ def set_to_test_mode(cfg: dict) -> None:
         group_by=NUMBER_OF_DATES,
     )
 
-    num_ensembles = count_ensembles(cfg)
-
     def set_element_to_test(obj):
         if isinstance(obj, (list, tuple)):
             for v in obj:
                 set_element_to_test(v)
             return
         if isinstance(obj, (dict, DotDict)):
-            if "grid" in obj and num_ensembles > 1:
+            if "grid" in obj:
                 previous = obj["grid"]
                 obj["grid"] = "20./20."
                 LOG.warning(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
-            if "number" in obj and num_ensembles > 1:
+            if "number" in obj:
                 if isinstance(obj["number"], (list, tuple)):
                     previous = obj["number"]
                     obj["number"] = previous[0:3]
@@ -406,11 +355,6 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     LoadersConfig
         The validated configuration object.
     """
-
-    if isinstance(config, str) and config.endswith(".py"):
-        result = subprocess.run([sys.executable, config], capture_output=True, text=True, check=True)
-        config = yaml.safe_load(result.stdout)
-
     config = Config(config)
     if is_test:
         set_to_test_mode(config)
@@ -437,16 +381,6 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     return copy
 
 
-def loader_config_from_zarr(path: str) -> dict:
-
-    import zarr
-
-    z = zarr.open(path, mode="r")
-    if "_create_yaml_config" not in z.attrs:
-        raise ValueError(f"No _create_yaml_config found in {path}")
-    return DotDict(z.attrs["_create_yaml_config"])
-
-
 def build_output(*args, **kwargs) -> OutputSpecs:
     """Builds the output specifications.
 
@@ -463,49 +397,3 @@ def build_output(*args, **kwargs) -> OutputSpecs:
         The output specifications object.
     """
     return OutputSpecs(*args, **kwargs)
-
-
-def flatten_list_of_sets(list_of_sets: list[set]) -> set:
-    return {element for subset in list_of_sets for element in subset}
-
-
-def mars_str_to_set(s: str) -> set[str]:
-    """Mars strings are like 1/to/2 or 1/to/2/by/1
-
-    Returns a set of strings, e.g. {'1', '2'}
-    """
-    assert "/" in s, "mars_str_to_set expects a string with '/'"
-    lst = s.split("/")
-    assert len(lst) in (3, 5), f"mars_str_to_set expects a string like 1/to/2 or 1/to/4/by/1, got {s}"
-    if len(lst) == 3:
-        assert "to" in lst
-        start, _, end = lst
-        step = 1
-    elif len(lst) == 5:
-        assert "by" in lst and "to" in lst
-        start, _, end, _, step = lst
-    return {str(i) for i in range(int(start), int(end) + 1, int(step))}
-
-
-def get_ensembles_set(obj):
-    """Counts the number of ensembles in the configuration."""
-    if isinstance(obj, dict):
-        if "number" in obj:
-            if isinstance(obj["number"], (list, tuple)):
-                return {str(element) for element in obj["number"]}
-            if isinstance(obj["number"], (str, int)):
-                if "/" in str(obj["number"]):
-                    return mars_str_to_set(obj["number"])
-                else:
-                    return {str(obj["number"])}
-    if isinstance(obj, (dict)):
-        return flatten_list_of_sets([get_ensembles_set(v) for v in obj.values()])
-    if isinstance(obj, (list, tuple)):
-        return flatten_list_of_sets([get_ensembles_set(v) for v in obj])
-    return {}
-
-
-def count_ensembles(config: Config) -> int:
-    """Counts the number of ensembles in the configuration."""
-    ensembles = get_ensembles_set(config.input)
-    return len(ensembles) if ensembles else 1

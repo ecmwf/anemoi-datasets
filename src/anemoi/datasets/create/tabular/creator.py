@@ -69,7 +69,7 @@ class TabularCreator(Creator):
 
     @property
     def date_indexing(self) -> str:
-        return self.main_config.get("date_indexing", {"type": "btree"})
+        return self.recipe.date_indexing
 
     ######################################################
     @property

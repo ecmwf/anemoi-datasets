@@ -24,8 +24,8 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
+from ..config import loader_config
 from .check import DatasetName
-from .config import loader_config
 from .statistics import default_statistics_dates
 
 LOG = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class Dataset:
         import zarr
 
         z = zarr.open(self.path, mode="r")
-        config = loader_config(z.attrs.get("_create_yaml_config"))
+        config = loader_config(z.attrs.get("_recipe"))
 
         if "env" in config:
             for k, v in config["env"].items():

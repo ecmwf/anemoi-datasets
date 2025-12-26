@@ -144,7 +144,7 @@ def apply_patch(path: str, verbose: bool = True, dry_run: bool = False) -> None:
         "provenance_statistics": fix_provenance,
         "order_by": fix_order_by,
     }
-    REMOVE = ["_create_yaml_config"]
+    REMOVE = ["_recipe"]
 
     before = json.dumps(attrs, sort_keys=True)
 

@@ -320,7 +320,7 @@ class GriddedResult(Result):
         self.order_by: Any = self.context.order_by
         self.flatten_grid: Any = self.context.flatten_grid
         self.start: float = time.time()
-        LOG.debug("Sorting dataset %s %s", dict(self.order_by), self.remapping)
+        LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
         assert self.order_by, self.order_by
 
         self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}

@@ -55,6 +55,7 @@ dependencies = [
   "lru-dict",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
+  "pydantic",
   "pyyaml",
   "ruamel-yaml",
   "semantic-version",
@@ -139,8 +140,8 @@ profile = "black"
 [tool.pytest.ini_options]
 testpaths = "tests"
 addopts = [
-  "--numprocesses=auto",
-  "--maxprocesses=16",
+  #"--numprocesses=auto",
+  #"--maxprocesses=16",
   "--strict-config",
 ]
 

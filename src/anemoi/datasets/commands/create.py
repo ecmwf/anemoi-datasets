@@ -80,7 +80,7 @@ class Create(Command):
             help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
         )
 
-        command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
+        command_parser.add_argument("recipe", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")
         group = command_parser.add_mutually_exclusive_group()
         group.add_argument("--threads", help="Use `n` parallel thread workers.", type=int, default=0)

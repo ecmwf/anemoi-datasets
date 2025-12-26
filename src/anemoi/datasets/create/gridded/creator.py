@@ -56,7 +56,7 @@ class GriddedCreator(Creator):
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
 
-        variables_with_nans = self.main_config.statistics.get("allow_nans", [])
+        variables_with_nans = self.recipe.statistics.get("allow_nans", [])
 
         ensembles = self.minimal_input.ensembles
         LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
@@ -75,11 +75,11 @@ class GriddedCreator(Creator):
         metadata = {}
         metadata["uuid"] = str(uuid.uuid4())
 
-        metadata.update(self.main_config.get("add_metadata", {}))
+        metadata.update(self.recipe.get("add_metadata", {}))
 
-        metadata["_create_yaml_config"] = self.main_config.get_serialisable_dict()
+        metadata["_recipe"] = self.recipe.get_serialisable_dict()
 
-        recipe = sanitise(self.main_config.get_serialisable_dict())
+        recipe = sanitise(self.recipe.get_serialisable_dict())
 
         # Remove stuff added by prepml
         for k in [
@@ -97,9 +97,9 @@ class GriddedCreator(Creator):
 
         metadata["recipe"] = recipe
 
-        metadata["description"] = self.main_config.description
-        metadata["licence"] = self.main_config["licence"]
-        metadata["attribution"] = self.main_config["attribution"]
+        metadata["description"] = self.recipe.description
+        metadata["licence"] = self.recipe["licence"]
+        metadata["attribution"] = self.recipe["attribution"]
 
         metadata["remapping"] = self.output.remapping
         metadata["order_by"] = self.output.order_by_as_list
@@ -108,7 +108,7 @@ class GriddedCreator(Creator):
         metadata["ensemble_dimension"] = len(ensembles)
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.main_config.build.get("allow_nans", False)
+        metadata["allow_nans"] = self.recipe.build.get("allow_nans", False)
         metadata["resolution"] = resolution
 
         metadata["data_request"] = self.minimal_input.data_request
@@ -138,7 +138,7 @@ class GriddedCreator(Creator):
 
         dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
 
-        metadata.update(self.main_config.get("force_metadata", {}))
+        metadata.update(self.recipe.get("force_metadata", {}))
 
         ###############################################################
         # write metadata
@@ -159,8 +159,8 @@ class GriddedCreator(Creator):
 
         statistics_start, statistics_end = build_statistics_dates(
             dates,
-            self.main_config.statistics.get("start"),
-            self.main_config.statistics.get("end"),
+            self.recipe.statistics.get("start"),
+            self.recipe.statistics.get("end"),
         )
         self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
         LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
@@ -265,7 +265,7 @@ class GriddedCreator(Creator):
             order_by=self.output.order_by,
             flatten_grid=self.output.flatten_grid,
             remapping=build_remapping(self.output.remapping),
-            use_grib_paramid=self.main_config.build.use_grib_paramid,
+            use_grib_paramid=self.recipe.build.use_grib_paramid,
         )
 
     def _get_allow_nans(self) -> bool | list:
@@ -276,7 +276,7 @@ class GriddedCreator(Creator):
         bool | list
             The allow_nans configuration.
         """
-        config = self.main_config
+        config = self.recipe
         if "allow_nans" in config.build:
             return config.build.allow_nans
 

@@ -71,11 +71,11 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         If the comparison fails.
     """
     with patch("earthkit.data.from_source", load_source):
-        config = os.path.join(HERE, name + ".yaml")
+        recipe = os.path.join(HERE, name + ".yaml")
         output = os.path.join(HERE, name + ".zarr")
         is_test = False
 
-        create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
+        create_dataset(recipe=recipe, output=output, delta=["12h"], is_test=is_test)
 
         directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
         reference = os.path.join(directory, name + ".zarr")
