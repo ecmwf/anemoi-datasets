@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 
 import numpy as np
@@ -15,7 +16,9 @@ import tqdm
 import zarr
 from lru import LRU
 
-from .caching import ChunksCache
+from ..caching import ChunksCache
+from . import DateIndexing
+from . import date_indexing_registry
 
 LOG = logging.getLogger(__name__)
 
@@ -790,3 +793,18 @@ class ZarrBTree:
                 self._write_page(root)
 
         self.flush()
+
+
+@date_indexing_registry.register("btree")
+class DateBTree(DateIndexing):
+    name = "btree"
+
+    def __init__(self, /, store, **kwargs):
+        self.btree = ZarrBTree(path=store, name="date_index", mode="a", **kwargs)
+
+    def bulk_load(self, dates_ranges: np.ndarray) -> None:
+        self.btree.bulk_load(dates_ranges, check_sorted=True)
+
+    def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
+        first_key, last_key = self.btree.first_last_keys()
+        return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)

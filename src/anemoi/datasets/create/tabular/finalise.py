@@ -19,9 +19,9 @@ import numpy as np
 import tqdm
 import zarr
 
+from anemoi.datasets.caching import ChunksCache
 from anemoi.datasets.create.statistics import StatisticsCollector
-from anemoi.datasets.tabular.btree import ZarrBTree
-from anemoi.datasets.tabular.caching import ChunksCache
+from anemoi.datasets.date_indexing import create_date_indexing
 
 LOG = logging.getLogger(__name__)
 
@@ -538,6 +538,7 @@ def finalise_tabular_dataset(
     store: Any,
     work_dir: str,
     statistic_collector: StatisticsCollector,
+    date_indexing: dict | str,
     delete_files: bool,
     max_workers: int | None = None,
 ) -> None:
@@ -560,6 +561,8 @@ def finalise_tabular_dataset(
         Directory containing chunk files.
     statistic_collector : StatisticsCollector
         Instance to collect statistics during processing.
+    date_indexing : dict or str
+        Configuration for date indexing.
     delete_files : bool
         Whether to delete temporary files after processing.
     max_workers : int, optional
@@ -642,28 +645,36 @@ def finalise_tabular_dataset(
 
     all_dates.flush()
     LOG.info(f"Dates written to {all_dates_path}")
-    LOG.info("Compute duplicate date ranges")
-    # Assume dates are sorted for efficient duplicate range finding
-    ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
 
-    dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
-    dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
-    for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
-        dates_ranges[i, :] = (all_dates[start], start, length)
-    dates_ranges.flush()
+    index = create_date_indexing(date_indexing, store)
 
-    LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
-    btree: ZarrBTree = ZarrBTree(store)
-    btree.bulk_load(dates_ranges)
-    LOG.info("Duplicate date ranges written to B-Tree index")
+    if index.requires_raw_dates:
+        index.bulk_load(all_dates)
+    else:
+        LOG.info("Compute duplicate date ranges")
+        # Assume dates are sorted for efficient duplicate range finding
+        ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
+
+        dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
+        dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
+        for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
+            dates_ranges[i, :] = (all_dates[start], start, length)
+        dates_ranges.flush()
+
+        LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
+        index.bulk_load(dates_ranges)
+        LOG.info("Duplicate date ranges written to index")
 
     # Set the format attribute to indicate this is a tabular dataset
     store.attrs.update({"format": "tabular"})
+    store.attrs.update({"date_indexing": index.name})
 
     if delete_files:
         LOG.info("Deleting temporary files")
-        os.unlink(all_dates_path)
-        os.unlink(dates_ranges_path)
+        if os.path.exists(all_dates_path):
+            os.unlink(all_dates_path)
+        if os.path.exists(dates_ranges_path):
+            os.unlink(dates_ranges_path)
 
 
 if __name__ == "__main__":

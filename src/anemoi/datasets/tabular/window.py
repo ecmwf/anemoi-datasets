@@ -20,8 +20,8 @@ from earthkit.data.utils.dates import to_datetime
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from .btree import ZarrBTree
-from .caching import ChunksCache
+from ..caching import ChunksCache
+from ..date_indexing import create_date_indexing
 
 
 class Window:
@@ -79,7 +79,6 @@ class WindowView:
         end_date: datetime.datetime | None = None,
         frequency: int | str | datetime.timedelta = 3,
         window: str | Window = "(-3,+0]",
-        btree: ZarrBTree | None = None,
     ) -> None:
         """Initialise a WindowView for a Zarr tabular dataset.
 
@@ -95,13 +94,13 @@ class WindowView:
             The frequency of the windowed view.
         window : str or Window, default "(-3,+0]"
             The window specification.
-        btree : ZarrBTree, optional
-            The B-tree index for the dataset.
         """
         # Open the zarr group if a path is provided
         self.store = store if isinstance(store, zarr.hierarchy.Group) else zarr.open(store, mode="r")
-        # Use provided btree or create a new one for indexing
-        self.btree = btree if btree is not None else ZarrBTree(self.store, mode="r")
+
+        # Use provided date_indexing or create a new one for indexing
+        self.date_indexing = create_date_indexing(store.attrs["date_indexing"], self.store)
+
         # Use a chunk cache for efficient data access
         self.data = ChunksCache(self.store["data"])
 
@@ -133,7 +132,6 @@ class WindowView:
             end_date=self.end_date,
             frequency=self.frequency,
             window=self.window,
-            btree=self.btree,
         )
 
     def set_end(self, end: datetime.datetime) -> "WindowView":
@@ -146,7 +144,6 @@ class WindowView:
             end_date=as_last_date(end, None, frequency=self.frequency),
             frequency=self.frequency,
             window=self.window,
-            btree=self.btree,
         )
 
     def set_frequency(self, frequency: str | int | datetime.timedelta) -> "WindowView":
@@ -157,7 +154,6 @@ class WindowView:
             end_date=self.end_date,
             frequency=frequency,
             window=self.window,
-            btree=self.btree,
         )
 
     def set_window(self, window: str | Window) -> "WindowView":
@@ -168,14 +164,11 @@ class WindowView:
             end_date=self.end_date,
             frequency=self.frequency,
             window=window,
-            btree=self.btree,
         )
 
     @cached_property
     def actual_start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
-        """Convert first/last keys from the btree to datetime"""
-        start, end = self.btree.first_last_keys()
-        return datetime.datetime.fromtimestamp(start), datetime.datetime.fromtimestamp(end)
+        return self.date_indexing.start_end_dates()
 
     def __len__(self) -> int:
         return self._len
@@ -196,8 +189,8 @@ class WindowView:
         start = round(start.timestamp())
         end = round(end.timestamp())
 
-        # Find the boundaries in the btree for the window
-        first, last = self.btree.boundaries(start, end)
+        # Find the boundaries in the date_indexing for the window
+        first, last = self.date_indexing.boundaries(start, end)
 
         if (first, last) == (None, None):
             # No data in this window, return an empty array with correct shape

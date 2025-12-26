@@ -22,8 +22,8 @@ import numpy as np
 import tqdm
 import zarr
 
-from anemoi.datasets.tabular.btree import ZarrBTree
-from anemoi.datasets.tabular.caching import ChunksCache
+from anemoi.datasets.caching import ChunksCache
+from anemoi.datasets.date_indexing.btree import ZarrBTree
 
 from . import Command
 

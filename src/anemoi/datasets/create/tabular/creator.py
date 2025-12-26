@@ -44,7 +44,13 @@ class TabularCreator(Creator):
         collector = StatisticsCollector(columns_names=self.minimal_input.variables)
         store = zarr.open(self.path, mode="a")
 
-        finalise_tabular_dataset(store=store, work_dir=self.work_dir, statistic_collector=collector, delete_files=True)
+        finalise_tabular_dataset(
+            store=store,
+            work_dir=self.work_dir,
+            date_indexing=self.date_indexing,
+            statistic_collector=collector,
+            delete_files=True,
+        )
 
         for name in ("mean", "minimum", "maximum", "stdev"):
             store.create_dataset(
@@ -60,6 +66,10 @@ class TabularCreator(Creator):
 
     def task_size(self) -> int:
         return 0
+
+    @property
+    def date_indexing(self) -> str:
+        return self.main_config.get("date_indexing", {"type": "btree"})
 
     ######################################################
     @property
