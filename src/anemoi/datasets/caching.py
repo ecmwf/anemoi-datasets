@@ -395,6 +395,8 @@ class ChunksCache:
         match key:
 
             case int():
+                if key < 0:
+                    key += self._arr.shape[0]
                 chunk_index = key // self._nrows_in_chunks
                 return self._ensure_chunk_in_cache(chunk_index), key
 

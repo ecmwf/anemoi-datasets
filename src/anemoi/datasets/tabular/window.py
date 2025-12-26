@@ -192,13 +192,13 @@ class WindowView:
         # Find the boundaries in the date_indexing for the window
         first, last = self.date_indexing.boundaries(start, end)
 
-        if (first, last) == (None, None):
+        if first is None and last is None:
             # No data in this window, return an empty array with correct shape
             shape = (0,) + self.data.shape[1:]
             return self._filter(index, np.zeros(shape=shape, dtype=self.data.dtype))
 
-        first_date, (start_idx, start_cnt) = first
-        last_date, (end_idx, end_cnt) = last
+        first_date, start_idx, start_cnt = first
+        last_date, end_idx, end_cnt = last
 
         last_idx = end_idx + end_cnt
 

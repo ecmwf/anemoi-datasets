@@ -10,6 +10,7 @@
 
 import datetime
 import logging
+from functools import cached_property
 
 import numpy as np
 import tqdm
@@ -800,11 +801,23 @@ class DateBTree(DateIndexing):
     name = "btree"
 
     def __init__(self, /, store, **kwargs):
-        self.btree = ZarrBTree(path=store, name="date_index", mode="a", **kwargs)
+        self.store = store
 
     def bulk_load(self, dates_ranges: np.ndarray) -> None:
-        self.btree.bulk_load(dates_ranges, check_sorted=True)
+        btree = ZarrBTree(path=self.store, name="date_index_btree", mode="a")
+        btree.bulk_load(dates_ranges, check_sorted=True)
 
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
         first_key, last_key = self.btree.first_last_keys()
         return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
+
+    def boundaries(self, start: int, end: int) -> tuple[int, int]:
+        first, last = self.btree.boundaries(start, end)
+        if first is None and last is None:
+            return None, None
+
+        return (first[0],) + first[1:], (last[0],) + last[1:]
+
+    @cached_property
+    def btree(self) -> ZarrBTree:
+        return ZarrBTree(path=self.store, name="date_index_btree", mode="r")
