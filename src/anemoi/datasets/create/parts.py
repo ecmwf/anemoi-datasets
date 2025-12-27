@@ -16,25 +16,25 @@ ALL = object()
 
 
 class PartFilter:
-    """A filter to determine which chunks to process based on the specified parts.
+    """A filter to determine which parts to process based on the specified parts.
 
     Attributes
     ----------
     total : int
-        The total number of chunks.
+        The total number of parts.
     allowed : object or list
-        The chunks that are allowed to be processed.
+        The parts that are allowed to be processed.
     """
 
     def __init__(self, *, parts: str | list, total: int):
-        """Initializes the PartFilter with the given parts and total number of chunks.
+        """Initializes the PartFilter with the given parts and total number of parts.
 
         Parameters
         ----------
         parts : str or list
             The parts to process, specified as 'i/n' or a list of such strings.
         total : int
-            The total number of chunks.
+            The total number of parts.
 
         Raises
         ------
@@ -43,7 +43,7 @@ class PartFilter:
         AssertionError
             If the chunk number is invalid.
         Warning
-            If the number of chunks is larger than the total number of chunks.
+            If the number of parts is larger than the total number of parts.
         """
         self.total = total
 
@@ -86,7 +86,7 @@ class PartFilter:
         if not parts:
             warnings.warn(f"Nothing to do for chunk {i}/{n}.")
 
-        LOG.debug(f"Running parts: {parts}")
+        LOG.info(f"Running parts: {parts}")
 
         self.allowed = parts
 
@@ -111,28 +111,26 @@ class PartFilter:
         if i < 0 or i >= self.total:
             raise AssertionError(f"Invalid chunk number {i}. Must be between 0 and {self.total - 1}.")
 
-        if self.allowed == ALL:
-            return True
-        return i in self.allowed
+        return (self.allowed is ALL) or (i in self.allowed)
 
-    def __iter__(self) -> iter:
-        """Iterates over the allowed chunks.
+    # def __iter__(self) -> iter:
+    #     """Iterates over the allowed chunks.
 
-        Yields
-        ------
-        int
-            The next allowed chunk number.
-        """
-        for i in range(self.total):
-            if self(i):
-                yield i
+    #     Yields
+    #     ------
+    #     int
+    #         The next allowed chunk number.
+    #     """
+    #     for i in range(self.total):
+    #         if self(i):
+    #             yield i
 
-    def __len__(self) -> int:
-        """Returns the number of allowed chunks.
+    # def __len__(self) -> int:
+    #     """Returns the number of allowed chunks.
 
-        Returns
-        -------
-        int
-            The number of allowed chunks.
-        """
-        return len([_ for _ in self])
+    #     Returns
+    #     -------
+    #     int
+    #         The number of allowed chunks.
+    #     """
+    #     return len([_ for _ in self])

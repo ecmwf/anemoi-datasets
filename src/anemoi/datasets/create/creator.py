@@ -199,18 +199,17 @@ class Creator(ABC):
         dataset = Dataset(self.path, update=True)
 
         total = dataset.total_todo()
-        chunk_filter = PartFilter(parts=self.parts, total=total)
+        filter = PartFilter(parts=self.parts, total=total)
 
         for i, group in enumerate(self.groups):
 
-            if chunk_filter(i):
+            if not filter(i):
+                LOG.info(f" -> Skipping {i} total={total} (filtered out)")
                 continue
 
             if dataset.is_done(i):
-                LOG.info(f" -> Skipping {i} total={len(self.groups)} (already done)")
+                LOG.info(f" -> Skipping {i} total={total} (already done)")
                 continue
-
-            LOG.debug(f"Building data for group {i}/{self.n_groups}")
 
             result = self.input.select(self.context(), argument=group)
 

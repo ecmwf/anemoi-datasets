@@ -128,11 +128,13 @@ class Dataset:
 
         #################
 
-        kwargs.setdefault("override", True)
+        def _(d):
+            if "data" in d:
+                d = d.copy()
+                d["data"] = f'[... {d["data"].shape} {d["data"].dtype} array ...]'
+            return d
 
-        #################
-
-        LOG.info(f"Creating array {name} with kwargs={kwargs} (dimensions={dimensions})")
+        LOG.info(f"Creating array {name} with kwargs={_(kwargs)} (dimensions={dimensions})")
 
         a = zarr_root.create_dataset(name, **kwargs)
         a.attrs["_ARRAY_DIMENSIONS"] = dimensions

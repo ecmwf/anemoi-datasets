@@ -124,7 +124,7 @@ class GriddedCreator(Creator):
         # There is one cube to load for each result.
         dates = list(result.group_of_dates)
 
-        LOG.debug(f"Loading cube for {len(dates)} dates")
+        LOG.info(f"Loading cube for {len(dates)} dates")
 
         cube = result.get_cube()
         shape = cube.extended_user_shape
