@@ -138,7 +138,7 @@ def make_list_int(value: str | list | tuple | int) -> list[int]:
     raise ValueError(f"Cannot make list from {value}")
 
 
-def normalize_and_check_dates(
+def xxxxxnormalize_and_check_dates(
     dates: list[datetime.datetime],
     start: datetime.datetime,
     end: datetime.datetime,

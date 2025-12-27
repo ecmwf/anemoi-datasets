@@ -45,12 +45,11 @@ def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
     now = datetime.datetime.now()
     LOG.info(f"🎬 Task {what}({args},{kwargs}) starting")
 
-    from anemoi.datasets.create.tasks import task_factory
+    from anemoi.datasets.create.tasks import run_task
 
     options = {k: v for k, v in options.items() if v is not None}
 
-    c = task_factory(what.replace("-", "_"), **options)
-    result = c.run()
+    result = run_task(what.replace("-", "_"), **options, **kwargs)
 
     LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
     return result
@@ -76,11 +75,12 @@ class Create(Command):
             help="Overwrite existing files. This will delete the target dataset if it already exists.",
         )
         command_parser.add_argument(
-            "--test",
+            "--recompute-statistics",
             action="store_true",
-            help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
+            help="Force the re-computation of statistics, even if they already exist.",
         )
-        command_parser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
+
+        command_parser.add_argument("recipe", help="Configuration yaml file defining the recipe to create the dataset.")
         command_parser.add_argument("path", help="Path to store the created data.")
         group = command_parser.add_mutually_exclusive_group()
         group.add_argument("--threads", help="Use `n` parallel thread workers.", type=int, default=0)

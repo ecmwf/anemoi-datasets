@@ -276,7 +276,7 @@ def _data_request(data: Any) -> dict[str, Any]:
     return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
-class FieldResult(Result):
+class GriddedResult(Result):
     """Class to represent the result of an action in the dataset creation process."""
 
     empty: bool = False
@@ -320,7 +320,7 @@ class FieldResult(Result):
         self.order_by: Any = self.context.order_by
         self.flatten_grid: Any = self.context.flatten_grid
         self.start: float = time.time()
-        LOG.debug("Sorting dataset %s %s", dict(self.order_by), self.remapping)
+        LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
         assert self.order_by, self.order_by
 
         self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
@@ -334,6 +334,14 @@ class FieldResult(Result):
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
+        except AttributeError:
+            import pandas as pd
+
+            if isinstance(ds, pd.DataFrame):
+                raise ValueError(
+                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'format: tabular' in your recipe?"
+                )
+            raise
         except ValueError:
             self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             # raise ValueError(f"Error in {self}")
@@ -514,7 +522,7 @@ class FieldResult(Result):
         cube: Any = self.get_cube()
 
         from_data: Any = cube.user_coords
-        from_config: Any = self.context.order_by
+        from_config: Any = {k: "ascending" for k in self.context.order_by}
 
         keys_from_config: list = list(from_config.keys())
         keys_from_data: list = list(from_data.keys())
@@ -615,12 +623,12 @@ class FieldResult(Result):
     @cached_property
     def shape(self) -> list[int]:
         """Retrieve the shape of the result."""
-        return [
+        return (
             len(self.group_of_dates),
             len(self.variables),
             len(self.ensembles),
             len(self.grid_values),
-        ]
+        )
 
     @cached_property
     def coords(self) -> dict[str, Any]:

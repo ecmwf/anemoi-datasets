@@ -18,7 +18,8 @@ LOG = logging.getLogger(__name__)
 class Context(ABC):
     """Context for building input data."""
 
-    def __init__(self, /) -> None:
+    def __init__(self, recipe) -> None:
+        self.recipe = recipe
         self.results = {}
         self.cache = {}
 

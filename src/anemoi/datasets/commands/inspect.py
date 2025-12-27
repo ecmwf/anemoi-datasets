@@ -27,8 +27,8 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.use.gridded.stores import dataset_lookup
-from anemoi.datasets.use.gridded.stores import open_zarr
+from anemoi.datasets.usage.store import dataset_lookup
+from anemoi.datasets.usage.store import open_zarr
 
 from . import Command
 
@@ -421,7 +421,7 @@ class Version:
                 print(f"🕰️  Dataset initialised {when(start)}.")
                 if built and latest:
                     speed = (latest - start) / built
-                    eta = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + speed * (total - built)
+                    eta = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + speed * (total - built)
                     print(f"🏁 ETA {when(eta)}.")
         else:
             if latest:

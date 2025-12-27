@@ -20,24 +20,16 @@ from anemoi.datasets.create.input.context import Context
 LOG = logging.getLogger(__name__)
 
 
-class FieldContext(Context):
+class GriddedContext(Context):
 
-    def __init__(
-        self,
-        /,
-        order_by: str,
-        flatten_grid: bool,
-        remapping: dict[str, Any],
-        use_grib_paramid: bool,
-    ) -> None:
+    def __init__(self, recipe) -> None:
 
-        super().__init__()
+        super().__init__(recipe)
 
-        self.order_by = order_by
-        self.flatten_grid = flatten_grid
-        self.remapping = build_remapping(remapping)
-        self.use_grib_paramid = use_grib_paramid
-        self.partial_ok = False
+        self.order_by = recipe.output.order_by
+        self.flatten_grid = recipe.output.flatten_grid
+        self.remapping = build_remapping(recipe.output.remapping)
+        self.use_grib_paramid = recipe.build.use_grib_paramid
 
     def empty_result(self) -> Any:
         import earthkit.data as ekd
@@ -51,9 +43,9 @@ class FieldContext(Context):
         return argument
 
     def create_result(self, argument, data):
-        from anemoi.datasets.create.gridded.result import FieldResult
+        from .result import GriddedResult
 
-        return FieldResult(self, argument, data)
+        return GriddedResult(self, argument, data)
 
     def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
         from anemoi.datasets.dates.groups import GroupOfDates
