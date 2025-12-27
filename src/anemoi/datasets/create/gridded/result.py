@@ -623,12 +623,12 @@ class GriddedResult(Result):
     @cached_property
     def shape(self) -> list[int]:
         """Retrieve the shape of the result."""
-        return [
+        return (
             len(self.group_of_dates),
             len(self.variables),
             len(self.ensembles),
             len(self.grid_values),
-        ]
+        )
 
     @cached_property
     def coords(self) -> dict[str, Any]:

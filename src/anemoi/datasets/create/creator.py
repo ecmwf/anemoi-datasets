@@ -11,13 +11,17 @@ import datetime
 import logging
 import os
 import shutil
+import uuid
 from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
 from typing import Any
 
 import numpy as np
+import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
@@ -27,9 +31,6 @@ from anemoi.datasets.create.recipe import loader_recipe_from_yaml
 from anemoi.datasets.create.recipe import loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
 
-# from .gridded import DeltaDataset
-# from .gridded import NewDataset
-# from .gridded import WritableDataset
 from .gridded.persistent import build_storage
 from .gridded.statistics import Summary
 from .gridded.statistics import check_variance
@@ -39,7 +40,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.30"
+VERSION = "0.5"
 
 LOG = logging.getLogger(__name__)
 
@@ -72,10 +73,6 @@ class Creator(ABC):
         self.path = path
         self.recipe = recipe
 
-        # self.recipe = loader_config(config)
-        self.use_threads = kwargs.pop("use_threads", False)
-        self.statistics_temp_dir = kwargs.pop("statistics_temp_dir", None)
-        self.addition_temp_dir = kwargs.pop("addition_temp_dir", None)
         self.parts = kwargs.pop("parts", None)
 
         self.kwargs = kwargs
@@ -134,58 +131,94 @@ class Creator(ABC):
         """Run the initialisation process for the dataset."""
 
         dataset = Dataset(self.path, overwrite=True, update=True)
+        self.cleanup_temporary_directories()
 
-        LOG.info("Cleaning temporary directories.")
-        for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
-            if d is None:
-                continue
-            os.makedirs(d, exist_ok=True)
-            for f in os.listdir(d):
-                os.remove(os.path.join(d, f))
+        LOG.info("Initialising dataset creation.")
+        LOG.info(f"Dataset path: {self.path}")
+        LOG.info(f"Groups: {len(self.groups)}")
 
-        dates = self.groups.provider.values
-        frequency = self.groups.provider.frequency
-        missing = self.groups.provider.missing
+        metadata = {}
+        self.collect_metadata(metadata)
+        dataset.update_metadata(metadata)
 
-        assert isinstance(frequency, datetime.timedelta), frequency
+        assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
 
-        LOG.info(f"Found {len(dates)} datetimes.")
-        LOG.info(f"Dates: Found {len(dates)} datetimes, in {len(self.groups)} groups: ")
-        LOG.info(f"Missing dates: {len(missing)}")
-        lengths = tuple(len(g) for g in self.groups)
+        self.check_dataset_name(self.path)
 
-        dataset.init_progress(lengths)
+        # Initialize the dataset
+        self.initialise_dataset(dataset)
 
-        return dataset
+    @abstractmethod
+    def check_dataset_name(self, path: str) -> None:
+        pass
+
+    def initialise_dataset(self, dataset: Dataset) -> None:
+        # Initialize progress tracking
+        dataset.initalise_done_flags(len(self.groups))
+
+    def collect_metadata(self, metadata: dict) -> None:
+        metadata["version"] = VERSION
+        metadata["uuid"] = str(uuid.uuid4())
+
+        metadata["description"] = self.recipe.description
+        metadata["licence"] = self.recipe.licence
+        metadata["attribution"] = self.recipe.attribution
+
+        # Store the recipe in the metadata so it can be retrieved later by later steps
+        # This entry will be deleted when the dataset is finalised
+        # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
+
+        model_dump = self.recipe.model_dump()
+        metadata["_recipe"] = model_dump
+
+        # Store a sanitised (no path, no urls,...) version of the recipe for the catalogue
+        # This one will be kept in the finalised dataset metadata
+
+        recipe = sanitise(model_dump)
+
+        # Remove stuff added by prepml
+        allow_keys = set(model_dump.keys())
+        for k in recipe.keys():
+            if k not in allow_keys:
+                recipe.pop(k, None)
+
+        metadata["recipe"] = recipe
+
+        ##############
+        metadata["dtype"] = self.recipe.output.dtype
+
+    def cleanup_temporary_directories(self) -> None:
+        """Clean up temporary directories used during dataset creation."""
+
+        if os.path.exists(self.work_dir):
+            shutil.rmtree(self.work_dir)
+            LOG.info(f"Removed temporary directory: {self.work_dir}")
 
     def task_load(self) -> None:
         """Load data into the dataset, processing each group as required."""
         dataset = Dataset(self.path, update=True)
 
-        total = len(dataset.flags())
-        self.chunk_filter = PartFilter(parts=self.parts, total=total)
+        total = dataset.total_todo()
+        chunk_filter = PartFilter(parts=self.parts, total=total)
 
-        # self.data_array = self.dataset.data_array
-        self.n_groups = len(self.groups)
-        # self.read_dataset_metadata(self.dataset.path)
+        for i, group in enumerate(self.groups):
 
-        for igroup, group in enumerate(self.groups):
-            if not self.chunk_filter(igroup):
+            if chunk_filter(i):
                 continue
 
-            if dataset.flag(igroup):
-                LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
+            if dataset.is_done(i):
+                LOG.info(f" -> Skipping {i} total={len(self.groups)} (already done)")
                 continue
 
-            # assert isinstance(group[0], datetime.datetime), type(group[0])
-            LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
+            LOG.debug(f"Building data for group {i}/{self.n_groups}")
 
             result = self.input.select(self.context(), argument=group)
-            # BACK            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups. There is one result to load for each group.
             self.load_result(result, dataset)
-            dataset.flag(igroup, True)
+
+            # Mark group as done
+            dataset.mark_done(i)
 
         dataset.add_provenance(name="provenance_load")
 
@@ -259,12 +292,9 @@ class Creator(ABC):
 
     def task_cleanup(self) -> None:
         """Clean up temporary statistics and registry, and remove additions if specified."""
-
-        for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
-            if d is None:
-                continue
-            if os.path.exists(d):
-                shutil.rmtree(d)
+        dataset = Dataset(self.path, update=True)
+        dataset.remove_group("_build")
+        self.cleanup_temporary_directories()
 
     def task_verify(self) -> None:
         LOG.info("BACK: Verifying dataset.")
@@ -637,7 +667,6 @@ class Creator(ABC):
             ValueError
                 If the missing dates in the dataset do not match the expected dates.
             """
-            import zarr
 
             z = zarr.open(path, "r")
             missing_dates = z.attrs.get("missing_dates", [])

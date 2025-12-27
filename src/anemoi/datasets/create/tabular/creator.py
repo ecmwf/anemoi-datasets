@@ -29,8 +29,15 @@ class TabularCreator(Creator):
 
     ######################################################
 
-    def task_init(self):
-        super().task_init()
+    def check_dataset_name(self, path: str) -> None:
+        pass
+
+    def collect_metadata(self, metadata: dict):
+        """Run the initialisation process for the dataset."""
+        super().collect_metadata(metadata)
+
+    def initialise_dataset(self, dataset: Dataset) -> None:
+        super().initialise_dataset(dataset)
 
     ######################################################
 

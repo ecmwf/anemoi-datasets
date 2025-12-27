@@ -17,7 +17,6 @@ from typing import Any
 
 import numpy as np
 import zarr
-from numpy.typing import NDArray
 
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
@@ -106,19 +105,15 @@ class Dataset:
         self.store = zarr.open(self.path, mode=mode)
         self.synchronizer = Synchronizer(self.path)
 
-    def add_dataset(
+    def add_array(
         self,
         *,
         name: str,
-        dtype: np.dtype = None,
-        fill_value: np.generic = None,
-        shape: tuple[int, ...] = None,
-        array: NDArray[Any] = None,
-        overwrite: bool = True,
-        dimensions: tuple[str, ...] = None,
-        chunks: tuple[int, ...] = None,
+        dimensions: tuple[str, ...],
+        **kwargs: Any,
     ) -> zarr.Array:
         """Add a dataset to a Zarr group."""
+
         assert dimensions is not None, "Please pass dimensions to add_zarr_dataset."
         assert isinstance(dimensions, (tuple, list))
 
@@ -131,54 +126,15 @@ class Dataset:
                 zarr_root = zarr_root[b]
         name = bits[-1]
 
-        if dtype is None:
-            assert array is not None, (name, shape, array, dtype, zarr_root)
-            dtype = array.dtype
+        #################
 
-        if shape is None:
-            assert array is not None, (name, shape, array, dtype, zarr_root)
-            shape = array.shape
+        kwargs.setdefault("override", True)
 
-        if array is not None:
-            assert array.shape == shape, (array.shape, shape)
-            a = zarr_root.create_dataset(
-                name,
-                shape=shape,
-                dtype=dtype,
-                overwrite=overwrite,
-                chunks=chunks,
-            )
-            a[...] = array
-            a.attrs["_ARRAY_DIMENSIONS"] = dimensions
-            return a
+        #################
 
-        if fill_value is None:
-            if str(dtype).startswith("float") or str(dtype).startswith("numpy.float"):
-                fill_value = np.nan
-            elif str(dtype).startswith("datetime64") or str(dtype).startswith("numpy.datetime64"):
-                fill_value = np.datetime64("NaT")
-            # elif str(dtype).startswith("timedelta64") or str(dtype).startswith(
-            #    "numpy.timedelta64"
-            # ):
-            #    kwargs["fill_value"] = np.timedelta64("NaT")
-            elif str(dtype).startswith("int") or str(dtype).startswith("numpy.int"):
-                fill_value = 0
-            elif str(dtype).startswith("bool") or str(dtype).startswith("numpy.bool"):
-                fill_value = False
-            else:
-                raise ValueError(f"No fill_value for dtype={dtype}")
+        LOG.info(f"Creating array {name} with kwargs={kwargs} (dimensions={dimensions})")
 
-        print(
-            f"Creating zarr dataset {name} with shape={shape}, dtype={dtype}, fill_value={fill_value}, chunks={chunks}"
-        )
-        a = zarr_root.create_dataset(
-            name,
-            shape=shape,
-            dtype=dtype,
-            overwrite=overwrite,
-            chunks=chunks,
-            fill_value=fill_value,
-        )
+        a = zarr_root.create_dataset(name, **kwargs)
         a.attrs["_ARRAY_DIMENSIONS"] = dimensions
         return a
 
@@ -188,7 +144,8 @@ class Dataset:
         metadata = dict(*args, **kwargs)
         metadata = json.loads(json.dumps(metadata, default=str))
 
-        self.store.attrs.update(metadata)
+        with self.synchronizer:
+            self.store.attrs.update(metadata)
 
     # def get_zarr_chunks(self) -> tuple:
     #     """Get the chunks of the Zarr dataset.
@@ -203,72 +160,35 @@ class Dataset:
     #     z = zarr.open(self.path, mode="r")
     #     return z["data"].chunks
 
-    @staticmethod
-    def check_name(
-        resolution: str,
-        dates: list[datetime.datetime],
-        frequency: datetime.timedelta,
-        raise_exception: bool = True,
-    ) -> None:
-        """Check the name of the dataset."""
-        LOG.warning("BACK: Dataset.check_name is not implemented fully yet.")
-        return
-        # basename, _ = os.path.splitext(os.path.basename(self.path))
-        # try:
-        #     DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
-        # except Exception as e:
-        #     if raise_exception and not is_test:
-        #         raise e
-        #     else:
-        #         LOG.warning(f"Dataset name error: {e}")
+    ##################################
+    # Progress tracking methods
+    ##################################
 
-    def clean(self) -> None:
-        """Clean up the synchronizer path."""
-        if self.synchronizer_path is not None:
-            try:
-                shutil.rmtree(self.synchronizer_path)
-            except FileNotFoundError:
-                pass
+    def total_todo(self) -> int:
+        return len(self.store["_build"]["flags"])
 
-        _build = self.zarr_path + "/_build"
-        try:
-            shutil.rmtree(_build)
-        except FileNotFoundError:
-            pass
+    def todo_remaining(self) -> int:
+        with self.synchronizer:
+            flags = self.store["_build"]["flags"]
+            return np.sum(~flags)
 
-    # def get_lengths(self) -> list[int]:
-    #     """Get the lengths dataset.
+    def mark_done(self, i: int):
+        with self.synchronizer:
+            flags = self.store["_build"]["flags"]
+            flags[i] = True
 
-    #     Returns
-    #     -------
-    #     list[int]
-    #         The lengths dataset.
-    #     """
-    #     z = self._open_read()
-    #     return list(z["_build"][self.name_lengths][:])
-
-    def flags(self) -> list[bool]:
-        return self.store["_build"]["flags"][:]
-
-    def flag(self, i: int, value: bool | None = None) -> bool:
-        flags = self.store["_build"]["flags"]
-        if value is not None:
-            with self.synchronizer:
-                flags[i] = value
-
-        return flags[i]
+    def is_done(self, i: int) -> bool:
+        with self.synchronizer:
+            flags = self.store["_build"]["flags"]
+            return flags[i]
 
     def ready(self) -> bool:
-        """Check if all flags are set.
+        """Check if all flags are set."""
+        return self.todo_remaining() == 0
 
-        Returns
-        -------
-        bool
-            True if all flags are set, False otherwise.
-        """
-        return all(self.get_flags())
+    ##################################
 
-    def create(self, lengths: list[int], overwrite: bool = False) -> None:
+    def xxxxxcreate(self, lengths: list[int], overwrite: bool = False) -> None:
         """Create the lengths and flags datasets.
 
         Parameters
@@ -299,29 +219,27 @@ class Dataset:
         if name not in self.store.attrs:
             self.store.attrs[name] = gather_provenance_info()
 
-    def init_progress(self, lengths: tuple[int, ...]) -> None:
-        """Initialize the progress tracking datasets.
+    def initalise_done_flags(self, groups: int) -> None:
+        """Initialize the progress tracking datasets."""
+
+        self.add_array(
+            name="_build/flags",
+            data=np.array([False] * groups, dtype=bool),
+            dimensions=("group",),
+        )
+
+    def remove_group(self, name: str) -> None:
+        """Remove a group from the dataset.
 
         Parameters
         ----------
-        lengths : tuple[int, ...]
-            The lengths of each group.
+        name : str
+            The name of the group to remove.
         """
-        LOG.warning("TODO: Initializing progress tracking datasets.")
 
-        self.add_dataset(
-            name="_build/lengths",
-            array=np.array(lengths, dtype="i4"),
-            overwrite=self.overwrite,
-            dimensions=("group",),
-        )
-        self.add_dataset(
-            name="_build/flags",
-            array=np.array([False] * len(lengths), dtype=bool),
-            overwrite=self.overwrite,
-            dimensions=("group",),
-        )
-        # self.create(lengths=lengths, overwrite=self.update)
+        if name in self.store:
+            LOG.info(f"Removing group {name} from dataset")
+            del self.store[name]
 
     @cached_property
     def dates(self):

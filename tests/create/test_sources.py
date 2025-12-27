@@ -370,17 +370,14 @@ def test_csv(get_test_data: callable) -> None:
 @skip_if_offline
 def test_odb(get_test_data: callable) -> None:
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import DatesProvider
+    from anemoi.datasets.dates import Groups
 
     data = get_test_data("anemoi-datasets/obs/dribu.odb")
 
     source = create_source(context=None, config={"odb": {"path": data}})
-    window = DatesProvider.from_config(
-        {
-            "start": "2020-01-01T00:00:00",
-            "end": "2020-01-02:23:59:59",
-            "window": "(-3h:+3h]",
-        }
+    window = Groups(
+        start="2020-01-01T00:00:00",
+        end="2020-01-02:23:59:59",
     )
 
     source.execute(window)
@@ -391,17 +388,14 @@ def test_odb(get_test_data: callable) -> None:
 def test_bufr(get_test_data: callable) -> None:
 
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import DatesProvider
+    from anemoi.datasets.dates import Groups
 
     data = get_test_data("anemoi-datasets/obs/dribu.bufr")
 
     source = create_source(context=None, config={"bufr": {"path": data}})
-    window = DatesProvider.from_config(
-        {
-            "start": "2020-01-01T00:00:00",
-            "end": "2020-01-02:23:59:59",
-            "window": "(-3h:+3h]",
-        }
+    window = Groups(
+        start="2020-01-01T00:00:00",
+        end="2020-01-02:23:59:59",
     )
 
     source.execute(window)

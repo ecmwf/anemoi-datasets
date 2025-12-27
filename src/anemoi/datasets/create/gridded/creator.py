@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 import logging
 import time
-import uuid
 import warnings
 from functools import cached_property
 from typing import Any
@@ -19,28 +18,23 @@ import zarr
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
-from anemoi.utils.sanitise import sanitise
 
 from ..check import check_data_values
 from ..creator import Creator
 from ..dataset import Dataset
-from ..dataset import build_statistics_dates
-from ..utils import normalize_and_check_dates
 from .context import GriddedContext
 from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
-
-VERSION = "0.30"
 
 
 class GriddedCreator(Creator):
 
     check_name = False
 
-    def task_init(self) -> Dataset:
+    def collect_metadata(self, metadata: dict):
         """Run the initialisation process for the dataset."""
-        dataset = super().task_init()
+        super().collect_metadata(metadata)
 
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
@@ -65,36 +59,6 @@ class GriddedCreator(Creator):
 
         LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
 
-        metadata = {}
-        metadata["uuid"] = str(uuid.uuid4())
-
-        # metadata.update(self.recipe.get("add_metadata", {}))
-
-        # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
-        metadata["_recipe"] = self.recipe.model_dump_json()
-
-        recipe = sanitise(self.recipe.model_dump())
-
-        # Remove stuff added by prepml
-        for k in [
-            "build_dataset",
-            "config_format_version",
-            "config_path",
-            "dataset_status",
-            "ecflow",
-            "metadata",
-            "platform",
-            "reading_chunks",
-            "upload",
-        ]:
-            recipe.pop(k, None)
-
-        metadata["recipe"] = recipe
-
-        metadata["description"] = self.recipe.description
-        metadata["licence"] = self.recipe.licence
-        metadata["attribution"] = self.recipe.attribution
-
         metadata["remapping"] = self.output.remapping
         metadata["order_by"] = self.output.order_by
         metadata["flatten_grid"] = self.output.flatten_grid
@@ -115,53 +79,36 @@ class GriddedCreator(Creator):
         metadata["frequency"] = frequency
         metadata["missing_dates"] = [_.isoformat() for _ in missing]
 
-        metadata["version"] = VERSION
+    def initialise_dataset(self, dataset: Dataset) -> None:
+        super().initialise_dataset(dataset)
 
-        dataset.check_name(
-            raise_exception=self.check_name,
-            resolution=resolution,
-            dates=dates,
-            frequency=frequency,
-        )
+        dates = self.groups.provider.values
+        total_shape = (len(dates),) + self.minimal_input.shape[1:]
 
-        if len(dates) != total_shape[0]:
-            raise ValueError(
-                f"Final date size {len(dates)} (from {dates[0]} to {dates[-1]}, {frequency=}) "
-                f"does not match data shape {total_shape[0]}. {total_shape=}"
-            )
+        assert len(total_shape) == 4, f"Expected 4D shape, got {total_shape}"
 
-        dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
+        coords = self.minimal_input.coords
+        coords["dates"] = dates
+        chunks = self.recipe.output.get_chunking(coords)
 
-        # metadata.update(self.recipe.get("force_metadata", {}))
+        grid_points = self.minimal_input.grid_points
 
-        ###############################################################
-        # write metadata
-        ###############################################################
+        # Create arrays
 
-        dataset.update_metadata(**metadata)
-
-        dataset.add_dataset(
+        dataset.add_array(
             name="data",
             chunks=chunks,
-            dtype=dtype,
+            dtype=self.recipe.output.dtype,
             shape=total_shape,
             dimensions=("time", "variable", "ensemble", "cell"),
+            fill_value=np.nan,
         )
-        dataset.add_dataset(name="dates", array=dates, dimensions=("time",))
-        dataset.add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
-        dataset.add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
 
-        statistics_start, statistics_end = build_statistics_dates(
-            dates,
-            self.recipe.statistics.start,
-            self.recipe.statistics.end,
-        )
-        dataset.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
-        LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
+        dataset.add_array(name="dates", data=np.array(dates, "<M8[s]"), dimensions=("time",))
+        dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
+        dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))
 
-        # BACK assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
-
-    def check_unkown_kwargs(self, kwargs: dict) -> None:
+    def xxxxxcheck_unkown_kwargs(self, kwargs: dict) -> None:
         """Check for unknown keyword arguments.
 
         Parameters
@@ -244,6 +191,9 @@ class GriddedCreator(Creator):
         LOG.info("Flush data array")
         array.flush()
         LOG.info("Flushed data array")
+
+    def check_dataset_name(self, path: str) -> None:
+        LOG.warning("BACK: Dataset name checking not yes implemented.")
 
     ######################################################
 
