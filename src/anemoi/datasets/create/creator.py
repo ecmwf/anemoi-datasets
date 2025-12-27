@@ -21,7 +21,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.gridded import Dataset
+from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
 from anemoi.datasets.create.recipe import loader_recipe_from_zarr

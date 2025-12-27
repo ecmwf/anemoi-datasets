@@ -6,12 +6,11 @@ import numpy as np
 import zarr
 
 from ..creator import Creator
+from ..dataset import Dataset
 from ..statistics import StatisticsCollector
 from .context import TabularContext
 
 LOG = logging.getLogger(__name__)
-
-VERSION = "0.30"
 
 
 class TabularCreator(Creator):
@@ -28,7 +27,7 @@ class TabularCreator(Creator):
     def context(self):
         return TabularContext()
 
-    def load_result(self, result: Any):
+    def load_result(self, result: Any, dataset: Dataset) -> None:
         np.save(
             os.path.join(
                 self.work_dir,

@@ -22,7 +22,7 @@ from numpy.typing import NDArray
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from .statistics import default_statistics_dates
+from .gridded.statistics import default_statistics_dates
 
 LOG = logging.getLogger(__name__)
 
