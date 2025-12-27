@@ -7,7 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import datetime
+import json
 import logging
 import os
 import shutil
@@ -19,11 +19,8 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.sanitise import sanitise
 
-from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input import InputBuilder
@@ -31,11 +28,6 @@ from anemoi.datasets.create.recipe import loader_recipe_from_yaml
 from anemoi.datasets.create.recipe import loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
 
-from .gridded.persistent import build_storage
-from .gridded.statistics import Summary
-from .gridded.statistics import check_variance
-from .gridded.statistics import compute_statistics
-from .gridded.statistics import fix_variance
 from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
@@ -126,19 +118,21 @@ class Creator(ABC):
                 raise ValueError(f"Unknown format type: {format_type}")
 
     #####################################################
+    # Initialisation
+    #####################################################
 
     def task_init(self) -> Dataset:
         """Run the initialisation process for the dataset."""
 
         dataset = Dataset(self.path, overwrite=True, update=True)
-        self.cleanup_temporary_directories()
+        self._cleanup_temporary_directories()
 
         LOG.info("Initialising dataset creation.")
         LOG.info(f"Dataset path: {self.path}")
         LOG.info(f"Groups: {len(self.groups)}")
 
         metadata = {}
-        self.collect_metadata(metadata)
+        self.fill_metadata(metadata)
         dataset.update_metadata(metadata)
 
         assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
@@ -147,16 +141,18 @@ class Creator(ABC):
 
         # Initialize the dataset
         self.initialise_dataset(dataset)
+        # Initialize progress tracking
+        dataset.initalise_done_flags(len(self.groups))
 
     @abstractmethod
     def check_dataset_name(self, path: str) -> None:
         pass
 
+    @abstractmethod
     def initialise_dataset(self, dataset: Dataset) -> None:
-        # Initialize progress tracking
-        dataset.initalise_done_flags(len(self.groups))
+        pass
 
-    def collect_metadata(self, metadata: dict) -> None:
+    def fill_metadata(self, metadata: dict) -> None:
         metadata["version"] = VERSION
         metadata["uuid"] = str(uuid.uuid4())
 
@@ -168,12 +164,13 @@ class Creator(ABC):
         # This entry will be deleted when the dataset is finalised
         # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
 
-        model_dump = self.recipe.model_dump()
+        model_dump = self.recipe.model_dump_json()
         metadata["_recipe"] = model_dump
 
         # Store a sanitised (no path, no urls,...) version of the recipe for the catalogue
         # This one will be kept in the finalised dataset metadata
 
+        model_dump = json.loads(model_dump)
         recipe = sanitise(model_dump)
 
         # Remove stuff added by prepml
@@ -187,12 +184,17 @@ class Creator(ABC):
         ##############
         metadata["dtype"] = self.recipe.output.dtype
 
-    def cleanup_temporary_directories(self) -> None:
-        """Clean up temporary directories used during dataset creation."""
+        #####
+        # Call subclass
+        self.collect_metadata(metadata)
 
-        if os.path.exists(self.work_dir):
-            shutil.rmtree(self.work_dir)
-            LOG.info(f"Removed temporary directory: {self.work_dir}")
+    @abstractmethod
+    def collect_metadata(self, metadata: dict) -> None:
+        pass
+
+    ######################################################
+    # Main loading loop
+    ######################################################
 
     def task_load(self) -> None:
         """Load data into the dataset, processing each group as required."""
@@ -221,15 +223,22 @@ class Creator(ABC):
 
         dataset.add_provenance(name="provenance_load")
 
-    def update_metadata(self, **kwargs: Any) -> None:
-        """Update the metadata of the dataset.
+    ########################
+    # Finalisation
+    ########################
 
-        Parameters
-        ----------
-        **kwargs
-            The metadata to update.
-        """
-        self.dataset.update_metadata(**kwargs)
+    def task_finalise(self) -> None:
+        LOG.info("Finalising dataset.")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_dataset(dataset)
+
+    @abstractmethod
+    def finalise_dataset(self, dataset: Dataset) -> None:
+        pass
+
+    ######################################################
+    # Misc tasks
+    ######################################################
 
     def task_patch(self) -> None:
         pass
@@ -259,10 +268,62 @@ class Creator(ABC):
 
         self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 
-    def task_finalise(self) -> None:
-        LOG.info("BACK Finalising dataset.")
+    ########################
+    # Cleanup
+    # #######################
 
-    #####################################################
+    def task_cleanup(self) -> None:
+        """Clean up temporary statistics and registry, and remove additions if specified."""
+        dataset = Dataset(self.path, update=True)
+        dataset.remove_group("_build")
+        self._cleanup_temporary_directories()
+
+    def _cleanup_temporary_directories(self) -> None:
+        """Clean up temporary directories used during dataset creation."""
+
+        if os.path.exists(self.work_dir):
+            shutil.rmtree(self.work_dir)
+            LOG.info(f"Removed temporary directory: {self.work_dir}")
+
+    ########################
+    def task_verify(self) -> None:
+        LOG.info("BACK: Verifying dataset.")
+        return
+        """Run verification on the dataset and log the results."""
+        """Run the verification."""
+        self.dataset = self.open_writable_dataset(self.path)
+        LOG.info(f"Verifying dataset at {self.path}")
+        LOG.info(str(self.dataset.anemoi_dataset))
+
+    ########################
+    def task_statistics(self) -> None:
+        LOG.info("Running statistics computation.")
+        dataset = Dataset(self.path, update=True)
+        recompute_statistics = self.kwargs["recompute_statistics"]
+
+        if all(name in dataset.store for name in ("mean", "minimum", "maximum", "stdev")) and not recompute_statistics:
+            LOG.info("Statistics already present, skipping computation.")
+            return
+
+        self.compute_and_store_statistics(dataset)
+
+    @abstractmethod
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        pass
+
+    ########################
+
+    def task_init_additions(self) -> None:
+        LOG.info("BACK: Initialising additions.")
+        return
+
+    def task_load_additions(self) -> None:
+        LOG.info("BACK: Loading additions.")
+        return
+
+    def task_finalise_additions(self) -> None:
+        LOG.info("BACK: Finalising additions.")
+        return
 
     @cached_property
     def groups(self) -> Groups:
@@ -276,11 +337,6 @@ class Creator(ABC):
         return self.input.select(self.context(), one_date)
 
     @cached_property
-    def output(self) -> Any:
-        """Return the output builder for the dataset."""
-        return self.recipe.output
-
-    @cached_property
     def input(self) -> InputBuilder:
         """Return the input builder for the dataset."""
 
@@ -289,391 +345,8 @@ class Creator(ABC):
             data_sources=self.recipe.data_sources or {},
         )
 
-    def task_cleanup(self) -> None:
-        """Clean up temporary statistics and registry, and remove additions if specified."""
-        dataset = Dataset(self.path, update=True)
-        dataset.remove_group("_build")
-        self.cleanup_temporary_directories()
-
-    def task_verify(self) -> None:
-        LOG.info("BACK: Verifying dataset.")
-        return
-        """Run verification on the dataset and log the results."""
-        """Run the verification."""
-        self.dataset = self.open_writable_dataset(self.path)
-        LOG.info(f"Verifying dataset at {self.path}")
-        LOG.info(str(self.dataset.anemoi_dataset))
-
-    def skip(self, delta: datetime.timedelta) -> bool:
-        """Check if the additions should be skipped.
-
-        Parameters
-        ----------
-        delta : datetime.timedelta
-            The delta to check.
-
-        Returns
-        -------
-        bool
-            Whether to skip the additions.
-        """
-        frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
-        if not delta.total_seconds() % frequency.total_seconds() == 0:
-            LOG.debug(f"Delta {delta} is not a multiple of frequency {frequency}. Skipping.")
-            return True
-
-        if self.dataset.zarr_metadata.get("build", {}).get("additions", None) is False:
-            LOG.warning(f"Additions are disabled for {self.path} in the recipe.")
-            return True
-
-        return False
-
-    def tmp_storage_path(self, delta: datetime.timedelta | None = None) -> str:
-        """Get the path to the temporary storage for additions.
-
-        Parameters
-        ----------
-        delta : datetime.timedelta, optional
-            The delta for which to get the storage path.
-
-        Returns
-        -------
-        str
-            The path to the temporary storage.
-        """
-        """Get the path to the temporary storage."""
-        name = "storage_for_additions"
-        if delta:
-            name += frequency_to_string(delta)
-        return os.path.join(f"{self.path}.{name}.tmp")
-
-    # def read_from_dataset(self, delta: datetime.timedelta) -> None:
-    #     """Read data from the dataset for a given delta.
-
-    #     Parameters
-    #     ----------
-    #     delta : datetime.timedelta
-    #         The delta to read from the dataset.
-    #     """
-    #     """Read data from the dataset."""
-    #     self.variables = self.dataset.anemoi_dataset.variables
-    #     self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
-    #     start = self.dataset.zarr_metadata["statistics_start_date"]
-    #     end = self.dataset.zarr_metadata["statistics_end_date"]
-    #     self.start = datetime.datetime.fromisoformat(start)
-    #     self.end = datetime.datetime.fromisoformat(end)
-
-    #     ds = open_dataset(self.path, start=self.start, end=self.end)
-    #     self.dates = ds.dates
-    #     self.total = len(self.dates)
-
-    #     idelta = delta.total_seconds() // self.frequency.total_seconds()
-    #     assert int(idelta) == idelta, idelta
-    #     idelta = int(idelta)
-    #     self.ds = DeltaDataset(ds, idelta)
-
-    def task_init_additions(self) -> None:
-        LOG.info("BACK: Initialising additions.")
-        return
-        """Initialise temporary storage and prepare for additions for all specified deltas."""
-        build_storage(directory=self.tmp_storage_path(), create=True)
-        self.dataset = self.open_writable_dataset(self.path)
-        for delta in self.kwargs.get("delta", []):
-            self._init_addition(frequency_to_timedelta(delta))
-
-    def _init_addition(self, delta: datetime.timedelta) -> None:
-        """Run the additions initialisation for a specific delta.
-
-        Parameters
-        ----------
-        delta : datetime.timedelta
-            The delta for which to initialise additions.
-        """
-        """Run the additions initialization."""
-        if self.skip(delta):
-            LOG.info(f"Skipping {delta=}")
-            return
-
-        self.tmp_storage = build_storage(directory=self.tmp_storage_path(delta), create=True)
-        self.tmp_storage.delete()
-        self.tmp_storage.create()
-        LOG.info(f"Dataset {self.tmp_storage_path(delta)} additions initialised.")
-
-    def _cleanup_addition(self, delta: datetime.timedelta) -> None:
-        """Clean up the temporary storage for a specific delta.
-
-        Parameters
-        ----------
-        delta : datetime.timedelta
-            The delta for which to clean up storage.
-        """
-        """Clean up the temporary storage."""
-        self.tmp_storage = build_storage(directory=self.tmp_storage_path(delta), create=False)
-        self.tmp_storage.delete()
-        LOG.info(f"Cleaned temporary storage {self.tmp_storage_path(delta)}")
-
-    def task_load_additions(self) -> None:
-        LOG.info("BACK: Loading additions.")
-        return
-        """Load additions for all specified deltas into the dataset."""
-
-        self.dataset = self.open_writable_dataset(self.path)
-        for delta in self.kwargs.get("delta", []):
-            self._load_addition(frequency_to_timedelta(delta))
-
-    def _load_addition(self, delta: datetime.timedelta) -> None:
-        """Run the additions process for a specific delta.
-
-        Parameters
-        ----------
-        delta : datetime.timedelta
-            The delta for which to load additions.
-        """
-        """Run the additions."""
-        if self.skip(delta):
-            LOG.info(f"Skipping {delta=}")
-            return
-
-        self.read_from_dataset(delta)
-        self.tmp_storage = build_storage(directory=self.tmp_storage_path(delta), create=False)
-        LOG.info(f"Writing in {self.tmp_storage_path(delta)}")
-        chunk_filter = PartFilter(parts=self.parts, total=self.total)
-        for i in range(0, self.total):
-            if not chunk_filter(i):
-                continue
-            date = self.dates[i]
-            try:
-                arr = self.ds[i]
-                stats = compute_statistics(arr, self.variables, allow_nans=self.allow_nans)
-                self.tmp_storage.add([date, i, stats], key=date)
-            except MissingDateError:
-                self.tmp_storage.add([date, i, "missing"], key=date)
-        self.tmp_storage.flush()
-        LOG.debug(f"Dataset {self.path} additions run.")
-
-    def task_finalise_additions(self) -> None:
-        LOG.info("BACK: Finalising additions.")
-        return
-        """Finalise additions for all specified deltas, aggregating and writing statistics."""
-        self.dataset = self.open_writable_dataset(self.path)
-        for delta in self.kwargs.get("delta", []):
-            self._finalise_addition(frequency_to_timedelta(delta))
-
-    def _finalise_addition(self, delta: datetime.timedelta) -> None:
-        """Run the additions finalisation for a specific delta, aggregating statistics and writing results.
-
-        Parameters
-        ----------
-        delta : datetime.timedelta
-            The delta for which to finalise additions.
-        """
-        """Run the additions finalization."""
-        if self.skip(delta):
-            LOG.info(f"Skipping {delta=}.")
-            return
-
-        self.read_from_dataset(delta=delta)
-        self.tmp_storage = build_storage(directory=self.tmp_storage_path(delta), create=False)
-
-        shape = (len(self.dates), len(self.variables))
-        agg = dict(
-            minimum=np.full(shape, np.nan, dtype=np.float64),
-            maximum=np.full(shape, np.nan, dtype=np.float64),
-            sums=np.full(shape, np.nan, dtype=np.float64),
-            squares=np.full(shape, np.nan, dtype=np.float64),
-            count=np.full(shape, -1, dtype=np.int64),
-            has_nans=np.full(shape, False, dtype=np.bool_),
-        )
-        LOG.debug(f"Aggregating {self.__class__.__name__} statistics on shape={shape}. Variables : {self.variables}")
-
-        found = set()
-        ifound = set()
-        missing = set()
-        for _date, (date, i, stats) in self.tmp_storage.items():
-            assert _date == date
-            if stats == "missing":
-                missing.add(date)
-                continue
-
-            assert date not in found, f"Duplicates found {date}"
-            found.add(date)
-            ifound.add(i)
-
-            for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-                agg[k][i, ...] = stats[k]
-
-        assert len(found) + len(missing) == len(self.dates), (
-            len(found),
-            len(missing),
-            len(self.dates),
-        )
-        assert found.union(missing) == set(self.dates), (
-            found,
-            missing,
-            set(self.dates),
-        )
-
-        if len(ifound) < 2:
-            LOG.warning(f"Not enough data found in {self.path} to compute {self.__class__.__name__}. Skipped.")
-            self.tmp_storage.delete()
-            return
-
-        mask = sorted(list(ifound))
-        for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-            agg[k] = agg[k][mask, ...]
-
-        for k in ["minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-            assert agg[k].shape == agg["count"].shape, (
-                agg[k].shape,
-                agg["count"].shape,
-            )
-
-        minimum = np.nanmin(agg["minimum"], axis=0)
-        maximum = np.nanmax(agg["maximum"], axis=0)
-        sums = np.nansum(agg["sums"], axis=0)
-        squares = np.nansum(agg["squares"], axis=0)
-        count = np.nansum(agg["count"], axis=0)
-        has_nans = np.any(agg["has_nans"], axis=0)
-
-        assert sums.shape == count.shape
-        assert sums.shape == squares.shape
-        assert sums.shape == minimum.shape
-        assert sums.shape == maximum.shape
-        assert sums.shape == has_nans.shape
-
-        mean = sums / count
-        assert sums.shape == mean.shape
-
-        x = squares / count - mean * mean
-        # x[- 1e-15 < (x / (np.sqrt(squares / count) + np.abs(mean))) < 0] = 0
-        # remove negative variance due to numerical errors
-        for i, name in enumerate(self.variables):
-            x[i] = fix_variance(x[i], name, agg["count"][i : i + 1], agg["sums"][i : i + 1], agg["squares"][i : i + 1])
-        check_variance(x, self.variables, minimum, maximum, mean, count, sums, squares)
-
-        stdev = np.sqrt(x)
-        assert sums.shape == stdev.shape
-
-        self.summary = Summary(
-            minimum=minimum,
-            maximum=maximum,
-            mean=mean,
-            count=count,
-            sums=sums,
-            squares=squares,
-            stdev=stdev,
-            variables_names=self.variables,
-            has_nans=has_nans,
-        )
-        LOG.info(f"Dataset {self.path} additions finalised.")
-        # self.check_statistics()
-        self._write(self.summary, delta)
-        self.tmp_storage.delete()
-
-    def _write(self, summary: Summary, delta: datetime.timedelta) -> None:
-        """Write the summary statistics to the dataset for a given delta.
-
-        Parameters
-        ----------
-        summary : Summary
-            The summary to write.
-        delta : datetime.timedelta
-            The delta value.
-        """
-        """Write the summary to the dataset.
-
-        Parameters
-        ----------
-        summary : Summary
-            The summary to write.
-        delta : datetime.timedelta
-            The delta value.
-        """
-        for k in ["mean", "stdev", "minimum", "maximum", "sums", "squares", "count", "has_nans"]:
-            name = f"statistics_tendencies_{frequency_to_string(delta)}_{k}"
-            self.dataset.add_dataset(name=name, array=summary[k], dimensions=("variable",))
-        self.registry.add_to_history(f"compute_statistics_{self.__class__.__name__.lower()}_end")
-        LOG.debug(f"Wrote additions in {self.path}")
-
-    def task_statistics(self) -> None:
-        LOG.info("BACK: Running statistics computation.")
-        return
-
-        """Run the statistics computation and write results to the dataset."""
-        self.dataset = self.open_writable_dataset(self.path)
-        """Run the statistics computation."""
-        start, end = (
-            self.dataset.zarr_metadata["statistics_start_date"],
-            self.dataset.zarr_metadata["statistics_end_date"],
-        )
-        start, end = np.datetime64(start), np.datetime64(end)
-        dates = self.dataset.anemoi_dataset.dates
-
-        assert type(dates[0]) is type(start), (type(dates[0]), type(start))
-
-        dates = [d for d in dates if d >= start and d <= end]
-        dates = [d for i, d in enumerate(dates) if i not in self.dataset.anemoi_dataset.missing]
-        variables = self.dataset.anemoi_dataset.variables
-        stats = self.tmp_statistics.get_aggregated(dates, variables, self.allow_nans)
-
-        LOG.info(stats)
-
-        if not all(self.registry.get_flags(sync=False)):
-            raise Exception(f"❗Zarr {self.path} is not fully built, not writing statistics into dataset.")
-
-        for k in [
-            "mean",
-            "stdev",
-            "minimum",
-            "maximum",
-            "sums",
-            "squares",
-            "count",
-            "has_nans",
-        ]:
-            self.dataset.add_dataset(name=k, array=stats[k], dimensions=("variable",))
-
-        self.registry.add_to_history("compute_statistics_end")
-        LOG.info(f"Wrote statistics in {self.path}")
-
-    def xxxx_read_dataset_metadata(self, path: str) -> None:
-        """Read the metadata of the dataset and check for missing dates consistency.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        """
-
-        ds = open_dataset(path)
-        self.dataset_shape = ds.shape
-        self.variables_names = ds.variables
-        assert len(self.variables_names) == ds.shape[1], self.dataset_shape
-        self.dates = ds.dates
-
-        self.missing_dates = sorted(list([self.dates[i] for i in ds.missing]))
-
-        def check_missing_dates(expected: list[np.datetime64]) -> None:
-            """Check if the missing dates in the dataset match the expected dates.
-
-            Parameters
-            ----------
-            expected : list of np.datetime64
-                The expected missing dates.
-
-            Raises
-            ------
-            ValueError
-                If the missing dates in the dataset do not match the expected dates.
-            """
-
-            z = zarr.open(path, "r")
-            missing_dates = z.attrs.get("missing_dates", [])
-            missing_dates = sorted([np.datetime64(d) for d in missing_dates])
-            if missing_dates != expected:
-                LOG.warning("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-                LOG.warning(f"Missing dates in recipe: {sorted(str(x) for x in missing_dates)}")
-                LOG.warning(f"Missing dates in dataset: {sorted(str(x) for x in  expected)}")
-                raise ValueError("Missing dates given in recipe do not match the actual missing dates in the dataset.")
-
-        check_missing_dates(self.missing_dates)
+    @cached_property
+    def variables_names(self) -> list[str]:
+        """Get the variable names."""
+        z = zarr.open(self.path, mode="r")
+        return z.attrs["variables"]

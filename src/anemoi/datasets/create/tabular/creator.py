@@ -13,7 +13,6 @@ import os
 from typing import Any
 
 import numpy as np
-import zarr
 
 from ..creator import Creator
 from ..dataset import Dataset
@@ -33,11 +32,14 @@ class TabularCreator(Creator):
         pass
 
     def collect_metadata(self, metadata: dict):
-        """Run the initialisation process for the dataset."""
-        super().collect_metadata(metadata)
+        # See if that can be combined with `gridded`
+
+        variables = self.minimal_input.variables
+        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
+        metadata["variables"] = variables
 
     def initialise_dataset(self, dataset: Dataset) -> None:
-        super().initialise_dataset(dataset)
+        pass
 
     ######################################################
 
@@ -54,46 +56,25 @@ class TabularCreator(Creator):
             result.to_numpy(),
         )
 
-    def task_finalise(self):
+    def finalise_dataset(self, dataset: Dataset) -> None:
         from .finalise import finalise_tabular_dataset
 
-        # TODO: use info from metadata, not minimal_input
-        collector = StatisticsCollector(columns_names=self.minimal_input.variables)
-        store = zarr.open(self.path, mode="a")
+        collector = StatisticsCollector(columns_names=self.variables_names)
 
         finalise_tabular_dataset(
-            store=store,
+            store=dataset.store,
             work_dir=self.work_dir,
-            date_indexing=self.date_indexing,
+            date_indexing=self.recipe.date_indexing,
             statistic_collector=collector,
             delete_files=True,
         )
 
         for name in ("mean", "minimum", "maximum", "stdev"):
-            store.create_dataset(
-                name,
+            dataset.add_array(
+                name=name,
                 data=collector.statistics()[name],
-                shape=collector.statistics()[name].shape,
-                dtype=collector.statistics()[name].dtype,
-                overwrite=True,
+                dimensions=("variable",),  # TODO: check this
             )
 
-    def task_statistics(self):
-        pass
-
-    def task_size(self) -> int:
-        return 0
-
-    @property
-    def date_indexing(self) -> str:
-        return self.recipe.date_indexing
-
-    ######################################################
-    @property
-    def check_name(self) -> str:
-        return False
-
-    def shape_and_chunks(self, dates: Any) -> tuple[int, ...]:
-        total_shape = (len(dates), len(self.minimal_input.variables))
-        chunks = (min(100, total_shape[0]), total_shape[1])
-        return total_shape, chunks
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        raise NotImplementedError("Statistics are computed during finalisation for tabular datasets.")

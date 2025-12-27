@@ -90,8 +90,3 @@ class StatisticsCollector:
             result[key] = np.array(result[key])
 
         return result
-
-
-class NoStatisticsCollector(StatisticsCollector):
-    def is_active(self, offset: int, array: any, dates: any) -> None:
-        return False

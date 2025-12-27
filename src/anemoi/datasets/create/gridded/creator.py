@@ -22,6 +22,7 @@ from anemoi.utils.humanize import seconds_to_human
 from ..check import check_data_values
 from ..creator import Creator
 from ..dataset import Dataset
+from ..statistics import StatisticsCollector
 from .context import GriddedContext
 from .writer import ViewCacheArray
 
@@ -30,11 +31,8 @@ LOG = logging.getLogger(__name__)
 
 class GriddedCreator(Creator):
 
-    check_name = False
-
     def collect_metadata(self, metadata: dict):
         """Run the initialisation process for the dataset."""
-        super().collect_metadata(metadata)
 
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
@@ -45,29 +43,18 @@ class GriddedCreator(Creator):
 
         variables_with_nans = self.recipe.statistics.allow_nans
 
-        ensembles = self.minimal_input.ensembles
-        LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
-
         grid_points = self.minimal_input.grid_points
         LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
 
-        resolution = self.minimal_input.resolution
-        LOG.info(f"{resolution=}")
+        metadata["remapping"] = self.recipe.output.remapping
+        metadata["order_by"] = self.recipe.output.order_by
+        metadata["flatten_grid"] = self.recipe.output.flatten_grid
 
-        total_shape, chunks = self.shape_and_chunks(dates)
-        dtype = self.output.dtype
-
-        LOG.info(f"Creating Dataset '{self.path}', with {total_shape=}, {chunks=} and {dtype=}")
-
-        metadata["remapping"] = self.output.remapping
-        metadata["order_by"] = self.output.order_by
-        metadata["flatten_grid"] = self.output.flatten_grid
-
-        metadata["ensemble_dimension"] = len(ensembles)
+        metadata["ensemble_dimension"] = len(self.minimal_input.ensembles)
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
         metadata["allow_nans"] = self.recipe.build.allow_nans
-        metadata["resolution"] = resolution
+        metadata["resolution"] = self.minimal_input.resolution
 
         metadata["data_request"] = self.minimal_input.data_request
         metadata["field_shape"] = self.minimal_input.field_shape
@@ -83,9 +70,9 @@ class GriddedCreator(Creator):
         super().initialise_dataset(dataset)
 
         dates = self.groups.provider.values
-        total_shape = (len(dates),) + self.minimal_input.shape[1:]
+        shape = (len(dates),) + self.minimal_input.shape[1:]
 
-        assert len(total_shape) == 4, f"Expected 4D shape, got {total_shape}"
+        assert len(shape) == 4, f"Expected 4D shape, got {shape}"
 
         coords = self.minimal_input.coords
         coords["dates"] = dates
@@ -99,7 +86,7 @@ class GriddedCreator(Creator):
             name="data",
             chunks=chunks,
             dtype=self.recipe.output.dtype,
-            shape=total_shape,
+            shape=shape,
             dimensions=("time", "variable", "ensemble", "cell"),
             fill_value=np.nan,
         )
@@ -107,17 +94,6 @@ class GriddedCreator(Creator):
         dataset.add_array(name="dates", data=np.array(dates, "<M8[s]"), dimensions=("time",))
         dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
         dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))
-
-    def xxxxxcheck_unkown_kwargs(self, kwargs: dict) -> None:
-        """Check for unknown keyword arguments.
-
-        Parameters
-        ----------
-        kwargs : dict
-            The keyword arguments.
-        """
-        # remove this latter
-        LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
         """Load the result into the dataset."""
@@ -183,7 +159,7 @@ class GriddedCreator(Creator):
 
         array = ViewCacheArray(dataset.data, shape=shape, indexes=indexes)
         LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
-        self.load_cube(cube, array)
+        self._load_cube(cube, array)
 
         LOG.info("Flush data array")
         array.flush()
@@ -197,21 +173,7 @@ class GriddedCreator(Creator):
     def context(self):
         return GriddedContext(self.recipe)
 
-    def _get_allow_nans(self) -> bool | list:
-        """Get the allow_nans configuration.
-
-        Returns
-        -------
-        bool | list
-            The allow_nans configuration.
-        """
-        config = self.recipe
-        if "allow_nans" in config.build:
-            return config.build.allow_nans
-
-        return config.statistics.allow_nans
-
-    def load_cube(self, cube: Any, array: ViewCacheArray) -> None:
+    def _load_cube(self, cube: Any, array: ViewCacheArray) -> None:
         """Load the cube into the array.
 
         Parameters
@@ -270,6 +232,7 @@ class GriddedCreator(Creator):
             f"write time: {seconds_to_human(save)}."
         )
 
+    # TODO: keep one of these methods
     @cached_property
     def allow_nans(self) -> bool | list:
         """Check if NaNs are allowed."""
@@ -284,19 +247,35 @@ class GriddedCreator(Creator):
         warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
         return True
 
-    def shape_and_chunks(self, dates: Any) -> tuple[int, ...]:
-        """Get the chunks for the dataset."""
-        coords = self.minimal_input.coords
-        coords["dates"] = dates
-        total_shape = list(self.minimal_input.shape)
-        total_shape[0] = len(dates)
-        LOG.info(f"total_shape = {total_shape}")
+    def _get_allow_nans(self) -> bool | list:
+        """Get the allow_nans configuration.
 
-        chunks = self.output.get_chunking(coords)
-        return total_shape, chunks
+        Returns
+        -------
+        bool | list
+            The allow_nans configuration.
+        """
+        config = self.recipe
+        if "allow_nans" in config.build:
+            return config.build.allow_nans
 
-    @cached_property
-    def variables_names(self) -> list[str]:
-        """Get the variable names."""
-        z = zarr.open(self.path, mode="r")
-        return z.attrs["variables"]
+        return config.statistics.allow_nans
+
+    def finalise_dataset(self, dataset: Dataset) -> None:
+        # Nothing to do here
+        pass
+
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        collector = StatisticsCollector(columns_names=self.variables_names)
+
+        data = dataset.data
+        dates = dataset.dates
+
+        collector.collect(0, data, dates)
+
+        for k, v in collector.statistics().items():
+            dataset.add_array(
+                name=k,
+                data=v,
+                dimensions=("variable",),  # TODO: check this
+            )

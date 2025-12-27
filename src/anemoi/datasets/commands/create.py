@@ -75,9 +75,9 @@ class Create(Command):
             help="Overwrite existing files. This will delete the target dataset if it already exists.",
         )
         command_parser.add_argument(
-            "--test",
+            "--recompute-statistics",
             action="store_true",
-            help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
+            help="Force the re-computation of statistics, even if they already exist.",
         )
 
         command_parser.add_argument("recipe", help="Configuration yaml file defining the recipe to create the dataset.")
