@@ -97,7 +97,7 @@ class GriddedCreator(Creator):
         metadata["attribution"] = self.recipe.attribution
 
         metadata["remapping"] = self.output.remapping
-        metadata["order_by"] = list(self.output.order_by.keys())
+        metadata["order_by"] = self.output.order_by
         metadata["flatten_grid"] = self.output.flatten_grid
 
         metadata["ensemble_dimension"] = len(ensembles)

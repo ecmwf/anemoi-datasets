@@ -51,7 +51,7 @@ class Recipe(BaseModel):
     input: DotDictField
     """The input data sources configuration."""
 
-    data_sources: DotDictField | None = None
+    data_sources: list[DotDictField] | None = None
     """The data sources configuration."""
 
     date_indexing: str = "bisect"

@@ -8,11 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from typing import Annotated
 from typing import Any
 
 from pydantic import BaseModel
-from pydantic import BeforeValidator
 from pydantic import Field
 
 from ..config import OutputSpecs
@@ -20,18 +18,17 @@ from ..config import OutputSpecs
 LOG = logging.getLogger(__name__)
 
 
-def validate_order_by(v):
-    if isinstance(v, (list, tuple)):
-        return {k: "ascending" for k in v}
-    return dict(v)
+# def validate_order_by(v):
+#     if isinstance(v, (list, tuple)):
+#         return {k: "ascending" for k in v}
+#     return dict(v)
 
 
 class Output(BaseModel, OutputSpecs):
     dtype: str = "float32"
-    order_by: Annotated[list[str] | dict[str, str], BeforeValidator(validate_order_by)] = validate_order_by(
-        ["valid_datetime", "param_level", "number"]
-    )
-
     flatten_grid: bool = True
+
+    order_by: list[str] = Field(default_factory=lambda: ["valid_datetime", "param_level", "number"])
+
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
-    chunking: dict[str, int] = Field(default_factory=lambda: dict(dates=1, ensembles=1))
+    chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})

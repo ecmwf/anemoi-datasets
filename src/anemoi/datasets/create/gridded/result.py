@@ -522,7 +522,7 @@ class GriddedResult(Result):
         cube: Any = self.get_cube()
 
         from_data: Any = cube.user_coords
-        from_config: Any = self.context.order_by
+        from_config: Any = {k: "ascending" for k in self.context.order_by}
 
         keys_from_config: list = list(from_config.keys())
         keys_from_data: list = list(from_data.keys())

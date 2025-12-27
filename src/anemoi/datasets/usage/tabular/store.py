@@ -27,7 +27,7 @@ class TabularZarr(ZarrStore):
     def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
-        self._window_view = WindowView(self.z)
+        self._window_view = WindowView(self.store)
 
     def _subset(self, **kwargs):
         if "frequency" in kwargs:

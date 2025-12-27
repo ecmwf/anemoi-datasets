@@ -82,7 +82,7 @@ class GriddedZarr(ZarrStore):
     @cached_property
     def chunks(self) -> TupleIndex:
         """Return the chunks of the dataset."""
-        return self.z.data.chunks
+        return self.store.data.chunks
 
     @cached_property
     def shape(self) -> Shape:
@@ -92,39 +92,39 @@ class GriddedZarr(ZarrStore):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.z.data.dtype
+        return self.store.data.dtype
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates of the dataset."""
-        return self.z.dates[:]  # Convert to numpy
+        return self.store.dates[:]  # Convert to numpy
 
     @property
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the dataset."""
         try:
-            return self.z.latitudes[:]
+            return self.store.latitudes[:]
         except AttributeError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.z.latitude[:]
+            return self.store.latitude[:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the dataset."""
         try:
-            return self.z.longitudes[:]
+            return self.store.longitudes[:]
         except AttributeError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.z.longitude[:]
+            return self.store.longitude[:]
 
     @property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         return dict(
-            mean=self.z.mean[:],
-            stdev=self.z.stdev[:],
-            maximum=self.z.maximum[:],
-            minimum=self.z.minimum[:],
+            mean=self.store.mean[:],
+            stdev=self.store.stdev[:],
+            maximum=self.store.maximum[:],
+            minimum=self.store.minimum[:],
         )
 
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
@@ -143,22 +143,22 @@ class GriddedZarr(ZarrStore):
             return f"statistics_tendencies_{delta}_{k}"
 
         return dict(
-            mean=self.z[func("mean")][:],
-            stdev=self.z[func("stdev")][:],
-            maximum=self.z[func("maximum")][:],
-            minimum=self.z[func("minimum")][:],
+            mean=self.store[func("mean")][:],
+            stdev=self.store[func("stdev")][:],
+            maximum=self.store[func("maximum")][:],
+            minimum=self.store[func("minimum")][:],
         )
 
     @property
     def resolution(self) -> str:
         """Return the resolution of the dataset."""
-        return self.z.attrs["resolution"]
+        return self.store.attrs["resolution"]
 
     @property
     def field_shape(self) -> tuple:
         """Return the field shape of the dataset."""
         try:
-            return tuple(self.z.attrs["field_shape"])
+            return tuple(self.store.attrs["field_shape"])
         except KeyError:
             LOG.warning("No 'field_shape' in %r, assuming 1D fields", self)
             return (self.shape[-1],)
@@ -167,7 +167,7 @@ class GriddedZarr(ZarrStore):
     def frequency(self) -> datetime.timedelta:
         """Return the frequency of the dataset."""
         try:
-            return frequency_to_timedelta(self.z.attrs["frequency"])
+            return frequency_to_timedelta(self.store.attrs["frequency"])
         except KeyError:
             LOG.warning("No 'frequency' in %r, computing from 'dates'", self)
         dates = self.dates
@@ -176,9 +176,9 @@ class GriddedZarr(ZarrStore):
     @property
     def name_to_index(self) -> dict[str, int]:
         """Return the name to index mapping of the dataset."""
-        if "variables" in self.z.attrs:
-            return {n: i for i, n in enumerate(self.z.attrs["variables"])}
-        return self.z.attrs["name_to_index"]
+        if "variables" in self.store.attrs:
+            return {n: i for i, n in enumerate(self.store.attrs["variables"])}
+        return self.store.attrs["name_to_index"]
 
     @property
     def variables(self) -> list[str]:
@@ -194,7 +194,7 @@ class GriddedZarr(ZarrStore):
     @cached_property
     def constant_fields(self) -> list[str]:
         """Return the constant fields of the dataset."""
-        result = self.z.attrs.get("constant_fields")
+        result = self.store.attrs.get("constant_fields")
         if result is None:
             LOG.warning("No 'constant_fields' attribute in %r, computing them", self)
         return self.computed_constant_fields()
@@ -202,7 +202,7 @@ class GriddedZarr(ZarrStore):
     @property
     def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables."""
-        return self.z.attrs.get("variables_metadata", {})
+        return self.store.attrs.get("variables_metadata", {})
 
     def __repr__(self) -> str:
         """Return the string representation of the dataset."""
@@ -215,7 +215,7 @@ class GriddedZarr(ZarrStore):
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Return the specific metadata of the dataset."""
         return super().metadata_specific(
-            attrs=dict(self.z.attrs),
+            attrs=dict(self.store.attrs),
             chunks=self.chunks,
             dtype=str(self.dtype),
             path=self.path,
@@ -228,9 +228,9 @@ class GriddedZarr(ZarrStore):
     def mutate(self) -> Dataset:
         """Mutate the dataset if it has missing dates."""
 
-        if len(self.z.attrs.get("missing_dates", [])):
+        if len(self.store.attrs.get("missing_dates", [])):
             LOG.warning(f"Dataset {self} has missing dates")
-            return ZarrWithMissingDates(self.z if self.was_zarr else self.path)
+            return ZarrWithMissingDates(self.store, self.path)
         return self
 
     def tree(self) -> Node:
@@ -252,12 +252,12 @@ class GriddedZarr(ZarrStore):
 
     @cached_property
     def origins(self):
-        origins = self.z.attrs.get("origins")
+        origins = self.store.attrs.get("origins")
 
         if origins is None:
             import rich
 
-            rich.print(dict(self.z.attrs))
+            rich.print(dict(self.store.attrs))
             raise ValueError(f"No 'origins' in {self.dataset_name}")
 
         # version = origins["version"]
@@ -278,17 +278,17 @@ class GriddedZarr(ZarrStore):
     @property
     def dataset_name(self) -> str:
         """Return the name of the dataset."""
-        return self.z.attrs.get("recipe", {}).get("name", self.path)
+        return self.store.attrs.get("recipe", {}).get("name", self.path)
 
 
 class ZarrWithMissingDates(GriddedZarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, path: str | zarr.hierarchy.Group) -> None:
+    def __init__(self, store: zarr.hierarchy.Group, path: str) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
-        super().__init__(path)
+        super().__init__(store, path)
 
-        missing_dates = self.z.attrs.get("missing_dates", [])
+        missing_dates = self.store.attrs.get("missing_dates", [])
         missing_dates = {np.datetime64(x, "s") for x in missing_dates}
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
         self._missing = set(self.missing_to_dates)

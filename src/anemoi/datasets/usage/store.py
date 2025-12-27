@@ -252,11 +252,11 @@ class ZarrStore(Dataset):
     """A zarr dataset."""
 
     def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
-        self.z = group
+        self.store = group
         self.path = path if path is not None else "<zarr>"
 
         # This seems to speed up the reading of the data a lot
-        self.data = self.z.data
+        self.data = self.store.data
 
     @classmethod
     def from_group(cls, group: zarr.hierarchy.Group, path: str = None) -> "ZarrStore":
@@ -288,7 +288,7 @@ class ZarrStore(Dataset):
     @cached_property
     def chunks(self) -> TupleIndex:
         """Return the chunks of the dataset."""
-        return self.z.data.chunks
+        return self.store.data.chunks
 
     @cached_property
     def shape(self) -> Shape:
@@ -298,16 +298,16 @@ class ZarrStore(Dataset):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.z.data.dtype
+        return self.store.data.dtype
 
     @property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         return dict(
-            mean=self.z.mean[:],
-            stdev=self.z.stdev[:],
-            maximum=self.z.maximum[:],
-            minimum=self.z.minimum[:],
+            mean=self.store.mean[:],
+            stdev=self.store.stdev[:],
+            maximum=self.store.maximum[:],
+            minimum=self.store.minimum[:],
         )
 
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
@@ -325,21 +325,21 @@ class ZarrStore(Dataset):
             return f"statistics_tendencies_{delta}_{k}"
 
         return dict(
-            mean=self.z[func("mean")][:],
-            stdev=self.z[func("stdev")][:],
-            maximum=self.z[func("maximum")][:],
-            minimum=self.z[func("minimum")][:],
+            mean=self.store[func("mean")][:],
+            stdev=self.store[func("stdev")][:],
+            maximum=self.store[func("maximum")][:],
+            minimum=self.store[func("minimum")][:],
         )
 
     @property
     def resolution(self) -> str | None:
         """Return the resolution of the dataset."""
-        return self.z.attrs.get("resolution")
+        return self.store.attrs.get("resolution")
 
     @property
     def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables."""
-        return self.z.attrs.get("variables_metadata", {})
+        return self.store.attrs.get("variables_metadata", {})
 
     def __repr__(self) -> str:
         """Return the string representation of the dataset."""
@@ -348,7 +348,7 @@ class ZarrStore(Dataset):
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Return the specific metadata of the dataset."""
         return super().metadata_specific(
-            attrs=dict(self.z.attrs),
+            attrs=dict(self.store.attrs),
             chunks=self.chunks,
             dtype=str(self.dtype),
             path=self.path,
@@ -377,12 +377,12 @@ class ZarrStore(Dataset):
 
     @cached_property
     def origins(self):
-        origins = self.z.attrs.get("origins")
+        origins = self.store.attrs.get("origins")
 
         if origins is None:
             import rich
 
-            rich.print(dict(self.z.attrs))
+            rich.print(dict(self.store.attrs))
             raise ValueError(f"No 'origins' in {self.dataset_name}")
 
         # version = origins["version"]
@@ -403,4 +403,4 @@ class ZarrStore(Dataset):
     @property
     def dataset_name(self) -> str:
         """Return the name of the dataset."""
-        return self.z.attrs.get("recipe", {}).get("name", self.path)
+        return self.store.attrs.get("recipe", {}).get("name", self.path)
