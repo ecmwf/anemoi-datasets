@@ -4,8 +4,6 @@ from anemoi.datasets.create.input.context import Context
 
 
 class TabularContext(Context):
-    def __init__(self):
-        super().__init__()
 
     def empty_result(self) -> Any:
         import pandas as pd

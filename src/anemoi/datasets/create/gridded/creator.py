@@ -20,13 +20,12 @@ from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.sanitise import sanitise
-from earthkit.data.core.order import build_remapping
 
 from ..check import check_data_values
 from ..creator import Creator
+from ..dataset import Dataset
+from ..dataset import build_statistics_dates
 from ..utils import normalize_and_check_dates
-from . import Dataset
-from . import build_statistics_dates
 from .context import GriddedContext
 from .writer import ViewCacheArray
 
@@ -249,12 +248,7 @@ class GriddedCreator(Creator):
     ######################################################
 
     def context(self):
-        return GriddedContext(
-            order_by=self.output.order_by,
-            flatten_grid=self.output.flatten_grid,
-            remapping=build_remapping(self.output.remapping),
-            use_grib_paramid=self.recipe.build.use_grib_paramid,
-        )
+        return GriddedContext(self.recipe)
 
     def _get_allow_nans(self) -> bool | list:
         """Get the allow_nans configuration.

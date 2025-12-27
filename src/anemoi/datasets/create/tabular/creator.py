@@ -35,7 +35,7 @@ class TabularCreator(Creator):
     ######################################################
 
     def context(self):
-        return TabularContext()
+        return TabularContext(self.recipe)
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
         np.save(
