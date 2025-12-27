@@ -185,9 +185,6 @@ class GriddedCreator(Creator):
         LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
         self.load_cube(cube, array)
 
-        # BACK
-        # stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
-        # self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
         LOG.info("Flush data array")
         array.flush()
         LOG.info("Flushed data array")

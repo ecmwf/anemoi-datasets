@@ -45,6 +45,7 @@ class TabularCreator(Creator):
         return TabularContext(self.recipe)
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
+        os.makedirs(self.work_dir, exist_ok=True)
         np.save(
             os.path.join(
                 self.work_dir,
