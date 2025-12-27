@@ -13,6 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from pydantic import BeforeValidator
+from pydantic import Field
 
 from ..config import OutputSpecs
 
@@ -26,9 +27,11 @@ def validate_order_by(v):
 
 
 class Output(BaseModel, OutputSpecs):
+    dtype: str = "float32"
     order_by: Annotated[list[str] | dict[str, str], BeforeValidator(validate_order_by)] = validate_order_by(
         ["valid_datetime", "param_level", "number"]
     )
 
     flatten_grid: bool = True
-    remapping: dict[str, Any] | None = None
+    remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
+    chunking: dict[str, int] = Field(default_factory=lambda: dict(dates=1, ensembles=1))

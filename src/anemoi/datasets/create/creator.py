@@ -21,17 +21,17 @@ from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import MissingDateError
 from anemoi.datasets import open_dataset
+from anemoi.datasets.create.gridded import Dataset
 from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
 from anemoi.datasets.create.recipe import loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
 
-from .gridded import DeltaDataset
-from .gridded import NewDataset
-from .gridded import WritableDataset
+# from .gridded import DeltaDataset
+# from .gridded import NewDataset
+# from .gridded import WritableDataset
 from .gridded.persistent import build_storage
 from .gridded.statistics import Summary
-from .gridded.statistics import TmpStatistics
 from .gridded.statistics import check_variance
 from .gridded.statistics import compute_statistics
 from .gridded.statistics import fix_variance
@@ -111,6 +111,9 @@ class Creator(ABC):
         if isinstance(recipe, str):
             recipe = loader_recipe_from_yaml(recipe)
 
+        for k, v in recipe.env.items():
+            os.environ[k] = str(v)
+
         format_type = recipe.format
         match format_type:
 
@@ -127,16 +130,10 @@ class Creator(ABC):
 
     #####################################################
 
-    def task_init(self) -> int:
-        """Run the initialisation process for the dataset.
+    def task_init(self) -> Dataset:
+        """Run the initialisation process for the dataset."""
 
-        Returns
-        -------
-        int
-            The number of groups to process.
-        """
-
-        self.dataset = self.creat_new_dataset(self.path)
+        dataset = Dataset(self.path, overwrite=True, update=True)
 
         LOG.info("Cleaning temporary directories.")
         for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
@@ -145,8 +142,6 @@ class Creator(ABC):
             os.makedirs(d, exist_ok=True)
             for f in os.listdir(d):
                 os.remove(os.path.join(d, f))
-
-        self.tmp_statistics.delete()
 
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
@@ -159,15 +154,15 @@ class Creator(ABC):
         LOG.info(f"Missing dates: {len(missing)}")
         lengths = tuple(len(g) for g in self.groups)
 
-        r = self.registry
-        r.create(lengths=lengths)
-        self.tmp_statistics.create(exist_ok=False)
-        self.registry.add_to_history("tmp_statistics_initialised", version=self.tmp_statistics.version)
+        dataset.init_progress(lengths)
+
+        return dataset
 
     def task_load(self) -> None:
         """Load data into the dataset, processing each group as required."""
-        self.dataset = self.open_writable_dataset(self.path)
-        total = len(self.registry.get_flags())
+        dataset = Dataset(self.path, update=True)
+
+        total = len(dataset.flags())
         self.chunk_filter = PartFilter(parts=self.parts, total=total)
 
         # self.data_array = self.dataset.data_array
@@ -178,7 +173,7 @@ class Creator(ABC):
             if not self.chunk_filter(igroup):
                 continue
 
-            if self.registry.get_flag(igroup):
+            if dataset.flag(igroup):
                 LOG.info(f" -> Skipping {igroup} total={len(self.groups)} (already done)")
                 continue
 
@@ -188,15 +183,11 @@ class Creator(ABC):
             result = self.input.select(self.context(), argument=group)
             # BACK            assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
-            # There are several groups.
-            # There is one result to load for each group.
-            self.load_result(result)
-            self.registry.set_flag(igroup)
+            # There are several groups. There is one result to load for each group.
+            self.load_result(result, dataset)
+            dataset.flag(igroup, True)
 
-        self.registry.add_provenance(name="provenance_load")
-        self.tmp_statistics.add_provenance(name="provenance_load", config=self.recipe)
-
-        self.dataset.print_info()
+        dataset.add_provenance(name="provenance_load")
 
     def update_metadata(self, **kwargs: Any) -> None:
         """Update the metadata of the dataset.
@@ -209,13 +200,13 @@ class Creator(ABC):
         self.dataset.update_metadata(**kwargs)
 
     def task_patch(self) -> None:
-        """Apply a patch to the dataset using the provided options."""
-        from anemoi.datasets.create.patch import apply_patch
-
-        options = self.kwargs.get("options", {})
-        apply_patch(self.path, **options)
+        pass
 
     def task_size(self) -> None:
+
+        LOG.info("BACK: Running size computation.")
+        return
+
         """Compute and update the size and constant fields metadata for the dataset."""
         """Run the size computation."""
         from anemoi.datasets.create.size import compute_directory_sizes
@@ -235,6 +226,9 @@ class Creator(ABC):
                 variables_metadata[k]["constant_in_time"] = True
 
         self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
+
+    def task_finalise(self) -> None:
+        LOG.info("BACK Finalising dataset.")
 
     #####################################################
 
@@ -265,10 +259,6 @@ class Creator(ABC):
 
     def task_cleanup(self) -> None:
         """Clean up temporary statistics and registry, and remove additions if specified."""
-        self.tmp_statistics.delete()
-        self.registry.clean()
-        for delta in self.kwargs.get("delta", []):
-            self._cleanup_addition(frequency_to_timedelta(delta))
 
         for d in [self.work_dir, self.statistics_temp_dir, self.addition_temp_dir]:
             if d is None:
@@ -277,6 +267,8 @@ class Creator(ABC):
                 shutil.rmtree(d)
 
     def task_verify(self) -> None:
+        LOG.info("BACK: Verifying dataset.")
+        return
         """Run verification on the dataset and log the results."""
         """Run the verification."""
         self.dataset = self.open_writable_dataset(self.path)
@@ -326,32 +318,34 @@ class Creator(ABC):
             name += frequency_to_string(delta)
         return os.path.join(f"{self.path}.{name}.tmp")
 
-    def read_from_dataset(self, delta: datetime.timedelta) -> None:
-        """Read data from the dataset for a given delta.
+    # def read_from_dataset(self, delta: datetime.timedelta) -> None:
+    #     """Read data from the dataset for a given delta.
 
-        Parameters
-        ----------
-        delta : datetime.timedelta
-            The delta to read from the dataset.
-        """
-        """Read data from the dataset."""
-        self.variables = self.dataset.anemoi_dataset.variables
-        self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
-        start = self.dataset.zarr_metadata["statistics_start_date"]
-        end = self.dataset.zarr_metadata["statistics_end_date"]
-        self.start = datetime.datetime.fromisoformat(start)
-        self.end = datetime.datetime.fromisoformat(end)
+    #     Parameters
+    #     ----------
+    #     delta : datetime.timedelta
+    #         The delta to read from the dataset.
+    #     """
+    #     """Read data from the dataset."""
+    #     self.variables = self.dataset.anemoi_dataset.variables
+    #     self.frequency = frequency_to_timedelta(self.dataset.anemoi_dataset.frequency)
+    #     start = self.dataset.zarr_metadata["statistics_start_date"]
+    #     end = self.dataset.zarr_metadata["statistics_end_date"]
+    #     self.start = datetime.datetime.fromisoformat(start)
+    #     self.end = datetime.datetime.fromisoformat(end)
 
-        ds = open_dataset(self.path, start=self.start, end=self.end)
-        self.dates = ds.dates
-        self.total = len(self.dates)
+    #     ds = open_dataset(self.path, start=self.start, end=self.end)
+    #     self.dates = ds.dates
+    #     self.total = len(self.dates)
 
-        idelta = delta.total_seconds() // self.frequency.total_seconds()
-        assert int(idelta) == idelta, idelta
-        idelta = int(idelta)
-        self.ds = DeltaDataset(ds, idelta)
+    #     idelta = delta.total_seconds() // self.frequency.total_seconds()
+    #     assert int(idelta) == idelta, idelta
+    #     idelta = int(idelta)
+    #     self.ds = DeltaDataset(ds, idelta)
 
     def task_init_additions(self) -> None:
+        LOG.info("BACK: Initialising additions.")
+        return
         """Initialise temporary storage and prepare for additions for all specified deltas."""
         build_storage(directory=self.tmp_storage_path(), create=True)
         self.dataset = self.open_writable_dataset(self.path)
@@ -390,6 +384,8 @@ class Creator(ABC):
         LOG.info(f"Cleaned temporary storage {self.tmp_storage_path(delta)}")
 
     def task_load_additions(self) -> None:
+        LOG.info("BACK: Loading additions.")
+        return
         """Load additions for all specified deltas into the dataset."""
 
         self.dataset = self.open_writable_dataset(self.path)
@@ -427,6 +423,8 @@ class Creator(ABC):
         LOG.debug(f"Dataset {self.path} additions run.")
 
     def task_finalise_additions(self) -> None:
+        LOG.info("BACK: Finalising additions.")
+        return
         """Finalise additions for all specified deltas, aggregating and writing statistics."""
         self.dataset = self.open_writable_dataset(self.path)
         for delta in self.kwargs.get("delta", []):
@@ -569,6 +567,9 @@ class Creator(ABC):
         LOG.debug(f"Wrote additions in {self.path}")
 
     def task_statistics(self) -> None:
+        LOG.info("BACK: Running statistics computation.")
+        return
+
         """Run the statistics computation and write results to the dataset."""
         self.dataset = self.open_writable_dataset(self.path)
         """Run the statistics computation."""
@@ -606,52 +607,7 @@ class Creator(ABC):
         self.registry.add_to_history("compute_statistics_end")
         LOG.info(f"Wrote statistics in {self.path}")
 
-    def creat_new_dataset(self, path: str) -> NewDataset:
-        """Create a new dataset at the specified path.
-
-        Parameters
-        ----------
-        path : str
-            Path to the new dataset.
-
-        Returns
-        -------
-        NewDataset
-            The created NewDataset instance.
-        """
-        return NewDataset(path)
-
-    def open_writable_dataset(self, path: str) -> WritableDataset:
-        """Open a writable dataset at the specified path.
-
-        Parameters
-        ----------
-        path : str
-            Path to the writable dataset.
-
-        Returns
-        -------
-        WritableDataset
-            The opened WritableDataset instance.
-        """
-        return WritableDataset(path)
-
-    @cached_property
-    def registry(self) -> Any:
-        """Get the registry for the dataset."""
-        """Get the registry."""
-        from .gridded.zarr import ZarrBuiltRegistry
-
-        return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
-
-    @cached_property
-    def tmp_statistics(self) -> TmpStatistics:
-        """Get the temporary statistics object for the dataset."""
-        """Get the temporary statistics."""
-        directory = self.statistics_temp_dir or os.path.join(self.path + ".storage_for_statistics.tmp")
-        return TmpStatistics(directory)
-
-    def read_dataset_metadata(self, path: str) -> None:
+    def xxxx_read_dataset_metadata(self, path: str) -> None:
         """Read the metadata of the dataset and check for missing dates consistency.
 
         Parameters

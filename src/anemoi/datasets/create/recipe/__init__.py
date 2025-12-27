@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
 from typing import Annotated
 
@@ -14,9 +15,11 @@ import yaml
 from anemoi.utils.config import DotDict
 from pydantic import BaseModel
 from pydantic import BeforeValidator
+from pydantic import Field
 
 from .build import Build
 from .output import Output
+from .statistics import Statistics
 
 LOG = logging.getLogger(__name__)
 
@@ -34,6 +37,10 @@ class Recipe(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    description: str = "No description provided."
+    licence: str = "unknown"
+    attribution: str = "unknown"
 
     format: str = "gridded"
     """The format of the dataset. Options are "gridded", "tabular", etc."""
@@ -56,7 +63,10 @@ class Recipe(BaseModel):
     build: Build = Build()
     """The build configuration."""
 
-    statistics: DotDictField | None = None
+    statistics: Statistics = Statistics()
+
+    env: dict[str, str] = Field(default_factory=dict)
+    """Environment variables to set when creating the dataset."""
 
 
 def loader_recipe_from_yaml(path: str) -> dict:
@@ -97,5 +107,5 @@ def loader_recipe_from_zarr(path: str) -> dict:
     if "_recipe" not in z.attrs:
         raise ValueError(f"No recipe found in Zarr store at {path}")
 
-    recipe = z.attrs["_recipe"]
+    recipe = json.loads(z.attrs["_recipe"])
     return Recipe(**recipe)

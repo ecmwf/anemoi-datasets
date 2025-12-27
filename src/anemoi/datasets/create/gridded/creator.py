@@ -25,9 +25,9 @@ from earthkit.data.core.order import build_remapping
 from ..check import check_data_values
 from ..creator import Creator
 from ..utils import normalize_and_check_dates
+from . import Dataset
 from . import build_statistics_dates
 from .context import GriddedContext
-from .statistics import compute_statistics
 from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
@@ -39,15 +39,9 @@ class GriddedCreator(Creator):
 
     check_name = False
 
-    def task_init(self) -> int:
-        """Run the initialisation process for the dataset.
-
-        Returns
-        -------
-        int
-            The number of groups to process.
-        """
-        super().task_init()
+    def task_init(self) -> Dataset:
+        """Run the initialisation process for the dataset."""
+        dataset = super().task_init()
 
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
@@ -56,7 +50,7 @@ class GriddedCreator(Creator):
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
 
-        variables_with_nans = self.recipe.statistics.get("allow_nans", [])
+        variables_with_nans = self.recipe.statistics.allow_nans
 
         ensembles = self.minimal_input.ensembles
         LOG.info(f"Found {len(ensembles)} ensembles : {','.join([str(_) for _ in ensembles])}.")
@@ -75,11 +69,12 @@ class GriddedCreator(Creator):
         metadata = {}
         metadata["uuid"] = str(uuid.uuid4())
 
-        metadata.update(self.recipe.get("add_metadata", {}))
+        # metadata.update(self.recipe.get("add_metadata", {}))
 
-        metadata["_recipe"] = self.recipe.get_serialisable_dict()
+        # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
+        metadata["_recipe"] = self.recipe.model_dump_json()
 
-        recipe = sanitise(self.recipe.get_serialisable_dict())
+        recipe = sanitise(self.recipe.model_dump())
 
         # Remove stuff added by prepml
         for k in [
@@ -98,17 +93,17 @@ class GriddedCreator(Creator):
         metadata["recipe"] = recipe
 
         metadata["description"] = self.recipe.description
-        metadata["licence"] = self.recipe["licence"]
-        metadata["attribution"] = self.recipe["attribution"]
+        metadata["licence"] = self.recipe.licence
+        metadata["attribution"] = self.recipe.attribution
 
         metadata["remapping"] = self.output.remapping
-        metadata["order_by"] = self.output.order_by_as_list
+        metadata["order_by"] = list(self.output.order_by.keys())
         metadata["flatten_grid"] = self.output.flatten_grid
 
         metadata["ensemble_dimension"] = len(ensembles)
         metadata["variables"] = variables
         metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.recipe.build.get("allow_nans", False)
+        metadata["allow_nans"] = self.recipe.build.allow_nans
         metadata["resolution"] = resolution
 
         metadata["data_request"] = self.minimal_input.data_request
@@ -123,7 +118,7 @@ class GriddedCreator(Creator):
 
         metadata["version"] = VERSION
 
-        self.dataset.check_name(
+        dataset.check_name(
             raise_exception=self.check_name,
             resolution=resolution,
             dates=dates,
@@ -138,36 +133,34 @@ class GriddedCreator(Creator):
 
         dates = normalize_and_check_dates(dates, metadata["start_date"], metadata["end_date"], metadata["frequency"])
 
-        metadata.update(self.recipe.get("force_metadata", {}))
+        # metadata.update(self.recipe.get("force_metadata", {}))
 
         ###############################################################
         # write metadata
         ###############################################################
 
-        self.update_metadata(**metadata)
+        dataset.update_metadata(**metadata)
 
-        self.dataset.add_dataset(
+        dataset.add_dataset(
             name="data",
             chunks=chunks,
             dtype=dtype,
             shape=total_shape,
             dimensions=("time", "variable", "ensemble", "cell"),
         )
-        self.dataset.add_dataset(name="dates", array=dates, dimensions=("time",))
-        self.dataset.add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
-        self.dataset.add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
+        dataset.add_dataset(name="dates", array=dates, dimensions=("time",))
+        dataset.add_dataset(name="latitudes", array=grid_points[0], dimensions=("cell",))
+        dataset.add_dataset(name="longitudes", array=grid_points[1], dimensions=("cell",))
 
         statistics_start, statistics_end = build_statistics_dates(
             dates,
-            self.recipe.statistics.get("start"),
-            self.recipe.statistics.get("end"),
+            self.recipe.statistics.start,
+            self.recipe.statistics.end,
         )
-        self.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
+        dataset.update_metadata(statistics_start_date=statistics_start, statistics_end_date=statistics_end)
         LOG.info(f"Will compute statistics from {statistics_start} to {statistics_end}")
 
-        self.registry.add_to_history("init finished")
-
-        assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
+        # BACK assert chunks == self.dataset.get_zarr_chunks(), (chunks, self.dataset.get_zarr_chunks())
 
     def check_unkown_kwargs(self, kwargs: dict) -> None:
         """Check for unknown keyword arguments.
@@ -180,14 +173,8 @@ class GriddedCreator(Creator):
         # remove this latter
         LOG.warning(f"💬 Unknown kwargs for {self.__class__.__name__}: {kwargs}")
 
-    def load_result(self, result: Any) -> None:
-        """Load the result into the dataset.
-
-        Parameters
-        ----------
-        result : Any
-            The result to load.
-        """
+    def load_result(self, result: Any, dataset: Dataset) -> None:
+        """Load the result into the dataset."""
         # There is one cube to load for each result.
         dates = list(result.group_of_dates)
 
@@ -197,7 +184,7 @@ class GriddedCreator(Creator):
         shape = cube.extended_user_shape
         dates_in_data = cube.user_coords["valid_datetime"]
 
-        LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
+        # LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
 
         def check_shape(cube, dates, dates_in_data):
             if cube.extended_user_shape[0] != len(dates):
@@ -246,14 +233,15 @@ class GriddedCreator(Creator):
             bitmap = np.isin(x, y)
             return np.where(bitmap)[0]
 
-        indexes = dates_to_indexes(self.dates, dates_in_data)
+        indexes = dates_to_indexes(dataset.dates, dates_in_data)
 
-        array = ViewCacheArray(self.data_array, shape=shape, indexes=indexes)
+        array = ViewCacheArray(dataset.data, shape=shape, indexes=indexes)
         LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
         self.load_cube(cube, array)
 
-        stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
-        self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
+        # BACK
+        # stats = compute_statistics(array.cache, self.variables_names, allow_nans=self._get_allow_nans())
+        # self.tmp_statistics.write(indexes, stats, dates=dates_in_data)
         LOG.info("Flush data array")
         array.flush()
         LOG.info("Flushed data array")
@@ -280,7 +268,7 @@ class GriddedCreator(Creator):
         if "allow_nans" in config.build:
             return config.build.allow_nans
 
-        return config.statistics.get("allow_nans", [])
+        return config.statistics.allow_nans
 
     def load_cube(self, cube: Any, array: ViewCacheArray) -> None:
         """Load the cube into the array.
@@ -365,3 +353,9 @@ class GriddedCreator(Creator):
 
         chunks = self.output.get_chunking(coords)
         return total_shape, chunks
+
+    @cached_property
+    def variables_names(self) -> list[str]:
+        """Get the variable names."""
+        z = zarr.open(self.path, mode="r")
+        return z.attrs["variables"]

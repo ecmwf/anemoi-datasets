@@ -16,3 +16,4 @@ LOG = logging.getLogger(__name__)
 
 class Build(BaseModel):
     use_grib_paramid: bool = False
+    allow_nans: bool = False

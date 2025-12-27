@@ -198,23 +198,23 @@ class LoadersConfig(Config):
         self.build.setdefault("group_by", "monthly")
         self.build.setdefault("use_grib_paramid", False)
         self.build.setdefault("variable_naming", "default")
-        variable_naming = dict(
-            param="{param}",
-            param_levelist="{param}_{levelist}",
-            default="{param}_{levelist}",
-        ).get(self.build.variable_naming, self.build.variable_naming)
+        # variable_naming = dict(
+        #     param="{param}",
+        #     param_levelist="{param}_{levelist}",
+        #     default="{param}_{levelist}",
+        # ).get(self.build.variable_naming, self.build.variable_naming)
 
-        self.setdefault("output", Config())
-        self.output.setdefault("order_by", ["valid_datetime", "param_level", "number"])
-        self.output.setdefault("remapping", Config(param_level=variable_naming))
-        self.output.setdefault("statistics", "param_level")
-        self.output.setdefault("chunking", Config(dates=1, ensembles=1))
-        self.output.setdefault("dtype", "float32")
+        # self.setdefault("output", Config())
+        # self.output.setdefault("order_by", ["valid_datetime", "param_level", "number"])
+        # self.output.setdefault("remapping", Config(param_level=variable_naming))
+        # self.output.setdefault("statistics", "param_level")
+        # self.output.setdefault("chunking", Config(dates=1, ensembles=1))
+        # self.output.setdefault("dtype", "float32")
 
-        if "statistics_start" in self.output:
-            raise ValueError("statistics_start is not supported anymore. Use 'statistics:start:' instead")
-        if "statistics_end" in self.output:
-            raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
+        # if "statistics_start" in self.output:
+        #     raise ValueError("statistics_start is not supported anymore. Use 'statistics:start:' instead")
+        # if "statistics_end" in self.output:
+        #     raise ValueError("statistics_end is not supported anymore. Use 'statistics:end:' instead")
 
         self.setdefault("statistics", Config())
         if "allow_nans" not in self.statistics:

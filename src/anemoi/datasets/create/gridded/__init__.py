@@ -11,65 +11,33 @@ import datetime
 import json
 import logging
 import os
+import shutil
 from functools import cached_property
 from typing import Any
 
-import cftime
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
+from numpy.typing import NDArray
 
-from anemoi.datasets import MissingDateError
-from anemoi.datasets import open_dataset
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from ..config import loader_config
-from .check import DatasetName
 from .statistics import default_statistics_dates
 
 LOG = logging.getLogger(__name__)
 
 
-def json_tidy(o: Any) -> Any:
-    """Convert various types to JSON serializable format.
+class Synchronizer:
+    """A placeholder for now"""
 
-    Parameters
-    ----------
-    o : Any
-        The object to convert.
+    def __init__(self, path):
+        pass
 
-    Returns
-    -------
-    Any
-        The JSON serializable object.
-    """
-    if isinstance(o, datetime.datetime):
-        return o.isoformat()
+    def __enter__(self):
+        pass
 
-    if isinstance(o, datetime.datetime):
-        return o.isoformat()
-
-    if isinstance(o, datetime.timedelta):
-        return frequency_to_string(o)
-
-    if isinstance(o, cftime.DatetimeJulian):
-        import pandas as pd
-
-        o = pd.Timestamp(
-            o.year,
-            o.month,
-            o.day,
-            o.hour,
-            o.minute,
-            o.second,
-        )
-        return o.isoformat()
-
-    if isinstance(o, (np.float32, np.float64)):
-        return float(o)
-
-    raise TypeError(f"{repr(o)} is not JSON serializable {type(o)}")
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
 
 
 def build_statistics_dates(
@@ -110,293 +78,255 @@ def build_statistics_dates(
     return (start.isoformat(), end.isoformat())
 
 
-def _path_readable(path: str) -> bool:
-    """Check if the path is readable.
-
-    Parameters
-    ----------
-    path : str
-        The path to check.
-
-    Returns
-    -------
-    bool
-        True if the path is readable, False otherwise.
-    """
-    import zarr
-
-    try:
-        zarr.open(path, "r")
-        return True
-    except zarr.errors.PathNotFoundError:
-        return False
-
-
 class Dataset:
     """A class to represent a dataset."""
 
-    def __init__(self, path: str):
-        """Initialize a Dataset instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        """
+    def __init__(self, path: str, overwrite: bool = False, update: bool = False) -> None:
         self.path = path
+        self.overwrite = overwrite
+        self.update = update
+
+        if self.overwrite and not self.update:
+            raise ValueError("Cannot use overwrite without update")
 
         _, ext = os.path.splitext(self.path)
         if ext != ".zarr":
             raise ValueError(f"Unsupported extension={ext} for path={self.path}")
 
-    def add_dataset(self, mode: str = "r+", **kwargs: Any) -> zarr.Array:
-        """Add a dataset to the Zarr store.
+        if overwrite:
+            try:
+                shutil.rmtree(self.path)
+            except FileNotFoundError:
+                pass
 
-        Parameters
-        ----------
-        mode : str, optional
-            The mode to open the Zarr store.
-        **kwargs
-            Additional arguments for the dataset.
+        mode = "r"
+        if overwrite or update:
+            mode = "a" if update else "w"
 
-        Returns
-        -------
-        zarr.Array
-            The added dataset.
-        """
-        import zarr
+        self.store = zarr.open(self.path, mode=mode)
+        self.synchronizer = Synchronizer(self.path)
 
-        z = zarr.open(self.path, mode=mode)
-        from .zarr import add_zarr_dataset
-
-        return add_zarr_dataset(zarr_root=z, **kwargs)
-
-    def update_metadata(self, **kwargs: Any) -> None:
-        """Update the metadata of the dataset.
-
-        Parameters
-        ----------
-        **kwargs
-            The metadata to update.
-        """
-        import zarr
-
-        LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="w+")
-        for k, v in kwargs.items():
-            if isinstance(v, np.datetime64):
-                v = v.astype(datetime.datetime)
-            if isinstance(v, datetime.date):
-                v = v.isoformat()
-            z.attrs[k] = json.loads(json.dumps(v, default=json_tidy))
-
-    @cached_property
-    def anemoi_dataset(self) -> Any:
-        """Get the Anemoi dataset."""
-        return open_dataset(self.path)
-
-    @cached_property
-    def zarr_metadata(self) -> dict:
-        """Get the Zarr metadata."""
-        import zarr
-
-        return dict(zarr.open(self.path, mode="r").attrs)
-
-    def print_info(self) -> None:
-        """Print information about the dataset."""
-        import zarr
-
-        z = zarr.open(self.path, mode="r")
-        try:
-            LOG.info(z["data"].info)
-        except Exception as e:
-            LOG.info(e)
-
-    def get_zarr_chunks(self) -> tuple:
-        """Get the chunks of the Zarr dataset.
-
-        Returns
-        -------
-        tuple
-            The chunks of the Zarr dataset.
-        """
-        import zarr
-
-        z = zarr.open(self.path, mode="r")
-        return z["data"].chunks
-
-    def check_name(
+    def add_dataset(
         self,
+        *,
+        name: str,
+        dtype: np.dtype = None,
+        fill_value: np.generic = None,
+        shape: tuple[int, ...] = None,
+        array: NDArray[Any] = None,
+        overwrite: bool = True,
+        dimensions: tuple[str, ...] = None,
+        chunks: tuple[int, ...] = None,
+    ) -> zarr.Array:
+        """Add a dataset to a Zarr group."""
+        assert dimensions is not None, "Please pass dimensions to add_zarr_dataset."
+        assert isinstance(dimensions, (tuple, list))
+
+        bits = name.split("/")
+        zarr_root = self.store
+        for b in bits[:-1]:
+            if b not in zarr_root:
+                zarr_root = zarr_root.create_group(b)
+            else:
+                zarr_root = zarr_root[b]
+        name = bits[-1]
+
+        if dtype is None:
+            assert array is not None, (name, shape, array, dtype, zarr_root)
+            dtype = array.dtype
+
+        if shape is None:
+            assert array is not None, (name, shape, array, dtype, zarr_root)
+            shape = array.shape
+
+        if array is not None:
+            assert array.shape == shape, (array.shape, shape)
+            a = zarr_root.create_dataset(
+                name,
+                shape=shape,
+                dtype=dtype,
+                overwrite=overwrite,
+                chunks=chunks,
+            )
+            a[...] = array
+            a.attrs["_ARRAY_DIMENSIONS"] = dimensions
+            return a
+
+        if fill_value is None:
+            if str(dtype).startswith("float") or str(dtype).startswith("numpy.float"):
+                fill_value = np.nan
+            elif str(dtype).startswith("datetime64") or str(dtype).startswith("numpy.datetime64"):
+                fill_value = np.datetime64("NaT")
+            # elif str(dtype).startswith("timedelta64") or str(dtype).startswith(
+            #    "numpy.timedelta64"
+            # ):
+            #    kwargs["fill_value"] = np.timedelta64("NaT")
+            elif str(dtype).startswith("int") or str(dtype).startswith("numpy.int"):
+                fill_value = 0
+            elif str(dtype).startswith("bool") or str(dtype).startswith("numpy.bool"):
+                fill_value = False
+            else:
+                raise ValueError(f"No fill_value for dtype={dtype}")
+
+        print(
+            f"Creating zarr dataset {name} with shape={shape}, dtype={dtype}, fill_value={fill_value}, chunks={chunks}"
+        )
+        a = zarr_root.create_dataset(
+            name,
+            shape=shape,
+            dtype=dtype,
+            overwrite=overwrite,
+            chunks=chunks,
+            fill_value=fill_value,
+        )
+        a.attrs["_ARRAY_DIMENSIONS"] = dimensions
+        return a
+
+    def update_metadata(self, *args, **kwargs) -> None:
+        """Update the metadata of the dataset."""
+
+        metadata = dict(*args, **kwargs)
+        metadata = json.loads(json.dumps(metadata, default=str))
+
+        self.store.attrs.update(metadata)
+
+    # def get_zarr_chunks(self) -> tuple:
+    #     """Get the chunks of the Zarr dataset.
+
+    #     Returns
+    #     -------
+    #     tuple
+    #         The chunks of the Zarr dataset.
+    #     """
+    #     import zarr
+
+    #     z = zarr.open(self.path, mode="r")
+    #     return z["data"].chunks
+
+    @staticmethod
+    def check_name(
         resolution: str,
         dates: list[datetime.datetime],
         frequency: datetime.timedelta,
         raise_exception: bool = True,
-        is_test: bool = False,
     ) -> None:
-        """Check the name of the dataset.
+        """Check the name of the dataset."""
+        LOG.warning("BACK: Dataset.check_name is not implemented fully yet.")
+        return
+        # basename, _ = os.path.splitext(os.path.basename(self.path))
+        # try:
+        #     DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
+        # except Exception as e:
+        #     if raise_exception and not is_test:
+        #         raise e
+        #     else:
+        #         LOG.warning(f"Dataset name error: {e}")
 
-        Parameters
-        ----------
-        resolution : str
-            The resolution of the dataset.
-        dates : list of datetime.datetime
-            The dates of the dataset.
-        frequency : datetime.timedelta
-            The frequency of the dataset.
-        raise_exception : bool, optional
-            Whether to raise an exception if the name is invalid.
-        is_test : bool, optional
-            Whether this is a test.
-        """
-        basename, _ = os.path.splitext(os.path.basename(self.path))
+    def clean(self) -> None:
+        """Clean up the synchronizer path."""
+        if self.synchronizer_path is not None:
+            try:
+                shutil.rmtree(self.synchronizer_path)
+            except FileNotFoundError:
+                pass
+
+        _build = self.zarr_path + "/_build"
         try:
-            DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
-        except Exception as e:
-            if raise_exception and not is_test:
-                raise e
-            else:
-                LOG.warning(f"Dataset name error: {e}")
+            shutil.rmtree(_build)
+        except FileNotFoundError:
+            pass
 
-    def get_main_config(self) -> Any:
-        """Get the main configuration of the dataset.
+    # def get_lengths(self) -> list[int]:
+    #     """Get the lengths dataset.
+
+    #     Returns
+    #     -------
+    #     list[int]
+    #         The lengths dataset.
+    #     """
+    #     z = self._open_read()
+    #     return list(z["_build"][self.name_lengths][:])
+
+    def flags(self) -> list[bool]:
+        return self.store["_build"]["flags"][:]
+
+    def flag(self, i: int, value: bool | None = None) -> bool:
+        flags = self.store["_build"]["flags"]
+        if value is not None:
+            with self.synchronizer:
+                flags[i] = value
+
+        return flags[i]
+
+    def ready(self) -> bool:
+        """Check if all flags are set.
 
         Returns
         -------
-        Any
-            The main configuration.
+        bool
+            True if all flags are set, False otherwise.
         """
-        import zarr
+        return all(self.get_flags())
 
-        z = zarr.open(self.path, mode="r")
-        config = loader_config(z.attrs.get("_recipe"))
-
-        if "env" in config:
-            for k, v in config["env"].items():
-                LOG.info(f"Setting env variable {k}={v}")
-                os.environ[k] = str(v)
-
-        return config
-
-
-class WritableDataset(Dataset):
-    """A class to represent a writable dataset."""
-
-    def __init__(self, path: str):
-        """Initialize a WritableDataset instance.
+    def create(self, lengths: list[int], overwrite: bool = False) -> None:
+        """Create the lengths and flags datasets.
 
         Parameters
         ----------
-        path : str
-            The path to the dataset.
+        lengths : list[int]
+            Lengths to initialize the dataset with.
+        overwrite : bool
+            Whether to overwrite existing datasets.
         """
-        super().__init__(path)
-        self.path = path
+        self.new_dataset(name=self.name_lengths, array=np.array(lengths, dtype="i4"))
+        self.new_dataset(name=self.name_flags, array=np.array([False] * len(lengths), dtype=bool))
+        self.add_to_history("initialised")
 
-        import zarr
+    # def reset(self, lengths: list[int]) -> None:
+    #     """Reset the lengths and flags datasets.
 
-        self.z = zarr.open(self.path, mode="r+")
+    #     Parameters
+    #     ----------
+    #     lengths : list[int]
+    #         Lengths to initialize the dataset with.
+    #     """
+    #     return self.create(lengths, overwrite=True)
+
+    def add_provenance(self, name: str) -> None:
+
+        from anemoi.utils.provenance import gather_provenance_info
+
+        if name not in self.store.attrs:
+            self.store.attrs[name] = gather_provenance_info()
+
+    def init_progress(self, lengths: tuple[int, ...]) -> None:
+        """Initialize the progress tracking datasets.
+
+        Parameters
+        ----------
+        lengths : tuple[int, ...]
+            The lengths of each group.
+        """
+        LOG.warning("TODO: Initializing progress tracking datasets.")
+
+        self.add_dataset(
+            name="_build/lengths",
+            array=np.array(lengths, dtype="i4"),
+            overwrite=self.overwrite,
+            dimensions=("group",),
+        )
+        self.add_dataset(
+            name="_build/flags",
+            array=np.array([False] * len(lengths), dtype=bool),
+            overwrite=self.overwrite,
+            dimensions=("group",),
+        )
+        # self.create(lengths=lengths, overwrite=self.update)
 
     @cached_property
-    def data_array(self) -> Any:
-        """Get the data array of the dataset."""
-        import zarr
+    def dates(self):
+        return self.store["dates"][:]
 
-        return zarr.open(self.path, mode="r+")["data"]
-
-
-class NewDataset(Dataset):
-    """A class to represent a new dataset."""
-
-    def __init__(self, path: str, overwrite: bool = False):
-        """Initialize a NewDataset instance.
-
-        Parameters
-        ----------
-        path : str
-            The path to the dataset.
-        overwrite : bool, optional
-            Whether to overwrite the existing dataset.
-        """
-        super().__init__(path)
-        self.path = path
-
-        import zarr
-
-        self.z = zarr.open(self.path, mode="w")
-        self.z.create_group("_build")
-
-
-class DeltaDataset:
-    """A class to represent a dataset with delta values."""
-
-    def __init__(self, ds: Any, idelta: int):
-        """Initialize a DeltaDataset instance.
-
-        Parameters
-        ----------
-        ds : Any
-            The dataset.
-        idelta : int
-            The delta value.
-        """
-        self.ds = ds
-        self.idelta = idelta
-
-    def __getitem__(self, i: int) -> Any:
-        """Get an item from the dataset.
-
-        Parameters
-        ----------
-        i : int
-            The index.
-
-        Returns
-        -------
-        Any
-            The item.
-        """
-        j = i - self.idelta
-        if j < 0:
-            raise MissingDateError(f"Missing date {j}")
-        return self.ds[i : i + 1, ...] - self.ds[j : j + 1, ...]
-
-
-def validate_config(config: Any) -> None:
-
-    import json
-
-    import jsonschema
-
-    def _tidy(d):
-        if isinstance(d, dict):
-            return {k: _tidy(v) for k, v in d.items()}
-
-        if isinstance(d, list):
-            return [_tidy(v) for v in d if v is not None]
-
-        # jsonschema does not support datetime.date
-        if isinstance(d, datetime.datetime):
-            return d.isoformat()
-
-        if isinstance(d, datetime.date):
-            return d.isoformat()
-
-        return d
-
-    # https://json-schema.org
-
-    with open(
-        os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "schemas",
-            "recipe.json",
-        )
-    ) as f:
-        schema = json.load(f)
-
-    try:
-        jsonschema.validate(instance=_tidy(config), schema=schema)
-    except jsonschema.exceptions.ValidationError as e:
-        LOG.error("❌ Config validation failed (jsonschema):")
-        LOG.error(e.message)
-        raise
+    @property
+    def data(self):
+        return self.store["data"]
