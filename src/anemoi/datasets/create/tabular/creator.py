@@ -69,12 +69,8 @@ class TabularCreator(Creator):
             delete_files=True,
         )
 
-        for name in ("mean", "minimum", "maximum", "stdev"):
-            dataset.add_array(
-                name=name,
-                data=collector.statistics()[name],
-                dimensions=("variable",),  # TODO: check this
-            )
+        for name, data in collector.statistics().items():
+            dataset.add_array(name=name, data=data, dimensions=("variable",))
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
         raise NotImplementedError("Statistics are computed during finalisation for tabular datasets.")

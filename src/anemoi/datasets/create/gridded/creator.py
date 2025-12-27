@@ -19,6 +19,8 @@ from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
+from anemoi.datasets.caching import ChunksCache
+
 from ..check import check_data_values
 from ..creator import Creator
 from ..dataset import Dataset
@@ -268,14 +270,10 @@ class GriddedCreator(Creator):
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
         collector = StatisticsCollector(columns_names=self.variables_names)
 
-        data = dataset.data
+        data = ChunksCache(dataset.data)
         dates = dataset.dates
 
-        collector.collect(0, data, dates)
+        collector.collect(0, data, dates, progress=tqdm.tqdm)
 
-        for k, v in collector.statistics().items():
-            dataset.add_array(
-                name=k,
-                data=v,
-                dimensions=("variable",),  # TODO: check this
-            )
+        for name, data in collector.statistics().items():
+            dataset.add_array(name=name, data=data, dimensions=("variable",))

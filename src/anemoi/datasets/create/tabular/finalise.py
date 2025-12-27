@@ -607,9 +607,7 @@ def finalise_tabular_dataset(
                 os.unlink(chunk.file_path)
             return (chunk, array)
 
-        with ThreadPoolExecutor(
-            max_workers=2
-        ) as read_ahead:  # , ThreadPoolExecutor(max_workers=1) as compute_statistics:
+        with ThreadPoolExecutor(max_workers=2) as read_ahead:
 
             # Double buffering: keep two chunks loaded ahead for performance
             tasks: list[Any] = []

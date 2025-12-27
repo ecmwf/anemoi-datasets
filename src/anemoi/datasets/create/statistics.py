@@ -61,7 +61,7 @@ class StatisticsCollector:
         self._collectors = None
         self._columns_names = columns_names
 
-    def collect(self, offset: int, array: any, dates: any) -> None:
+    def collect(self, offset: int, array: any, dates: any, progress=None) -> None:
         if not self.is_active(offset, array, dates):
             return
 
@@ -69,7 +69,14 @@ class StatisticsCollector:
             names = self._columns_names
             self._collectors = [_Collector(str(_) if names is None else names[_]) for _ in range(array.shape[1])]
 
-        for i in range(array.shape[1]):
+        if progress is None:
+
+            def _identity(x):
+                return x
+
+            progress = _identity
+
+        for i in progress(range(array.shape[1])):
             self._collectors[i].update(array[:, i])
 
     def is_active(self, offset: int, array: any, dates: any) -> bool:
