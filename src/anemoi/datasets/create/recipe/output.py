@@ -13,18 +13,10 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import Field
 
-from ..config import OutputSpecs
-
 LOG = logging.getLogger(__name__)
 
 
-# def validate_order_by(v):
-#     if isinstance(v, (list, tuple)):
-#         return {k: "ascending" for k in v}
-#     return dict(v)
-
-
-class Output(BaseModel, OutputSpecs):
+class Output(BaseModel):
     dtype: str = "float32"
     flatten_grid: bool = True
 
@@ -32,3 +24,29 @@ class Output(BaseModel, OutputSpecs):
 
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
+
+    def get_chunking(self, coords: dict) -> tuple:
+        """Returns the chunking configuration based on coordinates.
+
+        Parameters
+        ----------
+        coords : dict
+            The coordinates dictionary.
+
+        Returns
+        -------
+        tuple
+            The chunking configuration.
+        """
+        user = self.chunking.copy()
+        chunks = []
+        for k, v in coords.items():
+            if k in user:
+                chunks.append(user.pop(k))
+            else:
+                chunks.append(len(v))
+        if user:
+            raise ValueError(
+                f"Unused chunking keys from config: {list(user.keys())}, not in known keys : {list(coords.keys())}"
+            )
+        return tuple(chunks)

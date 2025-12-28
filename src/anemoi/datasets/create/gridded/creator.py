@@ -174,9 +174,6 @@ class GriddedCreator(Creator):
         total = cube.count(reading_chunks)
         LOG.debug(f"Loading datacube: {cube}")
 
-        indexes = {int(_) for _ in indexes}
-        first = min(indexes)
-
         def position(x: Any) -> int | None:
             if isinstance(x, str) and "/" in x:
                 x = x.split("/")
@@ -197,9 +194,7 @@ class GriddedCreator(Creator):
             local_indexes = cubelet.coords
             load += time.time() - now
 
-            global_index = (local_indexes[0] + first,) + local_indexes[1:]
-
-            assert global_index[0] in indexes, (local_indexes, indexes, data.shape)
+            global_index = (int(indexes[local_indexes[0]]),) + local_indexes[1:]
 
             now = time.time()
             array[global_index] = data

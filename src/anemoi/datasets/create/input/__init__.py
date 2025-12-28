@@ -61,29 +61,5 @@ class InputBuilder:
         Any
             Selected data.
         """
-        # TODO: move me elsewhere
 
-        return context.create_result(
-            argument,
-            self.action(context, argument),
-        )
-
-
-def build_input(config: dict, data_sources: dict | list, **kwargs: Any) -> InputBuilder:
-    """Build an InputBuilder instance.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration dictionary.
-    data_sources : Union[dict, list]
-        Data sources.
-    **kwargs : Any
-        Additional keyword arguments.
-
-    Returns
-    -------
-    InputBuilder
-        An instance of InputBuilder.
-    """
-    return InputBuilder(config, data_sources, **kwargs)
+        return context.create_result(argument, self.action(context, argument))
