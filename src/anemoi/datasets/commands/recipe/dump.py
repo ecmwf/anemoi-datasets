@@ -17,7 +17,7 @@ from anemoi.datasets.create.recipe import Recipe
 class Dumper:
 
     def recipe(self, input, sources):
-        return {"input": input, "sources": sources}
+        return json.dumps({"input": input, "sources": sources}, indent=2, default=str)
 
     def call(self, name, config):
         return {name: config}
@@ -35,10 +35,13 @@ class Dumper:
         return {"join": {"actions": actions}}
 
 
-def dump_recipe(config: dict) -> str:
+def dump_recipe(config: dict, dumper=None) -> str:
     recipe = Recipe(**config)
     input = InputBuilder(
         recipe.input,
         data_sources=recipe.data_sources or {},
     )
-    return json.dumps(input.action.dump(Dumper()), indent=2, default=str)
+    if dumper is None:
+        dumper = Dumper()
+
+    return input.action.dump(dumper)
