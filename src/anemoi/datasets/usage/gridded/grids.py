@@ -355,7 +355,7 @@ class Cutout(GridsBase):
         ValueError
             If the global mask dimension does not match the global dataset grid points.
         """
-        from anemoi.datasets.grids import cutout_mask
+        from anemoi.datasets.usage.grids import cutout_mask
 
         for i, lam in enumerate(self.lams):
             assert len(lam.shape) == len(

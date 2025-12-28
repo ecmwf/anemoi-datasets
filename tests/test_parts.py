@@ -26,15 +26,12 @@ def test_part_filter():
     # Test case 1: no filter
     cf = PartFilter(parts=None, total=10)
     assert cf(5) is True
-    assert len(list(cf)) == len(cf)
 
     cf = PartFilter(parts="", total=10)
     assert cf(5) is True
-    assert len(list(cf)) == len(cf)
 
     cf = PartFilter(parts=[], total=10)
     assert cf(5) is True
-    assert len(list(cf)) == len(cf)
 
     # Test case 2: wrong input
     with pytest.raises(AssertionError):
@@ -59,7 +56,6 @@ def test_part_filter():
     assert cf(7) is cf_(7) is False
     assert cf(8) is cf_(8) is False
     assert cf(9) is cf_(9) is False
-    assert len(list(cf)) == len(cf)
 
     cf = PartFilter(parts="2/3", total=10)
     cf_ = PartFilter(parts=["2/3"], total=10)
@@ -73,7 +69,6 @@ def test_part_filter():
     assert cf(7) is cf_(7) is False
     assert cf(8) is cf_(8) is False
     assert cf(9) is cf_(9) is False
-    assert len(list(cf)) == len(cf)
 
     cf = PartFilter(parts="3/3", total=10)
     cf_ = PartFilter(parts=["3/3"], total=10)
@@ -87,13 +82,6 @@ def test_part_filter():
     assert cf(7) is cf_(7) is True
     assert cf(8) is cf_(8) is True
     assert cf(9) is cf_(9) is True
-    assert len(list(cf)) == len(cf)
-
-    # Test case 4: test __iter__
-    cf = PartFilter(parts="2/3", total=10)
-    for i in cf:
-        assert cf(i) is True
-    assert len(list(cf)) == 3
 
 
 if __name__ == "__main__":

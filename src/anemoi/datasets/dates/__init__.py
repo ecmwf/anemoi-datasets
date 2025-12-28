@@ -271,6 +271,9 @@ class StartEndDates(DatesProvider):
 
         super().__init__(missing=missing, window=window)
 
+    def dump(self, dumper):
+        return dumper.start_end_dates(self.start, self.end, self.frequency)
+
     def as_dict(self) -> dict[str, Any]:
         """Convert the StartEndDates instance to a dictionary.
 

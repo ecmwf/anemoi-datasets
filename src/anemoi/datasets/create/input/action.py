@@ -100,7 +100,7 @@ class Concat(Action):
 
     def dump(self, dumper):
         return dumper.concat(
-            {dumper.filtering_dates(filtering_dates): action.dump(dumper) for filtering_dates, action in self.choices}
+            {filtering_dates.dump(dumper): action.dump(dumper) for filtering_dates, action in self.choices}
         )
 
 
@@ -217,7 +217,7 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(context.source_argument(argument))
+        return source.execute(argument)
 
 
 class TransformSourceMixin:
@@ -238,14 +238,14 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return filter.forward(context.filter_argument(argument))
+        return filter.forward(argument)
 
 
 class FilterFunction(Function):
     """Action to call a filter on the argument (e.g. rename, regrid, etc.)."""
 
     def __call__(self, context, argument):
-        return self.call(context, argument, context.filter_argument)
+        return self.call(context, argument)
 
 
 def _make_name(name, what):

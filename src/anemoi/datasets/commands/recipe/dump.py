@@ -10,6 +10,8 @@
 
 import json
 
+from anemoi.utils.dates import frequency_to_string
+
 from anemoi.datasets.create.input import InputBuilder
 from anemoi.datasets.create.recipe import Recipe
 
@@ -28,11 +30,11 @@ class Dumper:
     def concat(self, actions):
         return {"concat": {"actions": actions}}
 
-    def filtering_dates(self, *args, **kwargs):
-        return repr(("filtering_dates", repr(args), repr(kwargs)))
-
     def join(self, actions):
         return {"join": {"actions": actions}}
+
+    def start_end_dates(self, start, end, frequency):
+        return repr((str(start), str(end), frequency_to_string(frequency)))
 
 
 def dump_recipe(config: dict, dumper=None) -> str:

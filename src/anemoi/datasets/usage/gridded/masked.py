@@ -15,7 +15,6 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.grids import cropping_mask
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
@@ -27,6 +26,7 @@ from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.grids import cropping_mask
 
 LOG = logging.getLogger(__name__)
 
