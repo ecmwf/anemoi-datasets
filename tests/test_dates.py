@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anemoi.datasets.create.gridded.statistics import default_statistics_dates
+from anemoi.datasets.create.recipe.statistics import Statistics
 
 _ = datetime.datetime
 
@@ -75,7 +75,7 @@ def default_start(*args: Any, **kwargs: Any) -> datetime.datetime:
     datetime.datetime
         Default start date.
     """
-    return default_statistics_dates(date_list(*args, **kwargs))[0]
+    return Statistics.default_statistics_dates(date_list(*args, **kwargs))[0]
 
 
 def default_end(*args: Any, **kwargs: Any) -> datetime.datetime:
@@ -93,7 +93,7 @@ def default_end(*args: Any, **kwargs: Any) -> datetime.datetime:
     datetime.datetime
         Default end date.
     """
-    return default_statistics_dates(date_list(*args, **kwargs))[1]
+    return Statistics.default_statistics_dates(date_list(*args, **kwargs))[1]
 
 
 @pytest.mark.parametrize("y", [2000, 2001, 2002, 2003, 2004, 2005, 1900, 2100])

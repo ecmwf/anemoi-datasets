@@ -8,25 +8,20 @@
 # nor does it submit to any jurisdiction.
 import logging
 import time
-import warnings
-from functools import cached_property
 from typing import Any
 
 import numpy as np
 import tqdm
-import zarr
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets.caching import ChunksCache
 
-from ..check import check_data_values
 from ..creator import Creator
 from ..dataset import Dataset
 from ..statistics import StatisticsCollector
 from .context import GriddedContext
-from .writer import ViewCacheArray
 
 LOG = logging.getLogger(__name__)
 
@@ -44,9 +39,6 @@ class GriddedCreator(Creator):
         LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
 
         variables_with_nans = self.recipe.statistics.allow_nans
-
-        grid_points = self.minimal_input.grid_points
-        LOG.info(f"gridpoints size: {[len(i) for i in grid_points]}")
 
         metadata["remapping"] = self.recipe.output.remapping
         metadata["order_by"] = self.recipe.output.order_by
@@ -159,13 +151,9 @@ class GriddedCreator(Creator):
 
         indexes = dates_to_indexes(dataset.dates, dates_in_data)
 
-        array = ViewCacheArray(dataset.data, shape=shape, indexes=indexes)
-        LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
-        self._load_cube(cube, array)
-
-        LOG.info("Flush data array")
-        array.flush()
-        LOG.info("Flushed data array")
+        with ChunksCache(dataset.data) as array:
+            LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
+            self._load_cube(cube, array, indexes)
 
     def check_dataset_name(self, path: str) -> None:
         LOG.warning("BACK: Dataset name checking not yes implemented.")
@@ -175,16 +163,8 @@ class GriddedCreator(Creator):
     def context(self):
         return GriddedContext(self.recipe)
 
-    def _load_cube(self, cube: Any, array: ViewCacheArray) -> None:
-        """Load the cube into the array.
-
-        Parameters
-        ----------
-        cube : Any
-            The cube to load.
-        array : ViewCacheArray
-            The array to load into.
-        """
+    def _load_cube(self, cube: Any, array: Any, indexes: Any) -> None:
+        """Load the cube into the array."""
         # There are several cubelets for each cube
         start = time.time()
         load = 0
@@ -193,6 +173,9 @@ class GriddedCreator(Creator):
         reading_chunks = None
         total = cube.count(reading_chunks)
         LOG.debug(f"Loading datacube: {cube}")
+
+        indexes = {int(_) for _ in indexes}
+        first = min(indexes)
 
         def position(x: Any) -> int | None:
             if isinstance(x, str) and "/" in x:
@@ -214,16 +197,12 @@ class GriddedCreator(Creator):
             local_indexes = cubelet.coords
             load += time.time() - now
 
-            name = self.variables_names[local_indexes[1]]
-            check_data_values(
-                data[:],
-                name=name,
-                log=[i, data.shape, local_indexes],
-                allow_nans=self._get_allow_nans(),
-            )
+            global_index = (local_indexes[0] + first,) + local_indexes[1:]
+
+            assert global_index[0] in indexes, (local_indexes, indexes, data.shape)
 
             now = time.time()
-            array[local_indexes] = data
+            array[global_index] = data
             save += time.time() - now
 
         now = time.time()
@@ -234,41 +213,12 @@ class GriddedCreator(Creator):
             f"write time: {seconds_to_human(save)}."
         )
 
-    # TODO: keep one of these methods
-    @cached_property
-    def allow_nans(self) -> bool | list:
-        """Check if NaNs are allowed."""
-
-        z = zarr.open(self.path, mode="r")
-        if "allow_nans" in z.attrs:
-            return z.attrs["allow_nans"]
-
-        if "variables_with_nans" in z.attrs:
-            return z.attrs["variables_with_nans"]
-
-        warnings.warn(f"Cannot find 'variables_with_nans' of 'allow_nans' in {self.path}.")
-        return True
-
-    def _get_allow_nans(self) -> bool | list:
-        """Get the allow_nans configuration.
-
-        Returns
-        -------
-        bool | list
-            The allow_nans configuration.
-        """
-        config = self.recipe
-        if "allow_nans" in config.build:
-            return config.build.allow_nans
-
-        return config.statistics.allow_nans
-
     def finalise_dataset(self, dataset: Dataset) -> None:
         # Nothing to do here
         pass
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
-        collector = StatisticsCollector(columns_names=self.variables_names)
+        collector = StatisticsCollector(variables_names=self.variables_names)
 
         data = ChunksCache(dataset.data)
         dates = dataset.dates

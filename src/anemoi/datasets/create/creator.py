@@ -299,7 +299,7 @@ class Creator(ABC):
     def task_statistics(self) -> None:
         LOG.info("Running statistics computation.")
         dataset = Dataset(self.path, update=True)
-        recompute_statistics = self.kwargs["recompute_statistics"]
+        recompute_statistics = self.kwargs.get("recompute_statistics", False)
 
         if all(name in dataset.store for name in ("mean", "minimum", "maximum", "stdev")) and not recompute_statistics:
             LOG.info("Statistics already present, skipping computation.")

@@ -33,7 +33,7 @@ class DateBisect(DateIndexing):
     def bulk_load(self, dates_ranges: np.ndarray) -> None:
 
         row_size = dates_ranges.nbytes // len(dates_ranges)
-        chunck_size = 128 * 1024 * 1024 // row_size  # Adjust chunk size to approx 128MB
+        chunck_size = 64 * 1024 * 1024 // row_size  # Adjust chunk size to approx 64MB
         LOG.info(f"Bulk loading {dates_ranges.shape} with chunk size {chunck_size}")
         date_index_ranges = self.store.create_dataset(
             "date_index_ranges",
@@ -80,7 +80,7 @@ class DateBisect(DateIndexing):
         first_row = self.index[start_idx] if start_idx < len(self.index) else None
         last_row = self.index[end_idx - 1] if end_idx > 0 else None
 
-        return first_row, last_row
+        return (first_row[0], first_row[1:]), (last_row[0], last_row[1:])
 
 
 # (49, 23)

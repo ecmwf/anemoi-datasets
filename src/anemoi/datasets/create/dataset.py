@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import datetime
 import json
 import logging
 import os
@@ -17,11 +16,6 @@ from typing import Any
 
 import numpy as np
 import zarr
-
-from anemoi.datasets.usage.misc import as_first_date
-from anemoi.datasets.usage.misc import as_last_date
-
-from .gridded.statistics import default_statistics_dates
 
 LOG = logging.getLogger(__name__)
 
@@ -37,44 +31,6 @@ class Synchronizer:
 
     def __exit__(self, exc_type, exc_value, traceback):
         pass
-
-
-def build_statistics_dates(
-    dates: list[datetime.datetime],
-    start: datetime.datetime | None,
-    end: datetime.datetime | None,
-) -> tuple[str, str]:
-    """Compute the start and end dates for the statistics.
-
-    Parameters
-    ----------
-    dates : list of datetime.datetime
-        The list of dates.
-    start : Optional[datetime.datetime]
-        The start date.
-    end : Optional[datetime.datetime]
-        The end date.
-
-    Returns
-    -------
-    tuple of str
-        The start and end dates in ISO format.
-    """
-    # if not specified, use the default statistics dates
-    default_start, default_end = default_statistics_dates(dates)
-    if start is None:
-        start = default_start
-    if end is None:
-        end = default_end
-
-    # in any case, adapt to the actual dates in the dataset
-    start = as_first_date(start, dates)
-    end = as_last_date(end, dates)
-
-    # and convert to datetime to isoformat
-    start = start.astype(datetime.datetime)
-    end = end.astype(datetime.datetime)
-    return (start.isoformat(), end.isoformat())
 
 
 class Dataset:

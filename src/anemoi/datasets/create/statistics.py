@@ -59,18 +59,24 @@ class _Collector:
 
 class StatisticsCollector:
 
-    def __init__(self, cutoff_date: datetime.datetime | None = None, columns_names: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        cutoff_date: datetime.datetime | None = None,
+        variables_names: list[str] | None = None,
+        allow_nans: bool = False,
+    ) -> None:
         self.cutoff_date = cutoff_date
 
         self._collectors = None
-        self._columns_names = columns_names
+        self._variables_names = variables_names
+        self._allow_nans = allow_nans
 
     def collect(self, offset: int, array: any, dates: any, progress=_identity) -> None:
         if not self.is_active(offset, array, dates):
             return
 
         if self._collectors is None:
-            names = self._columns_names
+            names = self._variables_names
             self._collectors = [_Collector(str(_) if names is None else names[_]) for _ in range(array.shape[1])]
 
         for i in progress(range(array.shape[1])):
@@ -94,3 +100,110 @@ class StatisticsCollector:
             result[key] = np.array(result[key])
 
         return result
+
+
+def fix_variance(x: float, name: str, count: np.array, sums: np.array, squares: np.array) -> float:
+    """Fix negative variance values due to numerical errors.
+
+    Parameters
+    ----------
+    x : float
+        The variance value.
+    name : str
+        The variable name.
+    count : numpy.ndarray
+        The count array.
+    sums : numpy.ndarray
+        The sums array.
+    squares : numpy.ndarray
+        The squares array.
+
+    Returns
+    -------
+    float
+        The fixed variance value.
+    """
+    assert count.shape == sums.shape == squares.shape
+    assert isinstance(x, float)
+
+    mean = sums / count
+    assert mean.shape == count.shape
+
+    if x >= 0:
+        return x
+
+    LOG.warning(f"Negative variance for {name=}, variance={x}")
+    magnitude = np.sqrt((squares / count + mean * mean) / 2)
+    LOG.warning(f"square / count - mean * mean =  {squares/count} - {mean*mean} = {squares/count - mean*mean}")
+    LOG.warning(f"Variable span order of magnitude is {magnitude}.")
+    LOG.warning(f"Count is {count}.")
+
+    variances = squares / count - mean * mean
+    assert variances.shape == squares.shape == mean.shape
+    if np.all(variances >= 0):
+        LOG.warning(f"All individual variances for {name} are positive, setting variance to 0.")
+        return 0
+
+    # if abs(x) < magnitude * 1e-6 and abs(x) < range * 1e-6:
+    #     LOG.warning("Variance is negative but very small.")
+    #     variances = squares / count - mean * mean
+    #     return 0
+
+    LOG.warning(f"ERROR at least one individual variance is negative ({np.nanmin(variances)}).")
+    return 0
+
+
+def check_variance(
+    x: np.array,
+    variables_names: list[str],
+    minimum: np.array,
+    maximum: np.array,
+    mean: np.array,
+    count: np.array,
+    sums: np.array,
+    squares: np.array,
+) -> None:
+    """Check for negative variance values and raise an error if found.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        The variance array.
+    variables_names : list of str
+        List of variable names.
+    minimum : numpy.ndarray
+        The minimum values array.
+    maximum : numpy.ndarray
+        The maximum values array.
+    mean : numpy.ndarray
+        The mean values array.
+    count : numpy.ndarray
+        The count array.
+    sums : numpy.ndarray
+        The sums array.
+    squares : numpy.ndarray
+        The squares array.
+
+    Raises
+    ------
+    ValueError
+        If negative variance is found.
+    """
+    if (x >= 0).all():
+        return
+    print(x)
+    print(variables_names)
+    for i, (name, y) in enumerate(zip(variables_names, x)):
+        if y >= 0:
+            continue
+        print("---")
+        print(f"❗ Negative variance for {name=}, variance={y}")
+        print(f" min={minimum[i]} max={maximum[i]} mean={mean[i]} count={count[i]} sums={sums[i]} squares={squares[i]}")
+        print(f" -> sums: min={np.min(sums[i])}, max={np.max(sums[i])}, argmin={np.argmin(sums[i])}")
+        print(f" -> squares: min={np.min(squares[i])}, max={np.max(squares[i])}, argmin={np.argmin(squares[i])}")
+        print(f" -> count: min={np.min(count[i])}, max={np.max(count[i])}, argmin={np.argmin(count[i])}")
+        print(
+            f" squares / count - mean * mean =  {squares[i] / count[i]} - {mean[i] * mean[i]} = {squares[i] / count[i] - mean[i] * mean[i]}"
+        )
+
+    raise ValueError("Negative variance")

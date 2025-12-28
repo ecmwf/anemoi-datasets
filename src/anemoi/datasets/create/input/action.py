@@ -186,7 +186,7 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(context.source_argument(argument))
+        return source.execute(argument)
 
 
 class TransformSourceMixin:
@@ -207,7 +207,7 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return filter.forward(context.filter_argument(argument))
+        return filter.forward(argument)
 
 
 class FilterFunction(Function):

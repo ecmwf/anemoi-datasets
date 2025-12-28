@@ -36,12 +36,6 @@ class GriddedContext(Context):
 
         return ekd.from_source("empty")
 
-    def source_argument(self, argument: Any) -> Any:
-        return argument  # .dates
-
-    def filter_argument(self, argument: Any) -> Any:
-        return argument
-
     def create_result(self, argument, data):
         from .result import GriddedResult
 

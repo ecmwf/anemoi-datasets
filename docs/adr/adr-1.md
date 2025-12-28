@@ -64,14 +64,30 @@ Because of the variability of the size of samples, it is not possible to select 
 
 Ranges of rows sharing the same date/time are indexed together for fast access when extracting windows of observations.
 
-The index is a Zarr-backed [b+tree](https://en.wikipedia.org/wiki/B-tree) stored in the array `time_index`.
-
 The keys to the btree are dates (as integer Unix epochs), and the values are pairs of integers `(start, length)` corresponding to the start row and number of rows of all records sharing the same date in the `data` array (which is sorted by date).
+
+Two indexing methods are implemented, and other can be added via plugins:
+
+#### binary search (bisect)
+
+The index is a simple 2D array with the date  (as integer Unix epochs) and the `start` and `length` of
+
+If N is the number of entries, fiding a date is in the order of O(log<sub>2</sub>(N)
+
+(https://docs.python.org/3/library/bisect.html)
+
+#### B-tree
+
+The index is a Zarr-backed [b+tree](https://en.wikipedia.org/wiki/B-tree) stored in the array `time_index`.
 
 The btree organises its entries in a balanced tree of pages containing several keys. If k is the number of keys per page and N the number of entries, lookups are O(log<sub>2</sub>(k) × log<sub>k</sub>(N)).
 
-Tests have been performed on a 100-year index, with values every second (3,155,760,000 entries). With pages of 256 entries, Zarr chunks of 64MB, the index is 106M with the default Zarr compression,
-and the average number of key comparisons in a lookup is ~32. It takes ~20 milliseconds to look up a date, with some chunck level caching.
+#####
+Tests have been performed on a 100-year index, with values every second (3,155,760,000 entries). With pages of 256 entries, Zarr chunks of 128MB, the index is 590M with the default Zarr compression,
+and the average number of key comparisons in a lookup is ~32. It takes ~50 milliseconds to look up a window (2 dates), with some chunck level caching.
+
+
+With bisect, the average to select a window is 360 ms (<3 per seconds) (394M on disk)
 
 ### Using the dataset
 

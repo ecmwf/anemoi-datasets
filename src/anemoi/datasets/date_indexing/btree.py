@@ -85,7 +85,7 @@ class ZarrBTree:
         name: str = "time_index",
         page_size: int = 256,
         mode: str = "r",
-        chunk_sizes: int = 128 * 1024 * 1024,  # 128 MB
+        chunk_sizes: int = 64 * 1024 * 1024,  # 64 MB
         page_cache_size: int = 4096,
         compressor=None,
     ):
@@ -695,7 +695,8 @@ class ZarrBTree:
                   Column 0: keys (datetime as microseconds since epoch)
                   Column 1: value first component
                   Column 2: value second component
-            check_sorted: bool
+            check_sorted: If True, verify that data is sorted by key.
+                          If False, assume data is already sorted.
 
         The data MUST be sorted by key (column 0) in ascending order.
         The tree must be empty before calling this method.
@@ -713,42 +714,60 @@ class ZarrBTree:
 
         # Verify data is sorted
         if check_sorted:
-            LOG.info("Verifying data is sorted...")
-            if not np.all(data[:-1, 0] < data[1:, 0]):
+            if not np.all(data[:-1, 0] <= data[1:, 0]):
                 raise ValueError("Data must be sorted by key (column 0) in ascending order")
-            LOG.info("Data is sorted.")
-        else:
-            LOG.warning("Skipping data sortedness check. Ensure data is sorted before bulk loading.")
 
         n_entries = len(data)
         entries_per_leaf = self.max_entries
+        n_leaves = (n_entries + entries_per_leaf - 1) // entries_per_leaf
 
-        # Step 1: Create all leaf pages
+        # Calculate total pages needed
+        # Leaves + internal nodes at each level
+        total_pages = n_leaves
+        current_level_size = n_leaves
+        while current_level_size > 1:
+            # Each parent covers (max_entries + 1) children
+            current_level_size = (current_level_size + self.max_entries) // (self.max_entries + 1)
+            total_pages += current_level_size
+
+        # Allocate all pages at once
+        cols_per_page = self.pages.shape[1]
+        self.pages.resize(total_pages, cols_per_page)
+
+        # Build leaf pages directly in Zarr array
         leaf_page_ids = []
-        leaf_first_keys = []  # First key in each leaf (for building parent nodes)
+        leaf_first_keys = []
+        current_row = 0  # Start from row 0 (page 1 is root, we'll overwrite it)
 
-        for i in tqdm.tqdm(range(0, n_entries, entries_per_leaf)):
+        for i in tqdm.tqdm(range(0, n_entries, entries_per_leaf), desc="Building B-tree leaves"):
             end_idx = min(i + entries_per_leaf, n_entries)
             chunk = data[i:end_idx]
+            chunk_size = len(chunk)
 
-            # Create leaf page
-            leaf = self._create_page(is_node=False)
-            leaf.entries = [
-                LeafEntry(key=int(chunk[j, 0]), value=(int(chunk[j, 1]), int(chunk[j, 2]))) for j in range(len(chunk))
-            ]
+            page_id = self._row_to_page_id(current_row)
 
-            # Link to previous leaf
-            if leaf_page_ids:
-                prev_leaf = self._read_page(leaf_page_ids[-1])
-                prev_leaf.right = leaf.page_id
-                leaf.left = prev_leaf.page_id
-                self._write_page(prev_leaf)
+            # Build page data directly as numpy array
+            page_data = np.zeros(cols_per_page, dtype=np.int64)
+            page_data[0] = 0  # is_node = False
+            page_data[1] = chunk_size  # count
+            page_data[2] = page_id - 1 if i > 0 else 0  # left link to previous leaf
+            page_data[3] = page_id + 1 if end_idx < n_entries else 0  # right link to next leaf
 
-            self._write_page(leaf)
-            leaf_page_ids.append(leaf.page_id)
+            # Copy entries directly: [key, val_a, val_b, key, val_a, val_b, ...]
+            for j in range(chunk_size):
+                base_idx = 4 + (j * 3)
+                page_data[base_idx] = chunk[j, 0]  # key
+                page_data[base_idx + 1] = chunk[j, 1]  # val_a
+                page_data[base_idx + 2] = chunk[j, 2]  # val_b
+
+            # Write entire page in one operation
+            self.pages[current_row, :] = page_data
+
+            leaf_page_ids.append(page_id)
             leaf_first_keys.append(int(chunk[0, 0]))
+            current_row += 1
 
-        # Step 2: Build internal node levels bottom-up
+        # Build internal node levels bottom-up
         current_level_ids = leaf_page_ids
         current_level_keys = leaf_first_keys
 
@@ -759,43 +778,42 @@ class ZarrBTree:
             # Group current level into parent nodes
             nodes_per_page = self.max_entries
 
-            for i in range(0, len(current_level_ids), nodes_per_page + 1):
-                # Each node has: 1 left child + up to max_entries (key, child) pairs
-                node = self._create_page(is_node=True)
+            for i in tqdm.tqdm(range(0, len(current_level_ids), nodes_per_page + 1), desc="Building B-tree levels"):
+                page_id = self._row_to_page_id(current_row)
 
-                # Left child is the first in this group
-                node.left = current_level_ids[i]
+                # Build node page data directly
+                page_data = np.zeros(cols_per_page, dtype=np.int64)
+                page_data[0] = 1  # is_node = True
+                page_data[2] = current_level_ids[i]  # left child
+                page_data[3] = 0  # right (unused for nodes)
 
-                # Remaining children become entries
+                # Add entries: remaining children
                 end_idx = min(i + nodes_per_page + 1, len(current_level_ids))
+                entry_count = 0
 
-                node.entries = []
                 for j in range(i + 1, end_idx):
-                    node.entries.append(NodeEntry(key=current_level_keys[j], child_page=current_level_ids[j]))
+                    base_idx = 4 + (entry_count * 3)
+                    page_data[base_idx] = current_level_keys[j]  # key
+                    page_data[base_idx + 1] = current_level_ids[j]  # child_page
+                    page_data[base_idx + 2] = 0  # unused
+                    entry_count += 1
 
-                self._write_page(node)
+                page_data[1] = entry_count  # count
 
-                next_level_ids.append(node.page_id)
+                # Write entire page in one operation
+                self.pages[current_row, :] = page_data
+
+                next_level_ids.append(page_id)
                 next_level_keys.append(current_level_keys[i])
+                current_row += 1
 
             current_level_ids = next_level_ids
             current_level_keys = next_level_keys
 
-        # Step 3: Update root to point to the top of the tree
+        # Update root to point to the top of the tree
         if len(current_level_ids) == 1:
             new_root_id = current_level_ids[0]
-
-            # If we built internal nodes, update root pointer
-            if new_root_id != leaf_page_ids[0] or len(leaf_page_ids) > 1:
-                self.root_page_id = new_root_id
-            else:
-                # Single leaf case - it becomes the root
-                # The root page (page 1) already exists as empty, so we need to copy data
-                root = self._read_page(1)
-                leaf = self._read_page(new_root_id)
-                root.entries = leaf.entries
-                root.is_node = False
-                self._write_page(root)
+            self.root_page_id = new_root_id
 
         self.flush()
 
@@ -817,11 +835,7 @@ class DateBTree(DateIndexing):
         return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
 
     def boundaries(self, start: int, end: int) -> tuple[int, int]:
-        first, last = self.btree.boundaries(start, end)
-        if first is None and last is None:
-            return None, None
-
-        return (first[0],) + first[1:], (last[0],) + last[1:]
+        return self.btree.boundaries(start, end)
 
     @cached_property
     def btree(self) -> ZarrBTree:

@@ -197,8 +197,8 @@ class WindowView:
             shape = (0,) + self.data.shape[1:]
             return self._filter(index, np.zeros(shape=shape, dtype=self.data.dtype))
 
-        first_date, start_idx, start_cnt = first
-        last_date, end_idx, end_cnt = last
+        first_date, (start_idx, start_cnt) = first
+        last_date, (end_idx, end_cnt) = last
 
         last_idx = end_idx + end_cnt
 

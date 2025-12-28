@@ -19,7 +19,7 @@ from earthkit.data import settings
 from numpy.typing import NDArray
 
 
-def cache_context(dirname: str) -> contextmanager:
+def xxxxxcache_context(dirname: str) -> contextmanager:
     """Context manager for setting a temporary cache directory.
 
     Parameters
@@ -45,7 +45,7 @@ def cache_context(dirname: str) -> contextmanager:
     return settings.temporary({"cache-policy": "user", "user-cache-directory": dirname})
 
 
-def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
+def xxxxxto_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
     """Convert various date formats to a list of datetime objects.
 
     Parameters
@@ -70,7 +70,7 @@ def to_datetime_list(*args: Any, **kwargs: Any) -> list[datetime.datetime]:
     return to_datetime_list_(*args, **kwargs)
 
 
-def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
+def xxxxxto_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
     """Convert various date formats to a single datetime object.
 
     Parameters
@@ -96,7 +96,7 @@ def to_datetime(*args: Any, **kwargs: Any) -> datetime.datetime:
     return to_datetime_(*args, **kwargs)
 
 
-def make_list_int(value: str | list | tuple | int) -> list[int]:
+def xxxxxmake_list_int(value: str | list | tuple | int) -> list[int]:
     """Convert a string, list, tuple, or integer to a list of integers.
 
     Parameters

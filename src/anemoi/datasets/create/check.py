@@ -11,14 +11,10 @@
 import datetime
 import logging
 import re
-import warnings
 from collections.abc import Callable
-from typing import Any
 
-import numpy as np
 from anemoi.utils.config import load_config
 from anemoi.utils.dates import frequency_to_string
-from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
@@ -240,89 +236,3 @@ class DatasetName:
         """
         if self.parsed.get(key) and self.parsed[key] != value:
             self.messages.append(f"the {key} is {value}, but is {self.parsed[key]} in {self.name}.")
-
-
-class StatisticsValueError(ValueError):
-    """Custom error for statistics value issues."""
-
-    pass
-
-
-def check_data_values(
-    arr: NDArray[Any], *, name: str, log: list = [], allow_nans: bool | list | set | tuple | dict = False
-) -> None:
-    """Check the values in the data array for validity.
-
-    Parameters
-    ----------
-    arr : NDArray[Any]
-        The data array to check.
-    name : str
-        The name of the data array.
-    log : list, optional
-        A list to log messages.
-    allow_nans : bool or list or set or tuple or dict, optional
-        Whether to allow NaNs in the data array.
-    """
-    shape = arr.shape
-
-    if (isinstance(allow_nans, (set, list, tuple, dict)) and name in allow_nans) or allow_nans:
-        arr = arr[~np.isnan(arr)]
-
-    if arr.size == 0:
-        warnings.warn(f"Empty array for {name} ({shape})")
-        return
-
-    assert arr.size > 0, (name, *log)
-
-    min, max = arr.min(), arr.max()
-    assert not (np.isnan(arr).any()), (name, min, max, *log)
-
-    if min == 9999.0:
-        warnings.warn(f"Min value 9999 for {name}")
-
-    if max == 9999.0:
-        warnings.warn(f"Max value 9999 for {name}")
-
-    in_minus_1_plus_1 = dict(minimum=-1, maximum=1)
-    limits = {
-        "cos_latitude": in_minus_1_plus_1,
-        "sin_latitude": in_minus_1_plus_1,
-        "cos_longitude": in_minus_1_plus_1,
-        "sin_longitude": in_minus_1_plus_1,
-    }
-
-    if name in limits:
-        if min < limits[name]["minimum"]:
-            warnings.warn(
-                f"For {name}: minimum value in the data is {min}. "
-                "Not in acceptable range [{limits[name]['minimum']} ; {limits[name]['maximum']}]"
-            )
-        if max > limits[name]["maximum"]:
-            warnings.warn(
-                f"For {name}: maximum value in the data is {max}. "
-                "Not in acceptable range [{limits[name]['minimum']} ; {limits[name]['maximum']}]"
-            )
-
-
-def check_stats(minimum: float, maximum: float, mean: float, msg: str, **kwargs: Any) -> None:
-    """Check if the mean value is within the min/max interval.
-
-    Parameters
-    ----------
-    minimum : float
-        The minimum value.
-    maximum : float
-        The maximum value.
-    mean : float
-        The mean value.
-    msg : str
-        The message to include in the error.
-    **kwargs : Any
-        Additional keyword arguments.
-    """
-    tolerance = (abs(minimum) + abs(maximum)) * 0.01
-    if (mean - minimum < -tolerance) or (mean - minimum < -tolerance):
-        raise StatisticsValueError(
-            f"Mean is not in min/max interval{msg} : we should have {minimum} <= {mean} <= {maximum}"
-        )
