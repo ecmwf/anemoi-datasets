@@ -85,7 +85,7 @@ class ZarrBTree:
         name: str = "time_index",
         page_size: int = 256,
         mode: str = "r",
-        chunk_sizes: int = 64 * 1024 * 1024,  # 64 MB
+        chunk_sizes: int = 128 * 1024 * 1024,  # 128 MB
         page_cache_size: int = 4096,
         compressor=None,
     ):
@@ -116,6 +116,7 @@ class ZarrBTree:
             self.page_size = self.pages.attrs["page_size"]
             self.max_entries = self.pages.attrs["max_entries"]
             self.chunk_sizes = self.pages.attrs["chunk_sizes"]
+            LOG.info(f"Opened existing B-tree with page size {self.page_size} and max entries {self.max_entries}")
         else:
 
             # Single array stores all pages:
@@ -128,7 +129,8 @@ class ZarrBTree:
 
             row_size = cols_per_page * 8
             chunk = round(chunk_sizes / row_size)
-            LOG.info(f"Output chunk size: {(chunk, cols_per_page)}")
+            LOG.info(f"Creating new B-tree with page size {self.page_size} and max entries {self.max_entries}")
+            LOG.info(f"Zarr array chunk size: {chunk} rows x {cols_per_page} cols")
 
             # Initialize with root page
             self.store.create_dataset(
@@ -715,6 +717,8 @@ class ZarrBTree:
             if not np.all(data[:-1, 0] < data[1:, 0]):
                 raise ValueError("Data must be sorted by key (column 0) in ascending order")
             LOG.info("Data is sorted.")
+        else:
+            LOG.warning("Skipping data sortedness check. Ensure data is sorted before bulk loading.")
 
         n_entries = len(data)
         entries_per_leaf = self.max_entries
@@ -800,12 +804,13 @@ class ZarrBTree:
 class DateBTree(DateIndexing):
     name = "btree"
 
-    def __init__(self, /, store, **kwargs):
+    def __init__(self, /, store, mode="r"):
         self.store = store
+        self.mode = mode
 
-    def bulk_load(self, dates_ranges: np.ndarray) -> None:
-        btree = ZarrBTree(path=self.store, name="date_index_btree", mode="a")
-        btree.bulk_load(dates_ranges, check_sorted=True)
+    def bulk_load(self, dates_ranges: np.ndarray, check_sorted=True) -> None:
+        btree = ZarrBTree(path=self.store, name="date_index_btree", mode=self.mode)
+        btree.bulk_load(dates_ranges, check_sorted=check_sorted)
 
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
         first_key, last_key = self.btree.first_last_keys()

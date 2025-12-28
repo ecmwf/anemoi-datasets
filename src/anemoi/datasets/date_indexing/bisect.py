@@ -14,6 +14,7 @@ import logging
 from functools import cached_property
 
 import numpy as np
+import tqdm
 
 from ..caching import ChunksCache
 from . import DateIndexing
@@ -33,16 +34,23 @@ class DateBisect(DateIndexing):
 
         row_size = dates_ranges.nbytes // len(dates_ranges)
         chunck_size = 128 * 1024 * 1024 // row_size  # Adjust chunk size to approx 128MB
-
+        LOG.info(f"Bulk loading {dates_ranges.shape} with chunk size {chunck_size}")
         date_index_ranges = self.store.create_dataset(
             "date_index_ranges",
-            data=dates_ranges,
+            # data=dates_ranges,
             shape=dates_ranges.shape,
             dtype=dates_ranges.dtype,
             chunks=(chunck_size, 3),
             overwrite=True,
         )
         date_index_ranges.attrs["_ARRAY_DIMENSIONS"] = ["epoch", "start_idx", "length"]
+
+        with ChunksCache(date_index_ranges) as index:
+            total = dates_ranges.shape[0]
+            step = chunck_size
+            for i in tqdm.tqdm(range(0, total, step)):
+                last = min(step, total - i)
+                index[i : i + last, :] = dates_ranges[i : i + last, :]
 
     @cached_property
     def index(self):
