@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 
-import datetime
 import logging
 
 import numpy as np
@@ -57,22 +56,27 @@ class _Collector:
         }
 
 
+def _all(array, dates):
+    return array, dates
+
+
 class StatisticsCollector:
 
     def __init__(
         self,
-        cutoff_date: datetime.datetime | None = None,
         variables_names: list[str] | None = None,
         allow_nans: bool = False,
+        filter=_all,
     ) -> None:
-        self.cutoff_date = cutoff_date
+        self._filter = filter
 
         self._collectors = None
         self._variables_names = variables_names
         self._allow_nans = allow_nans
 
     def collect(self, offset: int, array: any, dates: any, progress=_identity) -> None:
-        if not self.is_active(offset, array, dates):
+        array, dates = self._filter(array, dates)
+        if array is None:
             return
 
         if self._collectors is None:

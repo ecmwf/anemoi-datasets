@@ -122,12 +122,16 @@ class _Chunk:
         """
         match key:
             case int():
+                assert key >= 0, f"Only positive indices are supported {key}"
                 local_index = key - self.offset
                 if not (0 <= local_index < len(self.cache)):
                     raise IndexError("Index out of chunk bounds")
                 return local_index
 
             case slice():
+                assert key.step >= 1, "Negative or zero step slices are not supported"
+                assert key.start is not None and key.stop is not None, "Slice start and stop cannot be None"
+
                 # Assumes that the slice is normalised
                 local_index = slice(key.start - self.offset, key.stop - self.offset, key.step)
                 if not (0 <= local_index.start < len(self.cache)) or not (0 <= local_index.stop <= len(self.cache)):
@@ -136,6 +140,15 @@ class _Chunk:
 
             case tuple():
                 return (self._local_index(key[0]),) + key[1:]
+
+            case np.ndarray():
+                local_index = key - self.offset
+                if any(not (0 <= li < len(self.cache)) for li in local_index):
+                    raise IndexError(f"Array indices out of chunk bounds {key} => {local_index} ({self})")
+                return local_index
+
+            case list():
+                return self._local_index(np.array(key))
 
             case _:
                 raise TypeError(f"Unsupported key type: {type(key)}")
@@ -202,7 +215,13 @@ class _Chunk:
 class ChunksCache:
     """Caches chunks of a Zarr array for efficient access and modification."""
 
-    def __init__(self, array: zarr.Array, chunk_caching: int = 512 * 1024 * 1024, read_ahead: bool = False):
+    def __init__(
+        self,
+        array: zarr.Array,
+        chunk_caching: int = 512 * 1024 * 1024,
+        max_cached_chunks: int = None,
+        read_ahead: bool = False,
+    ):
         """Initialise the chunk cache for a Zarr array.
 
         Parameters
@@ -219,8 +238,12 @@ class ChunksCache:
 
         size_per_row = np.dtype(array.dtype).itemsize * array[0].size
         chunk_size = self._nrows_in_chunks * size_per_row
-        chunk_caching = max(chunk_caching, chunk_size)
-        chunks_in_cache = chunk_caching // chunk_size
+
+        if max_cached_chunks is None:
+            chunk_caching = max(chunk_caching, chunk_size)
+            chunks_in_cache = chunk_caching // chunk_size
+        else:
+            chunks_in_cache = max_cached_chunks
 
         LOG.info(
             f"Initializing ChunksCache with chunk shape {array.chunks}, "
@@ -280,7 +303,8 @@ class ChunksCache:
             The value to set.
         """
         with self._lock:
-            chunk, key = self._get_key_chunk(key)
+            key = self._normalise_key(key)
+            chunk = self._get_key_chunk(key)
             chunk[key] = value
 
     def __getitem__(self, key: Any) -> Any:
@@ -298,7 +322,8 @@ class ChunksCache:
         """
 
         with self._lock:
-            chunk, key = self._get_key_chunk(key)
+            key = self._normalise_key(key)
+            chunk = self._get_key_chunk(key)
             return chunk[key]
 
     def flush(self) -> None:
@@ -328,6 +353,7 @@ class ChunksCache:
         _Chunk
             The cached chunk.
         """
+        chunk_index = int(chunk_index)  # Ensure chunk_index is an int, in case it was passed as a numpy integer
         with self._lock:
             if chunk_index in self._lru_chunks_cache:
                 return self._lru_chunks_cache[chunk_index]
@@ -355,83 +381,95 @@ class ChunksCache:
 
             return self._lru_chunks_cache[chunk_index]
 
-    def _normalise_slice(self, key: slice) -> slice:
-        """Convert a slice to absolute indices (no Nones, no negatives).
-
-        Parameters
-        ----------
-        key : slice
-            The slice to normalise.
-
-        Returns
-        -------
-        slice
-            The normalised slice.
-        """
-        result = slice(*key.indices(self._arr.shape[0]))
-        assert result.step >= 1, "Negative or zero step slices are not supported"
-        assert result.start <= result.stop, "Slice start must be less than or equal to stop"
-        assert 0 <= result.start, "Slice start negative after normalisation"
-        return result
-
-    def _get_key_chunk(self, key: Any) -> tuple[Any, Any]:
-        """Retrieves the appropriate chunk and a normalised key.
+    def _normalise_key(self, key: Any) -> Any:
+        """Normalises the key to absolute indices (no Nones, no negatives).
 
         Parameters
         ----------
         key : Any
-            The key to access.
+            The key to normalise.
 
         Returns
         -------
-        tuple
-            The chunk and the normalised key.
-
-        Raises
-        ------
-        TypeError
-            If the key type is unsupported.
+        Any
+            The normalised key.
         """
         match key:
-
             case int():
                 if key < 0:
                     key += self._arr.shape[0]
-                chunk_index = key // self._nrows_in_chunks
-                return self._ensure_chunk_in_cache(chunk_index), key
+                return key
 
             case slice():
-                return self._get_key_chunk((key, slice(None, None, None)))
+                result = slice(*key.indices(self._arr.shape[0]))
+                assert result.step >= 1, "Negative or zero step slices are not supported"
+                assert result.start <= result.stop, "Slice start must be less than or equal to stop"
+                assert 0 <= result.start, "Slice start negative after normalisation"
+                return result
 
             case tuple():
-                if isinstance(key[0], int):
-                    chunk_index = key[0] // self._nrows_in_chunks
-                    return self._ensure_chunk_in_cache(chunk_index), key
+                return (self._normalise_key(key[0]),) + key[1:]
 
-                if isinstance(key[0], slice):
-                    slice_0 = self._normalise_slice(key[0])
-                    key = (slice_0,) + key[1:]
+            case list():
+                return self._normalise_list_key(np.array(key))
 
-                    start, stop, step = slice_0.start, slice_0.stop, slice_0.step
+            case np.ndarray():
+                assert key.ndim == 1, "Only 1D np.ndarray are supported"
 
-                    if start == stop:
-                        # Handle empty slice
-                        in_lru = list(self._lru_chunks_cache.keys())
-                        chunk_index = in_lru[0] if in_lru else 0
-                        return self._ensure_chunk_in_cache(chunk_index), key
+                if key.dtype == bool:
+                    return np.flatnonzero(key)
 
-                    last = start + step * ((stop - 1 - start) // step)
-                    start_chunk = start // self._nrows_in_chunks
-                    last_chunk = last // self._nrows_in_chunks
+                if np.issubdtype(key.dtype, np.integer):
+                    if np.any(key < 0):
+                        key = np.where(key < 0, key + self._arr.shape[0], key)
+                    return key
 
-                    if start_chunk == last_chunk:
-                        # The index is within a single chunk
-                        return self._ensure_chunk_in_cache(start_chunk), key
+                raise TypeError(f"Unsupported np.ndarray dtype: {key.dtype}")
 
-                    # The index spans multiple chunks, use multi-chunk handler
-                    return _MultiChunkSlice(self, key), key
+            case _:
+                raise TypeError(f"Unsupported key type: {type(key)} ({key})")
 
-                raise TypeError(f"Unsupported key type in tuple: {type(key[0])} ({key[0]})")
+    def _get_key_chunk(self, key: Any) -> _Chunk:
+
+        match key:
+
+            case int():
+                chunk_index = key // self._nrows_in_chunks
+                return self._ensure_chunk_in_cache(chunk_index)
+
+            case tuple():
+                return self._get_key_chunk(key[0])
+
+            case slice():
+
+                start, stop, step = key.start, key.stop, key.step
+
+                if start == stop:
+                    # Handle empty slice
+                    in_lru = list(self._lru_chunks_cache.keys())
+                    chunk_index = in_lru[0] if in_lru else 0
+                    return self._ensure_chunk_in_cache(chunk_index)
+
+                last = start + step * ((stop - 1 - start) // step)
+                start_chunk = start // self._nrows_in_chunks
+                last_chunk = last // self._nrows_in_chunks
+
+                if start_chunk == last_chunk:
+                    # The index is within a single chunk
+                    return self._ensure_chunk_in_cache(start_chunk)
+
+                # The index spans multiple chunks, use multi-chunk handler
+                return _MultiChunkSpan(self, self._arr.shape[0])
+
+            case np.ndarray():
+
+                if np.any(key < 0):
+                    key = np.where(key < 0, key + self._arr.shape[0], key)
+                unique_chunks = np.unique(key // self._nrows_in_chunks)
+                if len(unique_chunks) == 1:
+                    return self._ensure_chunk_in_cache(int(unique_chunks[0]))
+
+                return _MultiChunkSpan(self, self._arr.shape[0])
 
             case _:
                 raise TypeError(f"Unsupported key type: {type(key)} ({key})")
@@ -482,22 +520,19 @@ class ChunksCache:
         self.flush()
 
 
-class _MultiChunkSlice:
+class _MultiChunkSpan:
     """Handles multi-chunk slicing for ChunksCache."""
 
-    def __init__(self, cache: ChunksCache, key: tuple[Any, ...]):
+    def __init__(self, cache: ChunksCache, array_size: int):
         """Initialise a multi-chunk slice handler.
 
         Parameters
         ----------
         cache : ChunksCache
             The chunk cache.
-        key : tuple
-            The key representing the slice.
         """
         self._cache = cache
-        self._key = key
-        assert isinstance(key, tuple) and isinstance(key[0], slice)
+        self._array_size = array_size
 
     def __setitem__(self, key: tuple[Any, ...], value: Any) -> None:
         """Set values across multiple chunks.
@@ -509,8 +544,8 @@ class _MultiChunkSlice:
         value : Any
             The value to set.
         """
-        for chunk, idx, shape in self._split_chunks(key):
-            chunk[idx] = value[shape]
+        for chunk, idx, remaining_key, value_key in self._split_chunks(key):
+            chunk[(idx,) + remaining_key] = value[value_key]
 
     def __getitem__(self, key: tuple[Any, ...]) -> Any:
         """Get values across multiple chunks.
@@ -526,65 +561,48 @@ class _MultiChunkSlice:
             The concatenated values from all relevant chunks.
         """
         values = []
-        for chunk, idx, shape in self._split_chunks(key):
-            values.append(chunk[idx][shape])
+        for chunk, idx, remaining_key, _ in self._split_chunks(key):
+            values.append(chunk[(idx,) + remaining_key])
+
         return np.concatenate(values, axis=0)
 
-    def _split_chunks(self, key: tuple[Any, ...]) -> Iterator[tuple[_Chunk, tuple[Any, ...], slice]]:
-        """Splits the key into per-chunk slices.
+    def _split_chunks(
+        self,
+        key: list[int] | slice,
+        remaining_key: tuple[Any, ...] = (),
+    ) -> Iterator[tuple[Any, list[int], list[int]]]:
+        """Splits a list of global indices into per-chunk local indices."""
 
-        Parameters
-        ----------
-        key : tuple
-            The key representing the slice.
-
-        Yields
-        ------
-        tuple
-            The chunk, the index for that chunk, and the slice for assembling the result.
-        """
-        assert self._key == key
-        slice0 = key[0]
-
-        # Assume slice is normalised
-        start, stop, step = slice0.start, slice0.stop, slice0.step
-
-        # First and last indices selected by the slice
-        first_idx = start
-        last_idx = start + ((stop - start - 1) // step) * step
+        match key:
+            case slice():
+                iter = range(*key.indices(self._array_size))
+            case list():
+                iter = key
+            case np.ndarray():
+                iter = key.tolist()
+            case tuple():
+                yield from self._split_chunks(key[0], key[1:])
+                return
+            case _:
+                raise TypeError(f"Unsupported key type for multi-chunk slicing: {type(key)}")
 
         chunk_size = self._cache._nrows_in_chunks
+        last_chunk = -1
+        indices = []
+        start = 0
 
-        # First and last chunks touched
-        first_chunk = first_idx // chunk_size
-        last_chunk = last_idx // chunk_size
+        for idx in iter:
+            assert isinstance(idx, int) and idx >= 0, f"Only positive indices are supported as indices {idx}"
+            chunk_number = idx // chunk_size
+            if chunk_number != last_chunk:
+                if last_chunk != -1:
+                    chunk = self._cache._ensure_chunk_in_cache(last_chunk)
+                    yield chunk, indices, remaining_key, slice(start, start + len(indices))
+                    start += len(indices)
+                indices = []
+                last_chunk = chunk_number
+            indices.append(idx)
 
-        chunks = {}
-        for chunk_index in range(first_chunk, last_chunk + 1):
-            chunk_start = chunk_index * chunk_size
-            chunk_end = chunk_start + chunk_size
-
-            # Find first index in this chunk that the slice selects
-            if chunk_start <= start:
-                global_first = start
-            else:
-                # Need start + k*step >= chunk_start
-                k = (chunk_start - start + step - 1) // step  # Ceiling division
-                global_first = start + k * step
-
-            # Check if this index is still in range
-            if global_first >= stop or global_first >= chunk_end:
-                continue
-
-            # Find last index in this chunk that the slice selects
-            effective_stop = min(stop, chunk_end)
-            global_last = start + ((effective_stop - start - 1) // step) * step
-
-            chunks[chunk_index] = slice(global_first, global_last + 1, step)
-
-        shape = 0
-        for chunk_index, s in sorted(chunks.items()):
-            chunk = self._cache._ensure_chunk_in_cache(chunk_index)
-            end = min(len(chunk), self._cache._nrows_in_chunks, (s.stop - s.start) // s.step)
-            yield chunk, (s,) + key[1:], slice(shape, shape + end)
-            shape += end
+        if indices:
+            chunk = self._cache._ensure_chunk_in_cache(last_chunk)
+            yield chunk, indices, remaining_key, slice(start, start + len(indices))

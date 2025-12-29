@@ -213,10 +213,12 @@ class GriddedCreator(Creator):
         pass
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
-        collector = StatisticsCollector(variables_names=self.variables_names)
+        dates = dataset.dates
+        collector = StatisticsCollector(
+            variables_names=self.variables_names, filter=self.recipe.statistics.statistics_filter(dates)
+        )
 
         data = ChunksCache(dataset.data)
-        dates = dataset.dates
 
         collector.collect(0, data, dates, progress=tqdm.tqdm)
 

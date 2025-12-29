@@ -69,29 +69,9 @@ class Statistics(BaseModel):
         end = max(d for d in dates if to_datetime(d).year == end_year)
         return dates[0], end
 
-    @classmethod
-    def build_statistics_dates(
-        cls,
-        dates: list[datetime.datetime],
-        start: datetime.datetime | None,
-        end: datetime.datetime | None,
-    ) -> tuple[str, str]:
-        """Compute the start and end dates for the statistics.
-
-        Parameters
-        ----------
-        dates : list of datetime.datetime
-            The list of dates.
-        start : Optional[datetime.datetime]
-            The start date.
-        end : Optional[datetime.datetime]
-            The end date.
-
-        Returns
-        -------
-        tuple of str
-            The start and end dates in ISO format.
-        """
+    def statistics_filter(self, dates):
+        start = self.start
+        end = self.end
         # if not specified, use the default statistics dates
         default_start, default_end = Statistics.default_statistics_dates(dates)
         if start is None:
@@ -103,7 +83,26 @@ class Statistics(BaseModel):
         start = as_first_date(start, dates)
         end = as_last_date(end, dates)
 
-        # and convert to datetime to isoformat
-        start = start.astype(datetime.datetime)
-        end = end.astype(datetime.datetime)
-        return (start.isoformat(), end.isoformat())
+        assert start <= end, f"Invalid statistics date range: start={start}, end={end}"
+
+        start = np.datetime64(start).astype(dates[0].dtype)
+        end = np.datetime64(end).astype(dates[0].dtype)
+
+        def filter(array, dates):
+
+            if start <= dates[0] and end >= dates[-1]:
+                return array, dates
+
+            if end < dates[0] or start > dates[-1]:
+                return None, None
+
+            mask = (dates >= start) & (dates <= end)
+            if not np.any(mask):
+                return None, None
+
+            array = array[mask, :]
+            dates = dates[mask]
+
+            return array, dates
+
+        return filter
