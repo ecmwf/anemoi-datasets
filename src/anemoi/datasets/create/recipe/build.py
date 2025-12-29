@@ -8,12 +8,34 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import Annotated
 
 from pydantic import BaseModel
+from pydantic import BeforeValidator
 
 LOG = logging.getLogger(__name__)
 
 
+def validate_variable_naming(value):
+    NAMINGS = {
+        "param": "{param}",
+        "param_levelist": "{param}_{levelist}",
+        "default": "{param}_{levelist}",
+    }
+
+    return NAMINGS.get(value, value)
+
+
+def validate_mapping(value):
+    assert False, validate_mapping
+
+
 class Build(BaseModel):
+
+    class Config:
+        # arbitrary_types_allowed = True
+        extra = "forbid"
+
     use_grib_paramid: bool = False
     allow_nans: bool = False
+    variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = validate_variable_naming("default")

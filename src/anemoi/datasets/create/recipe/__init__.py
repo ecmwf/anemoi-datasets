@@ -16,6 +16,7 @@ from anemoi.utils.config import DotDict
 from pydantic import BaseModel
 from pydantic import BeforeValidator
 from pydantic import Field
+from pydantic import model_validator
 
 from .build import Build
 from .output import Output
@@ -34,6 +35,16 @@ DotDictField = Annotated[DotDict, BeforeValidator(validate_dotdict)]
 
 
 class Recipe(BaseModel):
+
+    @model_validator(mode="after")
+    def _post_init(self) -> "Recipe":
+        # We need to call _post_init on nested BaseModel members
+        # So that they can do their own post-initialization
+        # Once all members have been initialized
+        for member in self.__dict__.values():
+            if isinstance(member, BaseModel) and hasattr(member, "_post_init"):
+                member._post_init(self)
+        return self
 
     class Config:
         arbitrary_types_allowed = True

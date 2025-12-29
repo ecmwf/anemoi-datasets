@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
 class TabularResult(Result):
     """Class to represent the result of an action in the dataset creation process."""
 
-    def __init__(self, context: Any, argument: Any, frame: Any) -> None:
+    def __init__(self, context: Any, argument: Any, frame: pd.DataFrame) -> None:
 
         assert isinstance(frame, pd.DataFrame), type(frame)
 
@@ -30,9 +30,9 @@ class TabularResult(Result):
         assert "longitude" in frame.columns, frame.columns
         assert "date" in frame.columns, frame.columns
 
-        assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
-        assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
-        assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
+        assert np.issubdtype(frame["latitude"].dtype, np.floating)
+        assert np.issubdtype(frame["longitude"].dtype, np.floating)
+        assert np.issubdtype(frame["date"].dtype, np.datetime64)
 
         self.frame = frame
         start_date, end_date = argument.start_date, argument.end_date
@@ -68,9 +68,9 @@ class TabularResult(Result):
         self.frame = self.frame.sort_values(by=self.frame.columns.tolist(), kind="mergesort").reset_index(drop=True)
         self.argument = argument
 
-    def to_numpy(self, dtype=np.float32) -> np.ndarray:
+    def to_numpy(self, dtype: type = np.float32) -> np.ndarray:
         # Convert the DataFrame to a 2D NumPy array of type float32
-        return self.frame.to_numpy(dtype=np.float32)
+        return self.frame.to_numpy(dtype=dtype)
 
     @property
     def start_date(self) -> datetime.datetime:
@@ -80,44 +80,6 @@ class TabularResult(Result):
     def end_date(self) -> datetime.datetime:
         return self.argument.end_date
 
-    ###################
-
     @property
     def variables(self) -> list[str]:
         return self.frame.columns.tolist()
-
-    @property
-    def ensembles(self) -> list[int]:
-        return []
-
-    @property
-    def grid_points(self) -> list[tuple[float, float]]:
-        return [np.zeros(2), np.zeros(2)]
-
-    @property
-    def resolution(self):
-        return None
-
-    # @property
-    # def coords(self) -> dict[str, Any]:
-    #     return {'dates': [], 'variables': self.variables, 'ensembles': self.ensembles, 'grid_points': self.grid_points}
-
-    @property
-    def shape(self) -> tuple[int, ...]:
-        return (len(self.frame), len(self.variables))
-
-    @property
-    def data_request(self) -> dict[str, Any]:
-        return {}
-
-    @property
-    def field_shape(self) -> tuple[int, ...]:
-        return (0, 0)
-
-    @property
-    def proj_string(self) -> str:
-        return ""
-
-    @property
-    def variables_metadata(self) -> dict[str, dict[str, Any]]:
-        return {}

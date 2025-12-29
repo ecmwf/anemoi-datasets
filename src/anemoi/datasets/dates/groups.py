@@ -48,6 +48,12 @@ class GroupOfDates:
         self.provider = provider
         self.partial_ok = partial_ok
 
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
+        """Used in pytest"""
+        dates = DatesProvider.from_config(config)
+        return cls(dates.values, dates)
+
     def __len__(self) -> int:
         """Return the number of dates in the group.
 

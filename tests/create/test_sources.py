@@ -334,7 +334,7 @@ def test_planetary_computer_conus404() -> None:
 def test_csv(get_test_data: callable) -> None:
     """Test for CSV source registration."""
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import DatesProvider
+    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.csv")
 
@@ -352,50 +352,52 @@ def test_csv(get_test_data: callable) -> None:
             }
         },
     )
-    window = DatesProvider.from_config({"start": "2025-01-01T00:00:00", "end": "2025-12-21T23:59:59"})
+    dates = GroupOfDates.from_config(
+        {"start": "2025-01-01T00:00:00", "end": "2025-12-21T23:59:59"},
+    )
 
-    frame = source.execute(window)
+    frame = source.execute(dates)
     assert len(frame) == 2526
 
     assert "latitude" in frame.columns, frame.columns
     assert "longitude" in frame.columns, frame.columns
-    assert "time" in frame.columns, frame.columns
+    assert "date" in frame.columns, frame.columns
 
-    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
-    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
-    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
+    assert np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert np.issubdtype(frame["date"].dtype, np.datetime64)
+
+
+# @pytest.mark.skip(reason="BUFR source currently not functional")
+@skip_if_offline
+def test_bufr(get_test_data: callable) -> None:
+
+    from anemoi.datasets.create.sources import create_source
+    from anemoi.datasets.dates.groups import GroupOfDates
+
+    data = get_test_data("anemoi-datasets/obs/dribu.bufr")
+
+    source = create_source(context=None, config={"bufr": {"path": data}})
+    dates = GroupOfDates.from_config(
+        start="2020-01-01T00:00:00",
+        end="2020-01-02:23:59:59",
+    )
+
+    source.execute(dates)
 
 
 @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
 def test_odb(get_test_data: callable) -> None:
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import Groups
+    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.odb")
 
     source = create_source(context=None, config={"odb": {"path": data}})
-    window = Groups(
+    dates = GroupOfDates.from_config(
         start="2020-01-01T00:00:00",
         end="2020-01-02:23:59:59",
     )
 
-    source.execute(window)
-
-
-@pytest.mark.skip(reason="BUFR source currently not functional")
-@skip_if_offline
-def test_bufr(get_test_data: callable) -> None:
-
-    from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import Groups
-
-    data = get_test_data("anemoi-datasets/obs/dribu.bufr")
-
-    source = create_source(context=None, config={"bufr": {"path": data}})
-    window = Groups(
-        start="2020-01-01T00:00:00",
-        end="2020-01-02:23:59:59",
-    )
-
-    source.execute(window)
+    source.execute(dates)

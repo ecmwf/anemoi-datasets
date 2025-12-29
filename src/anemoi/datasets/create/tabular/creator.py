@@ -59,7 +59,7 @@ class TabularCreator(Creator):
     def finalise_dataset(self, dataset: Dataset) -> None:
         from .finalise import finalise_tabular_dataset
 
-        collector = StatisticsCollector(columns_names=self.variables_names)
+        collector = StatisticsCollector(variables_names=self.variables_names)
 
         finalise_tabular_dataset(
             store=dataset.store,

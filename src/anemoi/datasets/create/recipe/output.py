@@ -25,6 +25,12 @@ class Output(BaseModel):
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
 
+    def _post_init(self, recipe: BaseModel) -> None:
+        # We need to access `build`. This is for backward compatibility.
+        # We need to find a better way to do that.
+        if "param_level" in self.remapping:
+            self.remapping["param_level"] = recipe.build.variable_naming
+
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
 
