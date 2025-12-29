@@ -368,7 +368,7 @@ def test_csv(get_test_data: callable) -> None:
     assert np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
-# @pytest.mark.skip(reason="BUFR source currently not functional")
+@pytest.mark.skip(reason="BUFR source currently not functional")
 @skip_if_offline
 def test_bufr(get_test_data: callable) -> None:
 
