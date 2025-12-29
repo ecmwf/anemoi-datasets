@@ -39,3 +39,4 @@ class Build(BaseModel):
     use_grib_paramid: bool = False
     allow_nans: bool = False
     variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = validate_variable_naming("default")
+    group_by: str | int = "monthly"

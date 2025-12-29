@@ -60,6 +60,20 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
     }
 
     def _merge(md1: dict[str, Any], md2: dict[str, Any]) -> dict[str, Any]:
+        """Merge two metadata dictionaries, combining differing values into lists.
+
+        Parameters
+        ----------
+        md1 : dict[str, Any]
+            First metadata dictionary.
+        md2 : dict[str, Any]
+            Second metadata dictionary.
+
+        Returns
+        -------
+        dict[str, Any]
+            The merged metadata dictionary.
+        """
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
         result: dict[str, Any] = {}
         for k in md1.keys():
@@ -283,6 +297,17 @@ class GriddedResult(Result):
     _coords_already_built: bool = False
 
     def __init__(self, context: Any, argument: Any, datasource: Any) -> None:
+        """Initialise a GriddedResult instance.
+
+        Parameters
+        ----------
+        context : Any
+            The context in which the result is created.
+        argument : Any
+            The group of dates for the result.
+        datasource : Any
+            The data source for the result.
+        """
 
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -297,12 +322,12 @@ class GriddedResult(Result):
 
     @property
     def data_request(self) -> dict[str, Any]:
-        """Returns a dictionary with the parameters needed to retrieve the data."""
+        """Return a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
 
     @property
     def origins(self) -> dict[str, Any]:
-        """Returns a dictionary with the parameters needed to retrieve the data."""
+        """Return a dictionary with the parameters needed to retrieve the data origins."""
         return {"version": 1, "origins": self._origins}
 
     def get_cube(self) -> Any:
@@ -515,6 +540,7 @@ class GriddedResult(Result):
         exit(1)
 
     def build_coords(self) -> None:
+        """Build the coordinate arrays for the result if not already built."""
         """Build the coordinates for the result."""
         if self._coords_already_built:
             return

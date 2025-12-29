@@ -29,9 +29,16 @@ class TabularCreator(Creator):
     ######################################################
 
     def check_dataset_name(self, path: str) -> None:
+        """Check the dataset name for validity.
+
+        Parameters
+        ----------
+        path : str
+            The path to the dataset to be checked.
+        """
         pass
 
-    def collect_metadata(self, metadata: dict):
+    def collect_metadata(self, metadata: dict) -> None:
         # See if that can be combined with `gridded`
 
         variables = self.minimal_input.variables
@@ -39,14 +46,30 @@ class TabularCreator(Creator):
         metadata["variables"] = variables
 
     def initialise_dataset(self, dataset: Dataset) -> None:
+        """Initialise the dataset arrays and coordinates for tabular data.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset object to be initialised with arrays and coordinates.
+        """
         pass
 
     ######################################################
 
-    def context(self):
+    def context(self) -> TabularContext:
         return TabularContext(self.recipe)
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
+        """Load the result into the dataset by saving it as a NumPy file.
+
+        Parameters
+        ----------
+        result : Any
+            The result object containing the data to be loaded.
+        dataset : Dataset
+            The dataset object into which the result will be loaded.
+        """
         os.makedirs(self.work_dir, exist_ok=True)
         np.save(
             os.path.join(
@@ -57,6 +80,13 @@ class TabularCreator(Creator):
         )
 
     def finalise_dataset(self, dataset: Dataset) -> None:
+        """Finalise the dataset after all data has been loaded.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset object to be finalised.
+        """
         from .finalise import finalise_tabular_dataset
 
         collector = StatisticsCollector(variables_names=self.variables_names)
@@ -73,4 +103,11 @@ class TabularCreator(Creator):
             dataset.add_array(name=name, data=data, dimensions=("variable",))
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        """Compute and store statistics for the dataset.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset object for which statistics will be computed and stored.
+        """
         raise NotImplementedError("Statistics are computed during finalisation for tabular datasets.")
