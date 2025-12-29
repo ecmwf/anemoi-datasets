@@ -243,6 +243,9 @@ class Forwards(Dataset):
     def project(self, projection):
         return self.forward.project(projection).add_transformation(self)
 
+    def usage_factory_load(self, name: str) -> Any:
+        return self.forward.usage_factory_load(name)
+
 
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""

@@ -116,3 +116,10 @@ class TabularZarr(ZarrStore):
 
     def variables_metadata(self) -> dict[str, dict[str, Any]]:
         raise NotImplementedError()
+
+    def usage_factory_load(self, name):
+        import importlib
+
+        package, symbol = name.split(".")
+        module = importlib.import_module(f".{package}", package=__package__)
+        return getattr(module, symbol)

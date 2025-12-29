@@ -58,6 +58,9 @@ class TabularResult(Result):
         self.frame["__time"] = self.frame["__date"] % 86400
         self.frame["__date"] = self.frame["__date"] // 86400
 
+        # Normalize longitudes to be within [0, 360)
+        self.frame["__longitude"] = self.frame["__longitude"] % 360
+
         # Move __date, __time, __latitude and __longitude to the beginning of the DataFrame
         cols = self.frame.columns.tolist()
         first_cols = ["__date", "__time", "__latitude", "__longitude"]

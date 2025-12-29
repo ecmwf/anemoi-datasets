@@ -43,6 +43,8 @@ An experimental implementation using xarray-zarr has been developed and is not o
 
 The `data` table contains one row per observation. It has four mandatory columns (`date`, `time`, `latitude`, `longitude`), followed by additional columns that are specific to each data source.
 
+All longitudes will be normalised between 0 and 360.
+
 Rows are sorted in lexicographic order of the columns.
 
 | Date       | Time     | Latitude | Longitude | Col 1  | Col 2 | ... | Col N  |

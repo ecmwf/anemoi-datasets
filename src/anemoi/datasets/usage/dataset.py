@@ -265,7 +265,7 @@ class Dataset(ABC, Sized):
             return Thinning(self, thinning, method)._subset(**kwargs).mutate()
 
         if "area" in kwargs:
-            from anemoi.datasets.usage.gridded.masked import Cropping
+            Cropping = self.usage_factory_load("masked.Cropping")
 
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
@@ -1108,6 +1108,11 @@ class Dataset(ABC, Sized):
         names : set of str
             The dataset names.
         """
+        pass
+
+    @abstractmethod
+    def usage_factory_load(self, name: str) -> Any:
+        """Load a usage factory by name."""
         pass
 
     def get_latitudes(self, i):
