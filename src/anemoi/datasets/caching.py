@@ -411,7 +411,7 @@ class ChunksCache:
                 return (self._normalise_key(key[0]),) + key[1:]
 
             case list():
-                return self._normalise_list_key(np.array(key))
+                return self._normalise_key(np.array(key))
 
             case np.ndarray():
                 assert key.ndim == 1, "Only 1D np.ndarray are supported"
@@ -544,8 +544,8 @@ class _MultiChunkSpan:
         value : Any
             The value to set.
         """
-        for chunk, idx, remaining_key, value_key in self._split_chunks(key):
-            chunk[(idx,) + remaining_key] = value[value_key]
+        for chunk, idx, value_key in self._split_chunks(key):
+            chunk[idx] = value[value_key]
 
     def __getitem__(self, key: tuple[Any, ...]) -> Any:
         """Get values across multiple chunks.
@@ -561,48 +561,95 @@ class _MultiChunkSpan:
             The concatenated values from all relevant chunks.
         """
         values = []
-        for chunk, idx, remaining_key, _ in self._split_chunks(key):
-            values.append(chunk[(idx,) + remaining_key])
+        for chunk, idx, value_key in self._split_chunks(key):
+            values.append(chunk[idx])
 
         return np.concatenate(values, axis=0)
 
     def _split_chunks(
-        self,
-        key: list[int] | slice,
-        remaining_key: tuple[Any, ...] = (),
+        self, key: Any, remaining_key: tuple[Any, ...] = ()
     ) -> Iterator[tuple[Any, list[int], list[int]]]:
         """Splits a list of global indices into per-chunk local indices."""
 
         match key:
-            case slice():
-                iter = range(*key.indices(self._array_size))
-            case list():
-                iter = key
-            case np.ndarray():
-                iter = key.tolist()
             case tuple():
                 yield from self._split_chunks(key[0], key[1:])
                 return
-            case _:
-                raise TypeError(f"Unsupported key type for multi-chunk slicing: {type(key)}")
+
+            case slice():
+                yield from self._split_slice_chunks(key, remaining_key)
+                return
+
+            case np.ndarray() | list():
+                yield from self._split_array_chunks(key, remaining_key)
+                return
+
+        raise TypeError(f"Unsupported key type for multi-chunk slicing: {type(key)}")
+
+    def _split_slice_chunks(self, key: slice, remaining_key: tuple[Any, ...]) -> Iterator[tuple[Any, list[int], slice]]:
+        """Faster version of _split_array_chunks for slice keys."""
+
+        start, stop, step = key.indices(self._array_size)
+        if start >= stop:
+            return
 
         chunk_size = self._cache._nrows_in_chunks
-        last_chunk = -1
-        indices = []
-        start = 0
+        idx = start
+        offset = 0
 
-        for idx in iter:
-            assert isinstance(idx, int) and idx >= 0, f"Only positive indices are supported as indices {idx}"
+        while idx < stop:
             chunk_number = idx // chunk_size
-            if chunk_number != last_chunk:
-                if last_chunk != -1:
-                    chunk = self._cache._ensure_chunk_in_cache(last_chunk)
-                    yield chunk, indices, remaining_key, slice(start, start + len(indices))
-                    start += len(indices)
-                indices = []
-                last_chunk = chunk_number
-            indices.append(idx)
+            # The first index of the NEXT chunk
+            next_boundary = (chunk_number + 1) * chunk_size
 
-        if indices:
-            chunk = self._cache._ensure_chunk_in_cache(last_chunk)
-            yield chunk, indices, remaining_key, slice(start, start + len(indices))
+            # Calculate how many steps we can take before hitting or crossing the boundary
+            # Formula: ceil((boundary - current) / step)
+            steps_to_boundary = (next_boundary - idx + step - 1) // step
+
+            # Ensure we don't go past the slice's stop point
+            steps_to_stop = (stop - idx + step - 1) // step
+            actual_steps = min(steps_to_boundary, steps_to_stop)
+
+            segment_stop = idx + (actual_steps * step)
+
+            indices = np.arange(idx, segment_stop, step)
+
+            yield (
+                self._cache._ensure_chunk_in_cache(chunk_number),
+                (indices,) + remaining_key,
+                slice(offset, offset + len(indices)),
+            )
+
+            offset += len(indices)
+            idx = segment_stop
+
+    def _split_array_chunks(
+        self, key: np.ndarray, remaining_key: tuple[Any, ...]
+    ) -> Iterator[tuple[Any, list[int], slice]]:
+
+        # Use Numpy for speed
+        key = np.asanyarray(key)
+
+        if key.size == 0:
+            return
+
+        chunk_size = self._cache._nrows_in_chunks
+        chunk_ids = key // chunk_size
+
+        # Find where the chunk ID changes
+        change_points = np.flatnonzero(chunk_ids[1:] != chunk_ids[:-1]) + 1
+
+        # Split indices and chunk IDs at the change points
+        split_indices = np.split(key, change_points)
+        split_chunks = np.split(chunk_ids, change_points)
+
+        offset = 0
+        for i in range(len(split_indices)):
+            chunk_number = int(split_chunks[i][0])
+            indices = split_indices[i]
+            yield (
+                self._cache._ensure_chunk_in_cache(chunk_number),
+                (indices,) + remaining_key,
+                slice(offset, offset + len(indices)),
+            )
+            offset += len(indices)

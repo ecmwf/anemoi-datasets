@@ -93,6 +93,7 @@ def _test_cache(test_func):
     test_func(array, data, random, np.array([0, 10, 20, 30, 40]))
     test_func(array, data, random, np.array([SIZE - 1, SIZE - 10, SIZE - 20]))
     test_func(array, data, random, np.array([True if i % 2 == 0 else False for i in range(SIZE)]))
+    test_func(array, data, random, [i * 1000 for i in range(SIZE // 1000)])
 
 
 def test_cache_read():
