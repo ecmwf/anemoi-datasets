@@ -88,21 +88,7 @@ class Statistics(BaseModel):
         start = np.datetime64(start).astype(dates[0].dtype)
         end = np.datetime64(end).astype(dates[0].dtype)
 
-        def filter(array, dates):
-
-            if start <= dates[0] and end >= dates[-1]:
-                return array, dates
-
-            if end < dates[0] or start > dates[-1]:
-                return None, None
-
-            mask = (dates >= start) & (dates <= end)
-            if not np.any(mask):
-                return None, None
-
-            array = array[mask, :]
-            dates = dates[mask]
-
-            return array, dates
+        def filter(dates):
+            return np.where((dates >= start) & (dates <= end))[0]
 
         return filter

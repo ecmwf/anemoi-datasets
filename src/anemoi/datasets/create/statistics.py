@@ -77,8 +77,8 @@ class _TendencyCollector(_CollectorBase):
         self._queue.append(data)
 
 
-def _all(array, dates):
-    return array, dates
+def _all(dates):
+    return range(len(dates))
 
 
 class StatisticsCollector:
@@ -99,9 +99,6 @@ class StatisticsCollector:
         self._tendencies_collectors = {}
 
     def collect(self, array: any, dates: any, progress=_identity) -> None:
-        # array, dates = self._filter(array, dates)
-        # if array is None:
-        #     return
 
         if self._collectors is None:
             names = self._variables_names
@@ -113,13 +110,18 @@ class StatisticsCollector:
                     for _ in range(array.shape[1])
                 ]
 
-        for data in progress(array):
+        for i in progress(self._filter(dates)):
+
+            data = array[i]
+
+            # This part is negligeble compared to data access. No need to optimise.
 
             for j in range(array.shape[1]):
-                self._collectors[j].update(data[j])
+                values = data[j]
+                self._collectors[j].update(values)
 
                 for c in self._tendencies_collectors.values():
-                    c[j].update(data[j])
+                    c[j].update(values)
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:

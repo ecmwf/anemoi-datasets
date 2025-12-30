@@ -221,6 +221,7 @@ class ChunksCache:
         chunk_caching: int = 512 * 1024 * 1024,
         max_cached_chunks: int = None,
         read_ahead: bool = False,
+        no_reload: bool = False,
     ):
         """Initialise the chunk cache for a Zarr array.
 
@@ -235,6 +236,8 @@ class ChunksCache:
         """
         self._arr = array
         self._nrows_in_chunks = array.chunks[0]
+        self._no_reload = no_reload
+        self._was_loaded = set()
 
         size_per_row = np.dtype(array.dtype).itemsize * array[0].size
         chunk_size = self._nrows_in_chunks * size_per_row
@@ -364,6 +367,13 @@ class ChunksCache:
         chunk = _Chunk(self._arr, chunk_index)
 
         with self._lock:
+
+            # For debugging purposes, check again if the chunk was loaded while we were outside the lock
+            if self._no_reload:
+                if chunk_index in self._was_loaded:
+                    raise RuntimeError(f"Chunk {chunk_index} has already been loaded once, re-loading is disabled")
+                self._was_loaded.add(chunk_index)
+
             self._lru_chunks_cache[chunk_index] = chunk
 
             if LOG.isEnabledFor(logging.DEBUG):
@@ -425,6 +435,9 @@ class ChunksCache:
                     return key
 
                 raise TypeError(f"Unsupported np.ndarray dtype: {key.dtype}")
+
+            case np.integer():
+                return self._normalise_key(int(key))
 
             case _:
                 raise TypeError(f"Unsupported key type: {type(key)} ({key})")
