@@ -18,11 +18,11 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.common.forwards import Combined
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
 from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.forwards import Combined
 from anemoi.datasets.usage.gridded.concat import ConcatMixin
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open

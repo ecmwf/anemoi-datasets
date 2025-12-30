@@ -19,7 +19,6 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.common.forwards import Forwards
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
@@ -27,6 +26,7 @@ from anemoi.datasets.usage.dataset import TupleIndex
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices

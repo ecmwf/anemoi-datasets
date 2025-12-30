@@ -280,6 +280,13 @@ class GriddedZarr(ZarrStore):
         """Return the name of the dataset."""
         return self.store.attrs.get("recipe", {}).get("name", self.path)
 
+    def usage_factory_load(self, name):
+        import importlib
+
+        package, symbol = name.split(".")
+        module = importlib.import_module(f".{package}", package=__package__)
+        return getattr(module, symbol)
+
 
 class ZarrWithMissingDates(GriddedZarr):
     """A zarr dataset with missing dates."""

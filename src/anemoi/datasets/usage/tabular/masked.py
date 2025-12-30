@@ -13,9 +13,9 @@ from typing import Any
 
 import numpy as np
 
-from anemoi.datasets.usage.common.forwards import Forwards
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.forwards import Forwards
 
 LOG = logging.getLogger(__name__)
 

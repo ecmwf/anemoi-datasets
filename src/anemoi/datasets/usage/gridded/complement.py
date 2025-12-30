@@ -16,12 +16,12 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from ..common.forwards import Combined
 from ..dataset import Dataset
 from ..dataset import FullIndex
 from ..dataset import Shape
 from ..dataset import TupleIndex
 from ..debug import Node
+from ..forwards import Combined
 from ..grids import nearest_grid_points
 from ..misc import _auto_adjust
 from ..misc import _open_dataset

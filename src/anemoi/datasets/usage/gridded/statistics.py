@@ -16,9 +16,9 @@ from typing import Any
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.usage.common.forwards import Forwards
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.forwards import Forwards
 
 LOG = logging.getLogger(__name__)
 
