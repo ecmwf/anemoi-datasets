@@ -506,7 +506,6 @@ def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
 
 def _statistics_collector_worker(
     statistic_collector: StatisticsCollector,
-    offset: int,
     array: np.ndarray,
     dates: np.ndarray,
 ) -> None:
@@ -521,8 +520,6 @@ def _statistics_collector_worker(
     ----------
     statistic_collector : StatisticsCollector
         The statistics collector instance to use.
-    offset : int
-        The offset of the chunk in the final dataset.
     array : numpy.ndarray
         The data array for which to collect statistics.
     dates : numpy.ndarray
@@ -530,7 +527,7 @@ def _statistics_collector_worker(
     """
 
     dates = dates.astype("datetime64[s]")
-    statistic_collector.collect(offset, array, dates)
+    statistic_collector.collect(array, dates)
 
 
 def finalise_tabular_dataset(
@@ -626,7 +623,7 @@ def finalise_tabular_dataset(
                     dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
 
                     # compute_statistics.submit(_collect_statistics_worker, statistic_collector, chunk.offset, array , dates)
-                    _statistics_collector_worker(statistic_collector, chunk.offset, array, dates)
+                    _statistics_collector_worker(statistic_collector, array, dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     all_dates[chunk.offset : chunk.offset + chunk.shape[0]] = dates
