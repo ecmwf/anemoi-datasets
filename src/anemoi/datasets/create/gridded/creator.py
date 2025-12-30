@@ -231,7 +231,7 @@ class GriddedCreator(Creator):
             tendencies=tendencies,
         )
 
-        data = ChunksCache(dataset.data)
+        data = ChunksCache(dataset.data, read_ahead=True)
 
         collector.collect(data, dates, progress=tqdm.tqdm)
 

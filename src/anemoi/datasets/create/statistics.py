@@ -99,9 +99,9 @@ class StatisticsCollector:
         self._tendencies_collectors = {}
 
     def collect(self, array: any, dates: any, progress=_identity) -> None:
-        array, dates = self._filter(array, dates)
-        if array is None:
-            return
+        # array, dates = self._filter(array, dates)
+        # if array is None:
+        #     return
 
         if self._collectors is None:
             names = self._variables_names

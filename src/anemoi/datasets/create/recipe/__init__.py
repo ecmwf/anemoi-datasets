@@ -116,8 +116,15 @@ def loader_recipe_from_zarr(path: str) -> dict:
     import zarr
 
     z = zarr.open(path, mode="r")
-    if "_recipe" not in z.attrs:
-        raise ValueError(f"No recipe found in Zarr store at {path}")
 
-    recipe = json.loads(z.attrs["_recipe"])
-    return Recipe(**recipe)
+    for name in ("_recipe", "recipe"):
+        if name not in z.attrs:
+            # return None
+            LOG.error(f"No '{name}' found in Zarr store at {path}")
+            continue
+
+        recipe = z.attrs[name]
+        recipe = recipe if isinstance(recipe, dict) else json.loads(recipe)
+        return Recipe(**recipe)
+
+    raise ValueError(f"No recipe found in Zarr store at {path}")
