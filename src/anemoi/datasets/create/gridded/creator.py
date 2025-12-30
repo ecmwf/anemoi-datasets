@@ -13,6 +13,8 @@ from typing import Any
 import numpy as np
 import tqdm
 from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
@@ -212,15 +214,28 @@ class GriddedCreator(Creator):
         # Nothing to do here
         pass
 
-    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+    def compute_and_store_statistics(self, dataset: Dataset, tendencies: bool = True) -> None:
         dates = dataset.dates
+        TENDENCIES = [1, 3, 6, 12, 24]  # Read from recipe in future
+
+        tendencies = [frequency_to_timedelta(d) for d in TENDENCIES]
+        frequency = dataset.frequency
+
+        tendencies = {
+            frequency_to_string(t): int(t / frequency) for t in tendencies if int(t / frequency) == t / frequency
+        }
+
         collector = StatisticsCollector(
-            variables_names=self.variables_names, filter=self.recipe.statistics.statistics_filter(dates)
+            variables_names=self.variables_names,
+            filter=self.recipe.statistics.statistics_filter(dates),
+            tendencies=tendencies,
         )
 
         data = ChunksCache(dataset.data)
 
-        collector.collect(0, data, dates, progress=tqdm.tqdm)
+        collector.collect(data, dates, progress=tqdm.tqdm)
 
         for name, data in collector.statistics().items():
-            dataset.add_array(name=name, data=data, dimensions=("variable",))
+            dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)
+
+        print(collector.tendencies_statistics())

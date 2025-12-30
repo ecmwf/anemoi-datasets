@@ -21,7 +21,7 @@ def _identity(x):
     return x
 
 
-class _Collector:
+class _CollectorBase:
     def __init__(self, column) -> None:
         self._sum = np.float64(0.0)
         self._count = np.int64(0)
@@ -56,6 +56,27 @@ class _Collector:
         }
 
 
+class _Collector(_CollectorBase):
+    pass
+
+
+class _TendencyCollector(_CollectorBase):
+    def __init__(self, column, name: str, delta: int) -> None:
+        super().__init__(column)
+        self._name = name
+        self._delta = delta
+        self._queue = []
+
+    def update(self, data):
+        if len(self._queue) < self._delta:
+            self._queue.append(data)
+            return
+
+        previous = self._queue.pop(0)
+        super().update(data - previous)
+        self._queue.append(data)
+
+
 def _all(array, dates):
     return array, dates
 
@@ -67,14 +88,17 @@ class StatisticsCollector:
         variables_names: list[str] | None = None,
         allow_nans: bool = False,
         filter=_all,
+        tendencies: list[int] | None = None,
     ) -> None:
         self._filter = filter
 
         self._collectors = None
         self._variables_names = variables_names
         self._allow_nans = allow_nans
+        self._tendencies = tendencies or {}
+        self._tendencies_collectors = {}
 
-    def collect(self, offset: int, array: any, dates: any, progress=_identity) -> None:
+    def collect(self, array: any, dates: any, progress=_identity) -> None:
         array, dates = self._filter(array, dates)
         if array is None:
             return
@@ -83,11 +107,19 @@ class StatisticsCollector:
             names = self._variables_names
             self._collectors = [_Collector(str(_) if names is None else names[_]) for _ in range(array.shape[1])]
 
-        for i in progress(range(array.shape[1])):
-            self._collectors[i].update(array[:, i])
+            for name, delta in self._tendencies.items():
+                self._tendencies_collectors[name] = [
+                    _TendencyCollector(str(_) if names is None else names[_], name, delta)
+                    for _ in range(array.shape[1])
+                ]
 
-    def is_active(self, offset: int, array: any, dates: any) -> bool:
-        return self.cutoff_date is None or dates[0] <= self.cutoff_date
+        for data in progress(array):
+
+            for j in range(array.shape[1]):
+                self._collectors[j].update(data[j])
+
+                for c in self._tendencies_collectors.values():
+                    c[j].update(data[j])
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:
@@ -100,8 +132,29 @@ class StatisticsCollector:
             for key in STATISTICS:
                 result[key].append(stats[key])
 
-        for key in STATISTICS:
+        for name, collectors in self._tendencies_collectors.items():
+
+            tendencies = {key: [] for key in STATISTICS}
+
+            for collector in collectors:
+                stats = collector.statistics()
+                for key in STATISTICS:
+                    tendencies[key].append(stats[key])
+
+            for key in STATISTICS:
+                result[f"statistics_tendencies_{name}_{key}"] = tendencies[key]
+
+        for key in list(result.keys()):
             result[key] = np.array(result[key])
+
+        return result
+
+    def tendencies_statistics(self) -> dict[str, list[dict[str, float]]]:
+        if self._tendencies_collectors is None:
+            LOG.warning("No tendencies statistics collected")
+            return {name: {_: np.array([np.nan]) for _ in STATISTICS} for name in self._tendencies.keys()}
+
+        result = {}
 
         return result
 

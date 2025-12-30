@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import json
 import logging
 import os
@@ -16,6 +17,7 @@ from typing import Any
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_timedelta
 
 LOG = logging.getLogger(__name__)
 
@@ -206,3 +208,9 @@ class Dataset:
     @property
     def data(self):
         return self.store["data"]
+
+    @cached_property
+    def frequency(self) -> datetime.timedelta | None:
+        """Get the dataset frequency."""
+        frequency = self.store.attrs.get("frequency")
+        return frequency_to_timedelta(frequency) if frequency is not None else None
