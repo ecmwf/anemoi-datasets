@@ -107,7 +107,7 @@ Two indexing methods are implemented, and others can be added via anemoi's plugi
 
 The index is a simple 2D array with the `date`  (as integer Unix epochs) and the `start` and
 `length` as described above. Date lookup are done using Python's
-[bisect]((https://docs.python.org/3/library/bisect.html)) package.
+[bisect](https://docs.python.org/3/library/bisect.html) package.
 
 
 
@@ -123,7 +123,7 @@ references to other nodes.
 Leaf nodes are linked from smaller keys to larger keys, so that *ranges searched* only traverse the
 tree once.
 
-##### Tests
+#### Tests
 
 Both methods will search for a date is in the order of O(log<sub>2</sub>(N). For a billion dates
 (~32 years), this is around 30 comparaisons, and the number of zarr chunks accessed can be of the
