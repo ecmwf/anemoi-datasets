@@ -354,7 +354,7 @@ def thinning_mask(
     NDArray[Any]
         Array of indices of the closest points.
     """
-    from scipy.spatial import cKDTree
+    from scipy.spatial import KDTree
 
     assert global_lats.ndim == 1
     assert global_lons.ndim == 1
@@ -391,7 +391,7 @@ def thinning_mask(
     points = np.array(xyx).transpose()
 
     # Use a cKDTree to find the nearest points
-    _, indices = cKDTree(points).query(global_points, k=1)
+    _, indices = KDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
 

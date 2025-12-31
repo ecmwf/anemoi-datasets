@@ -163,9 +163,13 @@ class Dataset(ABC, Sized):
         if not kwargs:
             return self.mutate()
 
+        ############
+        # When adding a new option here, please also update `test_classes`
+        ############
+
         # This one must be first
         if "fill_missing_dates" in kwargs:
-            from anemoi.datasets.usage.gridded.fill_missing import fill_missing_dates_factory
+            fill_missing_dates_factory = self.usage_factory_load("fill_missing_dates_factory")
 
             fill_missing_dates = kwargs.pop("fill_missing_dates")
             ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
@@ -177,7 +181,7 @@ class Dataset(ABC, Sized):
             padding = kwargs.pop("padding", None)
 
             if padding:
-                from anemoi.datasets.usage.gridded.padded import Padded
+                Padded = self.usage_factory_load("Padded")
 
                 frequency = kwargs.pop("frequency", self.frequency)
                 return (
@@ -193,14 +197,14 @@ class Dataset(ABC, Sized):
                     .mutate()
                 )
 
-            from anemoi.datasets.usage.gridded.subset import Subset
+            Subset = self.usage_factory_load("Subset")
 
             return (
                 Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
             )
 
         if "frequency" in kwargs:
-            from anemoi.datasets.usage.gridded.subset import Subset
+            Subset = self.usage_factory_load("Subset")
 
             if "interpolate_frequency" in kwargs:
                 raise ValueError("Cannot use both `frequency` and `interpolate_frequency`")
@@ -213,65 +217,65 @@ class Dataset(ABC, Sized):
             )
 
         if "select" in kwargs:
-            from anemoi.datasets.usage.gridded.select import Select
+            Select = self.usage_factory_load("Select")
 
             select = kwargs.pop("select")
             return Select(self, self._select_to_columns(select), {"select": select})._subset(**kwargs).mutate()
 
         if "drop" in kwargs:
-            from anemoi.datasets.usage.gridded.select import Select
+            Select = self.usage_factory_load("Select")
 
             drop = kwargs.pop("drop")
             return Select(self, self._drop_to_columns(drop), {"drop": drop})._subset(**kwargs).mutate()
 
         if "reorder" in kwargs:
-            from anemoi.datasets.usage.gridded.select import Select
+            Select = self.usage_factory_load("Select")
 
             reorder = kwargs.pop("reorder")
             return Select(self, self._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
 
         if "rename" in kwargs:
-            from anemoi.datasets.usage.gridded.select import Rename
+            Rename = self.usage_factory_load("Rename")
 
             rename = kwargs.pop("rename")
             return Rename(self, rename)._subset(**kwargs).mutate()
 
         if "rescale" in kwargs:
-            from anemoi.datasets.usage.gridded.rescale import Rescale
+            Rescale = self.usage_factory_load("Rescale")
 
             rescale = kwargs.pop("rescale")
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs:
-            from anemoi.datasets import open_dataset
-            from anemoi.datasets.usage.gridded.statistics import Statistics
+
+            Statistics = self.usage_factory_load("Statistics")
 
             statistics = kwargs.pop("statistics")
 
-            return Statistics(self, open_dataset(statistics))._subset(**kwargs).mutate()
+            return Statistics(self, statistics)._subset(**kwargs).mutate()
 
         # Note: trim_edge should go before thinning
         if "trim_edge" in kwargs:
-            from anemoi.datasets.usage.gridded.masked import TrimEdge
+            TrimEdge = self.usage_factory_load("TrimEdge")
 
             edge = kwargs.pop("trim_edge")
             return TrimEdge(self, edge)._subset(**kwargs).mutate()
 
         if "thinning" in kwargs:
-            from anemoi.datasets.usage.gridded.masked import Thinning
+            Thinning = self.usage_factory_load("Thinning")
 
             thinning = kwargs.pop("thinning")
             method = kwargs.pop("method", "every-nth")
             return Thinning(self, thinning, method)._subset(**kwargs).mutate()
 
         if "area" in kwargs:
-            Cropping = self.usage_factory_load("masked.Cropping")
+            Cropping = self.usage_factory_load("Cropping")
 
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
         if "number" in kwargs or "numbers" in kwargs or "member" in kwargs or "members" in kwargs:
-            from anemoi.datasets.usage.gridded.ensemble import Number
+            Number = self.usage_factory_load("Number")
 
             members = {}
             for key in ["number", "numbers", "member", "members"]:
@@ -281,13 +285,13 @@ class Dataset(ABC, Sized):
             return Number(self, **members)._subset(**kwargs).mutate()
 
         if "set_missing_dates" in kwargs:
-            from anemoi.datasets.usage.gridded.missing import MissingDates
+            MissingDates = self.usage_factory_load("MissingDates")
 
             set_missing_dates = kwargs.pop("set_missing_dates")
             return MissingDates(self, set_missing_dates)._subset(**kwargs).mutate()
 
         if "skip_missing_dates" in kwargs:
-            from anemoi.datasets.usage.gridded.missing import SkipMissingDates
+            SkipMissingDates = self.usage_factory_load("SkipMissingDates")
 
             if "expected_access" not in kwargs:
                 raise ValueError("`expected_access` is required with `skip_missing_dates`")
@@ -299,13 +303,13 @@ class Dataset(ABC, Sized):
                 return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
         if "interpolate_frequency" in kwargs:
-            from anemoi.datasets.usage.gridded.interpolate import InterpolateFrequency
+            InterpolateFrequency = self.usage_factory_load("InterpolateFrequency")
 
             interpolate_frequency = kwargs.pop("interpolate_frequency")
             return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "interpolate_variables" in kwargs:
-            from anemoi.datasets.usage.gridded.interpolate import InterpolateNearest
+            InterpolateNearest = self.usage_factory_load("InterpolateNearest")
 
             interpolate_variables = kwargs.pop("interpolate_variables")
             max_distance = kwargs.pop("max_distance", None)
@@ -313,7 +317,7 @@ class Dataset(ABC, Sized):
 
         # Keep last
         if "shuffle" in kwargs:
-            from anemoi.datasets.usage.gridded.subset import Subset
+            Subset = self.usage_factory_load("Subset")
 
             shuffle = kwargs.pop("shuffle")
 
@@ -1017,7 +1021,7 @@ class Dataset(ABC, Sized):
             print(p.origins())
 
     def components(self) -> Any:
-        from anemoi.datasets.usage.gridded.components import Projection
+        Projection = self.usage_factory_load("Projection")
 
         slices = tuple(slice(0, i, 1) for i in self.shape)
         return self.project(Projection(slices))

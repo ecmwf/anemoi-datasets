@@ -118,8 +118,5 @@ class TabularZarr(ZarrStore):
         raise NotImplementedError()
 
     def usage_factory_load(self, name):
-        import importlib
-
-        package, symbol = name.split(".")
-        module = importlib.import_module(f".{package}", package=__package__)
-        return getattr(module, symbol)
+        # We need come here to get access to __package__
+        return self._usage_factory_load(name, __package__)

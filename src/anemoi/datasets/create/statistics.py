@@ -11,6 +11,7 @@
 import logging
 
 import numpy as np
+import tqdm
 
 LOG = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ class StatisticsCollector:
         self._tendencies = tendencies or {}
         self._tendencies_collectors = {}
 
-    def collect(self, array: any, dates: any, progress=_identity) -> None:
+    def collect(self, array: any, dates: any) -> None:
 
         if self._collectors is None:
             names = self._variables_names
@@ -110,7 +111,7 @@ class StatisticsCollector:
                     for _ in range(array.shape[1])
                 ]
 
-        for i in progress(self._filter(dates)):
+        for i in tqdm.tqdm(self._filter(dates), desc="Collecting statistics", unit="date"):
 
             data = array[i]
 
@@ -148,15 +149,6 @@ class StatisticsCollector:
 
         for key in list(result.keys()):
             result[key] = np.array(result[key])
-
-        return result
-
-    def tendencies_statistics(self) -> dict[str, list[dict[str, float]]]:
-        if self._tendencies_collectors is None:
-            LOG.warning("No tendencies statistics collected")
-            return {name: {_: np.array([np.nan]) for _ in STATISTICS} for name in self._tendencies.keys()}
-
-        result = {}
 
         return result
 

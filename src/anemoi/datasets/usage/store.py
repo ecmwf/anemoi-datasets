@@ -404,3 +404,49 @@ class ZarrStore(Dataset):
     def dataset_name(self) -> str:
         """Return the name of the dataset."""
         return self.store.attrs.get("recipe", {}).get("name", self.path)
+
+    def _usage_factory_load(self, name, package: str):
+
+        # Find a symbol in a submodule of the current package
+        # This is use to load different class where the dataset is gridded or tabular
+
+        import importlib
+
+        def try_import(module: str, symbol: str):
+            try:
+                module = importlib.import_module(module)
+                if hasattr(module, symbol):
+                    return getattr(module, symbol)
+            except ModuleNotFoundError:
+                return None
+            return None
+
+        # First, check if the symbol is in a package of the same name
+        # e.g. "rename.Rename"
+
+        result = try_import(f"{package}.{name.lower()}", name)
+        if result is not None:
+            return result
+
+        # Next, try to see if the package is common to both gridded and tabular
+        common = package.rsplit(".", 1)[0] + ".common"
+        result = try_import(f"{common}.{name.lower()}", name)
+        if result is not None:
+            return result
+
+        module = importlib.import_module(package)
+        assert hasattr(module, "__file__")
+
+        # Scan all submodules of the current package
+        # This is the last resort, and should be avoided if possible
+        module_path = os.path.dirname(module.__file__)
+        for submodule in os.listdir(module_path):
+            if (submodule.endswith(".py") and submodule != "__init__.py") or os.path.isdir(
+                os.path.join(module_path, submodule)
+            ):
+                module_name, _ = os.path.splitext(submodule)
+                result = try_import(f"{package}.{module_name}", name)
+                if result is not None:
+                    return result
+
+        raise ValueError(f"Operation '{name}' is not supported for dataset '{self}', ({type(self).__name__})")

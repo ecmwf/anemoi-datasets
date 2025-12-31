@@ -157,26 +157,26 @@ class Unchecked(Combined):
         """Get the longitudes of the dataset."""
         raise NotImplementedError()
 
-    @check("check_same_variables")
     @property
+    @check("check_same_variables")
     def name_to_index(self) -> dict[str, int]:
         """Get the mapping of variable names to their indices."""
         raise NotImplementedError()
 
-    @check("check_same_variables")
     @property
+    @check("check_same_variables")
     def variables(self) -> list[str]:
         """Get the list of variables in the dataset."""
         raise NotImplementedError()
 
-    @check("check_same_variables")
     @property
+    @check("check_same_variables")
     def variables_metadata(self) -> dict:
         """Get the metadata for the variables."""
         raise NotImplementedError()
 
-    @check("check_same_variables")
     @property
+    @check("check_same_variables")
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics of the dataset."""
         raise NotImplementedError()

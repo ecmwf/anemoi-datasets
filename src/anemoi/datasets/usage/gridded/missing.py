@@ -14,10 +14,10 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from earthkit.data.utils.dates import to_datetime
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.create.utils import to_datetime
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import TupleIndex

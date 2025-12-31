@@ -233,9 +233,7 @@ class GriddedCreator(Creator):
 
         data = ChunksCache(dataset.data, read_ahead=True)
 
-        collector.collect(data, dates, progress=tqdm.tqdm)
+        collector.collect(data, dates)
 
         for name, data in collector.statistics().items():
             dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)
-
-        print(collector.tendencies_statistics())
