@@ -41,18 +41,6 @@ class Thinning(ThinningMixin, Forwards):
 
         super().__init__(forward)
 
-    def mutate(self) -> Dataset:
-        """Mutate the dataset.
-
-        Returns
-        -------
-        Dataset
-            The mutated dataset.
-        """
-        if self.thinning is None:
-            return self.forward.mutate()
-        return super().mutate()
-
     def __getitem__(self, n):
         data = super().__getitem__(n)
         latitudes = data[:, 3]

@@ -255,20 +255,20 @@ class Dataset(ABC, Sized):
             return Statistics(self, statistics)._subset(**kwargs).mutate()
 
         # Note: trim_edge should go before thinning
-        if "trim_edge" in kwargs:
+        if kwargs.get("trim_edge") is not None:
             TrimEdge = self.usage_factory_load("TrimEdge")
 
             edge = kwargs.pop("trim_edge")
             return TrimEdge(self, edge)._subset(**kwargs).mutate()
 
-        if "thinning" in kwargs:
+        if kwargs.get("thinning") is not None:
             Thinning = self.usage_factory_load("Thinning")
 
             thinning = kwargs.pop("thinning")
             method = kwargs.pop("method", "every-nth")
             return Thinning(self, thinning, method)._subset(**kwargs).mutate()
 
-        if "area" in kwargs:
+        if kwargs.get("area") is not None:
             Cropping = self.usage_factory_load("Cropping")
 
             bbox = kwargs.pop("area")

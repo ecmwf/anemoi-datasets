@@ -154,18 +154,6 @@ class Thinning(ThinningMixin, Masked):
 
         super().__init__(forward, mask)
 
-    def mutate(self) -> Dataset:
-        """Mutate the dataset.
-
-        Returns
-        -------
-        Dataset
-            The mutated dataset.
-        """
-        if self.thinning is None:
-            return self.forward.mutate()
-        return super().mutate()
-
 
 class Cropping(Masked):
     """A class to represent a cropped dataset."""
@@ -255,18 +243,6 @@ class TrimEdge(Masked):
         mask = mask.flatten()
 
         super().__init__(forward, mask)
-
-    def mutate(self) -> Dataset:
-        """Mutate the dataset.
-
-        Returns
-        -------
-        Dataset
-            The mutated dataset.
-        """
-        if self.edge is None:
-            return self.forward.mutate()
-        return super().mutate()
 
     def tree(self) -> Node:
         """Get the tree representation of the dataset.

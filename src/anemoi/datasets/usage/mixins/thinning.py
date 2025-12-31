@@ -129,7 +129,8 @@ class ThinningMixin:
 
         return THINNERS[self.method](self.thinning, self.grid_shape)
 
-    # Dataset methods
+    # Dataset methods below
+
     def tree(self) -> Node:
         """Get the tree representation of the dataset.
 
