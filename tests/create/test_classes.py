@@ -299,10 +299,43 @@ def test_class_join_2():
 
 @skip_if_offline
 @zarr_tests
-def test_class_thinning():
+def test_class_thinning_1():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         thinning=4,
+    )
+    _test_dataset(ds)
+
+
+@skip_if_offline
+@zarr_tests
+def test_class_thinning_2():
+    ds = open_dataset(
+        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        method="distance-based",
+        thinning=100,  # 100km
+    )
+    _test_dataset(ds)
+
+
+@skip_if_offline
+@zarr_tests
+def test_class_thinning_3():
+    ds = open_dataset(
+        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        method="grid",
+        thinning=100,  # 100km
+    )
+    _test_dataset(ds)
+
+
+@skip_if_offline
+@zarr_tests
+def test_class_thinning_4():
+    ds = open_dataset(
+        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        method="random",
+        thinning=0.5,  # 50% of points
     )
     _test_dataset(ds)
 

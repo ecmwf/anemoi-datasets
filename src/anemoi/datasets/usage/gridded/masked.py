@@ -15,18 +15,19 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
-from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.grids import cropping_mask
+from ..dataset import Dataset
+from ..dataset import FullIndex
+from ..dataset import Shape
+from ..dataset import TupleIndex
+from ..debug import Node
+from ..debug import debug_indexing
+from ..forwards import Forwards
+from ..grids import cropping_mask
+from ..mixins.thinning import ThinningMixin
+from .indexing import apply_index_to_slices_changes
+from .indexing import expand_list_indexing
+from .indexing import index_to_slices
+from .indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -126,10 +127,10 @@ class Masked(Forwards):
         collected.append((path, self.mask_name, self.mask))
 
 
-class Thinning(Masked):
+class Thinning(ThinningMixin, Masked):
     """A class to represent a thinned dataset."""
 
-    def __init__(self, forward: Dataset, thinning: int | None, method: str) -> None:
+    def __init__(self, forward: Dataset, thinning: int | float | None, method: str) -> None:
         """Initialize the Thinning class.
 
         Parameters
@@ -141,20 +142,15 @@ class Thinning(Masked):
         method : str
             The thinning method.
         """
+
+        # Set the attributes before calling the thinner property in the mixin
+
         self.thinning = thinning
         self.method = method
+        self.grid_shape = forward.field_shape
 
-        MASK_MAKERS = {
-            "every-nth": self.every_nth_method,
-            "distance-based": self.distance_based_thinning,
-            "grid": self.grid_thinning,
-            "random": self.random_thinning,
-        }
-
-        if method not in MASK_MAKERS:
-            raise ValueError(f"Unknown thinning method: {method}. Supported methods are: {list(MASK_MAKERS.keys())}")
-
-        mask = MASK_MAKERS[method](forward.field_shape, forward.latitudes.copy(), forward.longitudes.copy(), thinning)
+        # We use [:] to ensure the arrays are loaded in memory
+        mask = self.thinner.mask(forward.latitudes[:], forward.longitudes[:])
 
         super().__init__(forward, mask)
 
@@ -169,94 +165,6 @@ class Thinning(Masked):
         if self.thinning is None:
             return self.forward.mutate()
         return super().mutate()
-
-    def tree(self) -> Node:
-        """Get the tree representation of the dataset.
-
-        Returns
-        -------
-        Node
-            The tree representation of the dataset.
-        """
-        return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
-
-    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
-        """Get the metadata specific to the Thinning subclass.
-
-        Returns
-        -------
-        Dict[str, Any]
-            The metadata specific to the Thinning subclass.
-        """
-        return dict(thinning=self.thinning, method=self.method)
-
-    def origin_transformation(self, variable, origins):
-        return {
-            "name": "thinning",
-            "config": dict(thinning=self.thinning, method=self.method),
-        }
-
-    def every_nth_method(self, field_shape, latitudes, longitudes, thinning):
-        if thinning is None:
-            return None
-
-        if len(field_shape) != 2:
-            raise ValueError("Thinning only works latitude/longitude fields")
-
-        latitudes = latitudes.reshape(field_shape)
-        longitudes = longitudes.reshape(field_shape)
-        latitudes = latitudes[::thinning, ::thinning].flatten()
-        longitudes = longitudes[::thinning, ::thinning].flatten()
-
-        # TODO: This is not very efficient
-
-        mask = [lat in latitudes and lon in longitudes for lat, lon in zip(latitudes, longitudes)]
-        mask = np.array(mask, dtype=bool)
-        return mask
-
-    def _lat_lon_to_xyz(
-        self, latitudes: NDArray[np.float32], longitudes: NDArray[np.float32]
-    ) -> tuple[NDArray[np.float32], NDArray[np.float32], NDArray[np.float32]]:
-        from anemoi.utils.grids import latlon_to_xyz
-
-        xyz = latlon_to_xyz(latitudes, longitudes)
-        return np.array(xyz).transpose()
-
-    def distance_based_thinning(self, field_shape, latitudes, longitudes, min_distance):
-        from scipy.spatial import KDTree
-
-        points = self._lat_lon_to_xyz(latitudes, longitudes)
-
-        tree = KDTree(points)
-        mask = np.ones(points.shape[0], dtype=bool)
-
-        # For each point, remove points within the min_distance radius
-        for i, point in enumerate(points):
-            if mask[i]:
-                indices = tree.query_ball_point(point, r=min_distance)
-                mask[indices] = False
-                mask[i] = True  # Keep the current point
-
-        return mask
-
-    def grid_thinning(self, field_shape, latitudes, longitudes, grid_size):
-        """Quantize the points based on grid size"""
-        points = self._lat_lon_to_xyz(latitudes, longitudes)
-
-        quantized_points = np.round(points / grid_size).astype(int)
-
-        # Use a set to keep unique grid cells (which automatically filters points)
-        _, indices = np.unique(quantized_points, axis=0, return_index=True)
-
-        return indices
-
-    def random_thinning(self, field_shape, latitudes, longitudes, fraction):
-        """Assume `points` is an NxD array, where N is the number of points, and D is the dimension (e.g., 3D)
-        Create a random mask to keep a fraction of the points
-        """
-        points = self._lat_lon_to_xyz(latitudes, longitudes)
-        mask = np.random.rand(points.shape[0]) < fraction
-        return mask
 
 
 class Cropping(Masked):
