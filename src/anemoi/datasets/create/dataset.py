@@ -17,9 +17,27 @@ from typing import Any
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 LOG = logging.getLogger(__name__)
+
+
+def _tidy_json(obj: Any) -> Any:
+    """Convert objects to JSON-serializable formats."""
+
+    match obj:
+        case datetime.datetime():
+            return obj.isoformat()
+
+        case np.datetime64():
+            return obj.astype(object).isoformat()
+
+        case datetime.timedelta():
+            return frequency_to_string(obj)
+
+        case _:
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 class Synchronizer:
@@ -102,23 +120,10 @@ class Dataset:
         """Update the metadata of the dataset."""
 
         metadata = dict(*args, **kwargs)
-        metadata = json.loads(json.dumps(metadata, default=str))
+        metadata = json.loads(json.dumps(metadata, default=_tidy_json))
 
         with self.synchronizer:
             self.store.attrs.update(metadata)
-
-    # def get_zarr_chunks(self) -> tuple:
-    #     """Get the chunks of the Zarr dataset.
-
-    #     Returns
-    #     -------
-    #     tuple
-    #         The chunks of the Zarr dataset.
-    #     """
-    #     import zarr
-
-    #     z = zarr.open(self.path, mode="r")
-    #     return z["data"].chunks
 
     ##################################
     # Progress tracking methods
@@ -147,30 +152,6 @@ class Dataset:
         return self.todo_remaining() == 0
 
     ##################################
-
-    def xxxxxcreate(self, lengths: list[int], overwrite: bool = False) -> None:
-        """Create the lengths and flags datasets.
-
-        Parameters
-        ----------
-        lengths : list[int]
-            Lengths to initialize the dataset with.
-        overwrite : bool
-            Whether to overwrite existing datasets.
-        """
-        self.new_dataset(name=self.name_lengths, array=np.array(lengths, dtype="i4"))
-        self.new_dataset(name=self.name_flags, array=np.array([False] * len(lengths), dtype=bool))
-        self.add_to_history("initialised")
-
-    # def reset(self, lengths: list[int]) -> None:
-    #     """Reset the lengths and flags datasets.
-
-    #     Parameters
-    #     ----------
-    #     lengths : list[int]
-    #         Lengths to initialize the dataset with.
-    #     """
-    #     return self.create(lengths, overwrite=True)
 
     def add_provenance(self, name: str) -> None:
 

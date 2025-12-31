@@ -6,6 +6,7 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
+
 import logging
 import time
 from typing import Any
@@ -47,20 +48,30 @@ class GriddedCreator(Creator):
         metadata["flatten_grid"] = self.recipe.output.flatten_grid
 
         metadata["ensemble_dimension"] = len(self.minimal_input.ensembles)
-        metadata["variables"] = variables
-        metadata["variables_with_nans"] = variables_with_nans
-        metadata["allow_nans"] = self.recipe.build.allow_nans
+
         metadata["resolution"] = self.minimal_input.resolution
 
         metadata["data_request"] = self.minimal_input.data_request
         metadata["field_shape"] = self.minimal_input.field_shape
         metadata["proj_string"] = self.minimal_input.proj_string
+
         metadata["variables_metadata"] = self.minimal_input.variables_metadata
+
+        # TODO: below may be common with tabular
+        metadata["variables"] = variables
 
         metadata["start_date"] = dates[0].isoformat()
         metadata["end_date"] = dates[-1].isoformat()
         metadata["frequency"] = frequency
         metadata["missing_dates"] = [_.isoformat() for _ in missing]
+
+        start, end = self.recipe.statistics.statistics_dates(dates)
+
+        metadata["statistics_start_date"] = start
+        metadata["statistics_end_date"] = end
+
+        metadata["variables_with_nans"] = variables_with_nans
+        metadata["allow_nans"] = self.recipe.build.allow_nans
 
     def initialise_dataset(self, dataset: Dataset) -> None:
         super().initialise_dataset(dataset)

@@ -11,6 +11,7 @@ import datetime
 import logging
 
 import numpy as np
+from earthkit.data.utils.dates import to_datetime
 from pydantic import BaseModel
 
 from anemoi.datasets.usage.misc import as_first_date
@@ -39,12 +40,6 @@ class Statistics(BaseModel):
             A tuple containing the default start and end dates.
         """
 
-        def to_datetime(d):
-            if isinstance(d, np.datetime64):
-                return d.tolist()
-            assert isinstance(d, datetime.datetime), d
-            return d
-
         first = dates[0]
         last = dates[-1]
 
@@ -69,7 +64,7 @@ class Statistics(BaseModel):
         end = max(d for d in dates if to_datetime(d).year == end_year)
         return dates[0], end
 
-    def statistics_filter(self, dates):
+    def statistics_dates(self, dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
         start = self.start
         end = self.end
         # if not specified, use the default statistics dates
@@ -84,7 +79,10 @@ class Statistics(BaseModel):
         end = as_last_date(end, dates)
 
         assert start <= end, f"Invalid statistics date range: start={start}, end={end}"
+        return start, end
 
+    def statistics_filter(self, dates):
+        start, end = self.statistics_dates(dates)
         start = np.datetime64(start).astype(dates[0].dtype)
         end = np.datetime64(end).astype(dates[0].dtype)
 

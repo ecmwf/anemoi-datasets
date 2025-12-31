@@ -15,6 +15,24 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets import open_dataset
 from anemoi.datasets.usage.store import open_zarr
 
+# BACK: ignore keys that are expected to differ between runs
+IGNORE = [
+    "origins",
+    "_recipe",
+    "variables_with_nans",
+    "ensemble_dimension",
+    "total_size",
+    "history",
+    "version",
+    "constant_fields",
+    "order_by",
+    "total_number_of_files",
+    "latest_write_timestamp",
+    "recipe",
+    "dtype",
+    "statistics_end_date",
+]
+
 
 class Comparer:
     """Class to compare datasets and their metadata.
@@ -210,16 +228,13 @@ class Comparer:
             If the datasets or their metadata do not match.
         """
 
-        # BACK
-        return
-
         errors = []
         self.compare_dot_zattrs(
             dict(self.z_output.attrs),
             dict(self.z_reference.attrs),
             "metadata",
             errors,
-            ignore=["origins"],
+            ignore=IGNORE,
         )
         if errors:
             print("Comparison failed")
