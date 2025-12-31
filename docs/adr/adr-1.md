@@ -123,7 +123,7 @@ references to other nodes.
 Leaf nodes are linked from smaller keys to larger keys, so that *ranges searched* only traverse the
 tree once.
 
-#####
+##### Tests
 
 Both methods will search for a date is in the order of O(log<sub>2</sub>(N). For a billion dates
 (~32 years), this is around 30 comparaisons, and the number of zarr chunks accessed can be of the
