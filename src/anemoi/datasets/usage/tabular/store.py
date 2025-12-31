@@ -78,29 +78,35 @@ class TabularZarr(ZarrStore):
     def dtype(self) -> np.dtype:
         return self.data.dtype
 
+    @property
     def field_shape(self) -> Shape:
         raise NotImplementedError()
 
     def get_dataset_names(self) -> list[str]:
         raise NotImplementedError()
 
-    def latitudes(self) -> NDArray[np.float32]:
-        raise NotImplementedError()
+    @property
+    def latitudes(self) -> np.ndarray:
+        return np.array([])
 
-    def longitudes(self) -> NDArray[np.float32]:
-        raise NotImplementedError()
+    @property
+    def longitudes(self) -> np.ndarray:
+        return np.array([])
 
     def missing(self) -> Any:
         raise NotImplementedError()
 
+    @property
     def name_to_index(self) -> dict[str, int]:
         raise NotImplementedError()
 
+    @property
     def resolution(self) -> tuple[float, float]:
-        raise NotImplementedError()
+        return None
 
+    @property
     def shape(self) -> Shape:
-        raise NotImplementedError()
+        return (None, self.data.shape[1])
 
     def source(self) -> str:
         raise NotImplementedError()
@@ -111,8 +117,9 @@ class TabularZarr(ZarrStore):
     def tree(self) -> zarr.hierarchy.Group:
         raise NotImplementedError()
 
+    @property
     def variables(self) -> list[str]:
-        raise NotImplementedError()
+        return self.store.attrs["variables"]
 
     def variables_metadata(self) -> dict[str, dict[str, Any]]:
         raise NotImplementedError()

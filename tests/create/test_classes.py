@@ -54,7 +54,7 @@ not_ready = pytest.mark.skip(reason="Not ready yet")
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_complement_none():
+def test_class_gridded_complement_none():
     pass
     # ds = open_dataset(
     #     source="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
@@ -65,7 +65,7 @@ def test_class_complement_none():
 
 @skip_if_offline
 @zarr_tests
-def test_class_complement_nearest_1():
+def test_class_gridded_complement_nearest_1():
 
     ds = open_dataset(
         complement="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
@@ -95,7 +95,7 @@ def test_class_complement_nearest_1():
 
 @skip_if_offline
 @zarr_tests
-def test_class_complement_nearest_2():
+def test_class_gridded_complement_nearest_2():
     ds = open_dataset(
         source="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         complement="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
@@ -124,7 +124,7 @@ def test_class_complement_nearest_2():
 
 @skip_if_offline
 @zarr_tests
-def test_class_concat():
+def test_class_gridded_concat():
     ds = open_dataset(
         [
             "aifs-ea-an-oper-0001-mars-20p0-2016-2016-6h-v1",
@@ -152,7 +152,7 @@ def test_class_concat():
 
 @skip_if_offline
 @zarr_tests
-def test_class_number():
+def test_class_gridded_number():
     ds = open_dataset(
         "aifs-ea-an-enda-0001-mars-20p0-2017-2017-6h-v1",
         members=[0, 2],
@@ -178,7 +178,7 @@ def test_class_number():
 
 @skip_if_offline
 @zarr_tests
-def test_class_ensemble():
+def test_class_gridded_ensemble():
     ds = open_dataset(
         ensemble=[
             "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
@@ -207,27 +207,27 @@ def test_class_ensemble():
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_missing_dates_fill():
+def test_class_gridded_missing_dates_fill():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_missing_dates_closest():
+def test_class_gridded_missing_dates_closest():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_missing_dates_interpolate():
+def test_class_gridded_missing_dates_interpolate():
     pass
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_grids():
+def test_class_gridded_grids():
     ds = open_dataset(
         grids=[
             "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
@@ -241,7 +241,7 @@ def test_class_grids():
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_cutout() -> None:
+def test_class_gridded_cutout() -> None:
     ds = open_dataset(
         cutout=[
             "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
@@ -255,27 +255,27 @@ def test_class_cutout() -> None:
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_missing_date_error():
+def test_class_gridded_missing_date_error():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_interpolate_frequency():
+def test_class_gridded_interpolate_frequency():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_interpolate_nearest():
+def test_class_gridded_interpolate_nearest():
     pass
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_join_1():
+def test_class_gridded_join_1():
     ds = open_dataset(
         [
             "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-sfc",
@@ -287,7 +287,7 @@ def test_class_join_1():
 
 @skip_if_offline
 @zarr_tests
-def test_class_join_2():
+def test_class_gridded_join_2():
     ds = open_dataset(
         [
             "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-pl",
@@ -299,7 +299,7 @@ def test_class_join_2():
 
 @skip_if_offline
 @zarr_tests
-def test_class_thinning_1():
+def test_class_gridded_thinning_1():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         thinning=4,
@@ -309,7 +309,7 @@ def test_class_thinning_1():
 
 @skip_if_offline
 @zarr_tests
-def test_class_thinning_2():
+def test_class_gridded_thinning_2():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         method="distance-based",
@@ -320,7 +320,7 @@ def test_class_thinning_2():
 
 @skip_if_offline
 @zarr_tests
-def test_class_thinning_3():
+def test_class_gridded_thinning_3():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         method="grid",
@@ -331,7 +331,7 @@ def test_class_thinning_3():
 
 @skip_if_offline
 @zarr_tests
-def test_class_thinning_4():
+def test_class_gridded_thinning_4():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         method="random",
@@ -342,7 +342,7 @@ def test_class_thinning_4():
 
 @skip_if_offline
 @zarr_tests
-def test_class_cropping():
+def test_class_gridded_cropping():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         area=[80, -10, 30, 40],
@@ -353,7 +353,7 @@ def test_class_cropping():
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_trim_edge():
+def test_class_gridded_trim_edge():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
         trim_edge=(1, 2, 3, 4),
@@ -364,41 +364,41 @@ def test_class_trim_edge():
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_merge():
+def test_class_gridded_merge():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_missing_dates():
+def test_class_gridded_missing_dates():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_skip_missing_dates():
+def test_class_gridded_skip_missing_dates():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_missing_dataset():
+def test_class_gridded_missing_dataset():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_padded():
+def test_class_gridded_padded():
     pass
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_rescale_1():
+def test_class_gridded_rescale_1():
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rescale={"2t": (1.0, -273.15)},
@@ -408,7 +408,7 @@ def test_class_rescale_1():
 
 @skip_if_offline
 @zarr_tests
-def test_class_rescale_2():
+def test_class_gridded_rescale_2():
     try:
         import cfunits  # noqa: F401
     except FileNotFoundError:
@@ -424,7 +424,7 @@ def test_class_rescale_2():
 
 @skip_if_offline
 @zarr_tests
-def test_class_rescale_3():
+def test_class_gridded_rescale_3():
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rescale={
@@ -436,7 +436,7 @@ def test_class_rescale_3():
 
 @skip_if_offline
 @zarr_tests
-def test_class_select_select_1():
+def test_class_gridded_select_select_1():
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         select=["msl", "2t"],
@@ -446,7 +446,7 @@ def test_class_select_select_1():
 
 @skip_if_offline
 @zarr_tests
-def test_class_select_select_2():
+def test_class_gridded_select_select_2():
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         select={"msl", "2t"},
@@ -456,7 +456,7 @@ def test_class_select_select_2():
 
 @skip_if_offline
 @zarr_tests
-def test_class_select_drop():
+def test_class_gridded_select_drop():
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         drop=["2t", "msl"],
@@ -466,7 +466,7 @@ def test_class_select_drop():
 
 @skip_if_offline
 @zarr_tests
-def test_class_rename() -> None:
+def test_class_gridded_rename() -> None:
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rename={"2t": "temperature", "msl": "pressure"},
@@ -477,7 +477,7 @@ def test_class_rename() -> None:
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_rename_with_overlap() -> None:
+def test_class_gridded_rename_with_overlap() -> None:
     ds = open_dataset(
         [
             {
@@ -502,13 +502,13 @@ def test_class_rename_with_overlap() -> None:
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_statistics():
+def test_class_gridded_statistics():
     pass
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_zarr():
+def test_class_gridded_zarr():
     ds = open_dataset("aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1")
     _test_dataset(ds)
 
@@ -516,14 +516,14 @@ def test_class_zarr():
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_zarr_with_missing_dates():
+def test_class_gridded_zarr_with_missing_dates():
     ds = open_dataset("rodeo-opera-files-o96-2013-2023-6h-v5")
     _test_dataset(ds)
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_subset():
+def test_class_gridded_subset():
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         frequency="12h",
@@ -536,36 +536,38 @@ def test_class_subset():
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_chain():
+def test_class_gridded_chain():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_zipbase():
+def test_class_gridded_zipbase():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_zip():
+def test_class_gridded_zip():
     pass
 
 
 @skip_if_offline
 @zarr_tests
 @not_ready
-def test_class_xy():
+def test_class_gridded_xy():
     pass
 
 
 if __name__ == "__main__":
-    test_class_complement_nearest_1()
-    test_class_complement_nearest_2()
-    exit(0)
+    from _pytest.outcomes import Skipped
+
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")
-            obj()
+            try:
+                obj()
+            except Skipped as e:
+                print(f"Skipped {name}: {e}")
