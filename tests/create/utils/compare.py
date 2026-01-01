@@ -65,9 +65,7 @@ class ErrorCollector:
         print()
 
     def __repr__(self):
-        fatal_errors = [e for e in self._errors if e.fatal]
-        non_fatal_errors = [e for e in self._errors if not e.fatal]
-        return f"ErrorCollector(fatal_errors={len(fatal_errors)}, non_fatal_errors={len(non_fatal_errors)})"
+        return "\n" + "\n".join(repr(e) for e in self._errors) + "\n"
 
 
 def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str) -> None:
