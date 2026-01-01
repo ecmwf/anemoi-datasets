@@ -12,7 +12,7 @@ import json
 
 from anemoi.utils.dates import frequency_to_string
 
-from anemoi.datasets.create.input import InputBuilder
+from anemoi.datasets.create.input.builder import InputBuilder
 from anemoi.datasets.create.recipe import Recipe
 
 

@@ -25,19 +25,39 @@ LOG = logging.getLogger(__name__)
 
 @date_indexing_registry.register("bisect")
 class DateBisect(DateIndexing):
+    """Implements date indexing using a bisect (binary search) approach for efficient range queries.
+
+    This class provides methods to bulk load date ranges, retrieve index boundaries, and access
+    start and end dates using a Zarr-backed store. It is registered as the 'bisect' date indexing method.
+    """
+
     name = "bisect"
 
-    def __init__(self, /, store, **kwargs):
+    def __init__(self, /, store: object, **kwargs: object) -> None:
+        """Initialise the DateBisect indexer.
+
+        Parameters
+        ----------
+        store : object
+            The backing store (e.g., Zarr group or similar) for the date index ranges.
+        **kwargs : object
+            Additional keyword arguments (unused).
+        """
         self.store = store
 
     def bulk_load(self, dates_ranges: np.ndarray) -> None:
+        """Bulk load date ranges into the backing store, chunked for efficient I/O.
 
+        Parameters
+        ----------
+        dates_ranges : np.ndarray
+            A 2D numpy array of date ranges to be stored, where each row contains epoch, start index, and length.
+        """
         row_size = dates_ranges.nbytes // len(dates_ranges)
         chunck_size = 64 * 1024 * 1024 // row_size  # Adjust chunk size to approx 64MB
         LOG.info(f"Bulk loading {dates_ranges.shape} with chunk size {chunck_size}")
         date_index_ranges = self.store.create_dataset(
             "date_index_ranges",
-            # data=dates_ranges,
             shape=dates_ranges.shape,
             dtype=dates_ranges.dtype,
             chunks=(chunck_size, 3),
@@ -53,24 +73,69 @@ class DateBisect(DateIndexing):
                 index[i : i + last, :] = dates_ranges[i : i + last, :]
 
     @cached_property
-    def index(self):
+    def index(self) -> ChunksCache:
         return ChunksCache(self.store["date_index_ranges"])
 
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
+        """Get the start and end dates from the index.
+
+        Returns
+        -------
+        tuple of datetime.datetime
+            The first and last date in the index, as datetime objects.
+        """
         first_key, last_key = self.index[0][0], self.index[-1][0]
         return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
 
-    def boundaries(self, start: int, end: int) -> tuple[int, int]:
-        """A proxy to access only the first dimension of the 2D dates array."""
+    def boundaries(self, start: int, end: int) -> tuple[tuple[int, np.ndarray], tuple[int, np.ndarray]]:
+        """Find the boundaries in the index for a given start and end epoch.
+
+        This method uses a proxy to perform binary search only on the first dimension of the 2D dates array,
+        minimising memory usage by not loading all dates at once.
+
+        Parameters
+        ----------
+        start : int
+            The starting epoch (inclusive).
+        end : int
+            The ending epoch (inclusive).
+
+        Returns
+        -------
+        tuple of tuple
+            A tuple containing two tuples: (first_row_epoch, first_row_data), (last_row_epoch, last_row_data).
+        """
 
         class Proxy:
-            def __init__(self, dates):
+            """Proxy class to enable binary search on the first column of a 2D array-like object."""
+
+            def __init__(self, dates: ChunksCache) -> None:
+                """Initialise the Proxy.
+
+                Parameters
+                ----------
+                dates : ChunksCache
+                    The ChunksCache object containing date index data.
+                """
                 self.dates = dates
 
-            def __len__(self):
+            def __len__(self) -> int:
+                """Return the number of rows in the dates array."""
                 return len(self.dates)
 
-            def __getitem__(self, value):
+            def __getitem__(self, value: int) -> int:
+                """Get the epoch value from the first column of the specified row.
+
+                Parameters
+                ----------
+                value : int
+                    Row index.
+
+                Returns
+                -------
+                int
+                    The epoch value at the specified row.
+                """
                 return self.dates[value][0]
 
         # Search only the first dimension of the 2D dates array, without loading all dates
@@ -81,11 +146,3 @@ class DateBisect(DateIndexing):
         last_row = self.index[end_idx - 1] if end_idx > 0 else None
 
         return (first_row[0], first_row[1:]), (last_row[0], last_row[1:])
-
-
-# (49, 23)
-# (129, 23)
-# (127, 23)
-# (128, 23)
-# (129, 23)
-# (128, 23)

@@ -27,10 +27,8 @@ from ..date_indexing import create_date_indexing
 class Window:
     """Represents a time window for selecting data, with before/after offsets and inclusivity.
 
-    Main functions:
-    - Parses a window string to determine the time offsets before and after a central point.
-    - Determines whether the window is inclusive or exclusive at each end.
-    - Used by WindowView to select data slices.
+    This class parses a window string to determine the time offsets before and after a central point,
+    and whether the window is inclusive or exclusive at each end. Used by WindowView to select data slices.
     """
 
     def __init__(self, window: str) -> None:
@@ -53,7 +51,13 @@ class Window:
         self.exclude_after = m.group(4) == ")"
 
     def __repr__(self) -> str:
-        """Return a string representation of the window."""
+        """Return a string representation of the window.
+
+        Returns
+        -------
+        str
+            The string representation of the window.
+        """
         B = {True: ("(", ")"), False: ("[", "]")}
         return (
             f"{B[self.exclude_before][0]}{frequency_to_string(self.before)},"
@@ -64,12 +68,10 @@ class Window:
 class WindowView:
     """Provides a view into a Zarr tabular dataset with windowed, frequency-based access.
 
-    Main functions:
-    - Allows subsetting of a dataset by time window, frequency, and start/end dates.
-    - Handles conversion between date indices and actual data slices.
-    - Provides methods to adjust the window, frequency, and date range, returning new WindowView instances.
-    - Implements __getitem__ for windowed data access, including filtering and time delta calculation.
-    - Caches epochs and provides date arrays for the windowed view.
+    Allows subsetting of a dataset by time window, frequency, and start/end dates. Handles conversion
+    between date indices and actual data slices. Provides methods to adjust the window, frequency, and
+    date range, returning new WindowView instances. Implements __getitem__ for windowed data access,
+    including filtering and time delta calculation. Caches epochs and provides date arrays for the windowed view.
     """
 
     def __init__(
@@ -123,9 +125,19 @@ class WindowView:
         self._len = (self.end_date - self.start_date) // self.frequency + 1
 
     def set_start(self, start: datetime.datetime) -> "WindowView":
-        """Use as_first_date to align the start date to the frequency"""
-        # TODO: check if in-line with the way we implemented that logic for fields
+        """Return a new WindowView with the start date aligned to the frequency using as_first_date.
 
+        Parameters
+        ----------
+        start : datetime.datetime
+            The new start date to align.
+
+        Returns
+        -------
+        WindowView
+            A new WindowView instance with the updated start date.
+        """
+        # TODO: check if in-line with the way we implemented that logic for fields
         return WindowView(
             store=self.store,
             start_date=as_first_date(start, None, frequency=self.frequency),
@@ -135,9 +147,19 @@ class WindowView:
         )
 
     def set_end(self, end: datetime.datetime) -> "WindowView":
-        """Use as_last_date to align the end date to the frequency"""
-        # TODO: check if in-line with the way we implemented that logic for fields
+        """Return a new WindowView with the end date aligned to the frequency using as_last_date.
 
+        Parameters
+        ----------
+        end : datetime.datetime
+            The new end date to align.
+
+        Returns
+        -------
+        WindowView
+            A new WindowView instance with the updated end date.
+        """
+        # TODO: check if in-line with the way we implemented that logic for fields
         return WindowView(
             store=self.store,
             start_date=self.start_date,
@@ -147,7 +169,18 @@ class WindowView:
         )
 
     def set_frequency(self, frequency: str | int | datetime.timedelta) -> "WindowView":
-        """Create a new WindowView with the updated frequency"""
+        """Return a new WindowView with the updated frequency.
+
+        Parameters
+        ----------
+        frequency : str, int, or datetime.timedelta
+            The new frequency for the windowed view.
+
+        Returns
+        -------
+        WindowView
+            A new WindowView instance with the updated frequency.
+        """
         return WindowView(
             store=self.store,
             start_date=self.start_date,
@@ -157,7 +190,18 @@ class WindowView:
         )
 
     def set_window(self, window: str | Window) -> "WindowView":
-        """Create a new WindowView with the updated window specification"""
+        """Return a new WindowView with the updated window specification.
+
+        Parameters
+        ----------
+        window : str or Window
+            The new window specification.
+
+        Returns
+        -------
+        WindowView
+            A new WindowView instance with the updated window.
+        """
         return WindowView(
             store=self.store,
             start_date=self.start_date,
@@ -168,12 +212,32 @@ class WindowView:
 
     @cached_property
     def actual_start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
+        """The actual start and end dates available in the underlying dataset."""
         return self.date_indexing.start_end_dates()
 
     def __len__(self) -> int:
+        """Return the number of windows in the view.
+
+        Returns
+        -------
+        int
+            The number of windows in the view.
+        """
         return self._len
 
     def __getitem__(self, index: int) -> np.ndarray:
+        """Retrieve the data for the specified window index, applying window boundaries and filtering.
+
+        Parameters
+        ----------
+        index : int
+            The window index to retrieve.
+
+        Returns
+        -------
+        np.ndarray
+            The filtered data array for the specified window.
+        """
         assert isinstance(index, int)
         if index < 0:
             index = self._len - index
@@ -215,6 +279,20 @@ class WindowView:
         return self._filter(index, self.data[start_idx:last_idx])
 
     def _filter(self, index: int, array: np.ndarray) -> np.ndarray:
+        """Internal method to filter and transform the data array for a given window index.
+
+        Parameters
+        ----------
+        index : int
+            The window index.
+        array : np.ndarray
+            The data array to filter and transform.
+
+        Returns
+        -------
+        np.ndarray
+            The filtered and transformed data array.
+        """
         # Convert day/second columns to seconds since epoch
         dates = array[:, 0] * 86400 + array[:, 1]
         # Compute time delta relative to the window epoch
@@ -223,6 +301,13 @@ class WindowView:
         return np.concatenate([deltadate[:, np.newaxis], array[:, 2:]], axis=1)
 
     def __repr__(self) -> str:
+        """Return a string representation of the WindowView.
+
+        Returns
+        -------
+        str
+            The string representation of the WindowView.
+        """
         return (
             f"WindowView(start_date={self.start_date}, end_date={self.end_date}, "
             f"frequency={self.frequency}, window={self.window})"
@@ -230,6 +315,7 @@ class WindowView:
 
     @cached_property
     def _epochs(self) -> np.ndarray:
+        """Cached property for the array of epoch timestamps corresponding to each window."""
         epochs = []
         epoch = self.start_date
         while epoch <= self.end_date:
@@ -240,4 +326,5 @@ class WindowView:
 
     @property
     def dates(self) -> np.ndarray:
+        """Array of numpy.datetime64 objects for each window in the view."""
         return np.array([np.datetime64(datetime.datetime.fromtimestamp(_)) for _ in self._epochs])

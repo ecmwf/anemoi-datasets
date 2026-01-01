@@ -23,7 +23,7 @@ from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.dataset import Dataset
-from anemoi.datasets.create.input import InputBuilder
+from anemoi.datasets.create.input.builder import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
 from anemoi.datasets.create.recipe import loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
