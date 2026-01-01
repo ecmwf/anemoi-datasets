@@ -10,248 +10,195 @@
 import os
 
 import numpy as np
-from anemoi.utils.dates import frequency_to_timedelta
-
-from anemoi.datasets import open_dataset
-from anemoi.datasets.usage.store import open_zarr
-
-# BACK: ignore keys that are expected to differ between runs
-IGNORE = [
-    "origins",
-    "_recipe",
-    "variables_with_nans",
-    "ensemble_dimension",
-    "total_size",
-    "history",
-    "version",
-    "constant_fields",
-    "order_by",
-    "total_number_of_files",
-    "latest_write_timestamp",
-    "recipe",
-    "dtype",
-    "statistics_end_date",
-]
+import zarr
 
 
-class Comparer:
-    """Class to compare datasets and their metadata.
+class _Error:
+    fatal = True
 
-    Parameters
-    ----------
-    output_path : str, optional
-        The path to the output dataset.
-    reference_path : str, optional
-        The path to the reference dataset.
-    """
+    def __init__(self, message):
+        self.message = message
 
-    def __init__(self, output_path: str = None, reference_path: str = None) -> None:
-        """Initialize the Comparer instance.
 
-        Parameters
-        ----------
-        output_path : str, optional
-            The path to the output dataset.
-        reference_path : str, optional
-            The path to the reference dataset.
-        """
-        self.output_path = output_path
-        self.reference_path = reference_path
-        print(f"Comparing {self.output_path} and {self.reference_path}")
+class Added(_Error):
 
-        self.z_output = open_zarr(self.output_path)
-        self.z_reference = open_zarr(self.reference_path)
+    fatal = False
 
-        self.z_reference["data"]
-        self.ds_output = open_dataset(self.output_path)
-        self.ds_reference = open_dataset(self.reference_path)
+    def __repr__(self):
+        return f"🆕 {self.message}"
 
-    @staticmethod
-    def compare_datasets(a: object, b: object) -> None:
-        """Compare two datasets.
 
-        Parameters
-        ----------
-        a : object
-            The first dataset.
-        b : object
-            The second dataset.
+class Missing(_Error):
 
-        Raises
-        ------
-        AssertionError
-            If the datasets do not match.
-        """
-        assert a.shape == b.shape, (a.shape, b.shape)
-        assert (a.dates == b.dates).all(), (a.dates, b.dates)
-        for a_, b_ in zip(a.variables, b.variables):
-            assert a_ == b_, (a, b)
-        assert a.missing == b.missing, "Missing are different"
+    def __repr__(self):
+        return f"❌ {self.message}"
 
-        for i_date, date in zip(range(a.shape[0]), a.dates):
-            if i_date in a.missing:
+
+class Error(_Error):
+
+    def __repr__(self):
+        return f"❗ {self.message}"
+
+
+class ErrorCollector:
+    def __init__(self):
+        self._errors = []
+
+    def added(self, info=None):
+
+        self._errors.append(Added(info))
+
+    def missing(self, info=None):
+
+        self._errors.append(Missing(info))
+
+    def error(self, info=None):
+        self._errors.append(Error(info))
+
+    def __bool__(self):
+        return any(e.fatal for e in self._errors)
+
+    def report(self):
+        print()
+        print("-" * 80)
+        for e in self._errors:
+            print(e)
+        print("-" * 80)
+        print()
+
+    def __repr__(self):
+        fatal_errors = [e for e in self._errors if e.fatal]
+        non_fatal_errors = [e for e in self._errors if not e.fatal]
+        return f"ErrorCollector(fatal_errors={len(fatal_errors)}, non_fatal_errors={len(non_fatal_errors)})"
+
+
+def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str) -> None:
+    """Compare two arrays."""
+    if np.array_equal(a, b, equal_nan=True):
+        return
+
+    if np.allclose(a, b, equal_nan=True):
+        errors.error(f"🧮 {path}: arrays are close but not equal {a[:]-b[:]}")
+        return
+
+    errors.error(f"🧮 {path}: arrays are different {a[:]-b[:]}")
+
+
+def _compare_zarrs(errors, reference, actual, *path) -> None:
+    """Compare two datasets."""
+
+    reference_arrays = list(reference.keys())
+    actual_arrays = list(actual.keys())
+
+    for key in sorted(set(reference_arrays) | set(actual_arrays)):
+
+        if key not in actual_arrays:
+            errors.missing(f"🧮 {'.'.join(path)}.{key}")
+            continue
+
+        if key not in reference_arrays:
+            errors.added(f"🧮 {'.'.join(path)}.{key}")
+            continue
+
+    for key in sorted(set(reference_arrays) & set(actual_arrays)):
+        a = reference[key]
+        b = actual[key]
+
+        if isinstance(a, zarr.Group) and isinstance(b, zarr.Group):
+            _compare_zarrs(errors, a, b, *path, key)
+            continue
+
+        if not isinstance(a, zarr.Array) or not isinstance(b, zarr.Array):
+            errors.error(f"🧮 {'.'.join(path)}.{key}: types are different {type(a)} != {type(b)}")
+            continue
+
+        if a.shape != b.shape:
+            errors.error(f"🧮 {'.'.join(path)}.{key}: shapes are different {a.shape} != {b.shape}")
+            continue
+
+        if a.dtype != b.dtype:
+            errors.error(f"🧮 {'.'.join(path)}.{key}: dtypes are different {a.dtype} != {b.dtype}")
+            continue
+
+        _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}")
+
+
+def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
+    """Compare the attributes of two Zarr datasets."""
+
+    IGNORE_VALUES = [
+        "metadata.provenance_load",
+        "metadata.uuid",
+        "metadata.total_number_of_files",
+        "metadata.total_size",
+    ]
+
+    if type(reference) is not type(actual):
+        if reference != actual:
+            msg = (
+                f"🏷️ {'.'.join(path)} reference != actual : {reference} ({type(reference)}) != {actual} ({type(actual)})"
+            )
+            errors.error(msg)
+        return
+
+    if isinstance(reference, dict):
+        reference_keys = set(reference.keys())
+        actual_keys = set(actual.keys())
+        for k in sorted(reference_keys | actual_keys):
+
+            if k not in reference_keys:
+                errors.added(f"🏷️ {'.'.join(path)}.{k}")
                 continue
-            for i_param in range(a.shape[1]):
-                param = a.variables[i_param]
-                assert param == b.variables[i_param], (
-                    date,
-                    param,
-                    a.variables[i_param],
-                    b.variables[i_param],
-                )
-                a_ = a[i_date, i_param]
-                b_ = b[i_date, i_param]
-                assert a.shape == b.shape, (date, param, a.shape, b.shape)
 
-                a_nans = np.isnan(a_)
-                b_nans = np.isnan(b_)
-                assert np.all(a_nans == b_nans), (date, param, "nans are different")
+            if k not in actual_keys:
+                errors.missing(f"🏷️ {'.'.join(path)}.{k}")
+                continue
 
-                a_ = np.where(a_nans, 0, a_)
-                b_ = np.where(b_nans, 0, b_)
+            if ".".join(path + (k,)) in IGNORE_VALUES:
+                continue
 
-                delta = a_ - b_
-                max_delta = np.max(np.abs(delta))
-                abs_error = np.abs(a_ - b_)
-                rel_error = np.abs(a_ - b_) / (np.abs(b_) + 1e-10)  # Avoid division by zero
-                assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta, np.max(abs_error), np.max(rel_error))
+            _compare_dot_zattrs(errors, reference[k], actual[k], *path, k)
 
-    @staticmethod
-    def compare_statistics(ds1: object, ds2: object) -> None:
-        """Compare the statistics of two datasets.
+        return
 
-        Parameters
-        ----------
-        ds1 : object
-            The first dataset.
-        ds2 : object
-            The second dataset.
-
-        Raises
-        ------
-        AssertionError
-            If the statistics do not match.
-        """
-        vars1 = ds1.variables
-        vars2 = ds2.variables
-        assert len(vars1) == len(vars2)
-        for v1, v2 in zip(vars1, vars2):
-            idx1 = ds1.name_to_index[v1]
-            idx2 = ds2.name_to_index[v2]
-            assert (ds1.statistics["mean"][idx1] == ds2.statistics["mean"][idx2]).all()
-            assert (ds1.statistics["stdev"][idx1] == ds2.statistics["stdev"][idx2]).all()
-            assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
-            assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
-
-    @staticmethod
-    def compare_dot_zattrs(a: dict, b: dict, path: str, errors: list, ignore: list | None = None) -> None:
-        """Compare the attributes of two Zarr datasets.
-
-        Parameters
-        ----------
-        a : dict
-            The attributes of the first dataset.
-        b : dict
-            The attributes of the second dataset.
-        path : str
-            The current path in the attribute hierarchy.
-        errors : list
-            The list to store error messages.
-        ignore : list|None
-            A list of keys to ignore during comparison.
-        """
-        if ignore is None:
-            ignore = []
-
-        if isinstance(a, dict):
-            a_keys = set(a.keys()) - set(ignore)
-            b_keys = set(b.keys()) - set(ignore)
-            for k in a_keys | b_keys:
-                if k not in a_keys:
-                    errors.append(f"❌ {path}.{k} : missing key (only in reference)")
-                    continue
-                if k not in b_keys:
-                    errors.append(f"❌ {path}.{k} : additional key (missing in reference)")
-                    continue
-
-                if k in [
-                    "timestamp",
-                    "uuid",
-                    "latest_write_timestamp",
-                    "history",
-                    "provenance",
-                    "provenance_load",
-                    "description",
-                    "config_path",
-                    "total_size",
-                ]:
-                    if type(a[k]) is not type(b[k]):
-                        errors.append(f"❌ {path}.{k} : type differs {type(a[k])} != {type(b[k])}")
-                    continue
-
-                Comparer.compare_dot_zattrs(a[k], b[k], f"{path}.{k}", errors)
-
+    if isinstance(reference, list):
+        if len(reference) != len(actual):
+            errors.error(f"{'.'.join(path)} : lengths are different {len(reference)} != {len(actual)}")
             return
 
-        if isinstance(a, list):
-            if len(a) != len(b):
-                errors.append(f"❌ {path} : lengths are different {len(a)} != {len(b)}")
-                return
+        for i, (v, w) in enumerate(zip(reference, actual)):
+            _compare_dot_zattrs(errors, v, w, *path, str(i))
 
-            for i, (v, w) in enumerate(zip(a, b)):
-                Comparer.compare_dot_zattrs(v, w, f"{path}.{i}", errors)
+        return
 
-            return
+    if reference != actual:
+        msg = f"🏷️ {'.'.join(path)} reference != actual : {reference} ({type(reference)}) != {actual} ({type(actual)})"
+        errors.error(msg)
 
-        if type(a) is not type(b):
-            msg = f"❌ {path} actual != expected : {a} ({type(a)}) != {b} ({type(b)})"
-            errors.append(msg)
-            return
 
-        # convert a and b from frequency strings to timedeltas when :
-        #  - path ends with .period.0 or .period.n were n is int
-        #  - key is "frequency"
-        if (path.split(".")[-2] == "period" and path.split(".")[-1].isdigit()) or (path.split(".")[-1] == "frequency"):
-            a = frequency_to_timedelta(a)
-            b = frequency_to_timedelta(b)
+def compare_anemoi_datasets(reference, actual) -> None:
+    """Compare the actual dataset with the reference dataset."""
 
-        if a != b:
-            msg = f"❌ {path} actual != expected : {a} != {b}"
-            errors.append(msg)
+    actual_path = os.path.realpath(actual)
 
-    def compare(self) -> None:
-        """Compare the output dataset with the reference dataset.
+    actual = zarr.open(actual, mode="r")
+    reference = zarr.open(reference, mode="r")
 
-        Raises
-        ------
-        AssertionError
-            If the datasets or their metadata do not match.
-        """
+    errors = ErrorCollector()
 
-        errors = []
-        self.compare_dot_zattrs(
-            dict(self.z_output.attrs),
-            dict(self.z_reference.attrs),
-            "metadata",
-            errors,
-            ignore=IGNORE,
-        )
-        if errors:
-            print("Comparison failed")
-            print("\n".join(errors))
+    _compare_dot_zattrs(errors, dict(reference.attrs), dict(actual.attrs), "metadata")
+    _compare_zarrs(errors, reference, actual, "zarr")
 
-        if errors:
-            print()
+    errors.report()
 
-            print()
-            print("⚠️ To update the reference data, run this:")
-            print("cd " + os.path.dirname(self.output_path))
-            base = os.path.basename(self.output_path)
-            print(f"tar zcf {base}.tgz {base}")
-            print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
-            print()
-            raise AssertionError(f"Comparison failed {errors}")
+    if errors:
+        print()
 
-        self.compare_datasets(self.ds_output, self.ds_reference)
-        self.compare_statistics(self.ds_output, self.ds_reference)
-        # do not compare tendencies statistics yet, as we don't know yet if they should stay
+        print()
+        print("⚠️ To update the reference data, run this:")
+        print("cd " + os.path.dirname(actual_path))
+        base = os.path.basename(actual_path)
+        print(f"tar zcf {base}.tgz {base}")
+        print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
+        print()
+        raise AssertionError(f"Comparison failed {errors}")

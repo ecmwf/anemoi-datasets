@@ -247,4 +247,5 @@ class GriddedCreator(Creator):
         collector.collect(data, dates)
 
         for name, data in collector.statistics().items():
+            assert data.dtype == np.float64, f"Expected float64 {name}, got {data.dtype}"
             dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)

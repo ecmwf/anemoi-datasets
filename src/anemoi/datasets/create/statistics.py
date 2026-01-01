@@ -38,8 +38,8 @@ class _CollectorBase:
 
         self._sum += np.sum(valid_data)
         self._count += valid_data.size
-        self._min = min(self._min, np.min(valid_data))
-        self._max = max(self._max, np.max(valid_data))
+        self._min = min(self._min, np.min(valid_data).astype(np.float64))
+        self._max = max(self._max, np.max(valid_data).astype(np.float64))
         self._sumsq += np.sum(valid_data**2)
 
     def statistics(self) -> dict[str, float]:
@@ -47,8 +47,18 @@ class _CollectorBase:
             LOG.warning(f"Column {self._column}: no statistics collected")
             return {_: np.nan for _ in STATISTICS}
 
+        assert isinstance(self._sum, np.float64)
+        assert isinstance(self._count, np.int64)
+        assert isinstance(self._min, np.float64)
+        assert isinstance(self._max, np.float64)
+        assert isinstance(self._sumsq, np.float64)
+
         mean = self._sum / self._count
-        stdev = (self._sumsq / self._count) - (mean**2)
+        stdev = np.sqrt((self._sumsq / self._count) - (mean**2))
+
+        assert isinstance(stdev, np.float64)
+        assert isinstance(mean, np.float64)
+
         return {
             "mean": mean,
             "minimum": self._min,
@@ -69,6 +79,8 @@ class _TendencyCollector(_CollectorBase):
         self._queue = []
 
     def update(self, data):
+        data = data.astype(np.float64)
+
         if len(self._queue) < self._delta:
             self._queue.append(data)
             return
