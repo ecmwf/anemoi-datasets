@@ -42,7 +42,7 @@ class TabularCreator(Creator):
         # See if that can be combined with `gridded`
 
         variables = self.minimal_input.variables
-        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
+        LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
         metadata["variables"] = variables
 
     def initialise_dataset(self, dataset: Dataset) -> None:

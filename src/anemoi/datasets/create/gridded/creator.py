@@ -39,7 +39,7 @@ class GriddedCreator(Creator):
         missing = self.groups.provider.missing
 
         variables = self.minimal_input.variables
-        LOG.info(f"Found {len(variables)} variables : {','.join(variables)}.")
+        LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
 
         variables_with_nans = self.recipe.statistics.allow_nans
 

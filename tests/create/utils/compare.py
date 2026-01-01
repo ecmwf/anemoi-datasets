@@ -131,9 +131,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 
     if type(reference) is not type(actual):
         if reference != actual:
-            msg = (
-                f"🏷️ {'.'.join(path)} reference != actual : {reference} ({type(reference)}) != {actual} ({type(actual)})"
-            )
+            msg = f"🏷️ {'.'.join(path)}: {reference=} ({type(reference)}) != {actual=} ({type(actual)})"
             errors.error(msg)
         return
 
@@ -159,7 +157,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 
     if isinstance(reference, list):
         if len(reference) != len(actual):
-            errors.error(f"{'.'.join(path)} : lengths are different {len(reference)} != {len(actual)}")
+            errors.error(f"{'.'.join(path)} lengths are different reference={len(reference)} != actual={len(actual)}")
             return
 
         for i, (v, w) in enumerate(zip(reference, actual)):
@@ -168,7 +166,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         return
 
     if reference != actual:
-        msg = f"🏷️ {'.'.join(path)} reference != actual : {reference} ({type(reference)}) != {actual} ({type(actual)})"
+        msg = f"🏷️ {'.'.join(path)} {reference=} ({type(reference)}) != {actual=} ({type(actual)})"
         errors.error(msg)
 
 

@@ -18,7 +18,9 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+import tqdm
 import zarr
+from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets import open_dataset
@@ -244,6 +246,19 @@ class Creator(ABC):
         pass
 
     def task_size(self) -> None:
+        dataset = Dataset(self.path, update=True)
+        size, count = 0, 0
+        bar = tqdm.tqdm(iterable=os.walk(self.path), desc=f"Computing size of {os.path.basename(self.path)}")
+        for dirpath, _, filenames in bar:
+            for filename in filenames:
+                file_path = os.path.join(dirpath, filename)
+                size += os.path.getsize(file_path)
+                count += 1
+
+        LOG.info(f"Total size: {bytes_to_human(size)}")
+        LOG.info(f"Total number of files: {count:,}")
+
+        dataset.update_metadata(total_size=size, total_number_of_files=count)
 
         LOG.info("BACK: Running size computation.")
         return
