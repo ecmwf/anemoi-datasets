@@ -45,11 +45,9 @@ class ErrorCollector:
         self._errors = []
 
     def added(self, info=None):
-
         self._errors.append(Added(info))
 
     def missing(self, info=None):
-
         self._errors.append(Missing(info))
 
     def error(self, info=None):
