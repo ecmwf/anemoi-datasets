@@ -24,11 +24,11 @@ from anemoi.datasets.dates import as_datetime
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
     """Shorten the list of dates for display.
 
-    backen    Args:
-            dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
+    Args:
+        dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
 
-        Returns:
-            Union[str, List[str]]: The shortened list of dates.
+    Returns:
+        Union[str, List[str]]: The shortened list of dates.
     """
     if isinstance(dates, (list, tuple)):
         dates = [d.isoformat() for d in dates]
@@ -47,6 +47,12 @@ class GroupOfDates:
         self.dates = [as_datetime(_) for _ in dates]
         self.provider = provider
         self.partial_ok = partial_ok
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
+        """Used in pytest"""
+        dates = DatesProvider.from_config(config)
+        return cls(dates.values, dates)
 
     def __len__(self) -> int:
         """Return the number of dates in the group.
@@ -82,6 +88,18 @@ class GroupOfDates:
             bool: True if the groups are equal, False otherwise.
         """
         return isinstance(other, GroupOfDates) and self.dates == other.dates
+
+    @property
+    def start_date(self) -> datetime.datetime:
+        import numpy as np
+
+        return np.datetime64(self.provider.start_date(self.dates), "ns")
+
+    @property
+    def end_date(self) -> datetime.datetime:
+        import numpy as np
+
+        return np.datetime64(self.provider.end_date(self.dates), "ns") - np.timedelta64(1, "ns")
 
 
 class Groups:
@@ -124,7 +142,7 @@ class Groups:
                 - Other keys for DatesProvider configuration.
         """
 
-        group_by = kwargs.pop("group_by")
+        group_by = kwargs.pop("group_by", "monthly")
         self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
@@ -229,6 +247,7 @@ class Grouper(ABC):
             "monthly": lambda dt: (dt.year, dt.month),
             "daily": lambda dt: (dt.year, dt.month, dt.day),
             "weekly": lambda dt: (dt.weekday(),),
+            "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
         return GrouperByKey(key)

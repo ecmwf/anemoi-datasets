@@ -16,7 +16,7 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
-from anemoi.datasets.create.typing import DateList
+from anemoi.datasets.create.types import DateList
 
 from ..source import Source
 from . import source_registry

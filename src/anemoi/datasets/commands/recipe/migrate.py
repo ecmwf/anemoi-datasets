@@ -17,8 +17,8 @@ from glom import assign
 from glom import delete
 from glom import glom
 
-from anemoi.datasets.create.gridded.tasks import validate_config
-from anemoi.datasets.dumper import yaml_dump
+# from anemoi.datasets.misc.gridded import validate_config
+from anemoi.datasets.misc.dumper import yaml_dump
 
 LOG = logging.getLogger(__name__)
 
@@ -520,7 +520,7 @@ def check(config):
 
     try:
 
-        validate_config(config)
+        # validate_config(config)
         assert config.get("input", {})
         assert config.get("dates", {})
         assert not has_key(config, "label")

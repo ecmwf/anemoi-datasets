@@ -43,11 +43,6 @@ class Init(Command):
             help="Overwrite existing files. This will delete the target dataset if it already exists.",
         )
         subparser.add_argument(
-            "--test",
-            action="store_true",
-            help="Build a small dataset, using only the first dates. And, when possible, using low resolution and less ensemble members.",
-        )
-        subparser.add_argument(
             "--check-name",
             dest="check_name",
             action="store_true",
