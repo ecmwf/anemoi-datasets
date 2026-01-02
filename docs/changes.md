@@ -1,3 +1,5 @@
+This file will be used to populate the PR description will be deleted before merging. It is easier to type that desciption in vscode than in a browser.
+
 [Read about the goal here.](./adr/adr-1.md)
 
 
