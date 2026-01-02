@@ -33,14 +33,14 @@ format: tabular
 The recipe is now a Pydantic model and sub-models for each group (`dates`, `build`, `output`), with
 the exception of the `input` entry, which is still freeform and managed by the "actions" code.
 
-The result is much cleaner and shorter code, with the caveat that error messages will be less
+The result is a much cleaner and shorter code, with the caveat that error messages will be less
 human-friendly. It also makes it clearer where additions to the recipe syntax must go. We will also
-benefit from all the features that Pydantic offers (schema generation, version management,
+benefit from all the features that Pydantic offers (default values, schema generation, version management,
 deprecations, documentation generation, etc.).
 
 ### Creator
 
-This is where most of the existing code has been reorganised, and new code added, although the
+This is where most of the existing code has been reorganised, and new code added, although the orinal code still exists, just moved elsewhere.
 
 The creation of datasets is split into several tasks: `init`, `load`, `statistics`, etc.
 
