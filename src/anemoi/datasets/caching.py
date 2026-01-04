@@ -197,7 +197,7 @@ class _Chunk:
                     new_array_shape,
                 )
 
-            if len(new_array_shape) > 1 and self.cache.shape[2:] != new_array_shape[2:]:
+            if len(new_array_shape) > 1 and self.cache.shape[1:] != new_array_shape[1:]:
                 return self._remove(
                     lru,
                     f"Shape mismatch resizing shape from {self.cache.shape} to {new_array_shape}",
@@ -520,11 +520,18 @@ class ChunksCache:
             The new shape of the array.
         """
         with self._lock:
-            for chunk in self._lru_chunks_cache.values():
+
+            assert self._read_ahead is None, "Resizing not supported with read-ahead enabled"
+
+            self._arr.resize(*new_shape)
+
+            for chunk in list(self._lru_chunks_cache.values()):
                 chunk.resize(self._lru_chunks_cache, new_shape)
+
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug(f"Resized underlying array from {self._arr.shape} to {new_shape}")
-            self._arr.resize(*new_shape)
+
+            self._nrows_in_chunks = self._arr.chunks[0]
 
     def __enter__(self) -> "ChunksCache":
         return self

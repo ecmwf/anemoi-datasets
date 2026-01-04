@@ -34,7 +34,7 @@ class Init(Command):
         subparser : Any
             The argument parser to which the arguments will be added.
         """
-        subparser.add_argument("config", help="Configuration yaml file defining the recipe to create the dataset.")
+        subparser.add_argument("recipe", help="YAML file defining the recipe to create the dataset.")
         subparser.add_argument("path", help="Path to store the created data.")
 
         subparser.add_argument(

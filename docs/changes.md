@@ -10,11 +10,11 @@ format (gridded vs tabular).
 
 ## Creating datasets
 
-Most of the changes happened here.
+Most of the changes occurred here.
 
 ### Recipes
 
-Great care has been taken to ensure that existing recipes are still valid.
+Great care has been taken to ensure that existing recipes remain valid.
 
 #### YAML
 
@@ -33,14 +33,14 @@ format: tabular
 The recipe is now a Pydantic model and sub-models for each group (`dates`, `build`, `output`), with
 the exception of the `input` entry, which is still freeform and managed by the "actions" code.
 
-The result is a much cleaner and shorter code, with the caveat that error messages will be less
-human-friendly. It also makes it clearer where additions to the recipe syntax must go. We will also
+The result is much cleaner and shorter code, with the caveat that error messages are less
+human-friendly. It also clarifies where additions to the recipe syntax must go. We also
 benefit from all the features that Pydantic offers (default values, schema generation, version management,
 deprecations, documentation generation, etc.).
 
 ### Creator
 
-This is where most of the existing code has been reorganised, and new code added, although the orinal code still exists, just moved elsewhere.
+This is where most of the existing code has been reorganised, and new code added, although the original code still exists, just moved elsewhere.
 
 The creation of datasets is split into several tasks: `init`, `load`, `statistics`, etc.
 
@@ -53,7 +53,7 @@ only calls the `load_result` method of its subclasses that handle the partial re
 example is the collection of metadata to be stored in the Zarr store: the superclass collects any
 common information, while each subclass collects format-specific metadata.
 
-In a nutshell, subclasses must implement:
+In a nutshell, the orchestration is done by `Creator` and subclasses must implement:
 
 1. Gather metadata
 2. Load a single result in the Zarr
@@ -64,14 +64,14 @@ The differences between the gridded and tabular subclasses are:
 
 1. Provide format-specific metadata
 2. For gridded, the result is added to the Zarr array `data`. For tabular data, the result is
-   written to a temporary file, after being sorted by dates, having the longitudes normalised and
-   dates rounded to the nearest second (so that none of that is the concern of sources and filters).
+  written to a temporary file, after being sorted by dates, having the longitudes normalised and
+  dates rounded to the nearest second (so that none of that is the concern of sources and filters).
 3. For gridded, statistics are computed (including tendencies statistics if requested) and stored in
-   the Zarr. For tabular data, nothing happens here.
+  the Zarr. For tabular data, nothing happens here.
 4. For gridded data, nothing happens here. For tabular data, all temporary files are loaded and
-   entries are deduplicated, sorted by dates, and the Zarr is loaded and the statistics are computed
-   at the same time, to minimise disk access. Temporary files are then deleted. All of this happens
-   in a parallel fashion, using threads within a single process.
+  entries are deduplicated, sorted by dates, and the Zarr is loaded and the statistics are computed
+  at the same time, to minimise disk access. Temporary files are then deleted. All of this happens
+  in parallel, using threads within a single process.
 
 Note that the code that computes the statistics is the same for both formats, just called at
 different times. Also note that statistics can be recomputed later with `anemoi-dataset statistics`
@@ -91,7 +91,7 @@ for tabular).
 
 The `anemoi-datasets create` command is unchanged. The commands that implement incremental building
 of datasets, such as `anemoi-datasets create`, `anemoi-datasets load`, `anemoi-datasets statistics`
-are still there, but some of them are not useful any more (e.g. statistics and tendencies statistics
+are still present, but some of them are not useful any more (e.g. statistics and tendencies statistics
 are now computed in the same pass, so commands like `anemoi-datasets init-additions` are now
 no-ops).
 
@@ -135,7 +135,7 @@ The code that was used to allow concurrent writing to Zarr is gone, as it was us
 will not be ported to Zarr3 (?). Synchronisation/locking is now done independently, using the same
 packages that Zarr2 was using.
 
-The `thinning` subsetting method was only supporting 2D lat/lon grids (`every-nth` method). This is
+The `thinning` subsetting method only supported 2D lat/lon grids (`every-nth` method). This is
 not useful for tabular data. It now supports three more methods:
 - `distance-based`: ensures that each selected point is not closer to the others than a minimum
   distance expressed in km.
@@ -169,6 +169,7 @@ A lot.
 - Review join, concat, select, ... in the context of tabular data (in creation and usage).
 - Issue meaningful error messages when combinations are impossible (e.g. combining datasets of
   different types)
+- Variable metadata for observations?
 - Finalise datasets subsetting and combining tests, covering both gridded and tabular data
 - Add tests for tabular data
 - Revisit defaults (e.g. `thinning` subsetter)

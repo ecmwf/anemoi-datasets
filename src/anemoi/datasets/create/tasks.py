@@ -62,6 +62,8 @@ def run_task(name: str, recipe=None, **kwargs):
 
     from anemoi.datasets.create.creator import Creator
 
+    print(f"Running task: {name}, recipe: {recipe}, kwargs: {kwargs}")
+
     creator = Creator.from_recipe(recipe, **kwargs)
     dispatch = TaskDispatcher(creator)
     return getattr(dispatch, f"task_{name}")()
