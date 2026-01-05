@@ -10,8 +10,8 @@
 
 import datetime
 import logging
-from abc import abstractmethod
 from typing import Iterable
+from abc import abstractmethod
 
 from anemoi.utils.dates import frequency_to_timedelta
 
@@ -21,33 +21,54 @@ from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import c
 LOG = logging.getLogger(__name__)
 
 
-def interval_without_base(current_time, start_step, end_step):
-    start = datetime.datetime(current_time.year, current_time.month, current_time.day, start_step)
-    end = start + datetime.timedelta(hours=end_step - start_step)
-    return SignedInterval(start=start, end=end, base=None)
-
-
-def interval_with_base(current_time, start_step, end_step, base_time):
+def build_interval(
+    current_time: datetime.datetime,
+    start_step: int, 
+    end_step: int,
+    base_time: str|int|None
+    ) -> SignedInterval:
+    """
+    Build a SignedInterval object corresponding to current_time's day
+    This SignedInterval may not have a base datetime
+    
+    """
     try:
-        base_time = int(base_time)
+        usable_base_time = int(base_time) if base_time is not None else 0
     except ValueError:
         raise ValueError(f"Invalid base_time: {base_time} ({type(base_time)})")
-
-    base = datetime.datetime(current_time.year, current_time.month, current_time.day, base_time)
+    base = datetime.datetime(current_time.year, current_time.month, current_time.day, usable_base_time)
     start = base + datetime.timedelta(hours=start_step)
     end = base + datetime.timedelta(hours=end_step)
-    return SignedInterval(start=start, end=end, base=base)
+    
+    interval_base = base if base_time is not None else None
+    
+    return SignedInterval(start=start, end=end, base=interval_base)
 
 
 class IntervalGenerator:
+    """
+    Abstract base class to generate intervals. 
+    Call to IntervalGenerator will provide candidate intervals to be selected by the covering_intervals method
+    """
     @abstractmethod
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+    def covering_intervals(self, start: datetime, end: datetime) -> Iterable[SignedInterval]:
+        pass
+    
+    @abstractmethod
+    def __call__():
         pass
 
-
 class Pattern:
-
-    def __init__(self, base_time, steps, search_range=None, base_date=None):
+    """
+    Common format of config arguments to build SearchableIntervalGenerator 
+    Used to supply candidate intervals for IntervalGenerator
+    """
+    def __init__(self,
+        base_time: str | datetime.datetime, 
+        steps: str | list[str], 
+        search_range: list[int]|None = None,
+        base_date: dict | None = None
+    ):
         steps = normalise_steps(steps)
         self.steps = steps
 
@@ -67,7 +88,7 @@ class Pattern:
             assert len(base_date) == 1, base_date
         self.base_date = base_date
 
-    def filter(self, interval: SignedInterval):
+    def filter(self, interval: SignedInterval) -> bool:
         if self.base_date:
             if interval.base.day != self.base_date["day_of_month"]:
                 return False
@@ -75,7 +96,7 @@ class Pattern:
 
 
 class SearchableIntervalGenerator(IntervalGenerator):
-    def __init__(self, config):
+    def __init__(self, config: tuple|list|dict):
         if isinstance(config, (tuple, list)):
             patterns = []
             for base_time, steps in config:
@@ -87,18 +108,21 @@ class SearchableIntervalGenerator(IntervalGenerator):
         self.patterns: list[Pattern] = patterns
 
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        """
+        Perform interval search among candidates with minimal base switches and length.
+        Candidates are given by self call
+        Return available SignedIntervals covering the period start->end (where start>end is possible)
+        """
         return covering_intervals(start, end, self)
 
     def __call__(
         self,
         current_time: datetime.datetime,
-        start: datetime.datetime,
-        end: datetime.datetime,
-        current_base: datetime.datetime,
     ) -> Iterable[SignedInterval]:
-        # This generates starting or ending intervals for the given current_time
-        del start, end, current_base
-
+        """
+        This generates candidate intervals starting or ending at the given current_time
+        Candidates correspond to the pairs of base_time, steps stored in patterns
+        """
         intervals = []
         for p in self.patterns:
             search_range = p.search_range
@@ -106,12 +130,9 @@ class SearchableIntervalGenerator(IntervalGenerator):
                 base_time = p.base_time
                 steps = p.steps
                 for start_step, end_step in steps:
-                    if base_time is None:
-                        interval = interval_without_base(current_time + delta, start_step, end_step)
-                    else:
-                        interval = interval_with_base(current_time + delta, start_step, end_step, base_time)
-                        if not p.filter(interval):
-                            continue
+                    interval = build_interval(current_time + delta, start_step, end_step, base_time)
+                    if not p.filter(interval):
+                        continue
 
                     if interval not in intervals:
                         intervals.append(interval)
@@ -132,7 +153,10 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return intervals
 
 
-def normalise_steps(steps_list) -> list[list[int]]:
+def normalise_steps(steps_list: str | list[str]) -> list[list[int]]:
+    """
+    Convert the input step_list to a list of [start,end] pairs
+    """
     res = []
     if isinstance(steps_list, str):
         steps_list = steps_list.split("/")
@@ -149,7 +173,7 @@ def normalise_steps(steps_list) -> list[list[int]]:
 
 
 class AccumulatedFromStartIntervalGenerator(SearchableIntervalGenerator):
-    def __init__(self, basetime, frequency, last_step):
+    def __init__(self, basetime: str|datetime.datetime, frequency: int, last_step: int):
         config = []
         for base in basetime:
             for i in range(0, last_step, frequency):
@@ -158,7 +182,7 @@ class AccumulatedFromStartIntervalGenerator(SearchableIntervalGenerator):
 
 
 class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
-    def __init__(self, basetime, frequency, last_step):
+    def __init__(self, basetime: str|datetime.datetime, frequency: int, last_step: int):
         config = []
         for base in basetime:
             for i in range(0, last_step, frequency):

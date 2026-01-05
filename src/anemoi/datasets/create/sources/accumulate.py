@@ -101,7 +101,7 @@ class Accumulator:
                     print(f"✅ {interval} == {i}")
                     return i
                 if i.start == interval.start and i.end == interval.end and i.base is None:
-                    print(f"✅ {interval} ~= {i}")
+                    print(f"✅ {interval} ~= {i} (baseless)")
                     return i
                 print(f"❌ {interval} != {i}")
             return None
@@ -262,7 +262,7 @@ def _compute_accumulations(
     context: Any,
     dates: list[datetime.datetime],
     period: datetime.timedelta,
-    source: Any,
+    source: dict,
     available: dict[str, Any] | None = None,
     **kwargs,
 ) -> Any:
@@ -279,7 +279,8 @@ def _compute_accumulations(
         The dataset building context (will be updated with trace of accumulation)
     dates: list[datetime.datetime]
         The list of valid dates on which to perform accumulations.
-    source: Any,
+    source: dict
+        The source configuration to request fields from
     period: datetime.timedelta,
         The interval over which to accumulate (user-defined)
     available: Any, optional
@@ -293,6 +294,7 @@ def _compute_accumulations(
 
     LOG.debug("💬 source for accumulations: %s", source)
 
+    # building the source objects
     assert isinstance(source, dict)
     assert len(source) == 1, f"Source must have exactly one key, got {list(source.keys())}"
     source_name, _ = next(iter(source.items()))
@@ -304,10 +306,13 @@ def _compute_accumulations(
             source[source_name]["levtype"] = "sfc"
             LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
 
-    interval_generator = interval_generator_factory(available)
-    if not isinstance(period, datetime.timedelta):
-        period = frequency_to_timedelta(period)
+    h = hashlib.md5(json.dumps((str(period), source), sort_keys=True).encode()).hexdigest()
+    print(source)
+    source_object = context.create_source(source, "data_sources", h)
 
+    interval_generator = interval_generator_factory(available)
+
+    # generate the interval coverage for every date
     coverages = {}
     for d in dates:
         if not isinstance(d, datetime.datetime):
@@ -327,10 +332,6 @@ def _compute_accumulations(
                 yield d, interval
 
     dates.intervals = _intervals()
-
-    h = hashlib.md5(json.dumps((str(period), source), sort_keys=True).encode()).hexdigest()
-    print(source)
-    source_object = context.create_source(source, "data_sources", h)
 
     # need a temporary file to store the accumulated fields for now, because earthkit-data
     # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
@@ -426,7 +427,7 @@ class AccumulateSource(LegacySource):
         context: Any,
         dates: list[datetime.datetime],
         source: Any,
-        period,
+        period: str | int,
         available=None,
         patch: Any = None,
         **kwargs,

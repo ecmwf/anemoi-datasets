@@ -16,6 +16,7 @@ from datetime import timedelta
 from heapq import heappop
 from heapq import heappush
 from typing import Callable
+from typing import Iterable
 from typing import List
 from typing import Optional
 
@@ -115,7 +116,6 @@ class SignedInterval:
 
         return f"SignedInterval({start}{period}->{end}{base_str} )"
 
-
 @dataclass(order=True)
 class HeapState:
     total_cost: float
@@ -186,7 +186,7 @@ def covering_intervals(
             LOG.warning(msg)
             return None
 
-        for interval in candidates(state.current_time, current_base=state.current_base, start=start, end=end):
+        for interval in candidates(state.current_time):
             if interval.start != state.current_time:
                 raise ValueError(
                     f"Candidate interval {interval} does not start or end at current_time {state.current_time}"
