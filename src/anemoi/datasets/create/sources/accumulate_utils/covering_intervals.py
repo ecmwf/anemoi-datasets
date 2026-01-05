@@ -16,7 +16,6 @@ from datetime import timedelta
 from heapq import heappop
 from heapq import heappush
 from typing import Callable
-from typing import Iterable
 from typing import List
 from typing import Optional
 
@@ -115,6 +114,7 @@ class SignedInterval:
                 period = f"[red]{period}[/red]"
 
         return f"SignedInterval({start}{period}->{end}{base_str} )"
+
 
 @dataclass(order=True)
 class HeapState:
