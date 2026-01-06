@@ -12,7 +12,6 @@ import logging
 import threading
 
 import numpy as np
-import tqdm
 
 LOG = logging.getLogger(__name__)
 
@@ -141,15 +140,12 @@ class StatisticsCollector:
                     for _ in range(array.shape[1])
                 ]
 
-        for i in tqdm.tqdm(self._filter(dates), desc="Collecting statistics", unit="date"):
-            data = array[i]
+        for j in range(array.shape[1]):
+            values = array[j]
+            self._collectors[j].update(values)
 
-            for j in range(array.shape[1]):
-                values = data[j]
-                self._collectors[j].update(values)
-
-                for c in self._tendencies_collectors.values():
-                    c[j].update(values)
+            for c in self._tendencies_collectors.values():
+                c[j].update(values)
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:
