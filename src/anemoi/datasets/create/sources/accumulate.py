@@ -151,7 +151,7 @@ class Accumulator:
         # actual accumulation computation
         # negative accumulation if interval is reversed
         # copy is mandatory since value is shared between accumulators
-        local_values = interval.sign * values.copy()
+        local_values = matching.sign * values.copy()
         if self.values is None:
             self.values = local_values
         else:
