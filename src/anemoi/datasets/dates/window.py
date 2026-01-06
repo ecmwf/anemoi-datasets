@@ -24,10 +24,129 @@ from ..caching import ChunksCache
 from ..date_indexing import create_date_indexing
 
 
+class AnnotatedNDArray(np.ndarray):
+    """Extends numpy.ndarray to include additional metadata attributes.
+
+    This class attaches a meta object that holds metadata information, allowing
+    for the recommended way to add metadata to numpy arrays.
+    """
+
+    def __new__(cls, input_array, *, dtype=None, copy=False, meta=None) -> "AnnotatedNDArray":
+        """Create a new AnnotatedNDArray with attached metadata.
+
+        Parameters
+        ----------
+        input_array : array_like
+            Input data to be converted to an AnnotatedNDArray.
+        dtype : data-type, optional
+            Desired data-type for the array.
+        copy : bool, optional
+            If True, then the object is copied.
+        meta : object, optional
+            Metadata object to attach to the array.
+
+        Returns
+        -------
+        AnnotatedNDArray
+            The new array with attached metadata.
+        """
+        obj = np.array(input_array, dtype=dtype, copy=copy).view(cls)
+        obj.meta = meta
+        return obj
+
+    def __array_finalize__(self, obj) -> None:
+        """Finalise the creation of the AnnotatedNDArray, ensuring metadata is attached.
+
+        Parameters
+        ----------
+        obj : object
+            The source object from which the new array is derived.
+        """
+        if obj is None:
+            return
+        self.meta = getattr(obj, "meta", None)
+
+    @property
+    def dates(self) -> np.ndarray:
+        """Array of dates associated with the data."""
+        return self.meta.dates
+
+    @property
+    def latitudes(self) -> np.ndarray:
+        """Array of latitudes associated with the data."""
+        return self.meta.latitudes
+
+    @property
+    def longitudes(self) -> np.ndarray:
+        """Array of longitudes associated with the data."""
+        return self.meta.longitudes
+
+    @property
+    def timedeltas(self) -> np.ndarray:
+        """Array of time deltas associated with the data."""
+        return self.meta.timedeltas
+
+    @property
+    def reference_date(self) -> datetime.datetime:
+        """The reference date for the data."""
+        return self.meta.reference_date
+
+
+class _WindowMetaData:
+    """Holds metadata for a windowed data array, including reference to the owner,
+    index, and auxiliary array for date and location information.
+    """
+
+    def __init__(self, owner, index, aux_array) -> None:
+        """Initialise the _WindowMetaData object.
+
+        Parameters
+        ----------
+        owner : WindowView
+            The WindowView instance that owns this metadata.
+        index : int
+            The window index.
+        aux_array : np.ndarray
+            Auxiliary array containing date and location information.
+        """
+        self.owner = owner
+        self.index = index
+        self.aux_array = aux_array
+
+    @property
+    def latitudes(self) -> np.ndarray:
+        """Array of latitudes for the window."""
+        return self.aux_array[:, 2]
+
+    @property
+    def longitudes(self) -> np.ndarray:
+        """Array of longitudes for the window."""
+        return self.aux_array[:, 3]
+
+    @property
+    def dates(self) -> np.ndarray:
+        """Array of dates for the window."""
+        epoch = self.owner._epochs[self.index]
+        days = self.aux_array[:, 0]
+        seconds = self.aux_array[:, 1]
+        timestamps = days * 86400 + seconds + epoch
+        return np.array([np.datetime64(datetime.datetime.fromtimestamp(ts)) for ts in timestamps])
+
+    @property
+    def timedeltas(self) -> np.ndarray:
+        """Array of time deltas for the window."""
+        return self.aux_array[:, 0] * 86400 + self.aux_array[:, 1] - self.owner._epochs[self.index]
+
+    @property
+    def reference_date(self) -> datetime.datetime:
+        """The reference date for the window."""
+        return np.datetime64(datetime.datetime.fromtimestamp(self.owner._epochs[self.index]))
+
+
 class Window:
     """Represents a time window for selecting data, with before/after offsets and inclusivity.
 
-    This class parses a window string to determine the time offsets before and after a central point,
+    Parses a window string to determine the time offsets before and after a central point,
     and whether the window is inclusive or exclusive at each end. Used by WindowView to select data slices.
     """
 
@@ -293,12 +412,8 @@ class WindowView:
         np.ndarray
             The filtered and transformed data array.
         """
-        # Convert day/second columns to seconds since epoch
-        dates = array[:, 0] * 86400 + array[:, 1]
-        # Compute time delta relative to the window epoch
-        deltadate = dates - self._epochs[index]
-        # Add time delta as first column, removing original day and second columns
-        return np.concatenate([deltadate[:, np.newaxis], array[:, 2:]], axis=1)
+
+        return AnnotatedNDArray(array[:, 4:], meta=_WindowMetaData(owner=self, index=index, aux_array=array[:, :4]))
 
     def __repr__(self) -> str:
         """Return a string representation of the WindowView.

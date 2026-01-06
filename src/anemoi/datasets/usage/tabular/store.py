@@ -119,7 +119,7 @@ class TabularZarr(ZarrStore):
 
     @property
     def variables(self) -> list[str]:
-        return self.store.attrs["variables"]
+        return [v for v in self.store.attrs["variables"] if not v.startswith("__")]
 
     def variables_metadata(self) -> dict[str, dict[str, Any]]:
         raise NotImplementedError()
