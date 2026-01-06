@@ -209,10 +209,7 @@ RR_OPER_TEST_CASE = [
     ),
     (
         _("20240102.0000 -> 20240104.1200"),
-        [
-            _("20240102.0000 -> 20240103.0600, base=20240102.0000"),
-            _("20240103.0600 -> 20240104.1200, base=20240103.0000"),
-        ],
+        [_("20240102.0000 -> 20240103.0000, base=20240102.0000"), _("20240103.0000 -> 20240104.0000, base=20240103.0000"), _("20240104.0000 -> 20240104.1200, base=20240104.0000")]
     ),
 ]
 
@@ -338,11 +335,11 @@ def test_rr_oper(test):
 #     tester.test(test[0], test[1])
 
 if __name__ == "__main__":
-    # for t in ENDA_TEST_CASES:
-    #    test_enda(t)
-    # for t in ERA_TEST_CASES:
-    #    test_era(t)
-    # for t in GRIB_INDEX_TEST_CASE:
-    # s    test_grib_index_no_basetime(t)
+    for t in ENDA_TEST_CASES:
+        test_enda(t)
+    for t in ERA_TEST_CASES:
+       test_era(t)
+    for t in GRIB_INDEX_TEST_CASE:
+        test_grib_index_no_basetime(t)
     for t in RR_OPER_TEST_CASE:
         test_rr_oper(t)
