@@ -288,11 +288,11 @@ class StartEndDates(DatesProvider):
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
 
-    def start_date(self, dates) -> datetime.datetime:
+    def start_range(self, dates) -> datetime.datetime:
         """Used for tabular datasets grouping."""
         return dates[0]
 
-    def end_date(self, dates) -> datetime.datetime:
+    def end_range(self, dates) -> datetime.datetime:
         """Used for tabular datasets grouping."""
         return dates[-1] + self.frequency
 

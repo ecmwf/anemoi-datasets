@@ -71,13 +71,28 @@ class TabularCreator(Creator):
             The dataset object into which the result will be loaded.
         """
         os.makedirs(self.work_dir, exist_ok=True)
-        np.save(
-            os.path.join(
-                self.work_dir,
-                f"{result.start_date}-{result.end_date}.npy",
-            ),
-            result.to_numpy(),
-        )
+
+        # Split large arrays into multiple files so that the finalisation step
+        # does not need to load huge files into memory.
+
+        # TODO: read value from recipe
+
+        max_size = 256 * 1024 * 1024  # 256 MB
+        array = result.to_numpy()
+        if array.shape[0] == 0:
+            np.save(os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}.npy"), array)
+            return
+
+        one_row_size = array.shape[1] * array.itemsize
+        rows_per_file = max(round(max_size / one_row_size), 1)
+
+        for i, row_start in enumerate(range(0, array.shape[0], rows_per_file)):
+            row_end = min(row_start + rows_per_file, array.shape[0])
+
+            np.save(
+                os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}-{i:04d}.npy"),
+                array[row_start:row_end],
+            )
 
     def finalise_dataset(self, dataset: Dataset) -> None:
         """Finalise the dataset after all data has been loaded.
@@ -96,7 +111,7 @@ class TabularCreator(Creator):
             work_dir=self.work_dir,
             date_indexing=self.recipe.date_indexing,
             statistic_collector=collector,
-            delete_files=True,
+            delete_files=False,
         )
 
         for name, data in collector.statistics().items():

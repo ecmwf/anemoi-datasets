@@ -87,7 +87,7 @@ class CSVSource(Source):
         if to_drop:
             frame.drop(columns=to_drop, inplace=True)
 
-        mask = (frame["date"] >= dates.start_date) & (frame["date"] <= dates.end_date)
+        mask = (frame["date"] >= dates.start_range) & (frame["date"] <= dates.end_range)
 
         frame = frame.loc[mask]
 

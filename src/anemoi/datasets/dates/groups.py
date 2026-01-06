@@ -90,16 +90,16 @@ class GroupOfDates:
         return isinstance(other, GroupOfDates) and self.dates == other.dates
 
     @property
-    def start_date(self) -> datetime.datetime:
+    def start_range(self) -> datetime.datetime:
         import numpy as np
 
-        return np.datetime64(self.provider.start_date(self.dates), "ns")
+        return np.datetime64(self.provider.start_range(self.dates), "ns")
 
     @property
-    def end_date(self) -> datetime.datetime:
+    def end_range(self) -> datetime.datetime:
         import numpy as np
 
-        return np.datetime64(self.provider.end_date(self.dates), "ns") - np.timedelta64(1, "ns")
+        return np.datetime64(self.provider.end_range(self.dates), "ns") - np.timedelta64(1, "ns")
 
 
 class Groups:

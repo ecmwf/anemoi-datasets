@@ -10,6 +10,8 @@
 import datetime
 import logging
 import os
+import time
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
@@ -26,19 +28,19 @@ from anemoi.datasets.date_indexing import create_date_indexing
 LOG = logging.getLogger(__name__)
 
 
-class Chunk:
-    """Represents a chunk of tabular data with associated date range and shape information.
+class Fragment:
+    """Represents a fragment of tabular data with associated date range and shape information.
 
     Parameters
     ----------
     first_date : datetime.datetime
-        The first date in the chunk.
+        The first date in the fragment.
     last_date : datetime.datetime
-        The last date in the chunk.
+        The last date in the fragment.
     shape : tuple of int
-        The shape of the chunk array.
+        The shape of the fragment array.
     file_path : str
-        Path to the file containing the chunk data.
+        Path to the file containing the fragment data.
     """
 
     def __init__(
@@ -49,18 +51,18 @@ class Chunk:
         shape: tuple[int, ...],
         file_path: str,
     ) -> None:
-        """Initialise a Chunk instance.
+        """Initialise a Fragment instance.
 
         Parameters
         ----------
         first_date : datetime.datetime
-            The first date in the chunk.
+            The first date in the fragment.
         last_date : datetime.datetime
-            The last date in the chunk.
+            The last date in the fragment.
         shape : tuple of int
-            The shape of the chunk array.
+            The shape of the fragment array.
         file_path : str
-            Path to the file containing the chunk data.
+            Path to the file containing the fragment data.
         """
         self.file_path: str = file_path
         self.first_date: datetime.datetime = first_date
@@ -69,24 +71,24 @@ class Chunk:
         self.offset: int | None = None
 
     @classmethod
-    def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Chunk"]:
-        """Create a Chunk instance from a numpy array.
+    def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Fragment"]:
+        """Create a Fragment instance from a numpy array.
 
-        This method inspects the provided numpy array, which is expected to represent a chunk of tabular data
+        This method inspects the provided numpy array, which is expected to represent a fragment of tabular data
         with date information encoded in the first two columns. It extracts the first and last date from the array,
-        determines the shape, and returns a new Chunk instance. If the array is empty, None is returned.
+        determines the shape, and returns a new Fragment instance. If the array is empty, None is returned.
 
         Parameters
         ----------
         array : numpy.ndarray
-            The array containing the chunk data. The first two columns should encode date information as (days, seconds).
+            The array containing the fragment data. The first two columns should encode date information as (days, seconds).
         file_path : str
-            Path to the file containing the chunk data.
+            Path to the file containing the fragment data.
 
         Returns
         -------
-        Chunk or None
-            The created Chunk instance, or None if the array is empty.
+        Fragment or None
+            The created Fragment instance, or None if the array is empty.
         """
         if len(array) == 0:
             return None
@@ -97,28 +99,28 @@ class Chunk:
         return cls(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
 
     @classmethod
-    def from_path(cls, file_path: str) -> "Chunk":
-        """Create a Chunk instance from a file path.
+    def from_path(cls, file_path: str) -> "Fragment":
+        """Create a Fragment instance from a file path.
 
         This method loads a numpy array from the specified file path (using memory mapping for efficiency),
-        and then delegates to from_array to construct a Chunk instance. The file is expected to contain a 2D numpy array
-        with date information in the first two columns. This is useful for reconstructing chunk metadata from disk.
+        and then delegates to from_array to construct a Fragment instance. The file is expected to contain a 2D numpy array
+        with date information in the first two columns. This is useful for reconstructing fragment metadata from disk.
 
         Parameters
         ----------
         file_path : str
-            Path to the file containing the chunk data.
+            Path to the file containing the fragment data.
 
         Returns
         -------
-        Chunk
-            The created Chunk instance.
+        Fragment
+            The created Fragment instance.
         """
         array: np.ndarray = np.load(file_path, mmap_mode="r")
         return cls.from_array(array, file_path=file_path)
 
 
-def _unduplicate_rows(array: np.ndarray) -> tuple[int, np.ndarray]:
+def _deduplicate_rows(array: np.ndarray) -> np.ndarray:
     """Remove duplicate rows from a 2D numpy array, handling NaNs correctly.
 
     This function is designed to efficiently remove duplicate rows from a 2D numpy array, even when the array contains
@@ -133,8 +135,6 @@ def _unduplicate_rows(array: np.ndarray) -> tuple[int, np.ndarray]:
 
     Returns
     -------
-    int
-        Number of duplicate rows removed.
     numpy.ndarray
         Array with duplicates removed.
     """
@@ -151,15 +151,14 @@ def _unduplicate_rows(array: np.ndarray) -> tuple[int, np.ndarray]:
 
     unique_array: np.ndarray = b[np.sort(idx)]
 
-    duplicates: int = len(array) - len(unique_array)
-    return duplicates, unique_array
+    return unique_array
 
 
 def _date(array: np.ndarray, index: int) -> datetime.datetime:
     """Convert a row in the array to a datetime object.
 
     This function interprets the first two columns of the specified row as (days, seconds) since the Unix epoch,
-    and returns the corresponding datetime.datetime object. This encoding is used throughout the chunk files to
+    and returns the corresponding datetime.datetime object. This encoding is used throughout the fragment files to
     efficiently store date information as integers.
 
     Parameters
@@ -178,79 +177,28 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
-def _unduplicate_worker(file_path: str, delete_file: bool) -> tuple[int, Chunk]:
-    """Worker function to remove duplicate rows from a file and update the file as needed.
+def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[Fragment]:
+    """Worker function to resolve overlapping date ranges between two fragments.
 
-    This function is intended to be run in parallel across multiple files. It loads a numpy array from the given file,
-    removes duplicate rows (treating NaNs as equal), and either overwrites the original file or writes a new deduped file
-    depending on the delete_file flag. It returns the number of duplicates removed and a new Chunk instance representing
-    the deduplicated data. This is a key step in ensuring that the final dataset contains only unique records.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the file to process.
-    delete_file : bool
-        Whether to overwrite the original file or create a deduped copy.
-
-    Returns
-    -------
-    int
-        Number of duplicate rows removed.
-    Chunk
-        The resulting Chunk instance.
-    """
-    array: np.ndarray = np.load(file_path, mmap_mode="r")
-
-    duplicates, unique_array = _unduplicate_rows(array)
-
-    if duplicates:
-        # Save to a temporary file first, then move to final location to avoid partial writes
-        np.save(file_path + ".tmp", unique_array)
-        if delete_file:
-            os.rename(file_path + ".tmp.npy", file_path)
-        else:
-            os.rename(file_path + ".tmp.npy", file_path + ".deduped.npy")
-            file_path = file_path + ".deduped.npy"
-
-    if len(unique_array) == 0:
-        return duplicates, None
-
-    first_date: datetime.datetime = _date(unique_array, 0)
-    last_date: datetime.datetime = _date(unique_array, -1)
-
-    return duplicates, Chunk(
-        first_date=first_date,
-        last_date=last_date,
-        shape=unique_array.shape,
-        file_path=file_path,
-    )
-
-
-def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> tuple[int, list[Chunk]]:
-    """Worker function to resolve overlapping date ranges between two chunks.
-
-    This function is used to merge two chunks that have overlapping date ranges. It finds the point where the overlap ends,
+    This function is used to merge two fragments that have overlapping date ranges. It finds the point where the overlap ends,
     removes any duplicate row at the boundary, and then splits the data into two non-overlapping arrays. The function
     saves the new arrays to disk, either overwriting the originals or creating deduped versions, and returns the number
-    of duplicates removed along with a list of new Chunk instances. This is essential for ensuring that the final dataset
-    has strictly increasing, non-overlapping date ranges across all chunks.
+    of duplicates removed along with a list of new Fragment instances. This is essential for ensuring that the final dataset
+    has strictly increasing, non-overlapping date ranges across all fragments.
 
     Parameters
     ----------
-    one : Chunk
-        The first chunk.
-    two : Chunk
-        The second chunk.
+    one : Fragment
+        The first fragment.
+    two : Fragment
+        The second fragment.
     delete_files : bool
         Whether to overwrite the original files or create deduped copies.
 
     Returns
     -------
-    int
-        Number of duplicate rows removed.
-    list of Chunk
-        The resulting list of updated Chunk instances.
+    list of Fragment
+        The resulting list of updated Fragment instances.
     """
     array_one: np.ndarray = np.load(one.file_path, mmap_mode="r")
     array_two: np.ndarray = np.load(two.file_path, mmap_mode="r")
@@ -263,13 +211,10 @@ def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> tuple[int, 
 
     assert i > 0
 
-    duplicates: int = 0
-
     beginning_array_two: np.ndarray = array_two[:i]
 
     # If the last row of array_one is identical to the first of array_two, skip it to avoid duplication
     if np.allclose(array_one[-1], beginning_array_two[0], equal_nan=True, rtol=0, atol=0):
-        duplicates = 1
         beginning_array_two = beginning_array_two[1:]
 
     # Merge the two arrays, removing overlap
@@ -291,71 +236,70 @@ def _deoverlap_worker(one: Chunk, two: Chunk, delete_files: bool) -> tuple[int, 
         os.rename(two.file_path + ".tmp.npy", two.file_path + ".deduped.npy")
         two.file_path = two.file_path + ".deduped.npy"
 
-    result: list[Chunk] = []
+    result: list[Fragment] = []
 
-    # Only keep non-empty arrays as chunks
+    # Only keep non-empty arrays as fragments
     if new_array_one.size > 0:
-        one = Chunk.from_path(one.file_path)
+        one = Fragment.from_path(one.file_path)
         assert one is not None
         result.append(one)
     else:
         os.unlink(one.file_path)
 
     if end_array_two.size > 0:
-        two = Chunk.from_path(two.file_path)
+        two = Fragment.from_path(two.file_path)
         assert two is not None
         result.append(two)
     else:
         os.unlink(two.file_path)
 
-    return duplicates, result
+    return result
 
 
-def _sort_and_chain_chunks(chunks: list[Chunk]) -> list[Chunk]:
-    """Sort chunks by first date and assign offsets for chaining.
+def _sort_and_chain_fragments(fragments: list[Fragment]) -> list[Fragment]:
+    """Sort fragments by first date and assign offsets for chaining.
 
-    This function sorts a list of Chunk objects in ascending order of their first_date attribute, and then assigns
-    a running offset to each chunk so that they can be concatenated into a single array. The offset is used to
-    determine where each chunk's data should be written in the final output array. This is a preparatory step for
+    This function sorts a list of Fragment objects in ascending order of their first_date attribute, and then assigns
+    a running offset to each fragment so that they can be concatenated into a single array. The offset is used to
+    determine where each fragment's data should be written in the final output array. This is a preparatory step for
     efficiently writing the final dataset to disk in a single pass.
 
     Parameters
     ----------
-    chunks : list of Chunk
-        List of Chunk instances to sort and chain.
+    fragments : list of Fragment
+        List of Fragment instances to sort and chain.
 
     Returns
     -------
-    list of Chunk
-        Sorted and offset-assigned chunks.
+    list of Fragment
+        Sorted and offset-assigned fragments.
     """
-    # Sort by first date and assign offsets for each chunk
-    chunks = sorted(chunks, key=lambda x: x.first_date)
+    # Sort by first date and assign offsets for each fragment
+    fragments = sorted(fragments, key=lambda x: x.first_date)
     offset: int = 0
-    for chunk in chunks:
-        chunk.offset = offset
-        offset += chunk.shape[0]
-    return chunks
+    for fragment in fragments:
+        fragment.offset = offset
+        offset += fragment.shape[0]
+    return fragments
 
 
-def _list_files(work_dir: str) -> list[str]:
+def _list_files(work_dir: str) -> Generator[str, None, None]:
     """Yield file paths for .npy files in a working directory, excluding temporary and special files.
 
     This function scans the specified working directory and returns a list of all .npy files that are not temporary
     or special files (such as those used for date indices or intermediate deduplication). This is used to identify all
-    candidate chunk files for further processing in the finalisation pipeline.
+    candidate fragment files for further processing in the finalisation pipeline.
 
     Parameters
     ----------
     work_dir : str
         Directory to search for files.
 
-    Returns
+    Yields
     -------
-    list of str
-        List of paths to valid .npy files.
+        Paths to valid .npy files.
     """
-    result = []
+
     for file in os.listdir(work_dir):
         # Exclude special and temporary files
         if file in ("dates.npy", "dates_ranges.npy"):
@@ -367,26 +311,28 @@ def _list_files(work_dir: str) -> list[str]:
         if ".tmp" in file or ".deduped" in file:
             continue
 
-        result.append(os.path.join(work_dir, file))
+        yield os.path.join(work_dir, file)
 
-    return result
+
+def _read_fragment_worker(file_path: str) -> Fragment:
+    return Fragment.from_path(file_path)
 
 
 def _find_duplicate_and_overlapping_dates(
     work_dir: str, delete_files: bool, max_workers: int | None = None
-) -> list[Chunk]:
-    """Find and resolve duplicate and overlapping date ranges in chunk files.
+) -> list[Fragment]:
+    """Find and resolve duplicate and overlapping date ranges in fragment files.
 
-    This function orchestrates the deduplication and deoverlapping of all chunk files in a working directory.
-    It first removes duplicate rows from each chunk in parallel, then repeatedly detects and resolves overlaps
-    between adjacent chunks until all chunks are strictly ordered and non-overlapping. The result is a list of
-    Chunk objects that can be safely concatenated to form the final dataset. This is the main data cleaning step
+    This function orchestrates the deduplication and deoverlapping of all fragment files in a working directory.
+    It first removes duplicate rows from each fragment in parallel, then repeatedly detects and resolves overlaps
+    between adjacent fragments until all fragments are strictly ordered and non-overlapping. The result is a list of
+    Fragment objects that can be safely concatenated to form the final dataset. This is the main data cleaning step
     in the finalisation pipeline, ensuring data integrity and temporal consistency.
 
     Parameters
     ----------
     work_dir : str
-        Directory containing chunk files.
+        Directory containing fragment files.
     delete_files : bool
         Whether to overwrite original files or create deduped copies.
     max_workers : int, optional
@@ -394,41 +340,34 @@ def _find_duplicate_and_overlapping_dates(
 
     Returns
     -------
-    list of Chunk
-        List of deduplicated and deoverlapped Chunk instances.
+    list of Fragment
+        List of deduplicated and deoverlapped Fragment instances.
     """
     import os
 
-    chunks: dict[str, Chunk] = {}
-    total_duplicates: int = 0
-
-    LOG.info("Listing files")
-    files = _list_files(work_dir)
-    LOG.info(f"Found {len(files)} files to process")
+    fragments: dict[str, Fragment] = {}
 
     if max_workers is None:
         # For some reason using too many workers causes hangs in ProcessPoolExecutor
-        max_workers = os.cpu_count()
+        max_workers = max(os.cpu_count() // 2, 1)
 
-    max_workers = min(max_workers, len(files))
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
 
-        # Deduplicate all files in parallel
-        tasks: list[Any] = []
-        for file in files:
-            tasks.append(executor.submit(_unduplicate_worker, file, delete_files))
+        # Read all fragments in parallel
 
-        LOG.info("Checking duplicates")
-        with tqdm.tqdm(total=len(tasks), desc="Checking duplicates", unit="file") as pbar:
+        tasks: list[Any] = []
+        for file in _list_files(work_dir):
+            tasks.append(executor.submit(_read_fragment_worker, file))
+
+        LOG.info("Loading fragments")
+        with tqdm.tqdm(total=len(tasks), desc="Loading fragments", unit="file") as pbar:
             for future in as_completed(tasks):
-                duplicates, chunk = future.result()
-                total_duplicates += duplicates
-                if chunk is not None:
-                    chunks[chunk.file_path] = chunk
+                fragment = future.result()
+                if fragment is not None:
+                    fragments[fragment.file_path] = fragment
                 pbar.update(1)
-                pbar.set_postfix({"duplicates": total_duplicates})
 
         LOG.info("Checking overlaps")
 
@@ -436,20 +375,20 @@ def _find_duplicate_and_overlapping_dates(
         while True:
 
             tasks = []
-            prev: Chunk | None = None
-            for chunk in sorted(chunks.values(), key=lambda x: x.first_date):
+            prev: Fragment | None = None
+            for fragment in sorted(fragments.values(), key=lambda x: x.first_date):
                 if prev is None:
-                    prev = chunk
+                    prev = fragment
                     continue
 
-                if chunk.first_date <= prev.last_date:
+                if fragment.first_date <= prev.last_date:
                     # Overlap detected, resolve in parallel
-                    tasks.append(executor.submit(_deoverlap_worker, prev, chunk, delete_files))
-                    del chunks[prev.file_path]
-                    del chunks[chunk.file_path]
+                    tasks.append(executor.submit(_deoverlap_worker, prev, fragment, delete_files))
+                    del fragments[prev.file_path]
+                    del fragments[fragment.file_path]
                     prev = None
                 else:
-                    prev = chunk
+                    prev = fragment
 
             if not tasks:
                 LOG.info("No more overlaps detected")
@@ -457,19 +396,16 @@ def _find_duplicate_and_overlapping_dates(
 
             with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair") as pbar:
                 for future in as_completed(tasks):
-                    duplicates, updates = future.result()
-                    total_duplicates += duplicates
-                    chunks.update({update.file_path: update for update in updates})
+                    updates = future.result()
+                    fragments.update({update.file_path: update for update in updates})
                     pbar.update(1)
-                    pbar.set_postfix({"duplicates": total_duplicates})
 
         # There is a bug in ProcessPoolExecutor that hangs if the number of tasks sent is smaller
         # that the number of workers, so we send dummy tasks to avoid it.
 
         LOG.info("Done")
 
-    LOG.info(f"Total duplicates removed: {total_duplicates}")
-    return _sort_and_chain_chunks(list(chunks.values()))
+    return _sort_and_chain_fragments(list(fragments.values()))
 
 
 def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
@@ -492,6 +428,8 @@ def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
     if a.size == 0:
         return []
 
+    start = time.time()
+
     # True where value differs from previous => boundaries
     boundaries: np.ndarray = np.r_[True, a[1:] != a[:-1], True]
 
@@ -501,6 +439,8 @@ def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
     # Each (start, end) pair defines a run of identical values
     ranges: list[tuple[int, int]] = list(zip(idx[:-1], idx[1:]))
 
+    LOG.info(f"Found {len(ranges):,} duplicate ranges out of {len(a):,} dates in {time.time()-start:.2f} seconds")
+
     return [(s, e - s) for s, e in ranges]
 
 
@@ -509,7 +449,7 @@ def _statistics_collector_worker(
     array: np.ndarray,
     dates: np.ndarray,
 ) -> None:
-    """Worker function to collect statistics for a chunk of data.
+    """Worker function to collect statistics for a fragment of data.
 
     This function is designed to be executed in a separate thread or process. It takes a StatisticsCollector instance,
     an offset, a data array, and corresponding dates, and invokes the collect method of the StatisticsCollector.
@@ -542,9 +482,9 @@ def finalise_tabular_dataset(
     """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
 
     This is the main entry point for the tabular dataset finalisation process. It orchestrates the entire pipeline:
-    - Deduplicates and deoverlaps all chunk files in the working directory.
-    - Computes the final shape and chunking for the output dataset.
-    - Writes the cleaned data to a Zarr store, using efficient chunked I/O.
+    - Deduplicates and deoverlaps all fragment files in the working directory.
+    - Computes the final shape and fragmenting for the output dataset.
+    - Writes the cleaned data to a Zarr store, using efficient fragmented I/O.
     - Extracts and records all duplicate date ranges for fast lookup.
     - Optionally deletes all intermediate files to save disk space.
 
@@ -555,7 +495,7 @@ def finalise_tabular_dataset(
     store : Any
         Zarr store or similar object to write the final dataset to.
     work_dir : str
-        Directory containing chunk files.
+        Directory containing fragment files.
     statistic_collector : StatisticsCollector
         Instance to collect statistics during processing.
     date_indexing : dict or str
@@ -565,24 +505,24 @@ def finalise_tabular_dataset(
     max_workers : int, optional
         Maximum number of parallel workers to use. If None, uses all available CPUs.
     """
-    chunks: list[Chunk] = _find_duplicate_and_overlapping_dates(
+    fragments: list[Fragment] = _find_duplicate_and_overlapping_dates(
         work_dir, max_workers=max_workers, delete_files=delete_files
     )
 
-    assert chunks, "No data found to finalise"
-    shape: tuple[int, int] = chunks[0].shape
-    assert all(chunk.shape[1] == shape[1] for chunk in chunks), "Inconsistent number of columns in chunks"
-    shape = (sum(chunk.shape[0] for chunk in chunks), chunks[0].shape[1])
+    assert fragments, "No data found to finalise"
+    shape: tuple[int, int] = fragments[0].shape
+    assert all(fragment.shape[1] == shape[1] for fragment in fragments), "Inconsistent number of columns in fragments"
+    shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
 
     if "data" in store:
         del store["data"]
 
-    # Choose chunk size to target ~64MB per chunk for efficient I/O
+    # Choose fragment size to target ~64MB per fragment for efficient I/O
     row_size: int = shape[1] * np.dtype(np.float32).itemsize
     target_size: int = 64 * 1024 * 1024
-    chunk_size: int = max(1, round(target_size / row_size))
+    fragment_size: int = max(1, round(target_size / row_size))
 
-    chunking: tuple[int, int] = (min(chunk_size, shape[0]), shape[1])
+    chunking: tuple[int, int] = (min(fragment_size, shape[0]), shape[1])
     LOG.info(f"Final dataset shape: {shape}, chunking: {chunking}")
     store.create_dataset(
         "data",
@@ -597,20 +537,20 @@ def finalise_tabular_dataset(
 
     with ChunksCache(store["data"]) as data:
 
-        def _load_chunk(chunk: Chunk) -> tuple[Chunk, np.ndarray]:
+        def _load_fragment(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
             # Remove deduped files after loading to save disk space
-            array: np.ndarray = np.load(chunk.file_path)
-            if "deduped" in chunk.file_path:
-                os.unlink(chunk.file_path)
-            return (chunk, array)
+            array: np.ndarray = np.load(fragment.file_path)
+            if "deduped" in fragment.file_path:
+                os.unlink(fragment.file_path)
+            return (fragment, array)
 
-        with ThreadPoolExecutor(max_workers=2) as read_ahead:
+        with ThreadPoolExecutor(max_workers=2) as read_ahead, ThreadPoolExecutor(max_workers=1) as compute_statistics:
 
-            # Double buffering: keep two chunks loaded ahead for performance
+            # Double buffering: keep two fragments loaded ahead for performance
             tasks: list[Any] = []
             i: int = 0
-            for i in range(len(chunks)):
-                tasks.append(read_ahead.submit(_load_chunk, chunks[i]))
+            for i in range(len(fragments)):
+                tasks.append(read_ahead.submit(_load_fragment, fragments[i]))
                 if i >= 2:
                     break
 
@@ -618,24 +558,23 @@ def finalise_tabular_dataset(
 
             with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
-                    chunk, array = tasks.pop(0).result()
-                    data[chunk.offset : chunk.offset + chunk.shape[0], :] = array
+                    fragment, array = tasks.pop(0).result()
+                    data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
                     dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
 
-                    # compute_statistics.submit(_collect_statistics_worker, statistic_collector, chunk.offset, array , dates)
-                    _statistics_collector_worker(statistic_collector, array, dates)
+                    compute_statistics.submit(_statistics_collector_worker, array, dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
-                    all_dates[chunk.offset : chunk.offset + chunk.shape[0]] = dates
+                    all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates
 
-                    pbar.update(chunk.shape[0])
+                    pbar.update(fragment.shape[0])
 
                     if delete_files:
-                        os.unlink(chunk.file_path)
+                        os.unlink(fragment.file_path)
 
-                    # Pre-load next chunk
-                    if i < len(chunks):
-                        tasks.append(read_ahead.submit(_load_chunk, chunks[i]))
+                    # Pre-load next fragment
+                    if i < len(fragments):
+                        tasks.append(read_ahead.submit(_load_fragment, fragments[i]))
                         i += 1
 
     all_dates.flush()

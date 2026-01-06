@@ -259,7 +259,7 @@ class WindowView:
         if first is None and last is None:
             # No data in this window, return an empty array with correct shape
             shape = (0,) + self.data.shape[1:]
-            return self._filter(index, np.zeros(shape=shape, dtype=self.data.dtype))
+            return self._adjust_records(index, np.zeros(shape=shape, dtype=self.data.dtype))
 
         first_date, (start_idx, start_cnt) = first
         last_date, (end_idx, end_cnt) = last
@@ -276,9 +276,9 @@ class WindowView:
         if self.window.exclude_after and last_date == end:
             last_idx -= end_cnt
 
-        return self._filter(index, self.data[start_idx:last_idx])
+        return self._adjust_records(index, self.data[start_idx:last_idx])
 
-    def _filter(self, index: int, array: np.ndarray) -> np.ndarray:
+    def _adjust_records(self, index: int, array: np.ndarray) -> np.ndarray:
         """Internal method to filter and transform the data array for a given window index.
 
         Parameters

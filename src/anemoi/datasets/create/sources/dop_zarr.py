@@ -59,7 +59,7 @@ class DOPZarrSource(Source):
 
         start = time.time()
         LOG.info(
-            f"Loading {dates.start_date} => {dates.end_date} ({(dates.end_date - dates.start_date).astype('timedelta64[s]').astype(object)})"
+            f"Loading {dates.start_range} => {dates.end_range} ({(dates.end_range - dates.start_range).astype('timedelta64[s]').astype(object)})"
         )
         # Cannot use np.searchsorted because dates is 2D
 
@@ -77,17 +77,17 @@ class DOPZarrSource(Source):
 
         start = time.time()
         # Search only the first dimension of the 2D dates array, without loading all dates
-        start_idx = bisect.bisect_left(Proxy(self.dates), np.datetime64(dates.start_date))
-        end_idx = bisect.bisect_right(Proxy(self.dates), np.datetime64(dates.end_date))
+        start_idx = bisect.bisect_left(Proxy(self.dates), np.datetime64(dates.start_range))
+        end_idx = bisect.bisect_right(Proxy(self.dates), np.datetime64(dates.end_range))
         date_lookup_time = time.time() - start
 
         if start_idx >= end_idx:
-            LOG.warning(f"No data found between {dates.start_date} and {dates.end_date}")
+            LOG.warning(f"No data found between {dates.start_range} and {dates.end_range}")
             return pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in self.dtypes.items()})
 
         # Load data slice
         LOG.info(
-            f"Loading {dates.start_date} => {dates.end_date} slice[{start_idx}:{end_idx}] -> {end_idx - start_idx:,} records"
+            f"Loading {dates.start_range} => {dates.end_range} slice[{start_idx}:{end_idx}] -> {end_idx - start_idx:,} records"
         )
 
         start = time.time()
