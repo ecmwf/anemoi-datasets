@@ -17,6 +17,7 @@ from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import S
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
 from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 
+
 def build_signed_interval(x: str) -> SignedInterval:
     # x is like '20240101.0000 -> 20240101.0300, base=20240101.0000, ...'
     interval_part, *extras = x.split(",")
