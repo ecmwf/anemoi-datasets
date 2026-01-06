@@ -48,7 +48,7 @@ def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any
         r["step"] = step
         return interval.max, request, step
     else:
-        step = int((interval.end - interval.base).total_seconds() / 3600)
+        step = int((interval.max - interval.base).total_seconds() / 3600)
         r["date"] = interval.base.strftime("%Y%m%d")
         r["time"] = interval.base.strftime("%H%M")
         r["step"] = step
@@ -78,7 +78,7 @@ class Accumulator:
         """Check whether the accumulation is complete (all intervals have been processed)"""
         return not self.todo
 
-    def compute(self, field: Any, values: NDArray, interval) -> None:
+    def compute(self, field: Any, values: NDArray, interval: SignedInterval) -> None:
         """Perform accumulation with the values array on this interval and record the operation.
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
@@ -97,7 +97,7 @@ class Accumulator:
 
         def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:
             for i in lst:
-                if i.start == interval.start or i.end == interval.end and i.base == interval.base:
+                if i.min == interval.min and i.max == interval.max and i.base == interval.base:
                     print(f"✅ {interval} == {i}")
                     return i
                 if i.start == interval.start and i.end == interval.end and i.base is None:
@@ -352,10 +352,10 @@ def _compute_accumulations(
         print("---")
         print(f"\033[93m FIELD {field}, key: {key}\033[0m")
 
-        interval = field_to_interval(field)
-        print(f"    -> interval: {interval}")
+        field_interval = field_to_interval(field)
+        print(f"    -> interval: {field_interval}")
 
-        valid_date = interval.max
+        valid_date = field_interval.max
 
         field_used = False
         for date in dates:
@@ -369,7 +369,7 @@ def _compute_accumulations(
             acc = accumulators[(date, key)]
 
             # perform accumulation if needed
-            if acc.compute(field, values, interval):
+            if acc.compute(field, values, field_interval):
                 # .compute() returned True, meaning the field was used for accumulation
                 field_used = True
                 print(f"    🆗️ Used for accumulator {acc.__repr__(verbose=True)  }")
@@ -383,7 +383,7 @@ def _compute_accumulations(
         if not field_used:
             for a in accumulators.values():
                 LOG.error(f"Existing accumulator: {a.__repr__(verbose=True)}")
-            raise ValueError(f"Field {field} with {interval=} was provided by the source but not used")
+            raise ValueError(f"Field {field} with {field_interval=} was provided by the source but not used")
 
     # Final checks
     def check_missing_accumulators():

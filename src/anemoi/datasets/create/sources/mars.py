@@ -434,7 +434,7 @@ class MarsSource(LegacySource):
                 for d, interval in dates.intervals:
                     context.trace("🌧️", "interval:", interval)
                     _, r, _ = dates._adjust_request_to_interval(interval, request)
-                    context.trace("🌧️", "  request =", r)
+                    context.trace("🌧️", "  adjusted request =", r)
                     requests_.append(r)
             requests = requests_
             context.trace("🌧️", f"Total requests: {len(requests)}")
