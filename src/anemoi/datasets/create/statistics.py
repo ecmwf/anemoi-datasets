@@ -9,62 +9,13 @@
 
 
 import logging
+import threading
 
 import numpy as np
-import tqdm
 
 LOG = logging.getLogger(__name__)
 
 STATISTICS = ("mean", "minimum", "maximum", "stdev")
-
-
-def _identity(x):
-    return x
-
-
-class _SimplerCollectorBase:
-    def __init__(self, column) -> None:
-        self._sum = np.float64(0.0)
-        self._count = np.int64(0)
-        self._min = np.float64(np.inf)
-        self._max = -np.float64(np.inf)
-        self._sumsq = np.float64(0.0)
-        self._column = column
-
-    def update(self, data: any) -> None:
-        valid_data = data[~np.isnan(data)]
-        if valid_data.size == 0:
-            return
-
-        self._sum += np.sum(valid_data)
-        self._count += valid_data.size
-        self._min = min(self._min, np.min(valid_data).astype(np.float64))
-        self._max = max(self._max, np.max(valid_data).astype(np.float64))
-        self._sumsq += np.sum(valid_data**2)
-
-    def statistics(self) -> dict[str, float]:
-        if self._count == 0:
-            LOG.warning(f"Column {self._column}: no statistics collected")
-            return {_: np.nan for _ in STATISTICS}
-
-        assert isinstance(self._sum, np.float64)
-        assert isinstance(self._count, np.int64)
-        assert isinstance(self._min, np.float64)
-        assert isinstance(self._max, np.float64)
-        assert isinstance(self._sumsq, np.float64)
-
-        mean = self._sum / self._count
-        stdev = np.sqrt((self._sumsq / self._count) - (mean**2))
-
-        assert isinstance(stdev, np.float64)
-        assert isinstance(mean, np.float64)
-
-        return {
-            "mean": mean,
-            "minimum": self._min,
-            "maximum": self._max,
-            "stdev": stdev,
-        }
 
 
 class _CollectorBase:
@@ -171,8 +122,13 @@ class StatisticsCollector:
         self._allow_nans = allow_nans
         self._tendencies = tendencies or {}
         self._tendencies_collectors = {}
+        self._lock = threading.RLock()
 
     def collect(self, array: any, dates: any) -> None:
+        with self._lock:
+            return self._collect(array, dates)
+
+    def _collect(self, array: any, dates: any) -> None:
 
         if self._collectors is None:
             names = self._variables_names
@@ -184,26 +140,18 @@ class StatisticsCollector:
                     for _ in range(array.shape[1])
                 ]
 
-        for i in tqdm.tqdm(self._filter(dates), desc="Collecting statistics", unit="date"):
-            data = array[i]
-            # This part is negligeble compared to data access. No need to optimise.
-            for j in range(array.shape[1]):
-                values = data[j]
-                self._collectors[j].update(values)
+        for j in range(array.shape[1]):
+            values = array[j]
+            self._collectors[j].update(values)
 
-                for c in self._tendencies_collectors.values():
-                    c[j].update(values)
-
-            # for j in range(array.shape[1]):
-            #     values = array[j]
-            #     self._collectors[j].update(values)
-            #     for c in self._tendencies_collectors.values():
-            #         c[j].update(values)
+            for c in self._tendencies_collectors.values():
+                c[j].update(values)
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:
-            LOG.warning("No statistics collected")
-            return {_: np.array([np.nan]) for _ in STATISTICS}
+            raise RuntimeError("No data collected yet")
+            # LOG.warning("No statistics collected")
+            # return {_: np.array([np.nan]) for _ in STATISTICS}
 
         result = {key: [] for key in STATISTICS}
         for collector in self._collectors:

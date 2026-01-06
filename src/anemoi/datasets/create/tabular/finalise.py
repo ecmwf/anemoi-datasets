@@ -562,7 +562,7 @@ def finalise_tabular_dataset(
                     data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
                     dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
 
-                    compute_statistics.submit(_statistics_collector_worker, array, dates)
+                    compute_statistics.submit(_statistics_collector_worker, statistic_collector, array, dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates

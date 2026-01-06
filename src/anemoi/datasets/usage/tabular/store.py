@@ -106,7 +106,7 @@ class TabularZarr(ZarrStore):
 
     @property
     def shape(self) -> Shape:
-        return (None, self.data.shape[1])
+        return (None, len(self.variables))
 
     def source(self) -> str:
         raise NotImplementedError()
