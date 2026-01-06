@@ -11,6 +11,7 @@
 import logging
 
 import numpy as np
+import tqdm
 
 LOG = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def _identity(x):
     return x
 
 
-class _CollectorBase:
+class _SimplerCollectorBase:
     def __init__(self, column) -> None:
         self._sum = np.float64(0.0)
         self._count = np.int64(0)
@@ -60,6 +61,67 @@ class _CollectorBase:
 
         return {
             "mean": mean,
+            "minimum": self._min,
+            "maximum": self._max,
+            "stdev": stdev,
+        }
+
+
+class _CollectorBase:
+    def __init__(self, column) -> None:
+        self._count = np.int64(0)
+        self._min = np.float64(np.inf)
+        self._max = -np.float64(np.inf)
+        self._column = column
+        self._mean = np.float64(0.0)
+        self._m2 = np.float64(0.0)
+
+    def update(self, data: any) -> None:
+        valid_data = data[~np.isnan(data)]
+        if valid_data.size == 0:
+            return
+
+        # Welford's algorithm for online variance computation
+        for value in valid_data.flat:
+            value = np.float64(value)
+            self._count += 1
+            delta = value - self._mean
+            self._mean += delta / self._count
+            delta2 = value - self._mean
+            self._m2 += delta * delta2
+
+            # Update min/max
+            self._min = min(self._min, value)
+            self._max = max(self._max, value)
+
+    def statistics(self) -> dict[str, float]:
+        if self._count == 0:
+            LOG.warning(f"Column {self._column}: no statistics collected")
+            return {_: np.nan for _ in STATISTICS}
+
+        assert isinstance(self._mean, np.float64)
+        assert isinstance(self._count, np.int64)
+        assert isinstance(self._min, np.float64)
+        assert isinstance(self._max, np.float64)
+        assert isinstance(self._m2, np.float64)
+
+        # Compute variance using Welford's M2
+        variance = self._m2 / self._count if self._count > 0 else np.float64(0.0)
+        if variance < 0:
+            # this could happen due to numerical errors
+            relative_error = abs(variance) / max(abs(self._m2), abs(self._mean**2), 1e-100)
+            if relative_error > 1e-6:
+                msg = f"Negative variance {variance} for column {self._column}, {relative_error=}"
+                msg += f" m2={self._m2}, count={self._count}, mean={self._mean}, min={self._min}, max={self._max}"
+                LOG.error(msg)
+                raise ValueError(msg)
+            variance = 0.0
+        stdev = np.sqrt(variance)
+
+        assert isinstance(stdev, np.float64)
+
+        return {
+            "mean": self._mean,
             "minimum": self._min,
             "maximum": self._max,
             "stdev": stdev,
@@ -122,12 +184,21 @@ class StatisticsCollector:
                     for _ in range(array.shape[1])
                 ]
 
-        for j in range(array.shape[1]):
-            values = array[j]
-            self._collectors[j].update(values)
+        for i in tqdm.tqdm(self._filter(dates), desc="Collecting statistics", unit="date"):
+            data = array[i]
+            # This part is negligeble compared to data access. No need to optimise.
+            for j in range(array.shape[1]):
+                values = data[j]
+                self._collectors[j].update(values)
 
-            for c in self._tendencies_collectors.values():
-                c[j].update(values)
+                for c in self._tendencies_collectors.values():
+                    c[j].update(values)
+
+            # for j in range(array.shape[1]):
+            #     values = array[j]
+            #     self._collectors[j].update(values)
+            #     for c in self._tendencies_collectors.values():
+            #         c[j].update(values)
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:
@@ -156,110 +227,3 @@ class StatisticsCollector:
             result[key] = np.array(result[key])
 
         return result
-
-
-def fix_variance(x: float, name: str, count: np.array, sums: np.array, squares: np.array) -> float:
-    """Fix negative variance values due to numerical errors.
-
-    Parameters
-    ----------
-    x : float
-        The variance value.
-    name : str
-        The variable name.
-    count : numpy.ndarray
-        The count array.
-    sums : numpy.ndarray
-        The sums array.
-    squares : numpy.ndarray
-        The squares array.
-
-    Returns
-    -------
-    float
-        The fixed variance value.
-    """
-    assert count.shape == sums.shape == squares.shape
-    assert isinstance(x, float)
-
-    mean = sums / count
-    assert mean.shape == count.shape
-
-    if x >= 0:
-        return x
-
-    LOG.warning(f"Negative variance for {name=}, variance={x}")
-    magnitude = np.sqrt((squares / count + mean * mean) / 2)
-    LOG.warning(f"square / count - mean * mean =  {squares/count} - {mean*mean} = {squares/count - mean*mean}")
-    LOG.warning(f"Variable span order of magnitude is {magnitude}.")
-    LOG.warning(f"Count is {count}.")
-
-    variances = squares / count - mean * mean
-    assert variances.shape == squares.shape == mean.shape
-    if np.all(variances >= 0):
-        LOG.warning(f"All individual variances for {name} are positive, setting variance to 0.")
-        return 0
-
-    # if abs(x) < magnitude * 1e-6 and abs(x) < range * 1e-6:
-    #     LOG.warning("Variance is negative but very small.")
-    #     variances = squares / count - mean * mean
-    #     return 0
-
-    LOG.warning(f"ERROR at least one individual variance is negative ({np.nanmin(variances)}).")
-    return 0
-
-
-def check_variance(
-    x: np.array,
-    variables_names: list[str],
-    minimum: np.array,
-    maximum: np.array,
-    mean: np.array,
-    count: np.array,
-    sums: np.array,
-    squares: np.array,
-) -> None:
-    """Check for negative variance values and raise an error if found.
-
-    Parameters
-    ----------
-    x : numpy.ndarray
-        The variance array.
-    variables_names : list of str
-        List of variable names.
-    minimum : numpy.ndarray
-        The minimum values array.
-    maximum : numpy.ndarray
-        The maximum values array.
-    mean : numpy.ndarray
-        The mean values array.
-    count : numpy.ndarray
-        The count array.
-    sums : numpy.ndarray
-        The sums array.
-    squares : numpy.ndarray
-        The squares array.
-
-    Raises
-    ------
-    ValueError
-        If negative variance is found.
-    """
-    if (x >= 0).all():
-        return
-    print(x)
-    print(variables_names)
-    for i, (name, y) in enumerate(zip(variables_names, x)):
-        if y >= 0:
-            continue
-        print("---")
-        print(f"❗ Negative variance for {name=}, variance={y}")
-        print(f" min={minimum[i]} max={maximum[i]} mean={mean[i]} count={count[i]} sums={sums[i]} squares={squares[i]}")
-        print(f" -> sums: min={np.min(sums[i])}, max={np.max(sums[i])}, argmin={np.argmin(sums[i])}")
-        print(f" -> squares: min={np.min(squares[i])}, max={np.max(squares[i])}, argmin={np.argmin(squares[i])}")
-        print(f" -> count: min={np.min(count[i])}, max={np.max(count[i])}, argmin={np.argmin(count[i])}")
-        print(
-            f" squares / count - mean * mean =  {squares[i] / count[i]} - {mean[i] * mean[i]} = {squares[i] / count[i] - mean[i] * mean[i]}"
-        )
-
-    raise ValueError("Negative variance")

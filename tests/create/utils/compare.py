@@ -6,8 +6,8 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
 import os
+import re
 
 import numpy as np
 import zarr
@@ -68,16 +68,23 @@ class ErrorCollector:
         return "\n" + "\n".join(repr(e) for e in self._errors) + "\n"
 
 
-def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str) -> None:
+def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6) -> None:
     """Compare two arrays."""
     if np.array_equal(a, b, equal_nan=True):
         return
 
+    if a.dtype == np.dtype("float64") or b.dtype == np.dtype("float64"):
+        # allows float64 -> float32 conversion errors.
+        rtol = tolerance
+        atol = tolerance * max(np.nanmax(np.abs(a)), np.nanmax(np.abs(b)))
+        if np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
+            return
+
     if np.allclose(a, b, equal_nan=True):
-        errors.error(f"🧮 {path}: arrays are close but not equal {a[:]-b[:]}")
+        errors.error(f"🧮 {path}: arrays are close but not equal {a[:]}, {b[:]}, {a[:]-b[:]}")
         return
 
-    errors.error(f"🧮 {path}: arrays are different {a[:]-b[:]}")
+    errors.error(f"🧮 {path}: arrays are different {a[:]}, {b[:]} {a[:]-b[:]}")
 
 
 def _compare_zarrs(errors, reference, actual, *path) -> None:
@@ -116,7 +123,11 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
             errors.error(f"🧮 {'.'.join(path)}.{key}: dtypes are different {a.dtype} != {b.dtype}")
             continue
 
-        _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}")
+        if key == "stdev" or re.match(r"^statistics_tendencies_.*_stdev$", key):
+            # extend tolerance for standard deviation comparisons
+            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}", tolerance=1e-5)
+        else:
+            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}")
 
 
 def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
