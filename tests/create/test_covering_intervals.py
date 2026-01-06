@@ -200,25 +200,22 @@ RR_OPER_TEST_CASE = [
         _("20240102.0900 -> 20240102.1200"),
         [_("20240102.0900 -> 0000, base=20240102.0000"), _("20240102.0000 -> 1200, base=20240102.0000")],
     ),
-    (
-        _("20240102.0000 -> 20240102.1200"),
-        [_("20240102.0000 -> 1200, base=20240102.0000")]
-    ),
-    (
-        _("20240102.1900 -> 20240103.0000"), None
-    ),
-    (
-        _("20240102.0000 -> 20240102.2200"), None
-    ),
+    (_("20240102.0000 -> 20240102.1200"), [_("20240102.0000 -> 1200, base=20240102.0000")]),
+    (_("20240102.1900 -> 20240103.0000"), None),
+    (_("20240102.0000 -> 20240102.2200"), None),
     (
         _("20240102.0000 -> 20240103.1200"),
-        [_("20240102.0000 -> 20240103.0000, base=20240102.0000"), _("20240103.0000 -> 1200, base=20240103.0000")]
+        [_("20240102.0000 -> 20240103.0000, base=20240102.0000"), _("20240103.0000 -> 1200, base=20240103.0000")],
     ),
     (
         _("20240102.0000 -> 20240104.1200"),
-        [_("20240102.0000 -> 20240103.0600, base=20240102.0000"), _("20240103.0600 -> 20240104.1200, base=20240103.0000")]
+        [
+            _("20240102.0000 -> 20240103.0600, base=20240102.0000"),
+            _("20240103.0600 -> 20240104.1200, base=20240103.0000"),
+        ],
     ),
 ]
+
 
 class _Tester:
     def __init__(self, candidates):
@@ -301,10 +298,12 @@ def test_grib_index_no_basetime(test):
     tester = _Tester(interval_generator_factory(grib_index_config))
     tester.test(test[0], test[1])
 
+
 @pytest.mark.parametrize("test", RR_OPER_TEST_CASE, ids=[str(t[0]) for t in RR_OPER_TEST_CASE])
 def test_rr_oper(test):
     tester = _Tester(interval_generator_factory("cerra-se-al-ec"))
     tester.test(test[0], test[1])
+
 
 # def with_reset_candidates(current_time: datetime, current_base:datetime, start:datetime, end:datetime) -> Iterable[SignedInterval]:
 #     # Generate intervals similar to ERA but with reset frequency consideration
@@ -339,11 +338,11 @@ def test_rr_oper(test):
 #     tester.test(test[0], test[1])
 
 if __name__ == "__main__":
-    #for t in ENDA_TEST_CASES:
+    # for t in ENDA_TEST_CASES:
     #    test_enda(t)
-    #for t in ERA_TEST_CASES:
+    # for t in ERA_TEST_CASES:
     #    test_era(t)
-    #for t in GRIB_INDEX_TEST_CASE:
-    #s    test_grib_index_no_basetime(t)
+    # for t in GRIB_INDEX_TEST_CASE:
+    # s    test_grib_index_no_basetime(t)
     for t in RR_OPER_TEST_CASE:
         test_rr_oper(t)
