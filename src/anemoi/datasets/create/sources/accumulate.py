@@ -33,26 +33,46 @@ DEBUG = True
 trace = print if DEBUG else lambda *args, **kwargs: None
 
 
-def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
-    # TODO:
-    # for od-oper: need to do this adjustment, should be in mars source itself?
-    # Modifies the request stream based on the time (so, not here).
-    # if request["time"] in (6, 18, 600, 1800):
-    #    request["stream"] = "scda"
-    # else:
-    #    request["stream"] = "oper"
-    r = request.copy()
-    if interval.base is None:
-        # for some sources, we may not have a base time (grib-index)
-        step = int((interval.end - interval.start).total_seconds() / 3600)
-        r["step"] = step
-        return interval.max, request, step
-    else:
-        step = int((interval.max - interval.base).total_seconds() / 3600)
-        r["date"] = interval.base.strftime("%Y%m%d")
-        r["time"] = interval.base.strftime("%H%M")
-        r["step"] = step
-        return interval.max, r, step
+class IntervalsDatesProvider:
+    def __init__(self, dates, coverages):
+        self._dates = dates
+        self.date_to_intervals = coverages
+
+    def _adjust_request_to_interval(self, interval: Any, request: list[dict]) -> tuple[Any]:
+        # TODO:
+        # for od-oper: need to do this adjustment, should be in mars source itself?
+        # Modifies the request stream based on the time (so, not here).
+        # if request["time"] in (6, 18, 600, 1800):
+        #    request["stream"] = "scda"
+        # else:
+        #    request["stream"] = "oper"
+        r = request.copy()
+        if interval.base is None:
+            # for some sources, we may not have a base time (grib-index)
+            step = int((interval.end - interval.start).total_seconds() / 3600)
+            r["step"] = step
+            return interval.max, request, step
+        else:
+            step = int((interval.max - interval.base).total_seconds() / 3600)
+            r["date"] = interval.base.strftime("%Y%m%d")
+            r["time"] = interval.base.strftime("%H%M")
+            r["step"] = step
+            return interval.max, r, step
+
+    @property
+    def intervals(self):
+        for d in self._dates:
+            for interval in self.date_to_intervals[d]:
+                yield d, interval
+
+    def __len__(self):
+        return len(self._dates)
+
+    def __iter__(self):
+        yield from self._dates
+
+    def __getitem__(self, index):
+        return self._dates[index]
 
 
 class Accumulator:
@@ -321,17 +341,8 @@ def _compute_accumulations(
         trace(f"  Found covering intervals: for {d - period} to {d}:")
         for c in coverages[d]:
             trace(f"    {c}")
-    # this piece of code is calling for a class Intervals()
-    # dates = Intervals(dates, ...)
-    dates.date_to_intervals = coverages
-    dates._adjust_request_to_interval = _adjust_request_to_interval
 
-    def _intervals():
-        for d in dates:
-            for interval in coverages[d]:
-                yield d, interval
-
-    dates.intervals = _intervals()
+    intervals = IntervalsDatesProvider(dates, coverages)
 
     # need a temporary file to store the accumulated fields for now, because earthkit-data
     # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
@@ -340,7 +351,7 @@ def _compute_accumulations(
     output = new_grib_output(path)
 
     accumulators = {}
-    for field in source_object(context, dates):
+    for field in source_object(context, intervals):
         # for each field provided by the catalogue, find which accumulators need it and perform accumulation
 
         values = field.values.copy()

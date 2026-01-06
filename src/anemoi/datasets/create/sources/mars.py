@@ -17,6 +17,7 @@ from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.sources import source_registry
+from anemoi.datasets.create.sources.accumulate import IntervalsDatesProvider
 
 from .legacy import LegacySource
 
@@ -427,7 +428,7 @@ class MarsSource(LegacySource):
                         "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
                     )
 
-        if hasattr(dates, "date_to_intervals"):
+        if isinstance(dates, IntervalsDatesProvider):
             # When using accumulate source
             requests_ = []
             for request in requests:
