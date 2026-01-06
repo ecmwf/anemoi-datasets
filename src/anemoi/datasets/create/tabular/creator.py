@@ -115,7 +115,8 @@ class TabularCreator(Creator):
         )
 
         for name, data in collector.statistics().items():
-            dataset.add_array(name=name, data=data, dimensions=("variable",))
+            # Ignore date, time, latitude and longitude
+            dataset.add_array(name=name, data=data[4:], dimensions=("variable",))
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
         """Compute and store statistics for the dataset.
@@ -125,4 +126,5 @@ class TabularCreator(Creator):
         dataset : Dataset
             The dataset object for which statistics will be computed and stored.
         """
+        # TODO: implement if needed to recompute statistics
         raise NotImplementedError("Statistics are computed during finalisation for tabular datasets.")

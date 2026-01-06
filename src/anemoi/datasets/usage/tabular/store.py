@@ -87,11 +87,11 @@ class TabularZarr(ZarrStore):
 
     @property
     def latitudes(self) -> np.ndarray:
-        return np.array([])
+        return None
 
     @property
     def longitudes(self) -> np.ndarray:
-        return np.array([])
+        return None
 
     def missing(self) -> Any:
         raise NotImplementedError()
