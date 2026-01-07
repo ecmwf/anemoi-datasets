@@ -243,8 +243,11 @@ class GriddedCreator(Creator):
         )
 
         data = ChunksCache(dataset.data, read_ahead=True)
+        step = data.chunks[0]
 
-        collector.collect(data, dates)
+        for i in range(0, data.shape[0], step):
+            chunk = data[i : min(i + step, data.shape[0])]
+            collector.collect(chunk, dates[i : min(i + step, data.shape[0])])
 
         for name, data in collector.statistics().items():
             assert data.dtype == np.float64, f"Expected float64 {name}, got {data.dtype}"

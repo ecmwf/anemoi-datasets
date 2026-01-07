@@ -555,6 +555,7 @@ def finalise_tabular_dataset(
                     break
 
             i = len(tasks)
+            stats = None
 
             with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
@@ -562,7 +563,10 @@ def finalise_tabular_dataset(
                     data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
                     dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
 
-                    compute_statistics.submit(_statistics_collector_worker, statistic_collector, array, dates)
+                    # Wait for previous statistics computation to complete
+                    if stats is not None:
+                        stats.result()
+                    stats = compute_statistics.submit(_statistics_collector_worker, statistic_collector, array, dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates
@@ -576,6 +580,10 @@ def finalise_tabular_dataset(
                     if i < len(fragments):
                         tasks.append(read_ahead.submit(_load_fragment, fragments[i]))
                         i += 1
+
+            # Ensure last statistics computation is complete
+            if stats is not None:
+                stats.result()
 
     all_dates.flush()
     LOG.info(f"Dates written to {all_dates_path}")

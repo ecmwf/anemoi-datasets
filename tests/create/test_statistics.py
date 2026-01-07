@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
+import time
+
 import numpy as np
 
 from anemoi.datasets.create.statistics import StatisticsCollector
@@ -56,14 +58,18 @@ def _check_statistics(data, target_stats):
     assert np.allclose(calc_max, target_stats["maximum"]), "Max check failed"
 
 
-def test_statistics_collector():
-    N = 10000  # Number of rows
-    C = 5  # Number of columns
+def test_statistics_collector(N=1_000_000, C=5):
+
+    print(f"Generating random data with {N} rows and {C} columns...")
     data, target_stats = _create_random_stats(N, C)
+    print("Random data generated. Verifying target statistics...")
     _check_statistics(data, target_stats)
 
     collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)])
+    start = time.time()
+    print("Starting data collection...")
     collector.collect(data, range(N))
+    print(f"Data collection took {time.time() - start:.2f} seconds")
     computed_stats = collector.statistics()
 
     for name, target in target_stats.items():
@@ -74,4 +80,5 @@ def test_statistics_collector():
 
 
 if __name__ == "__main__":
-    test_statistics_collector()
+    print("Running statistics collector test...")
+    test_statistics_collector(N=10_000_000, C=1)
