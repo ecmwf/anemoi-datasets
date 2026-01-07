@@ -1,12 +1,13 @@
 ###############
- accumulations
+ accumulate
 ###############
 
 .. note::
 
-   The `accumulated` source was previously named `accumulations` and
-   using the `mars` source internally. This is no longer the case, and
-   the `mars` source should be explicitly written in the recipe.
+   The `accumulate` source was previously named `accumulations`.
+   The parameter `accumulation_period` has been renamed to `period`.
+   The source (e.g., `mars`, `grib-index`) must now be explicitly
+   specified as a nested dictionary under the `source` key.
 
 Accumulations and flux variables, such as precipitation, are often
 forecast fields, which are archived for a given base date (or reference
@@ -20,118 +21,116 @@ from the valid date. Furthermore, some fields are accumulated since the
 beginning of the forecast (e.g. ECMWF operational forecast), while
 others are accumulated since the last time step (e.g. ERA5).
 
-The source 'accumulate' needs two pieces of information to be able to
-provide the accumulation over a given period: - The requested
-accumulation period (such as 6h, 12h, etc). - The source of data, such
-as 'mars', 'grib-index', etc. Currently only 'mars' and 'grib-index'
-sources are implemented. - Optionally, hints about how the accumulation
-is stored in the source dataset.
+The `accumulate` source requires the following parameters:
 
-The `accumulate` source has some of that knowledge built-in.
+- **period**: The requested accumulation period (e.g., ``6h``, ``12h``, ``24h``).
+  This can be specified as a string with units (``"6h"``) or as an integer
+  representing hours (``6``).
+- **source**: The data source configuration, such as ``mars`` or ``grib-index``.
+  Currently only ``mars`` and ``grib-index`` sources are supported.
+- **available** (optional): Information about how accumulations are stored in
+  the source dataset. This helps the package determine which intervals to use
+  for reconstructing the requested accumulation period.
 
-Question: Should what was descibed be the default behavior (since the
-beginnning over 6h)? If the source dataset is unknown, the package
-assumes that the fields to use are accumulated since the beginning of
-the forecast, over a 6h period.
+The `accumulate` source has built-in knowledge for well-known datasets:
 
-this changed for now. the source 'mars' is known and in this cas the
-package will analyse the request and decides wich intervals will be used
-to reconstruct the requested accumulation interval. Depending on the
-request (class, stream,...) the package may know how to reconstruct the
-accumulation or not. or the source 'grib-index' We need to put 'hints' f
-and other sources are not implemented yet. Requesting accumulation
-periods strictly longer than 48h may lead to unexpected results,
-depending on the source.
+- For ECMWF operational forecasts (``mars`` source with specific class/stream
+  combinations), the package automatically determines the appropriate intervals.
+- For other sources or when automatic detection is not possible, use the
+  ``available`` parameter to specify how accumulations are stored in the source.
 
-.. literalinclude:: yaml/accumulate-mars-1.yaml
+.. note::
+
+   Requesting accumulation periods strictly longer than 48h may lead to
+   unexpected results, depending on the source dataset structure.
+
+Example with MARS source
+=========================
+
+.. literalinclude:: yaml/accumulations-mars-1.yaml
    :language: yaml
 
 The data used is accumulated from the beginning of the forecast, but the
 most recent data available will be used:
 
 -  For ECMWF operational forecasts, the data is accumulated from the
-   beginning of the forecast. So if the accumulation period is 6h, for
-   the date 2020-01-01 00:00, the source will use the forecast [1]_ of
-   2019-12-31 18:00 and the step 6h.
+   beginning of the forecast. For example, if the accumulation period is
+   6h and the valid date is 2020-01-01 00:00, the source will use the
+   forecast [1]_ of 2019-12-31 18:00 at step 6h.
 
--  For ERA5, the data is accumulated since the last time step, and steps
-   are hourly, and only available at 06Z and 18Z. So, a 6h accumulation
-   for the date 2020-01-01 13:00, the source will use the forecast of
-   2020-01-01 06:00 and the step 1-2h, 2-3h, 3-4h, 4-5h, 5-6h and 6-7h.
+-  For ERA5, the data is accumulated since the last time step (hourly
+   accumulations), and forecasts are only available at 06Z and 18Z. For a
+   6h accumulation with valid date 2020-01-01 13:00, the source will sum
+   the fields from the forecast of 2020-01-01 06:00 at steps 1-2h, 2-3h,
+   3-4h, 4-5h, 5-6h, and 6-7h.
 
-When the package cannot deduce how to reconstruct the accumulation from
-the source dataset, the user can provide the information with the
-`available` parameter.
+Using the ``available`` parameter
+==================================
 
-For instance: - "3h" if the sources provides 3-hourly-accumulated data
-(other values such as "1h", "6h", "12h", "24h" are also supported) - [
-period1, period2, ... ] to provide a list of available periods. where a
-period is defined by two or three values such as : either [ base_time,
-start_step, end_step] for accumulated data between start_step and
-end_step with base_time or [ start_step, end_step ] for accumulated data
-between start_step and end_step For instance: available = [ (0,1),
-(1,2), (2,3), ... ] for hourly accumulated data with explicit intervals
-or available = [ (0, ((0, 1), (1, 2), (2, 3), ... ), (6, ((0, 1), (1,
-2), (2, 3), ... ), ] for hourly accumulated data with base times 0 or 6
-hours.
+When the package cannot automatically determine how to reconstruct the
+accumulation from the source dataset, you can provide this information
+with the ``available`` parameter.
 
-Some shortcuts are defined such as "0-1" instead of (0,1), and using '/'
-to separate values. available = [ "0-1", "1-2", "2-3", ... ] or
-available = [ "0-1/1-2/2-3/..." ].
+Simple case: Fixed accumulation period
+---------------------------------------
 
-Using the `available` parameter, the user can specify the accumulation
-period used in the source dataset. This is useful when the source
-dataset uses a different accumulation period than the one requested and
-no ambiguity exists. For example, if the source dataset contains 1h
-accumulations, the user can specify `available: 1h`.
+If the source provides data accumulated over a fixed period, specify that
+period as a string:
 
-.. literalinclude:: yaml/accumulate-grib-index.yaml
+- ``"1h"`` for hourly accumulated data
+- ``"3h"`` for 3-hourly accumulated data
+- ``"6h"``, ``"12h"``, ``"24h"`` etc. for other fixed periods
+
+Example with grib-index source
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: yaml/accumulations-grib-index.yaml
    :language: yaml
 
-Note that even with this additional information, depending on the
-metadata of the source dataset, the package may not be able to deduce
-how to reconstruct the requested accumulation period.
+.. note::
 
-When more detailed control is needed, the user can provide a description
-of the accumulation intervals available in the source dataset with the
-`hints` parameter. This parameter is a list of accumulation intervals
-available in the source dataset. This `hints` parameter is experimental
-and subject to change.
+   Even with the ``available`` parameter, the package may not be able to
+   reconstruct the requested accumulation period if the source dataset has
+   inconsistent or incomplete metadata.
 
-To request an accumulation between two forecast steps, the user can
-provides hints as follows:
+Advanced case: Specifying available intervals per base time
+------------------------------------------------------------
 
-.. literalinclude:: yaml/accumulate-mars-2.yaml
+For more complex scenarios where different base times have different
+available accumulation intervals, you can provide a detailed description
+using the ``available`` parameter.
+
+Example with base-time-specific intervals
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: yaml/accumulations-mars-2.yaml
    :language: yaml
 
-The `hints` parameter describes, for each base date hour, the list of
-accumulation intervals available in the source dataset. In the example
-above, for base dates at 00Z, the available accumulation intervals are
-[0-6] and [6-12], while for base dates at 12Z, the available
-accumulation intervals are [12-18] and [18-24].
+In this example:
 
-xxxxxxxxxxxxxxxxx
+- For forecasts with base time 00Z, the available intervals are [0-6] and [6-12]
+- For forecasts with base time 12Z, the available intervals are [12-18] and [18-24]
 
-If the ``accumulation_period`` value is a pair of integers `[step1,
-step2]`, the algorithm is different. The source will compute the
-accumulation between the `step1` and `step2` previous forecasts that
-validate at the given date at `step2`. For example, if the accumulation
-period is `[6, 12]`, and the valid date is 2020-10-10 18:00, the source
-will use the forecast of 2020-10-10 06:00 and the steps 6h and 12h.
+The package will use these intervals to reconstruct the requested 6-hour
+accumulation for each valid date.
 
-Please note that ``accumulation_period=6`` and ``accumulation_period=[0,
-6]`` are not equivalent. In the first case, the source can return an
-accumulation between step 1h and step 7h if it is the most appropriate
-data available, while in the second case, the source will always return
-the accumulation between step 0h and step 6h, if available.
+Legacy API (deprecated)
+=======================
 
-.. literalinclude:: yaml/accumulations1.yaml
-   :language: yaml
+The old ``accumulations`` source (note the 's') used a different API:
 
-or:
+.. code-block:: yaml
 
-.. literalinclude:: yaml/accumulations2.yaml
-   :language: yaml
+   input:
+     accumulations:
+       accumulation_period: 6
+       class: ea
+       param: [tp, cp, sf]
+       levtype: sfc
+
+This API is deprecated. Please use the new ``accumulate`` source with the
+``period`` parameter and nested ``source`` dictionary as shown in the
+examples above.
 
 .. [1]
 

@@ -1,9 +1,10 @@
 input:
   accumulate:
     period: 6h
-    data_accumulation_period: 1h
-    grib-index:
-      mars:
-        class: ea
-        param: [ tp, cp, sf ]
-        levtype: sfc
+    available: "1h"
+    source:
+      grib-index:
+        mars:
+          class: ea
+          param: [ tp, cp, sf ]
+          levtype: sfc
