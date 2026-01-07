@@ -63,7 +63,7 @@ def test_statistics_collector():
     _check_statistics(data, target_stats)
 
     collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)])
-    collector.collect(data, None)
+    collector.collect(data, range(N))
     computed_stats = collector.statistics()
 
     for name, target in target_stats.items():
