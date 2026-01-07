@@ -126,7 +126,7 @@ tree once.
 #### Tests
 
 Both methods will search for a date is in the order of O(log<sub>2</sub>(N). For a billion dates
-(~32 years), this is around 30 comparaisons, and the number of zarr chunks accessed can be of the
+ (~32 years), this is around 30 comparisons, and the number of zarr chunks accessed can be of the
 same order of magnitude.
 
 The difference between binary search and b+trees is the speed of *range searches*, which is what is
@@ -137,7 +137,7 @@ Tests have been performed on a 100-years index, with values every second (3,155,
 - With bisect, the average time to retrieve the entries for a 3h window is 366 ms (<3 per seconds)
   (394M on disk with the default Zarr compression).
 
-- With a b+tree with pages of 256 entries, the average retrival time is ~62 milliseconds (~16
+- With a b+tree with pages of 256 entries, the average retrieval time is ~62 milliseconds (~16
   seconds) (590M on disk with the default Zarr compression).
 
 In both cases, chunk level caching (512 MB) has been used, and the chunk sizes were identical (64
@@ -223,29 +223,9 @@ provided that the requested dates lie between `start` and `end`. Otherwise, an e
 
 #### Sample format
 
-What does `ds[i]` return to the user? Unlike fields, the sample needs to contain the actual dates
-and positions of the observations, plus their time relative to the start of the window.
 
-Several options for what `ds[i]` can be:
-
-#### Option 1 - (Return a timedelta column - Preferred option)
-
-_anemoi-dataset_ can compute the difference between the reference date of the sample (e.g., the
-"middle" of the window) and the observation date, in seconds. Example (assuming the sample date is
-`2020-01-02T00:00:00`):
-
-| Deltatime | Latitude  | Longitude  | Col 1   | Col 2 | ... | Col N  |
-|-----------|-----------|------------|---------|-------|-----|--------|
-| -86400    | 51.5074   | -0.1278    | 1013.2  | 7.5   | ... | 23.5   |
-| -64792    | 48.8566   | 2.3522     | 1012.8  | 6.8   | ... | -4.5   |
-| -21126    | 40.7128   | -74.0060   | 1014.1  | 5.2   | ... | 12.9   |
-| -3479     | 35.6895   | 139.6917   | 1011.7  | 8.0   | ... | 0.0    |
-| 5         | 55.7558   | 37.6173    | 1013.5  | -2.1  | ... | -4.2   |
-| ...       | ...       | ...        | ...     | ...   | ... | ...    |
-
-#### Option 2 - (Mask out the four first columns)
-
-The sample only contains the actual data (what will be fed to the model).
+Although the underlying Zarr array contains date and position information, a sample will only return
+the data values (excluding date, time, latitude, longitude that are in the Zarr), and will match the number of variables. This guarantees the same behaviour as for gridded data.
 
 | Col 1   | Col 2 | ...  | Col N  |
 |---------|-------|------|--------|
@@ -256,31 +236,84 @@ The sample only contains the actual data (what will be fed to the model).
 | 1013.5  | -2.1  | ...  | -4.2   |
 | ...     | ...   | ...  | ...    |
 
-The other information is provided using another method:
+
+It is expected that if the model needs time and space coordinate information, they are encoded in `cos_longitude`, `cos_latitude`, `cos_julian_day`, `sin_julian_day`, etc. variables.
 
 ```python
-x = ds.details(i)
-x.latitudes # Returns the corresponding ROWS latitudes
-x.longitudes # Returns the corresponding ROWS longitudes
-x.dates # Returns the corresponding ROWS dates
-x.timedeltas # Returns the (ROWS) times (e.g., in seconds) of the observations relative to the end of the window
+sample = ds[42]
+
+# A 2D Array is returned, the first dimension is the number of observations in the 43st window.
+assert len(sample.shape) == 2
+
+# The second dimension are the variables
+assert sample.shape[1] == len(ds.variables)
+
+# Same for statistics
+
+assert len(ds.statistics['mean']) == len(ds.variables)
+
 ```
 
-For the sake of symmetry, the `ds.detail()` method can be implemented for fields as well.
+Auxiliary information can be accessed as:
+
+```python
+
+sample = ds[42]
+
+number_of_observations_in_window = sample.shape[0]
+
+
+ # Returns the corresponding latitudes
+
+sample.latitudes
+
+assert len(sample.latitudes) == number_of_observations_in_window
+
+# Returns the corresponding longitudes
+
+sample.longitudes
+
+assert len(sample.longitudes) == number_of_observations_in_window
+
+
+x.dates # Returns the corresponding row dates
+
+# Returns the corresponding dates
+
+sample.dates
+
+assert len(sample.dates) == number_of_observations_in_window
+
+# Return the reference date of the window
+
+sample.reference_date
+
+assert sample.reference_date == ds.start_date + 42 * ds.frequency
+
+# Return the timedeltas in seconds relative to the reference_date
+
+sample.timedeltas
+
+assert len(sample.timedeltas) == number_of_observations_in_window
+
+
+```
+
+For the sake of symmetry, the same behaviour will be implemented for gridded data.
 
 ### Statistics
 
 #### Global Statistics
 
-Statistics will be calculated per-column and stored as metadata for the mean, min, max, standard
-deviation and nan-count. This can either be done in a single post-processing pass or using something
+Statistics will be calculated per column and stored as metadata for the mean, min, max, standard
+deviation and NaN count. This can either be done in a single post-processing pass or using something
 similar to the current `ai-obs-experimental-data` implementation which calculates statistics on the
 fly for each intermediate data chunk before then combining these in the post-processing of the
 dataset.
 
 When combining observations from separate sources (e.g. different satellite missions or different
 conventional sensor types) statistics will be calculated on the full dataset and not
-per-observation-type. If observation types have distinct enough distributions they should be split
+per observation type. If observation types have distinct enough distributions they should be split
 into separate columns or datasets.
 
 > **Question:**
@@ -319,7 +352,7 @@ Pandas frame. The only requirement is to ensure that the compulsory columns (`da
 `longitude`) are still present.
 
 Filters for tabular datasets will have a similar interface to the filters for fields. They will be
-class-based, take a configuration object (dict-like, derived from the YAML recipe) on instantiation,
+class based, take a configuration object (dict-like, derived from the YAML recipe) on instantiation,
 and implement a `transform` method that takes a pandas dataframe and returns a pandas dataframe.
 
 Filters will be selected through a registry, as is done with the existing field filters.
@@ -331,7 +364,7 @@ As for fields,  `anemoi-dataset create` will call sources and filters with sever
 possibly in parallel. The size of the ranges can be controlled by the user in order not to exceed
 available memory resources. The output of all incremental/parallel calls is then sorted using a
 lexicographic order (`date`, `latitude`, `longitude`, `data1`, `data2`, ...) and stored in Zarr, the
-dates of each row being rounded to the nearest second. **Duplicated rows are discarded**, and the
+dates of each row being rounded to the nearest second. **Duplicate rows are discarded**, and the
 index is constructed.
 
 ## Scope of Change

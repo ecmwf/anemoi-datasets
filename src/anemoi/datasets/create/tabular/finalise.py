@@ -524,6 +524,10 @@ def finalise_tabular_dataset(
 
     chunking: tuple[int, int] = (min(fragment_size, shape[0]), shape[1])
     LOG.info(f"Final dataset shape: {shape}, chunking: {chunking}")
+    LOG.info(
+        f"Number of rows: {shape[0]:,}, rows per chunk: {chunking[0]:,}, total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
+    )
+
     store.create_dataset(
         "data",
         shape=shape,
