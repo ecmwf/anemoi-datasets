@@ -118,7 +118,6 @@ class _TendencyCollector(_CollectorBase):
         self._delta = delta
         # Only keep a sliding window of the last 'delta' rows
         self._window = None
-        self._window_size = 0
 
     def update(self, data):
         data = data.astype(np.float64)
@@ -136,7 +135,6 @@ class _TendencyCollector(_CollectorBase):
 
         # Update sliding window: keep only last 'delta' rows
         self._window = combined[-self._delta :].copy()
-        self._window_size = len(self._window)
 
     def finalize(self):
         """Nothing to do - all processing done in update()"""
