@@ -120,8 +120,6 @@ class _TendencyCollector(_CollectorBase):
         self._window = None
 
     def update(self, data):
-        data = data.astype(np.float64)
-
         # Concatenate window with new data for tendency computation
         if self._window is None:
             combined = data
