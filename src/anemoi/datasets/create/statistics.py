@@ -80,18 +80,33 @@ class _CollectorBase:
         if valid_data.size == 0:
             return
 
-        # Welford's algorithm for online variance computation
-        for value in valid_data.flat:
-            value = np.float64(value)
-            self._count += 1
-            delta = value - self._mean
-            self._mean += delta / self._count
-            delta2 = value - self._mean
-            self._m2 += delta * delta2
+        # Vectorized Welford's algorithm
+        valid_data = valid_data.astype(np.float64).ravel()
+        n = len(valid_data)
 
-            # Update min/max
-        self._min = min(self._min, np.min(data))
-        self._max = max(self._max, np.max(data))
+        if n == 0:
+            return
+
+        old_mean = self._mean
+        old_count = self._count
+        new_count = old_count + n
+
+        # Batch mean
+        batch_mean = np.mean(valid_data)
+
+        # Update combined mean
+        self._mean = (old_count * old_mean + n * batch_mean) / new_count
+
+        # Update M2 using parallel algorithm formula
+        batch_m2 = np.sum((valid_data - batch_mean) ** 2)
+        delta = batch_mean - old_mean
+        self._m2 = self._m2 + batch_m2 + (old_count * n * delta * delta) / new_count
+
+        self._count = new_count
+
+        # Update min/max
+        self._min = min(self._min, np.min(valid_data))
+        self._max = max(self._max, np.max(valid_data))
 
     def statistics(self) -> dict[str, float]:
         if self._count == 0:
