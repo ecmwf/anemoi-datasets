@@ -21,125 +21,90 @@ def _identity(x):
     return x
 
 
-class _SimplerCollectorBase:
-    def __init__(self, column) -> None:
-        self._sum = np.float64(0.0)
-        self._count = np.int64(0)
-        self._min = np.float64(np.inf)
-        self._max = -np.float64(np.inf)
-        self._sumsq = np.float64(0.0)
-        self._column = column
-
-    def update(self, data: any) -> None:
-        valid_data = data[~np.isnan(data)]
-        if valid_data.size == 0:
-            return
-
-        self._sum += np.sum(valid_data)
-        self._count += valid_data.size
-        self._min = min(self._min, np.min(valid_data).astype(np.float64))
-        self._max = max(self._max, np.max(valid_data).astype(np.float64))
-        self._sumsq += np.sum(valid_data**2)
-
-    def statistics(self) -> dict[str, float]:
-        if self._count == 0:
-            LOG.warning(f"Column {self._column}: no statistics collected")
-            return {_: np.nan for _ in STATISTICS}
-
-        assert isinstance(self._sum, np.float64)
-        assert isinstance(self._count, np.int64)
-        assert isinstance(self._min, np.float64)
-        assert isinstance(self._max, np.float64)
-        assert isinstance(self._sumsq, np.float64)
-
-        mean = self._sum / self._count
-        stdev = np.sqrt((self._sumsq / self._count) - (mean**2))
-
-        assert isinstance(stdev, np.float64)
-        assert isinstance(mean, np.float64)
-
-        return {
-            "mean": mean,
-            "minimum": self._min,
-            "maximum": self._max,
-            "stdev": stdev,
-        }
-
-
 class _CollectorBase:
-    def __init__(self, column) -> None:
-        self._count = np.int64(0)
-        self._min = np.float64(np.inf)
-        self._max = -np.float64(np.inf)
-        self._column = column
-        self._mean = np.float64(0.0)
-        self._m2 = np.float64(0.0)
+    def __init__(self, num_columns, column_names=None) -> None:
+        self._count = np.zeros(num_columns, dtype=np.int64)
+        self._min = np.full(num_columns, np.inf, dtype=np.float64)
+        self._max = np.full(num_columns, -np.inf, dtype=np.float64)
+        self._column_names = column_names or [str(i) for i in range(num_columns)]
+        self._mean = np.zeros(num_columns, dtype=np.float64)
+        self._m2 = np.zeros(num_columns, dtype=np.float64)
 
     def update(self, data: any) -> None:
-        valid_data = data[~np.isnan(data)]
-        if valid_data.size == 0:
-            return
+        # data shape: (n_samples, n_columns)
+        data = data.astype(np.float64)
 
-        # Vectorized Welford's algorithm
-        valid_data = valid_data.astype(np.float64).ravel()
-        n = len(valid_data)
+        # Create mask for valid data (not NaN)
+        valid_mask = ~np.isnan(data)
 
-        if n == 0:
-            return
+        # Process each column
+        for col_idx in range(data.shape[1]):
+            col_data = data[:, col_idx]
+            col_mask = valid_mask[:, col_idx]
+            valid_data = col_data[col_mask]
 
-        old_mean = self._mean
-        old_count = self._count
-        new_count = old_count + n
+            if valid_data.size == 0:
+                continue
 
-        # Batch mean
-        batch_mean = np.mean(valid_data)
+            n = len(valid_data)
+            old_mean = self._mean[col_idx]
+            old_count = self._count[col_idx]
+            new_count = old_count + n
 
-        # Update combined mean
-        self._mean = (old_count * old_mean + n * batch_mean) / new_count
+            # Batch mean
+            batch_mean = np.mean(valid_data)
 
-        # Update M2 using parallel algorithm formula
-        batch_m2 = np.sum((valid_data - batch_mean) ** 2)
-        delta = batch_mean - old_mean
-        self._m2 = self._m2 + batch_m2 + (old_count * n * delta * delta) / new_count
+            # Update combined mean
+            self._mean[col_idx] = (old_count * old_mean + n * batch_mean) / new_count
 
-        self._count = new_count
+            # Update M2 using parallel algorithm formula
+            batch_m2 = np.sum((valid_data - batch_mean) ** 2)
+            delta = batch_mean - old_mean
+            self._m2[col_idx] = self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
 
-        # Update min/max
-        self._min = min(self._min, np.min(valid_data))
-        self._max = max(self._max, np.max(valid_data))
+            self._count[col_idx] = new_count
 
-    def statistics(self) -> dict[str, float]:
-        if self._count == 0:
-            LOG.warning(f"Column {self._column}: no statistics collected")
-            return {_: np.nan for _ in STATISTICS}
+            # Update min/max
+            self._min[col_idx] = min(self._min[col_idx], np.min(valid_data))
+            self._max[col_idx] = max(self._max[col_idx], np.max(valid_data))
 
-        assert isinstance(self._mean, np.float64)
-        assert isinstance(self._count, np.int64)
-        assert isinstance(self._min, np.float64)
-        assert isinstance(self._max, np.float64)
-        assert isinstance(self._m2, np.float64)
+    def statistics(self) -> dict[str, np.ndarray]:
+        # Returns arrays for each statistic across all columns
+        result = {}
+
+        for col_idx in range(len(self._count)):
+            if self._count[col_idx] == 0:
+                LOG.warning(f"Column {self._column_names[col_idx]}: no statistics collected")
 
         # Compute variance using Welford's M2
-        variance = self._m2 / self._count if self._count > 0 else np.float64(0.0)
-        if variance < 0:
-            # this could happen due to numerical errors
-            relative_error = abs(variance) / max(abs(self._m2), abs(self._mean**2), 1e-100)
-            if relative_error > 1e-6:
-                msg = f"Negative variance {variance} for column {self._column}, {relative_error=}"
-                msg += f" m2={self._m2}, count={self._count}, mean={self._mean}, min={self._min}, max={self._max}"
-                LOG.error(msg)
-                raise ValueError(msg)
-            variance = 0.0
+        variance = np.where(self._count > 0, self._m2 / self._count, 0.0)
+
+        # Check for negative variance (numerical errors)
+        negative_mask = variance < 0
+        if np.any(negative_mask):
+            for col_idx in np.where(negative_mask)[0]:
+                var = variance[col_idx]
+                relative_error = abs(var) / max(abs(self._m2[col_idx]), abs(self._mean[col_idx] ** 2), 1e-100)
+                if relative_error > 1e-6:
+                    msg = f"Negative variance {var} for column {self._column_names[col_idx]}, {relative_error=}"
+                    msg += f" m2={self._m2[col_idx]}, count={self._count[col_idx]}, mean={self._mean[col_idx]}"
+                    msg += f", min={self._min[col_idx]}, max={self._max[col_idx]}"
+                    LOG.error(msg)
+                    raise ValueError(msg)
+                variance[col_idx] = 0.0
+
         stdev = np.sqrt(variance)
 
-        assert isinstance(stdev, np.float64)
-
-        return {
-            "mean": self._mean,
-            "minimum": self._min,
-            "maximum": self._max,
-            "stdev": stdev,
+        # Set NaN for columns with no data
+        no_data_mask = self._count == 0
+        result = {
+            "mean": np.where(no_data_mask, np.nan, self._mean),
+            "minimum": np.where(no_data_mask, np.nan, self._min),
+            "maximum": np.where(no_data_mask, np.nan, self._max),
+            "stdev": np.where(no_data_mask, np.nan, stdev),
         }
+
+        return result
 
 
 class _Collector(_CollectorBase):
@@ -147,22 +112,30 @@ class _Collector(_CollectorBase):
 
 
 class _TendencyCollector(_CollectorBase):
-    def __init__(self, column, name: str, delta: int) -> None:
-        super().__init__(column)
+    def __init__(self, num_columns, column_names, name: str, delta: int) -> None:
+        super().__init__(num_columns, column_names)
         self._name = name
         self._delta = delta
-        self._queue = []
+        self._buffer = []
 
     def update(self, data):
         data = data.astype(np.float64)
+        self._buffer.append(data)
 
-        if len(self._queue) < self._delta:
-            self._queue.append(data)
+    def finalize(self):
+        """Compute statistics on data[delta:] - data[:-delta]"""
+        if len(self._buffer) <= self._delta:
+            LOG.warning(f"Not enough data for tendency {self._name} (need >{self._delta}, got {len(self._buffer)})")
             return
 
-        previous = self._queue.pop(0)
-        super().update(data - previous)
-        self._queue.append(data)
+        # Stack all collected data: shape (num_timesteps, num_columns)
+        all_data = np.stack(self._buffer, axis=0)
+
+        # Compute differences: data[delta:] - data[:-delta]
+        tendencies = all_data[self._delta :] - all_data[: -self._delta]
+
+        # Now update statistics with all the tendency values
+        super().update(tendencies)
 
 
 def _all(dates):
@@ -180,7 +153,7 @@ class StatisticsCollector:
     ) -> None:
         self._filter = filter
 
-        self._collectors = None
+        self._collector = None
         self._variables_names = variables_names
         self._allow_nans = allow_nans
         self._tendencies = tendencies or {}
@@ -188,47 +161,38 @@ class StatisticsCollector:
 
     def collect(self, array: any, dates: any) -> None:
 
-        if self._collectors is None:
+        if self._collector is None:
+            num_columns = array.shape[1]
             names = self._variables_names
-            self._collectors = [_Collector(str(_) if names is None else names[_]) for _ in range(array.shape[1])]
+            column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
 
+            # Single collector for all columns
+            self._collector = _Collector(num_columns, column_names)
+
+            # Tendency collectors
             for name, delta in self._tendencies.items():
-                self._tendencies_collectors[name] = [
-                    _TendencyCollector(str(_) if names is None else names[_], name, delta)
-                    for _ in range(array.shape[1])
-                ]
+                self._tendencies_collectors[name] = _TendencyCollector(num_columns, column_names, name, delta)
 
-        for j in range(array.shape[1]):
-            values = array[:, j]
-            self._collectors[j].update(values)
+        # Update all columns at once
+        self._collector.update(array)
 
-            for c in self._tendencies_collectors.values():
-                c[j].update(values)
+        # For tendencies, just buffer the data
+        for c in self._tendencies_collectors.values():
+            c.update(array)
 
-    def statistics(self) -> list[dict[str, float]]:
-        if self._collectors is None:
+    def statistics(self) -> dict[str, np.ndarray]:
+        if self._collector is None:
             LOG.warning("No statistics collected")
             return {_: np.array([np.nan]) for _ in STATISTICS}
 
-        result = {key: [] for key in STATISTICS}
-        for collector in self._collectors:
-            stats = collector.statistics()
-            for key in STATISTICS:
-                result[key].append(stats[key])
+        result = self._collector.statistics()
 
-        for name, collectors in self._tendencies_collectors.items():
-
-            tendencies = {key: [] for key in STATISTICS}
-
-            for collector in collectors:
-                stats = collector.statistics()
-                for key in STATISTICS:
-                    tendencies[key].append(stats[key])
+        # Finalize tendency collectors before getting statistics
+        for name, collector in self._tendencies_collectors.items():
+            collector.finalize()
+            tendencies = collector.statistics()
 
             for key in STATISTICS:
                 result[f"statistics_tendencies_{name}_{key}"] = tendencies[key]
-
-        for key in list(result.keys()):
-            result[key] = np.array(result[key])
 
         return result
