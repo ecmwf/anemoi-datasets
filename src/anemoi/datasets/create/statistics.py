@@ -141,7 +141,7 @@ class StatisticsCollector:
                 ]
 
         for j in range(array.shape[1]):
-            values = array[j]
+            values = array[:, j]
             self._collectors[j].update(values)
 
             for c in self._tendencies_collectors.values():
@@ -149,9 +149,7 @@ class StatisticsCollector:
 
     def statistics(self) -> list[dict[str, float]]:
         if self._collectors is None:
-            assert False, "No data collected yet"
-            LOG.warning("No statistics collected")
-            return {_: np.array([np.nan]) for _ in STATISTICS}
+            raise ValueError("No statistics collected")
 
         result = {key: [] for key in STATISTICS}
         for collector in self._collectors:
