@@ -14,8 +14,20 @@ import numpy as np
 from anemoi.datasets.create.statistics import StatisticsCollector
 
 
-def _create_random_stats(N, C):
-    """Generate random data with known statistics."""
+def _create_random_stats(N, C, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Generate random data with known statistics.
+
+    Args:
+        N: Number of rows
+        C: Number of columns
+        nan_fraction: Fraction of values to set as NaN (0.0 to 1.0)
+
+    Returns:
+        data: The generated data array
+        target_stats: Dictionary with expected statistics
+    """
+    print("Generating random data...")
+
     # Define target means and stds for each column
     target_means = np.linspace(-10, 10, C)
     target_stds = np.linspace(1, 5, C)
@@ -31,41 +43,62 @@ def _create_random_stats(N, C):
         # Scale and shift to targets
         data[:, i] = (col * target_stds[i]) + target_means[i]
 
+    # Introduce NaNs if requested
+    if nan_fraction > 0:
+        nan_mask = np.random.rand(N, C) < nan_fraction
+        data[nan_mask] = np.nan
+        nan_count = np.sum(nan_mask)
+        print(f"Introduced {nan_count} NaN values ({100*nan_count/(N*C):.1f}%)")
+
     # Capture the actual stats of the modified data
-    target_stats = {
-        "mean": data.mean(axis=0),
-        "stdev": data.std(axis=0),
-        "minimum": data.min(axis=0),
-        "maximum": data.max(axis=0),
-    }
+    target_stats = _compute_statistics(data, nan=(nan_fraction > 0))
+
+    print("Verifying target statistics...")
+    _check_statistics(data, target_stats)
 
     return data, target_stats
 
 
+def _compute_statistics(data, nan=False):
+    """Compute mean, stdev, min, max for each column, optionally ignoring NaNs."""
+    if nan:
+        mean = np.nanmean(data, axis=0)
+        stdev = np.nanstd(data, axis=0)
+        minimum = np.nanmin(data, axis=0)
+        maximum = np.nanmax(data, axis=0)
+    else:
+        mean = data.mean(axis=0)
+        stdev = data.std(axis=0)
+        minimum = data.min(axis=0)
+        maximum = data.max(axis=0)
+    return {
+        "mean": mean,
+        "stdev": stdev,
+        "minimum": minimum,
+        "maximum": maximum,
+    }
+
+
+def _compute_tendency_statistics(data, delta, nan=False):
+    """Compute statistics for tendencies (differences with lag delta)."""
+    tendencies = data[delta:] - data[:-delta]
+    return _compute_statistics(tendencies, nan=nan)
+
+
 def _check_statistics(data, target_stats):
     """Verify that computed statistics match target statistics."""
-    calc_mean = data.mean(axis=0)
-    calc_std = data.std(axis=0)
-    calc_min = data.min(axis=0)
-    calc_max = data.max(axis=0)
-
-    assert np.allclose(calc_mean, target_stats["mean"]), "Mean check failed"
-    assert np.allclose(calc_std, target_stats["stdev"]), "Std deviation check failed"
-    assert np.allclose(calc_min, target_stats["minimum"]), "Min check failed"
-    assert np.allclose(calc_max, target_stats["maximum"]), "Max check failed"
+    # Check if data has NaNs to determine which computation method to use
+    has_nans = np.any(np.isnan(data))
+    calc_stats = _compute_statistics(data, nan=has_nans)
+    assert np.allclose(calc_stats["mean"], target_stats["mean"]), "Mean check failed"
+    assert np.allclose(calc_stats["stdev"], target_stats["stdev"]), "Std deviation check failed"
+    assert np.allclose(calc_stats["minimum"], target_stats["minimum"]), "Min check failed"
+    assert np.allclose(calc_stats["maximum"], target_stats["maximum"]), "Max check failed"
 
 
 def test_statistics_collector_single_batch(N=1_000_000, C=5):
     """Test statistics collector with a single batch."""
-    print(f"\n{'='*60}")
-    print(f"TEST: Single batch - {N} rows, {C} columns")
-    print(f"{'='*60}")
-
-    print("Generating random data...")
     data, target_stats = _create_random_stats(N, C)
-
-    print("Verifying target statistics...")
-    _check_statistics(data, target_stats)
 
     collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)])
 
@@ -88,15 +121,7 @@ def test_statistics_collector_single_batch(N=1_000_000, C=5):
 
 def test_statistics_collector_multiple_batches(N=1_000_000, C=5, batch_size=10_000):
     """Test statistics collector with multiple batches."""
-    print(f"\n{'='*60}")
-    print(f"TEST: Multiple batches - {N} rows, {C} columns, batch size {batch_size}")
-    print(f"{'='*60}")
-
-    print("Generating random data...")
     data, target_stats = _create_random_stats(N, C)
-
-    print("Verifying target statistics...")
-    _check_statistics(data, target_stats)
 
     collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)])
 
@@ -129,28 +154,9 @@ def test_statistics_collector_multiple_batches(N=1_000_000, C=5, batch_size=10_0
     print("✓ Multiple batches test PASSED")
 
 
-def test_statistics_with_nans(N=100_000, C=3):
+def test_statistics_with_nans(N=100_000, C=3, nan_fraction=0.1):
     """Test statistics collector with NaN values."""
-    print(f"\n{'='*60}")
-    print(f"TEST: Handling NaN values - {N} rows, {C} columns")
-    print(f"{'='*60}")
-
-    # Generate data with some NaN values
-    data = np.random.randn(N, C)
-
-    # Introduce NaNs randomly (about 10% of values)
-    nan_mask = np.random.rand(N, C) < 0.1
-    data[nan_mask] = np.nan
-
-    print(f"Introduced {np.sum(nan_mask)} NaN values ({100*np.mean(nan_mask):.1f}%)")
-
-    # Compute target statistics ignoring NaNs
-    target_stats = {
-        "mean": np.nanmean(data, axis=0),
-        "stdev": np.nanstd(data, axis=0),
-        "minimum": np.nanmin(data, axis=0),
-        "maximum": np.nanmax(data, axis=0),
-    }
+    data, target_stats = _create_random_stats(N, C, nan_fraction=nan_fraction)
 
     collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], allow_nans=True)
 
@@ -175,19 +181,9 @@ def test_statistics_with_nans(N=100_000, C=3):
 
 def test_edge_cases():
     """Test edge cases."""
-    print(f"\n{'='*60}")
-    print("TEST: Edge cases")
-    print(f"{'='*60}")
-
     # Test with very small batches
     print("\n1. Testing with single-row batches...")
-    data = np.random.randn(100, 3)
-    target_stats = {
-        "mean": data.mean(axis=0),
-        "stdev": data.std(axis=0),
-        "minimum": data.min(axis=0),
-        "maximum": data.max(axis=0),
-    }
+    data, target_stats = _create_random_stats(100, 3)
 
     collector = StatisticsCollector(variables_names=["a", "b", "c"])
     for i in range(len(data)):
@@ -215,16 +211,129 @@ def test_edge_cases():
     print("\n✓ All edge cases PASSED")
 
 
+def test_tendencies_single_batch(N=1000, C=3, delta=1):
+    """Test tendency statistics with a single batch."""
+    # Generate data
+    data, _ = _create_random_stats(N, C)
+
+    # Compute expected tendency statistics
+    target_stats = _compute_tendency_statistics(data, delta)
+
+    print(f"Generated {N} samples, computing tendencies with delta={delta}")
+    print(f"Expected {N - delta} tendency samples")
+
+    # Create collector with tendencies
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], tendencies={f"delta_{delta}": delta})
+
+    # Collect all data at once
+    collector.collect(data, range(N))
+
+    computed_stats = collector.statistics()
+
+    print("\nResults:")
+    for stat_name, target in target_stats.items():
+        key = f"statistics_tendencies_delta_{delta}_{stat_name}"
+        computed = computed_stats[key]
+        print(f"{stat_name.capitalize()}:")
+        print(f"   Target:   {target}")
+        print(f"   Computed: {computed}")
+        diff = np.abs(computed - target)
+        print(f"   Max diff: {np.max(diff):.2e}")
+        assert np.allclose(computed, target, rtol=1e-9), f"Tendency {stat_name} does not match!"
+
+    print("✓ Tendencies single batch test PASSED")
+
+
+def test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=100):
+    """Test tendency statistics with multiple batches."""
+    data, _ = _create_random_stats(N, C)
+
+    # Compute expected tendency statistics
+    target_stats = _compute_tendency_statistics(data, delta)
+
+    print(f"Generated {N} samples, computing tendencies with delta={delta}")
+    print(f"Expected {N - delta} tendency samples")
+
+    # Create collector with tendencies
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], tendencies={f"delta_{delta}": delta})
+
+    # Collect data in batches
+    num_batches = (N + batch_size - 1) // batch_size
+    print(f"Splitting data into {num_batches} batches...")
+
+    for i in range(0, N, batch_size):
+        end_idx = min(i + batch_size, N)
+        batch = data[i:end_idx]
+        collector.collect(batch, range(i, end_idx))
+
+    computed_stats = collector.statistics()
+
+    print("\nResults:")
+    for stat_name, target in target_stats.items():
+        key = f"statistics_tendencies_delta_{delta}_{stat_name}"
+        computed = computed_stats[key]
+        print(f"{stat_name.capitalize()}:")
+        print(f"   Target:   {target}")
+        print(f"   Computed: {computed}")
+        diff = np.abs(computed - target)
+        print(f"   Max diff: {np.max(diff):.2e}")
+        assert np.allclose(computed, target, rtol=1e-9), f"Tendency {stat_name} does not match!"
+
+    print("✓ Tendencies multiple batches test PASSED")
+
+
+def test_tendencies_multiple_deltas(N=500, C=2):
+    """Test computing multiple tendency deltas at the same time."""
+    data, _ = _create_random_stats(N, C)
+    deltas = {"delta_1": 1, "delta_6": 6, "delta_12": 12}
+
+    # Compute expected statistics for each delta
+    expected = {}
+    for name, delta in deltas.items():
+        expected[name] = _compute_tendency_statistics(data, delta)
+
+    # Create collector with multiple tendencies
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], tendencies=deltas)
+
+    # Collect data in batches
+    batch_size = 50
+    for i in range(0, N, batch_size):
+        end_idx = min(i + batch_size, N)
+        batch = data[i:end_idx]
+        collector.collect(batch, range(i, end_idx))
+
+    computed_stats = collector.statistics()
+
+    print("\nResults:")
+    for tendency_name, delta in deltas.items():
+        print(f"\n{tendency_name} (delta={delta}):")
+        for stat_name, target in expected[tendency_name].items():
+            key = f"statistics_tendencies_{tendency_name}_{stat_name}"
+            computed = computed_stats[key]
+            diff = np.abs(computed - target)
+            print(f"  {stat_name}: max_diff={np.max(diff):.2e}")
+            assert np.allclose(computed, target, rtol=1e-9), f"Tendency {tendency_name}, {stat_name} does not match!"
+
+    print("\n✓ Multiple tendencies simultaneously test PASSED")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("RUNNING STATISTICS COLLECTOR TEST SUITE")
     print("=" * 60)
 
     # Run all tests
-    test_statistics_collector_single_batch(N=10_000_000, C=1)
+    test_statistics_collector_single_batch(N=10_000_000, C=5)
     test_statistics_collector_multiple_batches(N=1_000_000, C=5, batch_size=10_000)
-    test_statistics_with_nans(N=100_000, C=3)
+    test_statistics_with_nans(N=1_000_000, C=3)
     test_edge_cases()
+
+    # Tendency tests
+    test_tendencies_single_batch(N=1000, C=3, delta=1)
+    test_tendencies_single_batch(N=1000, C=3, delta=5)
+    test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=100)
+    test_tendencies_multiple_batches(N=1000, C=3, delta=10, batch_size=50)
+    test_tendencies_multiple_deltas(N=500, C=2)
 
     print("\n" + "=" * 60)
     print("ALL TESTS PASSED ✓")

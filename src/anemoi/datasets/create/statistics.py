@@ -116,26 +116,31 @@ class _TendencyCollector(_CollectorBase):
         super().__init__(num_columns, column_names)
         self._name = name
         self._delta = delta
-        self._buffer = []
+        # Only keep a sliding window of the last 'delta' rows
+        self._window = None
+        self._window_size = 0
 
     def update(self, data):
         data = data.astype(np.float64)
-        self._buffer.append(data)
+
+        # Concatenate window with new data for tendency computation
+        if self._window is None:
+            combined = data
+        else:
+            combined = np.concatenate([self._window, data], axis=0)
+
+        # Compute tendencies wherever we have enough history
+        if len(combined) > self._delta:
+            tendencies = combined[self._delta :] - combined[: -self._delta]
+            super().update(tendencies)
+
+        # Update sliding window: keep only last 'delta' rows
+        self._window = combined[-self._delta :].copy()
+        self._window_size = len(self._window)
 
     def finalize(self):
-        """Compute statistics on data[delta:] - data[:-delta]"""
-        if len(self._buffer) <= self._delta:
-            LOG.warning(f"Not enough data for tendency {self._name} (need >{self._delta}, got {len(self._buffer)})")
-            return
-
-        # Stack all collected data: shape (num_timesteps, num_columns)
-        all_data = np.stack(self._buffer, axis=0)
-
-        # Compute differences: data[delta:] - data[:-delta]
-        tendencies = all_data[self._delta :] - all_data[: -self._delta]
-
-        # Now update statistics with all the tendency values
-        super().update(tendencies)
+        """Nothing to do - all processing done in update()"""
+        pass
 
 
 def _all(dates):
