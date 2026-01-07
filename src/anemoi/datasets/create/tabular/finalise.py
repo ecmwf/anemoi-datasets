@@ -597,16 +597,18 @@ def finalise_tabular_dataset(
     LOG.info("Compute duplicate date ranges")
     # Assume dates are sorted for efficient duplicate range finding
     ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
+    LOG.info(f"Found {len(ranges):,} duplicate date ranges")
 
     dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
     dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
-    for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing duplicate date ranges", unit="range"):
+    for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing dates", unit="dates"):
         dates_ranges[i, :] = (all_dates[start], start, length)
     dates_ranges.flush()
 
-    LOG.info(f"Found {len(dates_ranges)} duplicate date ranges")
+    start = time.time()
+    LOG.info("Bulking load duplicate date ranges into index")
     index.bulk_load(dates_ranges)
-    LOG.info("Duplicate date ranges written to index")
+    LOG.info(f"Duplicate date ranges written to index in {time.time() - start:.2f} seconds")
 
     if delete_files:
         os.unlink(dates_ranges_path)
