@@ -9,7 +9,10 @@
 
 import datetime
 import re
+from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
+from typing import Any
 
 import numpy as np
 import zarr
@@ -91,8 +94,54 @@ class AnnotatedNDArray(np.ndarray):
         """The reference date for the data."""
         return self.meta.reference_date
 
+    @property
+    def boundaries(self) -> list[tuple[int, int]]:
+        """The boundaries for the data."""
+        return self.meta.boundaries
 
-class _WindowMetaData:
+
+class _WindowMetaDataBase(ABC):
+    def __init__(self, owner, index) -> None:
+        self.owner = owner
+        self.index = index
+
+    @property
+    @abstractmethod
+    def latitudes(self) -> np.ndarray:
+        pass
+
+    @property
+    @abstractmethod
+    def longitudes(self) -> np.ndarray:
+        pass
+
+    @property
+    @abstractmethod
+    def dates(self) -> np.ndarray:
+        pass
+
+    @property
+    @abstractmethod
+    def timedeltas(self) -> np.ndarray:
+        pass
+
+    @property
+    @abstractmethod
+    def reference_date(self) -> np.datetime64:
+        pass
+
+    @property
+    @abstractmethod
+    def reference_dates(self) -> np.ndarray:
+        pass
+
+    @property
+    @abstractmethod
+    def boundaries(self) -> list[tuple[int, int]]:
+        pass
+
+
+class _WindowMetaData(_WindowMetaDataBase):
     """Holds metadata for a windowed data array, including reference to the owner,
     index, and auxiliary array for date and location information.
     """
@@ -109,8 +158,7 @@ class _WindowMetaData:
         aux_array : np.ndarray
             Auxiliary array containing date and location information.
         """
-        self.owner = owner
-        self.index = index
+        super().__init__(owner, index)
         self.aux_array = aux_array
 
     @property
@@ -138,9 +186,80 @@ class _WindowMetaData:
         return self.aux_array[:, 0] * 86400 + self.aux_array[:, 1] - self.owner._epochs[self.index]
 
     @property
-    def reference_date(self) -> datetime.datetime:
+    def reference_date(self) -> np.datetime64:
         """The reference date for the window."""
         return np.datetime64(datetime.datetime.fromtimestamp(self.owner._epochs[self.index]))
+
+    @property
+    def reference_dates(self) -> datetime.datetime:
+        """The reference date for the window."""
+        return np.array([self.reference_date])
+
+    @property
+    def boundaries(self) -> list[tuple[int, int]]:
+        return [(0, len(self.aux_array))]
+
+
+class _MultipleWindowMetaData(_WindowMetaDataBase):
+    """Holds metadata for multiple windowed data arrays, aggregating metadata from child arrays."""
+
+    def __init__(self, owner, index, children) -> None:
+        """Initialise the _MultipleWindowMetaData object.
+
+        Parameters
+        ----------
+        owner : WindowView
+            The WindowView instance that owns this metadata.
+        index : slice
+            The slice index.
+        children : list[_WindowMetaData]
+            List of child metadata objects.
+        """
+        super().__init__(owner, index)
+        self.children = children
+
+    @property
+    def latitudes(self) -> np.ndarray:
+        """Array of latitudes for the multiple windows."""
+        return np.concatenate([child.latitudes for child in self.children], axis=0)
+
+    @property
+    def longitudes(self) -> np.ndarray:
+        """Array of longitudes for the multiple windows."""
+        return np.concatenate([child.longitudes for child in self.children], axis=0)
+
+    @property
+    def dates(self) -> np.ndarray:
+        """Array of dates for the multiple windows."""
+        return np.concatenate([child.dates for child in self.children], axis=0)
+
+    @property
+    def timedeltas(self) -> np.ndarray:
+        """Array of time deltas for the multiple windows."""
+        return np.concatenate([child.timedeltas for child in self.children], axis=0)
+
+    @property
+    def reference_date(self) -> np.datetime64:
+        """The reference date for the first window."""
+        refs = self.reference_dates
+        if len(refs) == 1:
+            return refs[0]
+        raise ValueError(f"MultipleWindowMetaData: reference_date is ambiguous for multiple windows {refs}")
+
+    @property
+    def reference_dates(self) -> np.ndarray:
+        """The reference date for the first window."""
+        return np.concatenate([child.reference_dates for child in self.children], axis=0)
+
+    @property
+    def boundaries(self) -> list[tuple[int, int]]:
+        result = []
+        offset = 0
+        for child in self.children:
+            length = len(child)
+            result.append((offset, length))
+            offset += length
+        return result
 
 
 class Window:
@@ -344,12 +463,12 @@ class WindowView:
         """
         return self._len
 
-    def __getitem__(self, index: int) -> np.ndarray:
+    def __getitem__(self, index: Any) -> np.ndarray:
         """Retrieve the data for the specified window index, applying window boundaries and filtering.
 
         Parameters
         ----------
-        index : int
+        index : Any
             The window index to retrieve.
 
         Returns
@@ -357,6 +476,32 @@ class WindowView:
         np.ndarray
             The filtered data array for the specified window.
         """
+
+        match index:
+            case int():
+                return self._getitem_int(index)
+
+            case slice():
+                return self._getitem_slice(index)
+
+            case tuple():
+                return self._getitem_tuple(index)
+
+            case _:
+                raise TypeError(f"WindowView: invalid index type: {type(index)}")
+
+    def _getitem_int(self, index: any) -> np.ndarray:
+
+        def annotate(array: np.ndarray) -> AnnotatedNDArray:
+            return AnnotatedNDArray(
+                array[:, 4:],
+                meta=_WindowMetaData(
+                    owner=self,
+                    index=index,
+                    aux_array=array[:, :4],
+                ),
+            )
+
         assert isinstance(index, int)
         if index < 0:
             index = self._len - index
@@ -378,7 +523,7 @@ class WindowView:
         if first is None and last is None:
             # No data in this window, return an empty array with correct shape
             shape = (0,) + self.data.shape[1:]
-            return self._adjust_records(index, np.zeros(shape=shape, dtype=self.data.dtype))
+            return annotate(np.zeros(shape=shape, dtype=self.data.dtype))
 
         first_date, (start_idx, start_cnt) = first
         last_date, (end_idx, end_cnt) = last
@@ -395,25 +540,29 @@ class WindowView:
         if self.window.exclude_after and last_date == end:
             last_idx -= end_cnt
 
-        return self._adjust_records(index, self.data[start_idx:last_idx])
+        return annotate(self.data[start_idx:last_idx])
 
-    def _adjust_records(self, index: int, array: np.ndarray) -> np.ndarray:
-        """Internal method to filter and transform the data array for a given window index.
+    def _getitem_slice(self, index: slice) -> np.ndarray:
+        start, stop, step = index.indices(self._len)
+        if step != 1:
+            raise ValueError("WindowView: slicing with step is not supported")
 
-        Parameters
-        ----------
-        index : int
-            The window index.
-        array : np.ndarray
-            The data array to filter and transform.
+        arrays = []
+        for idx in range(start, stop):
+            arrays.append(self.__getitem__(idx))
 
-        Returns
-        -------
-        np.ndarray
-            The filtered and transformed data array.
-        """
+        return AnnotatedNDArray(
+            np.concatenate(arrays, axis=0),
+            meta=_MultipleWindowMetaData(
+                owner=self,
+                index=index,
+                children=arrays,
+            ),
+        )
 
-        return AnnotatedNDArray(array[:, 4:], meta=_WindowMetaData(owner=self, index=index, aux_array=array[:, :4]))
+    def _getitem_tuple(self, index: tuple) -> np.ndarray:
+        result = self.__getitem__(index[0])
+        return result[index[1:]]
 
     def __repr__(self) -> str:
         """Return a string representation of the WindowView.
