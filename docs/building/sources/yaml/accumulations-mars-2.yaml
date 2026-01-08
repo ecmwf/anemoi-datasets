@@ -1,11 +1,21 @@
 input:
   accumulate:
     period: 6
+    availability:
+      # - basetime: 0
+      #   period: "0-6"
+      # - basetime: 0
+      #   period: "6-12"
+      # - basetime: 12
+      #   period: "12-18"
+      # - basetime: 12
+      #   period: "18-24"
+      #   start: ...
+
+      - [0, "0-6/6-12"]
+      - [12, "12-18/18-24"]
     source:
       mars:
         class: ea
         param: [ tp, cp, sf ]
         levtype: sfc
-    available:
-      - 0: [[0, 6], [6, 12]]
-      - 12: [[12, 18], [18, 24]]
