@@ -9,8 +9,11 @@
 
 
 import logging
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
@@ -18,7 +21,7 @@ STATISTICS = ("mean", "minimum", "maximum", "stdev")
 
 
 class _CollectorBase:
-    def __init__(self, num_columns, column_names=None) -> None:
+    def __init__(self, num_columns: int, column_names: list[str] | None = None) -> None:
         self._count = np.zeros(num_columns, dtype=np.int64)
         self._min = np.full(num_columns, np.inf, dtype=np.float64)
         self._max = np.full(num_columns, -np.inf, dtype=np.float64)
@@ -26,7 +29,7 @@ class _CollectorBase:
         self._mean = np.zeros(num_columns, dtype=np.float64)
         self._m2 = np.zeros(num_columns, dtype=np.float64)
 
-    def update(self, data: any) -> None:
+    def update(self, data: NDArray[np.float64]) -> None:
         # data shape: (n_samples, n_columns)
         data = data.astype(np.float64)
 
@@ -64,7 +67,7 @@ class _CollectorBase:
             self._min[col_idx] = min(self._min[col_idx], np.min(valid_data))
             self._max[col_idx] = max(self._max[col_idx], np.max(valid_data))
 
-    def statistics(self) -> dict[str, np.ndarray]:
+    def statistics(self) -> dict[str, NDArray[np.float64]]:
         # Returns arrays for each statistic across all columns
         result = {}
 
@@ -108,14 +111,14 @@ class _Collector(_CollectorBase):
 
 
 class _TendencyCollector(_CollectorBase):
-    def __init__(self, num_columns, column_names, name: str, delta: int) -> None:
+    def __init__(self, num_columns: int, column_names: list[str], name: str, delta: int) -> None:
         super().__init__(num_columns, column_names)
         self._name = name
         self._delta = delta
         # Only keep a sliding window of the last 'delta' rows
         self._window = None
 
-    def update(self, data):
+    def update(self, data: NDArray[np.float64]) -> None:
         # Concatenate window with new data for tendency computation
         if self._window is None:
             combined = data
@@ -130,22 +133,40 @@ class _TendencyCollector(_CollectorBase):
         # Update sliding window: keep only last 'delta' rows
         self._window = combined[-self._delta :].copy()
 
-    def finalize(self):
-        """Nothing to do - all processing done in update()"""
+    def finalise(self) -> None:
         pass
 
 
-def _all(dates):
+def _all(dates: Any) -> range:
     return range(len(dates))
 
 
 class StatisticsCollector:
+    """Main statistics collector interface.
+
+    Collects statistics for multiple variables, including support for
+    temporal tendency statistics. Handles NaN values and provides filtering
+    capabilities for selective data collection.
+
+    Parameters
+    ----------
+    variables_names : list[str] | None, optional
+        Names of the variables to collect statistics for. If None, variables
+        are numbered from 0.
+    allow_nans : bool, optional
+        Whether to allow NaN values in the data. Default is False.
+    filter : Callable[[Any], range], optional
+        Function to filter which dates to include. Default includes all dates.
+    tendencies : list[int] | None, optional
+        List of time deltas for tendency statistics. If None, no tendency
+        statistics are collected.
+    """
 
     def __init__(
         self,
         variables_names: list[str] | None = None,
         allow_nans: bool = False,
-        filter=_all,
+        filter: Callable[[Any], range] = _all,
         tendencies: list[int] | None = None,
     ) -> None:
         self._filter = filter
@@ -156,7 +177,19 @@ class StatisticsCollector:
         self._tendencies = tendencies or {}
         self._tendencies_collectors = {}
 
-    def collect(self, array: any, dates: any) -> None:
+    def collect(self, array: NDArray[np.float64], dates: Any) -> None:
+        """Collect statistics from a batch of data.
+
+        Initialises collectors on first call based on array shape and variable names.
+        Updates both standard and tendency collectors with the new data.
+
+        Parameters
+        ----------
+        array : NDArray[np.float64]
+            Data array of shape (n_samples, n_columns).
+        dates : Any
+            Date information corresponding to the data samples.
+        """
 
         if self._collector is None:
             num_columns = array.shape[1]
@@ -177,16 +210,28 @@ class StatisticsCollector:
         for c in self._tendencies_collectors.values():
             c.update(array)
 
-    def statistics(self) -> dict[str, np.ndarray]:
+    def statistics(self) -> dict[str, NDArray[np.float64]]:
+        """Compute final statistics from all collected data.
+
+        Retrieves statistics from the standard collector and all tendency collectors.
+        Tendency statistics are prefixed with 'statistics_tendencies_{name}_'.
+
+        Returns
+        -------
+        dict[str, NDArray[np.float64]]
+            Dictionary containing statistics arrays. Keys include 'mean', 'minimum',
+            'maximum', 'stdev', and tendency statistics with keys like
+            'statistics_tendencies_{name}_mean'.
+        """
         if self._collector is None:
             LOG.warning("No statistics collected")
             return {_: np.array([np.nan]) for _ in STATISTICS}
 
         result = self._collector.statistics()
 
-        # Finalize tendency collectors before getting statistics
+        # Finalise tendency collectors before getting statistics
         for name, collector in self._tendencies_collectors.items():
-            collector.finalize()
+            collector.finalise()
             tendencies = collector.statistics()
 
             for key in STATISTICS:
