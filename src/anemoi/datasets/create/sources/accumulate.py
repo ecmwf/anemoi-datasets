@@ -283,7 +283,7 @@ def _compute_accumulations(
     dates: list[datetime.datetime],
     period: datetime.timedelta,
     source: dict,
-    available: dict[str, Any] | None = None,
+    availability: dict[str, Any] | None = None,
     **kwargs,
 ) -> Any:
     """Concrete accumulation logic.
@@ -303,7 +303,7 @@ def _compute_accumulations(
         The source configuration to request fields from
     period: datetime.timedelta,
         The interval over which to accumulate (user-defined)
-    available: Any, optional
+    availability: Any, optional
         A description of the available periods in the data source. See documentation.
 
     Return
@@ -330,7 +330,7 @@ def _compute_accumulations(
     print(source)
     source_object = context.create_source(source, "data_sources", h)
 
-    interval_generator = interval_generator_factory(available)
+    interval_generator = interval_generator_factory(availability)
 
     # generate the interval coverage for every date
     coverages = {}
@@ -439,7 +439,7 @@ class AccumulateSource(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period: str | int,
-        available=None,
+        availability=None,
         patch: Any = None,
         **kwargs,
     ) -> Any:
@@ -456,7 +456,7 @@ class AccumulateSource(LegacySource):
             The accumulation source
         period: str | int | datetime.timedelta,
             The interval over which to accumulate (user-defined)
-        available: Any, optional
+        availability: Any, optional
             A description of the available periods in the data source. See documentation.
         skip_checks: Any, optional
             Lots of metadata is checked during accumulations. This will prevent computing accumulation when
@@ -485,4 +485,4 @@ class AccumulateSource(LegacySource):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
-        return _compute_accumulations(context, dates, source=source, period=period, available=available, **kwargs)
+        return _compute_accumulations(context, dates, source=source, period=period, availability=availability, **kwargs)
