@@ -601,7 +601,7 @@ def finalise_tabular_dataset(
 
     dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
     dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
-    for i, (start, length) in tqdm.tqdm(enumerate(ranges), desc="Writing dates", unit="dates"):
+    for i, (start, length) in enumerate(tqdm.tqdm(ranges, desc="Writing dates", unit="dates")):
         dates_ranges[i, :] = (all_dates[start], start, length)
     dates_ranges.flush()
 

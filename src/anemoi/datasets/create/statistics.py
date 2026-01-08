@@ -17,10 +17,6 @@ LOG = logging.getLogger(__name__)
 STATISTICS = ("mean", "minimum", "maximum", "stdev")
 
 
-def _identity(x):
-    return x
-
-
 class _CollectorBase:
     def __init__(self, num_columns, column_names=None) -> None:
         self._count = np.zeros(num_columns, dtype=np.int64)
