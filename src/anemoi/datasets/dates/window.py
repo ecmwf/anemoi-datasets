@@ -95,7 +95,7 @@ class AnnotatedNDArray(np.ndarray):
         return self.meta.reference_date
 
     @property
-    def boundaries(self) -> list[tuple[int, int]]:
+    def boundaries(self) -> list[slice]:
         """The boundaries for the data."""
         return self.meta.boundaries
 
@@ -137,7 +137,7 @@ class _WindowMetaDataBase(ABC):
 
     @property
     @abstractmethod
-    def boundaries(self) -> list[tuple[int, int]]:
+    def boundaries(self) -> list[slice]:
         pass
 
 
@@ -196,8 +196,8 @@ class _WindowMetaData(_WindowMetaDataBase):
         return np.array([self.reference_date])
 
     @property
-    def boundaries(self) -> list[tuple[int, int]]:
-        return [(0, len(self.aux_array))]
+    def boundaries(self) -> list[slice]:
+        return [slice(0, len(self.aux_array))]
 
 
 class _MultipleWindowMetaData(_WindowMetaDataBase):
@@ -252,12 +252,12 @@ class _MultipleWindowMetaData(_WindowMetaDataBase):
         return np.concatenate([child.reference_dates for child in self.children], axis=0)
 
     @property
-    def boundaries(self) -> list[tuple[int, int]]:
+    def boundaries(self) -> list[slice]:
         result = []
         offset = 0
         for child in self.children:
             length = len(child)
-            result.append((offset, length))
+            result.append(slice(offset, offset + length))
             offset += length
         return result
 
