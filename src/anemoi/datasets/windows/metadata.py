@@ -17,7 +17,7 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
-class _WindowMetaDataBase(ABC):
+class WindowMetaDataBase(ABC):
     def __init__(self, owner, index) -> None:
         self.owner = owner
         self.index = index
@@ -58,7 +58,7 @@ class _WindowMetaDataBase(ABC):
         pass
 
 
-class _WindowMetaData(_WindowMetaDataBase):
+class WindowMetaData(WindowMetaDataBase):
     """Holds metadata for a windowed data array, including reference to the owner,
     index, and auxiliary array for date and location information.
     """
@@ -118,7 +118,7 @@ class _WindowMetaData(_WindowMetaDataBase):
         return [slice(0, len(self.aux_array))]
 
 
-class _MultipleWindowMetaData(_WindowMetaDataBase):
+class MultipleWindowMetaData(WindowMetaDataBase):
     """Holds metadata for multiple windowed data arrays, aggregating metadata from child arrays."""
 
     def __init__(self, owner, index, children) -> None:

@@ -23,8 +23,8 @@ from anemoi.datasets.usage.misc import as_last_date
 from ...caching import ChunksCache
 from ...date_indexing import create_date_indexing
 from .annotated import AnnotatedNDArray
-from .metadata import _MultipleWindowMetaData
-from .metadata import _WindowMetaData
+from .metadata import MultipleWindowMetaData
+from .metadata import WindowMetaData
 from .window import Window
 
 LOG = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ class WindowView:
         def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
             return AnnotatedNDArray(
                 array[:, 4:],
-                meta=_WindowMetaData(
+                meta=WindowMetaData(
                     owner=self,
                     index=index,
                     aux_array=array[:, :4],
@@ -288,7 +288,7 @@ class WindowView:
 
         return AnnotatedNDArray(
             np.concatenate(arrays, axis=0),
-            meta=_MultipleWindowMetaData(
+            meta=MultipleWindowMetaData(
                 owner=self,
                 index=index,
                 children=arrays,
