@@ -16,12 +16,14 @@ import numpy as np
 import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
+from rich import print
 
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from ...caching import ChunksCache
-from ...date_indexing import create_date_indexing
+from ..caching import ChunksCache
+from ..date_indexing import create_date_indexing
+from ..debug import extract_dates_from_results as _
 from .annotated import AnnotatedNDArray
 from .metadata import MultipleWindowMetaData
 from .metadata import WindowMetaData
@@ -78,6 +80,8 @@ class WindowView:
         if self.start_date > self.end_date:
             raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
 
+        print(f"XXXXX WindowView: {_(self.start_date)} {_(self.end_date)}")
+
         # Convert frequency to timedelta and parse window if needed
         self.frequency = frequency_to_timedelta(frequency)
         self.window = window if isinstance(window, Window) else Window(window)
@@ -88,7 +92,7 @@ class WindowView:
 
         # Compute the number of windows in the view
         last_index = (self.end_date - self.start_date) // self.frequency
-        while self.start_date + last_index * self.frequency < self.end_date:
+        while self.start_date + last_index * self.frequency <= self.end_date:
             last_index += 1
         self._len = last_index + 1
 
@@ -241,41 +245,40 @@ class WindowView:
             raise IndexError(f"Index {index} out of range (len={self._len})")
 
         # Calculate the start and end timestamps for the window
-        start = self.start_date + index * self.frequency + self.window.before
-        end = self.start_date + index * self.frequency + self.window.after
+        query_start = self.start_date + index * self.frequency + self.window.before
+        query_end = self.start_date + index * self.frequency + self.window.after
+
+        print(f"WindowView: __getitem__ {index}: window {_(query_start)} {_(query_end)}")
 
         # Convert datetime to integer timestamps (seconds since epoch)
-        start = round(start.timestamp())
-        end = round(end.timestamp())
+        query_start = round(query_start.timestamp())
+        query_end = round(query_end.timestamp())
+
+        # Because the accuracy is the second, we can adjust the query
+        # to exclude the boundaries if needed. THe index must return the range of
+        # data including the boundaries, so we adjust the query accordingly.
+
+        if self.window.exclude_before:
+            query_start += 1
+
+        if self.window.exclude_after:
+            query_end -= 1
+
+        print("QUERY INDEX ====>", _(query_start), _(query_end))
 
         # Find the boundaries in the date_indexing for the window
-        first, last = self.date_indexing.boundaries(start, end)
+        try:
+            range_slice = self.date_indexing.range_search(query_start, query_end)
 
-        # assert False, (first, last, start, end)
+            if range_slice.start == range_slice.stop:
+                # No data in that range
+                return annotate(np.empty((0, self.data.shape[1]), dtype=self.data.dtype), range_slice)
 
-        if first is None and last is None:
-            # No data in this window, return an empty array with correct shape
-            shape = (0,) + self.data.shape[1:]
-            return annotate(np.zeros(shape=shape, dtype=self.data.dtype))
-
-        first_date, (start_idx, start_cnt) = first
-        last_date, (end_idx, end_cnt) = last
-
-        print(f"WindowView: window {index}: {first_date=} {last_date=} {start=} {end=}")
-
-        last_idx = end_idx + end_cnt
-
-        assert first_date >= start
-        assert last_date <= end
-
-        # Exclude data at the window boundaries if specified
-        if self.window.exclude_before and first_date == start:
-            start_idx += start_cnt
-
-        if self.window.exclude_after and last_date == end:
-            last_idx -= end_cnt
-
-        return annotate(self.data[start_idx:last_idx], slice(start_idx, last_idx))
+            return annotate(self.data[range_slice], range_slice)
+        except (IndexError, StopIteration) as e:
+            # We don't have that error to stop iterations in the caller
+            # We should be in control here
+            raise ValueError(f"Error retrieving data for window index {index}: {e}") from e
 
     def _getitem_slice(self, index: slice) -> np.ndarray:
         start, stop, step = index.indices(self._len)

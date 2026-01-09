@@ -42,8 +42,7 @@ class DateIndexing(ABC):
         """Return the first and last dates in the dataset."""
 
     @abstractmethod
-    def boundaries(self, start: int, end: int) -> tuple[int | None, int | None]:
+    def range_search(self, start: int, end: int) -> slice:
         """Given start and end dates as epoch seconds,
-        return the corresponding start and end indices in the dataset
-        or (None, None) if no data is found in the range.
+        return the corresponding slice (start and end are included).
         """

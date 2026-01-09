@@ -15,10 +15,13 @@ from functools import cached_property
 
 import numpy as np
 import tqdm
+from rich import print
 
 from ..caching import ChunksCache
+from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry
+from .ranges import DateRange
 
 LOG = logging.getLogger(__name__)
 
@@ -87,11 +90,13 @@ class DateBisect(DateIndexing):
         first_key, last_key = self.index[0][0], self.index[-1][0]
         return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
 
-    def boundaries(self, start: int, end: int) -> tuple[tuple[int, np.ndarray], tuple[int, np.ndarray]]:
+    def range_search(self, start: int, end: int) -> slice:
         """Find the boundaries in the index for a given start and end epoch.
 
         This method uses a proxy to perform binary search only on the first dimension of the 2D dates array,
         minimising memory usage by not loading all dates at once.
+
+        start and end are included in the search.
 
         Parameters
         ----------
@@ -102,8 +107,8 @@ class DateBisect(DateIndexing):
 
         Returns
         -------
-        tuple of tuple
-            A tuple containing two tuples: (first_row_epoch, first_row_data), (last_row_epoch, last_row_data).
+        slice
+            A slice object representing the range of indices corresponding to the specified start and end epochs.
         """
 
         class Proxy:
@@ -138,16 +143,28 @@ class DateBisect(DateIndexing):
                 """
                 return self.dates[value][0]
 
+        print("BISCT INPUTS ====>", _(start), _(end))  # DEBUG
+
         # Search only the first dimension of the 2D dates array, without loading all dates
         start_idx = bisect.bisect_left(Proxy(self.index), start)
-        end_idx = bisect.bisect_right(Proxy(self.index), end)
+        end_idx = bisect.bisect_left(Proxy(self.index), end)
 
-        first_row = self.index[start_idx] if start_idx < len(self.index) else None
+        # Selection is before indexed dates
+        if end_idx == 0 and self.index[0][0] > end:
+            return slice(0, 0)
 
-        if end_idx > 0:
-            last_row = self.index[end_idx - 1]
-        else:
-            end_epoch, end_epoch_idx, end_epoch_len = self.index[len(self.index) - 1]
-            last_row = np.array((end_epoch, end_epoch_idx + end_epoch_len, 0), dtype=self.index.dtype)
+        if start_idx >= len(self.index):
+            return slice(len(self.index), len(self.index))
 
-        return (first_row[0], first_row[1:]), (last_row[0], last_row[1:])
+        if end_idx >= len(self.index):
+            end_idx = len(self.index) - 1
+
+        print("BISCT RESULTS START ====>", start_idx, _(self.index[start_idx]), len(self.index))  # DEBUG
+        print("BISCT RESULTS END ====>", end_idx, _(self.index[end_idx]), len(self.index))  # DEBUG
+
+        start_entry = DateRange(*self.index[start_idx])
+        end_entry = DateRange(*self.index[end_idx])
+
+        print("BISCT ENTRIES ====>", end_entry.offset + end_entry.length - start_entry.offset)  # DEBUG
+
+        return slice(start_entry.offset, end_entry.offset + end_entry.length)

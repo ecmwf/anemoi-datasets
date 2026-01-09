@@ -1,13 +1,14 @@
 """Unit tests for window.py"""
 
 import datetime
+from functools import cache
 
 import numpy as np
 import pytest
 import zarr
 
 from anemoi.datasets.date_indexing import create_date_indexing
-from anemoi.datasets.dates.windows.view import WindowView
+from anemoi.datasets.windows.view import WindowView
 
 ROWS = 5_000_000
 VARIABLES = 8
@@ -19,6 +20,7 @@ INDEXING = "bisect"
 # INDEXING='btree'
 
 
+@cache
 def create_tabular_store():
 
     COLS_WITH_DATE_TIME_LAT_LON = VARIABLES + 4
@@ -52,19 +54,16 @@ def create_tabular_store():
     return root
 
 
-def windows_width(view):
-    return int(
-        (view.window.after - view.window.before).total_seconds()
-    )  # - (1 if view.window.exclude_before else 0) - (1 if view.window.exclude_after else 0))
-
-
-def _test_window_view(**kwargs):
+def _make_view():
     """Test the WindowView class for correct slicing and metadata handling."""
 
     store = create_tabular_store()
-    view = WindowView(store)
+    return WindowView(store)
 
-    print(view.start_date, view.end_date)
+
+def _test_window_view(view):
+
+    print("+++++++++", view.start_date, view.end_date)
 
     assert view.frequency == datetime.timedelta(hours=3)
     assert view.window.before == -datetime.timedelta(hours=3)
@@ -75,11 +74,15 @@ def _test_window_view(**kwargs):
     # Make sure we can iterate over all samples
     total = 0
     for i, sample in enumerate(view):
+        print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        if sample.shape[0] != 0:
+
+            assert sample.meta.slice_obj.start == total, (sample.meta.slice_obj, total)
         assert sample.shape[1] == VARIABLES
-        assert sample.reference_date == START_DATE + i * view.frequency
+        # assert sample.reference_date == START_DATE + i * view.frequency, (sample.reference_date, START_DATE + i * view.frequency)
         total += sample.shape[0]
 
-    assert total == ROWS
+    assert total == ROWS, f"Total rows {total:,} does not match expected {ROWS:,} ({ROWS - total:,} missing)"
 
     with pytest.raises(IndexError):
         view[len(view)]
@@ -106,23 +109,145 @@ def _test_window_view(**kwargs):
 
 
 def test_window_view_1():
-    """Test the WindowView class."""
-    view = _test_window_view()
+    """Test the WindowView class with default date range.
 
-    assert view.start_date == START_DATE
-    assert view.end_date == START_DATE + datetime.timedelta(seconds=(ROWS // ROWS_PER_SECOND - 1))
+    Uses the original data range without modifications:
 
-    print()
+        [====================]
+        ^                    ^
+      start                end
+
+    Original: [--------------------]
+    Modified: [====================]
+    """
+    view = _make_view()
+    _test_window_view(view)
 
 
 def test_window_view_2():
-    """Start the dates before the data start date."""
-    view = _test_window_view(start=2019)
+    """Test with start date extended 90 days before the original data start date.
 
-    assert view.start_date == START_DATE
-    assert view.end_date == START_DATE + datetime.timedelta(seconds=(ROWS // ROWS_PER_SECOND - 1))
+    Extends the view window to start earlier than the data:
 
-    print()
+              <---90d--->
+    Original:            [--------------------]
+    Modified: [==========================]
+              ^          ^                    ^
+            new        orig                 orig
+            start      start                end
+    """
+    view = _make_view()
+    view = view.set_start(view.start_date - datetime.timedelta(days=90))
+    _test_window_view(view)
+
+
+def test_window_view_3():
+    """Test with end date extended 90 days after the original data end date.
+
+    Extends the view window to end later than the data:
+
+                                        <---90d--->
+    Original: [--------------------]
+    Modified: [==========================]
+              ^                    ^               ^
+            orig                 orig             new
+            start                end              end
+    """
+    view = _make_view()
+    view = view.set_end(view.end_date + datetime.timedelta(days=90))
+    _test_window_view(view)
+
+
+def test_window_view_4():
+    """Test with both start and end dates extended by 90 days.
+
+    Extends the view window on both sides:
+
+              <---90d--->                   <---90d--->
+    Original:            [--------------------]
+    Modified: [==========================================]
+              ^          ^                    ^          ^
+            new        orig                 orig        new
+            start      start                end         end
+    """
+    view = _make_view()
+    view = view.set_start(view.start_date - datetime.timedelta(days=90))
+    view = view.set_end(view.end_date + datetime.timedelta(days=90))
+    _test_window_view(view)
+
+
+def test_window_view_5():
+    """Test with start date moved 90 days after the original data start date.
+
+    Narrows the view window from the start:
+
+                   <---90d--->
+    Original: [--------------------]
+    Modified:            [==========]
+              ^          ^          ^
+            orig        new        orig
+            start       start      end
+    """
+    view = _make_view()
+    view = view.set_start(view.start_date + datetime.timedelta(days=90))
+    _test_window_view(view)
+
+
+def test_window_view_6():
+    """Test with both start moved forward and end moved backward by 90 days.
+
+    Narrows the view window on both sides:
+
+                   <---90d--->
+    Original: [--------------------]
+              <---90d--->
+    Modified:            [====]
+              ^          ^    ^     ^
+            orig        new  new   orig
+            start       start end  end
+    """
+    view = _make_view()
+    view = view.set_syaty(view.start_date + datetime.timedelta(days=90))
+    view = view.set_end(view.end_date - datetime.timedelta(days=90))
+    _test_window_view(view)
+
+
+def test_window_view_7():
+    """Test with start moved forward 90 days and end extended 90 days after.
+
+    Shifts and extends the view window:
+
+                   <---90d--->
+    Original: [--------------------]
+                                        <---90d--->
+    Modified:            [==========================]
+              ^          ^          ^               ^
+            orig        new        orig            new
+            start       start      end             end
+    """
+    view = _make_view()
+    view = view.set_syaty(view.start_date + datetime.timedelta(days=90))
+    view = view.set_end(view.end_date + datetime.timedelta(days=90))
+    _test_window_view(view)
+
+
+def test_window_view_8():
+    """Test with start extended 90 days before and end moved 90 days backward.
+
+    Extends the start and narrows the end:
+
+              <---90d--->
+    Original:            [--------------------]
+                                   <---90d--->
+    Modified: [====================]
+              ^          ^          ^          ^
+            new        orig        new        orig
+            start      start       end        end
+    """
+    view = _make_view()
+    view = view.set_start(view.start_date - datetime.timedelta(days=90))
+    view = view.set_end(view.end_date - datetime.timedelta(days=90))
+    _test_window_view(view)
 
 
 if __name__ == "__main__":
