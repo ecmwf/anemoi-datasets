@@ -15,13 +15,15 @@ from functools import cached_property
 
 import numpy as np
 import tqdm
-from rich import print
 
 from ..caching import ChunksCache
 from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
+
+# from rich import print
+
 
 LOG = logging.getLogger(__name__)
 

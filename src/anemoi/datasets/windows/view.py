@@ -16,7 +16,6 @@ import numpy as np
 import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
-from rich import print
 
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
@@ -28,6 +27,9 @@ from .annotated import AnnotatedNDArray
 from .metadata import MultipleWindowMetaData
 from .metadata import WindowMetaData
 from .window import Window
+
+# from rich import print
+
 
 LOG = logging.getLogger(__name__)
 
