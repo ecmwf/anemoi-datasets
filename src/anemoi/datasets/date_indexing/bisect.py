@@ -143,6 +143,11 @@ class DateBisect(DateIndexing):
         end_idx = bisect.bisect_right(Proxy(self.index), end)
 
         first_row = self.index[start_idx] if start_idx < len(self.index) else None
-        last_row = self.index[end_idx - 1] if end_idx > 0 else None
+
+        if end_idx > 0:
+            last_row = self.index[end_idx - 1]
+        else:
+            end_epoch, end_epoch_idx, end_epoch_len = self.index[len(self.index) - 1]
+            last_row = np.array((end_epoch, end_epoch_idx + end_epoch_len, 0), dtype=self.index.dtype)
 
         return (first_row[0], first_row[1:]), (last_row[0], last_row[1:])

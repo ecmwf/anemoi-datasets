@@ -8,299 +8,26 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import re
-from abc import ABC
-from abc import abstractmethod
+import logging
 from functools import cached_property
 from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
 
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from ..caching import ChunksCache
-from ..date_indexing import create_date_indexing
+from ...caching import ChunksCache
+from ...date_indexing import create_date_indexing
+from .annotated import AnnotatedNDArray
+from .metadata import _MultipleWindowMetaData
+from .metadata import _WindowMetaData
+from .window import Window
 
-
-class AnnotatedNDArray(np.ndarray):
-    """Extends numpy.ndarray to include additional metadata attributes.
-
-    This class attaches a meta object that holds metadata information, allowing
-    for the recommended way to add metadata to numpy arrays.
-    """
-
-    def __new__(cls, input_array, *, dtype=None, copy=False, meta=None) -> "AnnotatedNDArray":
-        """Create a new AnnotatedNDArray with attached metadata.
-
-        Parameters
-        ----------
-        input_array : array_like
-            Input data to be converted to an AnnotatedNDArray.
-        dtype : data-type, optional
-            Desired data-type for the array.
-        copy : bool, optional
-            If True, then the object is copied.
-        meta : object, optional
-            Metadata object to attach to the array.
-
-        Returns
-        -------
-        AnnotatedNDArray
-            The new array with attached metadata.
-        """
-        obj = np.array(input_array, dtype=dtype, copy=copy).view(cls)
-        obj.meta = meta
-        return obj
-
-    def __array_finalize__(self, obj) -> None:
-        """Finalise the creation of the AnnotatedNDArray, ensuring metadata is attached.
-
-        Parameters
-        ----------
-        obj : object
-            The source object from which the new array is derived.
-        """
-        if obj is None:
-            return
-        self.meta = getattr(obj, "meta", None)
-
-    @property
-    def dates(self) -> np.ndarray:
-        """Array of dates associated with the data."""
-        return self.meta.dates
-
-    @property
-    def latitudes(self) -> np.ndarray:
-        """Array of latitudes associated with the data."""
-        return self.meta.latitudes
-
-    @property
-    def longitudes(self) -> np.ndarray:
-        """Array of longitudes associated with the data."""
-        return self.meta.longitudes
-
-    @property
-    def timedeltas(self) -> np.ndarray:
-        """Array of time deltas associated with the data."""
-        return self.meta.timedeltas
-
-    @property
-    def reference_date(self) -> datetime.datetime:
-        """The reference date for the data."""
-        return self.meta.reference_date
-
-    @property
-    def boundaries(self) -> list[slice]:
-        """The boundaries for the data."""
-        return self.meta.boundaries
-
-
-class _WindowMetaDataBase(ABC):
-    def __init__(self, owner, index) -> None:
-        self.owner = owner
-        self.index = index
-
-    @property
-    @abstractmethod
-    def latitudes(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def longitudes(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def dates(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def timedeltas(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def reference_date(self) -> np.datetime64:
-        pass
-
-    @property
-    @abstractmethod
-    def reference_dates(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def boundaries(self) -> list[slice]:
-        pass
-
-
-class _WindowMetaData(_WindowMetaDataBase):
-    """Holds metadata for a windowed data array, including reference to the owner,
-    index, and auxiliary array for date and location information.
-    """
-
-    def __init__(self, owner, index, aux_array) -> None:
-        """Initialise the _WindowMetaData object.
-
-        Parameters
-        ----------
-        owner : WindowView
-            The WindowView instance that owns this metadata.
-        index : int
-            The window index.
-        aux_array : np.ndarray
-            Auxiliary array containing date and location information.
-        """
-        super().__init__(owner, index)
-        self.aux_array = aux_array
-
-    @property
-    def latitudes(self) -> np.ndarray:
-        """Array of latitudes for the window."""
-        return self.aux_array[:, 2]
-
-    @property
-    def longitudes(self) -> np.ndarray:
-        """Array of longitudes for the window."""
-        return self.aux_array[:, 3]
-
-    @property
-    def dates(self) -> np.ndarray:
-        """Array of dates for the window."""
-        epoch = self.owner._epochs[self.index]
-        days = self.aux_array[:, 0]
-        seconds = self.aux_array[:, 1]
-        timestamps = days * 86400 + seconds + epoch
-        return np.array([np.datetime64(datetime.datetime.fromtimestamp(ts)) for ts in timestamps])
-
-    @property
-    def timedeltas(self) -> np.ndarray:
-        """Array of time deltas for the window."""
-        return self.aux_array[:, 0] * 86400 + self.aux_array[:, 1] - self.owner._epochs[self.index]
-
-    @property
-    def reference_date(self) -> np.datetime64:
-        """The reference date for the window."""
-        return np.datetime64(datetime.datetime.fromtimestamp(self.owner._epochs[self.index]))
-
-    @property
-    def reference_dates(self) -> datetime.datetime:
-        """The reference date for the window."""
-        return np.array([self.reference_date])
-
-    @property
-    def boundaries(self) -> list[slice]:
-        return [slice(0, len(self.aux_array))]
-
-
-class _MultipleWindowMetaData(_WindowMetaDataBase):
-    """Holds metadata for multiple windowed data arrays, aggregating metadata from child arrays."""
-
-    def __init__(self, owner, index, children) -> None:
-        """Initialise the _MultipleWindowMetaData object.
-
-        Parameters
-        ----------
-        owner : WindowView
-            The WindowView instance that owns this metadata.
-        index : slice
-            The slice index.
-        children : list[_WindowMetaData]
-            List of child metadata objects.
-        """
-        super().__init__(owner, index)
-        self.children = children
-
-    @property
-    def latitudes(self) -> np.ndarray:
-        """Array of latitudes for the multiple windows."""
-        return np.concatenate([child.latitudes for child in self.children], axis=0)
-
-    @property
-    def longitudes(self) -> np.ndarray:
-        """Array of longitudes for the multiple windows."""
-        return np.concatenate([child.longitudes for child in self.children], axis=0)
-
-    @property
-    def dates(self) -> np.ndarray:
-        """Array of dates for the multiple windows."""
-        return np.concatenate([child.dates for child in self.children], axis=0)
-
-    @property
-    def timedeltas(self) -> np.ndarray:
-        """Array of time deltas for the multiple windows."""
-        return np.concatenate([child.timedeltas for child in self.children], axis=0)
-
-    @property
-    def reference_date(self) -> np.datetime64:
-        """The reference date for the first window."""
-        refs = self.reference_dates
-        if len(refs) == 1:
-            return refs[0]
-        raise ValueError(f"MultipleWindowMetaData: reference_date is ambiguous for multiple windows {refs}")
-
-    @property
-    def reference_dates(self) -> np.ndarray:
-        """The reference date for the first window."""
-        return np.concatenate([child.reference_dates for child in self.children], axis=0)
-
-    @property
-    def boundaries(self) -> list[slice]:
-        result = []
-        offset = 0
-        for child in self.children:
-            length = len(child)
-            result.append(slice(offset, offset + length))
-            offset += length
-        return result
-
-
-class Window:
-    """Represents a time window for selecting data, with before/after offsets and inclusivity.
-
-    Parses a window string to determine the time offsets before and after a central point,
-    and whether the window is inclusive or exclusive at each end. Used by WindowView to select data slices.
-    """
-
-    def __init__(self, window: str) -> None:
-        """Parse the window string and initialise the window parameters.
-
-        Parameters
-        ----------
-        window : str
-            String representation of the window, e.g. "(-3,+0]".
-        """
-        # Parse the window string using regex to extract bounds and inclusivity
-        m = re.match(r"([\[\(])(.*),(.*)([\]\)])", window)
-        if not m:
-            raise ValueError(f"Window: invalid window string: {window}")
-        # Convert before/after offsets to timedeltas
-        self.before = frequency_to_timedelta(m.group(2))
-        self.after = frequency_to_timedelta(m.group(3))
-        # Determine if window is exclusive at each end
-        self.exclude_before = m.group(1) == "("
-        self.exclude_after = m.group(4) == ")"
-
-    def __repr__(self) -> str:
-        """Return a string representation of the window.
-
-        Returns
-        -------
-        str
-            The string representation of the window.
-        """
-        B = {True: ("(", ")"), False: ("[", "]")}
-        return (
-            f"{B[self.exclude_before][0]}{frequency_to_string(self.before)},"
-            f"{frequency_to_string(self.after)}{B[self.exclude_after][1]}"
-        )
+LOG = logging.getLogger(__name__)
 
 
 class WindowView:
@@ -360,7 +87,10 @@ class WindowView:
         assert isinstance(self.frequency, datetime.timedelta)
 
         # Compute the number of windows in the view
-        self._len = (self.end_date - self.start_date) // self.frequency + 1
+        last_index = (self.end_date - self.start_date) // self.frequency
+        while self.start_date + last_index * self.frequency < self.end_date:
+            last_index += 1
+        self._len = last_index + 1
 
     def set_start(self, start: datetime.datetime) -> "WindowView":
         """Return a new WindowView with the start date aligned to the frequency using as_first_date.
@@ -492,13 +222,14 @@ class WindowView:
 
     def _getitem_int(self, index: any) -> np.ndarray:
 
-        def annotate(array: np.ndarray) -> AnnotatedNDArray:
+        def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
             return AnnotatedNDArray(
                 array[:, 4:],
                 meta=_WindowMetaData(
                     owner=self,
                     index=index,
                     aux_array=array[:, :4],
+                    slice_obj=slice_obj,
                 ),
             )
 
@@ -520,6 +251,8 @@ class WindowView:
         # Find the boundaries in the date_indexing for the window
         first, last = self.date_indexing.boundaries(start, end)
 
+        # assert False, (first, last, start, end)
+
         if first is None and last is None:
             # No data in this window, return an empty array with correct shape
             shape = (0,) + self.data.shape[1:]
@@ -527,6 +260,8 @@ class WindowView:
 
         first_date, (start_idx, start_cnt) = first
         last_date, (end_idx, end_cnt) = last
+
+        print(f"WindowView: window {index}: {first_date=} {last_date=} {start=} {end=}")
 
         last_idx = end_idx + end_cnt
 
@@ -540,7 +275,7 @@ class WindowView:
         if self.window.exclude_after and last_date == end:
             last_idx -= end_cnt
 
-        return annotate(self.data[start_idx:last_idx])
+        return annotate(self.data[start_idx:last_idx], slice(start_idx, last_idx))
 
     def _getitem_slice(self, index: slice) -> np.ndarray:
         start, stop, step = index.indices(self._len)
@@ -580,13 +315,9 @@ class WindowView:
     @cached_property
     def _epochs(self) -> np.ndarray:
         """Cached property for the array of epoch timestamps corresponding to each window."""
-        epochs = []
-        epoch = self.start_date
-        while epoch <= self.end_date:
-            # Convert datetime to seconds since epoch for consistency
-            epochs.append(int(epoch.timestamp()))
-            epoch += self.frequency
-        return np.array(epochs)
+        return np.array(
+            [int((self.start_date + i * self.frequency).timestamp()) for i in range(self._len)], dtype=np.int64
+        )
 
     @property
     def dates(self) -> np.ndarray:
