@@ -336,5 +336,23 @@ class WindowView:
 
     @property
     def data_length(self) -> int:
-        """Return the total length of the underlying data."""
+        """Return the total length of the underlying data.
+        For debugging purposes.
+        """
         return len(self.data)
+
+    @property
+    def whole_range(self) -> slice:
+        """Return slice of the whole range in the underlying data.
+        For debugging purposes.
+        """
+        return self.date_indexing.range_search(self._epochs[0], self._epochs[-1], len(self.data))
+
+    @property
+    def first_offset(self) -> int:
+        """Return the first index in the underlying data for the whole range.
+        For debugging purposes.
+        """
+        whole = self.whole_range
+        print(f"first_offset: whole_range={whole}")
+        return whole.start

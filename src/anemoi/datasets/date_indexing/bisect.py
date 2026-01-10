@@ -148,11 +148,16 @@ class DateBisect(DateIndexing):
                 """
                 return self.dates[value][0]
 
+        assert start < end
         adjust_end = False
 
         # Search only the first dimension of the 2D dates array, without loading all dates
         start_idx = bisect.bisect_left(Proxy(self.index), start)
-        assert 0 <= start_idx < len(self.index), (start_idx, start, len(self.index))
+        if start_idx == len(self.index):
+            # End edge case: if start is beyond the last entry
+            print(f"Start {start} beyond last entry")
+            return slice(dataset_length, dataset_length)
+
         start_entry = DateRange(*self.index[start_idx])
 
         end_idx = bisect.bisect_left(Proxy(self.index), end)
@@ -164,24 +169,25 @@ class DateBisect(DateIndexing):
         end_entry = DateRange(*self.index[end_idx])
 
         assert start_idx <= end_idx, (start_idx, end_idx, start, end)
+        assert end_entry.offset + end_entry.length <= dataset_length, (
+            end_entry.offset,
+            end_entry.length,
+            dataset_length,
+        )
 
-        diff_s = (int(start_entry.epoch) > start) - (int(start_entry.epoch) < start)
-        diff_e = (int(end_entry.epoch) > end) - (int(end_entry.epoch) < end)
+        diff_s = (int(start_entry.epoch) > int(start)) - (int(start_entry.epoch) < int(start))
+        diff_e = (int(end_entry.epoch) > int(end)) - (int(end_entry.epoch) < int(end))
+
+        print(f"diffs: {(diff_s, diff_e)} {adjust_end}")
 
         match (diff_s, diff_e):
             case (0, 0):
                 # Both entries match exactly what was searched
-                return slice(
-                    start_entry.offset,
-                    min(end_entry.offset + end_entry.length, dataset_length),
-                )
+                return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
             case (1, 0):
                 # Start entry is after the searched start, end entry matches exactly
-                return slice(
-                    start_entry.offset,
-                    min(end_entry.offset + end_entry.length, dataset_length),
-                )
+                return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
             case (0, 1):
                 # Start entry matches exactly, end entry is before the searched end
@@ -189,27 +195,18 @@ class DateBisect(DateIndexing):
                 assert end_idx > 0, (end_idx, end, self.index[end_idx])
                 assert end_idx - 1 >= start_idx, (end_idx, start_idx)
                 end_entry = DateRange(*self.index[end_idx - 1])
-                return slice(
-                    start_entry.offset,
-                    min(end_entry.offset + end_entry.length, dataset_length),
-                )
+                return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
             case (1, 1):
                 # Both entries are outside the searched range
                 # We are in a gap, return an empty slice
-                return slice(
-                    start_entry.offset,
-                    start_entry.offset,
-                )
+                return slice(start_entry.offset, start_entry.offset)
 
             case (0, -1):
                 # Start entry matches exactly, end entry is after the searched end
                 # We use the current entry for the end
                 assert adjust_end, "We should have adjusted the end index"
-                return slice(
-                    start_entry.offset,
-                    min(end_entry.offset + end_entry.length, dataset_length),
-                )
+                return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
             case _:
                 raise NotImplementedError(f"Case for {(diff_s, diff_e)}.")

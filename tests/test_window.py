@@ -193,10 +193,10 @@ def _test_window_view(view):
     assert view.window.exclude_after is False
 
     # Make sure we can iterate over all samples
-    total = 0
+    total = view.first_offset
     for i, sample in enumerate(view):
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
-        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] != 0:
             slice_obj = sample.meta.slice_obj
             assert slice_obj.start == total, (slice_obj, total, total - slice_obj.start)
@@ -374,8 +374,23 @@ def test_window_view_8():
     _test_window_view(view)
 
 
+def test_window_view_9():
+    """Start in gap period"""
+    view = _make_view()
+    view = view.set_start(view.start_date + datetime.timedelta(days=163))
+    _test_window_view(view)
+
+
+def test_window_view_10():
+    """End in gap period"""
+    view = _make_view()
+    view = view.set_end(view.end_date - datetime.timedelta(days=163))
+    _test_window_view(view)
+
+
 if __name__ == "__main__":
     """Run all test functions in the module."""
+    test_window_view_5()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

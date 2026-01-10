@@ -92,7 +92,7 @@ class DateIndexing(ABC):
             assert length > 0, (length, i)
 
             assert offset == total, (offset, total, i)
-            assert offset < data_length, (offset, data_length, i)
+            assert offset + length <= data_length, (offset, data_length, i)
 
             total += length
 
