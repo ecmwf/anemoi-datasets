@@ -193,10 +193,12 @@ def _test_window_view(view):
     assert view.window.exclude_after is False
 
     # Make sure we can iterate over all samples
-    total = view.first_offset
+    # Not 100% independent since we use the same code for whole_range, as in __getitem__
+    whole_range = view.whole_range
+    total = whole_range.start
     for i, sample in enumerate(view):
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
-        print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] != 0:
             slice_obj = sample.meta.slice_obj
             assert slice_obj.start == total, (slice_obj, total, total - slice_obj.start)
@@ -205,29 +207,11 @@ def _test_window_view(view):
         total += sample.shape[0]
 
     assert (
-        total == view.data_length
-    ), f"Total rows {total:,} does not match expected {view.data_length:,} ({view.data_length - total:,} missing)"
+        total == whole_range.stop
+    ), f"Total rows {total:,} does not match expected {whole_range.stop:,} ({whole_range.stop - total:,} missing)"
 
     with pytest.raises(IndexError):
         view[len(view)]
-
-    # sample = view[5]
-    # assert isinstance(sample, AnnotatedNDArray)
-
-    # # assert sample.shape == (2*windows_width(view) * ROWS_PER_SECOND, VARIABLES) # 2????
-
-    # assert sample.boundaries == [
-    #     slice(
-    #         0,1
-    #     )
-    # ]
-    # assert sample.reference_date == view.start_date + 5 * view.frequency
-    # assert sample.reference_dates is None
-    # assert sample.index == 5
-    # assert sample.dates is None
-    # assert sample.timedeltas is None
-    # assert sample.latitudes is None
-    # assert sample.longitudes is None
 
     return view
 
@@ -331,7 +315,7 @@ def test_window_view_6():
             start       start end  end
     """
     view = _make_view()
-    view = view.set_syaty(view.start_date + datetime.timedelta(days=90))
+    view = view.set_start(view.start_date + datetime.timedelta(days=90))
     view = view.set_end(view.end_date - datetime.timedelta(days=90))
     _test_window_view(view)
 
@@ -350,7 +334,7 @@ def test_window_view_7():
             start       start      end             end
     """
     view = _make_view()
-    view = view.set_syaty(view.start_date + datetime.timedelta(days=90))
+    view = view.set_start(view.start_date + datetime.timedelta(days=90))
     view = view.set_end(view.end_date + datetime.timedelta(days=90))
     _test_window_view(view)
 
@@ -390,7 +374,7 @@ def test_window_view_10():
 
 if __name__ == "__main__":
     """Run all test functions in the module."""
-    test_window_view_5()
+    test_window_view_6()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

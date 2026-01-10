@@ -21,9 +21,6 @@ from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
 
-# from rich import print
-
-
 LOG = logging.getLogger(__name__)
 
 
@@ -155,7 +152,6 @@ class DateBisect(DateIndexing):
         start_idx = bisect.bisect_left(Proxy(self.index), start)
         if start_idx == len(self.index):
             # End edge case: if start is beyond the last entry
-            print(f"Start {start} beyond last entry")
             return slice(dataset_length, dataset_length)
 
         start_entry = DateRange(*self.index[start_idx])
@@ -177,8 +173,6 @@ class DateBisect(DateIndexing):
 
         diff_s = (int(start_entry.epoch) > int(start)) - (int(start_entry.epoch) < int(start))
         diff_e = (int(end_entry.epoch) > int(end)) - (int(end_entry.epoch) < int(end))
-
-        print(f"diffs: {(diff_s, diff_e)} {adjust_end}")
 
         match (diff_s, diff_e):
             case (0, 0):
@@ -205,6 +199,11 @@ class DateBisect(DateIndexing):
             case (0, -1):
                 # Start entry matches exactly, end entry is after the searched end
                 # We use the current entry for the end
+                assert adjust_end, "We should have adjusted the end index"
+                return slice(start_entry.offset, end_entry.offset + end_entry.length)
+
+            case (1, -1):
+                # Start entry is after the searched start, end entry is after the searched end
                 assert adjust_end, "We should have adjusted the end index"
                 return slice(start_entry.offset, end_entry.offset + end_entry.length)
 

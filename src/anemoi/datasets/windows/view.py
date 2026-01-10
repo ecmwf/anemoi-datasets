@@ -346,13 +346,13 @@ class WindowView:
         """Return slice of the whole range in the underlying data.
         For debugging purposes.
         """
-        return self.date_indexing.range_search(self._epochs[0], self._epochs[-1], len(self.data))
 
-    @property
-    def first_offset(self) -> int:
-        """Return the first index in the underlying data for the whole range.
-        For debugging purposes.
-        """
-        whole = self.whole_range
-        print(f"first_offset: whole_range={whole}")
-        return whole.start
+        query_start = self._epochs[0] + int(self.window.before.total_seconds())
+        if self.window.exclude_before:
+            query_start += 1
+
+        query_end = self._epochs[-1] + int(self.window.after.total_seconds())
+        if self.window.exclude_after:
+            query_end -= 1
+
+        return self.date_indexing.range_search(query_start, query_end, len(self.data))
