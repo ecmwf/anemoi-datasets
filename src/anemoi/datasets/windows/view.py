@@ -22,14 +22,10 @@ from anemoi.datasets.usage.misc import as_last_date
 
 from ..caching import ChunksCache
 from ..date_indexing import create_date_indexing
-from ..debug import extract_dates_from_results as _
 from .annotated import AnnotatedNDArray
 from .metadata import MultipleWindowMetaData
 from .metadata import WindowMetaData
 from .window import Window
-
-# from rich import print
-
 
 LOG = logging.getLogger(__name__)
 
@@ -74,6 +70,7 @@ class WindowView:
 
         # Use a chunk cache for efficient data access
         self.data = ChunksCache(self.store["data"])
+        self.data = self.store["data"]
 
         # Determine the start and end dates for the window view
         self.start_date = to_datetime(start_date if start_date is not None else self.actual_start_end_dates[0])
@@ -81,8 +78,6 @@ class WindowView:
 
         if self.start_date > self.end_date:
             raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
-
-        print(f"XXXXX WindowView: {_(self.start_date)} {_(self.end_date)}")
 
         # Convert frequency to timedelta and parse window if needed
         self.frequency = frequency_to_timedelta(frequency)
@@ -250,8 +245,6 @@ class WindowView:
         query_start = self.start_date + index * self.frequency + self.window.before
         query_end = self.start_date + index * self.frequency + self.window.after
 
-        print(f"WindowView: __getitem__ {index}: window {_(query_start)} {_(query_end)}")
-
         # Convert datetime to integer timestamps (seconds since epoch)
         query_start = round(query_start.timestamp())
         query_end = round(query_end.timestamp())
@@ -266,17 +259,27 @@ class WindowView:
         if self.window.exclude_after:
             query_end -= 1
 
-        print("QUERY INDEX ====>", _(query_start), _(query_end))
-
         # Find the boundaries in the date_indexing for the window
         try:
-            range_slice = self.date_indexing.range_search(query_start, query_end)
+            range_slice = self.date_indexing.range_search(query_start, query_end, len(self.data))
 
             if range_slice.start == range_slice.stop:
                 # No data in that range
                 return annotate(np.empty((0, self.data.shape[1]), dtype=self.data.dtype), range_slice)
 
-            return annotate(self.data[range_slice], range_slice)
+            assert range_slice.step in (None, 1), range_slice.step
+            assert range_slice.start >= 0, range_slice.start
+            assert range_slice.stop >= range_slice.start, range_slice
+            assert range_slice.stop <= len(self.data), (range_slice, len(self.data))
+            values = self.data[range_slice]
+            assert values.shape[0] == range_slice.stop - range_slice.start, (
+                values.shape,
+                range_slice,
+                range_slice.stop - range_slice.start,
+            )
+
+            return annotate(values, range_slice)
+
         except (IndexError, StopIteration) as e:
             # We don't have that error to stop iterations in the caller
             # We should be in control here
@@ -328,3 +331,8 @@ class WindowView:
     def dates(self) -> np.ndarray:
         """Array of numpy.datetime64 objects for each window in the view."""
         return np.array([np.datetime64(datetime.datetime.fromtimestamp(_)) for _ in self._epochs])
+
+    @property
+    def data_length(self) -> int:
+        """Return the total length of the underlying data."""
+        return len(self.data)

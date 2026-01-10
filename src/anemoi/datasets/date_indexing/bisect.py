@@ -17,7 +17,6 @@ import numpy as np
 import tqdm
 
 from ..caching import ChunksCache
-from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
@@ -58,6 +57,9 @@ class DateBisect(DateIndexing):
         dates_ranges : np.ndarray
             A 2D numpy array of date ranges to be stored, where each row contains epoch, start index, and length.
         """
+
+        assert dates_ranges.dtype == np.int64, dates_ranges.dtype
+
         row_size = dates_ranges.nbytes // len(dates_ranges)
         chunck_size = 64 * 1024 * 1024 // row_size  # Adjust chunk size to approx 64MB
         LOG.info(f"Bulk loading {dates_ranges.shape} with chunk size {chunck_size}")
@@ -92,7 +94,7 @@ class DateBisect(DateIndexing):
         first_key, last_key = self.index[0][0], self.index[-1][0]
         return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
 
-    def range_search(self, start: int, end: int) -> slice:
+    def range_search(self, start: int, end: int, dataset_length: int) -> slice:
         """Find the boundaries in the index for a given start and end epoch.
 
         This method uses a proxy to perform binary search only on the first dimension of the 2D dates array,
@@ -106,7 +108,8 @@ class DateBisect(DateIndexing):
             The starting epoch (inclusive).
         end : int
             The ending epoch (inclusive).
-
+        dataset_length : int
+            The total length of the dataset
         Returns
         -------
         slice
@@ -145,28 +148,49 @@ class DateBisect(DateIndexing):
                 """
                 return self.dates[value][0]
 
-        print("BISCT INPUTS ====>", _(start), _(end))  # DEBUG
-
         # Search only the first dimension of the 2D dates array, without loading all dates
         start_idx = bisect.bisect_left(Proxy(self.index), start)
-        end_idx = bisect.bisect_left(Proxy(self.index), end)
-
-        # Selection is before indexed dates
-        if end_idx == 0 and self.index[0][0] > end:
-            return slice(0, 0)
-
-        if start_idx >= len(self.index):
-            return slice(len(self.index), len(self.index))
-
-        if end_idx >= len(self.index):
-            end_idx = len(self.index) - 1
-
-        print("BISCT RESULTS START ====>", start_idx, _(self.index[start_idx]), len(self.index))  # DEBUG
-        print("BISCT RESULTS END ====>", end_idx, _(self.index[end_idx]), len(self.index))  # DEBUG
-
         start_entry = DateRange(*self.index[start_idx])
+
+        end_idx = bisect.bisect_left(Proxy(self.index), end)
         end_entry = DateRange(*self.index[end_idx])
 
-        print("BISCT ENTRIES ====>", end_entry.offset + end_entry.length - start_entry.offset)  # DEBUG
+        diff_s = (int(start_entry.epoch) > start) - (int(start_entry.epoch) < start)
+        diff_e = (int(end_entry.epoch) > end) - (int(end_entry.epoch) < end)
 
-        return slice(start_entry.offset, end_entry.offset + end_entry.length)
+        match (diff_s, diff_e):
+            case (0, 0):
+                # Both entries match exactly what was searched
+                return slice(
+                    start_entry.offset,
+                    min(end_entry.offset + end_entry.length, dataset_length),
+                )
+
+            case (1, 0):
+                # Start entry is after the searched start, end entry matches exactly
+                return slice(
+                    start_entry.offset,
+                    min(end_entry.offset + end_entry.length, dataset_length),
+                )
+
+            case (0, 1):
+                # Start entry matches exactly, end entry is before the searched end
+                # We use the previous entry for the end
+                assert end_idx > 0, (end_idx, end, self.index[end_idx])
+                assert end_idx - 1 >= start_idx, (end_idx, start_idx)
+                end_entry = DateRange(*self.index[end_idx - 1])
+                return slice(
+                    start_entry.offset,
+                    min(end_entry.offset + end_entry.length, dataset_length),
+                )
+
+            case (1, 1):
+                # Both entries are outside the searched range
+                # We are in a gap, return an empty slice
+                return slice(
+                    start_entry.offset,
+                    start_entry.offset,
+                )
+
+            case _:
+                raise NotImplementedError(f"Case for {(diff_s, diff_e)}.")

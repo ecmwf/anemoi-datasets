@@ -24,7 +24,7 @@ class DateRange:
 
     def __repr__(self):
         date = datetime.datetime.fromtimestamp(self.epoch)
-        return f"DateRange(epoch={date}, offset={self.offset}, length={self.length})"
+        return f"DateRange(epoch={date}, offset={self.offset:,}, length={self.length:,})"
 
     def empty(self) -> bool:
         return self.length == 0

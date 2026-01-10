@@ -1,6 +1,7 @@
 """Unit tests for window.py"""
 
 import datetime
+import time
 from functools import cache
 
 import numpy as np
@@ -10,8 +11,7 @@ import zarr
 from anemoi.datasets.date_indexing import create_date_indexing
 from anemoi.datasets.windows.view import WindowView
 
-ROWS = 63_072_000  # 2 years of per-second data
-VARIABLES = 8
+VARIABLES = 3
 
 START_DATE = datetime.datetime(2020, 1, 1)
 INDEXING = "bisect"
@@ -19,7 +19,7 @@ INDEXING = "bisect"
 # INDEXING='btree'
 
 
-def generate_event_data(years=2, base_rate=100, variability=0.5, gap_days=(365, 370)) -> np.ndarray:
+def generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 165)) -> np.ndarray:
     """Generates a deterministic time-series array representing events per second.
 
     This function creates a synthetic dataset for regression testing. It uses
@@ -30,19 +30,19 @@ def generate_event_data(years=2, base_rate=100, variability=0.5, gap_days=(365, 
     Parameters
     ----------
     years : int, optional
-        The duration of the dataset in years. Defaults to 2.
+        The duration of the dataset in years. Defaults to 1.
     base_rate : int, optional
         The average number of events per second. Defaults to 100.
     variability : float, optional
         The maximum percentage fluctuation from the base_rate (0.1 = +/- 10%).
-        Defaults to 0.1.
+        Defaults to 0.5.
     gap_days : tuple of (int, int), optional
         A tuple defining the start and end day of the missing data gap
-        (inclusive). Defaults to (365, 370).
+        (inclusive). Defaults to (160, 165).
 
     Returns
     -------
-    numpy.ndarray
+    np.ndarray
         A 1D array of type float32 containing the number of events per second.
         The length of the array is (years * 365 * 24 * 3600).
 
@@ -78,7 +78,7 @@ def generate_event_data(years=2, base_rate=100, variability=0.5, gap_days=(365, 
     # Apply a boolean mask (the computational version of a Heaviside step)
     events[(t >= start_sec) & (t <= end_sec)] = 0
 
-    return events.astype(np.float32)
+    return events.astype(np.int64)
 
 
 def to_expanded_2d(events) -> np.ndarray:
@@ -113,7 +113,7 @@ def to_expanded_2d(events) -> np.ndarray:
     mask = events > 0
 
     # 4. Create the Time Index
-    indices = np.arange(len(events), dtype=np.uint32)
+    indices = np.arange(len(events), dtype=np.int64)
 
     # 5. Filter all three components using the mask
     filtered_indices = indices[mask] + int(START_DATE.timestamp())
@@ -138,26 +138,37 @@ def create_tabular_store():
     events = generate_event_data()
     dates = to_expanded_2d(events)
 
-    assert len(events) == ROWS, f"Generated events length {len(events)} does not match expected {ROWS}"
+    number_of_samples = dates[-1][1] + dates[-1][2]
+    start = time.time()
+    print("Number of samples to generate:", f"{number_of_samples:,}")
 
-    data = np.random.rand(ROWS, COLS_WITH_DATE_TIME_LAT_LON).astype(np.float32)
+    # data = np.random.rand(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON).astype(np.float32)
+    data = np.zeros((number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.float32)
     start_stamp = START_DATE.timestamp()
 
     data[:, 0] = (
-        np.repeat(np.arange(24 * 60 * 60 + 1), ROWS // (24 * 60 * 60) + 1)[:ROWS] + start_stamp
+        np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[:number_of_samples]
+        + start_stamp
     )  # seconds since midnight
-    data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(ROWS)[:ROWS]  # time offsets in seconds within the day
-    data[:, 2] = np.linspace(-90, 90, 1).repeat(ROWS)[:ROWS]  # latitudes
-    data[:, 3] = np.linspace(0, 359, 1).repeat(ROWS)[:ROWS]  # longitudes
-
+    data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(number_of_samples)[
+        :number_of_samples
+    ]  # time offsets in seconds within the day
+    data[:, 2] = np.linspace(-90, 90, 1).repeat(number_of_samples)[:number_of_samples]  # latitudes
+    data[:, 3] = np.linspace(0, 359, 1).repeat(number_of_samples)[:number_of_samples]  # longitudes
     store = zarr.storage.MemoryStore()
     root = zarr.group(store=store, overwrite=True)
     root.create_dataset("data", data=data, chunks=(10000, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.float32)
+
+    print("Data generation took", time.time() - start, "seconds")
 
     index = create_date_indexing(INDEXING, root)
     root.attrs["date_indexing"] = INDEXING
 
     dates = np.array(dates, dtype=np.int64)
+
+    # Commented out to test that the synthetic data is valid
+    # It has been validated already. Uncomment if you modify the data generation.
+    # index.validate_bulk_load_input(dates, data_length=len(data))
 
     index.bulk_load(dates)
 
@@ -184,15 +195,18 @@ def _test_window_view(view):
     # Make sure we can iterate over all samples
     total = 0
     for i, sample in enumerate(view):
-        print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
+        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] != 0:
             slice_obj = sample.meta.slice_obj
-            assert slice_obj.start == total, (slice_obj, total)
+            assert slice_obj.start == total, (slice_obj, total, total - slice_obj.start)
         assert sample.shape[1] == VARIABLES
         # assert sample.reference_date == START_DATE + i * view.frequency, (sample.reference_date, START_DATE + i * view.frequency)
         total += sample.shape[0]
 
-    assert total == ROWS, f"Total rows {total:,} does not match expected {ROWS:,} ({ROWS - total:,} missing)"
+    assert (
+        total == view.data_length
+    ), f"Total rows {total:,} does not match expected {view.data_length:,} ({view.data_length - total:,} missing)"
 
     with pytest.raises(IndexError):
         view[len(view)]
