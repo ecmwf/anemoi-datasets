@@ -221,183 +221,61 @@ def _test_window_view(view):
     return view
 
 
-def test_window_view_1():
-    """Test the WindowView class with default date range.
+# List of (start_delta, end_delta) pairs with comments for each test case
+WINDOW_VIEW_TEST_CASES = [
+    # 1. Default date range (no modification)
+    (datetime.timedelta(days=0), datetime.timedelta(days=0)),
+    # 2. Start date extended 90 days before original
+    (-datetime.timedelta(days=90), datetime.timedelta(days=0)),
+    # 3. End date extended 90 days after original
+    (datetime.timedelta(days=0), datetime.timedelta(days=90)),
+    # 4. Both start and end extended by 90 days
+    (-datetime.timedelta(days=90), datetime.timedelta(days=90)),
+    # 5. Start moved 90 days after original
+    (datetime.timedelta(days=90), datetime.timedelta(days=0)),
+    # 6. Start moved forward 90 days, end moved backward 90 days
+    (datetime.timedelta(days=90), -datetime.timedelta(days=90)),
+    # 7. Start moved forward 90 days, end extended 90 days after
+    (datetime.timedelta(days=90), datetime.timedelta(days=90)),
+    # 8. Start extended 90 days before, end moved 90 days backward
+    (-datetime.timedelta(days=90), -datetime.timedelta(days=90)),
+    # 9. Start in gap period (163 days after start)
+    (datetime.timedelta(days=163), datetime.timedelta(days=0)),
+    # 10. End in gap period (163 days before end)
+    (datetime.timedelta(days=0), -datetime.timedelta(days=163)),
+    # 11. Before any available data (both start and end moved back 3650 days)
+    (-datetime.timedelta(days=3650), -datetime.timedelta(days=3650)),
+    # 12. After any available data (both start and end moved forward 3650 days)
+    (datetime.timedelta(days=3650), datetime.timedelta(days=3650)),
+]
 
-    Uses the original data range without modifications:
 
-        [====================]
-        ^                    ^
-      start                end
+@pytest.mark.parametrize(
+    "start_delta,end_delta",
+    WINDOW_VIEW_TEST_CASES,
+    ids=[
+        "default_range",
+        "start_extended_90d_before",
+        "end_extended_90d_after",
+        "both_extended_90d",
+        "start_moved_90d_after",
+        "start_90d_after_end_90d_before",
+        "start_90d_after_end_90d_after",
+        "start_90d_before_end_90d_before",
+        "start_in_gap_period",
+        "end_in_gap_period",
+        "before_any_data",
+        "after_any_data",
+    ],
+)
+def test_window_view_parametrized(start_delta, end_delta):
+    """Parametrized test for WindowView with various start and end date modifications.
 
-    Original: [--------------------]
-    Modified: [====================]
+    Each test case is described in the WINDOW_VIEW_TEST_CASES list above.
     """
     view = _make_view()
+    if start_delta != datetime.timedelta(days=0):
+        view = view.set_start(view.start_date + start_delta)
+    if end_delta != datetime.timedelta(days=0):
+        view = view.set_end(view.end_date + end_delta)
     _test_window_view(view)
-
-
-def test_window_view_2():
-    """Test with start date extended 90 days before the original data start date.
-
-    Extends the view window to start earlier than the data:
-
-              <---90d--->
-    Original:            [--------------------]
-    Modified: [==========================]
-              ^          ^                    ^
-            new        orig                 orig
-            start      start                end
-    """
-    view = _make_view()
-    view = view.set_start(view.start_date - datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_3():
-    """Test with end date extended 90 days after the original data end date.
-
-    Extends the view window to end later than the data:
-
-                                        <---90d--->
-    Original: [--------------------]
-    Modified: [==========================]
-              ^                    ^               ^
-            orig                 orig             new
-            start                end              end
-    """
-    view = _make_view()
-    view = view.set_end(view.end_date + datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_4():
-    """Test with both start and end dates extended by 90 days.
-
-    Extends the view window on both sides:
-
-              <---90d--->                   <---90d--->
-    Original:            [--------------------]
-    Modified: [==========================================]
-              ^          ^                    ^          ^
-            new        orig                 orig        new
-            start      start                end         end
-    """
-    view = _make_view()
-    view = view.set_start(view.start_date - datetime.timedelta(days=90))
-    view = view.set_end(view.end_date + datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_5():
-    """Test with start date moved 90 days after the original data start date.
-
-    Narrows the view window from the start:
-
-                   <---90d--->
-    Original: [--------------------]
-    Modified:            [==========]
-              ^          ^          ^
-            orig        new        orig
-            start       start      end
-    """
-    view = _make_view()
-    view = view.set_start(view.start_date + datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_6():
-    """Test with both start moved forward and end moved backward by 90 days.
-
-    Narrows the view window on both sides:
-
-                   <---90d--->
-    Original: [--------------------]
-              <---90d--->
-    Modified:            [====]
-              ^          ^    ^     ^
-            orig        new  new   orig
-            start       start end  end
-    """
-    view = _make_view()
-    view = view.set_start(view.start_date + datetime.timedelta(days=90))
-    view = view.set_end(view.end_date - datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_7():
-    """Test with start moved forward 90 days and end extended 90 days after.
-
-    Shifts and extends the view window:
-
-                   <---90d--->
-    Original: [--------------------]
-                                        <---90d--->
-    Modified:            [==========================]
-              ^          ^          ^               ^
-            orig        new        orig            new
-            start       start      end             end
-    """
-    view = _make_view()
-    view = view.set_start(view.start_date + datetime.timedelta(days=90))
-    view = view.set_end(view.end_date + datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_8():
-    """Test with start extended 90 days before and end moved 90 days backward.
-
-    Extends the start and narrows the end:
-
-              <---90d--->
-    Original:            [--------------------]
-                                   <---90d--->
-    Modified: [====================]
-              ^          ^          ^          ^
-            new        orig        new        orig
-            start      start       end        end
-    """
-    view = _make_view()
-    view = view.set_start(view.start_date - datetime.timedelta(days=90))
-    view = view.set_end(view.end_date - datetime.timedelta(days=90))
-    _test_window_view(view)
-
-
-def test_window_view_9():
-    """Start in gap period"""
-    view = _make_view()
-    view = view.set_start(view.start_date + datetime.timedelta(days=163))
-    _test_window_view(view)
-
-
-def test_window_view_10():
-    """End in gap period"""
-    view = _make_view()
-    view = view.set_end(view.end_date - datetime.timedelta(days=163))
-    _test_window_view(view)
-
-
-def test_window_view_11():
-    """Before any available data"""
-    view = _make_view()
-    view = view.set_start(view.start_date - datetime.timedelta(days=3650))
-    view = view.set_end(view.end_date - datetime.timedelta(days=3650))
-    _test_window_view(view)
-
-
-def test_window_view_12():
-    """After any available data"""
-    view = _make_view()
-    view = view.set_start(view.start_date + datetime.timedelta(days=3650))
-    view = view.set_end(view.end_date + datetime.timedelta(days=3650))
-    _test_window_view(view)
-
-
-if __name__ == "__main__":
-    """Run all test functions in the module."""
-    test_window_view_12()
-    exit()
-    for name, obj in list(globals().items()):
-        if name.startswith("test_") and callable(obj):
-            print(f"Running {name}...")
-            obj()
