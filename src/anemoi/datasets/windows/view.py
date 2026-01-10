@@ -259,6 +259,8 @@ class WindowView:
         if self.window.exclude_after:
             query_end -= 1
 
+        range_slice = "(not set)"
+
         # Find the boundaries in the date_indexing for the window
         try:
             range_slice = self.date_indexing.range_search(query_start, query_end, len(self.data))
@@ -283,7 +285,7 @@ class WindowView:
         except (IndexError, StopIteration) as e:
             # We don't have that error to stop iterations in the caller
             # We should be in control here
-            raise ValueError(f"Error retrieving data for window index {index}: {e}") from e
+            raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
 
     def _getitem_slice(self, index: slice) -> np.ndarray:
         start, stop, step = index.indices(self._len)

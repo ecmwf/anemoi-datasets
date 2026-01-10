@@ -148,12 +148,22 @@ class DateBisect(DateIndexing):
                 """
                 return self.dates[value][0]
 
+        adjust_end = False
+
         # Search only the first dimension of the 2D dates array, without loading all dates
         start_idx = bisect.bisect_left(Proxy(self.index), start)
+        assert 0 <= start_idx < len(self.index), (start_idx, start, len(self.index))
         start_entry = DateRange(*self.index[start_idx])
 
         end_idx = bisect.bisect_left(Proxy(self.index), end)
+        # End edge case: if end is beyond the last entry, adjust end_idx
+        if end_idx == len(self.index):
+            adjust_end = True
+            end_idx -= 1
+        # assert 0 <= end_idx < len(self.index), (end_idx, end, len(self.index))
         end_entry = DateRange(*self.index[end_idx])
+
+        assert start_idx <= end_idx, (start_idx, end_idx, start, end)
 
         diff_s = (int(start_entry.epoch) > start) - (int(start_entry.epoch) < start)
         diff_e = (int(end_entry.epoch) > end) - (int(end_entry.epoch) < end)
@@ -190,6 +200,15 @@ class DateBisect(DateIndexing):
                 return slice(
                     start_entry.offset,
                     start_entry.offset,
+                )
+
+            case (0, -1):
+                # Start entry matches exactly, end entry is after the searched end
+                # We use the current entry for the end
+                assert adjust_end, "We should have adjusted the end index"
+                return slice(
+                    start_entry.offset,
+                    min(end_entry.offset + end_entry.length, dataset_length),
                 )
 
             case _:
