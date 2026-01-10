@@ -15,7 +15,7 @@ VARIABLES = 3
 START_DATE = datetime.datetime(2020, 1, 1)
 
 
-def generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 165)) -> np.ndarray:
+def _generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 165)) -> np.ndarray:
     """Generates a deterministic time-series array representing events per second.
 
     This function creates a synthetic dataset for regression testing. It uses
@@ -77,7 +77,7 @@ def generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 1
     return events.astype(np.int64)
 
 
-def to_expanded_2d(events) -> np.ndarray:
+def _to_expanded_2d(events) -> np.ndarray:
     """Transforms a 1D event array into a 3-column 2D array,
     filtering out the gap periods.
 
@@ -121,12 +121,12 @@ def to_expanded_2d(events) -> np.ndarray:
     return np.column_stack((filtered_indices, filtered_cumulative, filtered_values))
 
 
-def create_tabular_store(indexing) -> zarr.Group:
+def _create_tabular_store(indexing) -> zarr.Group:
 
     COLS_WITH_DATE_TIME_LAT_LON = VARIABLES + 4
 
-    events = generate_event_data()
-    dates = to_expanded_2d(events)
+    events = _generate_event_data()
+    dates = _to_expanded_2d(events)
 
     number_of_samples = dates[-1][1] + dates[-1][2]
     start = time.time()
@@ -168,13 +168,6 @@ def create_tabular_store(indexing) -> zarr.Group:
     return root
 
 
-def _make_view(indexing):
-    """Test the WindowView class for correct slicing and metadata handling."""
-
-    store = create_tabular_store(indexing)
-    return WindowView(store)
-
-
 def _test_window_view(view):
 
     print("+++++++++", view.start_date, view.end_date)
@@ -211,6 +204,21 @@ def _test_window_view(view):
     return view
 
 
+@pytest.fixture(scope="session")
+def tabular_stores():
+    # This dictionary lives for the entire test session
+    return {}
+
+
+@pytest.fixture
+def tabular_store(tabular_stores, request):
+    param = request.param
+    if param not in tabular_stores:
+        tabular_stores[param] = _create_tabular_store(param)
+
+    return tabular_stores[param]
+
+
 # List of (start_delta, end_delta) pairs with comments for each test case
 WINDOW_VIEW_TEST_CASES = [
     # 1. Default date range (no modification)
@@ -240,7 +248,7 @@ WINDOW_VIEW_TEST_CASES = [
 ]
 
 
-@pytest.mark.parametrize("indexing", ["bisect", "btree"])
+@pytest.mark.parametrize("tabular_store", ["bisect", "btree"], indirect=True)
 @pytest.mark.parametrize(
     "start_delta,end_delta",
     WINDOW_VIEW_TEST_CASES,
@@ -259,14 +267,8 @@ WINDOW_VIEW_TEST_CASES = [
         "after_any_data",
     ],
 )
-def test_window_view(indexing, start_delta, end_delta):
-    """Parametrized test for WindowView with various start and end date modifications.
-
-    Each test case is described in the WINDOW_VIEW_TEST_CASES list above.
-    """
-    view = _make_view(indexing)
-    if start_delta != datetime.timedelta(days=0):
-        view = view.set_start(view.start_date + start_delta)
-    if end_delta != datetime.timedelta(days=0):
-        view = view.set_end(view.end_date + end_delta)
+def test_window_view(tabular_store, start_delta, end_delta):
+    view = WindowView(tabular_store)
+    view = view.set_start(view.start_date + start_delta)
+    view = view.set_end(view.end_date + end_delta)
     _test_window_view(view)
