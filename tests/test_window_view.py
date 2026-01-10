@@ -2,7 +2,6 @@
 
 import datetime
 import time
-from functools import cache
 
 import numpy as np
 import pytest
@@ -14,9 +13,6 @@ from anemoi.datasets.windows.view import WindowView
 VARIABLES = 3
 
 START_DATE = datetime.datetime(2020, 1, 1)
-INDEXING = "bisect"
-
-# INDEXING = "btree"
 
 
 def generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 165)) -> np.ndarray:
@@ -125,13 +121,7 @@ def to_expanded_2d(events) -> np.ndarray:
     return np.column_stack((filtered_indices, filtered_cumulative, filtered_values))
 
 
-# Example usage:
-# events_1d = generate_event_data()
-# sparse_data = to_sparse_2d(events_1d)
-
-
-@cache
-def create_tabular_store(indexing=INDEXING) -> zarr.Group:
+def create_tabular_store(indexing) -> zarr.Group:
 
     COLS_WITH_DATE_TIME_LAT_LON = VARIABLES + 4
 
@@ -178,10 +168,10 @@ def create_tabular_store(indexing=INDEXING) -> zarr.Group:
     return root
 
 
-def _make_view():
+def _make_view(indexing):
     """Test the WindowView class for correct slicing and metadata handling."""
 
-    store = create_tabular_store()
+    store = create_tabular_store(indexing)
     return WindowView(store)
 
 
@@ -250,6 +240,7 @@ WINDOW_VIEW_TEST_CASES = [
 ]
 
 
+@pytest.mark.parametrize("indexing", ["bisect", "btree"])
 @pytest.mark.parametrize(
     "start_delta,end_delta",
     WINDOW_VIEW_TEST_CASES,
@@ -268,12 +259,12 @@ WINDOW_VIEW_TEST_CASES = [
         "after_any_data",
     ],
 )
-def test_window_view_parametrized(start_delta, end_delta):
+def test_window_view(indexing, start_delta, end_delta):
     """Parametrized test for WindowView with various start and end date modifications.
 
     Each test case is described in the WINDOW_VIEW_TEST_CASES list above.
     """
-    view = _make_view()
+    view = _make_view(indexing)
     if start_delta != datetime.timedelta(days=0):
         view = view.set_start(view.start_date + start_delta)
     if end_delta != datetime.timedelta(days=0):
