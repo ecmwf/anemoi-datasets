@@ -76,8 +76,8 @@ class WindowView:
         self.start_date = to_datetime(start_date if start_date is not None else self.actual_start_end_dates[0])
         self.end_date = to_datetime(end_date if end_date is not None else self.actual_start_end_dates[1])
 
-        if self.start_date > self.end_date:
-            raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
+        # if self.start_date > self.end_date:
+        #     raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
 
         # Convert frequency to timedelta and parse window if needed
         self.frequency = frequency_to_timedelta(frequency)
@@ -355,4 +355,14 @@ class WindowView:
         if self.window.exclude_after:
             query_end -= 1
 
-        return self.date_indexing.range_search(query_start, query_end, len(self.data))
+        result = self.date_indexing.range_search(query_start, query_end, len(self.data))
+
+        actual_start, actual_end = self.actual_start_end_dates
+
+        if self.start_date <= actual_start:
+            assert result.start == 0, (self.start_date, actual_start, result)
+
+        if self.end_date >= actual_end:
+            assert result.stop == len(self.data), (self.end_date, actual_end, result)
+
+        return result

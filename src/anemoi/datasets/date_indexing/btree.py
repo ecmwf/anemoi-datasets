@@ -19,6 +19,7 @@ from lru import LRU
 from ..caching import ChunksCache
 from . import DateIndexing
 from . import date_indexing_registry
+from .ranges import DateRange
 
 LOG = logging.getLogger(__name__)
 
@@ -492,6 +493,13 @@ class ZarrBTree:
         else:
             return page_id
 
+    def range(self, key1: int, key2: int) -> list[tuple[int, tuple[int, int]]]:
+        """Get all entries in key range"""
+
+        results = []
+        self._range_search(self.root_page_id, key1, key2, results)
+        return results
+
     def _range_search(
         self,
         page_id: int,
@@ -523,29 +531,86 @@ class ZarrBTree:
                 # No more leaves
                 return
 
-    def boundaries(self, key1: int, key2: int) -> tuple[tuple[int, tuple[int, int]], tuple[int, tuple[int, int]]]:
-        """Get all first and last entries in key range"""
+    def boundaries(self, key1, key2):
+        """Get only the first and last entries in a key range.
+        Much faster than range() when you only need the boundaries.
 
-        class FirstLast:
-            def __init__(self):
-                self.first = None
-                self.last = None
+        Returns (first_entry, last_entry) where each entry is (datetime, (val_a, val_b))
+        Returns (None, None) if range is empty.
+        """
 
-            def append(self, key):
-                if self.first is None:
-                    self.first = key
-                self.last = key
+        root_id = self.root_page_id
 
-        collect = FirstLast()
-        self._range_search(self.root_page_id, key1, key2, collect)
-        return collect.first, collect.last
+        # Find first entry >= key1
+        first_entry = self._find_first_in_range(root_id, key1, key2)
+        if first_entry is None:
+            return (None, None)
 
-    def range(self, key1: int, key2: int) -> list[tuple[int, tuple[int, int]]]:
-        """Get all entries in key range"""
+        # Find last entry <= key2
+        last_entry = self._find_last_in_range(root_id, key1, key2)
 
-        results = []
-        self._range_search(self.root_page_id, key1, key2, results)
-        return results
+        return (first_entry, last_entry)
+
+    def _find_first_in_range(self, page_id: int, key1: int, key2: int):
+        """Find the first entry in range [key1, key2]"""
+        page = self._read_page(page_id)
+
+        if page.is_node:
+            # Navigate to the leaf that would contain key1
+            child_id = self._find_child(page, key1)
+            return self._find_first_in_range(child_id, key1, key2)
+
+        # We're at a leaf - find first entry >= key1 and <= key2
+        for entry in page.entries:
+            if entry.key >= key1:
+                if entry.key <= key2:
+                    return (entry.key, entry.value)
+                else:
+                    # Past the range
+                    return None
+
+        # All entries in this leaf are < key1, try next leaf
+        if page.right > 0:
+            next_page = self._read_page(page.right)
+            for entry in next_page.entries:
+                if entry.key <= key2:
+                    return (entry.key, entry.value)
+                else:
+                    return None
+
+        return None
+
+    def _find_last_in_range(self, page_id: int, key1: int, key2: int):
+        """Find the last entry in range [key1, key2]"""
+        page = self._read_page(page_id)
+
+        if page.is_node:
+            # Navigate to the leaf that would contain key2
+            child_id = self._find_child(page, key2)
+            return self._find_last_in_range(child_id, key1, key2)
+
+        # We're at a leaf - find last entry <= key2 and >= key1
+        # Search backwards for efficiency
+        for i in range(page.count - 1, -1, -1):
+            entry = page.entries[i]
+            if entry.key <= key2:
+                if entry.key >= key1:
+                    return (entry.key, entry.value)
+                else:
+                    # Before the range
+                    return None
+
+        # All entries in this leaf are > key2, try previous leaf
+        if page.left > 0:
+            prev_page = self._read_page(page.left)
+            for i in range(prev_page.count - 1, -1, -1):
+                entry = prev_page.entries[i]
+                if entry.key >= key1:
+                    return (entry.key, entry.value)
+                else:
+                    return None
+
+        return None
 
     def first_last_keys(self):
         """Get both the first (minimum) and last (maximum) keys in the tree.
@@ -685,17 +750,16 @@ class ZarrBTree:
     def __iter__(self):
         yield from self._iter()
 
-    def bulk_load(self, data: np.ndarray, check_sorted: bool = True) -> None:
+    def bulk_load(self, data: np.ndarray) -> None:
         """Bulk load data into an empty B-tree.
         Much faster than inserting one-by-one for large datasets.
+        Assumes that data is already sorted.
 
         Args:
             data: 2D numpy array of shape (n, 3) with dtype int64
                   Column 0: keys (datetime as microseconds since epoch)
                   Column 1: value first component
                   Column 2: value second component
-            check_sorted: If True, verify that data is sorted by key.
-                          If False, assume data is already sorted.
 
         The data MUST be sorted by key (column 0) in ascending order.
         The tree must be empty before calling this method.
@@ -710,11 +774,6 @@ class ZarrBTree:
         root = self._read_page(self.root_page_id)
         if root.count > 0 or root.is_node:
             raise ValueError("Bulk load requires an empty tree. Current tree has data.")
-
-        # Verify data is sorted
-        if check_sorted:
-            if not np.all(data[:-1, 0] <= data[1:, 0]):
-                raise ValueError("Data must be sorted by key (column 0) in ascending order")
 
         # Verify tree is empty (only root exists with no entries)
         root_id = self.root_page_id
@@ -873,9 +932,9 @@ class DateBTree(DateIndexing):
         self.store = store
         self.mode = mode
 
-    def bulk_load(self, dates_ranges: np.ndarray, check_sorted=True) -> None:
+    def bulk_load(self, dates_ranges: np.ndarray) -> None:
         btree = ZarrBTree(path=self.store, name="date_index_btree", mode=self.mode)
-        btree.bulk_load(dates_ranges, check_sorted=check_sorted)
+        btree.bulk_load(dates_ranges)
 
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
         first_key, last_key = self.btree.first_last_keys()
@@ -887,3 +946,15 @@ class DateBTree(DateIndexing):
     @cached_property
     def btree(self) -> ZarrBTree:
         return ZarrBTree(path=self.store, name="date_index_btree", mode="r")
+
+    def range_search(self, start: int, end: int, dataset_length: int) -> slice:
+        start_entry, end_entry = self.btree.boundaries(start, end)
+        if start_entry is None or end_entry is None:
+            return slice(dataset_length, dataset_length)  # Empty slice
+
+        start_entry = DateRange(start_entry[0], start_entry[1][0], start_entry[1][1])
+        end_entry = DateRange(end_entry[0], end_entry[1][0], end_entry[1][1])
+
+        print(f"Range search: start_entry={start_entry}, end_entry={end_entry}")
+
+        return slice(start_entry.offset, end_entry.offset + end_entry.length)

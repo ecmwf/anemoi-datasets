@@ -14,9 +14,7 @@ from anemoi.datasets.windows.view import WindowView
 VARIABLES = 3
 
 START_DATE = datetime.datetime(2020, 1, 1)
-INDEXING = "bisect"
-
-# INDEXING='btree'
+INDEXING_LIST = ["bisect", "btree"]
 
 
 def generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 165)) -> np.ndarray:
@@ -131,7 +129,7 @@ def to_expanded_2d(events) -> np.ndarray:
 
 
 @cache
-def create_tabular_store():
+def create_tabular_store(indexing) -> zarr.Group:
 
     COLS_WITH_DATE_TIME_LAT_LON = VARIABLES + 4
 
@@ -161,8 +159,8 @@ def create_tabular_store():
 
     print("Data generation took", time.time() - start, "seconds")
 
-    index = create_date_indexing(INDEXING, root)
-    root.attrs["date_indexing"] = INDEXING
+    index = create_date_indexing(indexing, root)
+    root.attrs["date_indexing"] = indexing
 
     dates = np.array(dates, dtype=np.int64)
 
@@ -170,15 +168,18 @@ def create_tabular_store():
     # It has been validated already. Uncomment if you modify the data generation.
     # index.validate_bulk_load_input(dates, data_length=len(data))
 
+    start = time.time()
+    print("Bulk loading date index...")
     index.bulk_load(dates)
+    print("Bulk loading took", time.time() - start, "seconds")
 
     return root
 
 
-def _make_view():
+def _make_view(indexing) -> WindowView:
     """Test the WindowView class for correct slicing and metadata handling."""
 
-    store = create_tabular_store()
+    store = create_tabular_store(indexing=indexing)
     return WindowView(store)
 
 
@@ -194,16 +195,18 @@ def _test_window_view(view):
 
     # Make sure we can iterate over all samples
     # Not 100% independent since we use the same code for whole_range, as in __getitem__
+
     whole_range = view.whole_range
     total = whole_range.start
+
     for i, sample in enumerate(view):
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
         # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] != 0:
             slice_obj = sample.meta.slice_obj
             assert slice_obj.start == total, (slice_obj, total, total - slice_obj.start)
+
         assert sample.shape[1] == VARIABLES
-        # assert sample.reference_date == START_DATE + i * view.frequency, (sample.reference_date, START_DATE + i * view.frequency)
         total += sample.shape[0]
 
     assert (
@@ -216,7 +219,8 @@ def _test_window_view(view):
     return view
 
 
-def test_window_view_1():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_1(indexing):
     """Test the WindowView class with default date range.
 
     Uses the original data range without modifications:
@@ -228,11 +232,12 @@ def test_window_view_1():
     Original: [--------------------]
     Modified: [====================]
     """
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     _test_window_view(view)
 
 
-def test_window_view_2():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_2(indexing):
     """Test with start date extended 90 days before the original data start date.
 
     Extends the view window to start earlier than the data:
@@ -244,12 +249,13 @@ def test_window_view_2():
             new        orig                 orig
             start      start                end
     """
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_start(view.start_date - datetime.timedelta(days=90))
     _test_window_view(view)
 
 
-def test_window_view_3():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_3(indexing):
     """Test with end date extended 90 days after the original data end date.
 
     Extends the view window to end later than the data:
@@ -261,12 +267,13 @@ def test_window_view_3():
             orig                 orig             new
             start                end              end
     """
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_end(view.end_date + datetime.timedelta(days=90))
     _test_window_view(view)
 
 
-def test_window_view_4():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_4(indexing):
     """Test with both start and end dates extended by 90 days.
 
     Extends the view window on both sides:
@@ -278,13 +285,14 @@ def test_window_view_4():
             new        orig                 orig        new
             start      start                end         end
     """
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_start(view.start_date - datetime.timedelta(days=90))
     view = view.set_end(view.end_date + datetime.timedelta(days=90))
     _test_window_view(view)
 
 
-def test_window_view_5():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_5(indexing):
     """Test with start date moved 90 days after the original data start date.
 
     Narrows the view window from the start:
@@ -301,7 +309,8 @@ def test_window_view_5():
     _test_window_view(view)
 
 
-def test_window_view_6():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_6(indexing):
     """Test with both start moved forward and end moved backward by 90 days.
 
     Narrows the view window on both sides:
@@ -320,7 +329,8 @@ def test_window_view_6():
     _test_window_view(view)
 
 
-def test_window_view_7():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_7(indexing):
     """Test with start moved forward 90 days and end extended 90 days after.
 
     Shifts and extends the view window:
@@ -333,13 +343,14 @@ def test_window_view_7():
             orig        new        orig            new
             start       start      end             end
     """
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_start(view.start_date + datetime.timedelta(days=90))
     view = view.set_end(view.end_date + datetime.timedelta(days=90))
     _test_window_view(view)
 
 
-def test_window_view_8():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_8(indexing):
     """Test with start extended 90 days before and end moved 90 days backward.
 
     Extends the start and narrows the end:
@@ -352,29 +363,50 @@ def test_window_view_8():
             new        orig        new        orig
             start      start       end        end
     """
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_start(view.start_date - datetime.timedelta(days=90))
     view = view.set_end(view.end_date - datetime.timedelta(days=90))
     _test_window_view(view)
 
 
-def test_window_view_9():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_9(indexing):
     """Start in gap period"""
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_start(view.start_date + datetime.timedelta(days=163))
     _test_window_view(view)
 
 
-def test_window_view_10():
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_10(indexing):
     """End in gap period"""
-    view = _make_view()
+    view = _make_view(indexing=indexing)
     view = view.set_end(view.end_date - datetime.timedelta(days=163))
+    _test_window_view(view)
+
+
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_11(indexing):
+    """Before any available data"""
+    view = _make_view(indexing=indexing)
+    view = view.set_start(view.start_date - datetime.timedelta(days=3650))
+    view = view.set_end(view.end_date - datetime.timedelta(days=3650))
+    _test_window_view(view)
+
+
+@pytest.mark.parametrize("indexing", INDEXING_LIST)
+def test_window_view_12(indexing):
+    """After any available data"""
+    view = _make_view(indexing=indexing)
+    view = view.set_start(view.start_date + datetime.timedelta(days=3650))
+    view = view.set_end(view.end_date + datetime.timedelta(days=3650))
     _test_window_view(view)
 
 
 if __name__ == "__main__":
     """Run all test functions in the module."""
-    test_window_view_6()
+    test_window_view_12(indexing="bisect")
+    exit()
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

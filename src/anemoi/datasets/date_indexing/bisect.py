@@ -24,6 +24,39 @@ from .ranges import DateRange
 LOG = logging.getLogger(__name__)
 
 
+class _Proxy:
+    """Proxy class to enable binary search on the first column of a 2D array-like object."""
+
+    def __init__(self, dates: ChunksCache) -> None:
+        """Initialise the Proxy.
+
+        Parameters
+        ----------
+        dates : ChunksCache
+            The ChunksCache object containing date index data.
+        """
+        self.dates = dates
+
+    def __len__(self) -> int:
+        """Return the number of rows in the dates array."""
+        return len(self.dates)
+
+    def __getitem__(self, value: int) -> int:
+        """Get the epoch value from the first column of the specified row.
+
+        Parameters
+        ----------
+        value : int
+            Row index.
+
+        Returns
+        -------
+        int
+            The epoch value at the specified row.
+        """
+        return self.dates[value][0]
+
+
 @date_indexing_registry.register("bisect")
 class DateBisect(DateIndexing):
     """Implements date indexing using a bisect (binary search) approach for efficient range queries.
@@ -113,50 +146,18 @@ class DateBisect(DateIndexing):
             A slice object representing the range of indices corresponding to the specified start and end epochs.
         """
 
-        class Proxy:
-            """Proxy class to enable binary search on the first column of a 2D array-like object."""
-
-            def __init__(self, dates: ChunksCache) -> None:
-                """Initialise the Proxy.
-
-                Parameters
-                ----------
-                dates : ChunksCache
-                    The ChunksCache object containing date index data.
-                """
-                self.dates = dates
-
-            def __len__(self) -> int:
-                """Return the number of rows in the dates array."""
-                return len(self.dates)
-
-            def __getitem__(self, value: int) -> int:
-                """Get the epoch value from the first column of the specified row.
-
-                Parameters
-                ----------
-                value : int
-                    Row index.
-
-                Returns
-                -------
-                int
-                    The epoch value at the specified row.
-                """
-                return self.dates[value][0]
-
         assert start < end
         adjust_end = False
 
         # Search only the first dimension of the 2D dates array, without loading all dates
-        start_idx = bisect.bisect_left(Proxy(self.index), start)
+        start_idx = bisect.bisect_left(_Proxy(self.index), start)
         if start_idx == len(self.index):
             # End edge case: if start is beyond the last entry
             return slice(dataset_length, dataset_length)
 
         start_entry = DateRange(*self.index[start_idx])
 
-        end_idx = bisect.bisect_left(Proxy(self.index), end)
+        end_idx = bisect.bisect_left(_Proxy(self.index), end)
         # End edge case: if end is beyond the last entry, adjust end_idx
         if end_idx == len(self.index):
             adjust_end = True
@@ -165,7 +166,7 @@ class DateBisect(DateIndexing):
         end_entry = DateRange(*self.index[end_idx])
 
         assert start_idx <= end_idx, (start_idx, end_idx, start, end)
-        assert end_entry.offset + end_entry.length <= dataset_length, (
+        assert dataset_length is None or end_entry.offset + end_entry.length <= dataset_length, (
             end_entry.offset,
             end_entry.length,
             dataset_length,
@@ -209,3 +210,9 @@ class DateBisect(DateIndexing):
 
             case _:
                 raise NotImplementedError(f"Case for {(diff_s, diff_e)}.")
+
+    def boundaries(self, start: int, end: int) -> tuple[int, int]:
+
+        start_idx = bisect.bisect_left(_Proxy(self.index), start)
+        end_idx = bisect.bisect_right(_Proxy(self.index), end)
+        return (self.index[start_idx], self.index[end_idx - 1])
