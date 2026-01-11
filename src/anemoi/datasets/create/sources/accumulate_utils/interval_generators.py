@@ -182,11 +182,11 @@ class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
             for i in range(0, last_step, frequency):
                 config.append([base, [f"{i}-{i+frequency}"]])
         super().__init__(config)
-        
 
-def _interval_generator_factory(config, 
-                                source_name: str | None=None, 
-                                source: dict | None=None) -> IntervalGenerator | list | dict:
+
+def _interval_generator_factory(
+    config, source_name: str | None = None, source: dict | None = None
+) -> IntervalGenerator | list | dict:
     match config:
         case IntervalGenerator():
             return config
@@ -206,16 +206,17 @@ def _interval_generator_factory(config,
 
         case dict() | list() | tuple():
             return SearchableIntervalGenerator(config)
-        
+
         case "auto":
             assert None not in (source_name, source), "Source must be specified when using 'auto' discovery"
-            assert source_name=='mars', "Only 'mars' source is currently supported for 'auto' availability discovery"
+            assert source_name == "mars", "Only 'mars' source is currently supported for 'auto' availability discovery"
 
             _class, _stream, _origin = source.get("class", None), source.get("stream", None), source.get("origin", None)
-            
-            assert _class is not None, "Availability should be automatically determined from mars source, but the mars source has no 'class'"
-            
-            
+
+            assert (
+                _class is not None
+            ), "Availability should be automatically determined from mars source, but the mars source has no 'class'"
+
             if (_stream is None) or (_origin is None):
                 LOG.warning(
                     f"Stream and/or origin unspecified for class {_class}, "
@@ -224,7 +225,7 @@ def _interval_generator_factory(config,
 
             _stream = "oper" if _stream is None else _stream
             _origin = "" if _origin is None else _origin
-            matcher = "-".join(filter(None,[_class, _stream, _origin]))
+            matcher = "-".join(filter(None, [_class, _stream, _origin]))
             return matcher
 
         case "ea-oper" | "ea":
@@ -252,10 +253,10 @@ def _interval_generator_factory(config,
             # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
             raise NotImplementedError("od-enfo interval generator not implemented yet")
 
-        case "se-al-ec" | "rr-oper" | "rr" | "rr-oper-se-al-ec" :
+        case "se-al-ec" | "rr-oper" | "rr" | "rr-oper-se-al-ec":
             # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
             return [[0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]]
-        case "fr-ms-ec" | "rr-oper" | "rr" | "rr-oper-fr-ms-ec" :
+        case "fr-ms-ec" | "rr-oper" | "rr" | "rr-oper-fr-ms-ec":
             # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
             return [[0, [(0, i) for i in range(1, 22, 3)]]]
 
@@ -282,7 +283,7 @@ def _interval_generator_factory(config,
             raise ValueError(f"Unknown interval generator config: {config}")
 
 
-def interval_generator_factory(config, source_name:str|None=None,source: dict|None=None ) -> IntervalGenerator:
+def interval_generator_factory(config, source_name: str | None = None, source: dict | None = None) -> IntervalGenerator:
     while not isinstance(config, IntervalGenerator):
-        config = _interval_generator_factory(config,source_name,source)
+        config = _interval_generator_factory(config, source_name, source)
     return config
