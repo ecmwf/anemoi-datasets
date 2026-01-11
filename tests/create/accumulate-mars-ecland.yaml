@@ -8,7 +8,7 @@ dates:
 input:
     accumulate:
      period: 6h
-     available:
+     availability:
          - [0, "0-6/6-12/12-18/18-24"]
      source:
       mars:

@@ -11,7 +11,7 @@ input:
   accumulate:
     period: 1h
 
-    available:
+    availability:
       base_date:
          day_of_month: 1
       base_time: 0

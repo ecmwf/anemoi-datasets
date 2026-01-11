@@ -182,9 +182,11 @@ class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
             for i in range(0, last_step, frequency):
                 config.append([base, [f"{i}-{i+frequency}"]])
         super().__init__(config)
+        
 
-
-def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
+def _interval_generator_factory(config, 
+                                source_name: str | None=None, 
+                                source: dict | None=None) -> IntervalGenerator | list | dict:
     match config:
         case IntervalGenerator():
             return config
@@ -204,19 +206,39 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
 
         case dict() | list() | tuple():
             return SearchableIntervalGenerator(config)
+        
+        case "auto":
+            assert None not in (source_name, source), "Source must be specified when using 'auto' discovery"
+            assert source_name=='mars', "Only 'mars' source is currently supported for 'auto' availability discovery"
 
-        case "era5-oper":
+            _class, _stream, _origin = source.get("class", None), source.get("stream", None), source.get("origin", None)
+            
+            assert _class is not None, "Availability should be automatically determined from mars source, but the mars source has no 'class'"
+            
+            
+            if (_stream is None) or (_origin is None):
+                LOG.warning(
+                    f"Stream and/or origin unspecified for class {_class}, "
+                    f"stream and/or origin will be set as defaults.",
+                )
+
+            _stream = "oper" if _stream is None else _stream
+            _origin = "" if _origin is None else _origin
+            matcher = "-".join(filter(None,[_class, _stream, _origin]))
+            return matcher
+
+        case "ea-oper" | "ea":
             return [
                 (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
                 (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
             ]
-        case "era5-enda":
+        case "ea-enda":
             return [
                 (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
                 (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
             ]
 
-        case "od-oper":
+        case "od-oper" | "od":
             # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
             steps = [f"{0}-{i}" for i in range(1, 91)]
             return ((0, steps), (12, steps))
@@ -230,17 +252,17 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
             # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
             raise NotImplementedError("od-enfo interval generator not implemented yet")
 
-        case "cerra-se-al-ec":
+        case "se-al-ec" | "rr-oper" | "rr" | "rr-oper-se-al-ec" :
             # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
             return [[0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]]
-        case "cerra-fr-ms-ec":
+        case "fr-ms-ec" | "rr-oper" | "rr" | "rr-oper-fr-ms-ec" :
             # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
             return [[0, [(0, i) for i in range(1, 22, 3)]]]
 
-        case "l5-oper":
+        case "l5-oper" | "l5":
             # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
             return [
-                [base, [(0, i) for i in "/".split("1/2/3/4/5/6/9/12/15/18/21/24/27")]]
+                [base, [(0, i) for i in "1/2/3/4/5/6/9/12/15/18/21/24/27".split("/")]]
                 for base in [0, 3, 6, 9, 12, 15, 18, 21]
             ]
 
@@ -260,7 +282,7 @@ def _interval_generator_factory(config) -> IntervalGenerator | list | dict:
             raise ValueError(f"Unknown interval generator config: {config}")
 
 
-def interval_generator_factory(config) -> IntervalGenerator:
+def interval_generator_factory(config, source_name:str|None=None,source: dict|None=None ) -> IntervalGenerator:
     while not isinstance(config, IntervalGenerator):
-        config = _interval_generator_factory(config)
+        config = _interval_generator_factory(config,source_name,source)
     return config

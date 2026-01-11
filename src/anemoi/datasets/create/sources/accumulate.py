@@ -330,7 +330,7 @@ def _compute_accumulations(
     print(source)
     source_object = context.create_source(source, "data_sources", h)
 
-    interval_generator = interval_generator_factory(availability)
+    interval_generator = interval_generator_factory(availability,source_name,source[source_name])
 
     # generate the interval coverage for every date
     coverages = {}

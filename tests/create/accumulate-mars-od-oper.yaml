@@ -6,7 +6,7 @@ dates:
 input:
   accumulate:
     period: 6h
-    available:
+    availability:
          - [0, "0-6/0-12"]
          - [12, "0-6/0-12"]
     #available: 'od-oper'
