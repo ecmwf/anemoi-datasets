@@ -76,7 +76,13 @@ class _CollectorBase:
                 LOG.warning(f"Column {self._column_names[col_idx]}: no statistics collected")
 
         # Compute variance using Welford's M2
-        variance = np.where(self._count > 0, self._m2 / self._count, 0.0)
+        # variance = M2 / count (except when count == 0, then variance is set to NaN)
+        variance = np.divide(
+            self._m2,
+            self._count,
+            out=np.full_like(self._m2, np.nan),
+            where=self._count > 0,
+        )
 
         # Check for negative variance (numerical errors)
         negative_mask = variance < 0
