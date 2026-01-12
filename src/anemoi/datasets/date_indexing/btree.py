@@ -936,8 +936,13 @@ class DateBTree(DateIndexing):
         btree = ZarrBTree(path=self.store, name="date_index_btree", mode=self.mode)
         btree.bulk_load(dates_ranges)
 
-    def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
+    @cached_property
+    def start_end_epochs(self) -> tuple[int, int]:
         first_key, last_key = self.btree.first_last_keys()
+        return first_key, last_key
+
+    def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
+        first_key, last_key = self.start_end_epochs
         return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
 
     def boundaries(self, start: int, end: int) -> tuple[int, int]:
@@ -949,8 +954,15 @@ class DateBTree(DateIndexing):
 
     def range_search(self, start: int, end: int, dataset_length: int) -> slice:
         start_entry, end_entry = self.btree.boundaries(start, end)
-        if start_entry is None or end_entry is None:
-            return slice(dataset_length, dataset_length)  # Empty slice
+        if start_entry is None and end_entry is None:
+            _, last_key = self.start_end_epochs
+            # assert False, (start_entry, end_entry, start, end, last_key)
+            if start > last_key:
+                # Empty slice at end
+                return slice(dataset_length, dataset_length)
+            else:
+                # Empty slice at start
+                return slice(0, 0)
 
         start_entry = DateRange(start_entry[0], start_entry[1][0], start_entry[1][1])
         end_entry = DateRange(end_entry[0], end_entry[1][0], end_entry[1][1])
