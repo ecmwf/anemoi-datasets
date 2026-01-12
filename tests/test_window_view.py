@@ -219,56 +219,42 @@ def tabular_store(tabular_stores, request):
     return tabular_stores[param]
 
 
-# List of (start_delta, end_delta) pairs with comments for each test case
-WINDOW_VIEW_TEST_CASES = [
+WINDOW_VIEW_TEST_CASES = {
     # 1. Default date range (no modification)
-    (datetime.timedelta(days=0), datetime.timedelta(days=0)),
+    "default_range": (0, 0),
     # 2. Start date extended 90 days before original
-    (-datetime.timedelta(days=90), datetime.timedelta(days=0)),
+    "start_extended_90d_before": (-90, 0),
     # 3. End date extended 90 days after original
-    (datetime.timedelta(days=0), datetime.timedelta(days=90)),
+    "end_extended_90d_after": (0, 90),
     # 4. Both start and end extended by 90 days
-    (-datetime.timedelta(days=90), datetime.timedelta(days=90)),
+    "both_extended_90d": (-90, 90),
     # 5. Start moved 90 days after original
-    (datetime.timedelta(days=90), datetime.timedelta(days=0)),
+    "start_moved_90d_after": (90, 0),
     # 6. Start moved forward 90 days, end moved backward 90 days
-    (datetime.timedelta(days=90), -datetime.timedelta(days=90)),
+    "start_90d_after_end_90d_before": (90, -90),
     # 7. Start moved forward 90 days, end extended 90 days after
-    (datetime.timedelta(days=90), datetime.timedelta(days=90)),
+    "start_90d_after_end_90d_after": (90, 90),
     # 8. Start extended 90 days before, end moved 90 days backward
-    (-datetime.timedelta(days=90), -datetime.timedelta(days=90)),
+    "start_90d_before_end_90d_before": (-90, -90),
     # 9. Start in gap period (163 days after start)
-    (datetime.timedelta(days=163), datetime.timedelta(days=0)),
+    "start_in_gap_period": (163, 0),
     # 10. End in gap period (163 days before end)
-    (datetime.timedelta(days=0), -datetime.timedelta(days=163)),
+    "end_in_gap_period": (0, -163),
     # 11. Before any available data (both start and end moved back 3650 days)
-    (-datetime.timedelta(days=3650), -datetime.timedelta(days=3650)),
+    "before_any_data": (-3650, -3650),
     # 12. After any available data (both start and end moved forward 3650 days)
-    (datetime.timedelta(days=3650), datetime.timedelta(days=3650)),
-]
+    "after_any_data": (3650, 3650),
+}
 
 
 @pytest.mark.parametrize("tabular_store", ["bisect", "btree"], indirect=True)
 @pytest.mark.parametrize(
     "start_delta,end_delta",
-    WINDOW_VIEW_TEST_CASES,
-    ids=[
-        "default_range",
-        "start_extended_90d_before",
-        "end_extended_90d_after",
-        "both_extended_90d",
-        "start_moved_90d_after",
-        "start_90d_after_end_90d_before",
-        "start_90d_after_end_90d_after",
-        "start_90d_before_end_90d_before",
-        "start_in_gap_period",
-        "end_in_gap_period",
-        "before_any_data",
-        "after_any_data",
-    ],
+    WINDOW_VIEW_TEST_CASES.values(),
+    ids=WINDOW_VIEW_TEST_CASES.keys(),
 )
 def test_window_view(tabular_store, start_delta, end_delta):
     view = WindowView(tabular_store)
-    view = view.set_start(view.start_date + start_delta)
-    view = view.set_end(view.end_date + end_delta)
+    view = view.set_start(view.start_date + datetime.timedelta(days=start_delta))
+    view = view.set_end(view.end_date + datetime.timedelta(days=end_delta))
     _test_window_view(view)
