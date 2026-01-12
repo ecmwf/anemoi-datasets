@@ -184,3 +184,10 @@ for training downsampling models (i.e. by implementing a new `Creator` subclass)
 
 The `ChunkCaching` class can easily be updated to handle Zarr3's sharding, and greatly simplify the
 creation of datasets to use that feature.
+
+# TODO
+
+- start end dates and frequency as default in the recipe, to be used when not specified in open_dataset (currently using the first date of the data, but should use the date in the recipe)
+- check alignment of tabular with gridded for start-end dates and len(ds.dates). Check that len(ds) is the same for tabular and gridded when start end frequency are the same.
+- check that zarr does not exist before creation (--overwrite)
+- add date filter to statistics
