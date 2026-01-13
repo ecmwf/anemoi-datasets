@@ -297,8 +297,7 @@ WINDOW_VIEW_TEST_CASES = {
 }
 
 
-# @pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
-@pytest.mark.parametrize("store_and_events", ["bisect"], indirect=True)
+@pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
 @pytest.mark.parametrize("start_delta,end_delta", WINDOW_VIEW_TEST_CASES.values(), ids=WINDOW_VIEW_TEST_CASES.keys())
 def test_window_view(store_and_events, start_delta, end_delta):
     store, events = store_and_events
