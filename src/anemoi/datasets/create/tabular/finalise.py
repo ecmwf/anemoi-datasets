@@ -507,7 +507,10 @@ def finalise_tabular_dataset(
     collector = StatisticsCollector(
         variables_names=variables_names,
         filter=recipe.statistics.statistics_filter(
-            [np.datetime64(fragments[0].first_date, "s"), np.datetime64(fragments[-1].last_date, "s")]
+            [
+                np.datetime64(fragments[0].first_date, "s"),
+                np.datetime64(fragments[-1].last_date, "s"),
+            ]
         ),
     )
 
