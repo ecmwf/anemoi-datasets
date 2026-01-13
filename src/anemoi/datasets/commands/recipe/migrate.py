@@ -93,7 +93,6 @@ MIGRATE = {
     "env": "build.env",
     "output.remapping": "build.remapping",
     "format": "output.format",
-    "date_indexing": "output.date_indexing",
 }
 
 DELETE = [
