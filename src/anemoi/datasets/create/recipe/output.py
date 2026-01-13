@@ -119,14 +119,6 @@ class TabularOutput(OutputBase):
                 "Cannot specify 'format' at both top level and inside 'output'. " "Please use 'output.format' only."
             )
 
-        if recipe.date_indexing and self.date_indexing != recipe.date_indexing:
-            raise ValueError(
-                "Cannot specify 'date_indexing' at both top level and inside 'output'. "
-                "Please use 'output.date_indexing' only."
-            )
-        if recipe.date_indexing is not None:
-            self.date_indexing = recipe.date_indexing
-
 
 def _output_discriminator(v: Any) -> str:
     """Discriminator function for Output union type."""
