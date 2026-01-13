@@ -225,16 +225,29 @@ class GriddedCreator(Creator):
         # Nothing to do here
         pass
 
-    def compute_and_store_statistics(self, dataset: Dataset, tendencies: bool = True) -> None:
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
         dates = dataset.dates
-        TENDENCIES = [1, 3, 6, 12, 24]  # Read from recipe in future
-
-        tendencies = [frequency_to_timedelta(d) for d in TENDENCIES]
         frequency = dataset.frequency
 
-        tendencies = {
-            frequency_to_string(t): int(t / frequency) for t in tendencies if int(t / frequency) == t / frequency
-        }
+        tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is True:
+            tendencies_list = [1, 3, 6, 12, 24]
+        elif tendencies_config is False or tendencies_config is None:
+            tendencies_list = []
+        else:
+            tendencies_list = list(tendencies_config)
+
+        tendencies = {}
+        for delta in tendencies_list:
+            td = frequency_to_timedelta(delta)
+            ratio = td / frequency
+            if int(ratio) == ratio:
+                tendencies[frequency_to_string(td)] = int(ratio)
+            else:
+                LOG.warning(
+                    f"Tendency delta {delta} is not a multiple of dataset frequency "
+                    f"{frequency_to_string(frequency)}, skipping."
+                )
 
         collector = StatisticsCollector(
             variables_names=self.variables_names,
