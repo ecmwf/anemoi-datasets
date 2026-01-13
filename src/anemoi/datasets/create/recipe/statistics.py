@@ -22,12 +22,13 @@ LOG = logging.getLogger(__name__)
 
 
 class Statistics(BaseModel):
-    allow_nans: bool | list[str] = Field(
-        default=False,
-        deprecated="'statistics.allow_nans' is deprecated. Please use 'build.allow_nans' instead.",
-    )
     start: str | int | datetime.datetime | None = None
     end: str | int | datetime.datetime | None = None
+
+    allow_nans: bool | list[str] | None = Field(
+        default=None,
+        deprecated="'statistics.allow_nans' is deprecated. Please use 'build.allow_nans' instead.",
+    )
 
     @classmethod
     def default_statistics_dates(cls, dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:

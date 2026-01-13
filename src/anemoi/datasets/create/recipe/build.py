@@ -63,35 +63,30 @@ class Build(BaseModel):
         recipe : Recipe
             The parent recipe object.
         """
-        # Support legacy top-level 'env'
-        # Pydantic emits the deprecation warning automatically
-        if recipe.env and self.env:
-            raise ValueError(
-                "Cannot specify 'env' at both top level and inside 'build'. " "Please use 'build.env' only."
-            )
-        if recipe.env:
+        if recipe.env is not None:
+            if self.env:
+                raise ValueError("Cannot specify 'env' in both 'recipe' and 'build'. " "Please use 'build.env' only.")
             self.env = dict(recipe.env)
+            recipe.env = None
 
         # Support legacy 'statistics.allow_nans'
-        # Pydantic emits the deprecation warning automatically
-        if recipe.statistics.allow_nans and self.allow_nans:
-            raise ValueError(
-                "Cannot specify 'allow_nans' in both 'statistics' and 'build'. " "Please use 'build.allow_nans' only."
-            )
-        if recipe.statistics.allow_nans:
+        if recipe.statistics.allow_nans is not None:
+            if self.allow_nans:
+                raise ValueError(
+                    "Cannot specify 'allow_nans' in both 'statistics' and 'build'. "
+                    "Please use 'build.allow_nans' only."
+                )
             self.allow_nans = recipe.statistics.allow_nans
+            recipe.statistics.allow_nans = None
 
         # Support legacy 'output.remapping'
-        # Pydantic emits the deprecation warning automatically
-        default_remapping = {"param_level": "{param}_{levelist}"}
-        output_remapping = recipe.output.remapping != default_remapping
-        build_remapping = self.remapping != default_remapping
-        if output_remapping and build_remapping:
-            raise ValueError(
-                "Cannot specify 'remapping' in both 'output' and 'build'. " "Please use 'build.remapping' only."
-            )
-        if output_remapping:
+        if recipe.output.remapping is not None:
+            if self.remapping:
+                raise ValueError(
+                    "Cannot specify 'remapping' in both 'output' and 'build'. " "Please use 'build.remapping' only."
+                )
             self.remapping = dict(recipe.output.remapping)
+            recipe.output.remapping = None
 
         # Apply variable_naming to remapping
         # This is for backward compatibility

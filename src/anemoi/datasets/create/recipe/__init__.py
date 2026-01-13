@@ -55,11 +55,6 @@ class Recipe(BaseModel):
     licence: str = "unknown"
     attribution: str = "unknown"
 
-    format: str | None = Field(
-        default=None,
-        deprecated="Top-level 'format' is deprecated. Please use 'output.format' instead.",
-    )
-
     dates: DotDictField
     """The date configuration for the dataset."""
 
@@ -77,8 +72,8 @@ class Recipe(BaseModel):
 
     statistics: Statistics = Statistics()
 
-    env: dict[str, str] = Field(
-        default_factory=dict,
+    env: dict[str, str] | None = Field(
+        default=None,
         deprecated="Top-level 'env' is deprecated. Please use 'build.env' instead.",
     )
 
