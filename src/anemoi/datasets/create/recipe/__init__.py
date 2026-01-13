@@ -21,7 +21,6 @@ from pydantic import model_validator
 from .build import Build
 from .output import GriddedOutput
 from .output import Output
-from .output import TabularOutput
 from .statistics import Statistics
 
 LOG = logging.getLogger(__name__)
@@ -71,6 +70,7 @@ class Recipe(BaseModel):
     """The data sources configuration."""
 
     date_indexing: None | str = Field(
+        default=None,
         deprecated="Top-level 'date_indexing' is deprecated. Please use 'output.date_indexing' instead.",
     )
 
