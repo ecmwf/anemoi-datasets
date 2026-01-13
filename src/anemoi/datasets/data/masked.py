@@ -65,6 +65,12 @@ class Masked(Forwards):
     def longitudes(self) -> NDArray[Any]:
         """Get the masked longitudes."""
         return self.forward.longitudes[self.mask]
+    
+    @property
+    def grids(self) -> TupleIndex:
+        """Returns the number of grid points after masking"""
+        grids = np.sum(self.mask)
+        return (grids,)
 
     @debug_indexing
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
@@ -149,20 +155,10 @@ class Thinning(Masked):
             shape = forward.field_shape
             if len(shape) != 2:
                 raise ValueError("Thinning only works latitude/longitude fields")
-
-            # Make a copy, so we read the data only once from zarr
-            forward_latitudes = forward.latitudes.copy()
-            forward_longitudes = forward.longitudes.copy()
-
-            latitudes = forward_latitudes.reshape(shape)
-            longitudes = forward_longitudes.reshape(shape)
-            latitudes = latitudes[::thinning, ::thinning].flatten()
-            longitudes = longitudes[::thinning, ::thinning].flatten()
-
-            # TODO: This is not very efficient
-
-            mask = [lat in latitudes and lon in longitudes for lat, lon in zip(forward_latitudes, forward_longitudes)]
-            mask = np.array(mask, dtype=bool)
+            
+            mask = np.full(shape, False, dtype=bool)
+            mask[::thinning, ::thinning] = True
+            mask = mask.flatten()       
         else:
             mask = None
 
@@ -199,6 +195,16 @@ class Thinning(Masked):
             The metadata specific to the Thinning subclass.
         """
         return dict(thinning=self.thinning, method=self.method)
+    
+    @property
+    def field_shape(self) -> Shape:
+        """Returns the field shape of the dataset."""
+        if self.thinning is None:
+            return self.forward.field_shape
+        x, y = self.forward.field_shape
+        x = (x + self.thinning - 1) // self.thinning
+        y = (y + self.thinning - 1) // self.thinning
+        return x, y
 
 
 class Cropping(Masked):
