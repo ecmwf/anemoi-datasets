@@ -34,7 +34,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.5"
+VERSION = "0.4"
 
 LOG = logging.getLogger(__name__)
 

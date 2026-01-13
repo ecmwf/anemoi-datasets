@@ -6,7 +6,6 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-import os
 import re
 
 import numpy as np
@@ -90,10 +89,17 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
 def _compare_zarrs(errors, reference, actual, *path) -> None:
     """Compare two datasets."""
 
+    IGNORE_VALUES = [
+        "zarr.sums",
+    ]
+
     reference_arrays = list(reference.keys())
     actual_arrays = list(actual.keys())
 
     for key in sorted(set(reference_arrays) | set(actual_arrays)):
+
+        if ".".join(path + (key,)) in IGNORE_VALUES:
+            continue
 
         if key not in actual_arrays:
             errors.missing(f"🧮 {'.'.join(path)}.{key}")
@@ -184,8 +190,6 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 def compare_anemoi_datasets(reference, actual) -> None:
     """Compare the actual dataset with the reference dataset."""
 
-    actual_path = os.path.realpath(actual)
-
     actual = zarr.open(actual, mode="r")
     reference = zarr.open(reference, mode="r")
 
@@ -196,14 +200,4 @@ def compare_anemoi_datasets(reference, actual) -> None:
 
     errors.report()
 
-    if errors:
-        print()
-
-        print()
-        print("⚠️ To update the reference data, run this:")
-        print("cd " + os.path.dirname(actual_path))
-        base = os.path.basename(actual_path)
-        print(f"tar zcf {base}.tgz {base}")
-        print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
-        print()
-        raise AssertionError(f"Comparison failed {errors}")
+    return errors

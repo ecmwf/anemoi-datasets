@@ -10,7 +10,6 @@
 import glob
 import logging
 import os
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -71,28 +70,32 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         If the comparison fails.
     """
     with patch("earthkit.data.from_source", load_source):
+        from anemoi.datasets.create.creator import VERSION
+
         recipe = os.path.join(HERE, name + ".yaml")
         output = os.path.join(HERE, name + ".zarr")
 
         create_dataset(recipe=recipe, output=output, delta=["12h"])
 
-        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
+        directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
         reference = os.path.join(directory, name + ".zarr")
 
-        compare_anemoi_datasets(reference=reference, actual=output)
+        errors = compare_anemoi_datasets(reference=reference, actual=output)
+        if errors:
+            actual_path = os.path.realpath(output)
+
+            print()
+            print("⚠️ To update the reference data, run this:")
+            print("cd " + os.path.dirname(actual_path))
+            base = os.path.basename(actual_path)
+            print(f"tar zcf {base}.tgz {base}")
+            print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars-{VERSION}/")
+            print()
+            raise AssertionError(f"Comparison failed {errors}")
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    if len(sys.argv) > 1:
-        names = sys.argv[1:]
-    else:
-        names = NAMES
-
-    for name in names:
-        logging.info(f"Running test for {name}")
-        try:
-            test_run(name)
-        except AssertionError:
-            pass
+    # Then run pytest
+    pytest.main([__file__, "-v", "-k", "nan"])

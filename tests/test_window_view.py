@@ -165,10 +165,10 @@ def _create_tabular_store(indexing) -> zarr.Group:
     index.bulk_load(dates)
     print("Bulk loading took", time.time() - start, "seconds")
 
-    return root
+    return root, events
 
 
-def _test_window_view(view):
+def _test_window_view(view, expect):
 
     print("+++++++++", view.start_date, view.end_date)
 
@@ -183,6 +183,7 @@ def _test_window_view(view):
 
     whole_range = view.whole_range
     total = whole_range.start
+    count = 0
 
     for i, sample in enumerate(view):
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
@@ -193,6 +194,7 @@ def _test_window_view(view):
 
         assert sample.shape[1] == VARIABLES
         total += sample.shape[0]
+        count += sample.shape[0]
 
     assert (
         total == whole_range.stop
@@ -201,60 +203,96 @@ def _test_window_view(view):
     with pytest.raises(IndexError):
         view[len(view)]
 
+    assert count == expect, f"Expected {expect:,} total rows, got {count:,} difference of {expect - count:,}"
+
     return view
 
 
+def _expect(events, start_days, end_days):
+    print()
+    print(
+        f"==> Calculating expected count for {start_days=}, {end_days=} ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events))+ datetime.timedelta(days=end_days)).isoformat()})"
+    )
+    print(f"    Total events in full data: {np.sum(events):,}")
+    print(
+        f"    Non-clipped start index: {start_days * 24 * 60 * 60:,}, clipped to: {max(0, start_days * 24 * 60 * 60):,}"
+    )
+    print(
+        f"    Non-clipped end index: {len(events) + end_days * 24 * 60 * 60:,}, clipped to: {min(len(events) + end_days * 24 * 60 * 60, len(events)):,}"
+    )
+
+    start = max(0, start_days * 24 * 60 * 60 - (9 * 60 * 60 - 1))  # account for window exclude_before of 3h
+    end = min(len(events) + end_days * 24 * 60 * 60, len(events))
+
+    print(f"    Results: {np.sum(events[start:end]):,} rows, dates: {len(events[start:end]):,}")
+
+    return np.sum(events[start:end])
+
+
 @pytest.fixture(scope="session")
-def tabular_stores():
+def store_and_events_cache():
     # This dictionary lives for the entire test session
     return {}
 
 
 @pytest.fixture
-def tabular_store(tabular_stores, request):
+def store_and_events(store_and_events_cache, request):
     param = request.param
-    if param not in tabular_stores:
-        tabular_stores[param] = _create_tabular_store(param)
+    if param not in store_and_events_cache:
+        store_and_events_cache[param] = _create_tabular_store(param)
 
-    return tabular_stores[param]
+    return store_and_events_cache[param]
 
 
 WINDOW_VIEW_TEST_CASES = {
-    # 1. Default date range (no modification)
+    # Default date range (no modification)
     "default_range": (0, 0),
-    # 2. Start date extended 90 days before original
+    # Start date extended 90 days before original
     "start_extended_90d_before": (-90, 0),
-    # 3. End date extended 90 days after original
+    # End date extended 90 days after original
     "end_extended_90d_after": (0, 90),
-    # 4. Both start and end extended by 90 days
+    # Both start and end extended by 90 days
     "both_extended_90d": (-90, 90),
-    # 5. Start moved 90 days after original
+    # Start moved 90 days after original
     "start_moved_90d_after": (90, 0),
-    # 6. Start moved forward 90 days, end moved backward 90 days
+    # Start moved forward 90 days, end moved backward 90 days
     "start_90d_after_end_90d_before": (90, -90),
-    # 7. Start moved forward 90 days, end extended 90 days after
+    # Start moved forward 90 days, end extended 90 days after
     "start_90d_after_end_90d_after": (90, 90),
-    # 8. Start extended 90 days before, end moved 90 days backward
+    # Start extended 90 days before, end moved 90 days backward
     "start_90d_before_end_90d_before": (-90, -90),
-    # 9. Start in gap period (163 days after start)
+    # Start in gap period (163 days after start)
     "start_in_gap_period": (163, 0),
-    # 10. End in gap period (163 days before end)
+    # End in gap period (163 days before end)
     "end_in_gap_period": (0, -163),
-    # 11. Before any available data (both start and end moved back 3650 days)
+    # Data in gap period (163 days after start)
+    "data_in_gap_period": (163, -201),
+    # Before any available data (both start and end moved back 3650 days)
     "before_any_data": (-3650, -3650),
-    # 12. After any available data (both start and end moved forward 3650 days)
+    # After any available data (both start and end moved forward 3650 days)
     "after_any_data": (3650, 3650),
 }
 
 
-@pytest.mark.parametrize("tabular_store", ["bisect", "btree"], indirect=True)
-@pytest.mark.parametrize(
-    "start_delta,end_delta",
-    WINDOW_VIEW_TEST_CASES.values(),
-    ids=WINDOW_VIEW_TEST_CASES.keys(),
-)
-def test_window_view(tabular_store, start_delta, end_delta):
-    view = WindowView(tabular_store)
+@pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
+@pytest.mark.parametrize("start_delta,end_delta", WINDOW_VIEW_TEST_CASES.values(), ids=WINDOW_VIEW_TEST_CASES.keys())
+def test_window_view(store_and_events, start_delta, end_delta):
+    store, events = store_and_events
+    expect = _expect(events, start_delta, end_delta)
+    view = WindowView(store)
     view = view.set_start(view.start_date + datetime.timedelta(days=start_delta))
     view = view.set_end(view.end_date + datetime.timedelta(days=end_delta))
-    _test_window_view(view)
+    _test_window_view(view, expect)
+
+
+if __name__ == "__main__":
+
+    # First, check the expected counts for each test case
+    events = _generate_event_data()
+
+    for name, (start_delta, end_delta) in WINDOW_VIEW_TEST_CASES.items():
+        expect = _expect(events, start_delta, end_delta)
+        print(f"Test case '{name}': expected count = {expect:,}")
+
+    # Then run pytest
+    pytest.main([__file__, "-v"])
