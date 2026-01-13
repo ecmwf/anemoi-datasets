@@ -12,7 +12,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 from typing import Annotated
-
 from typing import Any
 
 from pydantic import BaseModel
@@ -56,7 +55,7 @@ class Build(BaseModel):
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     """Remapping configuration for the dataset."""
 
-    def _post_init(self, recipe: "Recipe") -> None:
+    def _post_init(self, recipe: Recipe) -> None:
         """Post-initialisation hook to handle legacy config options.
 
         Parameters
@@ -68,8 +67,7 @@ class Build(BaseModel):
         # Pydantic emits the deprecation warning automatically
         if recipe.env and self.env:
             raise ValueError(
-                "Cannot specify 'env' at both top level and inside 'build'. "
-                "Please use 'build.env' only."
+                "Cannot specify 'env' at both top level and inside 'build'. " "Please use 'build.env' only."
             )
         if recipe.env:
             self.env = dict(recipe.env)
@@ -78,8 +76,7 @@ class Build(BaseModel):
         # Pydantic emits the deprecation warning automatically
         if recipe.statistics.allow_nans and self.allow_nans:
             raise ValueError(
-                "Cannot specify 'allow_nans' in both 'statistics' and 'build'. "
-                "Please use 'build.allow_nans' only."
+                "Cannot specify 'allow_nans' in both 'statistics' and 'build'. " "Please use 'build.allow_nans' only."
             )
         if recipe.statistics.allow_nans:
             self.allow_nans = recipe.statistics.allow_nans
@@ -91,8 +88,7 @@ class Build(BaseModel):
         build_remapping = self.remapping != default_remapping
         if output_remapping and build_remapping:
             raise ValueError(
-                "Cannot specify 'remapping' in both 'output' and 'build'. "
-                "Please use 'build.remapping' only."
+                "Cannot specify 'remapping' in both 'output' and 'build'. " "Please use 'build.remapping' only."
             )
         if output_remapping:
             self.remapping = dict(recipe.output.remapping)

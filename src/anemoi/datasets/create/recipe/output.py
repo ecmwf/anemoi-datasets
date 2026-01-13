@@ -10,10 +10,10 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from typing import Annotated
 from typing import Any
 from typing import Literal
-from typing import TYPE_CHECKING
 from typing import Union
 
 from pydantic import BaseModel
@@ -57,7 +57,7 @@ class GriddedOutput(OutputBase):
     ensemble_dimension: int = 2
     """The ensemble dimension size."""
 
-    def _post_init(self, recipe: "Recipe") -> None:
+    def _post_init(self, recipe: Recipe) -> None:
         """Post-initialisation hook to handle legacy config options.
 
         Parameters
@@ -67,8 +67,7 @@ class GriddedOutput(OutputBase):
         """
         if recipe.format is not None and self.format != recipe.format:
             raise ValueError(
-                "Cannot specify 'format' at both top level and inside 'output'. "
-                "Please use 'output.format' only."
+                "Cannot specify 'format' at both top level and inside 'output'. " "Please use 'output.format' only."
             )
 
     def get_chunking(self, coords: dict) -> tuple:
@@ -107,7 +106,7 @@ class TabularOutput(OutputBase):
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
 
-    def _post_init(self, recipe: "Recipe") -> None:
+    def _post_init(self, recipe: Recipe) -> None:
         """Post-initialisation hook to handle legacy config options.
 
         Parameters
@@ -117,8 +116,7 @@ class TabularOutput(OutputBase):
         """
         if recipe.format is not None and self.format != recipe.format:
             raise ValueError(
-                "Cannot specify 'format' at both top level and inside 'output'. "
-                "Please use 'output.format' only."
+                "Cannot specify 'format' at both top level and inside 'output'. " "Please use 'output.format' only."
             )
 
         if recipe.date_indexing and self.date_indexing != recipe.date_indexing:
