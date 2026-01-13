@@ -7,31 +7,69 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from __future__ import annotations
+
 import logging
+from typing import Annotated
 from typing import Any
+from typing import Literal
+from typing import TYPE_CHECKING
+from typing import Union
 
 from pydantic import BaseModel
+from pydantic import Discriminator
 from pydantic import Field
+from pydantic import Tag
+
+if TYPE_CHECKING:
+    from . import Recipe
 
 LOG = logging.getLogger(__name__)
 
 
-class Output(BaseModel):
+class OutputBase(BaseModel):
+    """Base class for output configuration."""
+
     dtype: str = "float32"
+    """The data type for the output dataset."""
+
+    remapping: dict[str, Any] = Field(
+        default_factory=lambda: {"param_level": "{param}_{levelist}"},
+        deprecated="'output.remapping' is deprecated. Please use 'build.remapping' instead.",
+    )
+
+
+class GriddedOutput(OutputBase):
+    """Output configuration for gridded datasets."""
+
+    format: Literal["gridded"] = "gridded"
+    """The format of the dataset."""
+
     flatten_grid: bool = True
+    """Whether to flatten the grid."""
 
     order_by: list[str] = Field(default_factory=lambda: ["valid_datetime", "param_level", "number"])
+    """The order of dimensions in the output."""
 
-    remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
+    """The chunking configuration for the output."""
 
     ensemble_dimension: int = 2
+    """The ensemble dimension size."""
 
-    def _post_init(self, recipe: BaseModel) -> None:
-        # We need to access `build`. This is for backward compatibility.
-        # We need to find a better way to do that.
-        if "param_level" in self.remapping:
-            self.remapping["param_level"] = recipe.build.variable_naming
+    def _post_init(self, recipe: "Recipe") -> None:
+        """Post-initialisation hook to handle legacy config options.
+
+        Parameters
+        ----------
+        recipe : Recipe
+            The parent recipe object.
+        """
+        if recipe.format is not None and self.format != recipe.format:
+            raise ValueError(
+                "Cannot specify 'format' at both top level and inside 'output'. "
+                "Please use 'output.format' only."
+            )
 
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
@@ -58,3 +96,52 @@ class Output(BaseModel):
                 f"Unused chunking keys from config: {list(user.keys())}, not in known keys : {list(coords.keys())}"
             )
         return tuple(chunks)
+
+
+class TabularOutput(OutputBase):
+    """Output configuration for tabular datasets."""
+
+    format: Literal["tabular"] = "tabular"
+    """The format of the dataset."""
+
+    date_indexing: str = "bisect"
+    """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
+
+    def _post_init(self, recipe: "Recipe") -> None:
+        """Post-initialisation hook to handle legacy config options.
+
+        Parameters
+        ----------
+        recipe : Recipe
+            The parent recipe object.
+        """
+        if recipe.format is not None and self.format != recipe.format:
+            raise ValueError(
+                "Cannot specify 'format' at both top level and inside 'output'. "
+                "Please use 'output.format' only."
+            )
+
+        if recipe.date_indexing and self.date_indexing != recipe.date_indexing:
+            raise ValueError(
+                "Cannot specify 'date_indexing' at both top level and inside 'output'. "
+                "Please use 'output.date_indexing' only."
+            )
+        if recipe.date_indexing is not None:
+            self.date_indexing = recipe.date_indexing
+
+
+def _output_discriminator(v: Any) -> str:
+    """Discriminator function for Output union type."""
+    if isinstance(v, dict):
+        return v.get("format", "gridded")
+    return getattr(v, "format", "gridded")
+
+
+# if format is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput
+Output = Annotated[
+    Union[
+        Annotated[GriddedOutput, Tag("gridded")],
+        Annotated[TabularOutput, Tag("tabular")],
+    ],
+    Discriminator(_output_discriminator),
+]

@@ -102,10 +102,10 @@ class Creator(ABC):
         if isinstance(recipe, str):
             recipe = loader_recipe_from_yaml(recipe)
 
-        for k, v in recipe.env.items():
+        for k, v in recipe.build.env.items():
             os.environ[k] = str(v)
 
-        format_type = recipe.format
+        format_type = recipe.output.format
         match format_type:
 
             case "gridded":

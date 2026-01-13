@@ -109,7 +109,7 @@ class TabularCreator(Creator):
         finalise_tabular_dataset(
             store=dataset.store,
             work_dir=self.work_dir,
-            date_indexing=self.recipe.date_indexing,
+            date_indexing=self.recipe.output.date_indexing,
             statistic_collector=collector,
             delete_files=False,
         )

@@ -74,7 +74,8 @@ def find_paths_in_substrees(path, obj, cur_path=None):
 
 MIGRATE = {
     "output.statistics_end": "statistics.end",
-    "has_nans": "statistics.allow_nans",
+    "has_nans": "build.allow_nans",
+    "statistics.allow_nans": "build.allow_nans",
     "loop.dates.group_by": "build.group_by",
     "loop.0.dates.group_by": "build.group_by",
     "loop.dates": "dates",
@@ -89,6 +90,10 @@ MIGRATE = {
     "include.mars": "data_sources.mars.mars",
     "ensemble_dimension": "build.ensemble_dimension",
     "flatten_grid": "build.flatten_grid",
+    "env": "build.env",
+    "output.remapping": "build.remapping",
+    "format": "output.format",
+    "date_indexing": "output.date_indexing",
 }
 
 DELETE = [

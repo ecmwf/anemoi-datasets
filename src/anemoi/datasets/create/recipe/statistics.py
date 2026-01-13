@@ -13,6 +13,7 @@ import logging
 import numpy as np
 from earthkit.data.utils.dates import to_datetime
 from pydantic import BaseModel
+from pydantic import Field
 
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
@@ -21,7 +22,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Statistics(BaseModel):
-    allow_nans: bool | list[str] = False
+    allow_nans: bool | list[str] = Field(
+        default=False,
+        deprecated="'statistics.allow_nans' is deprecated. Please use 'build.allow_nans' instead.",
+    )
     start: str | int | datetime.datetime | None = None
     end: str | int | datetime.datetime | None = None
 

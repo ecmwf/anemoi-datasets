@@ -43,7 +43,7 @@ class GriddedContext(Context):
 
         self.order_by = recipe.output.order_by
         self.flatten_grid = recipe.output.flatten_grid
-        self.remapping = build_remapping(recipe.output.remapping)
+        self.remapping = build_remapping(recipe.build.remapping)
         self.use_grib_paramid = recipe.build.use_grib_paramid
 
     def empty_result(self) -> Any:

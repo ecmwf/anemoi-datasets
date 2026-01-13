@@ -19,7 +19,9 @@ from pydantic import Field
 from pydantic import model_validator
 
 from .build import Build
+from .output import GriddedOutput
 from .output import Output
+from .output import TabularOutput
 from .statistics import Statistics
 
 LOG = logging.getLogger(__name__)
@@ -54,8 +56,10 @@ class Recipe(BaseModel):
     licence: str = "unknown"
     attribution: str = "unknown"
 
-    format: str = "gridded"
-    """The format of the dataset. Options are "gridded", "tabular", etc."""
+    format: str | None = Field(
+        default=None,
+        deprecated="Top-level 'format' is deprecated. Please use 'output.format' instead.",
+    )
 
     dates: DotDictField
     """The date configuration for the dataset."""
@@ -66,19 +70,22 @@ class Recipe(BaseModel):
     data_sources: list[DotDictField] | DotDictField | None = None
     """The data sources configuration."""
 
-    date_indexing: str = "bisect"
-    """The date indexing method for tabular datasets. Options are "bisect", "btree" """
+    date_indexing: None | str = Field(
+        deprecated="Top-level 'date_indexing' is deprecated. Please use 'output.date_indexing' instead.",
+    )
 
-    output: Output = Output()
-    """The output  configuration."""
+    output: Output = Field(default_factory=GriddedOutput)
+    """The output configuration."""
 
     build: Build = Build()
     """The build configuration."""
 
     statistics: Statistics = Statistics()
 
-    env: dict[str, str] = Field(default_factory=dict)
-    """Environment variables to set when creating the dataset."""
+    env: dict[str, str] = Field(
+        default_factory=dict,
+        deprecated="Top-level 'env' is deprecated. Please use 'build.env' instead.",
+    )
 
 
 def loader_recipe_from_yaml(path: str) -> dict:

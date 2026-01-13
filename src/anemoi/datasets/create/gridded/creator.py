@@ -41,9 +41,9 @@ class GriddedCreator(Creator):
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
 
-        variables_with_nans = self.recipe.statistics.allow_nans
+        variables_with_nans = self.recipe.build.allow_nans
 
-        metadata["remapping"] = self.recipe.output.remapping
+        metadata["remapping"] = self.recipe.build.remapping
         metadata["order_by"] = self.recipe.output.order_by
         metadata["flatten_grid"] = self.recipe.output.flatten_grid
 
