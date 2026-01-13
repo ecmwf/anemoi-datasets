@@ -17,6 +17,7 @@ import numpy as np
 import tqdm
 
 from ..caching import ChunksCache
+from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
@@ -171,6 +172,8 @@ class DateBisect(DateIndexing):
             end_entry.length,
             dataset_length,
         )
+        print("Searching for range:", _(start), _(end))
+        print("Start/end entries:", start_entry, end_entry)
 
         diff_s = (int(start_entry.epoch) > int(start)) - (int(start_entry.epoch) < int(start))
         diff_e = (int(end_entry.epoch) > int(end)) - (int(end_entry.epoch) < int(end))

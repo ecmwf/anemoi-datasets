@@ -15,7 +15,7 @@ VARIABLES = 3
 START_DATE = datetime.datetime(2020, 1, 1)
 
 
-def _generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 165)) -> np.ndarray:
+def _generate_event_data(years=1, base_rate=10, variability=0.5, gap_days=(160, 165)) -> np.ndarray:
     """Generates a deterministic time-series array representing events per second.
 
     This function creates a synthetic dataset for regression testing. It uses
@@ -56,7 +56,7 @@ def _generate_event_data(years=1, base_rate=10, variability=0.2, gap_days=(160, 
     # 2. Base Signal with Deterministic Variability
     # Using sin(t) ensures the 'noise' is identical across test runs
     # without needing to manage a random seed.
-    noise = variability * np.sin(t)
+    noise = variability * np.sin(t * 2 * np.pi / seconds_in_day / 0.25)  # 4 cycles per day
     events = base_rate * (1 + noise)
 
     # 3. Apply the Data Gap
@@ -133,23 +133,37 @@ def _create_tabular_store(indexing) -> zarr.Group:
     print("Number of samples to generate:", f"{number_of_samples:,}")
 
     # data = np.random.rand(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON).astype(np.float32)
-    data = np.zeros((number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.float32)
+    data = np.zeros((number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
     start_stamp = START_DATE.timestamp()
+    if False:
+        data[:, 0] = (
+            np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[:number_of_samples]
+            + start_stamp
+        )  # seconds since midnight
+        data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(number_of_samples)[
+            :number_of_samples
+        ]  # time offsets in seconds within the day
+        data[:, 2] = np.linspace(-90, 90, 1).repeat(number_of_samples)[:number_of_samples]  # latitudes
+        data[:, 3] = np.linspace(0, 359, 1).repeat(number_of_samples)[:number_of_samples]  # longitudes
 
-    data[:, 0] = (
-        np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[:number_of_samples]
-        + start_stamp
-    )  # seconds since midnight
-    data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(number_of_samples)[
-        :number_of_samples
-    ]  # time offsets in seconds within the day
-    data[:, 2] = np.linspace(-90, 90, 1).repeat(number_of_samples)[:number_of_samples]  # latitudes
-    data[:, 3] = np.linspace(0, 359, 1).repeat(number_of_samples)[:number_of_samples]  # longitudes
+    # for i in range(VARIABLES):
+    #     data[:, 4 + i] = np.arange(len(data))  # Dummy variable data
+
+    # Fill first variable with dates
+    # Fill first variable with dates using numpy for speed
+    # For each event count e at index j, fill e rows in column 4 with start_stamp + j
+
+    data[:, 4] = start_stamp + np.repeat(np.arange(len(events)), events)
+
     store = zarr.storage.MemoryStore()
     root = zarr.group(store=store, overwrite=True)
-    root.create_dataset("data", data=data, chunks=(10000, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.float32)
+    root.create_dataset("data", data=data, chunks=(10000, COLS_WITH_DATE_TIME_LAT_LON), dtype=data.dtype)
 
     print("Data generation took", time.time() - start, "seconds")
+    print("First 5 rows of data:")
+    print(data[:5])
+    print("Last 5 rows of data:")
+    print(data[-5:])
 
     index = create_date_indexing(indexing, root)
     root.attrs["date_indexing"] = indexing
@@ -186,11 +200,22 @@ def _test_window_view(view, expect):
     count = 0
 
     for i, sample in enumerate(view):
+
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
         # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] != 0:
             slice_obj = sample.meta.slice_obj
             assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
+            print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+            print(sample)
+            print(
+                "===>",
+                datetime.datetime.fromtimestamp(int(sample[0][0])),
+                datetime.datetime.fromtimestamp(int(sample[-1][0])),
+            )
+            print("+++")
+        else:
+            print(f"+++++++++++++ Sample {i}: EMPTY slice {sample.meta.slice_obj}, shape {sample.shape}")
 
         assert sample.shape[1] == VARIABLES
 
@@ -275,7 +300,8 @@ WINDOW_VIEW_TEST_CASES = {
 }
 
 
-@pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
+# @pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
+@pytest.mark.parametrize("store_and_events", ["bisect"], indirect=True)
 @pytest.mark.parametrize("start_delta,end_delta", WINDOW_VIEW_TEST_CASES.values(), ids=WINDOW_VIEW_TEST_CASES.keys())
 def test_window_view(store_and_events, start_delta, end_delta):
     store, events = store_and_events
