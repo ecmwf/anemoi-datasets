@@ -56,6 +56,7 @@ common information, while each subclass collects format-specific metadata.
 In a nutshell, the orchestration is done by `Creator` and subclasses must implement:
 
 1. Gather metadata
+2. Prepare the dataset
 2. Load a single result in the Zarr
 3. Compute the statistics
 4. Finalise the dataset
@@ -66,6 +67,7 @@ The differences between the gridded and tabular subclasses are:
 2. For gridded, the result is added to the Zarr array `data`. For tabular data, the result is
   written to a temporary file, after being sorted by dates, having the longitudes normalised and
   dates rounded to the nearest second (so that none of that is the concern of sources and filters).
+2. xxxx
 3. For gridded, statistics are computed (including tendencies statistics if requested) and stored in
   the Zarr. For tabular data, nothing happens here.
 4. For gridded data, nothing happens here. For tabular data, all temporary files are loaded and

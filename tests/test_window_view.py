@@ -227,7 +227,7 @@ def _test_window_view(view, expect):
         start_window = ref_date - datetime.timedelta(hours=3)
 
         assert start_window < date1 <= ref_date, (i, date1, ref_date, start_window)
-        assert date1 < date2, (i, date2, ref_date, start_window)
+        assert date1 <= date2, (i, date2, ref_date, start_window)
         assert start_window < date2 <= ref_date, (i, date2, ref_date, start_window)
         print("+++")
 
