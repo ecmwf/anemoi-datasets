@@ -134,10 +134,10 @@ required to select windows.
 
 Tests have been performed on a 100-years index, with values every second (3,155,760,000 entries):
 
-- With bisect, the average time to retrieve the entries for a 3h window is 366 ms (<3 per seconds)
+- With bisect, the average time to retrieve the entries for a 3h window is 622 ms (<3 per seconds)
   (394M on disk with the default Zarr compression).
 
-- With a b+tree with pages of 256 entries, the average retrieval time is ~62 milliseconds (~16
+- With a b+tree with pages of 256 entries, the average retrieval time is ~48 milliseconds (~16
   seconds) (590M on disk with the default Zarr compression).
 
 In both cases, chunk level caching (512 MB) has been used, and the chunk sizes were identical (64

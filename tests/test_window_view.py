@@ -1,7 +1,6 @@
 """Unit tests for window.py"""
 
 import datetime
-import os
 import time
 
 import numpy as np
@@ -123,23 +122,20 @@ def _to_expanded_2d(events) -> np.ndarray:
 
 
 def _create_tabular_store(indexing) -> zarr.Group:
-    events = _generate_event_data()
-
-    path = f"{indexing}_window_view_test.zarr"
-    if os.path.exists(path):
-        print(f"Loading existing store from {path}")
-        return zarr.open(path, mode="r+"), events
 
     COLS_WITH_DATE_TIME_LAT_LON = VARIABLES + 4
 
+    events = _generate_event_data()
     dates = _to_expanded_2d(events)
 
     number_of_samples = dates[-1][1] + dates[-1][2]
     start = time.time()
     print("Number of samples to generate:", f"{number_of_samples:,}")
 
-    # data = np.random.rand(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON).astype(np.float32)
-    data = np.zeros((number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
+    store = zarr.storage.MemoryStore()
+    root = zarr.group(store=store, overwrite=True)
+    data = root.create_dataset("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
+
     start_stamp = START_DATE.timestamp()
     if False:
         data[:, 0] = (
@@ -152,18 +148,10 @@ def _create_tabular_store(indexing) -> zarr.Group:
         data[:, 2] = np.linspace(-90, 90, 1).repeat(number_of_samples)[:number_of_samples]  # latitudes
         data[:, 3] = np.linspace(0, 359, 1).repeat(number_of_samples)[:number_of_samples]  # longitudes
 
-    # for i in range(VARIABLES):
-    #     data[:, 4 + i] = np.arange(len(data))  # Dummy variable data
-
-    # Fill first variable with dates
     # Fill first variable with dates using numpy for speed
     # For each event count e at index j, fill e rows in column 4 with start_stamp + j
 
     data[:, 4] = start_stamp + np.repeat(np.arange(len(events)), events)
-
-    store = zarr.storage.DirectoryStore(path)
-    root = zarr.group(store=store, overwrite=True)
-    root.create_dataset("data", data=data, chunks=(10000, COLS_WITH_DATE_TIME_LAT_LON), dtype=data.dtype)
 
     print("Data generation took", time.time() - start, "seconds")
     print("First 5 rows of data:")
@@ -249,20 +237,17 @@ def _test_window_view(view, expect):
 def _expect(events, start_days, end_days):
     print()
     print(
-        f"==> Calculating expected count for {start_days=}, {end_days=} ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events))+ datetime.timedelta(days=end_days)).isoformat()})"
-    )
-    print(f"    Total events in full data: {np.sum(events):,}")
-    print(
-        f"    Non-clipped start index: {start_days * 24 * 60 * 60:,}, clipped to: {max(0, start_days * 24 * 60 * 60):,}"
-    )
-    print(
-        f"    Non-clipped end index: {len(events) + end_days * 24 * 60 * 60:,}, clipped to: {min(len(events) + end_days * 24 * 60 * 60, len(events)):,}"
+        f"==> Calculating expected count for {start_days=}, {end_days=}"
+        f" ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events))+ datetime.timedelta(days=end_days)).isoformat()})"
     )
 
     start = max(0, start_days * 24 * 60 * 60 - (3 * 60 * 60 - 1))  # account for window exclude_before of 3h
-    end = min(len(events) + end_days * 24 * 60 * 60, len(events))
+    end = min(len(events) + end_days * 24 * 60 * 60 + 1, len(events))
 
     print(f"    Results: {np.sum(events[start:end]):,} rows, dates: {len(events[start:end]):,}")
+    print(
+        f"    from {START_DATE + datetime.timedelta(seconds=start)} to {START_DATE + datetime.timedelta(seconds=end-1)}"
+    )
 
     return np.sum(events[start:end])
 
