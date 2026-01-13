@@ -474,11 +474,12 @@ def finalise_tabular_dataset(
     *,
     store: Any,
     work_dir: str,
-    statistic_collector: StatisticsCollector,
+    recipe: Any,
+    variables_names: list[str],
     date_indexing: dict | str,
     delete_files: bool,
     max_workers: int | None = None,
-) -> None:
+) -> StatisticsCollector:
     """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
 
     This is the main entry point for the tabular dataset finalisation process. It orchestrates the entire pipeline:
@@ -490,20 +491,6 @@ def finalise_tabular_dataset(
 
     The result is a single, clean, and efficiently indexed tabular dataset ready for downstream analysis or distribution.
 
-    Parameters
-    ----------
-    store : Any
-        Zarr store or similar object to write the final dataset to.
-    work_dir : str
-        Directory containing fragment files.
-    statistic_collector : StatisticsCollector
-        Instance to collect statistics during processing.
-    date_indexing : dict or str
-        Configuration for date indexing.
-    delete_files : bool
-        Whether to delete temporary files after processing.
-    max_workers : int, optional
-        Maximum number of parallel workers to use. If None, uses all available CPUs.
     """
     fragments: list[Fragment] = _find_duplicate_and_overlapping_dates(
         work_dir, max_workers=max_workers, delete_files=delete_files
@@ -513,6 +500,16 @@ def finalise_tabular_dataset(
     shape: tuple[int, int] = fragments[0].shape
     assert all(fragment.shape[1] == shape[1] for fragment in fragments), "Inconsistent number of columns in fragments"
     shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
+
+    LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
+    LOG.info(f"Last fragment: {fragments[-1].first_date} to {fragments[-1].last_date}")
+
+    collector = StatisticsCollector(
+        variables_names=variables_names,
+        filter=recipe.statistics.statistics_filter(
+            [np.datetime64(fragments[0].first_date, "s"), np.datetime64(fragments[-1].last_date, "s")]
+        ),
+    )
 
     if "data" in store:
         del store["data"]
@@ -570,7 +567,7 @@ def finalise_tabular_dataset(
                     # Wait for previous statistics computation to complete
                     if stats is not None:
                         stats.result()
-                    stats = compute_statistics.submit(_statistics_collector_worker, statistic_collector, array, dates)
+                    stats = compute_statistics.submit(_statistics_collector_worker, collector, array, dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates
@@ -617,6 +614,8 @@ def finalise_tabular_dataset(
     # Set the format attribute to indicate this is a tabular dataset
     store.attrs.update({"format": "tabular"})
     store.attrs.update({"date_indexing": index.name})
+
+    return collector
 
 
 if __name__ == "__main__":

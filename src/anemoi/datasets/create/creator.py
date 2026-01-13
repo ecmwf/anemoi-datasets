@@ -61,8 +61,6 @@ class Creator(ABC):
 
         np.seterr(all="raise", under="warn")
 
-        LOG.info(f"Initialising Creator. {kwargs=}")
-
         self.path = path
         self.recipe = recipe
 

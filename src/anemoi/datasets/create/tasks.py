@@ -7,6 +7,10 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import logging
+
+LOG = logging.getLogger(__name__)
+
 
 class TaskDispatcher:
     """A class to create and run dataset creation tasks."""
@@ -62,7 +66,7 @@ def run_task(name: str, recipe=None, **kwargs):
 
     from anemoi.datasets.create.creator import Creator
 
-    print(f"Running task: {name}, recipe: {recipe}, kwargs: {kwargs}")
+    LOG.info(f"Running task: {name}, recipe: {recipe}, kwargs: {kwargs}")
 
     creator = Creator.from_recipe(recipe, **kwargs)
     dispatch = TaskDispatcher(creator)

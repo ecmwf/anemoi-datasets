@@ -16,7 +16,6 @@ import numpy as np
 
 from ..creator import Creator
 from ..dataset import Dataset
-from ..statistics import StatisticsCollector
 from .context import TabularContext
 
 LOG = logging.getLogger(__name__)
@@ -104,14 +103,13 @@ class TabularCreator(Creator):
         """
         from .finalise import finalise_tabular_dataset
 
-        collector = StatisticsCollector(variables_names=self.variables_names)
-
-        finalise_tabular_dataset(
+        collector = finalise_tabular_dataset(
             store=dataset.store,
             work_dir=self.work_dir,
             date_indexing=self.recipe.output.date_indexing,
-            statistic_collector=collector,
-            delete_files=False,
+            recipe=self.recipe,
+            variables_names=self.variables_names,
+            delete_files=True,
         )
 
         for name, data in collector.statistics().items():
