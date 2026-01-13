@@ -69,11 +69,6 @@ class Recipe(BaseModel):
     data_sources: list[DotDictField] | DotDictField | None = None
     """The data sources configuration."""
 
-    date_indexing: None | str = Field(
-        default=None,
-        deprecated="Top-level 'date_indexing' is deprecated. Please use 'output.date_indexing' instead.",
-    )
-
     output: Output = Field(default_factory=GriddedOutput)
     """The output configuration."""
 

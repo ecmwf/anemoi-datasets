@@ -1,6 +1,7 @@
 """Unit tests for window.py"""
 
 import datetime
+import os
 import time
 
 import numpy as np
@@ -122,10 +123,15 @@ def _to_expanded_2d(events) -> np.ndarray:
 
 
 def _create_tabular_store(indexing) -> zarr.Group:
+    events = _generate_event_data()
+
+    path = f"{indexing}_window_view_test.zarr"
+    if os.path.exists(path):
+        print(f"Loading existing store from {path}")
+        return zarr.open(path, mode="r+"), events
 
     COLS_WITH_DATE_TIME_LAT_LON = VARIABLES + 4
 
-    events = _generate_event_data()
     dates = _to_expanded_2d(events)
 
     number_of_samples = dates[-1][1] + dates[-1][2]
@@ -155,7 +161,7 @@ def _create_tabular_store(indexing) -> zarr.Group:
 
     data[:, 4] = start_stamp + np.repeat(np.arange(len(events)), events)
 
-    store = zarr.storage.MemoryStore()
+    store = zarr.storage.DirectoryStore(path)
     root = zarr.group(store=store, overwrite=True)
     root.create_dataset("data", data=data, chunks=(10000, COLS_WITH_DATE_TIME_LAT_LON), dtype=data.dtype)
 
@@ -202,22 +208,28 @@ def _test_window_view(view, expect):
     for i, sample in enumerate(view):
 
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
-        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
-        if sample.shape[0] != 0:
-            slice_obj = sample.meta.slice_obj
-            assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
-            print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
-            print(sample)
-            print(
-                "===>",
-                datetime.datetime.fromtimestamp(int(sample[0][0])),
-                datetime.datetime.fromtimestamp(int(sample[-1][0])),
-            )
-            print("+++")
-        else:
-            print(f"+++++++++++++ Sample {i}: EMPTY slice {sample.meta.slice_obj}, shape {sample.shape}")
-
         assert sample.shape[1] == VARIABLES
+
+        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        if sample.shape[0] == 0:
+            print(f"+++++++++++++ Sample {i}: EMPTY slice {sample.meta.slice_obj}, shape {sample.shape}")
+            continue
+
+        slice_obj = sample.meta.slice_obj
+        assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
+        print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        print(sample)
+        date1 = datetime.datetime.fromtimestamp(int(sample[0][0]))
+        date2 = datetime.datetime.fromtimestamp(int(sample[-1][0]))
+        print("===>", date1, "to", date2)
+
+        ref_date = view.start_date + view.frequency * i
+        start_window = ref_date - datetime.timedelta(hours=3)
+
+        assert start_window < date1 <= ref_date, (i, date1, ref_date, start_window)
+        assert date1 < date2, (i, date2, ref_date, start_window)
+        assert start_window < date2 <= ref_date, (i, date2, ref_date, start_window)
+        print("+++")
 
         offset += sample.shape[0]
         count += sample.shape[0]
