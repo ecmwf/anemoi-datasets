@@ -65,7 +65,7 @@ class Masked(Forwards):
     def longitudes(self) -> NDArray[Any]:
         """Get the masked longitudes."""
         return self.forward.longitudes[self.mask]
-    
+
     @property
     def grids(self) -> TupleIndex:
         """Returns the number of grid points after masking"""
@@ -155,10 +155,10 @@ class Thinning(Masked):
             shape = forward.field_shape
             if len(shape) != 2:
                 raise ValueError("Thinning only works latitude/longitude fields")
-            
+
             mask = np.full(shape, False, dtype=bool)
             mask[::thinning, ::thinning] = True
-            mask = mask.flatten()       
+            mask = mask.flatten()
         else:
             mask = None
 
@@ -195,7 +195,7 @@ class Thinning(Masked):
             The metadata specific to the Thinning subclass.
         """
         return dict(thinning=self.thinning, method=self.method)
-    
+
     @property
     def field_shape(self) -> Shape:
         """Returns the field shape of the dataset."""
