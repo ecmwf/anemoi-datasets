@@ -69,6 +69,10 @@ class Recipe(BaseModel):
 
     build: Build = Build()
     """The build configuration."""
+    additions: DotDictField | None = Field(
+        default=None,
+        deprecated="Top-level 'additions' is deprecated. Use 'statistics.tendencies' instead.",
+    )
 
     statistics: Statistics = Statistics()
 

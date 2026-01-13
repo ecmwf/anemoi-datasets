@@ -24,6 +24,7 @@ LOG = logging.getLogger(__name__)
 class Statistics(BaseModel):
     start: str | int | datetime.datetime | None = None
     end: str | int | datetime.datetime | None = None
+    tendencies: list[str, int] | bool | None = Field(default=True)
 
     allow_nans: bool | list[str] | None = Field(
         default=None,
