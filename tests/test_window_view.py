@@ -182,7 +182,7 @@ def _test_window_view(view, expect):
     # Not 100% independent since we use the same code for whole_range, as in __getitem__
 
     whole_range = view.whole_range
-    total = whole_range.start
+    offset = whole_range.start
     count = 0
 
     for i, sample in enumerate(view):
@@ -190,15 +190,16 @@ def _test_window_view(view, expect):
         # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] != 0:
             slice_obj = sample.meta.slice_obj
-            assert slice_obj.start == total, (slice_obj, total, total - slice_obj.start)
+            assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
 
         assert sample.shape[1] == VARIABLES
-        total += sample.shape[0]
+
+        offset += sample.shape[0]
         count += sample.shape[0]
 
     assert (
-        total == whole_range.stop
-    ), f"Total rows {total:,} does not match expected {whole_range.stop:,} ({whole_range.stop - total:,} missing)"
+        offset == whole_range.stop
+    ), f"Total rows {offset:,} does not match expected {whole_range.stop:,} ({whole_range.stop - offset:,} missing)"
 
     with pytest.raises(IndexError):
         view[len(view)]
@@ -221,7 +222,7 @@ def _expect(events, start_days, end_days):
         f"    Non-clipped end index: {len(events) + end_days * 24 * 60 * 60:,}, clipped to: {min(len(events) + end_days * 24 * 60 * 60, len(events)):,}"
     )
 
-    start = max(0, start_days * 24 * 60 * 60 - (9 * 60 * 60 - 1))  # account for window exclude_before of 3h
+    start = max(0, start_days * 24 * 60 * 60 - (3 * 60 * 60 - 1))  # account for window exclude_before of 3h
     end = min(len(events) + end_days * 24 * 60 * 60, len(events))
 
     print(f"    Results: {np.sum(events[start:end]):,} rows, dates: {len(events[start:end]):,}")
