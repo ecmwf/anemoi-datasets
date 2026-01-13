@@ -63,14 +63,16 @@ class Build(BaseModel):
         recipe : Recipe
             The parent recipe object.
         """
-        if recipe.env is not None:
+        # Use __dict__ to check deprecated fields without triggering Pydantic's
+        # deprecation warnings. Only access the attribute if it has a non-None value.
+        if recipe.__dict__.get("env") is not None:
             if self.env:
                 raise ValueError("Cannot specify 'env' in both 'recipe' and 'build'. " "Please use 'build.env' only.")
             self.env = dict(recipe.env)
             recipe.env = None
 
         # Support legacy 'statistics.allow_nans'
-        if recipe.statistics.allow_nans is not None:
+        if recipe.statistics.__dict__.get("allow_nans") is not None:
             if self.allow_nans:
                 raise ValueError(
                     "Cannot specify 'allow_nans' in both 'statistics' and 'build'. "
@@ -80,7 +82,7 @@ class Build(BaseModel):
             recipe.statistics.allow_nans = None
 
         # Support legacy 'output.remapping'
-        if recipe.output.remapping is not None:
+        if recipe.output.__dict__.get("remapping") is not None:
             if self.remapping:
                 raise ValueError(
                     "Cannot specify 'remapping' in both 'output' and 'build'. " "Please use 'build.remapping' only."
