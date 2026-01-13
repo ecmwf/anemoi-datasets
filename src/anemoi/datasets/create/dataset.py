@@ -56,27 +56,38 @@ class Synchronizer:
 class Dataset:
     """A class to represent a dataset."""
 
-    def __init__(self, path: str, overwrite: bool = False, update: bool = False) -> None:
-        self.path = path
-        self.overwrite = overwrite
-        self.update = update
+    def __init__(self, path: str, overwrite: bool = False, update: bool = False, create: bool = False) -> None:
 
-        if self.overwrite and not self.update:
-            raise ValueError("Cannot use overwrite without update")
+        if path.endswith("/"):
+            path = path[:-1]
+
+        self.path = path
+
+        if overwrite and not create:
+            raise ValueError("Cannot use overwrite without create")
+
+        if create and update:
+            raise ValueError("Cannot use create and update together")
 
         _, ext = os.path.splitext(self.path)
         if ext != ".zarr":
             raise ValueError(f"Unsupported extension={ext} for path={self.path}")
 
-        if overwrite:
-            try:
-                shutil.rmtree(self.path)
-            except FileNotFoundError:
-                pass
+        if create:
+            if os.path.exists(path):
+                if overwrite:
+                    LOG.warning(f"Overwriting existing dataset at '{path}'.")
+                    shutil.rmtree(path)
+                else:
+                    raise FileExistsError(f"Dataset path '{path}' already exists. Use --overwrite to overwrite.")
 
         mode = "r"
-        if overwrite or update:
-            mode = "a" if update else "w"
+
+        if create:
+            mode = "w"
+
+        if update:
+            mode = "a"
 
         self.store = zarr.open(self.path, mode=mode)
         self.synchronizer = Synchronizer(self.path)

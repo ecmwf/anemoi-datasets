@@ -61,8 +61,7 @@ class Creator(ABC):
 
         np.seterr(all="raise", under="warn")
 
-        if path.endswith("/"):
-            path = path[:-1]
+        LOG.info(f"Initialising Creator. {kwargs=}")
 
         self.path = path
         self.recipe = recipe
@@ -126,7 +125,7 @@ class Creator(ABC):
     def task_init(self) -> Dataset:
         """Run the initialisation process for the dataset."""
 
-        dataset = Dataset(self.path, overwrite=True, update=True)
+        dataset = Dataset(self.path, overwrite=self.kwargs.get("overwrite", False), create=True)
         self._cleanup_temporary_directories()
 
         LOG.info("Initialising dataset creation.")
@@ -260,7 +259,6 @@ class Creator(ABC):
 
         dataset.update_metadata(total_size=size, total_number_of_files=count)
 
-        LOG.info("BACK: Running size computation.")
         return
 
         """Compute and update the size and constant fields metadata for the dataset."""

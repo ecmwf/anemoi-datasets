@@ -57,9 +57,9 @@ In a nutshell, the orchestration is done by `Creator` and subclasses must implem
 
 1. Gather metadata
 2. Prepare the dataset
-2. Load a single result in the Zarr
-3. Compute the statistics
-4. Finalise the dataset
+3. Load a single result in the Zarr
+4. Compute the statistics
+5. Finalise the dataset
 
 The differences between the gridded and tabular subclasses are:
 
@@ -67,10 +67,10 @@ The differences between the gridded and tabular subclasses are:
 2. For gridded, the result is added to the Zarr array `data`. For tabular data, the result is
   written to a temporary file, after being sorted by dates, having the longitudes normalised and
   dates rounded to the nearest second (so that none of that is the concern of sources and filters).
-2. xxxx
-3. For gridded, statistics are computed (including tendencies statistics if requested) and stored in
+3. For gridded, the shape is known and the zarr can be fully created with NaNs everywhere. For tabular, nothing is done.
+4. For gridded, statistics are computed (including tendencies statistics if requested) and stored in
   the Zarr. For tabular data, nothing happens here.
-4. For gridded data, nothing happens here. For tabular data, all temporary files are loaded and
+5. For gridded data, nothing happens here. For tabular data, all temporary files are loaded and
   entries are deduplicated, sorted by dates, and the Zarr is loaded and the statistics are computed
   at the same time, to minimise disk access. Temporary files are then deleted. All of this happens
   in parallel, using threads within a single process.
@@ -191,5 +191,4 @@ creation of datasets to use that feature.
 
 - start end dates and frequency as default in the recipe, to be used when not specified in open_dataset (currently using the first date of the data, but should use the date in the recipe)
 - check alignment of tabular with gridded for start-end dates and len(ds.dates). Check that len(ds) is the same for tabular and gridded when start end frequency are the same.
-- check that zarr does not exist before creation (--overwrite)
 - add date filter to statistics

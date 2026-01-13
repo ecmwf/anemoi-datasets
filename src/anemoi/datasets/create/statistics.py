@@ -143,8 +143,8 @@ class _TendencyCollector(_CollectorBase):
         pass
 
 
-def _all(dates: Any) -> range:
-    return range(len(dates))
+def _all(array: np.array, dates: np.array) -> range:
+    return array
 
 
 class StatisticsCollector:
@@ -196,6 +196,10 @@ class StatisticsCollector:
         dates : Any
             Date information corresponding to the data samples.
         """
+
+        array = self._filter(array, dates)
+        if len(array) == 0:
+            return
 
         if self._collector is None:
             num_columns = array.shape[1]
