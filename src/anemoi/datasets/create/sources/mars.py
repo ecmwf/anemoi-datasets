@@ -41,6 +41,17 @@ def to_list(x: list | tuple | Any) -> list:
     return [x]
 
 
+def valid_date_to_base_date_given_user_step(date, user_steps, first_date):
+    """Use to create FC based dataset using a user provided list
+    of steps. We need the first_date as the list of step may span
+    more that 24h
+    """
+    p = int((date - first_date).total_seconds() // 3600)
+    step = user_steps[p % len(user_steps)]
+    base = date - datetime.timedelta(hours=step)
+    return base.strftime("%Y%m%d"), base.strftime("%H%M"), step
+
+
 def _date_to_datetime(
     d: datetime.datetime | list | tuple | str,
 ) -> datetime.datetime | list[datetime.datetime]:
@@ -140,6 +151,7 @@ def _expand_mars_request(
     date: datetime.datetime,
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
+    first_date: datetime.datetime | None = None,
 ) -> list[dict[str, Any]]:
     """Expands a MARS request with the given date and other parameters.
 
@@ -153,6 +165,8 @@ def _expand_mars_request(
         Flag indicating if the request already uses valid datetime.
     date_key : str, optional
         The key for the date in the request.
+    first_date : Optional[datetime.datetime], optional
+        The first date of the recipe for reference.
 
     Returns
     -------
@@ -164,6 +178,8 @@ def _expand_mars_request(
     user_step = to_list(expand_to_by(request.get("step", [0])))
     user_time = None
     user_date = None
+    steps_in_request = "step" in request
+    times_in_request = "time" in request
 
     if not request_already_using_valid_datetime:
         user_time = request.get("time")
@@ -176,10 +192,14 @@ def _expand_mars_request(
             assert isinstance(user_date, str), user_date
             user_date = re.compile("^{}$".format(user_date.replace("-", "").replace("?", ".")))
 
+    # assert False, (user_step, user_time, user_date)
     for step in user_step:
         r = request.copy()
 
-        if not request_already_using_valid_datetime:
+        if steps_in_request and not times_in_request:
+            d, t, s = valid_date_to_base_date_given_user_step(date, user_step, first_date)
+            r.update({date_key: d, "time": t, "step": s})
+        elif not request_already_using_valid_datetime:
 
             if isinstance(step, str) and "-" in step:
                 assert step.count("-") == 1, step
@@ -210,6 +230,13 @@ def _expand_mars_request(
             if r["time"] not in user_time:
                 continue
 
+        klass = r.setdefault("class", "od")
+        stream = r.setdefault("stream", "oper")
+        time = int(r["time"])
+
+        if klass == "od" and stream == "oper" and time in (600, 1800):
+            r["stream"] = ["scda"]
+
         requests.append(r)
 
     # assert requests, requests
@@ -222,6 +249,7 @@ def factorise_requests(
     *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
+    first_date: datetime.datetime | None = None,
 ) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
 
@@ -235,6 +263,8 @@ def factorise_requests(
         Flag indicating if the requests already use valid datetime.
     date_key : str, optional
         The key for the date in the requests.
+    first_date : Optional[datetime.datetime], optional
+        The first date of the recipe for reference.
 
     Returns
     -------
@@ -251,6 +281,7 @@ def factorise_requests(
                 date=d,
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
                 date_key=date_key,
+                first_date=first_date,
             )
 
     if not updates:
@@ -429,6 +460,7 @@ class MarsSource(LegacySource):
                 *requests,
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
                 date_key=date_key,
+                first_date=context.actor.groups.provider.start,
             )
 
         requests = list(requests)
