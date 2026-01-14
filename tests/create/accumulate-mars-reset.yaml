@@ -48,3 +48,6 @@ build:
 
 statistics:
   allow_nans: True
+
+checks:
+  none: {}
