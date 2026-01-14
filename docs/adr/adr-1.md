@@ -15,10 +15,6 @@ The objective of this change is to support observations data which are not regul
 In contrast with the fields data, where each date contains the same number of points, in the
 observations data, the number of points can change for every time window.
 
-To allow storing data with irregular shape, we need to use another format than the Zarr used for
-fields. An experimental implementation using xarray-zarr has been developed and is not optimised for
-ML training.
-
 ## High-level principles
 
 - Ensure that I/O operations are not the bottleneck during training.
