@@ -3,7 +3,7 @@ accumulate:
   availability:
     type: accumulated-from-start
     basetime: [0, 12]
-    frequency: 6
+    frequency: 6h
     last_step: 18
   source:
     mars:

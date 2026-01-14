@@ -56,7 +56,6 @@ The `accumulate` source requires the following parameters:
 Specifying the ``availability`` of accumulation intervals
 =========================================================
 
-There are multiple ways to specify the ``availability`` parameter:
 
 Data accumulation methods differ between datasets. Two common methods are to
 accumulate data either from the start of the forecast or from the previous time step.
@@ -72,8 +71,49 @@ accumulate data either from the start of the forecast or from the previous time 
    the fields from the forecast of 2020-01-01 06:00 at steps 1-2h, 2-3h,
    3-4h, 4-5h, 5-6h, and 6-7h.
 
-Option 1: Automatic detection
------------------------------
+There are multiple ways to specify the ``availability`` parameter:
+
+- `Option 1: Type-based availability`_
+- `Option 2: Availability over fixed periods`_
+- `Option 3: Automatic detection for well-known datasets`_
+- `Option 4: Finer control using explicit list of interval`_
+
+
+Option 1: Type-based availability
+---------------------------------
+
+For more explicit control, use the ``type`` parameter with ``accumulated-from-start``
+or ``accumulated-from-previous-step``, along with ``basetime``, ``frequency``, and ``last_step``.
+
+.. list-table::
+   :widths: 50 50
+   :header-rows: 1
+
+   * - ECMWF operational (accumulated from start)
+     - ERA5 (accumulated from previous step)
+   * - .. literalinclude:: yaml/accumulations-from-start-mars-ecmwf-operational-forecast-2.yaml
+          :language: yaml
+     - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-2.yaml
+          :language: yaml
+
+Option 2: Availability over fixed periods
+-----------------------------------------
+
+If the source provides data accumulated over a fixed period, such as
+``availability: "1h"`` for hourly accumulated data, ``"3h"`` for
+3-hourly accumulated data, etc.
+
+This approach should be used when all accumulation intervals for the fixed period are available
+for all base times.
+
+Additionally, the period provided in ``availability`` must be compatible with the requested accumulation period,
+i.e., it must be a divisor of the requested period in ``period``.
+
+.. literalinclude:: yaml/accumulations-grib-index.yaml
+   :language: yaml
+
+Option 3: Automatic detection for well-known datasets
+-----------------------------------------------------
 
 The simplest approach is to use ``availability: auto``. The package will
 infer the availability from the ``mars`` source parameters (class, stream, origin).
@@ -91,25 +131,9 @@ Automatic detection is not supported for ``grib-index`` source.
      - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-1.yaml
           :language: yaml
 
-Option 2: Type-based configuration
-----------------------------------
 
-For more explicit control, use the ``type`` parameter with ``accumulated-from-start``
-or ``accumulated-from-previous-step``, along with ``basetime``, ``frequency``, and ``last_step``.
-
-.. list-table::
-   :widths: 50 50
-   :header-rows: 1
-
-   * - ECMWF operational (accumulated from start)
-     - ERA5 (accumulated from previous step)
-   * - .. literalinclude:: yaml/accumulations-from-start-mars-ecmwf-operational-forecast-2.yaml
-          :language: yaml
-     - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-2.yaml
-          :language: yaml
-
-Option 3: Explicit list of intervals
-------------------------------------
+Option 4: Finer control using explicit list of interval
+-------------------------------------------------------
 
 For full control, provide an explicit list of ``(basetime, steps)`` pairs.
 
@@ -123,22 +147,6 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
           :language: yaml
      - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-3.yaml
           :language: yaml
-
-Option 4: accumulation available over a fixed period
-----------------------------------------------------
-
-If the source provides data accumulated over a fixed period, such as
-``availability: "1h"`` for hourly accumulated data, ``"3h"`` for
-3-hourly accumulated data, etc.
-
-This approach should be used when all accumulation intervals for the fixed period are available
-for all base times.
-
-Additionally, the period provided in ``availability`` must be compatible with the requested accumulation period,
-i.e., it must be a divisor of the requested period in ``period``.
-
-.. literalinclude:: yaml/accumulations-grib-index.yaml
-   :language: yaml
 
 .. [1]
 

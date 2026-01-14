@@ -1,8 +1,7 @@
-input:
-  accumulate:
-    period: 6h
-    availability: 1h
-    grib-index:
-        index-db: /path/to/grib/index.db
-        param: [ tp, cp, sf ]
-        levtype: sfc
+accumulate:
+  period: 6h
+  availability: 1h
+  grib-index:
+      index-db: /path/to/grib/index.db
+      param: [ tp, cp, sf ]
+      levtype: sfc
