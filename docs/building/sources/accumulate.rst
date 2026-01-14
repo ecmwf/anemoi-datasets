@@ -109,13 +109,13 @@ Option 3: Automatic detection for well-known datasets
 
 The simplest approach is to use ``availability: auto``. The package will try to
 infer the availability from the ``mars`` source parameters (class, stream, origin).
-Supported combinations include:
+Supported combinations are:
 
 - ERA5 reanalysis (class ``ea``, stream ``oper``)
 - ERA5 ensemble data assimilation (class ``ea``, stream ``enda``)
 - ECMWF operational forecasts (class ``od``, stream ``oper``)
 - ECMWF operational ensemble data assimilation (class ``od``, stream ``elda``)
-- Regional reanalysis (class ``rr``, stream ``oper``), with origins ``se-al-ec`` or ``fr-ms-ec``
+- Regional reanalysis (class ``rr``, stream ``oper``, origin ``se-al-ec``).
 - ERA5-Land (class ``l5``, stream ``oper``)
 
 Automatic detection is not supported for the ``grib-index`` source.
@@ -147,6 +147,8 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
           :language: yaml
      - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-3.yaml
           :language: yaml
+
+These two examples are equivalent to those shown in Option 1 above.
 
 .. [1]
 
