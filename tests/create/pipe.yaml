@@ -31,7 +31,7 @@ input:
 
     - accumulate:
         period: 6h
-        available: "era5-oper"
+        availability: "auto"
         source:
           mars:
             <<: *mars_request
