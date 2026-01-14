@@ -48,14 +48,13 @@ The `accumulate` source requires the following parameters:
    in the `availability` parameter, the package will attempt to check the
    metadata of the source dataset and fail if the accumulation periods cannot
    be reconstructed.
-   If the metadata is incomplete or inconsistent, the package may not be able to
-   reconstruct the requested accumulation period **or may not be able to check
-   the validity of the accumulation and may produce incorrect results**.
+   Defining the period to use to reconstruct the request accumulation period and
+   checking the validity of the accumulation and relies on the metadata provided by the data source.
+   **If the metadata is incomplete or inconsistent, the package may produce incorrect results.**
 
 
 Specifying the ``availability`` of accumulation intervals
 =========================================================
-
 
 Data accumulation methods differ between datasets. Two common methods are to
 accumulate data either from the start of the forecast or from the previous time step.
