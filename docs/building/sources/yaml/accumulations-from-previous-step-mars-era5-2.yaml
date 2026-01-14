@@ -1,0 +1,16 @@
+accumulate:
+  period: 6h
+  availability:
+    type: accumulated-from-previous-step
+    basetime: [6, 18]
+    frequency: 1
+    last_step: 18
+  source:
+    mars:
+      expver: "0001"
+      class: ea
+      stream: oper
+      type: fc
+      grid: 20./20.
+      levtype: sfc
+      param: [tp, cp]

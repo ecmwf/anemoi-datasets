@@ -3,7 +3,6 @@ input:
     period: 6h
     availability: 1h
     grib-index:
-      mars:
-        class: ea
+        index-db: /path/to/grib/index.db
         param: [ tp, cp, sf ]
         levtype: sfc
