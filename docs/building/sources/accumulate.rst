@@ -124,8 +124,8 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
      - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-3.yaml
           :language: yaml
 
-Option 4: all interval available for fixed period
--------------------------------------------------
+Option 4: accumulation available over a fixed period
+----------------------------------------------------
 
 If the source provides data accumulated over a fixed period, specify that
 period as a string:
@@ -133,6 +133,8 @@ period as a string:
 - ``"1h"`` for hourly accumulated data
 - ``"3h"`` for 3-hourly accumulated data
 - ``"6h"``, ``"12h"``, ``"24h"`` etc. for other fixed periods
+
+The period provided in ``availability`` must be compatible with the requested accumulation period, i.e., it must be a divisor of the requested period in ``period``.
 
 .. literalinclude:: yaml/accumulations-grib-index.yaml
    :language: yaml
