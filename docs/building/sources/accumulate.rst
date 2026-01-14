@@ -27,30 +27,23 @@ step (e.g. ERA5).
 
 The ``accumulate`` source requires the following parameters:
 
-- **period**: The requested accumulation period (e.g., ``6h``, ``12h``, ``24h``).
-  This can be specified as a string with units (``"6h"``) (or as an integer
-  representing hours (``6``)). Minutes (``"30min"``) are not supported yet.
+- **period**: The requested accumulation period (e.g., ``6h``, ``12h``, ``24h``, ``1d``).
+  This can be specified as a string with units ``"6h"``.
+  Periods shorter than one hour such as ``"30min"`` are not supported yet.
 - **source**: The data source configuration. Currently only ``mars`` and ``grib-index`` sources are supported.
 - **availability**: Information about how accumulations are stored in
   the data source. This allows the package to determine which intervals to use
-  for reconstructing the requested accumulation period.
-  The ``accumulate`` source has built-in knowledge for well-known datasets
-  with specific class/stream in ``mars`` and can infer the ``availability``
-  of the accumulated intervals using the value ``availability: auto``.
-  If the package cannot automatically determine the accumulation intervals,
-  or if you need a finer control over the reconstruction process,
-  you can provide this information manually using the ``availability``
-  parameter (see below).
+  for reconstructing the requested accumulation period (see below).
 
-.. note::
+  .. warning::
 
-   If the data provided by the source does not match the definition provided
-   in the ``availability`` parameter, the package will attempt to check the
-   metadata of the source dataset and fail if the accumulation periods cannot
-   be reconstructed.
-   Defining the period to use to reconstruct the request accumulation period and
-   checking the validity of the accumulation and relies on the metadata provided by the data source.
-   **If the metadata is incomplete or inconsistent, the package may produce incorrect results.**
+     If the data provided by the source does not match the definition provided
+     in the ``availability`` parameter, the package will attempt to check the
+     metadata of the source dataset and fail if the accumulation periods cannot
+     be reconstructed.
+     Defining the period to use to reconstruct the request accumulation period and
+     checking the validity of the accumulation and relies on the metadata provided by the data source.
+     **If the metadata is incomplete or inconsistent, the package may produce incorrect results.**
 
 
 Specifying the ``availability`` of accumulation intervals
