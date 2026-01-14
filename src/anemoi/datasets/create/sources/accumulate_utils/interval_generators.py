@@ -262,10 +262,7 @@ def _interval_generator_factory(
 
         case "l5-oper" | "l5":
             # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
-            return [
-                [base, [(0, i) for i in "1/2/3/4/5/6/9/12/15/18/21/24/27".split("/")]]
-                for base in [0, 3, 6, 9, 12, 15, 18, 21]
-            ]
+            return [[0, [(0, i) for i in "1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/17/18/19/20/21/22/23/24".split("/")]]]
 
         case str():
             try:

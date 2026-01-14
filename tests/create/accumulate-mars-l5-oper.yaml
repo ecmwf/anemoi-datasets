@@ -3,7 +3,8 @@ dates:
   start: 2021-01-10 18:00:00
   end: 2021-01-12 12:00:00
 
-#  inspired by: https://anemoi.ecmwf.int/datasets/cerra-rr-an-oper-se-al-ec-mars-5p5km-1985-2023-3h-v2?tab=recipe
+# inspired by: https://anemoi.ecmwf.int/datasets/cerra-rr-an-oper-se-al-ec-mars-5p5km-1985-2023-3h-v2?tab=recipe
+# https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
 
 input:
   accumulate:
@@ -13,7 +14,7 @@ input:
       mars:
         class: l5
         stream: oper
-        expver: prod
+        expver: 0001
         levtype: sfc
         type: fc
         param: ["tp","ssrd","strd"]

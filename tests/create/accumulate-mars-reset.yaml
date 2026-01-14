@@ -43,8 +43,6 @@ input:
         number: 0
         # param: [81.228, 80.228, 82.228, 147, 146]
 
-checks:
-  none: {}
 build:
    use_grib_paramid: True
 
