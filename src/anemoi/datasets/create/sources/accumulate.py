@@ -207,13 +207,12 @@ def write_accumulated_field_with_valid_time(
     endStep = period
 
     hours = endStep.total_seconds() / 3600
-    if not hours.is_integer():
+    if hours.is_integer():
         raise ValueError(f"Accumulation period must be integer hours, got {hours}")
     hours = int(hours)
 
-    if template.metadata("edition") == 1 and (hours > 254 or not hours.is_integer()):
+    if template.metadata("edition") == 1:
         # this is a special case for GRIB edition 1 which only supports integer hours up to 254
-        assert hours.is_integer(), f"edition 1 accumulation period must be integer hours, got {hours}"
         assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
         output.write(
             values,

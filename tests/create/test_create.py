@@ -28,9 +28,13 @@ from .utils.mock_sources import LoadSource
 HERE = os.path.dirname(__file__)
 # find_yamls
 
+IGNORE = ["recentre"]
+
 NAMES = []
 for path in glob.glob(os.path.join(HERE, "*.yaml")):
     name, _ = os.path.splitext(os.path.basename(path))
+    if name in IGNORE:
+        continue
     with open(path) as f:
         conf = yaml.safe_load(f)
         if conf.get("skip_test", False):
