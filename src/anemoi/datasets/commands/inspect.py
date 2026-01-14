@@ -556,6 +556,7 @@ class Version0_4(Version):
         """Get the initialization timestamp of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["creation_timestamp"])
 
+    @property
     def statistics_ready(self) -> bool:
         """Check if the statistics are ready."""
         if not self.ready():
