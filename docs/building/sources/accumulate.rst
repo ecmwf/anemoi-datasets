@@ -4,13 +4,13 @@
 
 .. note::
 
-   The `accumulate` source was previously named `accumulations`.
+   The ``accumulate`` source was previously named ``accumulations``.
    The API has changed in the following ways:
 
-   - The parameter `accumulation_period` has been renamed to `period`.
-   - The source can be now different from `mars` (e.g., `mars`, `grib-index`)
-     it must now be explicitly specified as a nested dictionary under the `source` key.
-   - The (optional) available accumulation intervals can now be specified using the `availability` key.
+   - The parameter ``accumulation_period`` has been renamed to ``period``.
+   - The source can be now different from ``mars`` (e.g., ``mars``, ``grib-index``)
+     it must now be explicitly specified as a nested dictionary under the ``source`` key.
+   - The (optional) available accumulation intervals can now be specified using the ``availability`` key.
 
 Accumulations and flux variables, such as precipitation, are often
 forecast fields, which are archived for a given base date (or reference
@@ -25,27 +25,27 @@ are accumulated since the beginning of the forecast (e.g. ECMWF
 operational forecast), while others are accumulated since the last time
 step (e.g. ERA5).
 
-The `accumulate` source requires the following parameters:
+The ``accumulate`` source requires the following parameters:
 
 - **period**: The requested accumulation period (e.g., ``6h``, ``12h``, ``24h``).
   This can be specified as a string with units (``"6h"``) (or as an integer
   representing hours (``6``)). Minutes (``"30min"``) are not supported yet.
 - **source**: The data source configuration. Currently only ``mars`` and ``grib-index`` sources are supported.
-- **availability** : Information about how accumulations are stored in
+- **availability**: Information about how accumulations are stored in
   the data source. This allows the package to determine which intervals to use
   for reconstructing the requested accumulation period.
-  The `accumulate` source has built-in knowledge for well-known datasets
-  with specific class/stream in `mars` and can infer the `availability`
-  of the accumulated intervals using the value `availability: auto`.
+  The ``accumulate`` source has built-in knowledge for well-known datasets
+  with specific class/stream in ``mars`` and can infer the ``availability``
+  of the accumulated intervals using the value ``availability: auto``.
   If the package cannot automatically determine the accumulation intervals,
   or if you need a finer control over the reconstruction process,
-  you can provide this information manually using the `availability`
+  you can provide this information manually using the ``availability``
   parameter (see below).
 
 .. note::
 
-   If the data provided byt the source does not match the definition provided
-   in the `availability` parameter, the package will attempt to check the
+   If the data provided by the source does not match the definition provided
+   in the ``availability`` parameter, the package will attempt to check the
    metadata of the source dataset and fail if the accumulation periods cannot
    be reconstructed.
    Defining the period to use to reconstruct the request accumulation period and
@@ -81,8 +81,8 @@ There are multiple ways to specify the ``availability`` parameter:
 Option 1: Type-based availability
 ---------------------------------
 
-For more explicit control, use the ``type`` parameter with ``accumulated-from-start``
-or ``accumulated-from-previous-step``, along with ``basetime``, ``frequency``, and ``last_step``.
+For more explicit control, use the **type** parameter with ``accumulated-from-start``
+or ``accumulated-from-previous-step``, along with **basetime**, **frequency**, and **last_step**.
 
 .. list-table::
    :widths: 50 50
@@ -114,10 +114,18 @@ i.e., it must be a divisor of the requested period in ``period``.
 Option 3: Automatic detection for well-known datasets
 -----------------------------------------------------
 
-The simplest approach is to use ``availability: auto``. The package will
+The simplest approach is to use ``availability: auto``. The package will try to
 infer the availability from the ``mars`` source parameters (class, stream, origin).
+Supported combinations include:
 
-Automatic detection is not supported for ``grib-index`` source.
+- ERA5 reanalysis (class ``ea``, stream ``oper``)
+- ERA5 ensemble data assimilation (class ``ea``, stream ``enda``)
+- ECMWF operational forecasts (class ``od``, stream ``oper``)
+- ECMWF operational ensemble data assimilation (class ``od``, stream ``elda``)
+- Regional reanalysis (class ``rr``, stream ``oper``), with origins ``se-al-ec`` or ``fr-ms-ec``
+- ERA5-Land (class ``l5``, stream ``oper``)
+
+Automatic detection is not supported for the ``grib-index`` source.
 
 .. list-table::
    :widths: 50 50
@@ -150,4 +158,4 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
 .. [1]
 
    For ECMWF forecasts, the forecasts at 00Z and 12Z are from the stream
-   `oper` while the forecasts at 06Z and 18Z are from the stream `scda`.
+   ``oper`` while the forecasts at 06Z and 18Z are from the stream ``scda``.
