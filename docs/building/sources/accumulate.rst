@@ -127,14 +127,15 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
 Option 4: accumulation available over a fixed period
 ----------------------------------------------------
 
-If the source provides data accumulated over a fixed period, specify that
-period as a string:
+If the source provides data accumulated over a fixed period, such as
+``availability: "1h"`` for hourly accumulated data, ``"3h"`` for
+3-hourly accumulated data, etc.
 
-- ``"1h"`` for hourly accumulated data
-- ``"3h"`` for 3-hourly accumulated data
-- ``"6h"``, ``"12h"``, ``"24h"`` etc. for other fixed periods
+This approach should be used when all accumulation intervals for the fixed period are available
+for all base times.
 
-The period provided in ``availability`` must be compatible with the requested accumulation period, i.e., it must be a divisor of the requested period in ``period``.
+Additionally, the period provided in ``availability`` must be compatible with the requested accumulation period,
+i.e., it must be a divisor of the requested period in ``period``.
 
 .. literalinclude:: yaml/accumulations-grib-index.yaml
    :language: yaml
