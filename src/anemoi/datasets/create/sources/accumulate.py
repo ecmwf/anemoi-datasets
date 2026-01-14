@@ -207,7 +207,7 @@ def write_accumulated_field_with_valid_time(
     endStep = period
 
     hours = endStep.total_seconds() / 3600
-    if hours.is_integer():
+    if hours != int(hours):
         raise ValueError(f"Accumulation period must be integer hours, got {hours}")
     hours = int(hours)
 
