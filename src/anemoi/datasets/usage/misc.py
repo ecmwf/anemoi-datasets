@@ -50,7 +50,7 @@ def add_named_dataset(name: str, path: str, **kwargs: Any) -> None:
         Additional arguments.
     """
     config = load_config()
-    if name["datasets"]["named"]:
+    if name in config["datasets"]["named"]:
         raise ValueError(f"Dataset {name} already exists")
 
     config["datasets"]["named"][name] = path
