@@ -11,6 +11,7 @@
 from typing import Any
 
 import numpy as np
+import tqdm
 import zarr
 
 from anemoi.datasets.usage.store import dataset_lookup
@@ -54,6 +55,14 @@ class Error(_Error):
         return f"❗ {self.message}"
 
 
+class Warning(_Error):
+
+    fatal = False
+
+    def __repr__(self):
+        return f"❗ {self.message}"
+
+
 class ErrorCollector:
     def __init__(self):
         self._errors = []
@@ -70,6 +79,9 @@ class ErrorCollector:
     def error(self, info=None):
         self._errors.append(Error(info))
 
+    def warning(self, info=None):
+        self._errors.append(Warning(info))
+
     def __bool__(self):
         return any(e.fatal for e in self._errors)
 
@@ -85,23 +97,47 @@ class ErrorCollector:
         return "\n" + "\n".join(repr(e) for e in self._errors) + "\n"
 
 
-def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6) -> None:
+def _compare_arrays_partial(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6, close_ok=False) -> None:
     """Compare two arrays."""
     if np.array_equal(a, b, equal_nan=True):
-        return
+        return True
 
-    if a.dtype == np.dtype("float64") or b.dtype == np.dtype("float64"):
-        # allows float64 -> float32 conversion errors.
+    if close_ok:
         rtol = tolerance
         atol = tolerance * max(np.nanmax(np.abs(a)), np.nanmax(np.abs(b)))
         if np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
-            return
 
-    if np.allclose(a, b, equal_nan=True):
-        errors.error(f"🧮 {path}: arrays are close but not equal {a[:]}, {b[:]}, {a[:]-b[:]}")
+            return True
+
+    close = "close" if np.allclose(a, b, equal_nan=True) else "different"
+
+    errors.error(f"🧮 {path}: arrays are {close} {a[:]}, {b[:]} {a[:]-b[:]}")
+    return False
+
+
+def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6) -> None:
+    if a.shape != b.shape:
+        errors.error(f"🧮 {path}: shapes are different {a.shape} != {b.shape}")
         return
 
-    errors.error(f"🧮 {path}: arrays are different {a[:]}, {b[:]} {a[:]-b[:]}")
+    if a.dtype != b.dtype:
+        errors.error(f"🧮 {path}: dtypes are different {a.dtype} != {b.dtype}")
+        return
+
+    buffer_size = 256 * 1024 * 1024  # 256 MB
+
+    size = a.dtype.itemsize * a.size
+    row_size = a.dtype.itemsize * a.shape[0]
+    if size <= buffer_size:
+        return _compare_arrays_partial(errors, a, b, path, tolerance)
+
+    step = max(1, buffer_size // row_size)
+    for i in tqdm.tqdm(range(0, a.shape[0], step), desc=f"Comparing {path}"):
+        last = min(i + step, a.shape[0])
+        if not _compare_arrays_partial(errors, a[i:last], b[i:last], path, tolerance):
+            return False
+
+    return True
 
 
 def _compare_zarrs(errors, reference, actual, *path) -> None:
@@ -142,8 +178,6 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
     for key in sorted(set(reference_arrays) & set(actual_arrays)):
         a = reference[key]
         b = actual[key]
-
-        print(f"Comparing {'.'.join(path)}.{key}: {type(a)} vs {type(b)}")
 
         if isinstance(a, zarr.Group) and isinstance(b, zarr.Group):
             _compare_zarrs(errors, a, b, *path, key)

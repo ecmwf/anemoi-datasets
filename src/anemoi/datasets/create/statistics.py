@@ -150,7 +150,7 @@ class _TendencyCollector(_CollectorBase):
         pass
 
 
-class _ConstantsCollector(_CollectorBase):
+class _ConstantsCollector(_Base):
     def __init__(self, index, num_columns: int, column_names: list[str], name: str) -> None:
         super().__init__(num_columns, column_names)
         self._index = index
