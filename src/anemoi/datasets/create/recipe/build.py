@@ -17,6 +17,7 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import BeforeValidator
 from pydantic import Field
+from pydantic_core import PydanticCustomError
 
 if TYPE_CHECKING:
     from . import Recipe
@@ -67,16 +68,19 @@ class Build(BaseModel):
         # deprecation warnings. Only access the attribute if it has a non-None value.
         if recipe.__dict__.get("env") is not None:
             if self.env:
-                raise ValueError("Cannot specify 'env' in both 'recipe' and 'build'. " "Please use 'build.env' only.")
+                raise PydanticCustomError(
+                    "conflicting_env",
+                    "Cannot specify 'env' in both 'recipe' and 'build'. Please use 'build.env' only.",
+                )
             self.env = dict(recipe.env)
             recipe.env = None
 
         # Support legacy 'statistics.allow_nans'
         if recipe.statistics.__dict__.get("allow_nans") is not None:
             if self.allow_nans:
-                raise ValueError(
-                    "Cannot specify 'allow_nans' in both 'statistics' and 'build'. "
-                    "Please use 'build.allow_nans' only."
+                raise PydanticCustomError(
+                    "conflicting_allow_nans",
+                    "Cannot specify 'allow_nans' in both 'statistics' and 'build'. Please use 'build.allow_nans' only.",
                 )
             self.allow_nans = recipe.statistics.allow_nans
             recipe.statistics.allow_nans = None
@@ -84,8 +88,9 @@ class Build(BaseModel):
         # Support legacy 'output.remapping'
         if recipe.output.__dict__.get("remapping") is not None:
             if self.remapping:
-                raise ValueError(
-                    "Cannot specify 'remapping' in both 'output' and 'build'. " "Please use 'build.remapping' only."
+                raise PydanticCustomError(
+                    "conflicting_remapping",
+                    "Cannot specify 'remapping' in both 'output' and 'build'. Please use 'build.remapping' only.",
                 )
             self.remapping = dict(recipe.output.remapping)
             recipe.output.remapping = None
