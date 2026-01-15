@@ -13,7 +13,7 @@ import logging
 import numpy as np
 import zarr
 
-from anemoi.datasets.caching import ChunksCache
+from anemoi.datasets.buffering import ChunksCache
 
 SIZE = 1_000_000
 SHAPE = (SIZE, 10)

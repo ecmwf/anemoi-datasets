@@ -16,7 +16,7 @@ from functools import cached_property
 import numpy as np
 import tqdm
 
-from ..caching import ChunksCache
+from ..buffering import ChunksCache
 from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry

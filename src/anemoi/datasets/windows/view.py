@@ -20,7 +20,7 @@ from earthkit.data.utils.dates import to_datetime
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from ..caching import ChunksCache
+from ..buffering import ChunksCache
 from ..date_indexing import create_date_indexing
 from .annotated import AnnotatedNDArray
 from .metadata import MultipleWindowMetaData

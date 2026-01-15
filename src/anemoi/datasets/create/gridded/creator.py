@@ -19,7 +19,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.caching import ChunksCache
+from anemoi.datasets.buffering import ChunksCache
 
 from ..creator import Creator
 from ..dataset import Dataset

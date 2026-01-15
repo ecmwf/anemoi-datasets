@@ -16,7 +16,7 @@ import numpy as np
 import zarr
 from lru import LRU
 
-from ..caching import ChunksCache
+from ..buffering import ChunksCache
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange

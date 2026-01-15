@@ -1,7 +1,7 @@
 import numpy as np
 import zarr
 
-from anemoi.datasets.caching import ChunksCache
+from anemoi.datasets.buffering import ChunksCache
 
 
 def create_zarr_array(shape=(20, 3), chunks=(5, 3), dtype=np.int64):

@@ -21,7 +21,7 @@ import numpy as np
 import tqdm
 import zarr
 
-from anemoi.datasets.caching import ChunksCache
+from anemoi.datasets.buffering import ChunksCache
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
 
