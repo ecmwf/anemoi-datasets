@@ -395,7 +395,6 @@ class Logs(list):
 
             # now execute the code to show actual field values
             LOG.error("\n".join(res))
-            eval("\n".join(code[1:-1]), {}, {})
 
         raise ValueError(msg)
 
