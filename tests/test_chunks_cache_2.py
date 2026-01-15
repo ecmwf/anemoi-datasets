@@ -13,7 +13,7 @@ import logging
 import numpy as np
 import zarr
 
-from anemoi.datasets.buffering import ChunksCache
+from anemoi.datasets.buffering import ReadAheadWriteBehindBuffer
 
 SIZE = 1_000_000
 SHAPE = (SIZE, 10)
@@ -64,7 +64,7 @@ def _test_write(array, data, random, key):
 
 def _test_cache(test_func):
     array, data, random = make_array()
-    array = ChunksCache(array, max_cached_chunks=10)
+    array = ReadAheadWriteBehindBuffer(array, max_cached_chunks=10)
     chunk_size = array.chunks[0]
 
     test_func(array, data, random, 0)

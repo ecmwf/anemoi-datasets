@@ -249,7 +249,7 @@ class ReadAheadWriteBehindBuffer:
             chunks_in_cache = max_cached_chunks
 
         LOG.info(
-            f"Initializing ChunksCache with chunk shape {array.chunks}, "
+            f"Initializing ReadAheadWriteBehindBuffer with chunk shape {array.chunks}, "
             f"caching {chunks_in_cache} chunks ({chunks_in_cache * chunk_size / 1024 / 1024:.2f} MB)",
         )
 
@@ -548,7 +548,7 @@ class _MultiBufferSpan:
 
         Parameters
         ----------
-        cache : ChunksCache
+        cache : ReadAheadWriteBehindBuffer
             The chunk cache.
         """
         self._cache = cache

@@ -1,7 +1,7 @@
 import numpy as np
 import zarr
 
-from anemoi.datasets.buffering import ChunksCache
+from anemoi.datasets.buffering import ReadAheadWriteBehindBuffer
 
 
 def create_zarr_array(shape=(20, 3), chunks=(5, 3), dtype=np.int64):
@@ -13,7 +13,7 @@ def create_zarr_array(shape=(20, 3), chunks=(5, 3), dtype=np.int64):
 
 def test_chunks_cache_get_set():
     arr = create_zarr_array()
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     # Test get
     assert np.all(cache[0] == arr[0])
     # Test set
@@ -25,7 +25,7 @@ def test_chunks_cache_get_set():
 
 def test_chunks_cache_slice():
     arr = create_zarr_array()
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     # Test slice get
     assert np.all(cache[5:10] == arr[5:10])
     # Test slice set
@@ -37,7 +37,7 @@ def test_chunks_cache_slice():
 
 def test_chunks_cache_array_index():
     arr = create_zarr_array()
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     idx = np.array([1, 3, 5, 7])
     assert np.all(cache[idx] == arr[idx])
     cache[idx] = np.full((4, 3), 7, dtype=np.int64)
@@ -48,7 +48,7 @@ def test_chunks_cache_array_index():
 
 def test_chunks_cache_len_and_resize():
     arr = create_zarr_array()
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     assert len(cache) == 20
     cache[:]
     cache.resize(25, 3)
@@ -58,13 +58,13 @@ def test_chunks_cache_len_and_resize():
 
 def test_chunks_cache_context_manager():
     arr = create_zarr_array()
-    with ChunksCache(arr, max_cached_chunks=6) as cache:
+    with ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6) as cache:
         cache[0] = np.array([123, 456, 789])
 
 
 def test_chunks_cache_resize_larger_first_dim():
     arr = create_zarr_array(shape=(10, 3))
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     cache[:]
     cache.resize(15, 3)
     assert cache.shape == (15, 3)
@@ -77,7 +77,7 @@ def test_chunks_cache_resize_larger_first_dim():
 
 def test_chunks_cache_resize_smaller_first_dim():
     arr = create_zarr_array(shape=(10, 3))
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     cache[:]
     cache.resize(5, 3)
     assert cache.shape == (5, 3)
@@ -89,7 +89,7 @@ def test_chunks_cache_resize_smaller_first_dim():
 
 def test_chunks_cache_resize_larger_second_dim():
     arr = create_zarr_array(shape=(5, 2))
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     cache[:]
     cache.resize(5, 4)
     assert cache.shape == (5, 4)
@@ -103,7 +103,7 @@ def test_chunks_cache_resize_larger_second_dim():
 def test_chunks_cache_resize_smaller_second_dim():
     arr = create_zarr_array(shape=(5, 4))
     save = arr[:].copy()
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     cache[:]
     cache.resize(5, 2)
     assert cache.shape == (5, 2)
@@ -115,7 +115,7 @@ def test_chunks_cache_resize_smaller_second_dim():
 
 def test_chunks_cache_resize_both_dims():
     arr = create_zarr_array(shape=(6, 6))
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     cache[:]
     cache.resize(8, 4)
     assert cache.shape == (8, 4)
@@ -128,7 +128,7 @@ def test_chunks_cache_resize_both_dims():
 
 def test_chunks_cache_resize_and_set():
     arr = create_zarr_array(shape=(4, 4))
-    cache = ChunksCache(arr, max_cached_chunks=6)
+    cache = ReadAheadWriteBehindBuffer(arr, max_cached_chunks=6)
     cache[:]
     cache.resize(6, 4)
     assert cache.shape == (6, 4)

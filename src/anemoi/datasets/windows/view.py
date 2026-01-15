@@ -20,7 +20,7 @@ from earthkit.data.utils.dates import to_datetime
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
-from ..buffering import ChunksCache
+from ..buffering import ReadAheadWriteBehindBuffer
 from ..date_indexing import create_date_indexing
 from .annotated import AnnotatedNDArray
 from .metadata import MultipleWindowMetaData
@@ -69,7 +69,7 @@ class WindowView:
         self.date_indexing = create_date_indexing(store.attrs["date_indexing"], self.store)
 
         # Use a chunk cache for efficient data access
-        self.data = ChunksCache(self.store["data"])
+        self.data = ReadAheadWriteBehindBuffer(self.store["data"])
         self.data = self.store["data"]
 
         # Determine the start and end dates for the window view

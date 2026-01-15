@@ -8,6 +8,10 @@
 # nor does it submit to any jurisdiction.
 
 
+import logging
+import os
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from typing import Any
 
 import numpy as np
@@ -18,6 +22,8 @@ from anemoi.datasets.usage.store import dataset_lookup
 from anemoi.datasets.usage.store import open_zarr
 
 from . import Command
+
+LOG = logging.getLogger(__name__)
 
 
 class _Error:
@@ -97,8 +103,13 @@ class ErrorCollector:
         return "\n" + "\n".join(repr(e) for e in self._errors) + "\n"
 
 
-def _compare_arrays_partial(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6, close_ok=False) -> None:
+def _compare_arrays_partial(
+    errors, a: zarr.Array, b: zarr.Array, slice_obj: slice, path: str, tolerance=1e-6, close_ok=False
+) -> None:
     """Compare two arrays."""
+    a = a[slice_obj]
+    b = b[slice_obj]
+
     if np.array_equal(a, b, equal_nan=True):
         return True
 
@@ -124,20 +135,35 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
         errors.error(f"🧮 {path}: dtypes are different {a.dtype} != {b.dtype}")
         return
 
-    buffer_size = 256 * 1024 * 1024  # 256 MB
+    buffer_size = 64 * 1024 * 1024  # 64 MB
 
     size = a.dtype.itemsize * a.size
     row_size = a.dtype.itemsize * a.shape[0]
     if size <= buffer_size:
-        return _compare_arrays_partial(errors, a, b, path, tolerance)
+        return _compare_arrays_partial(errors, a, b, slice(None), path, tolerance)
 
-    step = max(1, buffer_size // row_size)
-    for i in tqdm.tqdm(range(0, a.shape[0], step), desc=f"Comparing {path}"):
-        last = min(i + step, a.shape[0])
-        if not _compare_arrays_partial(errors, a[i:last], b[i:last], path, tolerance):
-            return False
+    max_workers = os.cpu_count() or 4
+    max_memory = 1024 * 1024 * 1024  # 2 GB
+    # Divide by two because both arrays need to be in memory
+    max_workers = max(min(max_workers, max_memory // buffer_size // 2), 1)
 
-    return True
+    LOG.info(f"Comparing large arrays {path} using {max_workers} workers")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+
+        tasks = []
+        step = max(1, buffer_size // row_size)
+        for i in tqdm.tqdm(range(0, a.shape[0], step), desc=f"Comparing {path}"):
+            last = min(i + step, a.shape[0])
+            tasks.append(executor.submit(_compare_arrays_partial, errors, a, b, slice(i, last), path, tolerance))
+
+        with tqdm.tqdm(total=len(tasks), desc=f"Comparing {path}", unit="part") as pbar:
+            for future in as_completed(tasks):
+                if not future.result():
+                    return False
+                pbar.update(1)
+
+        return True
 
 
 def _compare_zarrs(errors, reference, actual, *path) -> None:

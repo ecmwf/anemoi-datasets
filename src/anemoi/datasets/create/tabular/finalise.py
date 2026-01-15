@@ -21,7 +21,7 @@ import numpy as np
 import tqdm
 import zarr
 
-from anemoi.datasets.buffering import ChunksCache
+from anemoi.datasets.buffering import ReadAheadWriteBehindBuffer
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
 
@@ -539,7 +539,7 @@ def finalise_tabular_dataset(
     all_dates_path: str = os.path.join(work_dir, "dates.npy")
     all_dates: np.ndarray = np.memmap(all_dates_path, dtype=np.int64, mode="w+", shape=(shape[0],))
 
-    with ChunksCache(store["data"]) as data:
+    with ReadAheadWriteBehindBuffer(store["data"]) as data:
 
         def _load_fragment(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
             # Remove deduped files after loading to save disk space

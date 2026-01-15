@@ -19,7 +19,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.humanize import compress_dates
 from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.buffering import ChunksCache
+from anemoi.datasets.buffering import ReadAheadWriteBehindBuffer
 
 from ..creator import Creator
 from ..dataset import Dataset
@@ -164,7 +164,7 @@ class GriddedCreator(Creator):
 
         indexes = dates_to_indexes(dataset.dates, dates_in_data)
 
-        with ChunksCache(dataset.data) as array:
+        with ReadAheadWriteBehindBuffer(dataset.data) as array:
             LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
             self._load_cube(cube, array, indexes)
 
@@ -255,7 +255,7 @@ class GriddedCreator(Creator):
             tendencies=tendencies,
         )
 
-        data = ChunksCache(dataset.data, read_ahead=True)
+        data = ReadAheadWriteBehindBuffer(dataset.data, read_ahead=True)
         step = data.chunks[0]
 
         for i in tqdm.tqdm(range(0, data.shape[0], step)):

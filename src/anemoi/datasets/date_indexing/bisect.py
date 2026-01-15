@@ -16,7 +16,7 @@ from functools import cached_property
 import numpy as np
 import tqdm
 
-from ..buffering import ChunksCache
+from ..buffering import ReadAheadWriteBehindBuffer
 from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry
@@ -28,13 +28,13 @@ LOG = logging.getLogger(__name__)
 class _Proxy:
     """Proxy class to enable binary search on the first column of a 2D array-like object."""
 
-    def __init__(self, dates: ChunksCache) -> None:
+    def __init__(self, dates: ReadAheadWriteBehindBuffer) -> None:
         """Initialise the Proxy.
 
         Parameters
         ----------
-        dates : ChunksCache
-            The ChunksCache object containing date index data.
+        dates : ReadAheadWriteBehindBuffer
+            The ReadAheadWriteBehindBuffer object containing date index data.
         """
         self.dates = dates
 
@@ -103,7 +103,7 @@ class DateBisect(DateIndexing):
         )
         date_index_ranges.attrs["_ARRAY_DIMENSIONS"] = ["epoch", "start_idx", "length"]
 
-        with ChunksCache(date_index_ranges) as index:
+        with ReadAheadWriteBehindBuffer(date_index_ranges) as index:
             total = dates_ranges.shape[0]
             step = chunck_size
             for i in tqdm.tqdm(range(0, total, step)):
@@ -111,8 +111,8 @@ class DateBisect(DateIndexing):
                 index[i : i + last, :] = dates_ranges[i : i + last, :]
 
     @cached_property
-    def index(self) -> ChunksCache:
-        return ChunksCache(self.store["date_index_ranges"])
+    def index(self) -> ReadAheadWriteBehindBuffer:
+        return ReadAheadWriteBehindBuffer(self.store["date_index_ranges"])
 
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
         """Get the start and end dates from the index.

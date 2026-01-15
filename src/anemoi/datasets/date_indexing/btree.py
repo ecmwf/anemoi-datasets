@@ -16,7 +16,7 @@ import numpy as np
 import zarr
 from lru import LRU
 
-from ..buffering import ChunksCache
+from ..buffering import ReadAheadWriteBehindBuffer
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
@@ -154,7 +154,7 @@ class ZarrBTree:
             self.pages.attrs["max_entries"] = self.max_entries
             self.pages.attrs["chunk_sizes"] = chunk_sizes
 
-        self.pages = ChunksCache(self.pages)
+        self.pages = ReadAheadWriteBehindBuffer(self.pages)
         self._number_of_rows = None
         self._page_cache = LRU(page_cache_size)
 
@@ -187,7 +187,7 @@ class ZarrBTree:
         if not (row >= 0 and row < self.pages.shape[0]):
             raise ValueError(f"Page {page_id} not found")
 
-        data = self.pages[int(row), :]  # Cast to int for ChunksCache
+        data = self.pages[int(row), :]  # Cast to int for ReadAheadWriteBehindBuffer
 
         is_node = data[0]
         count = data[1]
@@ -254,7 +254,7 @@ class ZarrBTree:
         if len(data) < self.pages.shape[1]:
             data += [0] * (self.pages.shape[1] - len(data))
 
-        self.pages[int(row), :] = data  # Cast to int for ChunksCache
+        self.pages[int(row), :] = data  # Cast to int for ReadAheadWriteBehindBuffer
         self._page_cache[page.page_id] = page
 
     def _create_page(self, is_node: bool = False) -> dict:
