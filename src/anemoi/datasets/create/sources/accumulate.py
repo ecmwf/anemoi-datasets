@@ -25,6 +25,7 @@ from anemoi.datasets.create.sources import source_registry
 from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
 
 from .accumulate_utils.covering_intervals import SignedInterval
+from .accumulate_utils.field_to_interval import FieldToInterval
 from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
@@ -243,98 +244,13 @@ def write_accumulated_field_with_valid_time(
         )
 
 
-class Patcher:
-    def __init__(self, patches: dict):
-        self.patches = patches
-
-    def set_start_step_to_zero_if_equal_to_end_step(self, startStep, endStep):
-        if self.patches.get("set_start_step_to_zero_if_equal_to_end_step"):
-
-            if startStep == endStep:
-                startStep = 0
-                assert endStep > 0, "If startStep == endStep, endStep must be > 0"
-
-        return startStep, endStep
-
-    def swap_start_end_steps_if_needed(self, startStep, endStep):
-        if self.patches.get("swap_start_end_steps_if_needed"):
-
-            if startStep > endStep:
-                startStep, endStep = endStep, startStep
-
-        return startStep, endStep
-
-    def set_start_step_from_end_step_ceiled_to_24_hours(self, startStep, endStep):
-        if self.patches.get("set_start_step_from_end_step_ceiled_to_24_hours"):
-            # because the data wrongly encode start_step, but end_step is correct
-            # and we know that accumulations are always in multiples of 24 hours
-            assert startStep == endStep, "This patch can only be applied when startStep == endStep"
-            # 1-1 -> 0-1
-            # 2-2 -> 0-2
-            # ...
-            # 24-24 -> 0-24
-            # 25-25 -> 24-25
-            # 26-26 -> 24-26
-            # ...
-            # 48-48 -> 24-48
-            if endStep % 24 == 0:
-                # Special case: endStep is exactly 24, 48, 72, etc.
-                # Map to previous 24-hour boundary (24 -> 0, 48 -> 24, etc.)
-                startStep = endStep - 24
-            else:
-                # General case: floor to the nearest 24-hour boundary
-                # (1-23 -> 0, 25-47 -> 24, etc.)
-                startStep = endStep - (endStep % 24)
-
-            assert startStep >= 0, "After patching, startStep must be >= 0"
-            assert startStep < endStep, "After patching, startStep must be < endStep"
-
-        return startStep, endStep
-
-
-def field_to_interval(field, patcher: Patcher) -> SignedInterval:
-    date_str = str(field.metadata("date")).zfill(8)
-    time_str = str(field.metadata("time")).zfill(4)
-    base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-
-    endStep = field.metadata("endStep")
-    startStep = field.metadata("startStep")
-    typeStep = field.metadata("stepType")
-
-    if typeStep == "instant":
-        LOG.debug("Field has stepType 'instant'")
-
-    startStep, endStep = patcher.swap_start_end_steps_if_needed(startStep, endStep)
-    startStep, endStep = patcher.set_start_step_to_zero_if_equal_to_end_step(startStep, endStep)
-    startStep, endStep = patcher.set_start_step_from_end_step_ceiled_to_24_hours(startStep, endStep)
-
-    start_step = datetime.timedelta(hours=startStep)
-    end_step = datetime.timedelta(hours=endStep)
-
-    trace(f"    field: {startStep=}, {endStep=}")
-
-    interval = SignedInterval(
-        start=base_datetime + start_step,
-        end=base_datetime + end_step,
-        base=base_datetime,
-    )
-
-    date_str = str(field.metadata("validityDate")).zfill(8)
-    time_str = str(field.metadata("validityTime")).zfill(4)
-    valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
-    assert valid_date == interval.max, (valid_date, interval)
-
-    trace(f"    field interval: {interval}")
-
-    return interval
-
-
 class Logs(list):
-    def __init__(self, *args, accumulators=None, source, source_object, **kwargs):
+    def __init__(self, *args, accumulators, source, source_object, field_to_interval, **kwargs):
         super().__init__(*args, **kwargs)
         self.accumulators = accumulators
         self.source = source
         self.source_object = source_object
+        self.field_to_interval = field_to_interval
 
     def raise_error(self, msg, field=None, field_interval=None) -> str:
         INTERVAL_COLOR = "\033[93m"
@@ -344,6 +260,7 @@ class Logs(list):
 
         res = [""]
         res.append(f"❌ {msg}")
+        res.append(f"💬 Patches applied: {self.field_to_interval.patches}")
         res.append("💬 Current field:")
         res.append(f" {FIELD_COLOR}{field}{RESET_COLOR}")
         res.append(f" {INTERVAL_COLOR}{field_interval}{RESET_COLOR}")
@@ -427,7 +344,7 @@ def _compute_accumulations(
         The interval over which to accumulate (user-defined)
     availability: Any, optional
         A description of the available periods in the data source. See documentation.
-    patch: dict | None, optional
+    patch: list[dict] | None, optional
         A description of patches to apply to fields returned by the source to fix metadata issues.
 
     Return
@@ -437,7 +354,7 @@ def _compute_accumulations(
     """
 
     LOG.debug("💬 source for accumulations: %s", source)
-    patcher = Patcher(patch or {})
+    field_to_interval = FieldToInterval(patch or [])
 
     # building the source objects
     assert isinstance(source, dict)
@@ -476,12 +393,16 @@ def _compute_accumulations(
     output = new_grib_output(path)
 
     accumulators = {}
-    logs = Logs(accumulators=accumulators, source=source, source_object=source_object(context, intervals))
+    logs = Logs(
+        accumulators=accumulators,
+        source=source,
+        source_object=source_object(context, intervals),
+        field_to_interval=field_to_interval,
+    )
     for field in source_object(context, intervals):
         # for each field provided by the catalogue, find which accumulators need it and perform accumulation
 
         values = field.values.copy()
-        # would values = field.values() be enough ?
 
         key = field.metadata(namespace="mars")
         key = {k: v for k, v in key.items() if k not in ["date", "time", "step"]}
@@ -490,7 +411,7 @@ def _compute_accumulations(
         print("---")
         print(f"\033[93m FIELD {field}, key: {key}\033[0m")
 
-        field_interval = field_to_interval(field, patcher)
+        field_interval = field_to_interval(field)
 
         logs.append([str(field), log, field_interval, [], []])
 

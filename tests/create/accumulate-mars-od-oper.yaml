@@ -7,15 +7,15 @@ input:
   accumulate:
     period: 6h
     availability:
-         - [0, "0-6/0-12"]
-         - [12, "0-6/0-12"]
+      - [0, "0-6/0-12"]
+      - [12, "0-6/0-12"]
     #available: 'od-oper'
-   # available:
-   #     type: accumulated-from-start
-   #     basetime: [0, 12]
-   #     frequency: 6
-   #     last_step: 18
-   #     # last_step: 12
+    # available:
+    #     type: accumulated-from-start
+    #     basetime: [0, 12]
+    #     frequency: 6
+    #     last_step: 18
+    #     # last_step: 12
     source:
       mars:
         expver: "0001"
@@ -24,7 +24,10 @@ input:
         type: fc
         grid: 20./20.
         levtype: sfc
-        param: [ tp, cp ]
+        param: [tp, cp]
+    patch:
+      start_step_is_end_step: 0
+
 
 checks:
   none: {}

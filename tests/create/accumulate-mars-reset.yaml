@@ -23,7 +23,7 @@ input:
       # print("/".join(steps))
     patch:
       # because the data wrongly encode start_step as 0 even after 24
-      set_start_step_from_end_step_ceiled_to_24_hours: True
+      start_step_is_end_step: set_from_end_step_ceiled_to_24_hours
 
     source:
       mars:
@@ -32,6 +32,7 @@ input:
         type: fc
         expver: i6aj
         # grid: o400
+        grid: 20./20.
         levtype: sfc
         #param:
         #- slhf
