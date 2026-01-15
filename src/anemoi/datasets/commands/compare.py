@@ -143,6 +143,8 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
         a = reference[key]
         b = actual[key]
 
+        print(f"Comparing {'.'.join(path)}.{key}: {type(a)} vs {type(b)}")
+
         if isinstance(a, zarr.Group) and isinstance(b, zarr.Group):
             _compare_zarrs(errors, a, b, *path, key)
             continue
