@@ -25,4 +25,4 @@ statistics:
   allow_nans: True
 
 checks:
-  none: {}
+   compare_to_reference: {}

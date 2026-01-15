@@ -100,7 +100,7 @@ class Accumulator:
         """Check whether the accumulation is complete (all intervals have been processed)"""
         return not self.todo
 
-    def compute(self, field: Any, values: NDArray, interval: SignedInterval) -> None:
+    def compute(self, values: NDArray, interval: SignedInterval) -> None:
         """Perform accumulation with the values array on this interval and record the operation.
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
@@ -165,9 +165,9 @@ class Accumulator:
         assert not self.locked  # prevent double writing
 
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
-        if np.any(self.values < 0):
+        if self.key.get("param") == "tp" and np.any(self.values < 0):
             LOG.warning(
-                f"Negative values when computing accumutation for {self}): min={np.amin(self.values)} max={np.amax(self.values)}"
+                f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
             )
         write_accumulated_field_with_valid_time(
             template=template,
@@ -419,7 +419,7 @@ def _compute_accumulations(
             acc = accumulators[(date, key)]
 
             # perform accumulation if needed
-            if acc.compute(field, values, field_interval):
+            if acc.compute(values, field_interval):
                 # .compute() returned True, meaning the field was used for accumulation
                 field_used = True
                 logs[-1][3].append(date)
