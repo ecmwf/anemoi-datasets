@@ -58,7 +58,6 @@ class FieldToInterval:
         valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
         assert valid_date == interval.max, (valid_date, interval)
 
-        print(f"    field interval: {interval}")
         return interval
 
     def start_step_is_zero(self, options, startStep, endStep, field=None):

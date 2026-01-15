@@ -30,9 +30,6 @@ from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
-DEBUG = True
-trace = print if DEBUG else lambda *args, **kwargs: None
-
 
 def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
     # TODO:
@@ -123,12 +120,9 @@ class Accumulator:
         def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:
             for i in lst:
                 if i.min == interval.min and i.max == interval.max and i.base == interval.base:
-                    print(f"✅ {interval} == {i}")
                     return i
                 if i.start == interval.start and i.end == interval.end and i.base is None:
-                    print(f"✅ {interval} ~= {i} (baseless)")
                     return i
-                print(f"❌ {interval} != {i}")
             return None
 
         matching = match_interval(interval, self.todo)
@@ -369,7 +363,6 @@ def _compute_accumulations(
             LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
 
     h = hashlib.md5(json.dumps((str(period), source), sort_keys=True).encode()).hexdigest()
-    print(source)
     source_object = context.create_source(source, "data_sources", h)
 
     interval_generator = interval_generator_factory(availability, source_name, source[source_name])
@@ -380,9 +373,9 @@ def _compute_accumulations(
         if not isinstance(d, datetime.datetime):
             raise TypeError("valid_date must be a datetime.datetime instance")
         coverages[d] = interval_generator.covering_intervals(d - period, d)
-        trace(f"  Found covering intervals: for {d - period} to {d}:")
+        LOG.debug(f"  Found covering intervals: for {d - period} to {d}:")
         for c in coverages[d]:
-            trace(f"    {c}")
+            LOG.debug(f"    {c}")
 
     intervals = IntervalsDatesProvider(dates, coverages)
 
@@ -408,8 +401,6 @@ def _compute_accumulations(
         key = {k: v for k, v in key.items() if k not in ["date", "time", "step"]}
         key = tuple(sorted(key.items()))
         log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace="mars").items())
-        print("---")
-        print(f"\033[93m FIELD {field}, key: {key}\033[0m")
 
         field_interval = field_to_interval(field)
 
@@ -418,13 +409,10 @@ def _compute_accumulations(
         if field_interval.end <= field_interval.start:
             logs.raise_error("Invalid field interval with end <= start", field=field, field_interval=field_interval)
 
-        valid_date = field_interval.max
         field_used = False
         for date in dates:
             # build accumulator if it does not exist yet
-            print(f"  \033[94mChecking output date {date}\033[0m (field valid_date={valid_date})")
             if (date, key) not in accumulators:
-                print(f"  ❤️ Creating accumulator for date {date}, key {key}")
                 accumulators[(date, key)] = Accumulator(date, period=period, key=key, coverage=coverages[date])
 
             # find the accumulator for this valid date and key
@@ -436,13 +424,10 @@ def _compute_accumulations(
                 field_used = True
                 logs[-1][3].append(date)
                 logs[-1][4].append(acc.__repr__(verbose=True))
-                print(f"    🆗️ Used for accumulator {acc.__repr__(verbose=True)  }")
 
                 if acc.is_complete():
                     # all intervals for accumulation have been processed, write the accumulated field to output
                     acc.write_to_output(output, template=field)
-                    print("   ✅ Completed : ", acc.__repr__(verbose=True))
-                    print(f"  ✅ Wrote accumulated field for date {date}, key {key}")
 
         if not field_used:
             logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
@@ -466,7 +451,7 @@ def _compute_accumulations(
         if not acc.is_complete():
             raise ValueError(f"Accumulator not complete: {acc.__repr__(verbose=True)}")
 
-    print(f"Created {len(accumulators)} accumulated fields:")
+    LOG.info(f"Created {len(accumulators)} accumulated fields")
 
     if not accumulators:
         raise ValueError("No accumulators were created, cannot produce accumulated datasource")
@@ -475,9 +460,9 @@ def _compute_accumulations(
     ds = earthkit.data.from_source("file", path)
     ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
-    print(f"Created {len(ds)} accumulated fields:")
+    LOG.debug(f"Created {len(ds)} accumulated fields:")
     for i in ds:
-        print("  ", i)
+        LOG.debug("  %s", i)
     return ds
 
 
