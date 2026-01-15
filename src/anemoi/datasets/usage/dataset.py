@@ -232,7 +232,7 @@ class Dataset(ABC, Sized):
             Select = self.usage_factory_load("Select")
 
             reorder = kwargs.pop("reorder")
-            return Select(self, self._reorder_to_columns(reorder), {"reoder": reorder})._subset(**kwargs).mutate()
+            return Select(self, self._reorder_to_columns(reorder), {"reorder": reorder})._subset(**kwargs).mutate()
 
         if "rename" in kwargs:
             Rename = self.usage_factory_load("Rename")
