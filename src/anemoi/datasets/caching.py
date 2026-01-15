@@ -20,7 +20,7 @@ from lru import LRU
 LOG = logging.getLogger(__name__)
 
 
-class _Chunk:
+class _Buffer:
     """Represents a chunk of a Zarr array, providing caching and synchronisation.
 
     Only the first dimension is considered for caching. Other chunking
@@ -212,13 +212,13 @@ class _Chunk:
                 return self._remove(lru, f"Chunk size mismatch after resizing array to {new_array_shape}")
 
 
-class ChunksCache:
+class ReadAheadWriteBehindBuffer:
     """Caches chunks of a Zarr array for efficient access and modification."""
 
     def __init__(
         self,
         array: zarr.Array,
-        chunk_caching: int = 512 * 1024 * 1024,
+        buffer_size: int = 512 * 1024 * 1024,
         max_cached_chunks: int = None,
         read_ahead: bool = False,
         no_reload: bool = False,
@@ -229,7 +229,7 @@ class ChunksCache:
         ----------
         array : zarr.Array
             The Zarr array to cache.
-        chunk_caching : int, optional
+        buffer_size : int, optional
             The cache size in bytes (default is 512 * 1024 * 1024).
         read_ahead : bool, optional
             Whether to enable read-ahead (default is False).
@@ -243,8 +243,8 @@ class ChunksCache:
         chunk_size = self._nrows_in_chunks * size_per_row
 
         if max_cached_chunks is None:
-            chunk_caching = max(chunk_caching, chunk_size)
-            chunks_in_cache = chunk_caching // chunk_size
+            buffer_size = max(buffer_size, chunk_size)
+            chunks_in_cache = buffer_size // chunk_size
         else:
             chunks_in_cache = max_cached_chunks
 
@@ -280,7 +280,7 @@ class ChunksCache:
         self._ensure_chunk_in_cache(chunk_number, from_read_ahead=True)
 
     @staticmethod
-    def _evict_chunk(key: int, chunk: _Chunk) -> None:
+    def _evict_chunk(key: int, chunk: _Buffer) -> None:
         """Callback called when a chunk is evicted from the cache.
 
         Parameters
@@ -340,7 +340,7 @@ class ChunksCache:
         """The maximum chunk index based on the array size."""
         return (self._arr.shape[0] - 1) // self._nrows_in_chunks
 
-    def _ensure_chunk_in_cache(self, chunk_index: int, from_read_ahead: bool = False) -> _Chunk:
+    def _ensure_chunk_in_cache(self, chunk_index: int, from_read_ahead: bool = False) -> _Buffer:
         """Ensure a chunk is present in the cache.
 
         Parameters
@@ -364,7 +364,7 @@ class ChunksCache:
         # Create the chunk outside the lock so we don't block other operations while loading from disk
         # In the unlikely event of multiple threads loading the same chunk, the LRU cache will handle duplicates
         # and the garbage collector will clean up unreferenced chunks
-        chunk = _Chunk(self._arr, chunk_index)
+        chunk = _Buffer(self._arr, chunk_index)
 
         with self._lock:
 
@@ -442,7 +442,7 @@ class ChunksCache:
             case _:
                 raise TypeError(f"Unsupported key type: {type(key)} ({key})")
 
-    def _get_key_chunk(self, key: Any) -> _Chunk:
+    def _get_key_chunk(self, key: Any) -> _Buffer:
 
         match key:
 
@@ -472,7 +472,7 @@ class ChunksCache:
                     return self._ensure_chunk_in_cache(start_chunk)
 
                 # The index spans multiple chunks, use multi-chunk handler
-                return _MultiChunkSpan(self, self._arr.shape[0])
+                return _MultiBufferSpan(self, self._arr.shape[0])
 
             case np.ndarray():
 
@@ -482,7 +482,7 @@ class ChunksCache:
                 if len(unique_chunks) == 1:
                     return self._ensure_chunk_in_cache(int(unique_chunks[0]))
 
-                return _MultiChunkSpan(self, self._arr.shape[0])
+                return _MultiBufferSpan(self, self._arr.shape[0])
 
             case _:
                 raise TypeError(f"Unsupported key type: {type(key)} ({key})")
@@ -533,17 +533,17 @@ class ChunksCache:
 
             self._nrows_in_chunks = self._arr.chunks[0]
 
-    def __enter__(self) -> "ChunksCache":
+    def __enter__(self) -> "ReadAheadWriteBehindBuffer":
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.flush()
 
 
-class _MultiChunkSpan:
-    """Handles multi-chunk slicing for ChunksCache."""
+class _MultiBufferSpan:
+    """Handles multi-chunk slicing for ReadAheadWriteBehindBuffer."""
 
-    def __init__(self, cache: ChunksCache, array_size: int):
+    def __init__(self, cache: ReadAheadWriteBehindBuffer, array_size: int):
         """Initialise a multi-chunk slice handler.
 
         Parameters

@@ -16,6 +16,9 @@ def validate_recipe(config: dict) -> str:
     try:
         Recipe(**config)
     except ValidationError as e:
-        for error in e.errors():
-            print(f"Field '{error['loc'][0]}': {error['msg']}.")
+        try:
+            for error in e.errors():
+                print(f"Field '{error['loc'][0]}': {error['msg']}.")
+        except Exception:
+            pass
         raise

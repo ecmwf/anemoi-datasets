@@ -136,6 +136,11 @@ class Dataset:
         with self.synchronizer:
             self.store.attrs.update(metadata)
 
+    def get_metadata(self, key: str, default: Any = None) -> Any:
+        """Get metadata from the dataset."""
+        with self.synchronizer:
+            return self.store.attrs.get(key, default)
+
     ##################################
     # Progress tracking methods
     ##################################
@@ -206,3 +211,6 @@ class Dataset:
         """Get the dataset frequency."""
         frequency = self.store.attrs.get("frequency")
         return frequency_to_timedelta(frequency) if frequency is not None else None
+
+    def touch(self) -> None:
+        self.update_metadata(latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None))

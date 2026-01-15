@@ -20,8 +20,15 @@ LOG = logging.getLogger(__name__)
 STATISTICS = ("mean", "minimum", "maximum", "stdev")
 
 
-class _CollectorBase:
+class _Base:
     def __init__(self, num_columns: int, column_names: list[str] | None = None) -> None:
+        self._num_columns = num_columns
+        self._column_names = column_names
+
+
+class _CollectorBase(_Base):
+    def __init__(self, num_columns, column_names: list[str] | None = None) -> None:
+        super().__init__(num_columns, column_names)
         self._count = np.zeros(num_columns, dtype=np.int64)
         self._min = np.full(num_columns, np.inf, dtype=np.float64)
         self._max = np.full(num_columns, -np.inf, dtype=np.float64)
@@ -143,6 +150,47 @@ class _TendencyCollector(_CollectorBase):
         pass
 
 
+class _ConstantsCollector(_CollectorBase):
+    def __init__(self, index, num_columns: int, column_names: list[str], name: str) -> None:
+        super().__init__(num_columns, column_names)
+        self._index = index
+        self._name = name
+        self._is_constant = True
+        self._first = None
+        self._nans = None
+
+    def update(self, data: NDArray[np.float64]) -> None:
+
+        if not self._is_constant:
+            # No need to check further
+            return
+
+        data = data[:, self._index]
+
+        if self._first is None:
+            self._first = data[0].copy()
+            self._nans = np.isnan(self._first)
+
+        # print(f"First value for constant check in column {self._name}: {self._first}")
+        # assert False, "Debug stop"
+
+        # Check for standard equality
+        eq = data == self._first
+
+        # Check where both are NaN
+        both_nan = np.isnan(data) & self._nans
+
+        # Combined check: All elements in all rows must satisfy one of the above
+
+        if not np.all(eq | both_nan):
+            LOG.debug(f"Variable {self._name} is not constant.")
+            self._is_constant = False
+
+    @property
+    def is_constant(self) -> bool:
+        return self._is_constant
+
+
 def _all(array: np.array, dates: np.array) -> range:
     return array
 
@@ -182,6 +230,7 @@ class StatisticsCollector:
         self._allow_nans = allow_nans
         self._tendencies = tendencies or {}
         self._tendencies_collectors = {}
+        self._constants_collectors = {}
 
     def collect(self, array: NDArray[np.float64], dates: Any) -> None:
         """Collect statistics from a batch of data.
@@ -209,12 +258,19 @@ class StatisticsCollector:
             # Single collector for all columns
             self._collector = _Collector(num_columns, column_names)
 
+            # Constant collectors
+            for i, name in enumerate(names):
+                self._constants_collectors[name] = _ConstantsCollector(i, num_columns, column_names, name)
+
             # Tendency collectors
             for name, delta in self._tendencies.items():
                 self._tendencies_collectors[name] = _TendencyCollector(num_columns, column_names, name, delta)
 
         # Update all columns at once
         self._collector.update(array)
+
+        for c in self._constants_collectors.values():
+            c.update(array)
 
         # For tendencies, just buffer the data
         for c in self._tendencies_collectors.values():
@@ -248,3 +304,39 @@ class StatisticsCollector:
                 result[f"statistics_tendencies_{name}_{key}"] = tendencies[key]
 
         return result
+
+    def constant_variables(self) -> list[str]:
+        """Get the list of variables that are constant over time.
+
+        Returns
+        -------
+        list[str]
+            List of variable names that are constant.
+        """
+        constants = []
+        for name, collector in self._constants_collectors.items():
+            if collector.is_constant:
+                constants.append(name)
+        return constants
+
+    def add_to_dataset(self, dataset: Any) -> None:
+        """Add collected statistics to the dataset.
+
+        Parameters
+        ----------
+        dataset : Any
+            The dataset object to which statistics will be added.
+        """
+        stats = self.statistics()
+        for name, data in stats.items():
+            assert data.dtype == np.float64, f"Expected float64 {name}, got {data.dtype}"
+            dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)
+
+        constants = self.constant_variables()
+
+        variables_metadata = dataset.get_metadata("variables_metadata", {}).copy()
+        for k in constants:
+            if k in variables_metadata:
+                variables_metadata[k]["constant_in_time"] = True
+
+        dataset.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)

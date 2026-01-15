@@ -142,6 +142,7 @@ class Creator(ABC):
         self.initialise_dataset(dataset)
         # Initialize progress tracking
         dataset.initalise_done_flags(len(self.groups))
+        dataset.touch()
 
     @abstractmethod
     def check_dataset_name(self, path: str) -> None:
@@ -220,6 +221,8 @@ class Creator(ABC):
             # Mark group as done
             dataset.mark_done(i)
 
+            dataset.touch()
+
         dataset.add_provenance(name="provenance_load")
 
     ########################
@@ -230,6 +233,7 @@ class Creator(ABC):
         LOG.info("Finalising dataset.")
         dataset = Dataset(self.path, update=True)
         self.finalise_dataset(dataset)
+        dataset.touch()
 
     @abstractmethod
     def finalise_dataset(self, dataset: Dataset) -> None:
@@ -256,7 +260,7 @@ class Creator(ABC):
         LOG.info(f"Total number of files: {count:,}")
 
         dataset.update_metadata(total_size=size, total_number_of_files=count)
-
+        dataset.touch()
         return
 
         """Compute and update the size and constant fields metadata for the dataset."""
@@ -288,6 +292,7 @@ class Creator(ABC):
         dataset = Dataset(self.path, update=True)
         dataset.remove_group("_build")
         self._cleanup_temporary_directories()
+        dataset.touch()
 
     def _cleanup_temporary_directories(self) -> None:
         """Clean up temporary directories used during dataset creation."""
@@ -317,6 +322,7 @@ class Creator(ABC):
             return
 
         self.compute_and_store_statistics(dataset)
+        dataset.touch()
 
     @abstractmethod
     def compute_and_store_statistics(self, dataset: Dataset) -> None:

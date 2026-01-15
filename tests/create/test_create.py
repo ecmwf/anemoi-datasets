@@ -19,7 +19,8 @@ from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from .utils.compare import compare_anemoi_datasets
+from anemoi.datasets.commands.compare import compare_anemoi_datasets
+
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 
@@ -91,7 +92,7 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
             print(f"tar zcf {base}.tgz {base}")
             print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars-{VERSION}/")
             print()
-            # raise AssertionError(f"Comparison failed {errors}")
+            raise AssertionError(f"Comparison failed {errors}")
 
 
 if __name__ == "__main__":

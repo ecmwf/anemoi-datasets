@@ -112,9 +112,7 @@ class TabularCreator(Creator):
             delete_files=True,
         )
 
-        for name, data in collector.statistics().items():
-            # Ignore date, time, latitude and longitude
-            dataset.add_array(name=name, data=data[4:], dimensions=("variable",))
+        collector.add_to_dataset(dataset)
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
         """Compute and store statistics for the dataset.
