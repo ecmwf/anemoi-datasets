@@ -165,10 +165,12 @@ class Accumulator:
         assert not self.locked  # prevent double writing
 
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
-        if self.key.get("param") == "tp" and np.any(self.values < 0):
-            LOG.warning(
-                f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
-            )
+        for k, v in self.key:
+            if k == "param" and v == "tp":
+                if np.any(self.values < 0):
+                    LOG.warning(
+                        f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
+                    )
         write_accumulated_field_with_valid_time(
             template=template,
             values=self.values,
