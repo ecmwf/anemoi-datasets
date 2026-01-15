@@ -33,31 +33,35 @@ DEBUG = True
 trace = print if DEBUG else lambda *args, **kwargs: None
 
 
+def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
+    # TODO:
+    # for od-oper: need to do this adjustment, should be in mars source itself?
+    # Modifies the request stream based on the time (so, not here).
+    # if request["time"] in (6, 18, 600, 1800):
+    #    request["stream"] = "scda"
+    # else:
+    #    request["stream"] = "oper"
+    r = request.copy()
+    if interval.base is None:
+        # for some sources, we may not have a base time (grib-index)
+        step = int((interval.end - interval.start).total_seconds() / 3600)
+        r["step"] = step
+        return interval.max, request, step
+    else:
+        step = int((interval.max - interval.base).total_seconds() / 3600)
+        r["date"] = interval.base.strftime("%Y%m%d")
+        r["time"] = interval.base.strftime("%H%M")
+        r["step"] = step
+        return interval.max, r, step
+
+
 class IntervalsDatesProvider:
     def __init__(self, dates, coverages):
         self._dates = dates
         self.date_to_intervals = coverages
 
     def _adjust_request_to_interval(self, interval: Any, request: list[dict]) -> tuple[Any]:
-        # TODO:
-        # for od-oper: need to do this adjustment, should be in mars source itself?
-        # Modifies the request stream based on the time (so, not here).
-        # if request["time"] in (6, 18, 600, 1800):
-        #    request["stream"] = "scda"
-        # else:
-        #    request["stream"] = "oper"
-        r = request.copy()
-        if interval.base is None:
-            # for some sources, we may not have a base time (grib-index)
-            step = int((interval.end - interval.start).total_seconds() / 3600)
-            r["step"] = step
-            return interval.max, request, step
-        else:
-            step = int((interval.max - interval.base).total_seconds() / 3600)
-            r["date"] = interval.base.strftime("%Y%m%d")
-            r["time"] = interval.base.strftime("%H%M")
-            r["step"] = step
-            return interval.max, r, step
+        return _adjust_request_to_interval(interval, request)
 
     @property
     def intervals(self):
@@ -239,7 +243,56 @@ def write_accumulated_field_with_valid_time(
         )
 
 
-def field_to_interval(field):
+class Patcher:
+    def __init__(self, patches: dict):
+        self.patches = patches
+
+    def set_start_step_to_zero_if_equal_to_end_step(self, startStep, endStep):
+        if self.patches.get("set_start_step_to_zero_if_equal_to_end_step"):
+
+            if startStep == endStep:
+                startStep = 0
+                assert endStep > 0, "If startStep == endStep, endStep must be > 0"
+
+        return startStep, endStep
+
+    def swap_start_end_steps_if_needed(self, startStep, endStep):
+        if self.patches.get("swap_start_end_steps_if_needed"):
+
+            if startStep > endStep:
+                startStep, endStep = endStep, startStep
+
+        return startStep, endStep
+
+    def set_start_step_from_end_step_ceiled_to_24_hours(self, startStep, endStep):
+        if self.patches.get("set_start_step_from_end_step_ceiled_to_24_hours"):
+            # because the data wrongly encode start_step, but end_step is correct
+            # and we know that accumulations are always in multiples of 24 hours
+            assert startStep == endStep, "This patch can only be applied when startStep == endStep"
+            # 1-1 -> 0-1
+            # 2-2 -> 0-2
+            # ...
+            # 24-24 -> 0-24
+            # 25-25 -> 24-25
+            # 26-26 -> 24-26
+            # ...
+            # 48-48 -> 24-48
+            if endStep % 24 == 0:
+                # Special case: endStep is exactly 24, 48, 72, etc.
+                # Map to previous 24-hour boundary (24 -> 0, 48 -> 24, etc.)
+                startStep = endStep - 24
+            else:
+                # General case: floor to the nearest 24-hour boundary
+                # (1-23 -> 0, 25-47 -> 24, etc.)
+                startStep = endStep - (endStep % 24)
+
+            assert startStep >= 0, "After patching, startStep must be >= 0"
+            assert startStep < endStep, "After patching, startStep must be < endStep"
+
+        return startStep, endStep
+
+
+def field_to_interval(field, patcher: Patcher) -> SignedInterval:
     date_str = str(field.metadata("date")).zfill(8)
     time_str = str(field.metadata("time")).zfill(4)
     base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
@@ -248,13 +301,12 @@ def field_to_interval(field):
     startStep = field.metadata("startStep")
     typeStep = field.metadata("stepType")
 
-    # if endStep == 0 and startStep > 0:
-    #   startStep, endStep = endStep, startStep
+    if typeStep == "instant":
+        LOG.debug("Field has stepType 'instant'")
 
-    if startStep == endStep:
-        startStep = 0
-        assert typeStep == "instant", "If startStep == endStep, stepType must be 'instant'"
-    assert startStep < endStep, (startStep, endStep)
+    startStep, endStep = patcher.swap_start_end_steps_if_needed(startStep, endStep)
+    startStep, endStep = patcher.set_start_step_to_zero_if_equal_to_end_step(startStep, endStep)
+    startStep, endStep = patcher.set_start_step_from_end_step_ceiled_to_24_hours(startStep, endStep)
 
     start_step = datetime.timedelta(hours=startStep)
     end_step = datetime.timedelta(hours=endStep)
@@ -277,12 +329,84 @@ def field_to_interval(field):
     return interval
 
 
+class Logs(list):
+    def __init__(self, *args, accumulators=None, source, source_object, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.accumulators = accumulators
+        self.source = source
+        self.source_object = source_object
+
+    def raise_error(self, msg, field=None, field_interval=None) -> str:
+        INTERVAL_COLOR = "\033[93m"
+        FIELD_COLOR = "\033[92m"
+        KEY_COLOR = "\033[95m"
+        RESET_COLOR = "\033[0m"
+
+        res = [""]
+        res.append(f"❌ {msg}")
+        res.append("💬 Current field:")
+        res.append(f" {FIELD_COLOR}{field}{RESET_COLOR}")
+        res.append(f" {INTERVAL_COLOR}{field_interval}{RESET_COLOR}")
+        if self.accumulators:
+            res.append(f"💬 Existing accumulators ({len(self.accumulators)}) :")
+            for a in self.accumulators.values():
+                res.append(f"  {a.__repr__(verbose=True)}")
+        res.append(f"💬 Received fields ({len(self)}):")
+        for log in self:
+            res.append(f"  {KEY_COLOR}{log[0]}{RESET_COLOR} {INTERVAL_COLOR}{log[2]}{RESET_COLOR}")
+            res.append(f"       {KEY_COLOR}{log[1]}{RESET_COLOR}")
+            for d, acc_repr in zip(log[3], log[4]):
+                res.append(f"   used for date {d}: {acc_repr}")
+
+        LOG.error("\n".join(res))
+        res = ["More details below:"]
+
+        res.append(f"💬 Fields returned to be accumulated ({len(self.source_object)}):")
+        for field in self.source_object:
+            res.append(
+                f"  {field}, startStep={field.metadata('startStep')}, endStep={field.metadata('endStep')} mean={np.nanmean(field.values, axis=0)}"
+            )
+
+        LOG.error("\n".join(res))
+        res = ["Even more details below:"]
+
+        if "mars" in self.source:
+            res.append("💬 Example of code fetching some available fields and inspect them:")
+            res.append("# --------------------------------------------------")
+            code = []
+            code.append("from earthkit.data import from_source")
+            code.append("import numpy as np")
+            code.append('ds = from_source("mars", **{')
+            for k, v in self.source["mars"].items():
+                code.append(f"    {k!r}: {v!r},")
+            code.append(f'    "date": {field.metadata("date")!r},')
+            code.append(f'    "time": {field.metadata("time")!r}, # "ALL"')
+            code.append(f'    "step": "ALL", # {field.metadata("step")!r},')
+            code.append("})")
+            code.append('print(f"Got {len(ds)} fields:")')
+            code.append("prev_m = None")
+            code.append("for field in ds[:50]: # limit to first 50 for brevity")
+            code.append(
+                '    print(f"{field} startStep={field.metadata("startStep")}, endStep={field.metadata("endStep")} mean={np.nanmean(field.values)}")'
+            )
+            res.append("# --------------------------------------------------")
+            code.append("")
+            res += code
+
+            # now execute the code to show actual field values
+            LOG.error("\n".join(res))
+            eval("\n".join(code[1:-1]), {}, {})
+
+        raise ValueError(msg)
+
+
 def _compute_accumulations(
     context: Any,
     dates: list[datetime.datetime],
     period: datetime.timedelta,
     source: dict,
     availability: dict[str, Any] | None = None,
+    patch: dict | None = None,
     **kwargs,
 ) -> Any:
     """Concrete accumulation logic.
@@ -304,6 +428,8 @@ def _compute_accumulations(
         The interval over which to accumulate (user-defined)
     availability: Any, optional
         A description of the available periods in the data source. See documentation.
+    patch: dict | None, optional
+        A description of patches to apply to fields returned by the source to fix metadata issues.
 
     Return
     ------
@@ -312,6 +438,7 @@ def _compute_accumulations(
     """
 
     LOG.debug("💬 source for accumulations: %s", source)
+    patcher = Patcher(patch or {})
 
     # building the source objects
     assert isinstance(source, dict)
@@ -350,6 +477,7 @@ def _compute_accumulations(
     output = new_grib_output(path)
 
     accumulators = {}
+    logs = Logs(accumulators=accumulators, source=source, source_object=source_object(context, intervals))
     for field in source_object(context, intervals):
         # for each field provided by the catalogue, find which accumulators need it and perform accumulation
 
@@ -359,14 +487,18 @@ def _compute_accumulations(
         key = field.metadata(namespace="mars")
         key = {k: v for k, v in key.items() if k not in ["date", "time", "step"]}
         key = tuple(sorted(key.items()))
+        log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace="mars").items())
         print("---")
         print(f"\033[93m FIELD {field}, key: {key}\033[0m")
 
-        field_interval = field_to_interval(field)
-        print(f"    -> interval: {field_interval}")
+        field_interval = field_to_interval(field, patcher)
+
+        logs.append([str(field), log, field_interval, [], []])
+
+        if field_interval.end <= field_interval.start:
+            logs.raise_error("Invalid field interval with end <= start", field=field, field_interval=field_interval)
 
         valid_date = field_interval.max
-
         field_used = False
         for date in dates:
             # build accumulator if it does not exist yet
@@ -382,6 +514,8 @@ def _compute_accumulations(
             if acc.compute(field, values, field_interval):
                 # .compute() returned True, meaning the field was used for accumulation
                 field_used = True
+                logs[-1][3].append(date)
+                logs[-1][4].append(acc.__repr__(verbose=True))
                 print(f"    🆗️ Used for accumulator {acc.__repr__(verbose=True)  }")
 
                 if acc.is_complete():
@@ -391,9 +525,7 @@ def _compute_accumulations(
                     print(f"  ✅ Wrote accumulated field for date {date}, key {key}")
 
         if not field_used:
-            for a in accumulators.values():
-                LOG.error(f"Existing accumulator: {a.__repr__(verbose=True)}")
-            raise ValueError(f"Field {field} with {field_interval=} was provided by the source but not used")
+            logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
 
     # Final checks
     def check_missing_accumulators():
@@ -437,7 +569,7 @@ class AccumulateSource(LegacySource):
         context: Any,
         dates: list[datetime.datetime],
         source: Any,
-        period: str | int,
+        period: str | int | datetime.timedelta,
         availability=None,
         patch: Any = None,
         **kwargs,
@@ -457,10 +589,8 @@ class AccumulateSource(LegacySource):
             The interval over which to accumulate (user-defined)
         availability: Any, optional
             A description of the available periods in the data source. See documentation.
-        skip_checks: Any, optional
-            Lots of metadata is checked during accumulations. This will prevent computing accumulation when
-            the source is providing data with missing of wrong metadata. Some checks can be skipped
-            to allow dataset creation despite inconsistent metadata.
+        patch: Any, optional
+            A description of patches to apply to fields returned by the source to fix metadata issues.
 
         Return
         ------
@@ -470,18 +600,9 @@ class AccumulateSource(LegacySource):
         if "skip_checks" in kwargs:
             raise ValueError("skip_checks is not supported anymore, use patch instead (not implemented).")
 
-        if patch is not None:
-            # patch will patch the fields returned by the source to fix metadata issues
-            # such as missing base time, wrong stepType, or startStep/endStep swapped, or startStep=endStep.
-            # this is not implemented yet but is required to handle some well-known cases.
-            # The user should provide a patch description as a dictionary (API to be defined).
-            raise NotImplementedError("patch is not implemented yet for accumulate source.")
-            # patch will patch the fields returned by the source to fix metadata issues
-            # such as missing base time, wrong stepType, or startStep/endStep swapped, or startStep=endStep.
-            # this is not implemented yet but is required to handle some well-known cases.
-            # The user should provide a patch to apply
-
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
-        return _compute_accumulations(context, dates, source=source, period=period, availability=availability, **kwargs)
+        return _compute_accumulations(
+            context, dates, source=source, period=period, availability=availability, patch=patch, **kwargs
+        )

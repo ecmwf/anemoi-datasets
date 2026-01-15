@@ -21,7 +21,9 @@ input:
       #     for end in range(start + 1, start + 25):
       #         steps.append(f"{start}-{end}")
       # print("/".join(steps))
-    skip_checks : [start_step] # because the data wrongly encode start_step as 0 even after 24
+    patch:
+      # because the data wrongly encode start_step as 0 even after 24
+      set_start_step_from_end_step_ceiled_to_24_hours: True
 
     source:
       mars:
