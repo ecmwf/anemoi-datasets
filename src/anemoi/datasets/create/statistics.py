@@ -149,8 +149,8 @@ class _TendencyCollector(_CollectorBase):
 
 
 class _ConstantsCollector(_Base):
-    def __init__(self, index, num_columns: int, column_names: list[str], name: str) -> None:
-        super().__init__(num_columns, column_names)
+    def __init__(self, index, column_names: list[str], name: str) -> None:
+        super().__init__(column_names)
         self._index = index
         self._name = name
         self._is_constant = True
@@ -258,7 +258,7 @@ class StatisticsCollector:
 
             # Constant collectors
             for i, name in enumerate(names):
-                self._constants_collectors[name] = _ConstantsCollector(i, num_columns, column_names, name)
+                self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
 
             # Tendency collectors
             for name, delta in self._tendencies.items():
