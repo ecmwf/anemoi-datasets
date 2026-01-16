@@ -51,9 +51,9 @@ to be kept and False indicates points to be removed.
    ds = open_dataset(dataset, mask="path/to/mask.npy")
 
 The mask array must have the same total number of grid points and
-dimension as the dataset. Please note that this masking will not be 
-automatically applied to the input data provided during inference. 
-Users must ensure they are applying the mask explicitly, for instance 
+dimension as the dataset. Please note that this masking will not be
+automatically applied to the input data provided during inference.
+Users must ensure they are applying the mask explicitly, for instance
 via the use of pre-processors.
 
 ******
