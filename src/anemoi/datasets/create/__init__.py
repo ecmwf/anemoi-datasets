@@ -256,8 +256,7 @@ class Dataset:
         resolution: str,
         dates: list[datetime.datetime],
         frequency: datetime.timedelta,
-        raise_exception: bool = True,
-        is_test: bool = False,
+        raise_exception: bool = False,
     ) -> None:
         """Check the name of the dataset.
 
@@ -271,15 +270,13 @@ class Dataset:
             The frequency of the dataset.
         raise_exception : bool, optional
             Whether to raise an exception if the name is invalid.
-        is_test : bool, optional
-            Whether this is a test.
         """
         basename, _ = os.path.splitext(os.path.basename(self.path))
         try:
             DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
         except Exception as e:
-            if raise_exception and not is_test:
-                raise e
+            if raise_exception:
+                raise
             else:
                 LOG.warning(f"Dataset name error: {e}")
 
@@ -577,7 +574,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         use_threads: bool = False,
         statistics_temp_dir: str | None = None,
         progress: Any = None,
-        test: bool = False,
         cache: str | None = None,
         **kwargs: Any,
     ):
@@ -599,8 +595,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             The directory for temporary statistics.
         progress : Any, optional
             The progress indicator.
-        test : bool, optional
-            Whether this is a test.
         cache : Optional[str], optional
             The cache directory.
         """
@@ -613,9 +607,8 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
         self.progress = progress
-        self.test = test
 
-        self.main_config = loader_config(config, is_test=test)
+        self.main_config = loader_config(config)
 
         # self.registry.delete() ??
         self.tmp_statistics.delete()
@@ -748,7 +741,6 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         self.dataset.check_name(
             raise_exception=self.check_name,
-            is_test=self.test,
             resolution=resolution,
             dates=dates,
             frequency=frequency,

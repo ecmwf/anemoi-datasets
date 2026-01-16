@@ -1,0 +1,30 @@
+dates:
+  frequency: 6h
+  start: 2021-01-10 18:00:00
+  end: 2021-01-12 12:00:00
+
+# https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&expver=1&month=aug&year=2020&type=fc&class=ea
+
+input:
+  accumulate:
+    period: 6h
+
+    availability:
+        type: accumulated-from-previous-step
+        basetime: [6, 18]
+        frequency: 3
+        last_step: 18
+
+    source:
+      mars:
+        number: 0
+        expver: "0001"
+        class: ea
+        type: fc
+        stream: enda
+        grid: 20./20.
+        levtype: sfc
+        param: [ tp, cp ]
+
+checks:
+  none: {}

@@ -19,7 +19,7 @@ The following `sources` are currently available:
 .. toctree::
    :maxdepth: 1
 
-   sources/accumulations
+   sources/accumulate
    sources/anemoi-dataset
    sources/cds
    sources/eccc-fstd
