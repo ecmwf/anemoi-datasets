@@ -149,7 +149,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                 {
                     "accumulate": {
                         "period": 3,  # requesting 3 hour accumulation
-                        "available": "1h",  # available data is accumulated every 1 hour
+                        "availability": "1h",  # available data is accumulated every 1 hour
                         "source": {
                             "grib-index": {
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
