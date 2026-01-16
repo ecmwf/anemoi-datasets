@@ -477,9 +477,8 @@ class AccumulateSource(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period: str | int | datetime.timedelta,
-        availability=None,
+        availability,
         patch: Any = None,
-        **kwargs,
     ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
@@ -504,12 +503,9 @@ class AccumulateSource(LegacySource):
         The accumulated data source.
 
         """
-        if "skip_checks" in kwargs:
-            raise ValueError("skip_checks is not supported anymore, use patch instead (not implemented).")
-
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
         period = frequency_to_timedelta(period)
         return _compute_accumulations(
-            context, dates, source=source, period=period, availability=availability, patch=patch, **kwargs
+            context, dates, source=source, period=period, availability=availability, patch=patch
         )
