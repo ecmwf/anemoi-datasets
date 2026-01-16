@@ -13,7 +13,7 @@ input:
      source:
       mars:
        expver: isc8
-       grid: o96
+       grid: 20./20.
        levtype: sfc
        time: 0
        type: fc
