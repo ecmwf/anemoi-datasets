@@ -35,6 +35,7 @@ The ``accumulate`` source requires the following parameters:
   the data source. This allows the package to determine which intervals to use
   for reconstructing the requested accumulation period (see below).
 - **patch** (optional): Patches to apply to fields returned by the source to fix metadata issues.
+  Default patching is to set ``startStep`` to ``0`` when ``startStep==endStep``.
 
   .. warning::
 

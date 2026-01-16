@@ -350,7 +350,7 @@ def _compute_accumulations(
     """
 
     LOG.debug("💬 source for accumulations: %s", source)
-    field_to_interval = FieldToInterval(patch or [])
+    field_to_interval = FieldToInterval(patch)
 
     # building the source objects
     assert isinstance(source, dict)
