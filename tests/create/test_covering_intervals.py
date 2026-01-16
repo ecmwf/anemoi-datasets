@@ -275,13 +275,15 @@ class _Tester:
 
 @pytest.mark.parametrize("test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES])
 def test_era(test):
-    tester = _Tester(interval_generator_factory("ea-oper"))
+    tester = _Tester(
+        interval_generator_factory({"mars": {"class": "ea", "stream": "oper", "some_additional_key_to_be_ignored": 1}})
+    )
     tester.test(test[0], test[1])
 
 
 @pytest.mark.parametrize("test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES])
 def test_enda(test):
-    tester = _Tester(interval_generator_factory("ea-enda"))
+    tester = _Tester(interval_generator_factory({"mars": {"class": "ea", "stream": "enda"}}))
     tester.test(test[0], test[1])
 
 
@@ -302,7 +304,7 @@ def test_grib_index_no_basetime(test):
 
 @pytest.mark.parametrize("test", RR_OPER_TEST_CASE, ids=[str(t[0]) for t in RR_OPER_TEST_CASE])
 def test_rr_oper(test):
-    tester = _Tester(interval_generator_factory("se-al-ec"))
+    tester = _Tester(interval_generator_factory({"mars": {"class": "rr", "stream": "oper", "origin": "se-al-ec"}}))
     tester.test(test[0], test[1])
 
 

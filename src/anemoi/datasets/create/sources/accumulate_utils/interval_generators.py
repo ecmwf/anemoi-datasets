@@ -184,6 +184,73 @@ class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
         super().__init__(config)
 
 
+def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | None = None) -> list | tuple:
+    """Match MARS configuration (class, stream, origin) to interval generator config.
+
+    Parameters
+    ----------
+    _class
+        MARS class (e.g., 'ea', 'od', 'rr', 'l5').
+    _stream
+        MARS stream (e.g., 'oper', 'enda', 'elda', 'enfo'). Defaults to 'oper'.
+    _origin
+        MARS origin (e.g., 'se-al-ec', 'fr-ms-ec'). Defaults to None.
+
+    Returns
+    -------
+    list | tuple
+        Interval generator configuration.
+
+    Raises
+    ------
+    NotImplementedError
+        If the combination is not yet implemented.
+    ValueError
+        If the combination is unknown.
+    """
+    _stream = _stream or "oper"
+
+    match (_class, _stream, _origin):
+        case ("ea", "oper", _):
+            return [
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+            ]
+        case ("ea", "enda", _):
+            return [
+                (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
+                (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
+            ]
+
+        case ("od", "oper", _):
+            # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
+            steps = [f"{0}-{i}" for i in range(1, 91)]
+            return ((0, steps), (12, steps))
+        case ("od", "elda", _):
+            # https://apps.ecmwf.int/mars-catalogue/?stream=elda&levtype=sfc&time=06%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-31&type=fc&class=od
+            # (6,  "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12"),
+            # (18, "0-1/0-2/0-3/0-4/0-5/0-6/0-7/0-8/0-9/0-10/0-11/0-12")
+            steps = [f"{0}-{i}" for i in range(1, 13)]
+            return ((6, steps), (18, steps))
+        case ("od", "enfo", _):
+            # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
+            raise NotImplementedError("od-enfo interval generator not implemented yet")
+
+        case ("rr", _, "se-al-ec"):
+            # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
+            return [[0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]]
+        case ("rr", _, "fr-ms-ec"):
+            # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
+            return [[0, [(0, i) for i in range(1, 22, 3)]]]
+
+        case ("l5", "oper", _):
+            # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
+            return [[0, [(int(i), int(i) + 1) for i in range(0, 24)]]]
+
+        case _:
+            raise ValueError(f"Unknown MARS configuration: class={_class}, stream={_stream}, origin={_origin}")
+
+
 def _interval_generator_factory(
     config, source_name: str | None = None, source: dict | None = None
 ) -> IntervalGenerator | list | dict:
@@ -204,6 +271,13 @@ def _interval_generator_factory(
         case {"type": _, **params}:
             raise NotImplementedError(f"Unknown availability config {config}")
 
+        case {"mars": mars_config}:
+            _class = mars_config.get("class")
+            _stream = mars_config.get("stream")
+            _origin = mars_config.get("origin")
+            assert _class is not None, "mars config must have a 'class' key"
+            return _match_mars_config(_class, _stream, _origin)
+
         case dict() | list() | tuple():
             return SearchableIntervalGenerator(config)
 
@@ -223,46 +297,7 @@ def _interval_generator_factory(
                     f"stream and/or origin will be set as defaults.",
                 )
 
-            _stream = "oper" if _stream is None else _stream
-            _origin = "" if _origin is None else _origin
-            matcher = "-".join(filter(None, [_class, _stream, _origin]))
-            return matcher
-
-        case "ea-oper" | "ea":
-            return [
-                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
-                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
-            ]
-        case "ea-enda":
-            return [
-                (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
-                (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
-            ]
-
-        case "od-oper" | "od":
-            # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
-            steps = [f"{0}-{i}" for i in range(1, 91)]
-            return ((0, steps), (12, steps))
-
-        case "od-elda":
-            # https://apps.ecmwf.int/mars-catalogue/?stream=elda&levtype=sfc&time=06%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-31&type=fc&class=od
-            steps = [f"{0}-{i}" for i in range(1, 13)]
-            return ((6, steps), (18, steps))
-
-        case "od-enfo":
-            # https://apps.ecmwf.int/mars-catalogue/?class=od&stream=enfo&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-31&time=06:00:00
-            raise NotImplementedError("od-enfo interval generator not implemented yet")
-
-        case "se-al-ec" | "rr-oper" | "rr" | "rr-oper-se-al-ec":
-            # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
-            return [[0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]]
-        case "fr-ms-ec" | "rr-oper" | "rr" | "rr-oper-fr-ms-ec":
-            # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
-            return [[0, [(0, i) for i in range(1, 22, 3)]]]
-
-        case "l5-oper" | "l5":
-            # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
-            return [[0, [(int(i), int(i) + 1) for i in range(0, 24)]]]
+            return {"mars": {"class": _class, "stream": _stream, "origin": _origin}}
 
         case str():
             try:

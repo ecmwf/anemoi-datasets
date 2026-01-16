@@ -21,6 +21,11 @@ from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
+# This module implements an algorithm to cover a target time interval with a sequence of signed intervals
+# (which can be positive or negative in length)
+# It is general purpose but is mainly designed to support accumulation over variable periods,
+# e.g. to cover a 6h accumulation with available intervals of +/-3h,
+
 
 class SignedInterval:
     def __init__(self, start: datetime, end: datetime, base: Optional[datetime] = None):
