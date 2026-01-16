@@ -27,7 +27,7 @@ input:
         type: an
 
     - accumulate:
-        period: 6h
+        period: 6
         availability: "auto"
         source:
           mars:

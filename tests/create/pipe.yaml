@@ -30,7 +30,7 @@ input:
             level: [50]
 
     - accumulate:
-        period: 6h
+        period: 6
         availability: "auto"
         source:
           mars:
