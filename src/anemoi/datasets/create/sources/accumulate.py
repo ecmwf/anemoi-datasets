@@ -477,7 +477,7 @@ class AccumulateSource(LegacySource):
         dates: list[datetime.datetime],
         source: Any,
         period: str | int | datetime.timedelta,
-        availability,
+        availability=None,
         patch: Any = None,
     ) -> Any:
         """Accumulation source callable function.
@@ -503,8 +503,14 @@ class AccumulateSource(LegacySource):
         The accumulated data source.
 
         """
+        if availability is None:
+            raise ValueError(
+                "Argument 'availability' must be specified for accumulate source. See https://anemoi.readthedocs.io/projects/datasets/en/latest/building/sources/accumulate.html"
+            )
+
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
+
         period = frequency_to_timedelta(period)
         return _compute_accumulations(
             context, dates, source=source, period=period, availability=availability, patch=patch
