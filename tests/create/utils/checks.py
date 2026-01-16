@@ -81,6 +81,11 @@ class CompareToReferenceCheck(_Check):
                 "metadata.total_size",
                 "metadata.history",
                 "metadata.recipe.checks",
+                # remove these when the reference data has been updated
+                "metadata.recipe.input.join.2.accumulate",  # expected to change because we renamed the key
+                "metadata.recipe.input.join.2.accumulations",  # expected to change because we renamed the key
+                "metadata.variables_metadata.tp.period",  # expected to change because the metadata is now better ('0d' instead of 0)
+                "metadata.variables_metadata.cp.period",  # expected to change because the metadata is now better ('0d' instead of 0)
             }
         )
 
