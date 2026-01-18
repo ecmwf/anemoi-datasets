@@ -11,7 +11,6 @@
 import logging
 from typing import Any
 
-import earthkit.data as ekd
 from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
@@ -44,18 +43,6 @@ class GriddedContext(Context):
         self.order_by = recipe.output.order_by
         self.flatten_grid = recipe.output.flatten_grid
         self.remapping = build_remapping(recipe.build.remapping)
-        self.use_grib_paramid = recipe.build.use_grib_paramid
-
-    def empty_result(self) -> Any:
-        """Create an empty result using earthkit.data.
-
-        Returns
-        -------
-        Any
-            An empty data source from earthkit.data.
-        """
-
-        return ekd.from_source("empty")
 
     def create_result(self, argument: Any, data: Any) -> GriddedResult:
         """Create a GriddedResult object for the given argument and data.

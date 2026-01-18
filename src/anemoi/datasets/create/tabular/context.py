@@ -11,18 +11,6 @@ class TabularContext(Context):
     This class extends the base Context to provide logic for tabular datasets.
     """
 
-    def empty_result(self) -> Any:
-        """Create an empty result using pandas DataFrame.
-
-        Returns
-        -------
-        Any
-            An empty pandas DataFrame.
-        """
-        import pandas as pd
-
-        return pd.DataFrame()
-
     def create_result(self, argument: Any, data: Any) -> TabularResult:
         """Create a TabularResult object for the given argument and data.
 

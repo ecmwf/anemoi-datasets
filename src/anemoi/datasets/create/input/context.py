@@ -22,6 +22,7 @@ class Context(ABC):
         self.recipe = recipe
         self.results = {}
         self.cache = {}
+        self.use_grib_paramid = recipe.build.use_grib_paramid
 
     def trace(self, emoji, *message) -> None:
 
@@ -65,7 +66,36 @@ class Context(ABC):
         return action_factory(config, *path)
 
     @abstractmethod
-    def empty_result(self) -> Any: ...
-
-    @abstractmethod
     def create_result(self, data: Any) -> Any: ...
+
+    def join(self, results: list[Any]) -> Any:
+        """Join multiple results into a single result.
+
+        Parameters
+        ----------
+        results : list[Any]
+            The list of results to be joined.
+
+        Returns
+        -------
+        Any
+            The joined result.
+        """
+
+        from functools import reduce
+
+        results = list(results)  # In case it's a generator
+        assert results, "join: No results to join"
+        kind = type(results[0])
+        assert all(isinstance(r, kind) for r in results), f"join: All results must be of the same type {kind}"
+
+        # TODO: quick hack
+        # find a more generic way to do this
+
+        if hasattr(results[0], "to_xarray_earthkit"):
+            return reduce(lambda x, y: x + y, results)
+
+        # Assume it's pandas-like
+        import pandas as pd
+
+        return pd.concat(results, ignore_index=True)

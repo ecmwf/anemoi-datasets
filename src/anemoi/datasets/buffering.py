@@ -220,7 +220,6 @@ class ReadAheadWriteBehindBuffer:
         array: zarr.Array,
         buffer_size: int = 512 * 1024 * 1024,
         max_cached_chunks: int = None,
-        read_ahead: bool = False,
         no_reload: bool = False,
     ):
         """Initialise the chunk cache for a Zarr array.
@@ -253,47 +252,30 @@ class ReadAheadWriteBehindBuffer:
             f"caching {chunks_in_cache} chunks ({chunks_in_cache * chunk_size / 1024 / 1024:.2f} MB)",
         )
 
-        self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_chunk)
+        self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_buffer)
         self._lock = threading.RLock()
+        self.chunks_in_cache = chunks_in_cache
 
-        self._last_read_ahead_chunk = 0
-
-        if read_ahead:
-            self._read_ahead = ThreadPoolExecutor(max_workers=1)
-            self._last_read_ahead_chunk = 0
-            self._read_ahead.submit(self._read_ahead_worker, 0)
-        else:
-            self._read_ahead = None
-
-    def _read_ahead_worker(self, chunk_number: int) -> None:
-        """Worker function for read-ahead, loads the next chunk in the background.
-
-        Parameters
-        ----------
-        chunk_number : int
-            The chunk index to read ahead.
-        """
-        if LOG.isEnabledFor(logging.DEBUG):
-            LOG.debug(f"Read-ahead loading chunk {chunk_number}")
-            if chunk_number > self._max_chunk_index:
-                return
-        self._ensure_chunk_in_cache(chunk_number, from_read_ahead=True)
+    @property
+    def max_cached_chunks(self) -> int:
+        """The maximum number of cached chunks."""
+        return self.chunks_in_cache
 
     @staticmethod
-    def _evict_chunk(key: int, chunk: _Buffer) -> None:
-        """Callback called when a chunk is evicted from the cache.
+    def _evict_buffer(key: int, buffer: _Buffer) -> None:
+        """Callback called when a buffer is evicted from the cache.
 
         Parameters
         ----------
         key : int
-            The chunk index.
-        chunk : _Chunk
-            The chunk to evict.
+            The buffer index.
+        buffer : _Buffer
+            The buffer to evict.
         """
         if LOG.isEnabledFor(logging.DEBUG):
-            LOG.debug(f"Evicting chunk {key} {chunk}")
+            LOG.debug(f"Evicting buffer {key} {buffer}")
 
-        chunk.flush()
+        buffer.flush()
 
     def __setitem__(self, key: Any, value: Any) -> None:
         """Set a value in the cached array.
@@ -330,17 +312,17 @@ class ReadAheadWriteBehindBuffer:
             return chunk[key]
 
     def flush(self) -> None:
-        """Flush all cached chunks to the underlying Zarr array."""
+        """Flush all cached buffers to the underlying Zarr array."""
         with self._lock:
-            for chunk in self._lru_chunks_cache.values():
-                chunk.flush()
+            for buffer in self._lru_chunks_cache.values():
+                buffer.flush()
 
     @property
     def _max_chunk_index(self) -> int:
         """The maximum chunk index based on the array size."""
         return (self._arr.shape[0] - 1) // self._nrows_in_chunks
 
-    def _ensure_chunk_in_cache(self, chunk_index: int, from_read_ahead: bool = False) -> _Buffer:
+    def _ensure_chunk_in_cache(self, chunk_index: int) -> _Buffer:
         """Ensure a chunk is present in the cache.
 
         Parameters
@@ -348,12 +330,9 @@ class ReadAheadWriteBehindBuffer:
         chunk_index : int
             The index of the chunk.
 
-        from_read_ahead : bool, optional
-            Whether this call is from the read-ahead worker (default is False).
-
         Returns
         -------
-        _Chunk
+        _Buffer
             The cached chunk.
         """
         chunk_index = int(chunk_index)  # Ensure chunk_index is an int, in case it was passed as a numpy integer
@@ -382,12 +361,6 @@ class ReadAheadWriteBehindBuffer:
                     f" {sum(chunk.cache.nbytes for chunk in self._lru_chunks_cache.values()) / 1024 / 1024:.2f} MB"
                     f" dirty={sum(chunk.dirty for chunk in self._lru_chunks_cache.values())}",
                 )
-
-            if self._read_ahead is not None and not from_read_ahead:
-                with self._lock:
-                    if chunk_index + 1 > self._last_read_ahead_chunk:
-                        self._last_read_ahead_chunk = chunk_index + 1
-                        self._read_ahead.submit(self._read_ahead_worker, chunk_index + 1)
 
             return self._lru_chunks_cache[chunk_index]
 
@@ -673,3 +646,77 @@ class _MultiBufferSpan:
                 slice(offset, offset + len(indices)),
             )
             offset += len(indices)
+
+
+class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
+    """Caches chunks of a Zarr array for efficient read access with read-ahead."""
+
+    def __init__(self, *args, **kwargs: Any):
+
+        super().__init__(*args, **kwargs, no_reload=True)
+        self._read_ahead = ThreadPoolExecutor(max_workers=1)
+        self._read_ahead.submit(self._read_ahead_worker, slice(0, self.chunks_in_cache, 1))
+
+    def __setitem__(self, key, value):
+        raise RuntimeError("ReadAheadBuffer is read-only")
+
+    def __getitem__(self, key):
+        print("ReadAheadBuffer __getitem__ called with key:", key)
+        key = self._normalise_key(key)
+
+        if isinstance(key, tuple):
+            first_key = key[0]
+        else:
+            first_key = key
+
+        match first_key:
+            case int():
+                chunk_index = first_key // self._nrows_in_chunks
+                self._read_ahead.submit(self._read_ahead_worker, slice(chunk_index + 1, chunk_index + 2, 1))
+
+            case slice():
+                # TODO: optimize for step > 1
+                start, stop, _ = first_key.indices(self._arr.shape[0])
+                start = start // self._nrows_in_chunks
+                stop = (stop - 1) // self._nrows_in_chunks + 1
+                self._read_ahead.submit(self._read_ahead_worker, slice(start, stop, 1))
+            case _:
+                pass
+
+        return super().__getitem__(key)
+
+    def _read_ahead_worker(self, index: slice) -> None:
+        """Worker function for read-ahead, loads the next buffer in the background.
+
+        Parameters
+        ----------
+        index : slice
+            The slice of buffer indices to read ahead.
+        """
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug(f"Read-ahead loading buffer {index}")
+        print("Read-ahead loading chunk index:", index)
+
+        for i in range(index.start, index.stop, index.step):
+            if i > self._max_buffer_index:
+                break
+
+            self._ensure_chunk_in_cache(i)
+
+
+class RandomReadBuffer(ReadAheadWriteBehindBuffer):
+    """Caches buffers of a Zarr array for efficient read access with read-ahead."""
+
+    def __init__(self, *args, **kwargs: Any):
+
+        super().__init__(
+            **kwargs,
+            read_ahead=False,
+        )
+
+    def __setitem__(self, key, value):
+        raise RuntimeError("RandomReadBuffer is read-only")
+
+
+class WriteBehindBuffer(ReadAheadWriteBehindBuffer):
+    pass

@@ -232,7 +232,7 @@ def cutout_mask(
     NDArray[Any]
         Mask array.
     """
-    from scipy.spatial import cKDTree
+    from scipy.spatial import KDTree
 
     # TODO: transform min_distance from lat/lon to xyz
 
@@ -275,13 +275,13 @@ def cutout_mask(
         min_distance = min_distance_km / 6371.0
     else:
         points = {"lam": lam_points, "global": global_points, None: global_points}[min_distance_km]
-        distances, _ = cKDTree(points).query(points, k=2)
+        distances, _ = KDTree(points).query(points, k=2)
         min_distance = np.min(distances[:, 1])
 
         LOG.info(f"cutout_mask using min_distance = {min_distance * 6371.0} km")
 
-    # Use a cKDTree to find the nearest points
-    distances, indices = cKDTree(lam_points).query(global_points, k=neighbours)
+    # Use a KDTree to find the nearest points
+    distances, indices = KDTree(lam_points).query(global_points, k=neighbours)
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])
@@ -390,7 +390,7 @@ def thinning_mask(
     xyx = latlon_to_xyz(lats, lons)
     points = np.array(xyx).transpose()
 
-    # Use a cKDTree to find the nearest points
+    # Use a KDTree to find the nearest points
     _, indices = KDTree(points).query(global_points, k=1)
 
     return np.array([i for i in indices])
@@ -413,13 +413,13 @@ def outline(lats: NDArray[Any], lons: NDArray[Any], neighbours: int = 5) -> list
     List[int]
         Indices of the outline points.
     """
-    from scipy.spatial import cKDTree
+    from scipy.spatial import KDTree
 
     xyx = latlon_to_xyz(lats, lons)
     grid_points = np.array(xyx).transpose()
 
-    # Use a cKDTree to find the nearest points
-    _, indices = cKDTree(grid_points).query(grid_points, k=neighbours)
+    # Use a KDTree to find the nearest points
+    _, indices = KDTree(grid_points).query(grid_points, k=neighbours)
 
     # Centre of the Earth
     zero = np.array([0.0, 0.0, 0.0])
@@ -477,7 +477,7 @@ def nearest_grid_points(
     """
     # TODO: Use the one from anemoi.utils.grids instead
     # from anemoi.utils.grids import ...
-    from scipy.spatial import cKDTree
+    from scipy.spatial import KDTree
 
     source_xyz = latlon_to_xyz(source_latitudes, source_longitudes)
     source_points = np.array(source_xyz).transpose()
@@ -485,7 +485,7 @@ def nearest_grid_points(
     target_xyz = latlon_to_xyz(target_latitudes, target_longitudes)
     target_points = np.array(target_xyz).transpose()
     if max_distance is None:
-        distances, indices = cKDTree(source_points).query(target_points, k=k)
+        distances, indices = KDTree(source_points).query(target_points, k=k)
     else:
-        distances, indices = cKDTree(source_points).query(target_points, k=k, distance_upper_bound=max_distance)
+        distances, indices = KDTree(source_points).query(target_points, k=k, distance_upper_bound=max_distance)
     return distances, indices

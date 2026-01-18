@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
@@ -432,7 +432,7 @@ class Cutout(GridsBase):
             True if any points overlap within the distance threshold, otherwise False.
         """
         # Create KDTree for the first set of points
-        tree = cKDTree(np.vstack((lats1, lons1)).T)
+        tree = KDTree(np.vstack((lats1, lons1)).T)
 
         # Query the second set of points against the first tree
         distances, _ = tree.query(np.vstack((lats2, lons2)).T, k=1)

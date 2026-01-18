@@ -16,7 +16,8 @@ import numpy as np
 import zarr
 from lru import LRU
 
-from ..buffering import ReadAheadWriteBehindBuffer
+from ..buffering import RandomReadBuffer
+from ..buffering import WriteBehindBuffer
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
@@ -154,7 +155,10 @@ class ZarrBTree:
             self.pages.attrs["max_entries"] = self.max_entries
             self.pages.attrs["chunk_sizes"] = chunk_sizes
 
-        self.pages = ReadAheadWriteBehindBuffer(self.pages)
+        if mode == "r":
+            self.pages = RandomReadBuffer(self.pages, read_ahead=True, write_behind=False)
+        else:
+            self.pages = WriteBehindBuffer(self.pages)
         self._number_of_rows = None
         self._page_cache = LRU(page_cache_size)
 
@@ -187,7 +191,7 @@ class ZarrBTree:
         if not (row >= 0 and row < self.pages.shape[0]):
             raise ValueError(f"Page {page_id} not found")
 
-        data = self.pages[int(row), :]  # Cast to int for ReadAheadWriteBehindBuffer
+        data = self.pages[int(row), :]
 
         is_node = data[0]
         count = data[1]

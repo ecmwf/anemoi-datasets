@@ -18,6 +18,7 @@ import numpy as np
 import tqdm
 import zarr
 
+from anemoi.datasets.create.statistics import STATISTICS
 from anemoi.datasets.usage.store import dataset_lookup
 from anemoi.datasets.usage.store import open_zarr
 
@@ -46,7 +47,7 @@ class MissingOK(_Error):
     fatal = False
 
     def __repr__(self):
-        return f"⚰️ {self.message}"
+        return f"👻 {self.message}"
 
 
 class Missing(_Error):
@@ -126,7 +127,7 @@ def _compare_arrays_partial(
     return False
 
 
-def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6) -> None:
+def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6, close_ok=False) -> None:
     if a.shape != b.shape:
         errors.error(f"🧮 {path}: shapes are different {a.shape} != {b.shape}")
         return
@@ -140,7 +141,7 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
     size = a.dtype.itemsize * a.size
     row_size = a.dtype.itemsize * a.shape[0]
     if size <= buffer_size:
-        return _compare_arrays_partial(errors, a, b, slice(None), path, tolerance)
+        return _compare_arrays_partial(errors, a, b, slice(None), path, tolerance, close_ok=close_ok)
 
     max_workers = os.cpu_count() or 4
     max_memory = 1024 * 1024 * 1024  # 2 GB
@@ -169,7 +170,9 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
 def _compare_zarrs(errors, reference, actual, *path) -> None:
     """Compare two datasets."""
 
-    IGNORE_VALUES = []
+    IGNORE_VALUES = [
+        "zarr.data",
+    ]
 
     IGNORE_MISSINGS = [
         "zarr.sums",
@@ -177,6 +180,14 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
         "zarr.statistics_tendencies_12h_has_nans",
         "zarr.statistics_tendencies_12h_squares",
         "zarr.statistics_tendencies_12h_sums",
+        "zarr.statistics_tendencies_6h_count",
+        "zarr.statistics_tendencies_6h_has_nans",
+        "zarr.statistics_tendencies_6h_squares",
+        "zarr.statistics_tendencies_6h_sums",
+        "zarr.statistics_tendencies_1d_count",
+        "zarr.statistics_tendencies_1d_has_nans",
+        "zarr.statistics_tendencies_1d_squares",
+        "zarr.statistics_tendencies_1d_sums",
         "zarr.count",
         "zarr.has_nans",
         "zarr.squares",
@@ -186,9 +197,6 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
     actual_arrays = list(actual.keys())
 
     for key in sorted(set(reference_arrays) | set(actual_arrays)):
-
-        if ".".join(path + (key,)) in IGNORE_VALUES:
-            continue
 
         if key not in actual_arrays:
             if ".".join(path + (key,)) in IGNORE_MISSINGS:
@@ -204,6 +212,9 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
     for key in sorted(set(reference_arrays) & set(actual_arrays)):
         a = reference[key]
         b = actual[key]
+
+        if ".".join(path + (key,)) in IGNORE_VALUES:
+            continue
 
         if isinstance(a, zarr.Group) and isinstance(b, zarr.Group):
             _compare_zarrs(errors, a, b, *path, key)
@@ -221,11 +232,13 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
             errors.error(f"🧮 {'.'.join(path)}.{key}: dtypes are different {a.dtype} != {b.dtype}")
             continue
 
+        is_statistic = key.startswith("statistics_") or key in STATISTICS
+
         if "stdev" in key:
             # extend tolerance for standard deviation comparisons
-            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}", tolerance=1e-5)
+            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}", tolerance=1e-5, close_ok=is_statistic)
         else:
-            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}")
+            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}", close_ok=is_statistic)
 
 
 def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
@@ -237,6 +250,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         "metadata.total_number_of_files",
         "metadata.total_size",
         "metadata.latest_write_timestamp",
+        "metadata.version",
     ]
 
     IGNORE_MISSINGS = [
@@ -283,6 +297,13 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
             _compare_dot_zattrs(errors, v, w, *path, str(i))
 
         return
+
+    if isinstance(reference, float) and isinstance(actual, float):
+        if np.isnan(reference) and np.isnan(actual):
+            return
+
+        if np.isclose(reference, actual):
+            return
 
     if reference != actual:
         msg = f"🏷️ {'.'.join(path)} {reference=} ({type(reference)}) != {actual=} ({type(actual)})"

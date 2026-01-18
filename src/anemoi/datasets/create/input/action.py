@@ -88,13 +88,15 @@ class Concat(Action):
 
     def __call__(self, context, argument):
 
-        results = context.empty_result()
+        results = []
 
         for filtering_dates, action in self.choices:
             dates = context.matching_dates(filtering_dates, argument)
             if len(dates) == 0:
                 continue
-            results += action(context, dates)
+            results.append(action(context, dates))
+
+        results = context.join(results)
 
         return context.register(results, self.path)
 
@@ -132,11 +134,7 @@ class Join(Action):
         return f"Join({self.actions})"
 
     def __call__(self, context, argument):
-        results = context.empty_result()
-
-        for action in self.actions:
-            results += action(context, argument)
-
+        results = context.join(action(context, argument) for action in self.actions)
         return context.register(results, self.path)
 
     def dump(self, dumper) -> None:
@@ -170,13 +168,15 @@ class Pipe(Action):
         return f"Pipe({self.actions})"
 
     def __call__(self, context, argument):
-        result = context.empty_result()
+        result = None
 
         for i, action in enumerate(self.actions):
             if i == 0:
                 result = action(context, argument)
             else:
                 result = action(context, result)
+
+        assert result is not None, "Pipe action produced no result"
 
         return context.register(result, self.path)
 

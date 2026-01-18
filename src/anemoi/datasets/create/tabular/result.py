@@ -35,7 +35,7 @@ class TabularResult(Result):
         assert np.issubdtype(frame["longitude"].dtype, np.floating)
         assert np.issubdtype(frame["date"].dtype, np.datetime64)
 
-        self.frame = frame
+        self.frame = frame.reset_index(drop=True)
         start_range, end_range = argument.start_range, argument.end_range
 
         # Filter the DataFrame rows between start_range and end_range (inclusive)

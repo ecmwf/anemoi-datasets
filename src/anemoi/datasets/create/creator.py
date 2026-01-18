@@ -23,7 +23,6 @@ import zarr
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
-from anemoi.datasets import open_dataset
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
@@ -171,6 +170,7 @@ class Creator(ABC):
         # This one will be kept in the finalised dataset metadata
 
         model_dump = json.loads(model_dump)
+        model_dump = self.recipe.only_non_defaults(model_dump)
         recipe = sanitise(model_dump)
 
         # Remove stuff added by prepml
@@ -203,6 +203,8 @@ class Creator(ABC):
         total = dataset.total_todo()
         filter = PartFilter(parts=self.parts, total=total)
 
+        self.init_load(dataset)
+
         for i, group in enumerate(self.groups):
 
             if not filter(i):
@@ -224,6 +226,13 @@ class Creator(ABC):
             dataset.touch()
 
         dataset.add_provenance(name="provenance_load")
+        self.load_done(dataset)
+
+    def init_load(self, dataset: Dataset) -> None:
+        pass
+
+    def load_done(self, dataset: Dataset) -> None:
+        pass
 
     ########################
     # Finalisation
@@ -261,27 +270,6 @@ class Creator(ABC):
 
         dataset.update_metadata(total_size=size, total_number_of_files=count)
         dataset.touch()
-        return
-
-        """Compute and update the size and constant fields metadata for the dataset."""
-        """Run the size computation."""
-        from anemoi.datasets.create.size import compute_directory_sizes
-
-        self.dataset = self.open_writable_dataset(self.path)
-
-        metadata = compute_directory_sizes(self.path)
-        self.update_metadata(**metadata)
-
-        # Look for constant fields
-        ds = open_dataset(self.path)
-        constants = ds.computed_constant_fields()
-
-        variables_metadata = self.dataset.zarr_metadata.get("variables_metadata", {}).copy()
-        for k in constants:
-            if k in variables_metadata:
-                variables_metadata[k]["constant_in_time"] = True
-
-        self.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 
     ########################
     # Cleanup
