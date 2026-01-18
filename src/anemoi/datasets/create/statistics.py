@@ -21,18 +21,17 @@ STATISTICS = ("mean", "minimum", "maximum", "stdev")
 
 
 class _Base:
-    def __init__(self, num_columns: int, column_names: list[str] | None = None) -> None:
-        self._num_columns = num_columns
+    def __init__(self, column_names: list[str] | None = None) -> None:
         self._column_names = column_names
 
 
 class _CollectorBase(_Base):
-    def __init__(self, num_columns, column_names: list[str] | None = None) -> None:
-        super().__init__(num_columns, column_names)
+    def __init__(self, column_names: list[str]) -> None:
+        num_columns = len(column_names)
         self._count = np.zeros(num_columns, dtype=np.int64)
         self._min = np.full(num_columns, np.inf, dtype=np.float64)
         self._max = np.full(num_columns, -np.inf, dtype=np.float64)
-        self._column_names = column_names or [str(i) for i in range(num_columns)]
+        self._column_names = column_names
         self._mean = np.zeros(num_columns, dtype=np.float64)
         self._m2 = np.zeros(num_columns, dtype=np.float64)
 
@@ -124,9 +123,8 @@ class _Collector(_CollectorBase):
 
 
 class _TendencyCollector(_CollectorBase):
-    def __init__(self, num_columns: int, column_names: list[str], name: str, delta: int) -> None:
-        super().__init__(num_columns, column_names)
-        self._name = name
+    def __init__(self, column_names: list[str], delta: int) -> None:
+        super().__init__(column_names)
         self._delta = delta
         # Only keep a sliding window of the last 'delta' rows
         self._window = None
@@ -151,8 +149,8 @@ class _TendencyCollector(_CollectorBase):
 
 
 class _ConstantsCollector(_Base):
-    def __init__(self, index, num_columns: int, column_names: list[str], name: str) -> None:
-        super().__init__(num_columns, column_names)
+    def __init__(self, index, column_names: list[str], name: str) -> None:
+        super().__init__(column_names)
         self._index = index
         self._name = name
         self._is_constant = True
@@ -256,15 +254,15 @@ class StatisticsCollector:
             column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
 
             # Single collector for all columns
-            self._collector = _Collector(num_columns, column_names)
+            self._collector = _Collector(column_names)
 
             # Constant collectors
             for i, name in enumerate(names):
-                self._constants_collectors[name] = _ConstantsCollector(i, num_columns, column_names, name)
+                self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
 
             # Tendency collectors
             for name, delta in self._tendencies.items():
-                self._tendencies_collectors[name] = _TendencyCollector(num_columns, column_names, name, delta)
+                self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
 
         # Update all columns at once
         self._collector.update(array)
