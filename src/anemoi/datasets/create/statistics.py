@@ -422,18 +422,22 @@ class StatisticsCollector:
                 stats.append(stat)
 
         stats = sorted(stats, key=lambda x: x["group"])
-        # offset = 0
-        # for i, stat in enumerate(stats):
-        #     if stat["group"] != i:
-        #         raise ValueError(f"Missing statistics for group {i}")
+        try:
+            offset = 0
+            for i, stat in enumerate(stats):
+                if stat["group"] != i:
+                    raise ValueError(f"Missing statistics for group {i}")
 
-        #     if stat["start"] != offset:
-        #         raise ValueError(f"Statistics for group {i} has start {stat['start']}, expected {offset}")
+                if stat["start"] != offset:
+                    raise ValueError(f"Statistics for group {i} has start {stat['start']}, expected {offset}")
 
-        #     offset = stat["end"]
+                offset = stat["end"]
 
-        # if offset != len(dataset):
-        #     raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset)}")
+            if offset != len(dataset):
+                raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset)}")
+        except ValueError as e:
+            LOG.error(f"Precomputed statistics validation failed: {e}")
+            # raise
 
         collectors = []
 
