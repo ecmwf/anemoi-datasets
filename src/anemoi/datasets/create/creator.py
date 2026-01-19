@@ -205,6 +205,8 @@ class Creator(ABC):
 
         self.init_load(dataset)
 
+        group_added = []
+
         for i, group in enumerate(self.groups):
 
             if not filter(i):
@@ -212,7 +214,9 @@ class Creator(ABC):
                 continue
 
             if dataset.is_done(i):
+                # In case of crash/restart
                 LOG.info(f" -> Skipping {i} total={total} (already done)")
+                group_added.append(i)
                 continue
 
             result = self.input.select(self.context(), argument=group)
@@ -222,10 +226,12 @@ class Creator(ABC):
 
             # Mark group as done
             dataset.mark_done(i)
+            group_added.append(i)
 
             dataset.touch()
 
         dataset.add_provenance(name="provenance_load")
+
         self.load_done(dataset)
 
     def init_load(self, dataset: Dataset) -> None:

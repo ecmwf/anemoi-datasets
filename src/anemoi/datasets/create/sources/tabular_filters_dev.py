@@ -161,7 +161,7 @@ class Crop(Filter):
         return new_fieldlist_from_list(result)
 
 
-@filter_registry.register("tabularise")
+@filter_registry.register("tabularise", aliases=["to_tabular", "tabularize"])
 class Tabularise(Filter):
 
     def __init__(
@@ -227,7 +227,7 @@ class Tabularise(Filter):
         return result
 
 
-@filter_registry.register("griddify")
+@filter_registry.register("griddify", aliases=["to_gridded"])
 class Griddify(Filter):
 
     def __init__(
