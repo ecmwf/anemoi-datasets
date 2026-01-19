@@ -84,18 +84,23 @@ class Context(ABC):
 
         from functools import reduce
 
+        import earthkit.data as ekd
+
         results = list(results)  # In case it's a generator
         assert results, "join: No results to join"
+
         kind = type(results[0])
         assert all(isinstance(r, kind) for r in results), f"join: All results must be of the same type {kind}"
 
-        # TODO: quick hack
-        # find a more generic way to do this
+        # TODO: quick hack, find a more generic way to do this
 
-        if hasattr(results[0], "to_xarray_earthkit"):
+        if isinstance(results[0], ekd.FieldList):
             return reduce(lambda x, y: x + y, results)
 
         # Assume it's pandas-like
         import pandas as pd
 
-        return pd.concat(results, ignore_index=True)
+        if isinstance(results[0], pd.DataFrame):
+            return pd.concat(results, ignore_index=True)
+
+        raise TypeError(f"join: Unsupported result type {kind}")
