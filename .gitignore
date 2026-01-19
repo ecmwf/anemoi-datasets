@@ -149,3 +149,5 @@ prof/
 *.odb
 *.bufr
 *.csv
+*.done
+dev/
