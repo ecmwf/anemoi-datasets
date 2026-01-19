@@ -89,18 +89,15 @@ class Context(ABC):
         results = list(results)  # In case it's a generator
         assert results, "join: No results to join"
 
-        kind = type(results[0])
-        assert all(isinstance(r, kind) for r in results), f"join: All results must be of the same type {kind}"
-
         # TODO: quick hack, find a more generic way to do this
 
-        if isinstance(results[0], ekd.FieldList):
+        if all(isinstance(r, ekd.FieldList) for r in results):
             return reduce(lambda x, y: x + y, results)
 
         # Assume it's pandas-like
         import pandas as pd
 
-        if isinstance(results[0], pd.DataFrame):
+        if all(isinstance(r, pd.DataFrame) for r in results):
             return pd.concat(results, ignore_index=True)
 
-        raise TypeError(f"join: Unsupported result type {kind}")
+        raise TypeError(f"join: Unsupported mix of types {[type(r) for r in results]}")

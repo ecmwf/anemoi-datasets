@@ -9,6 +9,7 @@
 
 
 import logging
+import pickle
 from collections.abc import Callable
 from typing import Any
 
@@ -34,6 +35,16 @@ class _CollectorBase(_Base):
         self._column_names = column_names
         self._mean = np.zeros(num_columns, dtype=np.float64)
         self._m2 = np.zeros(num_columns, dtype=np.float64)
+
+    def serialise(self) -> dict[str, Any]:
+        return {
+            "count": self._count,
+            "min": self._min,
+            "max": self._max,
+            "mean": self._mean,
+            "m2": self._m2,
+            "column_names": self._column_names,
+        }
 
     def update(self, data: NDArray[np.float64]) -> None:
         # data shape: (n_samples, n_columns)
@@ -147,6 +158,11 @@ class _TendencyCollector(_CollectorBase):
     def finalise(self) -> None:
         pass
 
+    def serialise(self) -> dict[str, Any]:
+        save = super().serialise()
+        save["delta"] = self._delta
+        return save
+
 
 class _ConstantsCollector(_Base):
     def __init__(self, index, column_names: list[str], name: str) -> None:
@@ -187,6 +203,9 @@ class _ConstantsCollector(_Base):
     @property
     def is_constant(self) -> bool:
         return self._is_constant
+
+    def serialise(self) -> dict[str, Any]:
+        return {"is_constant": self._is_constant}
 
 
 def _all(array: np.array, dates: np.array) -> range:
@@ -338,3 +357,22 @@ class StatisticsCollector:
                 variables_metadata[k]["constant_in_time"] = True
 
         dataset.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
+
+    def serialise(self, path, group, start, end) -> None:
+        save = {
+            "variables_names": self._variables_names,
+            "allow_nans": self._allow_nans,
+            "tendencies": self._tendencies,
+            "collector": self._collector.serialise(),
+            "tendencies_collectors": {
+                name: collector.serialise() for name, collector in self._tendencies_collectors.items()
+            },
+            "constants_collectors": {
+                name: collector.is_constant for name, collector in self._constants_collectors.items()
+            },
+            "group": group,
+            "start": start,
+            "end": end,
+        }
+        with open(path, "wb") as f:
+            pickle.dump(save, f)

@@ -75,7 +75,7 @@ class Dataset:
 
         if create:
             if os.path.exists(path):
-                if overwrite:
+                if overwrite or True:
                     LOG.warning(f"Overwriting existing dataset at '{path}'.")
                     shutil.rmtree(path)
                 else:
@@ -169,12 +169,33 @@ class Dataset:
 
     ##################################
 
+    def group_to_range(self, group: int) -> tuple[int, int]:
+        """Convert group indices to slice in the data array."""
+
+        with self.synchronizer:
+            lengths = self.store["_build"]["lengths"][:]
+            start = sum(lengths[:group])
+            end = start + lengths[group]
+            return (start, end)
+
+    ##################################
+
     def add_provenance(self, name: str) -> None:
 
         from anemoi.utils.provenance import gather_provenance_info
 
         if name not in self.store.attrs:
             self.store.attrs[name] = gather_provenance_info()
+
+    # For statistics about
+    def initalise_groups_lengths(self, lengths: list[int]) -> None:
+        """Initialize the progress tracking datasets."""
+
+        self.add_array(
+            name="_build/lengths",
+            data=np.array(lengths, dtype=np.int64),
+            dimensions=("group",),
+        )
 
     def initalise_done_flags(self, groups: int) -> None:
         """Initialize the progress tracking datasets."""

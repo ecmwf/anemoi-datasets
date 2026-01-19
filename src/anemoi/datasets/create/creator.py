@@ -139,8 +139,11 @@ class Creator(ABC):
 
         # Initialize the dataset
         self.initialise_dataset(dataset)
+
         # Initialize progress tracking
         dataset.initalise_done_flags(len(self.groups))
+        dataset.initalise_groups_lengths([len(g) for g in self.groups])
+
         dataset.touch()
 
     @abstractmethod
@@ -203,10 +206,6 @@ class Creator(ABC):
         total = dataset.total_todo()
         filter = PartFilter(parts=self.parts, total=total)
 
-        self.init_load(dataset)
-
-        group_added = []
-
         for i, group in enumerate(self.groups):
 
             if not filter(i):
@@ -216,7 +215,7 @@ class Creator(ABC):
             if dataset.is_done(i):
                 # In case of crash/restart
                 LOG.info(f" -> Skipping {i} total={total} (already done)")
-                group_added.append(i)
+                self.load_done(dataset, i)
                 continue
 
             result = self.input.select(self.context(), argument=group)
@@ -224,20 +223,19 @@ class Creator(ABC):
             # There are several groups. There is one result to load for each group.
             self.load_result(result, dataset)
 
+            # Notify sub-class
+            self.load_done(dataset, i)
+
             # Mark group as done
             dataset.mark_done(i)
-            group_added.append(i)
 
+            # Update progress
             dataset.touch()
 
         dataset.add_provenance(name="provenance_load")
 
-        self.load_done(dataset)
-
-    def init_load(self, dataset: Dataset) -> None:
-        pass
-
-    def load_done(self, dataset: Dataset) -> None:
+    def load_done(self, dataset: Dataset, group: int) -> None:
+        # Used by subclasses to perform actions after a group is loaded
         pass
 
     ########################

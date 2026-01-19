@@ -651,11 +651,11 @@ class _MultiBufferSpan:
 class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
     """Caches chunks of a Zarr array for efficient read access with read-ahead."""
 
-    def __init__(self, *args, **kwargs: Any):
+    def __init__(self, array, start=0, *args, **kwargs: Any):
 
-        super().__init__(*args, **kwargs, no_reload=True)
+        super().__init__(array, *args, **kwargs, no_reload=True)
         self._read_ahead = ThreadPoolExecutor(max_workers=1)
-        self._read_ahead.submit(self._read_ahead_worker, slice(0, self.chunks_in_cache, 1))
+        self._read_ahead.submit(self._read_ahead_worker, slice(start, self.chunks_in_cache + start, 1))
 
     def __setitem__(self, key, value):
         raise RuntimeError("ReadAheadBuffer is read-only")

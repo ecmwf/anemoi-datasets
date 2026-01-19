@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 import time
 from typing import Any
 
@@ -42,8 +43,6 @@ class GriddedCreator(Creator):
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
 
-        variables_with_nans = self.recipe.build.allow_nans
-
         metadata["remapping"] = self.recipe.build.remapping
         metadata["order_by"] = self.recipe.output.order_by
         metadata["flatten_grid"] = self.recipe.output.flatten_grid
@@ -71,7 +70,7 @@ class GriddedCreator(Creator):
         metadata["statistics_start_date"] = start
         metadata["statistics_end_date"] = end
 
-        metadata["variables_with_nans"] = variables_with_nans
+        # metadata["variables_with_nans"] = variables_with_nans
         metadata["allow_nans"] = self.recipe.build.allow_nans
 
     def initialise_dataset(self, dataset: Dataset) -> None:
@@ -172,6 +171,28 @@ class GriddedCreator(Creator):
     def check_dataset_name(self, path: str) -> None:
         LOG.warning("BACK: Dataset name checking not yes implemented.")
 
+    def load_done(self, dataset, group):
+        """Compure statistics after loading is done."""
+
+        if self.parts is None:
+            # We will to that only once, at the end of the full dataset load
+            return
+
+        os.makedirs(self.work_dir, exist_ok=True)
+
+        start, end = dataset.group_to_range(group)
+
+        LOG.info(f"Computing statistics for group {group} (dates {start} to {end})")
+
+        collector = self._compute_partial_statistics(dataset, start, end)
+
+        collector.serialise(
+            os.path.join(self.work_dir, f"statistics_{group:06d}-{start:09d}-{end:09d}.pkl"),
+            group=group,
+            start=start,
+            end=end,
+        )
+
     ######################################################
 
     def context(self):
@@ -226,8 +247,8 @@ class GriddedCreator(Creator):
         # Nothing to do here
         pass
 
-    def compute_and_store_statistics(self, dataset: Dataset) -> None:
-        dates = dataset.dates
+    def _tendencies_to_compute(self, dataset: Dataset) -> dict[str, int]:
+        """Return the tendencies to compute for the dataset, based on the recipe configuration."""
         frequency = dataset.frequency
 
         tendencies_config = self.recipe.statistics.tendencies
@@ -250,17 +271,27 @@ class GriddedCreator(Creator):
                     f"{frequency_to_string(frequency)}, skipping."
                 )
 
+        return tendencies
+
+    def _compute_partial_statistics(self, dataset: Dataset, start, end) -> StatisticsCollector:
+        dates = dataset.dates
+
         collector = StatisticsCollector(
             variables_names=self.variables_names,
             filter=self.recipe.statistics.statistics_filter(dates),
-            tendencies=tendencies,
+            tendencies=self._tendencies_to_compute(dataset),
         )
 
-        data = ReadAheadBuffer(dataset.data)
+        data = ReadAheadBuffer(dataset.data, start=start)
         step = data.chunks[0]
 
-        for i in tqdm.tqdm(range(0, data.shape[0], step)):
+        for i in tqdm.tqdm(range(start, end, step)):
             chunk = data[i : min(i + step, data.shape[0])]
             collector.collect(chunk, dates[i : min(i + step, data.shape[0])])
 
+        return collector
+
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        dates = dataset.dates
+        collector = self._compute_partial_statistics(dataset, 0, len(dates))
         collector.add_to_dataset(dataset)
