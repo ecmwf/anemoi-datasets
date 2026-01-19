@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+import tqdm
 from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
@@ -130,7 +131,11 @@ class _CollectorBase(_Base):
 
 
 class _Collector(_CollectorBase):
-    pass
+
+    def adjust_partial_statistics(self, dataset, group, start, end) -> None:
+        """Adjust statistics for a specific group and data range."""
+        # Nothing to do for the main collector
+        pass
 
 
 class _TendencyCollector(_CollectorBase):
@@ -162,6 +167,19 @@ class _TendencyCollector(_CollectorBase):
         save = super().serialise()
         save["delta"] = self._delta
         return save
+
+    def adjust_partial_statistics(self, dataset, group, start, end) -> None:
+        """Adjust statistics for a specific group and data range."""
+        if start < self._delta:
+            # No adjustment needed for the first group
+            return
+
+        # For tendencies, we need to remove the influence of the first 'delta' rows
+        # Get the delta rows from the dataset
+
+        delta_rows = dataset.data[start - self._delta : start]  # noqa: F841
+
+        # TODO: Implement the adjustment logic here
 
 
 class _ConstantsCollector(_Base):
@@ -206,6 +224,11 @@ class _ConstantsCollector(_Base):
 
     def serialise(self) -> dict[str, Any]:
         return {"is_constant": self._is_constant}
+
+    def adjust_partial_statistics(self, dataset, group, start, end) -> None:
+        """Adjust statistics for a specific group and data range."""
+        # Nothing to do for constant collector
+        pass
 
 
 def _all(array: np.array, dates: np.array) -> range:
@@ -358,6 +381,19 @@ class StatisticsCollector:
 
         dataset.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 
+    def adjust_partial_statistics(self, dataset, group, start, end) -> None:
+        """Adjust statistics for a specific group and data range."""
+
+        # Update all columns at once
+        self._collector.adjust_partial_statistics(dataset, group, start, end)
+
+        for c in self._constants_collectors.values():
+            c.adjust_partial_statistics(dataset, group, start, end)
+
+        # For tendencies, just buffer the data
+        for c in self._tendencies_collectors.values():
+            c.adjust_partial_statistics(dataset, group, start, end)
+
     def serialise(self, path, group, start, end) -> None:
         save = {
             "variables_names": self._variables_names,
@@ -376,3 +412,67 @@ class StatisticsCollector:
         }
         with open(path, "wb") as f:
             pickle.dump(save, f)
+
+    @classmethod
+    def load_precomputed(cls, dataset, precomputed, filter):
+        stats = []
+        for item in tqdm.tqdm(precomputed, desc="Loading precomputed statistics"):
+            with open(item, "rb") as f:
+                stat = pickle.load(f)
+                stats.append(stat)
+
+        stats = sorted(stats, key=lambda x: x["group"])
+        # offset = 0
+        # for i, stat in enumerate(stats):
+        #     if stat["group"] != i:
+        #         raise ValueError(f"Missing statistics for group {i}")
+
+        #     if stat["start"] != offset:
+        #         raise ValueError(f"Statistics for group {i} has start {stat['start']}, expected {offset}")
+
+        #     offset = stat["end"]
+
+        # if offset != len(dataset):
+        #     raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset)}")
+
+        collectors = []
+
+        for stat in stats:
+            # TODO: load using proper methods
+            collector = cls(
+                variables_names=stat["variables_names"],
+                allow_nans=stat["allow_nans"],
+                filter=filter,
+                tendencies=stat["tendencies"],
+            )
+            # Load main collector
+            cdata = stat["collector"]
+            collector._collector = _Collector(column_names=cdata["column_names"])
+            collector._collector._count = cdata["count"]
+            collector._collector._min = cdata["min"]
+            collector._collector._max = cdata["max"]
+            collector._collector._mean = cdata["mean"]
+            collector._collector._m2 = cdata["m2"]
+
+            # Load tendency collectors
+            for name, tdata in stat["tendencies_collectors"].items():
+                tcollector = _TendencyCollector(column_names=tdata["column_names"], delta=tdata["delta"])
+                tcollector._count = tdata["count"]
+                tcollector._min = tdata["min"]
+                tcollector._max = tdata["max"]
+                tcollector._mean = tdata["mean"]
+                tcollector._m2 = tdata["m2"]
+                collector._tendencies_collectors[name] = tcollector
+
+            # Load constant collectors
+            for name, is_constant in stat["constants_collectors"].items():
+                ccollector = _ConstantsCollector(0, [], name)
+                ccollector._is_constant = is_constant
+                collector._constants_collectors[name] = ccollector
+
+            collectors.append(collector)
+
+        for stat, collector in tqdm.tqdm(zip(stats, collectors), desc="Adjusting partial statistics", total=len(stats)):
+            collector.adjust_partial_statistics(dataset, stat["group"], stat["start"], stat["end"])
+
+        assert False, "Not implemented"
