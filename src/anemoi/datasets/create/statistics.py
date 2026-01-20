@@ -11,7 +11,6 @@
 import hashlib
 import logging
 import pickle
-import warnings
 from collections.abc import Callable
 from functools import reduce
 from typing import Any
@@ -484,7 +483,6 @@ class StatisticsCollector:
                 raise ValueError(f"Cannot merge StatisticsCollectors with different tendencies settings, {delta=}")
             tendencies_collectors[delta] = self._tendencies_collectors[delta].merge(other._tendencies_collectors[delta])
 
-        warnings.warn("constants collectors todo")
         constants_collectors = {}
         for name in self._constants_collectors.keys() | other._constants_collectors.keys():
             if name not in self._constants_collectors or name not in other._constants_collectors:

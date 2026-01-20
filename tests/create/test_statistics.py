@@ -10,6 +10,7 @@
 import pickle
 import tempfile
 import time
+from copy import deepcopy
 
 import numpy as np
 import pytest
@@ -28,7 +29,7 @@ class Filter:
         return array[mask]
 
 
-def _create_random_stats(N, C, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """Generate random data with known statistics.
 
     Args:
@@ -49,17 +50,23 @@ def _create_random_stats(N, C, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, 
     # Generate raw random data
     data = np.random.randn(N, C)
 
+    # some variables might be constant
+    constants = [np.random.rand() < 0.1 for _ in range(C)]
+    data[:, constants] = target_means[constants]
+
     # Adjust each column to have EXACTLY the target mean and std
     for i in range(C):
         col = data[:, i]
         # Standardize to mean=0, std=1
-        col = (col - col.mean()) / col.std()
+        col = (col - col.mean()) / col.std() if col.std() > 0 else col - col.mean()
         # Scale and shift to targets
         data[:, i] = (col * target_stds[i]) + target_means[i]
 
-    # Introduce NaNs if requested
+    # Introduce NaNs if requested (only in non-constant variables)
     if nan_fraction > 0:
+        constants_without_nan = [np.random.rand() < 0.1 for _ in constants]
         nan_mask = np.random.rand(N, C) < nan_fraction
+        nan_mask[:, constants_without_nan] = False  # Do not introduce NaNs in constant columns
         data[nan_mask] = np.nan
         nan_count = np.sum(nan_mask)
         print(f"Introduced {nan_count} NaN values ({100*nan_count/(N*C):.1f}%)")
@@ -258,7 +265,7 @@ def test_tendencies_single_batch(N=1000, C=3, delta=1):
     print("✓ Tendencies single batch test PASSED")
 
 
-def test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=100):
+def test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=110):
     """Test tendency statistics with multiple batches."""
     data, _ = _create_random_stats(N, C)
 
@@ -334,10 +341,13 @@ def test_tendencies_multiple_deltas(N=500, C=2):
 def test_serialization():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
     c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
+    c_stats = deepcopy(c.statistics())
+    c_constants = deepcopy(c.constant_variables())
     c.collect(data, range(len(data)))
     c2 = pickle.loads(pickle.dumps(c))
 
-    compare_statistics_collectors(c, c2)
+    compare_statistics(c_stats, c2.statistics())
+    compare_constants(c_constants, c2.constant_variables())
 
 
 @pytest.mark.parametrize(
@@ -358,9 +368,12 @@ def test_merge_statistic_with_filter(filter):
     tendencies = {"delta_1": 1, "delta_5": 5}
 
     data, _ = _create_random_stats(1000, 2)
+
     c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
     data = data.copy()
     c0.collect(data, np.arange(len(data)))
+    c0_stats = deepcopy(c0.statistics())
+    c0_constants = deepcopy(c0.constant_variables())
 
     c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
     c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
@@ -379,31 +392,26 @@ def test_merge_statistic_with_filter(filter):
         c2.serialise(path2, group=1, start=len(data1), end=len(data))
         reloaded = StatisticsCollector.load_precomputed(data, [path1, path2], filter=filter)
 
-    compare_statistics_collectors(reloaded, c0)
+    compare_statistics(reloaded.statistics(), c0_stats)
+    compare_constants(reloaded.constant_variables(), c0_constants)
 
 
-def compare_statistics_collectors(actual: StatisticsCollector, expected: StatisticsCollector) -> bool:
-    actual_stats = actual.statistics()
-    expected_stats = expected.statistics()
+def compare_statistics(actual, expected):
     print("\nResults:")
-    for stat_name in expected_stats:
-        exp = expected_stats[stat_name]
-        act = actual_stats[stat_name]
+    for stat_name in expected:
+        exp = expected[stat_name]
+        act = actual[stat_name]
         print(f"{stat_name.capitalize()}:")
         print(f"   Expected: {exp}")
         print(f"   Actual:   {act}")
-        if not np.allclose(act, exp, rtol=1e-10):
-            print("   -> MISMATCH!")
-            return False
+        assert np.allclose(act, exp, rtol=1e-10)
 
-    constant_vars_actual = actual.constant_variables()
-    constant_vars_expected = expected.constant_variables()
+
+def compare_constants(actual, expected):
     print("Constant Variables:")
-    print(f"   Expected: {constant_vars_expected}")
-    print(f"   Actual:   {constant_vars_actual}")
-    assert constant_vars_actual == constant_vars_expected, "Constant variables do not match!"
-
-    return True
+    print(f"   Expected: {expected}")
+    print(f"   Actual:   {actual}")
+    assert actual == expected, "Constant variables do not match!"
 
 
 if __name__ == "__main__":
