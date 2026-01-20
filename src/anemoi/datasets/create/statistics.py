@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import hashlib
 import logging
 import pickle
 import warnings
@@ -303,6 +304,7 @@ class _ConstantsCollector(_Base):
 
     def __getstate__(self):
         state = self.__dict__.copy()
+        state["first_hash"] = hashlib.sha256(self._first.tobytes()).hexdigest() if self._first is not None else None
         state["_first"] = None
         state["_nans"] = None
         return state
