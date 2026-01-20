@@ -285,10 +285,6 @@ class _TendencyCollector(_CollectorBase):
         state["_window"] = None
         return state
 
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._window = None
-
 
 class _ConstantsCollector(_Base):
     def __init__(self, index, column_names: list[str], name: str) -> None:
@@ -298,18 +294,14 @@ class _ConstantsCollector(_Base):
         self._is_constant = True
         self._first = None
         self._nans = None
+        self._hash = None
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state["first_hash"] = hashlib.sha256(self._first.tobytes()).hexdigest() if self._first is not None else None
+        state["_hash"] = hashlib.sha256(self._first.tobytes()).hexdigest() if self._first is not None else None
         state["_first"] = None
         state["_nans"] = None
         return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._first = None
-        self._nans = None
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):

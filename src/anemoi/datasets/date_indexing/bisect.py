@@ -138,7 +138,7 @@ class DateBisect(DateIndexing):
 
         start_entry = DateRange(*self.index[start_idx])
 
-        end_idx = bisect.bisect_left(_Proxy(self.index), end)
+        end_idx = bisect.bisect_right(_Proxy(self.index), end)
         # End edge case: if end is beyond the last entry, adjust end_idx
         if end_idx == len(self.index):
             adjust_end = True
