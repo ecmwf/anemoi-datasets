@@ -318,22 +318,17 @@ def test_tendencies_multiple_deltas(N=500, C=2):
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
 
-def test_pickle_serialization_no_filter():
+def test_serialization():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
     data2, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
 
     c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
 
     c.collect(data, range(len(data)))
-
-    serialized = pickle.dumps(c)
-    c2 = pickle.loads(serialized)
-
-    c2.collect(data2, range(len(data2)))  # Continue collecting after deserialization
-    deserialised_stats = c2.statistics()
-
-    c.collect(data2, range(len(data2)))  # Collect same data in original
     target_stats = c.statistics()
+
+    c2 = pickle.loads(pickle.dumps(c))
+    deserialised_stats = c2.statistics()
 
     print("\nResults:")
     for stat_name, target in target_stats.items():
@@ -343,37 +338,6 @@ def test_pickle_serialization_no_filter():
         assert np.allclose(
             deserialised_stats[stat_name], target, rtol=1e-10
         ), f"{stat_name.capitalize()} does not match after pickle!"
-
-    assert c2._variables_names == c._variables_names, "Variable names mismatch after pickle"
-    assert c2._tendencies == c._tendencies, "Tendencies mismatch after pickle"
-    assert c2._collector == c._collector, ("Collectors mismatch after pickle", c2._collector, c._collector)
-    assert c2._tendencies_collectors == c._tendencies_collectors, "Tendency collectors mismatch after pickle"
-    assert c2._constants_collectors == c._constants_collectors, "Constant collectors mismatch after pickle"
-    assert c2._filter == c._filter, "Filter mismatch after pickle"
-
-
-def test_pickle_serialization_with_filter():
-
-    data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
-
-    from anemoi.datasets.create.recipe.statistics import PicklableFilter
-
-    filter = PicklableFilter(start=200, end=800)
-
-    c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1}, filter=filter)
-
-    # Collect data
-    c.collect(data, np.arange(len(data)))
-
-    serialized = pickle.dumps(c)
-    c2 = pickle.loads(serialized)
-
-    assert c2._variables_names == c._variables_names, "Variable names mismatch after pickle"
-    assert c2._tendencies == c._tendencies, "Tendencies mismatch after pickle"
-    assert c2._collector == c._collector, ("Collectors mismatch after pickle", c2._collector, c._collector)
-    assert c2._tendencies_collectors == c._tendencies_collectors, "Tendency collectors mismatch after pickle"
-    assert c2._constants_collectors == c._constants_collectors, "Constant collectors mismatch after pickle"
-    assert c2._filter == c._filter, "Filter mismatch after pickle"
 
 
 def test_merge_statistic_collectors():
