@@ -333,15 +333,11 @@ class _ConstantsCollector(_Base):
         if a._index != b._index or a._name != b._name or a._column_names != b._column_names:
             raise ValueError("Cannot merge incompatible constants collectors")
 
-        result._first = a._first.copy() if a._first is not None else b._first.copy() if b._first is not None else None
         result._nans = a._nans.copy() if a._nans is not None else b._nans.copy() if b._nans is not None else None
-
-        if not a._is_constant or not b._is_constant:
-            result._is_constant = False
-        else:
-            eq = a._first == b._first if a._first is not None and b._first is not None else True
-            both_nan = (a._nans & np.isnan(b._first)) if a._nans is not None and b._first is not None else True
-            result._is_constant = np.all(eq | both_nan)
+        result._first = None
+        result._is_constant = a._is_constant and b._is_constant and a._hash == b._hash
+        result._hash = a._hash if a._hash == b._hash else None
+        return result
 
     def merge(self, other: "_ConstantsCollector") -> "_ConstantsCollector":
         result = _ConstantsCollector(self._index, self._column_names, self._name)
@@ -620,9 +616,9 @@ class StatisticsCollector:
 
     def adjust_partial_statistics(self, dataset, start, end) -> None:
         """Adjust statistics for a specific group and data range."""
-
-        # Update all columns at once
-        self._collector.adjust_partial_statistics(dataset, start, end)
+        if self._collector is not None:
+            # Update all columns at once
+            self._collector.adjust_partial_statistics(dataset, start, end)
 
         for c in self._constants_collectors.values():
             c.adjust_partial_statistics(dataset, start, end)

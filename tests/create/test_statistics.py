@@ -332,23 +332,11 @@ def test_tendencies_multiple_deltas(N=500, C=2):
 
 def test_serialization():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
-
     c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
-
     c.collect(data, range(len(data)))
-    target_stats = c.statistics()
-
     c2 = pickle.loads(pickle.dumps(c))
-    deserialised_stats = c2.statistics()
 
-    print("\nResults:")
-    for stat_name, target in target_stats.items():
-        print(f"{stat_name.capitalize()}:")
-        print(f"   Target:   {target}")
-        print(f"   Deserialised: {deserialised_stats[stat_name]}")
-        assert np.allclose(
-            deserialised_stats[stat_name], target, rtol=1e-10
-        ), f"{stat_name.capitalize()} does not match after pickle!"
+    compare_statistics_collectors(c, c2)
 
 
 def test_merge_statistic_without_filter():
@@ -366,7 +354,6 @@ def _test_merge_statistic_with_filter(filter):
     c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
     data = data.copy()
     c0.collect(data, np.arange(len(data)))
-    target = c0.statistics()
 
     c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
     c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
@@ -384,18 +371,32 @@ def _test_merge_statistic_with_filter(filter):
         c1.serialise(path1, group=0, start=0, end=len(data1))
         c2.serialise(path2, group=1, start=len(data1), end=len(data))
         reloaded = StatisticsCollector.load_precomputed(data, [path1, path2], filter=filter)
-    merged = reloaded.statistics()
 
+    compare_statistics_collectors(reloaded, c0)
+
+
+def compare_statistics_collectors(actual: StatisticsCollector, expected: StatisticsCollector) -> bool:
+    actual_stats = actual.statistics()
+    expected_stats = expected.statistics()
     print("\nResults:")
-    for stat_name, target_values in target.items():
-        merged_values = merged[stat_name]
+    for stat_name in expected_stats:
+        exp = expected_stats[stat_name]
+        act = actual_stats[stat_name]
         print(f"{stat_name.capitalize()}:")
-        print(f"   Target:   {target_values}")
-        print(f"   Merged:   {merged_values}")
-        assert np.allclose(
-            merged_values, target_values, rtol=1e-10
-        ), f"{stat_name.capitalize()} does not match after merging!"
-    print("✓ merge collectors test PASSED")
+        print(f"   Expected: {exp}")
+        print(f"   Actual:   {act}")
+        if not np.allclose(act, exp, rtol=1e-10):
+            print("   -> MISMATCH!")
+            return False
+
+    constant_vars_actual = actual.constant_variables()
+    constant_vars_expected = expected.constant_variables()
+    print("Constant Variables:")
+    print(f"   Expected: {constant_vars_expected}")
+    print(f"   Actual:   {constant_vars_actual}")
+    assert constant_vars_actual == constant_vars_expected, "Constant variables do not match!"
+
+    return True
 
 
 if __name__ == "__main__":
