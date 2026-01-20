@@ -268,7 +268,7 @@ class _TendencyCollector(_CollectorBase):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state.pop("_window", None)
+        state["_window"] = None
         return state
 
     def __setstate__(self, state):
@@ -287,8 +287,8 @@ class _ConstantsCollector(_Base):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state.pop("_first", None)
-        state.pop("_nans", None)
+        state["_first"] = None
+        state["_nans"] = None
         return state
 
     def __setstate__(self, state):
@@ -612,14 +612,14 @@ class StatisticsCollector:
 
         try:
             offset = 0
-            for i, stat in enumerate(states):
-                if stat[0].group != i:
+            for i, state in enumerate(states):
+                if state.group != i:
                     raise ValueError(f"Missing statistics for group {i}")
 
-                if stat[0].start != offset:
-                    raise ValueError(f"Statistics for group {i} has start {stat[0].start}, expected {offset}")
+                if state.start != offset:
+                    raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
 
-                offset = stat[0].end
+                offset = state.end
 
             if offset != len(dataset.data):
                 raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset.data)}")
