@@ -338,12 +338,13 @@ def test_tendencies_multiple_deltas(N=500, C=2):
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
 
-def test_serialization():
+def test_serialisation():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
     c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
+    c.collect(data, range(len(data)))
     c_stats = deepcopy(c.statistics())
     c_constants = deepcopy(c.constant_variables())
-    c.collect(data, range(len(data)))
+
     c2 = pickle.loads(pickle.dumps(c))
 
     compare_statistics(c_stats, c2.statistics())
