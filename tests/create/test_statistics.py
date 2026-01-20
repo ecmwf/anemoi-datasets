@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import pickle
 import time
 
 import numpy as np
@@ -315,6 +316,105 @@ def test_tendencies_multiple_deltas(N=500, C=2):
             assert np.allclose(computed, target, rtol=1e-9), f"Tendency {tendency_name}, {stat_name} does not match!"
 
     print("\n✓ Multiple tendencies simultaneously test PASSED")
+
+
+def test_pickle_serialization_no_filter():
+    data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
+    data2, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
+
+    c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
+
+    c.collect(data, range(len(data)))
+
+    serialized = pickle.dumps(c)
+    c2 = pickle.loads(serialized)
+
+    c2.collect(data2, range(len(data2)))  # Continue collecting after deserialization
+    deserialised_stats = c2.statistics()
+
+    c.collect(data2, range(len(data2)))  # Collect same data in original
+    target_stats = c.statistics()
+
+    print("\nResults:")
+    for stat_name, target in target_stats.items():
+        print(f"{stat_name.capitalize()}:")
+        print(f"   Target:   {target}")
+        print(f"   Deserialised: {deserialised_stats[stat_name]}")
+        assert np.allclose(
+            deserialised_stats[stat_name], target, rtol=1e-10
+        ), f"{stat_name.capitalize()} does not match after pickle!"
+
+    assert c2._variables_names == c._variables_names, "Variable names mismatch after pickle"
+    assert c2._tendencies == c._tendencies, "Tendencies mismatch after pickle"
+    assert c2._collector == c._collector, ("Collectors mismatch after pickle", c2._collector, c._collector)
+    assert c2._tendencies_collectors == c._tendencies_collectors, "Tendency collectors mismatch after pickle"
+    assert c2._constants_collectors == c._constants_collectors, "Constant collectors mismatch after pickle"
+    assert c2._filter == c._filter, "Filter mismatch after pickle"
+
+
+def test_pickle_serialization_with_filter():
+
+    data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
+
+    from anemoi.datasets.create.recipe.statistics import PicklableFilter
+
+    filter = PicklableFilter(start=200, end=800)
+
+    c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1}, filter=filter)
+
+    # Collect data
+    c.collect(data, np.arange(len(data)))
+
+    serialized = pickle.dumps(c)
+    c2 = pickle.loads(serialized)
+
+    assert c2._variables_names == c._variables_names, "Variable names mismatch after pickle"
+    assert c2._tendencies == c._tendencies, "Tendencies mismatch after pickle"
+    assert c2._collector == c._collector, ("Collectors mismatch after pickle", c2._collector, c._collector)
+    assert c2._tendencies_collectors == c._tendencies_collectors, "Tendency collectors mismatch after pickle"
+    assert c2._constants_collectors == c._constants_collectors, "Constant collectors mismatch after pickle"
+    assert c2._filter == c._filter, "Filter mismatch after pickle"
+
+
+def test_merge_statistic_collectors():
+    data1, _ = _create_random_stats(500, 2)
+    data2, _ = _create_random_stats(700, 2)
+
+    tendencies = {"delta_1": 1, "delta_5": 5}
+    tendencies = {}
+
+    c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
+    c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
+    target = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
+
+    c1.collect(data1, range(len(data1)))
+    c2.collect(data2, range(len(data2)))
+
+    merged = c1.merge(c2)
+    target.collect(np.vstack([data1, data2]), range(len(data1) + len(data2)))
+
+    merged_stats = merged.statistics()
+    target_stats = target.statistics()
+    print("\nResults after merging collectors:")
+    for k, value in target_stats.items():
+        print(f"{k.capitalize()}:")
+        print(f"   Target:   {value}")
+        print(f"   Merged: {merged_stats[k]}")
+        assert np.allclose(merged_stats[k], value, rtol=1e-10), f"{k.capitalize()} does not match after merging!"
+
+    merged_tendencies = {k: v.statistics() for k, v in merged._tendencies_collectors.items()}
+    target_tendencies = {k: v.statistics() for k, v in target._tendencies_collectors.items()}
+    for tendency_key in target_tendencies:
+        print(f"\nTendency collector '{tendency_key}':")
+        for k, value in target_tendencies[tendency_key].items():
+            print(f"  {k.capitalize()}:")
+            print(f"     Target:   {value}")
+            print(f"     Merged: {merged_tendencies[tendency_key][k]}")
+            assert np.allclose(
+                merged_tendencies[tendency_key][k], value, rtol=1e-10
+            ), f"Tendency '{tendency_key}' {k.capitalize()} does not match after merging!"
+
+    print("✓ merge collectors test PASSED")
 
 
 if __name__ == "__main__":
