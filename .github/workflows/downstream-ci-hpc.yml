@@ -8,6 +8,7 @@ on:
     branches:
       - 'main'
       - 'develop'
+      - 'test-ci'
     tags-ignore:
       - '**'
     paths-ignore:
@@ -38,7 +39,7 @@ jobs:
   downstream-ci:
     name: downstream-ci
     if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
-    uses: ecmwf/downstream-ci/.github/workflows/downstream-ci.yml@main
+    uses: ecmwf/downstream-ci/.github/workflows/downstream-ci.yml@feat/python-versions
     with:
       anemoi-datasets: ecmwf/anemoi-datasets@${{ github.event.pull_request.head.sha || github.sha }}
       codecov_upload: true
@@ -48,6 +49,8 @@ jobs:
         gnu@rocky-8.6
         clang@rocky-8.6
         gnu@ubuntu-22.04
+      python_versions: |+
+        - '3.12'
     secrets: inherit
 
   # # Build downstream packages on HPC
