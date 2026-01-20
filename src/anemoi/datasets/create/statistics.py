@@ -272,6 +272,14 @@ class StatisticsCollector:
         self._tendencies_collectors = {}
         self._constants_collectors = {}
 
+    @classmethod
+    def combine_collectors(cls, dataset, stat_collectors, filter) -> "StatisticsCollector":
+        """Combine multiple Statistics
+        Collectors into a single one by merging their statistics.
+        """
+        for stat, collector in stat_collectors:
+            pass  # TODO: implement merging logic
+
     def collect(self, array: NDArray[np.float64], dates: Any) -> None:
         """Collect statistics from a batch of data.
 
@@ -399,17 +407,23 @@ class StatisticsCollector:
             "variables_names": self._variables_names,
             "allow_nans": self._allow_nans,
             "tendencies": self._tendencies,
-            "collector": self._collector.serialise(),
-            "tendencies_collectors": {
-                name: collector.serialise() for name, collector in self._tendencies_collectors.items()
-            },
-            "constants_collectors": {
-                name: collector.is_constant for name, collector in self._constants_collectors.items()
-            },
             "group": group,
             "start": start,
             "end": end,
         }
+
+        if self._collector is not None:
+            # It can be None if no data was collected (outside the filter)
+            save["collector"] = self._collector.serialise()
+
+            save["tendencies_collectors"] = {
+                name: collector.serialise() for name, collector in self._tendencies_collectors.items()
+            }
+
+            save["constants_collectors"] = {
+                name: collector.serialise() for name, collector in self._constants_collectors.items()
+            }
+
         with open(path, "wb") as f:
             pickle.dump(save, f)
 
@@ -433,13 +447,13 @@ class StatisticsCollector:
 
                 offset = stat["end"]
 
-            if offset != len(dataset):
-                raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset)}")
+            if offset != len(dataset.data):
+                raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset.data)}")
         except ValueError as e:
             LOG.error(f"Precomputed statistics validation failed: {e}")
             # raise
 
-        collectors = []
+        stat_collectors = []
 
         for stat in stats:
             # TODO: load using proper methods
@@ -450,7 +464,10 @@ class StatisticsCollector:
                 tendencies=stat["tendencies"],
             )
             # Load main collector
-            cdata = stat["collector"]
+            cdata = stat.get("collector")
+            if cdata is None:
+                continue
+
             collector._collector = _Collector(column_names=cdata["column_names"])
             collector._collector._count = cdata["count"]
             collector._collector._min = cdata["min"]
@@ -474,9 +491,9 @@ class StatisticsCollector:
                 ccollector._is_constant = is_constant
                 collector._constants_collectors[name] = ccollector
 
-            collectors.append(collector)
+            stat_collectors.append((stat, collector))
 
-        for stat, collector in tqdm.tqdm(zip(stats, collectors), desc="Adjusting partial statistics", total=len(stats)):
+        for stat, collector in tqdm.tqdm(stat_collectors, desc="Adjusting partial statistics", total=len(stats)):
             collector.adjust_partial_statistics(dataset, stat["group"], stat["start"], stat["end"])
 
-        assert False, "Not implemented"
+        return cls.combine_collectors(dataset, stat_collectors, filter)
