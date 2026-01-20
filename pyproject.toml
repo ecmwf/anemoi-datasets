@@ -152,3 +152,8 @@ exclude = [
 write = true
 exclude = "docs/**"
 style = "numpydoc"
+
+[tool.coverage.report]
+omit = [
+  "*.pyx"
+]
