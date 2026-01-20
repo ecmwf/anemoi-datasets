@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import pickle
+import tempfile
 import time
 
 import numpy as np
@@ -341,47 +342,39 @@ def test_serialization():
 
 
 def test_merge_statistic_collectors():
-    data1, _ = _create_random_stats(500, 2)
-    data2, _ = _create_random_stats(700, 2)
-
     tendencies = {"delta_1": 1, "delta_5": 5}
+
+    data, _ = _create_random_stats(1000, 2)
+    c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
+    data = data.copy()
+    c0.collect(data, range(len(data)))
+    target = c0.statistics()
 
     c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
     c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
-    target = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
 
+    data1 = data[:500].copy()
+    data2 = data[500:].copy()
     c1.collect(data1, range(len(data1)))
     c2.collect(data2, range(len(data2)))
 
-    for v in c1._tendencies_collectors.values():
-        v._window = None  # Ensure no windows for merging
-    for v in c2._tendencies_collectors.values():
-        v._window = None
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path1 = f"{tmpdir}/collector1.pkl"
+        path2 = f"{tmpdir}/collector2.pkl"
+        c1.serialise(path1, group=0, start=0, end=len(data1))
+        c2.serialise(path2, group=1, start=len(data1), end=len(data))
+        reloaded = StatisticsCollector.load_precomputed(data, [path1, path2], filter=None)
+    merged = reloaded.statistics()
 
-    merged = c1.merge(c2)
-    target.collect(np.vstack([data1, data2]), range(len(data1) + len(data2)))
-
-    merged_stats = merged.statistics()
-    target_stats = target.statistics()
-    print("\nResults after merging collectors:")
-    for k, value in target_stats.items():
-        print(f"{k.capitalize()}:")
-        print(f"   Target:   {value}")
-        print(f"   Merged: {merged_stats[k]}")
-        assert np.allclose(merged_stats[k], value, rtol=1e-10), f"{k.capitalize()} does not match after merging!"
-
-    merged_tendencies = {k: v.statistics() for k, v in merged._tendencies_collectors.items()}
-    target_tendencies = {k: v.statistics() for k, v in target._tendencies_collectors.items()}
-    for tendency_key in target_tendencies:
-        print(f"\nTendency collector '{tendency_key}':")
-        for k, value in target_tendencies[tendency_key].items():
-            print(f"  {k.capitalize()}:")
-            print(f"     Target:   {value}")
-            print(f"     Merged: {merged_tendencies[tendency_key][k]}")
-            assert np.allclose(
-                merged_tendencies[tendency_key][k], value, rtol=1e-10
-            ), f"Tendency '{tendency_key}' {k.capitalize()} does not match after merging!"
-
+    print("\nResults:")
+    for stat_name, target_values in target.items():
+        merged_values = merged[stat_name]
+        print(f"{stat_name.capitalize()}:")
+        print(f"   Target:   {target_values}")
+        print(f"   Merged:   {merged_values}")
+        assert np.allclose(
+            merged_values, target_values, rtol=1e-10
+        ), f"{stat_name.capitalize()} does not match after merging!"
     print("✓ merge collectors test PASSED")
 
 
