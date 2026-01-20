@@ -661,7 +661,6 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
         raise RuntimeError("ReadAheadBuffer is read-only")
 
     def __getitem__(self, key):
-        print("ReadAheadBuffer __getitem__ called with key:", key)
         key = self._normalise_key(key)
 
         if isinstance(key, tuple):
@@ -695,7 +694,6 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
         """
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(f"Read-ahead loading buffer {index}")
-        print("Read-ahead loading chunk index:", index)
 
         for i in range(index.start, index.stop, index.step):
             if i > self._max_buffer_index:
