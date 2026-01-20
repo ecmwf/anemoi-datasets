@@ -663,8 +663,4 @@ class StatisticsCollector:
         for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
             state.collector.adjust_partial_statistics(dataset, state.start, state.end)
 
-        for s in states:
-            print(
-                f"✅✅ Combining collector {type(s.collector)} for group {s.group} with data from {s.start} to {s.end} from {s.path}"
-            )
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

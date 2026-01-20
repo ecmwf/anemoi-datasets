@@ -12,6 +12,7 @@ import tempfile
 import time
 
 import numpy as np
+import pytest
 
 from anemoi.datasets.create.statistics import StatisticsCollector
 
@@ -339,15 +340,21 @@ def test_serialization():
     compare_statistics_collectors(c, c2)
 
 
-def test_merge_statistic_without_filter():
-    _test_merge_statistic_with_filter(Filter(start=None, end=None))
-
-
-def test_merge_statistic_with_filter():
-    _test_merge_statistic_with_filter(Filter(start=500, end=800))
-
-
-def _test_merge_statistic_with_filter(filter):
+@pytest.mark.parametrize(
+    "filter",
+    [
+        pytest.param(Filter(start=s, end=e), id=f"{s}-{e}")
+        for s, e in [
+            (None, None),
+            (800, 900),
+            (500, 800),
+            (0, 1000),
+            (0, 500),
+            (200, 700),
+        ]
+    ],
+)
+def test_merge_statistic_with_filter(filter):
     tendencies = {"delta_1": 1, "delta_5": 5}
 
     data, _ = _create_random_stats(1000, 2)
