@@ -707,10 +707,7 @@ class RandomReadBuffer(ReadAheadWriteBehindBuffer):
 
     def __init__(self, *args, **kwargs: Any):
 
-        super().__init__(
-            **kwargs,
-            read_ahead=False,
-        )
+        super().__init__(*args, **kwargs)
 
     def __setitem__(self, key, value):
         raise RuntimeError("RandomReadBuffer is read-only")

@@ -18,7 +18,6 @@ import tqdm
 
 from ..buffering import RandomReadBuffer
 from ..buffering import WriteBehindBuffer
-from ..debug import extract_dates_from_results as _
 from . import DateIndexing
 from . import date_indexing_registry
 from .ranges import DateRange
@@ -153,8 +152,8 @@ class DateBisect(DateIndexing):
             end_entry.length,
             dataset_length,
         )
-        print("Searching for range:", _(start), _(end))
-        print("Start/end entries:", start_entry, end_entry)
+        # print("Searching for range:", _(start), _(end))
+        # print("Start/end entries:", start_entry, end_entry)
 
         diff_s = (int(start_entry.epoch) > int(start)) - (int(start_entry.epoch) < int(start))
         diff_e = (int(end_entry.epoch) > int(end)) - (int(end_entry.epoch) < int(end))
@@ -177,9 +176,12 @@ class DateBisect(DateIndexing):
                 return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
             case (1, 1):
-                # Both entries are outside the searched range
-                # We are in a gap, return an empty slice
-                return slice(start_entry.offset, start_entry.offset)
+                # Start entry matches next date, end entry is before the searched end
+                # We use the previous entry for the end
+                assert end_idx > 0, (end_idx, end, self.index[end_idx])
+                assert end_idx - 1 >= start_idx, (end_idx, start_idx)
+                end_entry = DateRange(*self.index[end_idx - 1])
+                return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
             case (0, -1):
                 # Start entry matches exactly, end entry is after the searched end

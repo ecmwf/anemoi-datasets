@@ -220,19 +220,7 @@ class WindowView:
             case _:
                 raise TypeError(f"WindowView: invalid index type: {type(index)}")
 
-    def _getitem_int(self, index: any) -> np.ndarray:
-
-        def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
-            return AnnotatedNDArray(
-                array[:, 4:],
-                meta=WindowMetaData(
-                    owner=self,
-                    index=index,
-                    aux_array=array[:, :4],
-                    slice_obj=slice_obj,
-                ),
-            )
-
+    def _slice(self, index: tuple) -> np.ndarray:
         assert isinstance(index, int)
         if index < 0:
             index = self._len - index
@@ -266,13 +254,40 @@ class WindowView:
 
             if range_slice.start == range_slice.stop:
                 # No data in that range
-                return annotate(np.empty((0, self.data.shape[1]), dtype=self.data.dtype), range_slice)
+                range_slice
 
             assert range_slice.step in (None, 1), range_slice.step
             assert range_slice.start >= 0, range_slice.start
             assert range_slice.stop >= range_slice.start, range_slice
             assert range_slice.stop <= len(self.data), (range_slice, len(self.data))
+
+            return range_slice
+
+        except (IndexError, StopIteration) as e:
+            # We don't have that error to stop iterations in the caller
+            # We should be in control here
+            raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
+
+    def _getitem_int(self, index: any) -> np.ndarray:
+
+        def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
+            return AnnotatedNDArray(
+                array[:, 4:],
+                meta=WindowMetaData(
+                    owner=self,
+                    index=index,
+                    aux_array=array[:, :4],
+                    slice_obj=slice_obj,
+                ),
+            )
+
+        range_slice = "(not set)"
+
+        # Find the boundaries in the date_indexing for the window
+        try:
+            range_slice = self._slice(index)
             values = self.data[range_slice]
+
             assert values.shape[0] == range_slice.stop - range_slice.start, (
                 values.shape,
                 range_slice,
@@ -365,3 +380,22 @@ class WindowView:
             assert result.stop == len(self.data), (self.end_date, actual_end, result)
 
         return result
+
+    def plot_dates(self):
+        dates = []
+        counts = []
+        for i in range(len(self)):
+            range_slice = self._slice(i)
+            dates.append(self.start_date + i * self.frequency)
+            counts.append(range_slice.stop - range_slice.start)
+
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(10, 4))
+        plt.bar(dates, counts)
+        plt.xlabel("Date")
+        plt.ylabel("Count")
+        plt.title("Counts per Date Bucket")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
