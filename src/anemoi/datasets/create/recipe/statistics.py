@@ -94,8 +94,19 @@ class Statistics(BaseModel):
 
         LOG.info(f"Using statistics date range: start={start}, end={end}")
 
-        def filter(array, dates):
-            mask = np.where((dates >= start) & (dates <= end))[0]
-            return array[mask]
+        return PicklableFilter(start, end)
 
-        return filter
+
+class PicklableFilter:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+
+    def __call__(self, array, dates):
+        mask = np.where((dates >= self.start) & (dates <= self.end))[0]
+        return array[mask]
+
+    def __eq__(self, other):
+        if not isinstance(other, PicklableFilter):
+            return False
+        return self.start == other.start and self.end == other.end

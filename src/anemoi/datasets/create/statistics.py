@@ -26,6 +26,14 @@ class _Base:
     def __init__(self, column_names: list[str] | None = None) -> None:
         self._column_names = column_names
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        return self._column_names == other._column_names
+
+    def __repr__(self, extra: str = ""):
+        return f"{self.__class__.__name__}(column_names={self._column_names}" + (f", {extra}" if extra else "") + ")"
+
 
 class _CollectorBase(_Base):
     def __init__(self, column_names: list[str]) -> None:
@@ -46,6 +54,54 @@ class _CollectorBase(_Base):
             "m2": self._m2,
             "column_names": self._column_names,
         }
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        return (
+            super().__eq__(other)
+            and np.array_equal(self._count, other._count)
+            and np.array_equal(self._min, other._min)
+            and np.array_equal(self._max, other._max)
+            and np.array_equal(self._mean, other._mean)
+            and np.array_equal(self._m2, other._m2)
+        )
+
+    def __repr__(self, extra: str = ""):
+        return super().__repr__(
+            f"count={self._count}, min={self._min}, max={self._max}, mean={self._mean}, m2={self._m2}"
+            + (f", {extra}" if extra else "")
+        )
+
+    @classmethod
+    def _merge(cls, a: "_CollectorBase", b: "_CollectorBase", result: "_CollectorBase") -> "_CollectorBase":
+        if a._column_names != b._column_names:
+            raise ValueError("Cannot merge collectors with different column names")
+        count = a._count + b._count
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mean = np.where(
+                count > 0,
+                (a._count * a._mean + b._count * b._mean) / count,
+                0.0,
+            )
+            delta = b._mean - a._mean
+            m2 = np.where(
+                count > 0,
+                a._m2 + b._m2 + delta**2 * a._count * b._count / count,
+                0.0,
+            )
+        min_ = np.minimum(a._min, b._min)
+        max_ = np.maximum(a._max, b._max)
+        result._count = count
+        result._mean = mean
+        result._m2 = m2
+        result._min = min_
+        result._max = max_
+
+    def merge(self, other: "_CollectorBase") -> "_CollectorBase":
+        result = _CollectorBase(self._column_names)
+        self._merge(self, other, result)
+        return result
 
     def update(self, data: NDArray[np.float64]) -> None:
         # data shape: (n_samples, n_columns)
@@ -145,6 +201,39 @@ class _TendencyCollector(_CollectorBase):
         # Only keep a sliding window of the last 'delta' rows
         self._window = None
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        return (
+            super().__eq__(other)
+            and self._delta == other._delta
+            and (
+                (self._window is None and other._window is None)
+                or (
+                    self._window is not None
+                    and other._window is not None
+                    and np.array_equal(self._window, other._window)
+                )
+            )
+        )
+
+    def __repr__(self, extra: str = ""):
+        return super().__repr__(f"delta={self._delta}, window={self._window}" + (f", {extra}" if extra else ""))
+
+    @classmethod
+    def _merge(cls, a: "_TendencyCollector", b: "_TendencyCollector", result: "_TendencyCollector"):
+        if a._delta != b._delta:
+            raise ValueError("Cannot merge tendency collectors with different deltas")
+        _CollectorBase._merge(a, b, result)
+        result._delta = a._delta
+        assert False, "Merging tendency collectors with non-empty windows is not supported"
+        return result
+
+    def merge(self, other: "_TendencyCollector") -> "_TendencyCollector":
+        result = _TendencyCollector(self._column_names, self._delta)
+        self._merge(self, other, result)
+        return result
+
     def update(self, data: NDArray[np.float64]) -> None:
         # Concatenate window with new data for tendency computation
         if self._window is None:
@@ -190,6 +279,51 @@ class _ConstantsCollector(_Base):
         self._is_constant = True
         self._first = None
         self._nans = None
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        return (
+            super().__eq__(other)
+            and self._index == other._index
+            and self._name == other._name
+            and self._is_constant == other._is_constant
+            and (
+                (self._first is None and other._first is None)
+                or (self._first is not None and other._first is not None and np.array_equal(self._first, other._first))
+            )
+            and (
+                (self._nans is None and other._nans is None)
+                or (self._nans is not None and other._nans is not None and np.array_equal(self._nans, other._nans))
+            )
+        )
+
+    def __repr__(self):
+        return super().__repr__(
+            f"index={self._index}, name={self._name}, is_constant={self._is_constant}, first={self._first}, nans={self._nans}"
+        )
+
+    @classmethod
+    def _merge(
+        cls, a: "_ConstantsCollector", b: "_ConstantsCollector", result: "_ConstantsCollector"
+    ) -> "_ConstantsCollector":
+        if a._index != b._index or a._name != b._name or a._column_names != b._column_names:
+            raise ValueError("Cannot merge incompatible constants collectors")
+
+        result._first = a._first.copy() if a._first is not None else b._first.copy() if b._first is not None else None
+        result._nans = a._nans.copy() if a._nans is not None else b._nans.copy() if b._nans is not None else None
+
+        if not a._is_constant or not b._is_constant:
+            result._is_constant = False
+        else:
+            eq = a._first == b._first if a._first is not None and b._first is not None else True
+            both_nan = (a._nans & np.isnan(b._first)) if a._nans is not None and b._first is not None else True
+            result._is_constant = np.all(eq | both_nan)
+
+    def merge(self, other: "_ConstantsCollector") -> "_ConstantsCollector":
+        result = _ConstantsCollector(self._index, self._column_names, self._name)
+        self._merge(self, other, result)
+        return result
 
     def update(self, data: NDArray[np.float64]) -> None:
 
@@ -262,10 +396,11 @@ class StatisticsCollector:
         allow_nans: bool = False,
         filter: Callable[[Any], range] = _all,
         tendencies: list[int] | None = None,
+        _collector: _Collector | None = None,
     ) -> None:
         self._filter = filter
 
-        self._collector = None
+        self._collector = _collector
         self._variables_names = variables_names
         self._allow_nans = allow_nans
         self._tendencies = tendencies or {}
@@ -279,6 +414,52 @@ class StatisticsCollector:
         """
         for stat, collector in stat_collectors:
             pass  # TODO: implement merging logic
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        return (
+            self._variables_names == other._variables_names
+            and self._allow_nans == other._allow_nans
+            and self._tendencies == other._tendencies
+            and self._collector == other._collector
+            and self._tendencies_collectors == other._tendencies_collectors
+            and self._constants_collectors == other._constants_collectors
+        )
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(variables_names={self._variables_names}, "
+            f"allow_nans={self._allow_nans}, tendencies={self._tendencies}, "
+            f"collector={self._collector}, tendencies_collectors={self._tendencies_collectors}, "
+            f"constants_collectors={self._constants_collectors})"
+        )
+
+    def merge(self, other: "StatisticsCollector") -> "StatisticsCollector":
+        if self._variables_names != other._variables_names:
+            raise ValueError("Cannot merge StatisticsCollectors with different variable names")
+        variables_names = self._variables_names
+
+        if self._allow_nans != other._allow_nans:
+            raise ValueError("Cannot merge StatisticsCollectors with different allow_nans settings")
+        allow_nans = self._allow_nans
+
+        collector = self._collector.merge(other._collector)
+
+        tendencies_collectors = {}
+        for delta in self._tendencies.keys() | other._tendencies.keys():
+            if delta not in self._tendencies or delta not in other._tendencies:
+                raise ValueError("Cannot merge StatisticsCollectors with different tendencies settings")
+            tendencies_collectors[delta] = self._tendencies_collectors[delta].merge(other._tendencies_collectors[delta])
+
+        LOG.warning("Merging StatisticsCollectors with tendencies is not fully supported yet, no filter")
+
+        return StatisticsCollector(
+            _collector=collector,
+            variables_names=variables_names,
+            allow_nans=allow_nans,
+            tendencies=tendencies_collectors,
+        )
 
     def collect(self, array: NDArray[np.float64], dates: Any) -> None:
         """Collect statistics from a batch of data.
