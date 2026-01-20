@@ -262,7 +262,7 @@ class _TendencyCollector(_CollectorBase):
             super().update(tendencies)
 
         # Update sliding window: keep only last 'delta' rows
-        self._window = combined[-self._delta :].copy()
+        self._window = np.array(combined[-self._delta :], copy=True)
 
     def finalise(self) -> None:
         pass
