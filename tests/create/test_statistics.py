@@ -16,6 +16,17 @@ import numpy as np
 from anemoi.datasets.create.statistics import StatisticsCollector
 
 
+class Filter:
+    def __init__(self, start=None, end=None):
+        self.start = start or -np.inf
+        self.end = end or np.inf
+
+    def __call__(self, array, indices):
+        assert len(indices) == len(array), "Indices length must match array length"
+        mask = np.where((indices >= self.start) & (indices < self.end))[0]
+        return array[mask]
+
+
 def _create_random_stats(N, C, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """Generate random data with known statistics.
 
@@ -321,7 +332,6 @@ def test_tendencies_multiple_deltas(N=500, C=2):
 
 def test_serialization():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
-    data2, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
 
     c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
 
@@ -341,29 +351,39 @@ def test_serialization():
         ), f"{stat_name.capitalize()} does not match after pickle!"
 
 
-def test_merge_statistic_collectors():
+def test_merge_statistic_without_filter():
+    _test_merge_statistic_with_filter(Filter(start=None, end=None))
+
+
+def test_merge_statistic_with_filter():
+    _test_merge_statistic_with_filter(Filter(start=500, end=800))
+
+
+def _test_merge_statistic_with_filter(filter):
     tendencies = {"delta_1": 1, "delta_5": 5}
 
     data, _ = _create_random_stats(1000, 2)
-    c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
+    c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
     data = data.copy()
-    c0.collect(data, range(len(data)))
+    c0.collect(data, np.arange(len(data)))
     target = c0.statistics()
 
-    c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
-    c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
+    c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
+    c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
 
-    data1 = data[:500].copy()
-    data2 = data[500:].copy()
-    c1.collect(data1, range(len(data1)))
-    c2.collect(data2, range(len(data2)))
+    slice1 = slice(0, 500)
+    slice2 = slice(500, 1000)
+    data1 = data[slice1].copy()
+    data2 = data[slice2].copy()
+    c1.collect(data1, np.arange(len(data))[slice1])
+    c2.collect(data2, np.arange(len(data))[slice2])
 
     with tempfile.TemporaryDirectory() as tmpdir:
         path1 = f"{tmpdir}/collector1.pkl"
         path2 = f"{tmpdir}/collector2.pkl"
         c1.serialise(path1, group=0, start=0, end=len(data1))
         c2.serialise(path2, group=1, start=len(data1), end=len(data))
-        reloaded = StatisticsCollector.load_precomputed(data, [path1, path2], filter=None)
+        reloaded = StatisticsCollector.load_precomputed(data, [path1, path2], filter=filter)
     merged = reloaded.statistics()
 
     print("\nResults:")

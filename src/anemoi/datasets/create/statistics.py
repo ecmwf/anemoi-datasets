@@ -459,6 +459,11 @@ class StatisticsCollector:
 
         allow_nans = self._allow_nans
 
+        if self._collector is None:
+            return other
+        elif other._collector is None:
+            return self
+
         collector = self._collector.merge(other._collector)
 
         if set(self._tendencies.keys()) != set(other._tendencies.keys()):
@@ -485,6 +490,15 @@ class StatisticsCollector:
 
         warnings.warn("constants collectors todo")
         constants_collectors = {}
+        for name in self._constants_collectors.keys() | other._constants_collectors.keys():
+            if name not in self._constants_collectors or name not in other._constants_collectors:
+                LOG.error(f"Constant {name} not in both collectors")
+                LOG.error(f"Self constants: {self._constants_collectors}")
+                LOG.error(f"Other constants: {other._constants_collectors}")
+                LOG.error(f"Self constants keys: {list(self._constants_collectors.keys())}")
+                LOG.error(f"Other constants keys: {list(other._constants_collectors.keys())}")
+                raise ValueError(f"Cannot merge StatisticsCollectors with different constants settings, {name=}")
+            constants_collectors[name] = self._constants_collectors[name].merge(other._constants_collectors[name])
 
         return StatisticsCollector(
             variables_names=variables_names,
