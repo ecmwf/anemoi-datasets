@@ -381,7 +381,6 @@ def test_merge_statistic_collectors():
     data2, _ = _create_random_stats(700, 2)
 
     tendencies = {"delta_1": 1, "delta_5": 5}
-    tendencies = {}
 
     c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
     c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies)
@@ -389,6 +388,11 @@ def test_merge_statistic_collectors():
 
     c1.collect(data1, range(len(data1)))
     c2.collect(data2, range(len(data2)))
+
+    for v in c1._tendencies_collectors.values():
+        v._window = None  # Ensure no windows for merging
+    for v in c2._tendencies_collectors.values():
+        v._window = None
 
     merged = c1.merge(c2)
     target.collect(np.vstack([data1, data2]), range(len(data1) + len(data2)))

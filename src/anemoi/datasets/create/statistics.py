@@ -10,6 +10,7 @@
 
 import logging
 import pickle
+import warnings
 from collections.abc import Callable
 from functools import reduce
 from typing import Any
@@ -21,6 +22,10 @@ from numpy.typing import NDArray
 LOG = logging.getLogger(__name__)
 
 STATISTICS = ("mean", "minimum", "maximum", "stdev")
+
+
+def _(t):
+    return str(t)[:50] if len(str(t)) < 50 else str(t)[:47] + "..."
 
 
 class _State:
@@ -41,7 +46,7 @@ class _Base:
         return self._column_names == other._column_names
 
     def __repr__(self, extra: str = ""):
-        return f"{self.__class__.__name__}(column_names={self._column_names}" + (f", {extra}" if extra else "") + ")"
+        return f"{self.__class__.__name__}(column_names={_(self._column_names)}" + (f", {extra}" if extra else "") + ")"
 
 
 class _CollectorBase(_Base):
@@ -70,7 +75,7 @@ class _CollectorBase(_Base):
 
     def __repr__(self, extra: str = ""):
         return super().__repr__(
-            f"count={self._count}, min={self._min}, max={self._max}, mean={self._mean}, m2={self._m2}"
+            f"count={_(self._count)}, min={_(self._min)}, max={_(self._max)}, mean={_(self._mean)}, m2={_(self._m2)}"
             + (f", {extra}" if extra else "")
         )
 
@@ -91,6 +96,9 @@ class _CollectorBase(_Base):
                 a._m2 + b._m2 + delta**2 * a._count * b._count / count,
                 0.0,
             )
+        assert np.all(count >= 0), "Negative count in merge"
+        assert np.all(np.isfinite(mean) | (count == 0)), "Non-finite mean in merge"
+        assert np.all(np.isfinite(m2) | (count == 0)), "Non-finite m2 in merge"
         min_ = np.minimum(a._min, b._min)
         max_ = np.maximum(a._max, b._max)
         result._count = count
@@ -219,15 +227,21 @@ class _TendencyCollector(_CollectorBase):
         )
 
     def __repr__(self, extra: str = ""):
-        return super().__repr__(f"delta={self._delta}, window={self._window}" + (f", {extra}" if extra else ""))
+        return super().__repr__(
+            f"delta={_(self._delta)}, window={len(self._window[:]) if self._window is not None else None}"
+            + (f", {extra}" if extra else "")
+        )
 
     @classmethod
     def _merge(cls, a: "_TendencyCollector", b: "_TendencyCollector", result: "_TendencyCollector"):
+        assert (
+            a._window is None and b._window is None
+        ), "Merging tendency collectors with non-empty windows is not supported"
+
         if a._delta != b._delta:
             raise ValueError("Cannot merge tendency collectors with different deltas")
         _CollectorBase._merge(a, b, result)
         result._delta = a._delta
-        assert False, "Merging tendency collectors with non-empty windows is not supported"
         return result
 
     def merge(self, other: "_TendencyCollector") -> "_TendencyCollector":
@@ -265,6 +279,8 @@ class _TendencyCollector(_CollectorBase):
         delta_rows = dataset.data[start - self._delta : start]  # noqa: F841
 
         # TODO: Implement the adjustment logic here
+        self.update(delta_rows)
+        self._window = None  # Clear window after adjustment
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -407,6 +423,8 @@ class StatisticsCollector:
         filter: Callable[[Any], range] = _all,
         tendencies: list[int] | None = None,
         _collector: _Collector | None = None,
+        _tendencies_collectors: dict[str, _TendencyCollector] | None = None,
+        _constants_collectors: dict[str, _ConstantsCollector] | None = None,
     ) -> None:
         self._filter = filter
 
@@ -414,16 +432,8 @@ class StatisticsCollector:
         self._variables_names = variables_names
         self._allow_nans = allow_nans
         self._tendencies = tendencies or {}
-        self._tendencies_collectors = {}
-        self._constants_collectors = {}
-
-    @classmethod
-    def combine_collectors(cls, dataset, collectors, filter) -> "StatisticsCollector":
-        """Combine multiple Statistics
-        Collectors into a single one by merging their statistics.
-        """
-        # TODO: implement merging logic
-        return reduce(lambda a, b: a.merge(b), collectors)
+        self._tendencies_collectors = _tendencies_collectors or {}
+        self._constants_collectors = _constants_collectors or {}
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
@@ -446,6 +456,8 @@ class StatisticsCollector:
         )
 
     def merge(self, other: "StatisticsCollector") -> "StatisticsCollector":
+        if not isinstance(other, StatisticsCollector):
+            raise ValueError("Can only merge with another StatisticsCollector")
         if self._variables_names != other._variables_names:
             raise ValueError("Cannot merge StatisticsCollectors with different variable names")
 
@@ -458,19 +470,38 @@ class StatisticsCollector:
 
         collector = self._collector.merge(other._collector)
 
+        if set(self._tendencies.keys()) != set(other._tendencies.keys()):
+            raise ValueError(
+                f"Cannot merge StatisticsCollectors with different tendencies settings {self._tendencies.keys()} vs {other._tendencies.keys()}"
+            )
+        tendencies = self._tendencies
+
+        if set(self._tendencies_collectors.keys()) != set(other._tendencies_collectors.keys()):
+            raise ValueError(
+                f"Cannot merge StatisticsCollectors with different tendencies collectors keys {self._tendencies_collectors.keys()} vs {other._tendencies_collectors.keys()}"
+            )
+
         tendencies_collectors = {}
-        for delta in self._tendencies.keys() | other._tendencies.keys():
-            if delta not in self._tendencies or delta not in other._tendencies:
-                raise ValueError("Cannot merge StatisticsCollectors with different tendencies settings")
+        for delta in self._tendencies_collectors.keys() | other._tendencies_collectors.keys():
+            if delta not in self._tendencies_collectors or delta not in other._tendencies_collectors:
+                LOG.error(f"Delta {delta} not in both collectors")
+                LOG.error(f"Self tendencies: {self._tendencies_collectors}")
+                LOG.error(f"Other tendencies: {other._tendencies_collectors}")
+                LOG.error(f"Self tendencies keys: {list(self._tendencies_collectors.keys())}")
+                LOG.error(f"Other tendencies keys: {list(other._tendencies_collectors.keys())}")
+                raise ValueError(f"Cannot merge StatisticsCollectors with different tendencies settings, {delta=}")
             tendencies_collectors[delta] = self._tendencies_collectors[delta].merge(other._tendencies_collectors[delta])
 
-        LOG.warning("Merging StatisticsCollectors with tendencies is not fully supported yet, no filter")
+        warnings.warn("constants collectors todo")
+        constants_collectors = {}
 
         return StatisticsCollector(
-            _collector=collector,
             variables_names=variables_names,
             allow_nans=allow_nans,
-            tendencies=tendencies_collectors,
+            tendencies=tendencies,
+            _tendencies_collectors=tendencies_collectors,
+            _collector=collector,
+            _constants_collectors=constants_collectors,
         )
 
     def collect(self, array: NDArray[np.float64], dates: Any) -> None:
@@ -606,6 +637,7 @@ class StatisticsCollector:
         for item in tqdm.tqdm(precomputed, desc="Loading precomputed statistics"):
             with open(item, "rb") as f:
                 state = pickle.load(f)
+                state.path = item
                 states.append(state)
 
         states = sorted(states, key=lambda x: x.group)
@@ -630,4 +662,8 @@ class StatisticsCollector:
         for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
             state.collector.adjust_partial_statistics(dataset, state.start, state.end)
 
-        return cls.combine_collectors(dataset, [s.collector for s in states], filter)
+        for s in states:
+            print(
+                f"✅✅ Combining collector {type(s.collector)} for group {s.group} with data from {s.start} to {s.end} from {s.path}"
+            )
+        return reduce(lambda a, b: a.merge(b), [s.collector for s in states])
