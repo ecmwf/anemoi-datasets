@@ -252,10 +252,7 @@ class _TendencyCollector(_CollectorBase):
 
     def update(self, data: NDArray[np.float64]) -> None:
         # Concatenate window with new data for tendency computation
-        if self._window is None:
-            combined = data
-        else:
-            combined = np.concatenate([self._window, data], axis=0)
+        combined = data if self._window is None else np.concatenate([self._window, data], axis=0)
 
         # Compute tendencies wherever we have enough history
         if len(combined) > self._delta:
@@ -274,13 +271,13 @@ class _TendencyCollector(_CollectorBase):
             # No adjustment needed for the first group
             return
 
-        # For tendencies, we need to remove the influence of the first 'delta' rows
-        # Get the delta rows from the dataset
+        prev = dataset.data[start - self._delta : start]
+        curr = dataset.data[start : start + self._delta]
+        prev = np.array(prev)  # because dataset.data may not be a numpy array but a memoryview
+        curr = np.array(curr)  # because dataset.data may not be a numpy array but a memoryview
+        diff = curr - prev
 
-        delta_rows = dataset.data[start - self._delta : start]  # noqa: F841
-
-        # TODO: Implement the adjustment logic here
-        self.update(delta_rows)
+        _CollectorBase.update(self, diff)  # Do not use self.update to avoid messing with the window
         self._window = None  # Clear window after adjustment
 
     def __getstate__(self):
