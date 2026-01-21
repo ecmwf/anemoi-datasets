@@ -130,23 +130,32 @@ class DateBisect(DateIndexing):
         assert start < end
 
         # Search only the first dimension of the 2D dates array, without loading all dates
+
         start_idx = bisect.bisect_left(_Proxy(self.index), start)
+        end_idx = bisect.bisect_left(_Proxy(self.index), end)
+
+        if end_idx == 0 and end < self.index[0][0]:
+            # Start edge case: if end is before the first entry
+            return slice(0, 0)
+
         if start_idx == len(self.index):
-            # End edge case: if start is beyond the last entry
+            # Start edge case: if start is beyond the last entry
             return slice(dataset_length, dataset_length)
 
-        start_entry = DateRange(*self.index[start_idx])
-
-        end_idx = bisect.bisect_left(_Proxy(self.index), end)
-        # End edge case: if end is beyond the last entry, adjust end_idx
         if end_idx == len(self.index):
             end_idx -= 1
 
+        start_entry = DateRange(*self.index[start_idx])
         end_entry = DateRange(*self.index[end_idx])
 
-        if end_idx == 0 and end < end_entry.epoch:
-            # Start edge case: if end is before the first entry
-            return slice(0, 0)
+        if end_entry.epoch > end:
+            # There is a GAP in the data
+            end_idx -= 1
+            end_entry = DateRange(*self.index[end_idx])
+
+        if end_entry.epoch < start_entry.epoch:
+            # No data in the range
+            return slice(start_entry.offset, start_entry.offset)
 
         return slice(start_entry.offset, end_entry.offset + end_entry.length)
 

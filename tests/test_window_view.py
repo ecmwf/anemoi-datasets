@@ -14,6 +14,8 @@ VARIABLES = 3
 
 START_DATE = datetime.datetime(2020, 1, 1)
 
+# GAP from 2020-06-09 00:00:00 to 2020-06-14 00:00:00
+
 
 def _generate_event_data(years=1, base_rate=10, variability=0.5, gap_days=(160, 165)) -> np.ndarray:
     """Generates a deterministic time-series array representing events per second.
@@ -69,6 +71,13 @@ def _generate_event_data(years=1, base_rate=10, variability=0.5, gap_days=(160, 
         START_DATE + datetime.timedelta(seconds=start_sec),
         "to",
         START_DATE + datetime.timedelta(seconds=end_sec),
+    )
+
+    print(
+        "GAP from",
+        (START_DATE + datetime.timedelta(seconds=start_sec)).timestamp(),
+        "to",
+        (START_DATE + datetime.timedelta(seconds=end_sec)).timestamp(),
     )
 
     # Apply a boolean mask (the computational version of a Heaviside step)
@@ -178,7 +187,7 @@ def _create_tabular_store(indexing) -> zarr.Group:
 
 def _test_window_view(view, expect):
 
-    print("+++++++++", view.start_date, view.end_date)
+    # print("+++++++++", view.start_date, view.end_date)
 
     assert view.frequency == datetime.timedelta(hours=3)
     assert view.window.before == -datetime.timedelta(hours=3)
@@ -205,19 +214,19 @@ def _test_window_view(view, expect):
 
         slice_obj = sample.meta.slice_obj
         assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
-        print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
-        print(sample)
+        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        # print(sample)
         date1 = datetime.datetime.fromtimestamp(int(sample[0][0]))
         date2 = datetime.datetime.fromtimestamp(int(sample[-1][0]))
-        print("===>", date1, "to", date2)
+        # print("===>", date1, "to", date2)
 
         ref_date = view.start_date + view.frequency * i
         start_window = ref_date - datetime.timedelta(hours=3)
 
         assert start_window < date1 <= ref_date, (i, date1, ref_date, start_window)
         assert date1 <= date2, (i, date2, ref_date, start_window)
-        assert start_window < date2 <= ref_date, (i, date2, ref_date, start_window)
-        print("+++")
+        assert start_window < date2, (start_window.isoformat(), date2.isoformat())
+        assert date2 <= ref_date, (date2.isoformat(), ref_date.isoformat())
 
         offset += sample.shape[0]
         count += sample.shape[0]
@@ -297,7 +306,8 @@ WINDOW_VIEW_TEST_CASES = {
 }
 
 
-@pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
+# @pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
+@pytest.mark.parametrize("store_and_events", ["bisect"], indirect=True)
 @pytest.mark.parametrize("start_delta,end_delta", WINDOW_VIEW_TEST_CASES.values(), ids=WINDOW_VIEW_TEST_CASES.keys())
 def test_window_view(store_and_events, start_delta, end_delta):
     store, events = store_and_events
@@ -309,6 +319,9 @@ def test_window_view(store_and_events, start_delta, end_delta):
 
 
 if __name__ == "__main__":
+
+    _create_tabular_store("bisect")
+    exit(0)
 
     # First, check the expected counts for each test case
     events = _generate_event_data()

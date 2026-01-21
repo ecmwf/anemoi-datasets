@@ -494,8 +494,6 @@ class ReadAheadWriteBehindBuffer:
         """
         with self._lock:
 
-            assert self._read_ahead is None, "Resizing not supported with read-ahead enabled"
-
             self._arr.resize(*new_shape)
 
             for chunk in list(self._lru_chunks_cache.values()):

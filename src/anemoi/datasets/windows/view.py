@@ -86,11 +86,7 @@ class WindowView:
         assert isinstance(self.end_date, datetime.datetime)
         assert isinstance(self.frequency, datetime.timedelta)
 
-        # Compute the number of windows in the view
-        last_index = (self.end_date - self.start_date) // self.frequency
-        while self.start_date + last_index * self.frequency <= self.end_date:
-            last_index += 1
-        self._len = last_index + 1
+        self._len = self._compute_len()
 
     def set_start(self, start: datetime.datetime) -> "WindowView":
         """Return a new WindowView with the start date aligned to the frequency using as_first_date.
@@ -191,7 +187,19 @@ class WindowView:
         int
             The number of windows in the view.
         """
+
         return self._len
+
+    def _compute_len(self) -> int:
+
+        # Compute the number of windows in the view
+        # TODO: review that logic
+
+        last_index = (self.end_date - self.start_date) // self.frequency
+        while self.start_date + last_index * self.frequency <= self.end_date:
+            last_index += 1
+
+        return last_index + 1
 
     def __getitem__(self, index: Any) -> np.ndarray:
         """Retrieve the data for the specified window index, applying window boundaries and filtering.
@@ -231,6 +239,8 @@ class WindowView:
         # Calculate the start and end timestamps for the window
         query_start = self.start_date + index * self.frequency + self.window.before
         query_end = self.start_date + index * self.frequency + self.window.after
+
+        print("DEBUG", index, query_start, query_end)
 
         # Convert datetime to integer timestamps (seconds since epoch)
         query_start = round(query_start.timestamp())
@@ -284,22 +294,17 @@ class WindowView:
         range_slice = "(not set)"
 
         # Find the boundaries in the date_indexing for the window
-        try:
-            range_slice = self._slice(index)
-            values = self.data[range_slice]
 
-            assert values.shape[0] == range_slice.stop - range_slice.start, (
-                values.shape,
-                range_slice,
-                range_slice.stop - range_slice.start,
-            )
+        range_slice = self._slice(index)
+        values = self.data[range_slice]
 
-            return annotate(values, range_slice)
+        assert values.shape[0] == range_slice.stop - range_slice.start, (
+            values.shape,
+            range_slice,
+            range_slice.stop - range_slice.start,
+        )
 
-        except (IndexError, StopIteration) as e:
-            # We don't have that error to stop iterations in the caller
-            # We should be in control here
-            raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
+        return annotate(values, range_slice)
 
     def _getitem_slice(self, index: slice) -> np.ndarray:
         start, stop, step = index.indices(self._len)
@@ -377,7 +382,7 @@ class WindowView:
             assert result.start == 0, (self.start_date, actual_start, result)
 
         if self.end_date >= actual_end:
-            assert result.stop == len(self.data), (self.end_date, actual_end, result)
+            assert result.stop == len(self.data), (self.end_date, actual_end, result, len(self.data))
 
         return result
 

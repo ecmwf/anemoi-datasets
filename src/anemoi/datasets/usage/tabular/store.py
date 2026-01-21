@@ -99,7 +99,7 @@ class TabularZarr(ZarrStore):
 
     @cached_property
     def name_to_index(self) -> dict[str, int]:
-        return {v: i for i, v in enumerate(self.variables)}
+        return {k: i for i, k in enumerate(self.variables)}
 
     @property
     def resolution(self) -> tuple[float, float]:

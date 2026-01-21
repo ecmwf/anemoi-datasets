@@ -932,12 +932,11 @@ class ZarrBTree:
 class DateBTree(DateIndexing):
     name = "btree"
 
-    def __init__(self, /, store, mode="r"):
+    def __init__(self, /, store):
         self.store = store
-        self.mode = mode
 
     def bulk_load(self, dates_ranges: np.ndarray) -> None:
-        btree = ZarrBTree(path=self.store, name="date_index_btree", mode=self.mode)
+        btree = ZarrBTree(path=self.store, name="date_index_btree", mode="w")
         btree.bulk_load(dates_ranges)
 
     @cached_property
