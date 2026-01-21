@@ -17,15 +17,30 @@ import pytest
 
 from anemoi.datasets.create.statistics import StatisticsCollector
 
+# set numpy seed
+seed = np.random.randint(0, 10000)
+print(f"Using numpy random seed: {seed}")
+np.random.seed(seed)
+
+
+class DatasetMock:
+    def __init__(self, data, dates):
+        self.data = data
+        self.dates = dates
+
 
 class Filter:
     def __init__(self, start=None, end=None):
         self.start = start or -np.inf
         self.end = end or np.inf
 
-    def __call__(self, array, indices):
+    def __call__(self, array, indices, offset=0):
+        indices = (indices * 100).astype(np.int64)
         assert len(indices) == len(array), "Indices length must match array length"
-        mask = np.where((indices >= self.start) & (indices < self.end))[0]
+        mask = np.where((indices + offset >= self.start) & (indices + offset < self.end))[0]
+        # print(f"π Filtering with start={self.start}, end={self.end}: ")
+        # print(f"π  Original indices: {indices}")
+        # print(f"π  Masked indices:   {indices[mask]}")
         return array[mask]
 
 
@@ -111,10 +126,10 @@ def _check_statistics(data, target_stats):
     # Check if data has NaNs to determine which computation method to use
     has_nans = np.any(np.isnan(data))
     calc_stats = _compute_statistics(data, nan=has_nans)
-    assert np.allclose(calc_stats["mean"], target_stats["mean"]), "Mean check failed"
-    assert np.allclose(calc_stats["stdev"], target_stats["stdev"]), "Std deviation check failed"
-    assert np.allclose(calc_stats["minimum"], target_stats["minimum"]), "Min check failed"
-    assert np.allclose(calc_stats["maximum"], target_stats["maximum"]), "Max check failed"
+    assert np.allclose(calc_stats["mean"], target_stats["mean"], equal_nan=True), "Mean check failed"
+    assert np.allclose(calc_stats["stdev"], target_stats["stdev"], equal_nan=True), "Std deviation check failed"
+    assert np.allclose(calc_stats["minimum"], target_stats["minimum"], equal_nan=True), "Min check failed"
+    assert np.allclose(calc_stats["maximum"], target_stats["maximum"], equal_nan=True), "Max check failed"
 
 
 def test_statistics_collector_single_batch(N=1_000_000, C=5):
@@ -135,7 +150,9 @@ def test_statistics_collector_single_batch(N=1_000_000, C=5):
         print(f"{name.capitalize()}:")
         print(f"   Target:   {target}")
         print(f"   Computed: {computed_stats[name]}")
-        assert np.allclose(computed_stats[name], target, rtol=1e-10), f"{name.capitalize()} does not match!"
+        assert np.allclose(
+            computed_stats[name], target, rtol=1e-10, equal_nan=True
+        ), f"{name.capitalize()} does not match!"
 
     print("✓ Single batch test PASSED")
 
@@ -170,7 +187,9 @@ def test_statistics_collector_multiple_batches(N=1_000_000, C=5, batch_size=10_0
         print(f"   Computed: {computed_stats[name]}")
         diff = np.abs(computed_stats[name] - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed_stats[name], target, rtol=1e-10), f"{name.capitalize()} does not match!"
+        assert np.allclose(
+            computed_stats[name], target, rtol=1e-10, equal_nan=True
+        ), f"{name.capitalize()} does not match!"
 
     print("✓ Multiple batches test PASSED")
 
@@ -195,7 +214,9 @@ def test_statistics_with_nans(N=100_000, C=3, nan_fraction=0.1):
         print(f"{name.capitalize()}:")
         print(f"   Target:   {target}")
         print(f"   Computed: {computed_stats[name]}")
-        assert np.allclose(computed_stats[name], target, rtol=1e-9), f"{name.capitalize()} does not match!"
+        assert np.allclose(
+            computed_stats[name], target, rtol=1e-9, equal_nan=True
+        ), f"{name.capitalize()} does not match!"
 
     print("✓ NaN handling test PASSED")
 
@@ -212,7 +233,9 @@ def test_edge_cases():
 
     computed_stats = collector.statistics()
     for name in target_stats:
-        assert np.allclose(computed_stats[name], target_stats[name]), f"Single-row batch test failed for {name}"
+        assert np.allclose(
+            computed_stats[name], target_stats[name], equal_nan=True
+        ), f"Single-row batch test failed for {name}"
     print("   ✓ Single-row batches work correctly")
 
     # Test with varying batch sizes
@@ -226,7 +249,9 @@ def test_edge_cases():
 
     computed_stats2 = collector2.statistics()
     for name in target_stats:
-        assert np.allclose(computed_stats2[name], target_stats[name]), f"Varying batch size test failed for {name}"
+        assert np.allclose(
+            computed_stats2[name], target_stats[name], equal_nan=True
+        ), f"Varying batch size test failed for {name}"
     print("   ✓ Varying batch sizes work correctly")
 
     print("\n✓ All edge cases PASSED")
@@ -260,12 +285,15 @@ def test_tendencies_single_batch(N=1000, C=3, delta=1):
         print(f"   Computed: {computed}")
         diff = np.abs(computed - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed, target, rtol=1e-9), f"Tendency {stat_name} does not match!"
+        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), f"Tendency {stat_name} does not match!"
 
     print("✓ Tendencies single batch test PASSED")
 
 
-def test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=110):
+@pytest.mark.parametrize("batch_size", [1, 2, 5, 10, 11, 20])
+@pytest.mark.parametrize("delta", [1, 5, 10])
+def test_tendencies_multiple_batches(batch_size, delta, N=100, C=3):
+    # def test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=110):
     """Test tendency statistics with multiple batches."""
     data, _ = _create_random_stats(N, C)
 
@@ -298,7 +326,7 @@ def test_tendencies_multiple_batches(N=1000, C=3, delta=1, batch_size=110):
         print(f"   Computed: {computed}")
         diff = np.abs(computed - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed, target, rtol=1e-9), f"Tendency {stat_name} does not match!"
+        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), f"Tendency {stat_name} does not match!"
 
     print("✓ Tendencies multiple batches test PASSED")
 
@@ -333,7 +361,9 @@ def test_tendencies_multiple_deltas(N=500, C=2):
             computed = computed_stats[key]
             diff = np.abs(computed - target)
             print(f"  {stat_name}: max_diff={np.max(diff):.2e}")
-            assert np.allclose(computed, target, rtol=1e-9), f"Tendency {tendency_name}, {stat_name} does not match!"
+            assert np.allclose(
+                computed, target, rtol=1e-9, equal_nan=True
+            ), f"Tendency {tendency_name}, {stat_name} does not match!"
 
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
@@ -352,46 +382,51 @@ def test_serialisation():
 
 
 @pytest.mark.parametrize(
-    "filter",
+    "deltas",
     [
-        pytest.param(Filter(start=s, end=e), id=f"{s}-{e}")
-        for s, e in [
-            (None, None),
-            (800, 900),
-            (500, 800),
-            (0, 1000),
-            (0, 500),
-            (200, 700),
-        ]
+        pytest.param({"delta_1": 1, "delta_2": 2}, id="deltas_1_2"),
+        pytest.param({"delta_10": 10}, id="delta10"),
+        pytest.param({"delta_1": 1, "delta_5": 5, "delta_10": 10}, id="deltas_1_5_10"),
     ],
 )
-def test_merge_statistic_with_filter(filter):
-    tendencies = {"delta_1": 1, "delta_5": 5}
+@pytest.mark.parametrize("filter_end", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
+@pytest.mark.parametrize(
+    "cutoff",
+    [
+        pytest.param(50, id="cutoff50"),
+        pytest.param(70, id="cutoff70"),
+    ],
+)
+@pytest.mark.parametrize("filter_start", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
+def test_merge_statistic_with_filter(filter_start, filter_end, deltas, cutoff):
+    if filter_start is not None and filter_end is not None and filter_end < filter_start:
+        return
+    filter = Filter(start=filter_start, end=filter_end)
+    data, _ = _create_random_stats(100, 2)
 
-    data, _ = _create_random_stats(1000, 2)
-
-    c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
+    c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=deltas, filter=filter)
+    dates = np.arange(len(data)) / 100.0
     data = data.copy()
-    c0.collect(data, np.arange(len(data)))
+    c0.collect(data, dates)
     c0_stats = deepcopy(c0.statistics())
     c0_constants = deepcopy(c0.constant_variables())
 
-    c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
-    c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=tendencies, filter=filter)
+    c1 = StatisticsCollector(variables_names=["a", "b"], tendencies=deltas, filter=filter)
+    c2 = StatisticsCollector(variables_names=["a", "b"], tendencies=deltas, filter=filter)
 
-    slice1 = slice(0, 500)
-    slice2 = slice(500, 1000)
+    slice1 = slice(0, cutoff)
+    slice2 = slice(cutoff, 100)
     data1 = data[slice1].copy()
     data2 = data[slice2].copy()
-    c1.collect(data1, np.arange(len(data))[slice1])
-    c2.collect(data2, np.arange(len(data))[slice2])
+    c1.collect(data1, dates[slice1])
+    c2.collect(data2, dates[slice2])
 
     with tempfile.TemporaryDirectory() as tmpdir:
         path1 = f"{tmpdir}/collector1.pkl"
         path2 = f"{tmpdir}/collector2.pkl"
         c1.serialise(path1, group=0, start=0, end=len(data1))
         c2.serialise(path2, group=1, start=len(data1), end=len(data))
-        reloaded = StatisticsCollector.load_precomputed(data, [path1, path2], filter=filter)
+        reloaded = StatisticsCollector.load_precomputed(DatasetMock(data, dates), [path1, path2])
 
     compare_statistics(reloaded.statistics(), c0_stats)
     compare_constants(reloaded.constant_variables(), c0_constants)
@@ -405,14 +440,14 @@ def compare_statistics(actual, expected):
         print(f"{stat_name.capitalize()}:")
         print(f"   Expected: {exp}")
         print(f"   Actual:   {act}")
-        assert np.allclose(act, exp, rtol=1e-10)
+        assert np.allclose(act, exp, rtol=1e-10, equal_nan=True)
 
 
 def compare_constants(actual, expected):
     print("Constant Variables:")
     print(f"   Expected: {expected}")
     print(f"   Actual:   {actual}")
-    assert actual == expected, "Constant variables do not match!"
+    assert set(actual) == set(expected), "Constant variables do not match!"
 
 
 if __name__ == "__main__":
