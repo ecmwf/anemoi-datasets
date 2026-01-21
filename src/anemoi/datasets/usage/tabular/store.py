@@ -10,6 +10,7 @@
 
 import datetime
 import logging
+from functools import cached_property
 from typing import Any
 
 import numpy as np
@@ -96,9 +97,9 @@ class TabularZarr(ZarrStore):
     def missing(self) -> Any:
         raise NotImplementedError()
 
-    @property
+    @cached_property
     def name_to_index(self) -> dict[str, int]:
-        raise NotImplementedError()
+        return {v: i for i, v in enumerate(self.variables)}
 
     @property
     def resolution(self) -> tuple[float, float]:
