@@ -970,6 +970,6 @@ class DateBTree(DateIndexing):
         start_entry = DateRange(start_entry[0], start_entry[1][0], start_entry[1][1])
         end_entry = DateRange(end_entry[0], end_entry[1][0], end_entry[1][1])
 
-        print(f"Range search: start_entry={start_entry}, end_entry={end_entry}")
+        # print(f"Range search: start_entry={start_entry}, end_entry={end_entry}")
 
         return slice(start_entry.offset, end_entry.offset + end_entry.length)

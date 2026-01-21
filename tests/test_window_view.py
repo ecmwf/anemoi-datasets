@@ -322,7 +322,7 @@ def test_window_view(store_and_events, start_delta, end_delta):
 
 if __name__ == "__main__":
 
-    test_window_view(_create_tabular_store("bisect"), 163, 0)
+    test_window_view(_create_tabular_store("btree"), 0, 0)
 
     # _create_tabular_store("bisect")
     exit(0)
