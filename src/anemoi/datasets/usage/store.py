@@ -413,11 +413,13 @@ class ZarrStore(Dataset):
         import importlib
 
         def try_import(module: str, symbol: str):
+            print(f"Trying to import {symbol} from {module}")
             try:
                 module = importlib.import_module(module)
                 if hasattr(module, symbol):
                     return getattr(module, symbol)
-            except ModuleNotFoundError:
+            except ModuleNotFoundError as e:
+                print(e)
                 return None
             return None
 

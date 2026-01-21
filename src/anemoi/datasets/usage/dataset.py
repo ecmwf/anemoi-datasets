@@ -324,6 +324,11 @@ class Dataset(ABC, Sized):
             if shuffle:
                 return Subset(self, self._shuffle_indices(), dict(shuffle=True))._subset(**kwargs).mutate()
 
+        if tensors := kwargs.pop("tensors", None):
+            Tensors = self.usage_factory_load("Tensors")
+
+            return Tensors(self, tensors)._subset(**kwargs).mutate()
+
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
