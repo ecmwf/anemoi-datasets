@@ -557,10 +557,10 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         super().__init__(ds)
 
     def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> PointCoordinate | None:
-        if attributes.standard_name in ["cell", "station", "poi", "point"]:
+        if attributes.standard_name in ["location", "cell", "id", "station", "poi", "point"]:
             return PointCoordinate(c)
 
-        if attributes.name in ["cell", "station", "poi", "point"]:  # WeatherBench
+        if attributes.name in ["location", "cell", "id", "station", "poi", "point"]:  # WeatherBench
             return PointCoordinate(c)
 
         return None
