@@ -40,11 +40,6 @@ class _Base:
     def __init__(self, column_names: list[str] | None = None) -> None:
         self._column_names = column_names
 
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, self.__class__):
-            return False
-        return self._column_names == other._column_names
-
     def __repr__(self, extra: str = ""):
         return f"{self.__class__.__name__}(column_names={_(self._column_names)}" + (f", {extra}" if extra else "") + ")"
 
@@ -58,20 +53,6 @@ class _CollectorBase(_Base):
         self._column_names = column_names
         self._mean = np.zeros(num_columns, dtype=np.float64)
         self._m2 = np.zeros(num_columns, dtype=np.float64)
-
-    def __eq__(self, other: Any) -> bool:
-
-        if not isinstance(other, self.__class__):
-            return False
-
-        return (
-            super().__eq__(other)
-            and np.array_equal(self._count, other._count)
-            and np.array_equal(self._min, other._min)
-            and np.array_equal(self._max, other._max)
-            and np.array_equal(self._mean, other._mean)
-            and np.array_equal(self._m2, other._m2)
-        )
 
     def __repr__(self, extra: str = ""):
         return super().__repr__(
@@ -210,22 +191,6 @@ class _TendencyCollector(_CollectorBase):
         # Only keep a sliding window of the last 'delta' rows
         self._window = None
 
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, self.__class__):
-            return False
-        return (
-            super().__eq__(other)
-            and self._delta == other._delta
-            and (
-                (self._window is None and other._window is None)
-                or (
-                    self._window is not None
-                    and other._window is not None
-                    and np.array_equal(self._window, other._window)
-                )
-            )
-        )
-
     def __repr__(self, extra: str = ""):
         return super().__repr__(
             f"delta={_(self._delta)}, window={len(self._window[:]) if self._window is not None else None}"
@@ -301,24 +266,6 @@ class _ConstantsCollector(_Base):
         state["_first"] = None
         state["_nans"] = None
         return state
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, self.__class__):
-            return False
-        return (
-            super().__eq__(other)
-            and self._index == other._index
-            and self._name == other._name
-            and self._is_constant == other._is_constant
-            and (
-                (self._first is None and other._first is None)
-                or (self._first is not None and other._first is not None and np.array_equal(self._first, other._first))
-            )
-            and (
-                (self._nans is None and other._nans is None)
-                or (self._nans is not None and other._nans is not None and np.array_equal(self._nans, other._nans))
-            )
-        )
 
     def __repr__(self):
         return super().__repr__(
@@ -420,18 +367,6 @@ class StatisticsCollector:
         self._tendencies = tendencies or {}
         self._tendencies_collectors = _tendencies_collectors or {}
         self._constants_collectors = _constants_collectors or {}
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, self.__class__):
-            return False
-        return (
-            self._variables_names == other._variables_names
-            and self._allow_nans == other._allow_nans
-            and self._tendencies == other._tendencies
-            and self._collector == other._collector
-            and self._tendencies_collectors == other._tendencies_collectors
-            and self._constants_collectors == other._constants_collectors
-        )
 
     def __repr__(self):
         return (
