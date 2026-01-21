@@ -75,7 +75,7 @@ class Dataset:
 
         if create:
             if os.path.exists(path):
-                if overwrite or True:
+                if overwrite:
                     LOG.warning(f"Overwriting existing dataset at '{path}'.")
                     shutil.rmtree(path)
                 else:

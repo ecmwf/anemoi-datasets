@@ -156,7 +156,7 @@ class ZarrBTree:
             self.pages.attrs["chunk_sizes"] = chunk_sizes
 
         if mode == "r":
-            self.pages = RandomReadBuffer(self.pages, read_ahead=True, write_behind=False)
+            self.pages = RandomReadBuffer(self.pages)
         else:
             self.pages = WriteBehindBuffer(self.pages)
         self._number_of_rows = None

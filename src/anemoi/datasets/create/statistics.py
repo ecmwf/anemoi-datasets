@@ -641,24 +641,23 @@ class StatisticsCollector:
 
         states = sorted(states, key=lambda x: x.group)
 
-        try:
-            offset = 0
-            for i, state in enumerate(states):
-                if state.group != i:
-                    raise ValueError(f"Missing statistics for group {i}")
+        # Validate states
+        offset = 0
+        for i, state in enumerate(states):
+            if state.group != i:
+                raise ValueError(f"Missing statistics for group {i}")
 
-                if state.start != offset:
-                    raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
+            if state.start != offset:
+                raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
 
-                offset = state.end
+            offset = state.end
 
-            if offset != len(dataset.data):
-                raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset.data)}")
-        except Exception as e:
-            LOG.error("Error validating precomputed statistics: %s", e)
-            # raise
+        if offset != len(dataset.data):
+            raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset.data)}")
 
+        # Adjust partial statistics
         for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
             state.collector.adjust_partial_statistics(dataset, state.start, state.end)
 
+        # Merge all collectors
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

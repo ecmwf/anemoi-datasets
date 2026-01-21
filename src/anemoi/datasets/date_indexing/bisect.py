@@ -128,7 +128,6 @@ class DateBisect(DateIndexing):
         """
 
         assert start < end
-        adjust_end = False
 
         # Search only the first dimension of the 2D dates array, without loading all dates
         start_idx = bisect.bisect_left(_Proxy(self.index), start)
@@ -138,64 +137,18 @@ class DateBisect(DateIndexing):
 
         start_entry = DateRange(*self.index[start_idx])
 
-        end_idx = bisect.bisect_right(_Proxy(self.index), end)
+        end_idx = bisect.bisect_left(_Proxy(self.index), end)
         # End edge case: if end is beyond the last entry, adjust end_idx
         if end_idx == len(self.index):
-            adjust_end = True
             end_idx -= 1
-        # assert 0 <= end_idx < len(self.index), (end_idx, end, len(self.index))
+
         end_entry = DateRange(*self.index[end_idx])
 
-        assert start_idx <= end_idx, (start_idx, end_idx, start, end)
-        assert dataset_length is None or end_entry.offset + end_entry.length <= dataset_length, (
-            end_entry.offset,
-            end_entry.length,
-            dataset_length,
-        )
-        # print("Searching for range:", _(start), _(end))
-        # print("Start/end entries:", start_entry, end_entry)
+        if end_idx == 0 and end < end_entry.epoch:
+            # Start edge case: if end is before the first entry
+            return slice(0, 0)
 
-        diff_s = (int(start_entry.epoch) > int(start)) - (int(start_entry.epoch) < int(start))
-        diff_e = (int(end_entry.epoch) > int(end)) - (int(end_entry.epoch) < int(end))
-
-        match (diff_s, diff_e):
-            case (0, 0):
-                # Both entries match exactly what was searched
-                return slice(start_entry.offset, end_entry.offset + end_entry.length)
-
-            case (1, 0):
-                # Start entry is after the searched start, end entry matches exactly
-                return slice(start_entry.offset, end_entry.offset + end_entry.length)
-
-            case (0, 1):
-                # Start entry matches exactly, end entry is before the searched end
-                # We use the previous entry for the end
-                assert end_idx > 0, (end_idx, end, self.index[end_idx])
-                assert end_idx - 1 >= start_idx, (end_idx, start_idx)
-                end_entry = DateRange(*self.index[end_idx - 1])
-                return slice(start_entry.offset, end_entry.offset + end_entry.length)
-
-            case (1, 1):
-                # Start entry matches next date, end entry is before the searched end
-                # We use the previous entry for the end
-                assert end_idx > 0, (end_idx, end, self.index[end_idx])
-                assert end_idx - 1 >= start_idx, (end_idx, start_idx)
-                end_entry = DateRange(*self.index[end_idx - 1])
-                return slice(start_entry.offset, end_entry.offset + end_entry.length)
-
-            case (0, -1):
-                # Start entry matches exactly, end entry is after the searched end
-                # We use the current entry for the end
-                assert adjust_end, "We should have adjusted the end index"
-                return slice(start_entry.offset, end_entry.offset + end_entry.length)
-
-            case (1, -1):
-                # Start entry is after the searched start, end entry is after the searched end
-                assert adjust_end, "We should have adjusted the end index"
-                return slice(start_entry.offset, end_entry.offset + end_entry.length)
-
-            case _:
-                raise NotImplementedError(f"Case for {(diff_s, diff_e)}.")
+        return slice(start_entry.offset, end_entry.offset + end_entry.length)
 
     def boundaries(self, start: int, end: int) -> tuple[int, int]:
 

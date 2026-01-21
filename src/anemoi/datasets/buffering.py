@@ -701,6 +701,9 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
 
             self._ensure_chunk_in_cache(i)
 
+    def resize(self, *new_shape: int) -> None:
+        raise RuntimeError("Resizing not supported with ReadAheadBuffer enabled")
+
 
 class RandomReadBuffer(ReadAheadWriteBehindBuffer):
     """Caches buffers of a Zarr array for efficient read access with read-ahead."""
@@ -711,6 +714,9 @@ class RandomReadBuffer(ReadAheadWriteBehindBuffer):
 
     def __setitem__(self, key, value):
         raise RuntimeError("RandomReadBuffer is read-only")
+
+    def resize(self, *new_shape: int) -> None:
+        raise RuntimeError("Resizing not supported with RandomReadBuffer enabled")
 
 
 class WriteBehindBuffer(ReadAheadWriteBehindBuffer):
