@@ -86,8 +86,6 @@ class WindowView:
         assert isinstance(self.end_date, datetime.datetime)
         assert isinstance(self.frequency, datetime.timedelta)
 
-        self._len = self._compute_len()
-
     def set_start(self, start: datetime.datetime) -> "WindowView":
         """Return a new WindowView with the start date aligned to the frequency using as_first_date.
 
@@ -190,7 +188,8 @@ class WindowView:
 
         return self._len
 
-    def _compute_len(self) -> int:
+    @property
+    def _len(self) -> int:
 
         # Compute the number of windows in the view
         # TODO: review that logic
@@ -240,8 +239,6 @@ class WindowView:
         query_start = self.start_date + index * self.frequency + self.window.before
         query_end = self.start_date + index * self.frequency + self.window.after
 
-        print("DEBUG", index, query_start, query_end)
-
         # Convert datetime to integer timestamps (seconds since epoch)
         query_start = round(query_start.timestamp())
         query_end = round(query_end.timestamp())
@@ -261,10 +258,6 @@ class WindowView:
         # Find the boundaries in the date_indexing for the window
         try:
             range_slice = self.date_indexing.range_search(query_start, query_end, len(self.data))
-
-            if range_slice.start == range_slice.stop:
-                # No data in that range
-                range_slice
 
             assert range_slice.step in (None, 1), range_slice.step
             assert range_slice.start >= 0, range_slice.start
@@ -296,7 +289,13 @@ class WindowView:
         # Find the boundaries in the date_indexing for the window
 
         range_slice = self._slice(index)
-        values = self.data[range_slice]
+
+        try:
+            values = self.data[range_slice]
+        except (IndexError, StopIteration) as e:
+            # We don't have that error to stop iterations in the caller
+            # We should be in control here
+            raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
 
         assert values.shape[0] == range_slice.stop - range_slice.start, (
             values.shape,

@@ -202,6 +202,9 @@ def _test_window_view(view, expect):
     offset = whole_range.start
     count = 0
 
+    print("DEBUG whole_range:", whole_range)
+    print("DEBUG len(view)", len(view))
+
     for i, sample in enumerate(view):
 
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
@@ -209,7 +212,7 @@ def _test_window_view(view, expect):
 
         # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
         if sample.shape[0] == 0:
-            print(f"+++++++++++++ Sample {i}: EMPTY slice {sample.meta.slice_obj}, shape {sample.shape}")
+            # print(f"+++++++++++++ Sample {i}: EMPTY slice {sample.meta.slice_obj}, shape {sample.shape}")
             continue
 
         slice_obj = sample.meta.slice_obj
@@ -306,8 +309,7 @@ WINDOW_VIEW_TEST_CASES = {
 }
 
 
-# @pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
-@pytest.mark.parametrize("store_and_events", ["bisect"], indirect=True)
+@pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
 @pytest.mark.parametrize("start_delta,end_delta", WINDOW_VIEW_TEST_CASES.values(), ids=WINDOW_VIEW_TEST_CASES.keys())
 def test_window_view(store_and_events, start_delta, end_delta):
     store, events = store_and_events
@@ -320,7 +322,9 @@ def test_window_view(store_and_events, start_delta, end_delta):
 
 if __name__ == "__main__":
 
-    _create_tabular_store("bisect")
+    test_window_view(_create_tabular_store("bisect"), 163, 0)
+
+    # _create_tabular_store("bisect")
     exit(0)
 
     # First, check the expected counts for each test case

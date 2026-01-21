@@ -134,8 +134,9 @@ class _Buffer:
 
                 # Assumes that the slice is normalised
                 local_index = slice(key.start - self.offset, key.stop - self.offset, key.step)
-                if not (0 <= local_index.start < len(self.cache)) or not (0 <= local_index.stop <= len(self.cache)):
-                    raise IndexError("Slice out of chunk bounds")
+                if local_index.start != local_index.stop:  # only check non-empty slices
+                    if not (0 <= local_index.start < len(self.cache)) or not (0 <= local_index.stop <= len(self.cache)):
+                        raise IndexError("Slice out of chunk bounds")
                 return local_index
 
             case tuple():
