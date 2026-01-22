@@ -34,6 +34,10 @@ class _State:
         self.start = start
         self.end = end
         self.collector = collector
+        self.missing_tendencies_count = collector.missing_tendencies_count()
+
+    def __repr__(self):
+        return f"_State(group={self.group}, start={self.start}, end={self.end}, missing_tendencies_count={self.missing_tendencies_count})"
 
 
 class _Base:
@@ -177,11 +181,7 @@ class _CollectorBase(_Base):
 
 
 class _Collector(_CollectorBase):
-
-    def adjust_partial_statistics(self, dataset, start, end) -> None:
-        """Adjust statistics for a specific group and data range."""
-        # Nothing to do for the main collector
-        pass
+    pass
 
 
 class _TendencyCollector(_CollectorBase):
@@ -190,10 +190,31 @@ class _TendencyCollector(_CollectorBase):
         self._delta = delta
         # Only keep a sliding window of the last 'delta' rows
         self._window = None
+        self._last_window_date = None  # Store only last date for validation
+
+        # Summary of dates seen (instead of storing full arrays)
+        self._first_date = None
+        self._last_date = None
+        self._n_dates = 0
+
+        # Offset tracking
+        # _first_date_offset: offset from group start to first filtered date (in dataset indices)
+        # _unfiltered_dates_seen: cumulative count of unfiltered dates (for computing offset across batches)
+        self._first_date_offset = None
+        self._unfiltered_dates_seen = 0
+
+        # Number of dates at the start that couldn't have tendencies computed
+        # A "missing" date d means we could not compute value(d) - value(d - delta)
+        # because d - delta is before available data.
+        # The first delta dates of the entire (filtered) dataset are permanently missing:
+        # there's no data before them, so their tendencies can never be computed.
+        # This is set once on the first update call and not changed afterwards.
+        self._n_missing = None
 
     def __repr__(self, extra: str = ""):
         return super().__repr__(
-            f"delta={_(self._delta)}, window={len(self._window[:]) if self._window is not None else None}"
+            f"delta={_(self._delta)}, n_dates={self._n_dates}, n_missing={self._n_missing}, "
+            f"first_date={self._first_date}, last_date={self._last_date}, first_date_offset={self._first_date_offset}"
             + (f", {extra}" if extra else "")
         )
 
@@ -214,39 +235,102 @@ class _TendencyCollector(_CollectorBase):
         self._merge(self, other, result)
         return result
 
-    def update(self, data: NDArray[np.float64]) -> None:
+    def update(
+        self,
+        data: NDArray[np.float64],
+        dates,
+        unfiltered_batch_size: int | None = None,
+        first_offset_in_batch: int | None = None,
+    ) -> None:
+        assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        assert np.all(np.array(dates[1:]) >= np.array(dates[:-1])), ("Dates must be sorted", dates)
+        if self._last_window_date is not None and len(dates) > 0:
+            assert dates[0] > self._last_window_date, (
+                f"New dates must follow window dates chronologically: "
+                f"window ends at {self._last_window_date}, new data starts at {dates[0]}"
+            )
+
         # Concatenate window with new data for tendency computation
         combined = data if self._window is None else np.concatenate([self._window, data], axis=0)
 
         # Compute tendencies wherever we have enough history
         if len(combined) > self._delta:
             tendencies = combined[self._delta :] - combined[: -self._delta]
-            super().update(tendencies)
+            _CollectorBase.update(self, tendencies)
+
+        # Track date summary and offset (only on first call do we set n_missing and offset)
+        if self._first_date is None and len(dates) > 0:
+            self._first_date = dates[0]
+            # On first call, the missing count is min(delta, number of dates in first batch)
+            self._n_missing = min(self._delta, len(dates))
+            # Compute offset from group start to first filtered date
+            if first_offset_in_batch is not None:
+                self._first_date_offset = self._unfiltered_dates_seen + first_offset_in_batch
+
+        if len(dates) > 0:
+            self._last_date = dates[-1]
+        self._n_dates += len(dates)
+
+        # Track unfiltered dates for offset computation across batches
+        if unfiltered_batch_size is not None:
+            self._unfiltered_dates_seen += unfiltered_batch_size
 
         # Update sliding window: keep only last 'delta' rows
         self._window = np.array(combined[-self._delta :], copy=True)
+        if len(dates) > 0:
+            self._last_window_date = dates[-1]
 
     def finalise(self) -> None:
         pass
 
-    def adjust_partial_statistics(self, dataset, start, end) -> None:
-        """Adjust statistics for a specific group and data range."""
-        if start < self._delta:
-            # No adjustment needed for the first group
+    def adjust_partial_statistics(self, dataset, start, n_missing, filter_func) -> None:
+        """Adjust statistics by computing tendencies for the missing dates at the start of this group.
+
+        Uses data from the previous group (before start) as the window.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset containing data and dates.
+        start : int
+            The start index of this group in the dataset.
+        n_missing : int
+            The number of missing dates at the start (after filtering).
+        filter_func : Callable
+            The filter function to apply to dates/data.
+        """
+        if n_missing == 0:
             return
 
-        prev = dataset.data[start - self._delta : start]
-        curr = dataset.data[start : start + self._delta]
-        prev = np.array(prev)  # because dataset.data may not be a numpy array but a memoryview
-        curr = np.array(curr)  # because dataset.data may not be a numpy array but a memoryview
-        diff = curr - prev
+        assert (
+            self._first_date_offset is not None
+        ), f"_first_date_offset not set for tendency collector with first_date={self._first_date}"
+        first_date_idx = start + self._first_date_offset
 
-        _CollectorBase.update(self, diff)  # Do not use self.update to avoid messing with the window
-        self._window = None  # Clear window after adjustment
+        # Read n_missing dates starting from the first filtered date
+        missing_dates = dataset.dates[first_date_idx : first_date_idx + n_missing]
+        missing_data = dataset.data[first_date_idx : first_date_idx + n_missing]
+
+        # Apply the filter with offset for tendency computation
+        dates = filter_func(missing_dates, missing_dates, offset=-self._delta)
+        data = filter_func(missing_data, missing_dates, offset=-self._delta)
+
+        if len(dates) == 0:
+            return
+
+        self._window = dataset.data[first_date_idx - self._delta : first_date_idx]
+        window_dates = dataset.dates[first_date_idx - self._delta : first_date_idx]
+        self._last_window_date = window_dates[-1] if len(window_dates) > 0 else None
+        self.update(data, dates)
+        self._window = None
+        self._last_window_date = None
 
     def __getstate__(self):
         state = self.__dict__.copy()
         state["_window"] = None
+        state["_last_window_date"] = None
+        # _unfiltered_dates_seen is only needed during collection, reset after pickle
+        state["_unfiltered_dates_seen"] = 0
         return state
 
 
@@ -317,11 +401,6 @@ class _ConstantsCollector(_Base):
     @property
     def is_constant(self) -> bool:
         return self._is_constant
-
-    def adjust_partial_statistics(self, dataset, start, end) -> None:
-        """Adjust statistics for a specific group and data range."""
-        # Nothing to do for constant collector
-        pass
 
 
 def _all(array: np.array, dates: np.array) -> range:
@@ -438,6 +517,10 @@ class StatisticsCollector:
             _constants_collectors=constants_collectors,
         )
 
+    def missing_tendencies_count(self) -> dict[str, int]:
+        """Return count of missing dates for each tendency collector."""
+        return {name: c._n_missing or 0 for name, c in self._tendencies_collectors.items()}
+
     def collect(self, array: NDArray[np.float64], dates: Any) -> None:
         """Collect statistics from a batch of data.
 
@@ -451,13 +534,30 @@ class StatisticsCollector:
         dates : Any
             Date information corresponding to the data samples.
         """
+        unfiltered_batch_size = len(dates)
+        filtered_array = self._filter(array, dates)
+        filtered_dates = self._filter(dates, dates)
 
-        array = self._filter(array, dates)
-        if len(array) == 0:
+        # Compute offset of first filtered date within this batch (for tendency collectors)
+        # This is O(log batch_size), not O(log 10B dataset)
+        if len(filtered_dates) > 0:
+            first_offset_in_batch = int(np.searchsorted(dates, filtered_dates[0]))
+        else:
+            first_offset_in_batch = None
+
+        if len(filtered_array) == 0:
+            # Still need to track unfiltered dates even if all filtered out
+            for c in self._tendencies_collectors.values():
+                c.update(
+                    np.empty((0, 0)),
+                    np.array([]),
+                    unfiltered_batch_size=unfiltered_batch_size,
+                    first_offset_in_batch=None,
+                )
             return
 
         if self._collector is None:
-            num_columns = array.shape[1]
+            num_columns = filtered_array.shape[1]
             names = self._variables_names
             column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
 
@@ -473,14 +573,19 @@ class StatisticsCollector:
                 self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
 
         # Update all columns at once
-        self._collector.update(array)
+        self._collector.update(filtered_array)
 
         for c in self._constants_collectors.values():
-            c.update(array)
+            c.update(filtered_array)
 
-        # For tendencies, just buffer the data
+        # For tendencies, pass offset information for efficient index computation
         for c in self._tendencies_collectors.values():
-            c.update(array)
+            c.update(
+                filtered_array,
+                filtered_dates,
+                unfiltered_batch_size=unfiltered_batch_size,
+                first_offset_in_batch=first_offset_in_batch,
+            )
 
     def statistics(self) -> dict[str, NDArray[np.float64]]:
         """Compute final statistics from all collected data.
@@ -547,18 +652,17 @@ class StatisticsCollector:
 
         dataset.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
 
-    def adjust_partial_statistics(self, dataset, start, end) -> None:
-        """Adjust statistics for a specific group and data range."""
-        if self._collector is not None:
-            # Update all columns at once
-            self._collector.adjust_partial_statistics(dataset, start, end)
+    def adjust_partial_statistics(self, dataset, state) -> None:
+        """Adjust statistics for a specific group and data range.
 
-        for c in self._constants_collectors.values():
-            c.adjust_partial_statistics(dataset, start, end)
+        For tendency collectors, this fills in the tendencies for dates at the
+        start of the group that couldn't be computed during initial processing
+        (because we needed data from the previous group)
+        """
 
-        # For tendencies, just buffer the data
-        for c in self._tendencies_collectors.values():
-            c.adjust_partial_statistics(dataset, start, end)
+        for name, n_missing in state.missing_tendencies_count.items():
+            tc = state.collector._tendencies_collectors[name]
+            tc.adjust_partial_statistics(dataset, state.start, n_missing, state.collector._filter)
 
     def serialise(self, path, group, start, end) -> None:
         state = _State(group=group, start=start, end=end, collector=self)
@@ -566,7 +670,7 @@ class StatisticsCollector:
             pickle.dump(state, f)
 
     @classmethod
-    def load_precomputed(cls, dataset, precomputed, filter):
+    def load_precomputed(cls, dataset, precomputed):
         states = []
         for item in tqdm.tqdm(precomputed, desc="Loading precomputed statistics"):
             with open(item, "rb") as f:
@@ -592,7 +696,7 @@ class StatisticsCollector:
 
         # Adjust partial statistics
         for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
-            state.collector.adjust_partial_statistics(dataset, state.start, state.end)
+            state.collector.adjust_partial_statistics(dataset, state)
 
         # Merge all collectors
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

@@ -293,21 +293,15 @@ class GriddedCreator(Creator):
         return collector
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
-        dates = dataset.dates
-
         if os.path.exists(self.work_dir):
             precomputed = list(glob.glob(os.path.join(self.work_dir, "statistics_*.pkl")))
             if precomputed:
                 LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
                 # Load precomputed statistics
-                collector = StatisticsCollector.load_precomputed(
-                    dataset,
-                    precomputed,
-                    filter=self.recipe.statistics.statistics_filter(dates),
-                )
+                collector = StatisticsCollector.load_precomputed(dataset, precomputed)
                 collector.add_to_dataset(dataset)
                 return
 
         LOG.info("Computing statistics for the full dataset")
-        collector = self._compute_partial_statistics(dataset, 0, len(dates))
+        collector = self._compute_partial_statistics(dataset, 0, len(dataset.dates))
         collector.add_to_dataset(dataset)
