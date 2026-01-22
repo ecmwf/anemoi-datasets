@@ -20,11 +20,11 @@ from earthkit.data.utils.dates import to_datetime
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
+from ..annotated._numpy import AnnotatedNDArray
+from ..annotated.metadata import MultipleWindowMetaData
+from ..annotated.metadata import WindowMetaData
 from ..buffering import RandomReadBuffer
 from ..date_indexing import create_date_indexing
-from .annotated import AnnotatedNDArray
-from .metadata import MultipleWindowMetaData
-from .metadata import WindowMetaData
 from .window import Window
 
 LOG = logging.getLogger(__name__)
@@ -276,7 +276,7 @@ class WindowView:
         def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
             return AnnotatedNDArray(
                 array[:, 4:],
-                meta=WindowMetaData(
+                anemoi_annotation=WindowMetaData(
                     owner=self,
                     index=index,
                     aux_array=array[:, :4],
@@ -316,7 +316,7 @@ class WindowView:
 
         return AnnotatedNDArray(
             np.concatenate(arrays, axis=0),
-            meta=MultipleWindowMetaData(
+            anemoi_annotation=MultipleWindowMetaData(
                 owner=self,
                 index=index,
                 children=arrays,

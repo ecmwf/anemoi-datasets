@@ -9,53 +9,12 @@
 
 import datetime
 import logging
-from abc import ABC
-from abc import abstractmethod
 
 import numpy as np
 
+from .base import WindowMetaDataBase
+
 LOG = logging.getLogger(__name__)
-
-
-class WindowMetaDataBase(ABC):
-    def __init__(self, owner, index) -> None:
-        self.owner = owner
-        self.index = index
-
-    @property
-    @abstractmethod
-    def latitudes(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def longitudes(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def dates(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def timedeltas(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def reference_date(self) -> np.datetime64:
-        pass
-
-    @property
-    @abstractmethod
-    def reference_dates(self) -> np.ndarray:
-        pass
-
-    @property
-    @abstractmethod
-    def boundaries(self) -> list[slice]:
-        pass
 
 
 class WindowMetaData(WindowMetaDataBase):

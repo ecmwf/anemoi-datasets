@@ -25,11 +25,11 @@ def to_numpy(data: Any) -> Any:
 def to_torch(data: Any) -> Any:
     import torch
 
-    from anemoi.datasets.usage.tabular.annotated_torch import AnnotatedTorchTensor
-    from anemoi.datasets.windows.metadata import WindowMetaDataBase
+    from anemoi.datasets.annotated._torch import AnnotatedTorchTensor
+    from anemoi.datasets.annotated.metadata import WindowMetaDataBase
 
-    if hasattr(data, "meta") and isinstance(data.meta, WindowMetaDataBase):
-        return AnnotatedTorchTensor(data, meta=data.meta)
+    if hasattr(data, "_anemoi_annotation") and isinstance(data._anemoi_annotation, WindowMetaDataBase):
+        return AnnotatedTorchTensor(data, data._anemoi_annotation)
 
     return torch.tensor(data)
 
