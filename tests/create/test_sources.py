@@ -421,6 +421,7 @@ def test_kerchunk(get_test_data: callable) -> None:
 @skip_missing_packages("planetary_computer", "adlfs")
 def test_planetary_computer_conus404() -> None:
     """Test loading and validating the planetary_computer_conus404 dataset."""
+    import pystac_client
 
     config = {
         "dates": {
@@ -446,8 +447,10 @@ def test_planetary_computer_conus404() -> None:
             }
         },
     }
-
-    created = create_dataset(config=config, output=None)
+    try:
+        created = create_dataset(config=config, output=None)
+    except pystac_client.exceptions.APIError:
+        pytest.skip("Planetary Computer data catalog is not available")
     ds = open_dataset(created)
     assert ds.shape == (2, 1, 1, 1387505), ds.shape
 
