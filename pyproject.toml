@@ -28,7 +28,7 @@ authors = [
   { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -36,7 +36,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
@@ -47,13 +46,15 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.10",
-  "anemoi-utils[provenance]>=0.4.38",
+  "anemoi-transform>=0.1.12",
+  "anemoi-utils>=0.4.26",
   "cfunits",
   "glom",
   "jsonschema",
-  "numcodecs<0.16",                   # Until we move to zarr3
+  "numcodecs<0.16",           # Until we move to zarr3
   "numpy",
+  "pytest>=8.4.1",
+  "pytest-xdist>=3.7",
   "pyyaml",
   "ruamel-yaml",
   "semantic-version",

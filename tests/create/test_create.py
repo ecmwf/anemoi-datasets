@@ -14,29 +14,40 @@ import sys
 from unittest.mock import patch
 
 import pytest
+import yaml
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
 from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from .utils.compare import Comparer
+from .utils.checks import check_dataset
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 
 HERE = os.path.dirname(__file__)
 # find_yamls
-NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
-SKIP = ["recentre"]
-SKIP += ["accumulation"]  # test not in s3 yet
-SKIP += ["regrid"]
-NAMES = [name for name in NAMES if name not in SKIP]
-assert NAMES, "No yaml files found in " + HERE
+
+IGNORE = ["recentre"]
+
+NAMES = []
+for path in glob.glob(os.path.join(HERE, "*.yaml")):
+    name, _ = os.path.splitext(os.path.basename(path))
+    if name in IGNORE:
+        continue
+    with open(path) as f:
+        conf = yaml.safe_load(f)
+        if conf.get("skip_test", False):
+            continue
+        if conf.get("slow_test", False):
+            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
+            continue
+    NAMES.append(name)
 
 
 # Used by pipe.yaml
 @filter_registry.register("filter")
-class TestFilter(Filter):
+class FilterForTesting(Filter):
 
     def __init__(self, **kwargs):
 
@@ -73,14 +84,10 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     with patch("earthkit.data.from_source", load_source):
         config = os.path.join(HERE, name + ".yaml")
         output = os.path.join(HERE, name + ".zarr")
-        is_test = False
 
-        create_dataset(config=config, output=output, delta=["12h"], is_test=is_test)
+        create_dataset(config=config, output=output, delta=["12h"])
 
-        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
-        reference = os.path.join(directory, name + ".zarr")
-
-        Comparer(output_path=output, reference_path=reference).compare()
+        check_dataset(name, config, output, get_test_archive)
 
 
 if __name__ == "__main__":

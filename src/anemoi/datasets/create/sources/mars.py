@@ -17,6 +17,7 @@ from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
 from anemoi.datasets.create.sources import source_registry
+from anemoi.datasets.create.sources.accumulate import IntervalsDatesProvider
 
 from .legacy import LegacySource
 
@@ -145,7 +146,7 @@ def _expand_mars_request(
 
     Parameters
     ----------
-    request : Dict[str, Any]
+    request : dict[str, Any]
         The input MARS request.
     date : datetime.datetime
         The date to be used in the request.
@@ -156,7 +157,7 @@ def _expand_mars_request(
 
     Returns
     -------
-    List[Dict[str, Any]]
+    List[dict[str, Any]]
         A list of expanded MARS requests.
     """
     requests = []
@@ -164,23 +165,26 @@ def _expand_mars_request(
     user_step = to_list(expand_to_by(request.get("step", [0])))
     user_time = None
     user_date = None
-
     if not request_already_using_valid_datetime:
-        user_time = request.get("time")
+        user_time = request.get("user_time")
         if user_time is not None:
             user_time = to_list(user_time)
             user_time = [_normalise_time(t) for t in user_time]
 
         user_date = request.get(date_key)
         if user_date is not None:
-            assert isinstance(user_date, str), user_date
+            if isinstance(user_date, int):
+                user_date = str(user_date)
+            elif isinstance(user_date, datetime.datetime):
+                user_date = user_date.strftime("%Y%m%d")
+            else:
+                raise ValueError(f"Invalid type for {user_date}")
             user_date = re.compile("^{}$".format(user_date.replace("-", "").replace("?", ".")))
 
     for step in user_step:
         r = request.copy()
 
         if not request_already_using_valid_datetime:
-
             if isinstance(step, str) and "-" in step:
                 assert step.count("-") == 1, step
 
@@ -190,29 +194,26 @@ def _expand_mars_request(
             base = date - datetime.timedelta(hours=hours)
             r.update(
                 {
-                    date_key: base.strftime("%Y%m%d"),
+                    "date": base.strftime("%Y%m%d"),
                     "time": base.strftime("%H%M"),
                     "step": step,
                 }
             )
-
         for pproc in ("grid", "rotation", "frame", "area", "bitmap", "resol"):
             if pproc in r:
                 if isinstance(r[pproc], (list, tuple)):
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
         if user_date is not None:
-            if not user_date.match(r[date_key]):
+            if not user_date.match(r["date"]):
                 continue
 
         if user_time is not None:
-            # It time is provided by the user, we only keep the requests that match the time
+            # If time is provided by the user, we only keep the requests that match the time
             if r["time"] not in user_time:
                 continue
 
         requests.append(r)
-
-    # assert requests, requests
 
     return requests
 
@@ -222,6 +223,7 @@ def factorise_requests(
     *requests: dict[str, Any],
     request_already_using_valid_datetime: bool = False,
     date_key: str = "date",
+    no_date_here: bool = False,
 ) -> Generator[dict[str, Any], None, None]:
     """Factorizes the requests based on the given dates.
 
@@ -229,33 +231,42 @@ def factorise_requests(
     ----------
     dates : List[datetime.datetime]
         The list of dates to be used in the requests.
-    requests : Dict[str, Any]
+    requests : List[dict[str, Any]]
         The input requests to be factorized.
     request_already_using_valid_datetime : bool, optional
         Flag indicating if the requests already use valid datetime.
     date_key : str, optional
         The key for the date in the requests.
+    no_date_here : bool, optional
+        Flag indicating if there is no date in the "dates" list.
 
     Returns
     -------
-    Generator[Dict[str, Any], None, None]
+    Generator[dict[str, Any], None, None]
         Factorized requests.
     """
-    updates = []
-    for req in requests:
-        # req = normalise_request(req)
+    if isinstance(requests, tuple) and len(requests) == 1 and "requests" in requests[0]:
+        requests = requests[0]["requests"]
 
-        for d in dates:
-            updates += _expand_mars_request(
+    updates = []
+    for d in sorted(dates):
+        for req in requests:
+            if not no_date_here and (
+                ("date" in req)
+                and ("time" in req)
+                and d.strftime("%Y%m%d%H%M") != (str(req["date"]) + str(req["time"]).zfill(4))
+            ):
+                continue
+            new_req = _expand_mars_request(
                 req,
                 date=d,
                 request_already_using_valid_datetime=request_already_using_valid_datetime,
-                date_key=date_key,
+                date_key="user_date",
             )
+            updates += new_req
 
     if not updates:
         return
-
     compressed = Availability(updates)
     for r in compressed.iterate():
         for k, v in r.items():
@@ -269,12 +280,12 @@ def use_grib_paramid(r: dict[str, Any]) -> dict[str, Any]:
 
     Parameters
     ----------
-    r : Dict[str, Any]
+    r : dict[str, Any]
         The input request containing parameter short names.
 
     Returns
     -------
-    Dict[str, Any]
+    dict[str, Any]
         The request with parameter IDs.
     """
     from anemoi.utils.grib import shortname_to_paramid
@@ -379,7 +390,7 @@ class MarsSource(LegacySource):
             The context for the requests.
         dates : List[datetime.datetime]
             The list of dates to be used in the requests.
-        requests : Dict[str, Any]
+        requests : dict[str, Any]
             The input requests to be executed.
         request_already_using_valid_datetime : bool, optional
             Flag indicating if the requests already use valid datetime.
@@ -395,7 +406,6 @@ class MarsSource(LegacySource):
         Any
             The resulting dataset.
         """
-
         if not requests:
             requests = [kwargs]
 
@@ -418,7 +428,26 @@ class MarsSource(LegacySource):
                         "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
                     )
 
-        if len(dates) == 0:  # When using `repeated_dates`
+        if isinstance(dates, IntervalsDatesProvider):
+            # When using accumulate source
+            requests_ = []
+            for request in requests:
+                for d, interval in dates.intervals:
+                    context.trace("🌧️", "interval:", interval)
+                    _, r, _ = dates._adjust_request_to_interval(interval, request)
+                    context.trace("🌧️", "  adjusted request =", r)
+                    requests_.append(r)
+            requests = requests_
+            context.trace("🌧️", f"Total requests: {len(requests)}")
+            requests = factorise_requests(
+                ["no_date_here"],
+                *requests,
+                request_already_using_valid_datetime=True,
+                date_key=date_key,
+                no_date_here=True,
+            )
+
+        elif len(dates) == 0:  # When using `repeated_dates`
             assert len(requests) == 1, requests
             assert "date" in requests[0], requests[0]
             if isinstance(requests[0]["date"], datetime.date):
@@ -434,7 +463,7 @@ class MarsSource(LegacySource):
         requests = list(requests)
 
         ds = from_source("empty")
-        context.trace("✅", f"{[str(d) for d in dates]}")
+        context.trace("✅", f"{[str(d) for d in dates]}, {len(dates)}")
         context.trace("✅", f"Will run {len(requests)} requests")
         for r in requests:
             r = {k: v for k, v in r.items() if v != ("-",)}
