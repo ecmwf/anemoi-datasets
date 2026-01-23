@@ -91,13 +91,15 @@ class _CollectorBase(_Base):
         result._m2 = m2
         result._min = min_
         result._max = max_
+        return result
 
     def merge(self, other: "_CollectorBase") -> "_CollectorBase":
         result = _CollectorBase(self._column_names)
-        self._merge(self, other, result)
-        return result
+        return self._merge(self, other, result)
 
     def update(self, data: NDArray[np.float64]) -> None:
+        if len(data) == 0:
+            return
         # data shape: (n_samples, n_columns)
         data = data.astype(np.float64)
 
@@ -232,8 +234,7 @@ class _TendencyCollector(_CollectorBase):
 
     def merge(self, other: "_TendencyCollector") -> "_TendencyCollector":
         result = _TendencyCollector(self._column_names, self._delta)
-        self._merge(self, other, result)
-        return result
+        return self._merge(self, other, result)
 
     def update(
         self,
@@ -360,21 +361,28 @@ class _ConstantsCollector(_Base):
     def _merge(
         cls, a: "_ConstantsCollector", b: "_ConstantsCollector", result: "_ConstantsCollector"
     ) -> "_ConstantsCollector":
+
+        if a._hash is None:  # a has seen no data
+            return b
+        if b._hash is None:  # b has seen no data
+            return a
+
         if a._index != b._index or a._name != b._name or a._column_names != b._column_names:
             raise ValueError("Cannot merge incompatible constants collectors")
 
         result._nans = a._nans.copy() if a._nans is not None else b._nans.copy() if b._nans is not None else None
-        result._first = None
         result._is_constant = a._is_constant and b._is_constant and a._hash == b._hash
-        result._hash = a._hash if a._hash == b._hash else None
+        result._hash = a._hash
+        result._first = None
         return result
 
     def merge(self, other: "_ConstantsCollector") -> "_ConstantsCollector":
         result = _ConstantsCollector(self._index, self._column_names, self._name)
-        self._merge(self, other, result)
-        return result
+        return self._merge(self, other, result)
 
     def update(self, data: NDArray[np.float64]) -> None:
+        if len(data) == 0:
+            return
 
         if not self._is_constant:
             # No need to check further
@@ -534,41 +542,22 @@ class StatisticsCollector:
         dates : Any
             Date information corresponding to the data samples.
         """
-        unfiltered_batch_size = len(dates)
         filtered_array = self._filter(array, dates)
         filtered_dates = self._filter(dates, dates)
+        assert len(filtered_array) == len(
+            filtered_dates
+        ), f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
 
-        # Compute offset of first filtered date within this batch (for tendency collectors)
-        # This is O(log batch_size), not O(log 10B dataset)
-        if len(filtered_dates) > 0:
-            first_offset_in_batch = int(np.searchsorted(dates, filtered_dates[0]))
-        else:
-            first_offset_in_batch = None
-
-        if len(filtered_array) == 0:
-            # Still need to track unfiltered dates even if all filtered out
-            for c in self._tendencies_collectors.values():
-                c.update(
-                    np.empty((0, 0)),
-                    np.array([]),
-                    unfiltered_batch_size=unfiltered_batch_size,
-                    first_offset_in_batch=None,
-                )
-            return
-
-        if self._collector is None:
+        if self._collector is None:  # lazily initialise collectors
             num_columns = filtered_array.shape[1]
             names = self._variables_names
             column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
 
-            # Single collector for all columns
             self._collector = _Collector(column_names)
 
-            # Constant collectors
             for i, name in enumerate(names):
                 self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
 
-            # Tendency collectors
             for name, delta in self._tendencies.items():
                 self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
 
@@ -579,11 +568,12 @@ class StatisticsCollector:
             c.update(filtered_array)
 
         # For tendencies, pass offset information for efficient index computation
+        first_offset_in_batch = int(np.searchsorted(dates, filtered_dates[0])) if len(filtered_dates) > 0 else None
         for c in self._tendencies_collectors.values():
             c.update(
                 filtered_array,
                 filtered_dates,
-                unfiltered_batch_size=unfiltered_batch_size,
+                unfiltered_batch_size=len(dates),
                 first_offset_in_batch=first_offset_in_batch,
             )
 
