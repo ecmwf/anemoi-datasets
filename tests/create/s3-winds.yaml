@@ -29,6 +29,7 @@ input:
 build:
   variable_naming: "{param}_{pressure}_{altitude}"
 
+# test specific config below here
 slow_test: true
 checks:
 - variables: [ wdir, ws ]

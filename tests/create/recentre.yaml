@@ -85,7 +85,7 @@ input:
           - sin_local_time
           - insolation
 
-
+# test specific config below here
 slow_test: true
 checks:
   - none: {}

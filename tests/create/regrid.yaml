@@ -29,5 +29,6 @@ input:
         in_grid: o32
         out_grid: o48
 
+# test specific config below here
 checks:
   - none: {}

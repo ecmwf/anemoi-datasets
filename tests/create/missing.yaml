@@ -28,5 +28,6 @@ input:
 statistics:
   end: 2021-01-02
 
+# test specific config below here
 checks:
   - compare_to_reference: {}

@@ -17,6 +17,7 @@ input:
         param: [ 2t ]
         date: 1990-01-01
 
+# test specific config below here
 checks:
 - dates:
   - 2020-12-30 00:00:00

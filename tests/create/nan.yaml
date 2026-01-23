@@ -17,5 +17,6 @@ statistics:
   end: 2020
   allow_nans: [sst]
 
+# test specific config below here
 checks:
   - compare_to_reference: {}
