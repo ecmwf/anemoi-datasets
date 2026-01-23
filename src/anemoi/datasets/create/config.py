@@ -372,9 +372,6 @@ def loader_config(config: dict) -> LoadersConfig:
             LOG.info(f"Setting env variable {k}={v}")
             os.environ[k] = str(v)
 
-    # Used by pytest only
-    # copy.pop('checks', None)
-
     return copy
 
 
