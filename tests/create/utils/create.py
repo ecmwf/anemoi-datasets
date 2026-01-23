@@ -49,7 +49,7 @@ def create_dataset(
     if output is None:
         output = tempfile.mkdtemp(suffix=".zarr")
 
-    creator_factory("init", config=config, path=output, overwrite=True, test=True).run()
+    creator_factory("init", config=config, path=output, overwrite=True).run()
     creator_factory("load", path=output).run()
     creator_factory("finalise", path=output).run()
     creator_factory("patch", path=output).run()
