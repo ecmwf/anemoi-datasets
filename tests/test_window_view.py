@@ -210,14 +210,14 @@ def _test_window_view(view, expect):
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
         assert sample.shape[1] == VARIABLES
 
-        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        # print(f"+++++++++++++ Sample {i}: slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
         if sample.shape[0] == 0:
-            # print(f"+++++++++++++ Sample {i}: EMPTY slice {sample.meta.slice_obj}, shape {sample.shape}")
+            # print(f"+++++++++++++ Sample {i}: EMPTY slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
             continue
 
-        slice_obj = sample.meta.slice_obj
+        slice_obj = sample._anemoi_annotation.slice_obj
         assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
-        # print(f"+++++++++++++ Sample {i}: slice {sample.meta.slice_obj}, shape {sample.shape}")
+        # print(f"+++++++++++++ Sample {i}: slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
         # print(sample)
         date1 = datetime.datetime.fromtimestamp(int(sample[0][0]))
         date2 = datetime.datetime.fromtimestamp(int(sample[-1][0]))

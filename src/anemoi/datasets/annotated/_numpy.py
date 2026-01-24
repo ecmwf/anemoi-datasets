@@ -18,11 +18,11 @@ LOG = logging.getLogger(__name__)
 class AnnotatedNDArray(np.ndarray):
     """Extends numpy.ndarray to include additional metadata attributes.
 
-    This class attaches a meta object that holds metadata information, allowing
+    This class attaches a _anemoi_annotation object that holds metadata information, allowing
     for the recommended way to add metadata to numpy arrays.
     """
 
-    def __new__(cls, input_array, *, dtype=None, copy=False, meta=None) -> "AnnotatedNDArray":
+    def __new__(cls, input_array, *, dtype=None, copy=False, anemoi_annotation=None) -> "AnnotatedNDArray":
         """Create a new AnnotatedNDArray with attached metadata.
 
         Parameters
@@ -33,7 +33,7 @@ class AnnotatedNDArray(np.ndarray):
             Desired data-type for the array.
         copy : bool, optional
             If True, then the object is copied.
-        meta : object, optional
+        anemoi_annotation : object, optional
             Metadata object to attach to the array.
 
         Returns
@@ -42,7 +42,7 @@ class AnnotatedNDArray(np.ndarray):
             The new array with attached metadata.
         """
         obj = np.array(input_array, dtype=dtype, copy=copy).view(cls)
-        obj.meta = meta
+        obj._anemoi_annotation = anemoi_annotation
         return obj
 
     def __array_finalize__(self, obj) -> None:
@@ -55,39 +55,44 @@ class AnnotatedNDArray(np.ndarray):
         """
         if obj is None:
             return
-        self.meta = getattr(obj, "meta", None)
+        self._anemoi_annotation = getattr(obj, "_anemoi_annotation", None)
 
     @property
     def dates(self) -> np.ndarray:
         """Array of dates associated with the data."""
-        return self.meta.dates
+        return self._anemoi_annotation.dates
 
     @property
     def latitudes(self) -> np.ndarray:
         """Array of latitudes associated with the data."""
-        return self.meta.latitudes
+        return self._anemoi_annotation.latitudes
 
     @property
     def longitudes(self) -> np.ndarray:
         """Array of longitudes associated with the data."""
-        return self.meta.longitudes
+        return self._anemoi_annotation.longitudes
 
     @property
     def timedeltas(self) -> np.ndarray:
         """Array of time deltas associated with the data."""
-        return self.meta.timedeltas
+        return self._anemoi_annotation.timedeltas
 
     @property
     def reference_date(self) -> datetime.datetime:
         """The reference date for the data."""
-        return self.meta.reference_date
+        return self._anemoi_annotation.reference_date
+
+    @property
+    def reference_dates(self) -> datetime.datetime:
+        """The reference date for the data."""
+        return self._anemoi_annotation.reference_dates
 
     @property
     def boundaries(self) -> list[slice]:
         """The boundaries for the data."""
-        return self.meta.boundaries
+        return self._anemoi_annotation.boundaries
 
     @property
     def index(self) -> list[slice]:
         """The index for the data."""
-        return self.meta.index
+        return self._anemoi_annotation.index
