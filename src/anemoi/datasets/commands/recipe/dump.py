@@ -39,6 +39,11 @@ class Dumper:
 
 def dump_recipe(config: dict, dumper=None) -> str:
     recipe = Recipe(**config)
+
+    if dumper is None:
+        # return repr(recipe)
+        return recipe.model_dump_json(indent=2)
+
     input = InputBuilder(
         recipe.input,
         data_sources=recipe.data_sources or {},

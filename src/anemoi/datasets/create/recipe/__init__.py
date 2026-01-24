@@ -22,6 +22,7 @@ from .build import Build
 from .output import GriddedOutput
 from .output import Output
 from .statistics import Statistics
+from .action import Action
 
 LOG = logging.getLogger(__name__)
 
@@ -58,10 +59,10 @@ class Recipe(BaseModel):
     dates: DotDictField
     """The date configuration for the dataset."""
 
-    input: DotDictField
+    input: Action | None = None
     """The input data sources configuration."""
 
-    data_sources: list[DotDictField] | DotDictField | None = None
+    data_sources: dict[str, Action] | None  = None
     """The data sources configuration."""
 
     output: Output = Field(default_factory=GriddedOutput)
@@ -69,6 +70,7 @@ class Recipe(BaseModel):
 
     build: Build = Build()
     """The build configuration."""
+
     additions: DotDictField | None = Field(
         default=None,
         deprecated="Top-level 'additions' is deprecated. Use 'statistics.tendencies' instead.",
