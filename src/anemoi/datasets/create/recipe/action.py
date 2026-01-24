@@ -19,7 +19,6 @@ import logging
 from typing import TYPE_CHECKING
 from typing import Annotated
 from typing import Any
-
 from pydantic import BaseModel, Field
 from pydantic import BeforeValidator
 from pydantic import Field
@@ -62,6 +61,8 @@ class Function(BaseAction):
 
 def _step_discriminator(options: Any) -> str:
 
+    from ..input.action import sources_and_filters_factories
+
     BUILTINS = ("pipe", "join")
 
     assert len(options) == 1, options
@@ -70,6 +71,9 @@ def _step_discriminator(options: Any) -> str:
 
     if verb in BUILTINS:
         return verb
+
+    for name, klass in sources_and_filters_factories().items():
+        pass
 
     return "function"
 
