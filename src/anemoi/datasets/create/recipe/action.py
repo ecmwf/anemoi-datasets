@@ -80,7 +80,9 @@ def _schemas():
     union = []
 
     for name, klass in _factories().items():
-        schema = getattr(klass, "schema", dict)
+        schema = getattr(klass, "schema", None)
+        if schema is None:
+            schema = dict
         name = name.replace("-", "_")
         model = create_model(name, **{name: (schema, ...)}, __base__=Function)
         union.append(Annotated[model, Tag(name)])
