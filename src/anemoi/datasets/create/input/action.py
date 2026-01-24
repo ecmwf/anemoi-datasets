@@ -10,9 +10,9 @@
 import logging
 from abc import ABC
 from abc import abstractmethod
+from functools import cache
 
 from anemoi.datasets.dates import DatesProvider
-from functools import cache
 
 LOG = logging.getLogger(__name__)
 

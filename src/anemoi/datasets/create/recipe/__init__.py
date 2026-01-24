@@ -18,11 +18,11 @@ from pydantic import BeforeValidator
 from pydantic import Field
 from pydantic import model_validator
 
+from .action import Action
 from .build import Build
 from .output import GriddedOutput
 from .output import Output
 from .statistics import Statistics
-from .action import Action
 
 LOG = logging.getLogger(__name__)
 

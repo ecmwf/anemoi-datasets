@@ -10,9 +10,11 @@
 
 import logging
 
+from pydantic import BaseModel
+from pydantic import Field
+
 from ..source import Source
 from . import source_registry
-from pydantic import BaseModel, Field
 
 LOG = logging.getLogger(__name__)
 
