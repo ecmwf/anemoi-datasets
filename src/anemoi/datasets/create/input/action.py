@@ -310,7 +310,7 @@ class Recipe(Action):
 
 
 @cache
-def sources_and_filters_factories():
+def _action_factories():
 
     factories = {
         "concat": Concat,
@@ -344,7 +344,7 @@ def sources_and_filters_factories():
 
 def make(key, config, *path):
 
-    factories = sources_and_filters_factories()
+    factories = _action_factories()
 
     return factories[key.replace("_", "-")](config, *path)
 

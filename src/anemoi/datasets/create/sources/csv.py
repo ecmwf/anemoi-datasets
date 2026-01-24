@@ -12,13 +12,20 @@ import logging
 
 from ..source import Source
 from . import source_registry
+from pydantic import BaseModel, Field
 
 LOG = logging.getLogger(__name__)
+
+
+class _Schema(BaseModel):
+    path: str
 
 
 @source_registry.register("csv")
 class CSVSource(Source):
     """A source that reads data from a CSV file."""
+
+    schema = _Schema
 
     emoji = "📄"  # For tracing
 

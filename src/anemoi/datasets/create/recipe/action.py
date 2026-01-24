@@ -14,7 +14,7 @@ from typing import Annotated
 from typing import Any
 from typing import Literal
 from typing import Union
-
+from functools import cache
 import logging
 from typing import TYPE_CHECKING
 from typing import Annotated
@@ -59,9 +59,22 @@ class Function(BaseAction):
     pass
 
 
-def _step_discriminator(options: Any) -> str:
+@cache
+def _factories():
+    from anemoi.transform.filters import filter_registry as transform_filter_registry
+    from anemoi.transform.sources import source_registry as transform_source_registry
 
-    from ..input.action import sources_and_filters_factories
+    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
+
+    result = {}
+    result.update(transform_filter_registry.factories)
+    result.update(transform_source_registry.factories)
+    result.update(dataset_source_registry.factories)
+
+    return result
+
+
+def _step_discriminator(options: Any) -> str:
 
     BUILTINS = ("pipe", "join")
 
@@ -72,8 +85,9 @@ def _step_discriminator(options: Any) -> str:
     if verb in BUILTINS:
         return verb
 
-    for name, klass in sources_and_filters_factories().items():
-        pass
+    for name, klass in _factories().items():
+        if hasattr(klass, "schema"):
+            assert False, name
 
     return "function"
 
