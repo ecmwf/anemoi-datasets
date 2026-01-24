@@ -34,6 +34,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
+from pydantic import create_model
 
 
 LOG = logging.getLogger(__name__)
@@ -60,46 +61,45 @@ class Function(BaseAction):
 
 
 @cache
-def _factories():
+def _schemas():
     from anemoi.transform.filters import filter_registry as transform_filter_registry
     from anemoi.transform.sources import source_registry as transform_source_registry
 
     from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
-    result = {}
-    result.update(transform_filter_registry.factories)
-    result.update(transform_source_registry.factories)
-    result.update(dataset_source_registry.factories)
+    union = []
 
-    return result
+    factories = {}
+
+    factories.update(transform_filter_registry.factories)
+    factories.update(transform_source_registry.factories)
+    factories.update(dataset_source_registry.factories)
+
+    for name, klass in factories.items():
+        schema = getattr(klass, "schema", dict)
+        name = name.replace("-", "_")
+        model = create_model(name, **{name: (schema, ...)}, __base__=Function)
+        union.append(Annotated[model, Tag(name)])
+
+    union.extend(
+        [
+            Annotated[Pipe, Tag("pipe")],
+            Annotated[Join, Tag("join")],
+        ]
+    )
+
+    return tuple(union)
 
 
 def _step_discriminator(options: Any) -> str:
 
-    BUILTINS = ("pipe", "join")
-
     assert len(options) == 1, options
 
     verb = list(options.keys())[0]
-
-    if verb in BUILTINS:
-        return verb
-
-    for name, klass in _factories().items():
-        if hasattr(klass, "schema"):
-            assert False, name
-
-    return "function"
+    return verb.replace("-", "_")
 
 
-Step = Annotated[
-    Union[
-        Annotated[Pipe, Tag("pipe")],
-        Annotated[Join, Tag("join")],
-        Annotated[dict, Tag("function")],
-    ],
-    Discriminator(_step_discriminator),
-]
+Step = Annotated[Union[_schemas()], Discriminator(_step_discriminator)]
 
 
 def _action_discriminator(options: dict) -> str:
