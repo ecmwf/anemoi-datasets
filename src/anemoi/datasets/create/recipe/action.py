@@ -56,7 +56,7 @@ class Function(BaseAction):
 
 
 @cache
-def _schemas():
+def _factories():
     from anemoi.transform.filters import filter_registry as transform_filter_registry
     from anemoi.transform.sources import source_registry as transform_source_registry
 
@@ -70,7 +70,16 @@ def _schemas():
     factories.update(transform_source_registry.factories)
     factories.update(dataset_source_registry.factories)
 
-    for name, klass in factories.items():
+    return {name.replace("-", "_"): klass for name, klass in factories.items()}
+
+
+@cache
+def _schemas():
+    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
+
+    union = []
+
+    for name, klass in _factories().items():
         schema = getattr(klass, "schema", dict)
         name = name.replace("-", "_")
         model = create_model(name, **{name: (schema, ...)}, __base__=Function)
@@ -91,7 +100,15 @@ def _step_discriminator(options: Any) -> str:
     assert len(options) == 1, options
 
     verb = list(options.keys())[0]
-    return verb.replace("-", "_")
+    verb = verb.replace("-", "_")
+
+    # This will give us a much more readable error message than the default pydantic exception
+
+    if verb not in ("pipe", "join"):
+        if verb not in _factories():
+            raise PydanticCustomError("unknown-name", f"Unknown source or filter: '{verb}'")
+
+    return verb
 
 
 Step = Annotated[Union[_schemas()], Discriminator(_step_discriminator)]
