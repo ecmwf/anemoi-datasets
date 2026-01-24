@@ -62,7 +62,7 @@ class Recipe(BaseModel):
     input: Action | None = None
     """The input data sources configuration."""
 
-    data_sources: dict[str, Action] | None  = None
+    data_sources: dict[str, Action] | None = None
     """The data sources configuration."""
 
     output: Output = Field(default_factory=GriddedOutput)

@@ -43,31 +43,34 @@ LOG = logging.getLogger(__name__)
 class DatesProvider(BaseModel):
     pass
 
+
 class StartEndDates(DatesProvider):
     start: datetime.datetime
     end: datetime.datetime
     frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
     missing: list[datetime.datetime] = Field(default_factory=list)
 
+
 class ValuesDates(DatesProvider):
     values: list[datetime.datetime]
+
 
 class HindcastsDates(DatesProvider):
     hindcasts: bool = True
     start: datetime.datetime
     end: datetime.datetime
     frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
-    steps: list[int] = Field(default_factory=lambda:[0])
+    steps: list[int] = Field(default_factory=lambda: [0])
     years: int = 20
 
+
 def _dates_discriminator(options: Any) -> str:
-    
+
     if options.get("hindcasts", False):
-        return 'hindcasts'
+        return "hindcasts"
 
     if "values" in options:
         return "values"
-
 
     return "start_end"
 
@@ -77,7 +80,6 @@ Dates = Annotated[
         Annotated[StartEndDates, Tag("start_end")],
         Annotated[ValuesDates, Tag("values")],
         Annotated[HindcastsDates, Tag("hindcasts")],
-
     ],
     Discriminator(_dates_discriminator),
 ]

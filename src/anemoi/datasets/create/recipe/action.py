@@ -43,6 +43,7 @@ LOG = logging.getLogger(__name__)
 class BaseAction(BaseModel):
     pass
 
+
 class Pipe(BaseAction):
     pipe: list[Action] = []
 
@@ -50,17 +51,18 @@ class Pipe(BaseAction):
 class Join(BaseAction):
     join: list[Action] = []
 
+
 class Concat(BaseAction):
     concat: tuple[dict, Action]
+
 
 class Function(BaseAction):
     pass
 
 
-
 def _step_discriminator(options: Any) -> str:
 
-    BUILTINS = ('pipe', 'join')
+    BUILTINS = ("pipe", "join")
 
     assert len(options) == 1, options
 
@@ -69,7 +71,7 @@ def _step_discriminator(options: Any) -> str:
     if verb in BUILTINS:
         return verb
 
-    return 'function'
+    return "function"
 
 
 Step = Annotated[
@@ -86,6 +88,7 @@ def _action_discriminator(options: dict) -> str:
     if len(options) == 2 and "dates" in options:
         return "concat"
     return "step"
+
 
 Action = Annotated[
     Union[
