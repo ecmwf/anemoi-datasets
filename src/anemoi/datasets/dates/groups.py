@@ -132,18 +132,10 @@ class Groups:
         2
     """
 
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the class with the provided keyword arguments.
+    def __init__(self, provider: DatesProvider, group_by: str) -> None:
+        """Initialize the class with the provided keyword arguments."""
 
-        Parameters
-        ----------
-            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
-                - group_by: Configuration for the Grouper.
-                - Other keys for DatesProvider configuration.
-        """
-
-        group_by = kwargs.pop("group_by", "monthly")
-        self._dates = DatesProvider.from_config(**kwargs)
+        self._dates = provider
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 
@@ -250,6 +242,7 @@ class Grouper(ABC):
             "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
+
         return GrouperByKey(key)
 
     @abstractmethod
@@ -320,6 +313,7 @@ class GrouperByKey(Grouper):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
+
         for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
             yield GroupOfDates(list(g), dates)
 

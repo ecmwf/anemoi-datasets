@@ -11,7 +11,6 @@
 import logging
 
 from pydantic import BaseModel
-from pydantic import Field
 
 from ..source import Source
 from . import source_registry

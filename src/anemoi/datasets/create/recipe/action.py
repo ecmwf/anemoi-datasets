@@ -9,25 +9,14 @@
 
 from __future__ import annotations
 
-import datetime
 import logging
 from functools import cache
-from typing import TYPE_CHECKING
 from typing import Annotated
 from typing import Any
-from typing import Literal
 from typing import Union
 
-from anemoi.utils.dates import DateTimes
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
-from anemoi.utils.hindcasts import HindcastDatesTimes
-from anemoi.utils.humanize import print_dates
 from pydantic import BaseModel
-from pydantic import BeforeValidator
 from pydantic import Discriminator
-from pydantic import Field
 from pydantic import Tag
 from pydantic import create_model
 from pydantic_core import PydanticCustomError
@@ -62,7 +51,9 @@ def _factories():
 
     from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
-    union = []
+    # TODO: For now, for source to be loade3d firt
+    # to load dev sources/filters before the main ones
+    dataset_source_registry.factories
 
     factories = {}
 
@@ -75,7 +66,6 @@ def _factories():
 
 @cache
 def _schemas():
-    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
     union = []
 
@@ -108,7 +98,11 @@ def _step_discriminator(options: Any) -> str:
 
     if verb not in ("pipe", "join"):
         if verb not in _factories():
-            raise PydanticCustomError("unknown-name", f"Unknown source or filter: '{verb}'")
+            values = "', '".join(sorted(_factories().keys()))
+            raise PydanticCustomError(
+                "unknown-name",
+                f"Unknown source or filter: '{verb}' (expected one of: '{values}')",
+            )
 
     return verb
 

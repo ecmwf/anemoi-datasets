@@ -40,7 +40,7 @@ class Dates(BaseModel):
     missing: list[datetime.datetime] = None
 
     # Deprecated fields
-    group_by: Union[int, GroupByEnum] = "monthly"
+    group_by: int | GroupByEnum = "monthly"
 
 
 class Interval(Dates):
@@ -77,21 +77,21 @@ class Output(BaseModel):
     class Config:
         extra = "forbid"
 
-    statistics_end: Union[datetime.datetime, int] = None
+    statistics_end: datetime.datetime | int = None
 
     chunking: dict = None
     dtype: str = "float32"
     flatten_grid: bool = True
     order_by: list[str] = None
     remapping: dict = None
-    statistics: Union[dict, str] = None
+    statistics: dict | str = None
 
 
 class Build(BaseModel):
     class Config:
         extra = "forbid"
 
-    group_by: Union[int, GroupByEnum] = "monthly"
+    group_by: int | GroupByEnum = "monthly"
     use_grib_paramid: bool = False
     variable_naming: str = None
 
@@ -104,7 +104,7 @@ class Statistics(BaseModel):
     class Config:
         extra = "forbid"
 
-    end: Union[datetime.datetime, int] = None
+    end: datetime.datetime | int = None
     allow_nans: list[str] = []
 
 
@@ -178,10 +178,7 @@ class Recipe(BaseModel):
     attribution: str = "unknown"
 
     dates: Annotated[
-        Union[
-            Annotated[Interval, Tag("interval")],
-            Annotated[DateList, Tag("values")],
-        ],
+        (Annotated[Interval, Tag("interval")] | Annotated[DateList, Tag("values")]),
         Discriminator(_dates_discriminator),
     ]
 
@@ -198,7 +195,7 @@ class Recipe(BaseModel):
 
     purpose: str = Annotated[int, Field(deprecated="This is deprecated")]
 
-    aliases: Union[Common, list] = None
+    aliases: Common | list = None
 
     flatten_grid: bool = True
     ensemble_dimension: int = 2

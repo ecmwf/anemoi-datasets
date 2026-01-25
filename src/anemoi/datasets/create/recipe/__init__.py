@@ -9,31 +9,20 @@
 
 import json
 import logging
-from typing import Annotated
 
 import yaml
-from anemoi.utils.config import DotDict
 from pydantic import BaseModel
-from pydantic import BeforeValidator
 from pydantic import Field
 from pydantic import model_validator
 
 from .action import Action
 from .build import Build
+from .dates import Dates
 from .output import GriddedOutput
 from .output import Output
 from .statistics import Statistics
 
 LOG = logging.getLogger(__name__)
-
-
-def validate_dotdict(v):
-    if isinstance(v, dict):
-        return DotDict(v)
-    return v
-
-
-DotDictField = Annotated[DotDict, BeforeValidator(validate_dotdict)]
 
 
 class Recipe(BaseModel):
@@ -56,7 +45,7 @@ class Recipe(BaseModel):
     licence: str = "unknown"
     attribution: str = "unknown"
 
-    dates: DotDictField
+    dates: Dates
     """The date configuration for the dataset."""
 
     input: Action | None = None
@@ -71,7 +60,7 @@ class Recipe(BaseModel):
     build: Build = Build()
     """The build configuration."""
 
-    additions: DotDictField | None = Field(
+    additions: dict | None = Field(
         default=None,
         deprecated="Top-level 'additions' is deprecated. Use 'statistics.tendencies' instead.",
     )
@@ -97,7 +86,7 @@ class Recipe(BaseModel):
             A dictionary containing only non-default values.
         """
 
-        defaults = Recipe(dates={}, input={}).model_dump()
+        defaults = Recipe(dates=None).model_dump()
 
         def _only_non_defaults(d, default_d):
 
