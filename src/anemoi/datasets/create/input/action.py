@@ -12,7 +12,7 @@ from abc import ABC
 from abc import abstractmethod
 from functools import cache
 
-from anemoi.datasets.dates import DatesProvider
+from anemoi.datasets.create.recipe.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
 

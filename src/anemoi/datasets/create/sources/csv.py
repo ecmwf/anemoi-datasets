@@ -20,6 +20,8 @@ LOG = logging.getLogger(__name__)
 
 class _Schema(BaseModel):
     path: str
+    columns: list[str] | None = None
+    flavour: dict | None = None
 
 
 @source_registry.register("csv")

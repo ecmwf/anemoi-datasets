@@ -17,8 +17,9 @@ from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.dates import DatesProvider
-from anemoi.datasets.dates import as_datetime
+from anemoi.utils.dates import as_datetime
+
+from anemoi.datasets.create.recipe.dates import DatesProvider
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:

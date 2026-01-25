@@ -86,9 +86,12 @@ class Recipe(BaseModel):
             A dictionary containing only non-default values.
         """
 
-        defaults = Recipe(dates=None).model_dump()
+        defaults = Recipe(dates={"values": []}).model_dump()
 
         def _only_non_defaults(d, default_d):
+
+            if type(d) is not type(default_d):
+                return d
 
             if isinstance(d, dict):
                 res = d.copy()

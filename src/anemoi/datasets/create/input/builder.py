@@ -32,7 +32,7 @@ class InputBuilder:
             Additional keyword arguments.
         """
         self.kwargs = kwargs
-        self.config = deepcopy(config)
+        self.config = deepcopy(config.model_dump())
         self.data_sources = deepcopy(dict(data_sources=data_sources))
 
     @cached_property
