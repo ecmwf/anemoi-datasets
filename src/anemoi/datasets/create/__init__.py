@@ -37,6 +37,8 @@ from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.dates.groups import Groups
 
+from ..compat import ZarrFileNotFoundError
+from ..compat import zarr_append_mode
 from .check import DatasetName
 from .check import check_data_values
 from .chunks import ChunkFilter
@@ -152,9 +154,9 @@ def _path_readable(path: str) -> bool:
     import zarr
 
     try:
-        zarr.open(path, "r")
+        zarr.open(path, mode="r")
         return True
-    except zarr.errors.PathNotFoundError:
+    except ZarrFileNotFoundError:
         return False
 
 
@@ -190,10 +192,9 @@ class Dataset:
         zarr.Array
             The added dataset.
         """
-        import zarr
 
         z = zarr.open(self.path, mode=mode)
-        from .zarr import add_zarr_dataset
+        from .misc import add_zarr_dataset
 
         return add_zarr_dataset(zarr_root=z, **kwargs)
 
@@ -208,7 +209,7 @@ class Dataset:
         import zarr
 
         LOG.debug(f"Updating metadata {kwargs}")
-        z = zarr.open(self.path, mode="w+")
+        z = zarr.open(self.path, mode=zarr_append_mode)
         for k, v in kwargs.items():
             if isinstance(v, np.datetime64):
                 v = v.astype(datetime.datetime)
@@ -440,7 +441,7 @@ class Actor:  # TODO: rename to Creator
             """
             import zarr
 
-            z = zarr.open(path, "r")
+            z = zarr.open(path, mode="r")
             missing_dates = z.attrs.get("missing_dates", [])
             missing_dates = sorted([np.datetime64(d) for d in missing_dates])
             if missing_dates != expected:
@@ -512,7 +513,7 @@ class HasRegistryMixin:
     @cached_property
     def registry(self) -> Any:
         """Get the registry."""
-        from .zarr import ZarrBuiltRegistry
+        from .misc import ZarrBuiltRegistry
 
         return ZarrBuiltRegistry(self.path, use_threads=self.use_threads)
 

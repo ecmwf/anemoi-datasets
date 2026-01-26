@@ -13,6 +13,9 @@
 import logging
 from typing import Any
 
+import numpy as np
+import zarr
+
 LOG = logging.getLogger(__name__)
 
 
@@ -171,3 +174,51 @@ class Trace:
     def __getitem__(self, index: Any) -> Any:
         print("__getitem__", file=self.f, flush=True)
         return self.ds[index]
+
+
+class FastArray:
+    """A numpy-backed wrapper for zarr arrays that provides fast indexing."""
+
+    def __init__(self, zarr_array):
+        self._zarr = zarr_array
+        self._data = np.array(zarr_array[:])
+
+    def __getitem__(self, key):
+        """Fast numpy-based indexing."""
+        return self._data[key]
+
+    def __array__(self, dtype=None):
+        if dtype is None:
+            return self._data
+        return self._data.astype(dtype)
+
+    def __getattr__(self, name):
+        return getattr(self._zarr, name)
+
+
+class FastGroup:
+    """A wrapper for zarr groups that provides FastArray for all arrays."""
+
+    def __init__(self, zarr_group):
+        self._group = zarr_group
+        self._arrays = {}
+
+        for name in self._group.keys():
+            item = self._group[name]
+            if isinstance(item, zarr.Array):
+                self._arrays[name] = FastArray(item)
+
+    def __getitem__(self, key):
+        if key in self._arrays:
+            return self._arrays[key]
+
+        item = self._group[key]
+        if isinstance(item, zarr.Array):
+            self._arrays[key] = FastArray(item)
+            return self._arrays[key]
+        elif isinstance(item, zarr.Group):
+            return FastGroup(item)
+        return item
+
+    def __getattr__(self, name):
+        return getattr(self._group, name)

@@ -79,6 +79,7 @@ class CompareToReferenceCheck(_Check):
                 "metadata.uuid",
                 "metadata.provenance_load",
                 "metadata.total_size",
+                "metadata.total_number_of_files",  # different between zarr2 and zarr3
                 "metadata.history",
                 "metadata.recipe.checks",
                 # remove these when the reference data has been updated
