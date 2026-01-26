@@ -24,7 +24,6 @@ def create_dataset(
     config: str | dict[str, Any],
     output: str | None,
     delta: list[str] | None = None,
-    is_test: bool = False,
 ) -> str:
     """Create a dataset based on the provided configuration.
 
@@ -36,8 +35,6 @@ def create_dataset(
         The output path for the dataset. If None, a temporary directory will be created.
     delta : Optional[List[str]], optional
         List of delta for secondary statistics, by default None.
-    is_test : bool, optional
-        Flag indicating if the dataset creation is for testing purposes, by default False.
 
     Returns
     -------
@@ -52,7 +49,7 @@ def create_dataset(
     if output is None:
         output = tempfile.mkdtemp(suffix=".zarr")
 
-    creator_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
+    creator_factory("init", config=config, path=output, overwrite=True, test=True).run()
     creator_factory("load", path=output).run()
     creator_factory("finalise", path=output).run()
     creator_factory("patch", path=output).run()
