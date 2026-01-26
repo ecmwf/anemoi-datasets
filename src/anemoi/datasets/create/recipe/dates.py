@@ -28,7 +28,7 @@ from pydantic import Tag
 LOG = logging.getLogger(__name__)
 
 
-def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
+def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
     Args:
@@ -42,7 +42,7 @@ def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
 
     if isinstance(x, (list, tuple)):
         for y in x:
-            yield from extend(y)
+            yield from _extend(y)
         return
 
     if isinstance(x, str):
