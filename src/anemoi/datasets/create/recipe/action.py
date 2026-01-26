@@ -87,11 +87,11 @@ def _schemas():
     return tuple(union)
 
 
-def _step_discriminator(options: Any) -> str:
+def _step_discriminator(config_or_model: Any) -> str:
+    config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
+    assert len(config) == 1, config
 
-    assert len(options) == 1, options
-
-    verb = list(options.keys())[0]
+    verb = list(config.keys())[0]
     verb = verb.replace("-", "_")
 
     # This will give us a much more readable error message than the default pydantic exception
@@ -110,9 +110,12 @@ def _step_discriminator(options: Any) -> str:
 Step = Annotated[Union[_schemas()], Discriminator(_step_discriminator)]
 
 
-def _action_discriminator(options: dict) -> str:
-    if len(options) == 2 and "dates" in options:
+def _action_discriminator(config_or_model: Any) -> str:
+    config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
+
+    if len(config) == 2 and "dates" in config:
         return "concat"
+
     return "step"
 
 

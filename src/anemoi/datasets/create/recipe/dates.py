@@ -133,12 +133,13 @@ class HindcastsDates(DatesProvider):
     years: int = 20
 
 
-def _dates_discriminator(options: Any) -> str:
+def _dates_discriminator(config_or_model: Any) -> str:
+    config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
 
-    if options.get("hindcasts", False):
+    if config.get("hindcasts", False):
         return "hindcasts"
 
-    if "values" in options:
+    if "values" in config:
         return "values"
 
     return "start_end"
