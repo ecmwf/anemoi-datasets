@@ -225,13 +225,14 @@ def create_zarr(
     # It can be removed when https://github.com/zarr-developers/zarr-python/issues/3524 is resolved.
     #
     # Duration of tests in test_data.py (with 16 workers):
-    #   with zarr 3.1.5            : ~5 minutes
+    #   with zarr 2                : ~1 minute
+    #   with zarr 3.1.5            : ~6 minutes
     #   with zarr 3 + this wrapper : ~13 seconds
     #
     # This is not ideal, as we don't test with the real zarr, but is fine since we are testing
     # anemoi-datasets functionality, not zarr functionality.
     # It can still break things if zarr3 changes the API we are relying on, which is unlikely.
-
+    #
     if zarr.__version__.startswith("3."):
         root = FastGroup(root)
 
