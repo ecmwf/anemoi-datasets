@@ -141,6 +141,11 @@ _version.py
 *.to_upload
 tempCodeRunnerFile.python
 Untitled-*.py
+*.zip
+*.json
+*.db
+*.tgz
+_api/
 trace.txt
 ?/
 *.prof
