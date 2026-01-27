@@ -9,8 +9,8 @@
 
 
 import logging
-import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
@@ -19,16 +19,15 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
-from anemoi.datasets.check import check_zarr
+from anemoi.datasets.data.stores import name_to_zarr_store
 
+from ..compat import ZarrFileNotFoundError
+from ..compat import zarr_append_mode
+from ..compat import zarr_private_files
+from ..compat import zarr_version
 from . import Command
 
 LOG = logging.getLogger(__name__)
-
-try:
-    isatty = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
-except AttributeError:
-    isatty = False
 
 
 class ZarrCopier:
@@ -54,6 +53,8 @@ class ZarrCopier:
         Flag to use ZARR's nested directory backend.
     rechunk : str
         Rechunk size for the target data array.
+    reshard : str
+        Reshard size for the target data array.
     """
 
     def __init__(
@@ -65,8 +66,8 @@ class ZarrCopier:
         overwrite: bool,
         resume: bool,
         verbosity: int,
-        nested: bool,
         rechunk: str,
+        reshard: str = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the ZarrCopier.
@@ -87,53 +88,23 @@ class ZarrCopier:
             Flag to resume copying an existing dataset.
         verbosity : int
             Verbosity level of logging.
-        nested : bool
-            Flag to use ZARR's nested directory backend.
         rechunk : str
             Rechunk size for the target data array.
+        reshard : str
+            Reshard size for the target data array.
         **kwargs : Any
             Additional keyword arguments.
         """
-        self.source = source
-        self.target = target
+        self.source = name_to_zarr_store(source)
+        self.target = name_to_zarr_store(target)
         self.transfers = transfers
         self.block_size = block_size
         self.overwrite = overwrite
         self.resume = resume
         self.verbosity = verbosity
-        self.nested = nested
-        self.rechunk = rechunk
 
         self.rechunking = rechunk.split(",") if rechunk else []
-
-        source_is_ssh = self.source.startswith("ssh://")
-        target_is_ssh = self.target.startswith("ssh://")
-
-        if source_is_ssh or target_is_ssh:
-            if self.rechunk:
-                raise NotImplementedError("Rechunking with SSH not implemented.")
-            assert NotImplementedError("SSH not implemented.")
-
-    def _store(self, path: str, nested: bool = False) -> Any:
-        """Get the storage path.
-
-        Parameters
-        ----------
-        path : str
-            Path to the storage.
-        nested : bool, optional
-            Flag to use nested directory storage.
-
-        Returns
-        -------
-        Any
-            Storage path.
-        """
-        if nested:
-            import zarr
-
-            return zarr.storage.NestedDirectoryStore(path)
-        return path
+        self.resharding = reshard.split(",") if reshard else []
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
@@ -162,59 +133,44 @@ class ZarrCopier:
             LOG.info(f"Skipping {n} to {m}")
             return None
 
-        if self.block_size % self.data_chunks[0] == 0:
-            target[slice(n, m)] = source[slice(n, m)]
-        else:
-            LOG.warning(
-                f"Block size ({self.block_size}) is not a multiple of target chunk size ({self.data_chunks[0]}). Slow copy expected."
-            )
-            if self.transfers > 1:
-                # race condition, different threads might copy the same data to the same chunk
-                raise NotImplementedError(
-                    "Block size is not a multiple of target chunk size. Parallel copy not supported."
-                )
-            for i in tqdm.tqdm(
-                range(n, m),
-                desc=f"Copying {n} to {m}",
-                leave=False,
-                disable=not isatty and not verbosity,
-            ):
-                target[i] = source[i]
+        target[slice(n, m)] = source[slice(n, m)]
 
         return slice(n, m)
 
-    def parse_rechunking(self, rechunking: list[str], source_data: Any) -> tuple:
-        """Parse the rechunking configuration.
+    def _parse_reshaping(self, new, old, shape) -> tuple:
+        if old is not None:
+            old = list(old)
 
-        Parameters
-        ----------
-        rechunking : list of str
-            List of rechunk sizes.
-        source_data : Any
-            Source data.
+        if new is None:
+            return old
 
-        Returns
-        -------
-        tuple
-            Parsed chunk sizes.
-        """
-        shape = source_data.shape
-        chunks = list(source_data.chunks)
-        for i, c in enumerate(rechunking):
-            if not c:
+        result = [s for s in (shape if old is None else old)]
+
+        for i, c in enumerate(new):
+            if c in ("full", "-1", ""):
                 continue
-            elif c == "full":
-                chunks[i] = shape[i]
             c = int(c)
             c = min(c, shape[i])
-            chunks[i] = c
-        chunks = tuple(chunks)
+            result[i] = c
+
+        result = tuple(result)
+        return result
+
+    def parse_rechunking(self, rechunking: list[str], source_data: Any) -> tuple:
+        chunks = self._parse_reshaping(new=rechunking, old=source_data.chunks, shape=source_data.shape)
 
         if chunks != source_data.chunks:
             LOG.info(f"Rechunking data from {source_data.chunks} to {chunks}")
-            # if self.transfers > 1:
-            #    raise NotImplementedError("Rechunking with multiple transfers is not implemented")
+
         return chunks
+
+    def parse_resharding(self, resharding: list[str], source_data: Any) -> tuple:
+        shards = self._parse_reshaping(new=resharding, old=source_data.shards, shape=source_data.shape)
+
+        if shards != source_data.shards:
+            LOG.info(f"Resharding data from {source_data.shards} to {shards} (shape is {source_data.shape})")
+
+        return shards
 
     def copy_data(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy data from source to target.
@@ -232,20 +188,68 @@ class ZarrCopier:
         """
         LOG.info("Copying data")
         source_data = source["data"]
+        start = time.time()
 
-        self.data_chunks = self.parse_rechunking(self.rechunking, source_data)
+        extra = {}
+        if self.rechunking:
+            extra["chunks"] = self.parse_rechunking(self.rechunking, source_data)
 
-        target_data = (
-            target["data"]
-            if "data" in target
-            else target.create_dataset(
+        if self.resharding:
+            extra["shards"] = self.parse_resharding(self.resharding, source_data)
+            extra["chunks"] = (
+                self.parse_rechunking(self.rechunking, source_data) if self.rechunking else source_data.chunks
+            )
+            ratio = []
+            for shard, chunk in zip(extra["shards"], extra["chunks"]):
+                if shard % chunk != 0:
+                    raise ValueError(f"Chunk size {chunk} is not a multiple of shard size {shard}.")
+                ratio.append(shard // chunk)
+
+            LOG.info(f"Shards for target data array: {extra['shards']} (ratio={ratio})")
+
+        LOG.info(f"Chunks: source={source_data.chunks}")
+        if zarr_version >= 3:
+            LOG.info(f"Shards: source={source_data.shards}")
+
+        if extra:
+            LOG.info(f"Using extra parameters for target data array: {extra}")
+
+        if "data" in target:
+            target_data = target["data"]
+            if extra:
+                LOG.warning("Target data array already exists, ignoring resharding/rechunking parameters.")
+                LOG.warning(f"Existing target data array chunks: {target_data.chunks}")
+                if zarr_version >= 3:
+                    LOG.warning(f"Existing target data array shards: {target_data.shards}")
+        else:
+            extra.setdefault("chunks", source_data.chunks)
+            target_data = target.create_array(
                 "data",
                 shape=source_data.shape,
-                chunks=self.data_chunks,
                 dtype=source_data.dtype,
                 fill_value=source_data.fill_value,
+                **extra,
             )
-        )
+
+        size = 1
+        size = target_data.chunks[0] if target_data.chunks else size
+        if zarr_version >= 3:
+            size = target_data.shards[0] if target_data.shards else size
+
+        block_size = self.block_size
+
+        block_size = (block_size // size) * size
+        if block_size < size:
+            block_size = size
+
+        if block_size != self.block_size:
+            LOG.info(
+                f"Adjusted block size from {self.block_size} to {block_size} to be multiple of chunk/shard size {size} {target_data.chunks}."
+            )
+            self.block_size = block_size
+
+        LOG.info(f"Using block size {self.block_size}, parallel transfers {self.transfers}")
+        self.block_size = block_size
 
         executor = ThreadPoolExecutor(max_workers=self.transfers)
         tasks = []
@@ -272,7 +276,8 @@ class ZarrCopier:
 
         target["_copy"] = _copy
 
-        LOG.info("Copied data")
+        end = time.time()
+        LOG.info(f"Copied data in {end - start:.2f} seconds")
 
     def copy_array(self, name: str, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy an array from source to target.
@@ -300,9 +305,20 @@ class ZarrCopier:
             self.copy_data(source, target, _copy, verbosity)
             return
 
-        LOG.info(f"Copying {name}")
-        target[name] = source[name]
+        LOG.info(f"Copying {name} {source[name].shape}")
+        data = source[name][...]
+        if name in target:
+            del target[name]
+        target.create_dataset(name, data=data, shape=data.shape)
         LOG.info(f"Copied {name}")
+
+    def children(self, group):
+        children = list(group.keys())
+        # https://github.com/zarr-developers/zarr-python/issues/3575
+        children = [k for k in children if k != ""]
+        children = [k for k in children if k not in zarr_private_files]
+        children = sorted(children)
+        return children
 
     def copy_group(self, source: Any, target: Any, _copy: Any, verbosity: int) -> None:
         """Copy a group from source to target.
@@ -330,7 +346,7 @@ class ZarrCopier:
                 LOG.info(f"Copying attribute {k} = {textwrap.shorten(str(v), 40)}")
             target.attrs[k] = v
 
-        source_keys = list(source.keys())
+        source_keys = self.children(source)
 
         if not source_keys:
             raise ValueError(f"Source group {source} is empty.")
@@ -338,13 +354,9 @@ class ZarrCopier:
         if self.verbosity > 1:
             LOG.info(f"Keys {source_keys}")
 
-        for name in sorted(source_keys):
-            if name.startswith("."):
-                if self.verbosity > 1:
-                    LOG.info(f"Skipping {name}")
-                continue
+        for name in source_keys:
 
-            if isinstance(source[name], zarr.hierarchy.Group):
+            if isinstance(source[name], zarr.Group):
                 group = target[name] if name in target else target.create_group(name)
                 self.copy_group(
                     source[name],
@@ -373,11 +385,11 @@ class ZarrCopier:
         verbosity : int
             Verbosity level of logging.
         """
-        import zarr
 
         if "_copy" not in target:
-            target["_copy"] = zarr.zeros(
-                source["data"].shape[0],
+            target.create_dataset(
+                "_copy",
+                shape=(source["data"].shape[0],),
                 dtype=bool,
             )
         _copy = target["_copy"]
@@ -399,19 +411,21 @@ class ZarrCopier:
         # assert ext == ".zarr", ext
         # assert "." not in base, base
         LOG.info(f"Copying {self.source} to {self.target}")
+        LOG.info(f"Zarr version {zarr.__version__}")
 
         def target_exists() -> bool:
             try:
-                zarr.open(self._store(self.target), mode="r")
+                zarr.open(self.target, mode="r")
                 return True
-            except ValueError:
+            except ZarrFileNotFoundError:
                 return False
 
         def target_finished() -> bool:
-            target = zarr.open(self._store(self.target), mode="r")
+            target = zarr.open(self.target, mode="r")
+            last_key = list(self.children(self.source))[-1]
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
-                todo = len(target["_copy"])
+                todo = target["_copy"].shape[0]
                 LOG.info(
                     "Resuming copy, done %s out or %s, %s%%",
                     done,
@@ -419,18 +433,19 @@ class ZarrCopier:
                     int(done / todo * 100 + 0.5),
                 )
                 return False
-            elif "sums" in target and "data" in target:  # sums is copied last
+            elif last_key in target and "data" in target:
                 return True
+
             return False
 
         def open_target() -> Any:
 
             if not target_exists():
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr.open(self.target, mode="w")
 
             if self.overwrite:
                 LOG.error("Target already exists, overwriting.")
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr.open(self.target, mode="w")
 
             if self.resume:
                 if target_finished():
@@ -438,10 +453,14 @@ class ZarrCopier:
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr.open(self._store(self.target, self.nested), mode="w+")
+                return zarr.open(self.target, mode=zarr_append_mode)
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
+
+        source = zarr.open(self.source, mode="r")
+        if self.verbosity > 0:
+            LOG.info(f"Open source: {self.source}")
 
         if self.verbosity > 0:
             LOG.info(f"Open target: {self.target}")
@@ -450,18 +469,7 @@ class ZarrCopier:
 
         assert target is not None, target
 
-        if self.verbosity > 0:
-            LOG.info(f"Open source: {self.source}")
-
-        source = zarr.open(self._store(self.source), mode="r")
-        # zarr.consolidate_metadata(source)
-
         self.copy(source, target, self.verbosity)
-        if os.path.exists(self.target) and os.path.isdir(self.target):
-            LOG.info(f"Checking target: {self.target}")
-            check_zarr(self.target, self.verbosity)
-        else:
-            LOG.info(f"Target {self.target} is not a local directory, skipping check.")
 
 
 class CopyMixin:
@@ -494,16 +502,25 @@ class CopyMixin:
             help="Verbosity level. 0 is silent, 1 is normal, 2 is verbose.",
             default=1,
         )
-        command_parser.add_argument("--nested", action="store_true", help="Use ZARR's nested directpry backend.")
-        command_parser.add_argument(
-            "--rechunk", help="Rechunk the target data array. Rechunk size should be a diviser of the block size."
-        )
+
         command_parser.add_argument(
             "--block-size",
             type=int,
             default=100,
             help="For optimisation purposes, data is transfered by blocks. Default is 100.",
         )
+
+        command_parser.add_argument(
+            "--rechunk",
+            help="Rechunk the target data array. This option will adjust --block-size to that it is divisible by the rechunk size.",
+        )
+
+        if zarr_version >= 3:
+            command_parser.add_argument(
+                "--reshard",
+                help="Reshard the target data array. This option will adjust --block-size to that it is divisible by the reshard size.",
+            )
+
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
 
@@ -521,7 +538,12 @@ class CopyMixin:
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
-        if not args.rechunk:
+        if zarr_version >= 3:
+            reshaping_requested = args.rechunk or args.reshard
+        else:
+            reshaping_requested = args.rechunk
+
+        if not reshaping_requested:
             # rechunking is only supported for ZARR datasets, it is implemented in this package
             try:
                 if args.source.startswith("s3://") and not args.source.endswith("/"):

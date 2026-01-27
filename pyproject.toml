@@ -51,7 +51,6 @@ dependencies = [
   "cfunits",
   "glom",
   "jsonschema",
-  "numcodecs<0.16",           # Until we move to zarr3
   "numpy",
   "pytest>=8.4.1",
   "pytest-xdist>=3.7",
@@ -59,7 +58,7 @@ dependencies = [
   "ruamel-yaml",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.4",
+  "zarr",
 ]
 
 optional-dependencies.all = [
@@ -96,6 +95,7 @@ optional-dependencies.docs = [
 
 optional-dependencies.remote = [
   "boto3",
+  "obstore",
   "requests",
 ]
 
@@ -114,6 +114,11 @@ optional-dependencies.xarray = [
   "planetary-computer",
   "pystac-client",
   "s3fs",
+]
+
+optional-dependencies.zarr2 = [
+  "numcodecs<0.16",
+  "zarr<3",
 ]
 
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"

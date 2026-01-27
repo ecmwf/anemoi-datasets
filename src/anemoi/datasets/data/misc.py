@@ -366,7 +366,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     if isinstance(a, Dataset):
         return a.mutate()
 
-    if isinstance(a, zarr.hierarchy.Group):
+    if isinstance(a, zarr.Group):
         return Zarr(a).mutate()
 
     if isinstance(a, str):
@@ -664,7 +664,7 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     # Create or append to "dates" dataset.
     if "dates" not in root:
         full_length = len(big_dataset.dates)
-        root.create_dataset("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
+        root.create_dataset("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,), shape=(0,))
 
     if "data" not in root:
         dims = (1, len(big_dataset.variables), ensembles, big_dataset.shape[-1])
@@ -681,12 +681,15 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
                 k,
                 data=v,
                 compressor=None,
+                shape=v.shape,
             )
 
     # Create spatial coordinate datasets if missing.
     if "latitudes" not in root or "longitudes" not in root:
-        root.create_dataset("latitudes", data=big_dataset.latitudes, compressor=None)
-        root.create_dataset("longitudes", data=big_dataset.longitudes, compressor=None)
+        root.create_dataset("latitudes", data=big_dataset.latitudes, compressor=None, shape=big_dataset.latitudes.shape)
+        root.create_dataset(
+            "longitudes", data=big_dataset.longitudes, compressor=None, shape=big_dataset.longitudes.shape
+        )
     for k, v in big_dataset.metadata().items():
         if k not in root.attrs:
             root.attrs[k] = v
