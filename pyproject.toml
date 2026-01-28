@@ -56,7 +56,7 @@ dependencies = [
   "pytest>=8.4.1",
   "pytest-xdist>=3.7",
   "pyyaml",
-  "ruamel-yaml",
+  "ruamel-yaml>=0.16.0",
   "semantic-version",
   "tqdm",
   "zarr<=2.18.4",
