@@ -12,6 +12,8 @@ import logging
 
 import numpy as np
 
+from anemoi.datasets.epochs import epoch_to_date
+
 from .base import WindowMetaDataBase
 
 LOG = logging.getLogger(__name__)
@@ -55,7 +57,7 @@ class WindowMetaData(WindowMetaDataBase):
         days = self.aux_array[:, 0]
         seconds = self.aux_array[:, 1]
         timestamps = days * 86400 + seconds + epoch
-        return np.array([np.datetime64(datetime.datetime.fromtimestamp(ts)) for ts in timestamps])
+        return np.array([np.datetime64(epoch_to_date(ts)) for ts in timestamps])
 
     @property
     def timedeltas(self) -> np.ndarray:
@@ -65,7 +67,7 @@ class WindowMetaData(WindowMetaDataBase):
     @property
     def reference_date(self) -> np.datetime64:
         """The reference date for the window."""
-        return np.datetime64(datetime.datetime.fromtimestamp(self.owner._epochs[self.index]))
+        return np.datetime64(epoch_to_date(self.owner._epochs[self.index]))
 
     @property
     def reference_dates(self) -> datetime.datetime:

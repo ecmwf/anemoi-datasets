@@ -24,6 +24,7 @@ import zarr
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
+from anemoi.datasets.epochs import epoch_to_date
 
 LOG = logging.getLogger(__name__)
 
@@ -174,7 +175,7 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
         The corresponding datetime object.
     """
     # Convert (days, seconds) to a datetime object
-    return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
+    return epoch_to_date(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
 def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[Fragment]:
