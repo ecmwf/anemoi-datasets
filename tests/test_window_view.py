@@ -8,6 +8,8 @@ import pytest
 import zarr
 
 from anemoi.datasets.date_indexing import create_date_indexing
+from anemoi.datasets.epochs import date_to_epoch
+from anemoi.datasets.epochs import epoch_to_date
 from anemoi.datasets.windows.view import WindowView
 
 VARIABLES = 3
@@ -75,9 +77,9 @@ def _generate_event_data(years=1, base_rate=10, variability=0.5, gap_days=(160, 
 
     print(
         "GAP from",
-        (START_DATE + datetime.timedelta(seconds=start_sec)).timestamp(),
+        date_to_epoch(START_DATE + datetime.timedelta(seconds=start_sec)),
         "to",
-        (START_DATE + datetime.timedelta(seconds=end_sec)).timestamp(),
+        date_to_epoch(START_DATE + datetime.timedelta(seconds=end_sec)),
     )
 
     # Apply a boolean mask (the computational version of a Heaviside step)
@@ -121,7 +123,7 @@ def _to_expanded_2d(events) -> np.ndarray:
     indices = np.arange(len(events), dtype=np.int64)
 
     # 5. Filter all three components using the mask
-    filtered_indices = indices[mask] + int(START_DATE.timestamp())
+    filtered_indices = indices[mask] + int(date_to_epoch(START_DATE))
     filtered_cumulative = cumulative_until[mask]
     filtered_values = events[mask]
 
@@ -145,11 +147,12 @@ def _create_tabular_store(indexing) -> zarr.Group:
     root = zarr.group(store=store, overwrite=True)
     data = root.create_dataset("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
 
-    start_stamp = START_DATE.timestamp()
+    start_stamp = date_to_epoch(START_DATE)
     if False:
-        data[:, 0] = (
-            np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[:number_of_samples]
-            + start_stamp
+        data[:, 0] = np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[
+            :number_of_samples
+        ] + date_to_epoch(
+            START_DATE
         )  # seconds since midnight
         data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(number_of_samples)[
             :number_of_samples
@@ -219,8 +222,8 @@ def _test_window_view(view, expect):
         assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
         # print(f"+++++++++++++ Sample {i}: slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
         # print(sample)
-        date1 = datetime.datetime.fromtimestamp(int(sample[0][0]))
-        date2 = datetime.datetime.fromtimestamp(int(sample[-1][0]))
+        date1 = epoch_to_date(int(sample[0][0]))
+        date2 = epoch_to_date(int(sample[-1][0]))
         # print("===>", date1, "to", date2)
 
         ref_date = view.start_date + view.frequency * i

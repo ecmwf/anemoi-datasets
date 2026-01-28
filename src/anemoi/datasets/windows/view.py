@@ -25,6 +25,8 @@ from ..annotated.metadata import MultipleWindowMetaData
 from ..annotated.metadata import WindowMetaData
 from ..buffering import RandomReadBuffer
 from ..date_indexing import create_date_indexing
+from ..epochs import date_to_epoch
+from ..epochs import epoch_to_date
 from .window import Window
 
 LOG = logging.getLogger(__name__)
@@ -240,8 +242,8 @@ class WindowView:
         query_end = self.start_date + index * self.frequency + self.window.after
 
         # Convert datetime to integer timestamps (seconds since epoch)
-        query_start = round(query_start.timestamp())
-        query_end = round(query_end.timestamp())
+        query_start = round(date_to_epoch(query_start))
+        query_end = round(date_to_epoch(query_end))
 
         # Because the accuracy is the second, we can adjust the query
         # to exclude the boundaries if needed. THe index must return the range of
@@ -344,13 +346,14 @@ class WindowView:
     def _epochs(self) -> np.ndarray:
         """Cached property for the array of epoch timestamps corresponding to each window."""
         return np.array(
-            [int((self.start_date + i * self.frequency).timestamp()) for i in range(self._len)], dtype=np.int64
+            [int(date_to_epoch(self.start_date + i * self.frequency)) for i in range(self._len)],
+            dtype=np.int64,
         )
 
     @property
     def dates(self) -> np.ndarray:
         """Array of numpy.datetime64 objects for each window in the view."""
-        return np.array([np.datetime64(datetime.datetime.fromtimestamp(_)) for _ in self._epochs])
+        return np.array([np.datetime64(epoch_to_date(_)) for _ in self._epochs])
 
     @property
     def data_length(self) -> int:

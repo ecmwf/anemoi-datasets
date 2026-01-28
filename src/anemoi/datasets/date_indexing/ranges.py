@@ -8,8 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 
-import datetime
 import logging
+
+from anemoi.datasets.epochs import epoch_to_date
 
 LOG = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class DateRange:
         self.length = length
 
     def __repr__(self):
-        date = datetime.datetime.fromtimestamp(self.epoch)
+        date = epoch_to_date(self.epoch)
         return f"DateRange(epoch={date}, offset={self.offset:,}, length={self.length:,})"
 
     def empty(self) -> bool:
