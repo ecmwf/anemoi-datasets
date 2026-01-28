@@ -132,7 +132,7 @@ class Groups:
         2
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, group_by: Any, **kwargs: Any) -> None:
         """Initialize the class with the provided keyword arguments.
 
         Parameters
@@ -142,7 +142,6 @@ class Groups:
                 - Other keys for DatesProvider configuration.
         """
 
-        group_by = kwargs.pop("group_by", "monthly")
         self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)

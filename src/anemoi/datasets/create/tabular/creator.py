@@ -109,7 +109,7 @@ class TabularCreator(Creator):
             date_indexing=self.recipe.output.date_indexing,
             recipe=self.recipe,
             variables_names=self.variables_names,
-            delete_files=True,
+            delete_files=False,
         )
 
         collector.add_to_dataset(dataset)

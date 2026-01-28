@@ -348,8 +348,7 @@ def _find_duplicate_and_overlapping_dates(
     fragments: dict[str, Fragment] = {}
 
     if max_workers is None:
-        # For some reason using too many workers causes hangs in ProcessPoolExecutor
-        max_workers = max(os.cpu_count() // 2, 1)
+        max_workers = max(os.cpu_count() - 1, 1)
 
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
 
@@ -504,14 +503,18 @@ def finalise_tabular_dataset(
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
     LOG.info(f"Last fragment: {fragments[-1].first_date} to {fragments[-1].last_date}")
 
+    dates = []
+    date = fragments[0].first_date
+    last = fragments[-1].last_date
+    while date <= last:
+        dates.append(date)
+        date += datetime.timedelta(days=1)
+
+    dates = np.array(dates, dtype="datetime64[s]")
+
     collector = StatisticsCollector(
         variables_names=variables_names,
-        filter=recipe.statistics.statistics_filter(
-            [
-                np.datetime64(fragments[0].first_date, "s"),
-                np.datetime64(fragments[-1].last_date, "s"),
-            ]
-        ),
+        filter=recipe.statistics.statistics_filter(dates),
     )
 
     if "data" in store:

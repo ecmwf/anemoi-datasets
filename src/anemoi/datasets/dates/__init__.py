@@ -294,7 +294,7 @@ class StartEndDates(DatesProvider):
 
     def end_range(self, dates) -> datetime.datetime:
         """Used for tabular datasets grouping."""
-        return dates[-1] + self.frequency
+        return dates[-1] + self.frequency - datetime.timedelta(microseconds=1)
 
 
 class Hindcast:
