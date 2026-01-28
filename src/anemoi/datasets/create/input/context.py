@@ -18,9 +18,11 @@ LOG = logging.getLogger(__name__)
 class Context(ABC):
     """Context for building input data."""
 
-    def __init__(self, /) -> None:
+    def __init__(self, recipe) -> None:
+        self.recipe = recipe
         self.results = {}
         self.cache = {}
+        self.use_grib_paramid = recipe.build.use_grib_paramid
 
     def trace(self, emoji, *message) -> None:
 
@@ -64,7 +66,38 @@ class Context(ABC):
         return action_factory(config, *path)
 
     @abstractmethod
-    def empty_result(self) -> Any: ...
-
-    @abstractmethod
     def create_result(self, data: Any) -> Any: ...
+
+    def join(self, results: list[Any]) -> Any:
+        """Join multiple results into a single result.
+
+        Parameters
+        ----------
+        results : list[Any]
+            The list of results to be joined.
+
+        Returns
+        -------
+        Any
+            The joined result.
+        """
+
+        from functools import reduce
+
+        import earthkit.data as ekd
+
+        results = list(results)  # In case it's a generator
+        assert results, "join: No results to join"
+
+        # TODO: quick hack, find a more generic way to do this
+
+        if all(isinstance(r, ekd.FieldList) for r in results):
+            return reduce(lambda x, y: x + y, results)
+
+        # Assume it's pandas-like
+        import pandas as pd
+
+        if all(isinstance(r, pd.DataFrame) for r in results):
+            return pd.concat(results, ignore_index=True)
+
+        raise TypeError(f"join: Unsupported mix of types {[type(r) for r in results]}")
