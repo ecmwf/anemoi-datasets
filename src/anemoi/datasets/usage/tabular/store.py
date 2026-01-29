@@ -127,7 +127,6 @@ class TabularZarr(ZarrStore):
 
     def usage_factory_load(self, name):
         # We need come here to get access to __package__
-        print(f"Loading usage factory for {name} in package {__package__}")
         return self._usage_factory_load(name, __package__)
 
     def plot_dates(self):
