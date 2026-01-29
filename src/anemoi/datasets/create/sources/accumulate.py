@@ -400,7 +400,7 @@ def _compute_accumulations(
         values = field.values.copy()
 
         key = field.metadata(namespace="mars")
-        key = {k: v for k, v in key.items() if k not in ["date", "time", "step","timespan"]}
+        key = {k: v for k, v in key.items() if k not in ["date", "time", "step", "timespan"]}
         key = tuple(sorted(key.items()))
         log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace="mars").items())
 
