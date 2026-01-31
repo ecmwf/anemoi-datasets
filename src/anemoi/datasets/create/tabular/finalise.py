@@ -12,6 +12,7 @@ import logging
 import os
 import time
 from collections.abc import Generator
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from functools import cached_property
@@ -19,6 +20,7 @@ from typing import Any
 from typing import Optional
 
 import numpy as np
+import psutil
 import tqdm
 import zarr
 
@@ -209,69 +211,79 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         The resulting list of updated Fragment instances.
     """
 
-    # Not mmapping gives up a 3x speedup here, but may lead to memkills on large files
-    array_one = np.load(one.file_path)
-    array_two = np.load(two.file_path)
+    try:
 
-    # Find the range where both arrays have identical first two columns (date columns)
-    # Concatenate to find the overlap region around the junction
-    concatenated = np.vstack([array_one, array_two])
-    junction_index = len(array_one)
+        # Not mmapping gives up a 3x speedup here, but may lead to memkills on large files
+        extra = dict(mmap_mode="r")
+        extra = dict()  # --- IGNORE ---
 
-    # Find the range where dates are identical around the junction
-    # Look backwards from junction to find where duplicates start
-    start_idx = junction_index - 1
+        array_one = np.load(one.file_path, **extra)
+        array_two = np.load(two.file_path, **extra)
 
-    while start_idx > 0 and np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
-        start_idx -= 1
-    if not np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
-        start_idx += 1
+        # Find the range where both arrays have identical first two columns (date columns)
+        # Concatenate to find the overlap region around the junction
+        concatenated = np.vstack([array_one, array_two])
+        junction_index = len(array_one)
 
-    # Look forwards from junction to find where duplicates end
-    end_idx = junction_index
-    junction_date = concatenated[junction_index, :2]
-    while end_idx < len(concatenated) and np.array_equal(concatenated[end_idx, :2], junction_date):
-        end_idx += 1
+        # Find the range where dates are identical around the junction
+        # Look backwards from junction to find where duplicates start
+        start_idx = junction_index - 1
 
-    LOG.debug(f"Found overlapping date range  {start_idx}:{end_idx} around junction at {junction_index}")
+        while start_idx > 0 and np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
+            start_idx -= 1
+        if not np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
+            start_idx += 1
 
-    # Check for duplicate rows in the overlap region
-    overlap_region = concatenated[start_idx:end_idx]
-    num_duplicates = 0
-    deduped_region = None
-    if overlap_region.shape[0] > 1:
-        deduped_region = _deduplicate_rows(overlap_region)
-        num_duplicates = overlap_region.shape[0] - deduped_region.shape[0]
+        # Look forwards from junction to find where duplicates end
+        end_idx = junction_index
+        junction_date = concatenated[junction_index, :2]
+        while end_idx < len(concatenated) and np.array_equal(concatenated[end_idx, :2], junction_date):
+            end_idx += 1
 
-    if num_duplicates == 0:
-        return [one, two]
+        LOG.debug(f"Found overlapping date range  {start_idx}:{end_idx} around junction at {junction_index}")
 
-    LOG.info(f"Duplicate rows found in overlapping fragments ({num_duplicates=:,}); deoverlapping")
+        # Check for duplicate rows in the overlap region
+        overlap_region = concatenated[start_idx:end_idx]
+        num_duplicates = 0
+        deduped_region = None
+        if overlap_region.shape[0] > 1:
+            deduped_region = _deduplicate_rows(overlap_region)
+            num_duplicates = overlap_region.shape[0] - deduped_region.shape[0]
 
-    result = []
+        if num_duplicates == 0:
+            return [one, two]
 
-    base = f"{one.file_path}-{time.time()}"
+        LOG.info(f"Duplicate rows found in overlapping fragments ({num_duplicates=:,}); deoverlapping")
 
-    first_region = overlap_region[:start_idx]
-    if len(first_region) > 0:
-        np.save(base + ".tmp", first_region)
-        os.rename(base + ".tmp.npy", base + ".deduped.one.npy")
-        result.append(Fragment.from_path(base + ".deduped.one.npy"))
+        result = []
 
-    second_region = overlap_region[end_idx:]
-    if len(second_region) > 0:
-        np.save(base + ".tmp", second_region)
-        os.rename(base + ".tmp.npy", base + ".deduped.two.npy")
-        result.append(Fragment.from_path(base + ".deduped.two.npy"))
+        base = f"{one.file_path}-{time.time()}"
 
-    np.save(base + ".tmp", deduped_region)
-    os.rename(base + ".tmp.npy", base + ".deduped.overlap.npy")
-    overlap_fragment = Fragment.from_path(base + ".deduped.overlap.npy")
+        first_region = overlap_region[:start_idx]
+        if len(first_region) > 0:
+            np.save(base + ".tmp", first_region)
+            os.rename(base + ".tmp.npy", base + ".deduped.one.npy")
+            result.append(Fragment.from_path(base + ".deduped.one.npy"))
 
-    assert overlap_fragment is not None
-    result.append(overlap_fragment)
+        second_region = overlap_region[end_idx:]
+        if len(second_region) > 0:
+            np.save(base + ".tmp", second_region)
+            os.rename(base + ".tmp.npy", base + ".deduped.two.npy")
+            result.append(Fragment.from_path(base + ".deduped.two.npy"))
 
-    return result
+        np.save(base + ".tmp", deduped_region)
+        os.rename(base + ".tmp.npy", base + ".deduped.overlap.npy")
+        overlap_fragment = Fragment.from_path(base + ".deduped.overlap.npy")
+
+        assert overlap_fragment is not None
+        result.append(overlap_fragment)
+
+        return result
+
+    except Exception as e:
+        LOG.error(f"Error deoverlapping fragments {one.file_path} and {two.file_path}: {e}")
+        LOG.exception("Error in deoverlap_worker")
+        raise
 
 
 def _sort_and_chain_fragments(fragments: list[Fragment]) -> list[Fragment]:
@@ -333,7 +345,11 @@ def _list_files(work_dir: str) -> Generator[str, None, None]:
 
 
 def _read_fragment_worker(file_path: str) -> Fragment:
-    return Fragment.from_path(file_path)
+    try:
+        return Fragment.from_path(file_path)
+    except Exception:
+        LOG.exception(f"Error reading fragment from {file_path}")
+        raise
 
 
 def _find_duplicate_and_overlapping_dates(
@@ -367,14 +383,38 @@ def _find_duplicate_and_overlapping_dates(
 
     fragments: dict[str, Fragment] = {}
 
-    if max_workers is None:
-        max_workers = min(max(os.cpu_count() - 1, 1), 8)
+    memory = available_memory()
+    # TODO: read value from recipe
+    LOG.info(f"Available memory: {memory / (1024**3):.2f} GB")
 
-    LOG.info(f"Available memory: {available_memory() / (1024**3):.2f} GB")
+    memory *= 0.8  # Use only 80% of available memory
+
+    max_fragment_size = 256 * 1024 * 1024  # 256 MB
+
+    # Each pairs of deoverlapping fragments requires loading both into memory.
+    # Then double it for safety
+    me = psutil.Process(os.getpid())
+
+    # Assume each worker needs 4x max_fragment_size + current memory
+
+    my_memory = me.memory_full_info().rss
+    LOG.info(f"Current process memory usage: {my_memory / (1024**3):.2f} GB")
+
+    estimated_needed_memory = 4 * max_fragment_size + my_memory
+    estimated_needed_memory *= 1.2  # Safety margin
+
+    estimated_max_workers = int(memory / estimated_needed_memory)
+
+    if max_workers is None:
+        max_workers = min(max(os.cpu_count() - 1, 1), estimated_max_workers)
+    else:
+        LOG.info(
+            f"User requested max_workers={max_workers}, estimated max_workers={estimated_max_workers} based on memory"
+        )
 
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
 
         # Read all fragments in parallel
 
@@ -393,10 +433,6 @@ def _find_duplicate_and_overlapping_dates(
                 pbar.update(1)
 
         LOG.info(f"Loaded {len(fragments):,} fragments in {time.time()-now:.2f} seconds")
-        size = max(fragment.size for fragment in fragments.values())
-        LOG.info(f"Largest fragment size: {size / (1024**2):.2f} MB")
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
 
         now = time.time()
         LOG.info("Checking overlaps")

@@ -76,14 +76,14 @@ class TabularCreator(Creator):
 
         # TODO: read value from recipe
 
-        max_size = 256 * 1024 * 1024  # 256 MB
+        max_fragment_size = 256 * 1024 * 1024  # 256 MB
         array = result.to_numpy()
         if array.shape[0] == 0:
             np.save(os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}.npy"), array)
             return
 
         one_row_size = array.shape[1] * array.itemsize
-        rows_per_file = max(round(max_size / one_row_size), 1)
+        rows_per_file = max(round(max_fragment_size / one_row_size), 1)
 
         for i, row_start in enumerate(range(0, array.shape[0], rows_per_file)):
             row_end = min(row_start + rows_per_file, array.shape[0])
