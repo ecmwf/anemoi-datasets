@@ -422,7 +422,8 @@ class ZarrCopier:
 
         def target_finished() -> bool:
             target = zarr.open(self.target, mode="r")
-            last_key = list(self.children(self.source))[-1]
+            source = zarr.open(self.source, mode="r")
+            last_key = list(self.children(source))[-1]
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
                 todo = target["_copy"].shape[0]
