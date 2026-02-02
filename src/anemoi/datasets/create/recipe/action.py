@@ -16,6 +16,7 @@ from typing import Any
 from typing import Union
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Discriminator
 from pydantic import Tag
 from pydantic import create_model
@@ -37,7 +38,7 @@ class Join(BaseAction):
 
 
 class Concat(BaseAction):
-    concat: tuple[dict, Action]
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
 
 class Function(BaseAction):
@@ -94,6 +95,8 @@ def _step_discriminator(config_or_model: Any) -> str:
     verb = list(config.keys())[0]
     verb = verb.replace("-", "_")
 
+    assert verb != "concat", "Concat should be at the Action level"
+
     # This will give us a much more readable error message than the default pydantic exception
 
     if verb not in ("pipe", "join"):
@@ -113,6 +116,7 @@ Step = Annotated[Union[_schemas()], Discriminator(_step_discriminator)]
 def _action_discriminator(config_or_model: Any) -> str:
     config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
 
+    print("config for action discriminator:", config)
     if len(config) == 2 and "dates" in config:
         return "concat"
 

@@ -16,6 +16,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from pydantic import BeforeValidator
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic_core import PydanticCustomError
 
@@ -41,9 +42,7 @@ def validate_mapping(value):
 
 class Build(BaseModel):
 
-    class Config:
-        # arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     use_grib_paramid: bool = False
     allow_nans: bool | list[str] = False

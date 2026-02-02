@@ -49,7 +49,7 @@ class TabularResult(Result):
         # Round date to the nearest second
         # Convert "date" to integer seconds since the Unix epoch
         start = time.time()
-        self.frame["date"] = (self.frame["date"].astype("int64") // 10**9).astype(int)
+        self.frame["date"] = (self.frame["date"].astype("int64") / 10**9).round().astype("int64")
         LOG.info(
             f"Converted 'date' to integer seconds since epoch in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
         )

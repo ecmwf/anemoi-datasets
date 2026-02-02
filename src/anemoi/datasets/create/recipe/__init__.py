@@ -12,6 +12,7 @@ import logging
 
 import yaml
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
@@ -27,6 +28,8 @@ LOG = logging.getLogger(__name__)
 
 class Recipe(BaseModel):
 
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
     @model_validator(mode="after")
     def _post_init(self) -> "Recipe":
         # We need to call _post_init on nested BaseModel members
@@ -36,10 +39,6 @@ class Recipe(BaseModel):
             if isinstance(member, BaseModel) and hasattr(member, "_post_init"):
                 member._post_init(self)
         return self
-
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
 
     description: str = "No description provided."
     licence: str = "unknown"
