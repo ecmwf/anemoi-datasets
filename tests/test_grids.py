@@ -93,15 +93,11 @@ def test_cutout_mask_parameter_types():
     global_lons = np.array([0.0, 2.0])
 
     # Test with int
-    mask_int = cutout_mask(
-        lam_lats, lam_lons, global_lats, global_lons, max_distance_km=100
-    )
+    mask_int = cutout_mask(lam_lats, lam_lons, global_lats, global_lons, max_distance_km=100)
     assert isinstance(mask_int, np.ndarray)
 
     # Test with float
-    mask_float = cutout_mask(
-        lam_lats, lam_lons, global_lats, global_lons, max_distance_km=100.0
-    )
+    mask_float = cutout_mask(lam_lats, lam_lons, global_lats, global_lons, max_distance_km=100.0)
     assert isinstance(mask_float, np.ndarray)
 
 

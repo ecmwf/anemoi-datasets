@@ -308,7 +308,7 @@ def cutout_mask(
                 break
 
         close = np.min(distance) <= min_distance
-        
+
         # Check if the point is within max_distance_km if specified
         if max_distance_km is not None:
             max_distance = max_distance_km / 6371.0
