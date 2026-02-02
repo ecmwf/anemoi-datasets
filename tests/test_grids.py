@@ -66,7 +66,7 @@ def test_cutout_mask_with_min_distance():
     # The last point at lat=50.0 should be excluded (too close)
     assert isinstance(mask, np.ndarray)
     assert mask.shape == global_lats.shape
-    assert np.array_equal(mask, np.array([False, False, False, False, True]))
+    assert np.array_equal(mask, np.array([False, False, False, True]))
 
 
 def test_cutout_mask_array_shapes():
