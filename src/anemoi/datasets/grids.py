@@ -309,13 +309,7 @@ def cutout_mask(
 
         close = np.min(distance) <= min_distance
 
-        # Check if the point is within max_distance_km if specified
-        if max_distance_km is not None:
-            max_distance = max_distance_km / 6371.0
-            too_far = np.min(distance) > max_distance
-            inside_lam.append((inside or close) and not too_far)
-        else:
-            inside_lam.append(inside or close)
+        inside_lam.append(inside or close)
 
     j = 0
     inside_lam_array = np.array(inside_lam)

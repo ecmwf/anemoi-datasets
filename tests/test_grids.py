@@ -25,7 +25,7 @@ def test_cutout_mask_with_max_distance():
 
     # Create a global grid with points at varying distances
     global_lats = np.array([43.0, 44.0, 45.0, 45.5, 46.0, 50.0])
-    global_lons = np.array([358.0, 359.0, 0.0, 1.0, 2.0, 0.0])
+    global_lons = np.array([359.0, 359.5, 0.0, 1.0, 2.0, 0.0])
 
     # Apply mask with max_distance_km to exclude far points
     mask = cutout_mask(
@@ -133,3 +133,7 @@ def test_cutout_mask_large_grid():
     assert np.any(mask)
     # Some points should not be masked
     assert not np.all(mask)
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-k", "test_cutout_mask_with_max_distance"])
