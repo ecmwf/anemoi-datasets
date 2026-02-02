@@ -17,15 +17,15 @@ from anemoi.datasets.grids import cutout_mask
 def test_cutout_mask_with_max_distance():
     """Test cutout_mask with max_distance_km parameter."""
     # Create a LAM region
-    lam_lat_range = np.linspace(44.0, 46.0, 10)
-    lam_lon_range = np.linspace(0.0, 2.0, 10)
+    lam_lat_range = np.linspace(44.0, 46.0, 11)
+    lam_lon_range = np.linspace(0.0, 2.0, 11)
     lam_lats, lam_lons = np.meshgrid(lam_lat_range, lam_lon_range)
     lam_lats = lam_lats.flatten()
     lam_lons = lam_lons.flatten()
 
     # Create a global grid with points at varying distances
-    global_lats = np.array([44.0, 45.0, 45.5, 46.0, 50.0])
-    global_lons = np.array([359.0, 0.0, 1.0, 2.0, 0.0])
+    global_lats = np.array([43.0, 44.0, 45.0, 45.5, 46.0, 50.0])
+    global_lons = np.array([358.0, 359.0, 0.0, 1.0, 2.0, 0.0])
 
     # Apply mask with max_distance_km to exclude far points
     mask = cutout_mask(
@@ -33,27 +33,27 @@ def test_cutout_mask_with_max_distance():
         lam_lons,
         global_lats,
         global_lons,
-        max_distance_km=100.0,  # 100 km limit
+        max_distance_km=250.0,  # 250 km limit
     )
 
     # The last point at lat=50.0 should be excluded (too far)
     assert isinstance(mask, np.ndarray)
     assert mask.shape == global_lats.shape
-    assert np.array_equal(mask, np.array([False, False, False, False, True]))
+    assert np.array_equal(mask, np.array([False, True, True, True, True, True]))
 
 
 def test_cutout_mask_with_min_distance():
     """Test cutout_mask with both min_distance_km."""
     # Create a LAM region
-    lam_lat_range = np.linspace(44.0, 46.0, 10)
-    lam_lon_range = np.linspace(0.0, 2.0, 10)
+    lam_lat_range = np.linspace(44.0, 46.0, 11)
+    lam_lon_range = np.linspace(0.0, 2.0, 11)
     lam_lats, lam_lons = np.meshgrid(lam_lat_range, lam_lon_range)
     lam_lats = lam_lats.flatten()
     lam_lons = lam_lons.flatten()
 
     # Create a global grid
-    global_lats = np.array([45.0, 45.5, 46.0, 46.1])
-    global_lons = np.array([0.0, 1.0, 2.0, 0.1])
+    global_lats = np.array([44.0, 45.0, 46.0, 46.01])
+    global_lons = np.array([0.0, 1.0, 2.0, -0.01])
 
     mask = cutout_mask(
         lam_lats,
@@ -66,7 +66,7 @@ def test_cutout_mask_with_min_distance():
     # The last point at lat=50.0 should be excluded (too close)
     assert isinstance(mask, np.ndarray)
     assert mask.shape == global_lats.shape
-    assert np.array_equal(mask, np.array([False, False, False, True]))
+    assert np.array_equal(mask, np.array([True, True, True, True]))
 
 
 def test_cutout_mask_array_shapes():
@@ -83,8 +83,8 @@ def test_cutout_mask_array_shapes():
 
 def test_cutout_mask_parameter_types():
     """Test that max_distance_km accepts int and float."""
-    lam_lat_range = np.linspace(44.0, 46.0, 10)
-    lam_lon_range = np.linspace(0.0, 2.0, 10)
+    lam_lat_range = np.linspace(44.0, 46.0, 11)
+    lam_lon_range = np.linspace(0.0, 2.0, 11)
     lam_lats, lam_lons = np.meshgrid(lam_lat_range, lam_lon_range)
     lam_lats = lam_lats.flatten()
     lam_lons = lam_lons.flatten()
@@ -103,16 +103,16 @@ def test_cutout_mask_parameter_types():
 
 def test_cutout_mask_large_grid():
     """Test cutout_mask with a larger, more realistic grid."""
-    # Create a LAM region (10x10 grid)
-    lam_lat_range = np.linspace(40.0, 50.0, 10)
-    lam_lon_range = np.linspace(0.0, 10.0, 10)
+    # Create a LAM region (11x11 grid)
+    lam_lat_range = np.linspace(40.0, 50.0, 11)
+    lam_lon_range = np.linspace(0.0, 10.0, 11)
     lam_lats, lam_lons = np.meshgrid(lam_lat_range, lam_lon_range)
     lam_lats = lam_lats.flatten()
     lam_lons = lam_lons.flatten()
 
-    # Create a global grid (20x20 grid)
-    global_lat_range = np.linspace(30.0, 60.0, 20)
-    global_lon_range = np.linspace(-10.0, 20.0, 20)
+    # Create a global grid (21x21 grid)
+    global_lat_range = np.linspace(30.0, 60.0, 21)
+    global_lon_range = np.linspace(-10.0, 20.0, 21)
     global_lats, global_lons = np.meshgrid(global_lat_range, global_lon_range)
     global_lats = global_lats.flatten()
     global_lons = global_lons.flatten()
@@ -127,7 +127,7 @@ def test_cutout_mask_large_grid():
     )
 
     assert isinstance(mask, np.ndarray)
-    assert mask.shape == (400,)  # 20x20 flattened
+    assert mask.shape == (441,)  # 21x21 flattened
     assert mask.dtype == bool
     # Some points should be masked (excluded)
     assert np.any(mask)
