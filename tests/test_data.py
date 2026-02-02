@@ -30,6 +30,7 @@ from anemoi.datasets.data.concat import Concat
 from anemoi.datasets.data.ensemble import Ensemble
 from anemoi.datasets.data.grids import GridsBase
 from anemoi.datasets.data.join import Join
+from anemoi.datasets.data.masked import Masking
 from anemoi.datasets.data.misc import as_first_date
 from anemoi.datasets.data.misc import as_last_date
 from anemoi.datasets.data.padded import Padded
@@ -1417,6 +1418,67 @@ def test_invalid_trim_edge() -> None:
             "test-2021-2021-6h-o96-abcd",
             trim_edge=(1, 2, 3, 4),
         )
+
+
+@mockup_open_zarr
+def test_masking() -> None:
+    """Test masking a dataset."""
+    test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
+    with (
+        patch("anemoi.datasets.data.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.data.masked.Path.exists", return_value=True),
+    ):
+
+        test = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+        test.run(
+            expected_class=Masking,
+            expected_length=365 * 2 * 4,
+            date_to_row=lambda date: simple_row(date, "abcd")[..., test_mask],
+            start_date=datetime.datetime(2021, 1, 1),
+            time_increment=datetime.timedelta(hours=6),
+            expected_shape=(365 * 2 * 4, 4, 1, sum(test_mask)),
+            expected_variables="abcd",
+            expected_name_to_index="abcd",
+            statistics_reference_dataset="test-2021-2022-6h-o96-abcd",
+            statistics_reference_variables="abcd",
+        )
+    return
+
+
+@mockup_open_zarr
+def test_masking_wrong_mask_dims() -> None:
+    """Test masking a dataset (wrong dims in mask)."""
+    test_mask = np.array([True, False, True, True, True, True, False, False, True])
+    with (
+        patch("anemoi.datasets.data.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.data.masked.Path.exists", return_value=True),
+    ):
+        with pytest.raises(ValueError):
+            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
+
+
+@mockup_open_zarr
+def test_masking_mask_file_not_found() -> None:
+    """Test masking a dataset (mask file not found)."""
+    test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
+    with patch("anemoi.datasets.data.masked.np.load", return_value=test_mask):
+        with pytest.raises(FileNotFoundError):
+            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
+
+
+@mockup_open_zarr
+def test_masking_wrong_dtype() -> None:
+    """Test masking a dataset (mask file not found)."""
+    test_mask = np.array([1, 0, 1, 1, 1, 1, 0, 0, 1, 0])
+    with (
+        patch("anemoi.datasets.data.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.data.masked.Path.exists", return_value=True),
+    ):
+        with pytest.raises(ValueError):
+            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
 
 
 def test_save_dataset() -> None:
