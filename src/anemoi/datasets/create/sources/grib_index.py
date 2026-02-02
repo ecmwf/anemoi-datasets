@@ -200,9 +200,8 @@ class GribIndex:
             Key-value pairs representing the GRIB record fields.
         """
         assert self.update
-
+        kwargs = _replace_colons(kwargs)
         try:
-
             self.cursor.execute(
                 f"""
             INSERT INTO grib_index ({', '.join(kwargs.keys())})
@@ -253,8 +252,13 @@ class GribIndex:
         """
         assert self.update
 
+        columns = _replace_colons(columns)
+
         existing_columns = self._all_columns()
         new_columns = [column for column in columns if column not in existing_columns]
+        
+        existing_columns = _replace_colons(existing_columns)
+        new_columns = _replace_colons(new_columns)
 
         if not new_columns:
             return
@@ -265,7 +269,7 @@ class GribIndex:
             self.cursor.execute(f"ALTER TABLE grib_index ADD COLUMN {column} TEXT not null default ''")
 
         self.cursor.execute("""DROP INDEX IF EXISTS idx_grib_index_all_keys""")
-        all_columns = self._all_columns()
+        all_columns = _replace_colons(self._all_columns())
 
         self.cursor.execute(
             f"""
@@ -642,6 +646,16 @@ class GribIndexSource(LegacySource):
         return FieldArray(result)
 
 
+
+def _replace_colons(d: dict | list) -> dict | list:
+    """Replace colons in column names with underscores."""
+    if isinstance(d, dict):
+        return {k.replace(":", "_"): v for k, v in d.items()}
+    elif isinstance(d, list):
+        return [el.replace(":", "_") for el in d]
+    else:
+        raise TypeError("Input must be a dictionary or a list.")
+    
 def factorise(lst):
     """Factorise a list of (dates, request) tuples by merging dates with identical requests."""
     content = dict()
