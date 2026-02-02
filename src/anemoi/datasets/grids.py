@@ -204,6 +204,7 @@ def cutout_mask(
     cropping_distance: float = 2.0,
     neighbours: int = 5,
     min_distance_km: int | float | None = None,
+    max_distance_km: int | float | None = None,
     plot: str | None = None,
 ) -> NDArray[Any]:
     """Return a mask for the points in [global_lats, global_lons] that are inside of [lats, lons].
@@ -224,6 +225,9 @@ def cutout_mask(
         Number of neighbours. Defaults to 5.
     min_distance_km : Optional[Union[int, float]], optional
         Minimum distance in kilometers. Defaults to None.
+    max_distance_km : Optional[Union[int, float]], optional
+        Maximum distance in kilometers. Points further than this distance from the LAM
+        region will be excluded from the mask. Defaults to None.
     plot : Optional[str], optional
         Path for saving the plot. Defaults to None.
 
@@ -304,8 +308,14 @@ def cutout_mask(
                 break
 
         close = np.min(distance) <= min_distance
-
-        inside_lam.append(inside or close)
+        
+        # Check if the point is within max_distance_km if specified
+        if max_distance_km is not None:
+            max_distance = max_distance_km / 6371.0
+            too_far = np.min(distance) > max_distance
+            inside_lam.append((inside or close) and not too_far)
+        else:
+            inside_lam.append(inside or close)
 
     j = 0
     inside_lam_array = np.array(inside_lam)
@@ -449,7 +459,7 @@ def nearest_grid_points(
     source_longitudes: NDArray[Any],
     target_latitudes: NDArray[Any],
     target_longitudes: NDArray[Any],
-    max_distance: float = None,
+    max_distance: float | None = None,
     k: int = 1,
 ) -> NDArray[Any]:
     """Find the nearest grid points from source to target coordinates.

@@ -202,6 +202,16 @@ value as the smallest distance between two grid points in the global
 dataset over the cutout area. If you do not want to use this feature,
 you can set `min_distance_km=0`, or provide your own value.
 
+Additionally, you can pass a `max_distance_km` parameter to the `cutout`
+function. Any grid points in the global dataset that are further than
+this distance from any grid point in the LAM dataset will be excluded
+from the cutout. This can be useful to limit the extent of the global
+dataset to only include points within a certain radius of the LAM region,
+reducing memory usage and computation time. For example, setting
+`max_distance_km=1000.0` will only include global grid points within
+1000 km of the LAM boundary. If no value is provided (the default), all
+global grid points outside the LAM region will be included.
+
 The plots below illustrate how the cutout differs if `min_distance_km`
 is not given (top) or if `min_distance_km` is set to `0` (bottom). The
 difference can be seen at the boundary between the two grids:
