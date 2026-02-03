@@ -28,14 +28,14 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.misc.testing import default_test_indexing
+from anemoi.datasets.usage.common.select import Rename
+from anemoi.datasets.usage.common.select import Select
 from anemoi.datasets.usage.gridded import save_dataset
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.ensemble import Ensemble
 from anemoi.datasets.usage.gridded.grids import GridsBase
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.padded import Padded
-from anemoi.datasets.usage.gridded.select import Rename
-from anemoi.datasets.usage.gridded.select import Select
 from anemoi.datasets.usage.gridded.statistics import Statistics
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 from anemoi.datasets.usage.gridded.subset import Subset

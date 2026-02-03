@@ -337,7 +337,7 @@ class Creator(ABC):
     @cached_property
     def groups(self) -> Groups:
         """Return the date groups for the dataset."""
-        return Groups(self.recipe.dates, self.recipe.build.group_by)
+        return Groups(**self.recipe.dates, group_by=self.recipe.build.group_by)
 
     @cached_property
     def minimal_input(self) -> Any:

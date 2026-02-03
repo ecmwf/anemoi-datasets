@@ -133,10 +133,17 @@ class Groups:
         2
     """
 
-    def __init__(self, provider: DatesProvider, group_by: str) -> None:
-        """Initialize the class with the provided keyword arguments."""
+    def __init__(self, group_by: Any, **kwargs: Any) -> None:
+        """Initialize the class with the provided keyword arguments.
 
-        self._dates = provider
+        Parameters
+        ----------
+            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
+                - group_by: Configuration for the Grouper.
+                - Other keys for DatesProvider configuration.
+        """
+
+        self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 

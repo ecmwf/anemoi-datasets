@@ -174,7 +174,7 @@ class Join(Combined):
             if not ok:
                 LOG.warning("Dataset %r completely overridden.", d)
 
-        from anemoi.datasets.usage.gridded.select import Select
+        from anemoi.datasets.usage.common.select import Select
 
         rich.print("Overlaying join with", variables, len(indices), [d.shape for d in self.datasets])
 

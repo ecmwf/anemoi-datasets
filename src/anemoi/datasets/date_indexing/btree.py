@@ -16,6 +16,8 @@ import numpy as np
 import zarr
 from lru import LRU
 
+from anemoi.datasets.epochs import epoch_to_date
+
 from ..buffering import RandomReadBuffer
 from ..buffering import WriteBehindBuffer
 from . import DateIndexing
@@ -946,7 +948,7 @@ class DateBTree(DateIndexing):
 
     def start_end_dates(self) -> tuple[datetime.datetime, datetime.datetime]:
         first_key, last_key = self.start_end_epochs
-        return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
+        return epoch_to_date(first_key), epoch_to_date(last_key)
 
     def boundaries(self, start: int, end: int) -> tuple[int, int]:
         return self.btree.boundaries(start, end)

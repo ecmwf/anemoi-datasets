@@ -12,18 +12,23 @@ import logging
 import os
 import time
 from collections.abc import Generator
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+from functools import cached_property
 from typing import Any
 from typing import Optional
 
 import numpy as np
+import psutil
 import tqdm
 import zarr
 
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
+from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.memory import available_memory
 
 LOG = logging.getLogger(__name__)
 
@@ -119,6 +124,11 @@ class Fragment:
         array: np.ndarray = np.load(file_path, mmap_mode="r")
         return cls.from_array(array, file_path=file_path)
 
+    @cached_property
+    def size(self) -> int:
+        """Return the size of the fragment in bytes."""
+        return os.path.getsize(self.file_path)
+
 
 def _deduplicate_rows(array: np.ndarray) -> np.ndarray:
     """Remove duplicate rows from a 2D numpy array, handling NaNs correctly.
@@ -174,7 +184,7 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
         The corresponding datetime object.
     """
     # Convert (days, seconds) to a datetime object
-    return datetime.datetime.fromtimestamp(int(array[index][0]) * 86400 + int(array[index][1]))
+    return epoch_to_date(int(array[index][0]) * 86400 + int(array[index][1]))
 
 
 def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[Fragment]:
@@ -200,60 +210,80 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
     list of Fragment
         The resulting list of updated Fragment instances.
     """
-    array_one: np.ndarray = np.load(one.file_path, mmap_mode="r")
-    array_two: np.ndarray = np.load(two.file_path, mmap_mode="r")
 
-    # Find the index in array_two where the overlap with array_one ends
-    i: int = 0
-    last: datetime.datetime = _date(array_one, -1)
-    while i < array_two.shape[0] and last >= _date(array_two, i):
-        i += 1
+    try:
 
-    assert i > 0
+        # Not mmapping gives up a 3x speedup here, but may lead to memkills on large files
+        extra = dict(mmap_mode="r")
+        extra = dict()  # --- IGNORE ---
 
-    beginning_array_two: np.ndarray = array_two[:i]
+        array_one = np.load(one.file_path, **extra)
+        array_two = np.load(two.file_path, **extra)
 
-    # If the last row of array_one is identical to the first of array_two, skip it to avoid duplication
-    if np.allclose(array_one[-1], beginning_array_two[0], equal_nan=True, rtol=0, atol=0):
-        beginning_array_two = beginning_array_two[1:]
+        # Find the range where both arrays have identical first two columns (date columns)
+        # Concatenate to find the overlap region around the junction
+        concatenated = np.vstack([array_one, array_two])
+        junction_index = len(array_one)
 
-    # Merge the two arrays, removing overlap
-    new_array_one: np.ndarray = np.vstack([array_one, beginning_array_two])
-    end_array_two: np.ndarray = array_two[i:]
+        # Find the range where dates are identical around the junction
+        # Look backwards from junction to find where duplicates start
+        start_idx = junction_index - 1
 
-    # Save merged arrays, using temp files for atomicity
-    np.save(one.file_path + ".tmp", new_array_one)
-    if delete_files:
-        os.rename(one.file_path + ".tmp.npy", one.file_path)
-    else:
-        os.rename(one.file_path + ".tmp.npy", one.file_path + ".deduped.npy")
-        one.file_path = one.file_path + ".deduped.npy"
+        while start_idx > 0 and np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
+            start_idx -= 1
+        if not np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
+            start_idx += 1
 
-    np.save(two.file_path + ".tmp", end_array_two)
-    if delete_files:
-        os.rename(two.file_path + ".tmp.npy", two.file_path)
-    else:
-        os.rename(two.file_path + ".tmp.npy", two.file_path + ".deduped.npy")
-        two.file_path = two.file_path + ".deduped.npy"
+        # Look forwards from junction to find where duplicates end
+        end_idx = junction_index
+        junction_date = concatenated[junction_index, :2]
+        while end_idx < len(concatenated) and np.array_equal(concatenated[end_idx, :2], junction_date):
+            end_idx += 1
 
-    result: list[Fragment] = []
+        LOG.debug(f"Found overlapping date range  {start_idx}:{end_idx} around junction at {junction_index}")
 
-    # Only keep non-empty arrays as fragments
-    if new_array_one.size > 0:
-        one = Fragment.from_path(one.file_path)
-        assert one is not None
-        result.append(one)
-    else:
-        os.unlink(one.file_path)
+        # Check for duplicate rows in the overlap region
+        overlap_region = concatenated[start_idx:end_idx]
+        num_duplicates = 0
+        deduped_region = None
+        if overlap_region.shape[0] > 1:
+            deduped_region = _deduplicate_rows(overlap_region)
+            num_duplicates = overlap_region.shape[0] - deduped_region.shape[0]
 
-    if end_array_two.size > 0:
-        two = Fragment.from_path(two.file_path)
-        assert two is not None
-        result.append(two)
-    else:
-        os.unlink(two.file_path)
+        if num_duplicates == 0:
+            return [one, two]
 
-    return result
+        LOG.info(f"Duplicate rows found in overlapping fragments ({num_duplicates=:,}); deoverlapping")
+
+        result = []
+
+        base = f"{one.file_path}-{time.time()}"
+
+        first_region = overlap_region[:start_idx]
+        if len(first_region) > 0:
+            np.save(base + ".tmp", first_region)
+            os.rename(base + ".tmp.npy", base + ".deduped.one.npy")
+            result.append(Fragment.from_path(base + ".deduped.one.npy"))
+
+        second_region = overlap_region[end_idx:]
+        if len(second_region) > 0:
+            np.save(base + ".tmp", second_region)
+            os.rename(base + ".tmp.npy", base + ".deduped.two.npy")
+            result.append(Fragment.from_path(base + ".deduped.two.npy"))
+
+        np.save(base + ".tmp", deduped_region)
+        os.rename(base + ".tmp.npy", base + ".deduped.overlap.npy")
+        overlap_fragment = Fragment.from_path(base + ".deduped.overlap.npy")
+
+        assert overlap_fragment is not None
+        result.append(overlap_fragment)
+
+        return result
+
+    except Exception as e:
+        LOG.error(f"Error deoverlapping fragments {one.file_path} and {two.file_path}: {e}")
+        LOG.exception("Error in deoverlap_worker")
+        raise
 
 
 def _sort_and_chain_fragments(fragments: list[Fragment]) -> list[Fragment]:
@@ -315,11 +345,17 @@ def _list_files(work_dir: str) -> Generator[str, None, None]:
 
 
 def _read_fragment_worker(file_path: str) -> Fragment:
-    return Fragment.from_path(file_path)
+    try:
+        return Fragment.from_path(file_path)
+    except Exception:
+        LOG.exception(f"Error reading fragment from {file_path}")
+        raise
 
 
 def _find_duplicate_and_overlapping_dates(
-    work_dir: str, delete_files: bool, max_workers: int | None = None
+    work_dir: str,
+    delete_files: bool,
+    max_workers: int | None = None,
 ) -> list[Fragment]:
     """Find and resolve duplicate and overlapping date ranges in fragment files.
 
@@ -347,21 +383,48 @@ def _find_duplicate_and_overlapping_dates(
 
     fragments: dict[str, Fragment] = {}
 
+    memory = available_memory()
+    # TODO: read value from recipe
+    LOG.info(f"Available memory: {memory / (1024**3):.2f} GB")
+
+    memory *= 0.8  # Use only 80% of available memory
+
+    max_fragment_size = 256 * 1024 * 1024  # 256 MB
+
+    # Each pairs of deoverlapping fragments requires loading both into memory.
+    # Then double it for safety
+    me = psutil.Process(os.getpid())
+
+    # Assume each worker needs 4x max_fragment_size + current memory
+
+    my_memory = me.memory_full_info().rss
+    LOG.info(f"Current process memory usage: {my_memory / (1024**3):.2f} GB")
+
+    estimated_needed_memory = 4 * max_fragment_size + my_memory
+    estimated_needed_memory *= 1.2  # Safety margin
+
+    estimated_max_workers = int(memory / estimated_needed_memory)
+
     if max_workers is None:
-        # For some reason using too many workers causes hangs in ProcessPoolExecutor
-        max_workers = max(os.cpu_count() // 2, 1)
+        max_workers = min(max(os.cpu_count() - 1, 1), estimated_max_workers)
+    else:
+        LOG.info(
+            f"User requested max_workers={max_workers}, estimated max_workers={estimated_max_workers} based on memory"
+        )
 
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
 
         # Read all fragments in parallel
 
         tasks: list[Any] = []
+
         for file in _list_files(work_dir):
             tasks.append(executor.submit(_read_fragment_worker, file))
 
         LOG.info("Loading fragments")
+        now = time.time()
         with tqdm.tqdm(total=len(tasks), desc="Loading fragments", unit="file") as pbar:
             for future in as_completed(tasks):
                 fragment = future.result()
@@ -369,9 +432,13 @@ def _find_duplicate_and_overlapping_dates(
                     fragments[fragment.file_path] = fragment
                 pbar.update(1)
 
+        LOG.info(f"Loaded {len(fragments):,} fragments in {time.time()-now:.2f} seconds")
+
+        now = time.time()
         LOG.info("Checking overlaps")
 
         # Iteratively resolve overlaps until none remain
+        seen = set()
         while True:
 
             tasks = []
@@ -381,9 +448,10 @@ def _find_duplicate_and_overlapping_dates(
                     prev = fragment
                     continue
 
-                if fragment.first_date <= prev.last_date:
+                if fragment.first_date <= prev.last_date and (prev.file_path, fragment.file_path) not in seen:
                     # Overlap detected, resolve in parallel
                     tasks.append(executor.submit(_deoverlap_worker, prev, fragment, delete_files))
+                    seen.add((prev.file_path, fragment.file_path))
                     del fragments[prev.file_path]
                     del fragments[fragment.file_path]
                     prev = None
@@ -403,7 +471,8 @@ def _find_duplicate_and_overlapping_dates(
         # There is a bug in ProcessPoolExecutor that hangs if the number of tasks sent is smaller
         # that the number of workers, so we send dummy tasks to avoid it.
 
-        LOG.info("Done")
+        LOG.info("Overlap checking complete")
+        LOG.info(f"Resolved overlaps in {time.time()-now:.2f} seconds")
 
     return _sort_and_chain_fragments(list(fragments.values()))
 
@@ -466,8 +535,12 @@ def _statistics_collector_worker(
         The corresponding dates for the data array.
     """
 
+    now = time.time()
+
     dates = dates.astype("datetime64[s]")
     statistic_collector.collect(array, dates)
+
+    return time.time() - now
 
 
 def finalise_tabular_dataset(
@@ -504,14 +577,18 @@ def finalise_tabular_dataset(
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
     LOG.info(f"Last fragment: {fragments[-1].first_date} to {fragments[-1].last_date}")
 
+    dates = []
+    date = fragments[0].first_date
+    last = fragments[-1].last_date
+    while date <= last:
+        dates.append(date)
+        date += datetime.timedelta(days=1)
+
+    dates = np.array(dates, dtype="datetime64[s]")
+
     collector = StatisticsCollector(
         variables_names=variables_names,
-        filter=recipe.statistics.statistics_filter(
-            [
-                np.datetime64(fragments[0].first_date, "s"),
-                np.datetime64(fragments[-1].last_date, "s"),
-            ]
-        ),
+        filter=recipe.statistics.statistics_filter(dates),
     )
 
     if "data" in store:
@@ -560,20 +637,31 @@ def finalise_tabular_dataset(
 
             i = len(tasks)
             stats = None
+            stat_time = 0
+            data_time = 0
+            date_time = 0
 
             with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
                     fragment, array = tasks.pop(0).result()
+
+                    now = time.time()
                     data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
+                    data_time += time.time() - now
+
+                    now = time.time()
                     dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
+                    date_time += time.time() - now
 
                     # Wait for previous statistics computation to complete
                     if stats is not None:
-                        stats.result()
+                        stat_time += stats.result()
                     stats = compute_statistics.submit(_statistics_collector_worker, collector, array, dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
+                    now = time.time()
                     all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates
+                    date_time += time.time() - now
 
                     pbar.update(fragment.shape[0])
 
@@ -587,7 +675,11 @@ def finalise_tabular_dataset(
 
             # Ensure last statistics computation is complete
             if stats is not None:
-                stats.result()
+                stat_time += stats.result()
+
+            LOG.info(f"Statistics computed in {stat_time:.2f} seconds ({len(data)/stat_time:.2f} rows/second).")
+            LOG.info(f"Data written in {data_time:.2f} seconds ({len(data)/data_time:.2f} rows/second).")
+            LOG.info(f"Dates written in {date_time:.2f} seconds ({len(data)/date_time:.2f} rows/second).")
 
     all_dates.flush()
     LOG.info(f"Dates written to {all_dates_path}")
@@ -627,25 +719,5 @@ if __name__ == "__main__":
     import zarr
 
     logging.basicConfig(level=logging.INFO)
-    work_dir = sys.argv[2]
-    store = zarr.open(sys.argv[1], mode="w")
-    collector = StatisticsCollector()
 
-    finalise_tabular_dataset(
-        store=store,
-        work_dir=work_dir,
-        statistic_collector=collector,
-        delete_files=False,
-    )
-
-    with open(os.path.basename(sys.argv[1] + ".done"), "w") as f:
-        pass
-
-    for name in ("mean", "minimum", "maximum", "stdev"):
-        store.create_dataset(
-            name,
-            data=collector.statistics()[name],
-            shape=collector.statistics()[name].shape,
-            dtype=collector.statistics()[name].dtype,
-            overwrite=True,
-        )
+    _find_duplicate_and_overlapping_dates(sys.argv[1], delete_files=False, max_workers=None)

@@ -12,6 +12,8 @@ from typing import Any
 
 import numpy as np
 
+from anemoi.datasets.epochs import epoch_to_date
+
 
 def extract_dates_from_results(x: Any) -> str:
 
@@ -34,4 +36,4 @@ def extract_dates_from_results(x: Any) -> str:
 
     assert isinstance(x, int), (x, type(x))
 
-    return datetime.datetime.fromtimestamp(x).isoformat()
+    return epoch_to_date(x).isoformat()

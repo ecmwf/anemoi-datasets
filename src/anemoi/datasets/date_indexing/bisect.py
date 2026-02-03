@@ -16,6 +16,8 @@ from functools import cached_property
 import numpy as np
 import tqdm
 
+from anemoi.datasets.epochs import epoch_to_date
+
 from ..buffering import RandomReadBuffer
 from ..buffering import WriteBehindBuffer
 from . import DateIndexing
@@ -103,7 +105,7 @@ class DateBisect(DateIndexing):
             The first and last date in the index, as datetime objects.
         """
         first_key, last_key = self.index[0][0], self.index[-1][0]
-        return datetime.datetime.fromtimestamp(first_key), datetime.datetime.fromtimestamp(last_key)
+        return epoch_to_date(first_key), epoch_to_date(last_key)
 
     def range_search(self, start: int, end: int, dataset_length: int) -> slice:
         """Find the boundaries in the index for a given start and end epoch.

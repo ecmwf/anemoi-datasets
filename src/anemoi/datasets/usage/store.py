@@ -413,15 +413,12 @@ class ZarrStore(Dataset):
         import importlib
 
         def try_import(module: str, symbol: str):
-            print(f"Trying to import {symbol} from {module}")
             try:
                 module = importlib.import_module(module)
                 if hasattr(module, symbol):
                     return getattr(module, symbol)
-            except ModuleNotFoundError as e:
-                print(e)
+            except ModuleNotFoundError:
                 return None
-            return None
 
         # First, check if the symbol is in a package of the same name
         # e.g. "rename.Rename"
