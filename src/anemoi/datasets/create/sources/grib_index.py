@@ -106,18 +106,21 @@ class GribIndex:
         """Create the necessary tables in the database."""
         assert self.update
 
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
         CREATE TABLE IF NOT EXISTS paths (
             id INTEGER PRIMARY KEY,
             path TEXT not null
         )
-        """)
+        """
+        )
 
         columns = ("valid_datetime",)
         # We don't use NULL as a default because NULL is considered a different value
         # in UNIQUE INDEX constraints (https://www.sqlite.org/lang_createindex.html)
 
-        self.cursor.execute(f"""
+        self.cursor.execute(
+            f"""
         CREATE TABLE IF NOT EXISTS grib_index (
             _id INTEGER PRIMARY KEY,
             _path_id INTEGER not null,
@@ -125,23 +128,30 @@ class GribIndex:
             _length INTEGER not null,
             {', '.join(f"{key} TEXT not null default ''" for key in columns)},
             FOREIGN KEY(_path_id) REFERENCES paths(id))
-        """)  # ,
+        """
+        )  # ,
 
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_path_offset
         ON grib_index (_path_id, _offset)
-        """)
+        """
+        )
 
-        self.cursor.execute(f"""
+        self.cursor.execute(
+            f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
         ON grib_index ({', '.join(columns)})
-        """)
+        """
+        )
 
         for key in columns:
-            self.cursor.execute(f"""
+            self.cursor.execute(
+                f"""
             CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
             ON grib_index ({key})
-            """)
+            """
+            )
 
         self._commit()
 
@@ -257,16 +267,20 @@ class GribIndex:
         self.cursor.execute("""DROP INDEX IF EXISTS idx_grib_index_all_keys""")
         all_columns = self._all_columns()
 
-        self.cursor.execute(f"""
+        self.cursor.execute(
+            f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
         ON grib_index ({', '.join(all_columns)})
-        """)
+        """
+        )
 
         for key in all_columns:
-            self.cursor.execute(f"""
+            self.cursor.execute(
+                f"""
             CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
             ON grib_index ({key})
-            """)
+            """
+            )
 
     def add_grib_file(self, path: str) -> None:
         """Add a GRIB file to the database.
@@ -528,7 +542,9 @@ class GribIndex:
         dates = [d.isoformat() for d in dates]
 
         query = """SELECT _path_id, _offset, _length
-                   FROM grib_index WHERE valid_datetime IN ({})""".format(", ".join("?" for _ in dates))
+                   FROM grib_index WHERE valid_datetime IN ({})""".format(
+            ", ".join("?" for _ in dates)
+        )
         params = dates
 
         for k, v in kwargs.items():
