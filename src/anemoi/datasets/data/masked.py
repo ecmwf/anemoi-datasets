@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from ..grids import cropping_mask
+from anemoi.transform.spatial import cropping_mask
 from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape

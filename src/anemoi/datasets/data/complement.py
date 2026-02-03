@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from ..grids import nearest_grid_points
+from anemoi.transform.spatial import nearest_grid_points
 from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape
