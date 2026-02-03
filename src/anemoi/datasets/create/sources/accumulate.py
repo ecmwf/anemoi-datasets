@@ -317,6 +317,7 @@ def _compute_accumulations(
     dates: list[datetime.datetime],
     period: datetime.timedelta,
     source: dict,
+    group_by: dict,
     availability: dict[str, Any] | None = None,
     patch: dict | None = None,
     **kwargs,
@@ -338,6 +339,8 @@ def _compute_accumulations(
         The source configuration to request fields from
     period: datetime.timedelta,
         The interval over which to accumulate (user-defined)
+    group_by: dict,
+        The keys in fields metadata that are grouped together
     availability: Any, optional
         A description of the available periods in the data source. See documentation.
     patch: list[dict] | None, optional
@@ -399,10 +402,10 @@ def _compute_accumulations(
 
         values = field.values.copy()
 
-        key = field.metadata(namespace="mars")
-        key = {k: v for k, v in key.items() if k not in ["date", "time", "step", "timespan"]}
+        key = field.metadata(namespace=group_by['namespace'])
+        key = {k: v for k, v in key.items() if k not in group_by['ignore']}
         key = tuple(sorted(key.items()))
-        log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace="mars").items())
+        log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace=group_by['namespace']).items())
 
         field_interval = field_to_interval(field)
 
@@ -467,6 +470,19 @@ def _compute_accumulations(
         LOG.debug("  %s", i)
     return ds
 
+def patch_groupby_keys(group_by: dict | None = None):
+    if group_by is None:
+        return {'namespace' : 'mars', 'ignore' : ['date', 'time', 'step']}
+    else:
+        namespace = group_by.get('namespace', None)
+        if namespace is None:
+            raise ValueError("No namespace in group_by (set namespace: mars for default)")
+        if namespace != 'mars':
+            raise ValueError(f"Namespace {namespace} not supported, use 'mars'")
+        ignore = group_by.get('ignore', [])
+        for key in ['date', 'time', 'step']:
+            assert key in ignore, f"{key} absent in ignore list {ignore}, at least 'date', 'time', 'step' required"
+        return group_by
 
 @source_registry.register("accumulate")
 class AccumulateSource(LegacySource):
@@ -479,6 +495,7 @@ class AccumulateSource(LegacySource):
         period: str | int | datetime.timedelta,
         availability=None,
         patch: Any = None,
+        group_by: dict | None = None,
     ) -> Any:
         """Accumulation source callable function.
         Read the recipe for accumulation in the request dictionary, check main arguments and call computation.
@@ -497,7 +514,8 @@ class AccumulateSource(LegacySource):
             A description of the available periods in the data source. See documentation.
         patch: Any, optional
             A description of patches to apply to fields returned by the source to fix metadata issues.
-
+        group_by: dict, optional
+            A description for field metadata to be regrouped in accumulation
         Return
         ------
         The accumulated data source.
@@ -511,7 +529,9 @@ class AccumulateSource(LegacySource):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
 
+        group_by = patch_groupby_keys(group_by)
+
         period = frequency_to_timedelta(period)
         return _compute_accumulations(
-            context, dates, source=source, period=period, availability=availability, patch=patch
+            context, dates, source=source, period=period, availability=availability, patch=patch, group_by=group_by
         )
