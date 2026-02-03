@@ -402,10 +402,10 @@ def _compute_accumulations(
 
         values = field.values.copy()
 
-        key = field.metadata(namespace=group_by['namespace'])
-        key = {k: v for k, v in key.items() if k not in group_by['ignore']}
+        key = field.metadata(namespace=group_by["namespace"])
+        key = {k: v for k, v in key.items() if k not in group_by["ignore"]}
         key = tuple(sorted(key.items()))
-        log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace=group_by['namespace']).items())
+        log = " ".join(f"{k}={v}" for k, v in field.metadata(namespace=group_by["namespace"]).items())
 
         field_interval = field_to_interval(field)
 
@@ -470,19 +470,21 @@ def _compute_accumulations(
         LOG.debug("  %s", i)
     return ds
 
+
 def patch_groupby_keys(group_by: dict | None = None):
     if group_by is None:
-        return {'namespace' : 'mars', 'ignore' : ['date', 'time', 'step']}
+        return {"namespace": "mars", "ignore": ["date", "time", "step"]}
     else:
-        namespace = group_by.get('namespace', None)
+        namespace = group_by.get("namespace", None)
         if namespace is None:
             raise ValueError("No namespace in group_by (set namespace: mars for default)")
-        if namespace != 'mars':
+        if namespace != "mars":
             raise ValueError(f"Namespace {namespace} not supported, use 'mars'")
-        ignore = group_by.get('ignore', [])
-        for key in ['date', 'time', 'step']:
+        ignore = group_by.get("ignore", [])
+        for key in ["date", "time", "step"]:
             assert key in ignore, f"{key} absent in ignore list {ignore}, at least 'date', 'time', 'step' required"
         return group_by
+
 
 @source_registry.register("accumulate")
 class AccumulateSource(LegacySource):
