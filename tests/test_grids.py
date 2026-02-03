@@ -17,7 +17,7 @@ from anemoi.datasets.grids import cutout_mask
 @pytest.mark.parametrize("cropping_distance", [1.0, 3.0, 5.0])
 def test_cutout_mask_with_max_distance(cropping_distance: float):
     """Test cutout_mask with max_distance_km parameter.
-    
+
     The results should be independent of the cropping_distance parameter.
     """
     # Create a LAM region

@@ -207,7 +207,7 @@ def cutout_mask(
     max_distance_km: int | float | None = None,
     plot: str | None = None,
 ) -> NDArray[Any]:
-    """Return a mask for the points in [global_lats, global_lons] to mask out. 
+    """Return a mask for the points in [global_lats, global_lons] to mask out.
 
     This may be because these points are :
     -   inside of [lats, lons]
@@ -261,7 +261,7 @@ def cutout_mask(
     # Reduce the global grid to the area of interest
     effective_cropping_distance = cropping_distance
     if isinstance(max_distance_km, (int, float)):
-        # If max_distance_km is specified, ensure that cropping_mask() will contain 
+        # If max_distance_km is specified, ensure that cropping_mask() will contain
         # only point too far
         max_distance_degrees = max_distance_km / 115.0  # (1 degree ≈ 111 km < 115 km)
         effective_cropping_distance = max(cropping_distance, max_distance_degrees)
