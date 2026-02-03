@@ -14,9 +14,9 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from anemoi.transform.spatial import nearest_grid_points
 from numpy.typing import NDArray
 
-from anemoi.transform.spatial import nearest_grid_points
 from .dataset import Dataset
 from .dataset import FullIndex
 from .dataset import Shape
