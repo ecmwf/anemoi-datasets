@@ -32,6 +32,7 @@ class FieldToInterval:
                 "start_step_is_zero",
                 "start_step_is_end_step",
                 "start_step_greater_than_end_step",
+                "set_start_step_to_zero",
             ):
                 raise ValueError(f"Unknown patch key: {key}")
 
@@ -44,6 +45,9 @@ class FieldToInterval:
         startStep = field.metadata("startStep")
 
         LOG.debug(f"    field before patching: {startStep=}, {endStep=}")
+
+        if self.patches.get("set_start_step_to_zero", False):
+            startStep, endStep = 0, endStep
 
         if startStep > endStep:
             startStep, endStep = self.start_step_greater_than_end_step(startStep, endStep, field=field)
