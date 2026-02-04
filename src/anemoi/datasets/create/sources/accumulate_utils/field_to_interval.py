@@ -11,11 +11,11 @@
 import datetime
 import logging
 
-from anemoi.utils.dates import frequency_to_timedelta
 
 from .covering_intervals import SignedInterval
 
 LOG = logging.getLogger(__name__)
+
 
 def _set_start_step_from_end_step_ceiled_to_24_hours(startStep, endStep, field=None):
     # Because the data wrongly encode start_step, but end_step is correct
@@ -43,9 +43,9 @@ def _set_start_step_from_end_step_ceiled_to_24_hours(startStep, endStep, field=N
     # (1-23 -> 0, 25-47 -> 24, etc.)
     return endStep - (endStep % 24), endStep
 
-patch_registry = {
-    "reset_24h_accumulations" : _set_start_step_from_end_step_ceiled_to_24_hours
-}
+
+patch_registry = {"reset_24h_accumulations": _set_start_step_from_end_step_ceiled_to_24_hours}
+
 
 class FieldToInterval:
     """Convert a field to its accumulation interval, applying patches if needed."""
@@ -73,14 +73,13 @@ class FieldToInterval:
         for patch_name in self.patches:
             patch_func = patch_registry[patch_name]
             startStep, endStep = patch_func(startStep, endStep, field)
-        
+
         LOG.debug(f" 🌧️:    field after user patches: {startStep=}, {endStep=}")
-        
+
         if startStep > endStep:
             startStep, endStep = endStep, startStep
         elif startStep == endStep:
             startStep, endStep = 0, endStep
-
 
         start_step = datetime.timedelta(hours=startStep)
         end_step = datetime.timedelta(hours=endStep)

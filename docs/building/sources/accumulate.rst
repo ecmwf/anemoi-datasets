@@ -157,7 +157,7 @@ Controlling the fields regrouped within accumulation
 
 It is possible to control the fields accumulated together through their metadata.
 The ``group_by`` keyword allows to ignore some metadata when deciding to group field to accumulate them together.
-Ignored keys mean that fields with different values will be accumulated together. 
+Ignored keys mean that fields with different values will be accumulated together.
 Note that ``date,time,step`` should be ignored by default.
 
 .. literalinclude:: yaml/accumulations-mars-groupby.yaml

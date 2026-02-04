@@ -23,7 +23,7 @@ input:
       # print("/".join(steps))
     patch:
       # because the data wrongly encode start_step as 0 even after 24
-      - reset_24h_accumulations 
+      - reset_24h_accumulations
 
     source:
       mars:
