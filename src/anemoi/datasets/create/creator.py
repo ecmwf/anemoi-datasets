@@ -173,7 +173,7 @@ class Creator(ABC):
         # This one will be kept in the finalised dataset metadata
 
         model_dump = json.loads(model_dump)
-        model_dump = self.recipe.only_non_defaults(model_dump)
+        model_dump = self.recipe.strip_unknown_keys(model_dump)
         recipe = sanitise(model_dump)
 
         # Remove stuff added by prepml
@@ -284,6 +284,7 @@ class Creator(ABC):
         dataset = Dataset(self.path, update=True)
         dataset.remove_group("_build")
         self._cleanup_temporary_directories()
+        dataset.delete_metadata("_recipe")
         dataset.touch()
 
     def _cleanup_temporary_directories(self) -> None:

@@ -81,41 +81,10 @@ class Recipe(BaseModel):
         deprecated="Top-level 'env' is deprecated. Please use 'build.env' instead.",
     )
 
-    def only_non_defaults(self, data: dict) -> dict:
-        """Return a dictionary containing only non-default values from the recipe.
-
-        Parameters
-        ----------
-        data : dict
-            The recipe data as a dictionary.
-
-        Returns
-        -------
-        dict
-            A dictionary containing only non-default values.
-        """
-
+    def strip_unknown_keys(self, data: dict) -> dict:
+        assert isinstance(data, dict)
         defaults = Recipe(dates={}, input={}).model_dump()
-
-        def _only_non_defaults(d, default_d):
-
-            if isinstance(d, dict):
-                res = d.copy()
-                for k, v in list(d.items()):
-                    if k not in default_d:
-                        del res[k]
-                        continue
-
-                    if v == default_d[k]:
-                        del res[k]
-                        continue
-
-                    res[k] = _only_non_defaults(v, default_d[k])
-                return res
-
-            return d
-
-        return _only_non_defaults(data, defaults)
+        return {key: data[key] for key in defaults.keys()}
 
 
 def loader_recipe_from_yaml(path: str) -> dict:

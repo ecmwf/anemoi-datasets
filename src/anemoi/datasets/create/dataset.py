@@ -141,6 +141,11 @@ class Dataset:
         with self.synchronizer:
             return self.store.attrs.get(key, default)
 
+    def delete_metadata(self, key: str) -> None:
+        """Delete metadata from the dataset."""
+        with self.synchronizer:
+            self.store.attrs.pop(key, None)
+
     ##################################
     # Progress tracking methods
     ##################################
