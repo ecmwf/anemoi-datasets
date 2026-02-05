@@ -125,8 +125,6 @@ def loader_recipe_from_zarr(path: str) -> dict:
 
     for name in ("_recipe", "recipe"):
         if name not in z.attrs:
-            # return None
-            LOG.error(f"No '{name}' found in Zarr store at {path}")
             continue
 
         recipe = z.attrs[name]
