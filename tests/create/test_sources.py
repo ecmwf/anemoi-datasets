@@ -363,9 +363,9 @@ def test_csv(get_test_data: callable) -> None:
     assert "longitude" in frame.columns, frame.columns
     assert "date" in frame.columns, frame.columns
 
-    assert np.issubdtype(frame["latitude"].dtype, np.floating)
-    assert np.issubdtype(frame["longitude"].dtype, np.floating)
-    assert np.issubdtype(frame["date"].dtype, np.datetime64)
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
 
 
 @pytest.mark.skip(reason="BUFR source currently not functional")
@@ -386,7 +386,7 @@ def test_bufr(get_test_data: callable) -> None:
     source.execute(dates)
 
 
-@pytest.mark.skip(reason="ODB source currently not functional")
+# @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
 def test_odb(get_test_data: callable) -> None:
     from anemoi.datasets.create.sources import create_source
