@@ -33,7 +33,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.4"
+VERSION = "0.14"
 
 LOG = logging.getLogger(__name__)
 
@@ -186,6 +186,9 @@ class Creator(ABC):
 
         ##############
         metadata["dtype"] = self.recipe.output.dtype
+
+        metadata["first_date"] = str(self.groups.first_date())
+        metadata["last_date"] = str(self.groups.last_date())
 
         #####
         # Call subclass

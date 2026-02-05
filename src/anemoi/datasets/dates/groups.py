@@ -207,6 +207,22 @@ class Groups:
         go = next(iter(self))
         return GroupOfDates([go.dates[0]], go.provider)
 
+    def first_date(self) -> datetime.datetime:
+        """Return the first date across all groups.
+
+        Returns:
+            datetime.datetime: The first date.
+        """
+        return min(self._dates.values)
+
+    def last_date(self) -> datetime.datetime:
+        """Return the last date across all groups.
+
+        Returns:
+            datetime.datetime: The last date.
+        """
+        return max(self._dates.values)
+
 
 class Filter:
     """A class to filter out missing dates."""

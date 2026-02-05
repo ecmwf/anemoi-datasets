@@ -715,12 +715,17 @@ class Version0_13(Version0_12):
         return build.get("lengths")
 
 
+class Version0_14(Version0_13):
+    pass
+
+
 VERSIONS = {
     "0.0.0": NoVersion,
     "0.4.0": Version0_4,
     "0.6.0": Version0_6,
     "0.12.0": Version0_12,
     "0.13.0": Version0_13,
+    "0.14.0": Version0_14,
 }
 
 

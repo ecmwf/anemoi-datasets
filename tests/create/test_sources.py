@@ -365,7 +365,7 @@ def test_csv(get_test_data: callable) -> None:
 
     assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
     assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
-    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
 @pytest.mark.skip(reason="BUFR source currently not functional")
@@ -400,4 +400,13 @@ def test_odb(get_test_data: callable) -> None:
         end="2020-01-02:23:59:59",
     )
 
-    source.execute(dates)
+    frame = source.execute(dates)
+    assert len(frame) == 2526
+
+    assert "latitude" in frame.columns, frame.columns
+    assert "longitude" in frame.columns, frame.columns
+    assert "date" in frame.columns, frame.columns
+
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
