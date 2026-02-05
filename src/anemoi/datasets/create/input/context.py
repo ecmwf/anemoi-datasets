@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 class Context(ABC):
     """Context for building input data."""
 
-    def __init__(self) -> None:
+    def __init__(self, /) -> None:
         self.results = {}
         self.cache = {}
 
@@ -33,7 +33,7 @@ class Context(ABC):
 
         assert path[0] in ("input", "data_sources"), path
 
-        LOG.info(f"Registering data at path: {'.'.join(str(x) for x in path)}")
+        LOG.info(f"Registering data at path: {path}")
         self.results[tuple(path)] = data
         return data
 
@@ -46,9 +46,9 @@ class Context(ABC):
                 if path in self.results:
                     config[key] = self.results[path]
                 else:
-                    print(f"Path not found {path}")
+                    LOG.warning(f"Path not found {path}")
                     for p in sorted(self.results):
-                        print(f"   Available paths: {p}")
+                        LOG.info(f"   Available paths: {p}")
                     raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
 
         return config

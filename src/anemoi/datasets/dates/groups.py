@@ -24,15 +24,11 @@ from anemoi.datasets.dates import as_datetime
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
     """Shorten the list of dates for display.
 
-    Parameters
-    ----------
-    dates : Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]
-        The list of dates.
+    backen    Args:
+            dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
 
-    Returns
-    -------
-    Union[str, List[str]]
-        The shortened list of dates.
+        Returns:
+            Union[str, List[str]]: The shortened list of dates.
     """
     if isinstance(dates, (list, tuple)):
         dates = [d.isoformat() for d in dates]
@@ -45,17 +41,6 @@ class GroupOfDates:
     """A class to represent a group of dates."""
 
     def __init__(self, dates: list[datetime.datetime], provider: DatesProvider, partial_ok: bool = False) -> None:
-        """Initialise a GroupOfDates instance.
-
-        Parameters
-        ----------
-        dates : List[datetime.datetime]
-            List of dates.
-        provider : DatesProvider
-            The dates provider.
-        partial_ok : bool, optional
-            Whether partial groups are allowed (default is False).
-        """
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
@@ -66,45 +51,35 @@ class GroupOfDates:
     def __len__(self) -> int:
         """Return the number of dates in the group.
 
-        Returns
-        -------
-        int
-            The number of dates.
+        Returns:
+            int: The number of dates.
         """
         return len(self.dates)
 
     def __iter__(self) -> Iterator[datetime.datetime]:
         """Return an iterator over the dates in the group.
 
-        Returns
-        -------
-        Iterator[datetime.datetime]
-            The iterator over the dates.
+        Returns:
+            Iterator[datetime.datetime]: The iterator over the dates.
         """
         return iter(self.dates)
 
     def __repr__(self) -> str:
         """Return a string representation of the group of dates.
 
-        Returns
-        -------
-        str
-            The string representation.
+        Returns:
+            str: The string representation.
         """
         return f"GroupOfDates(dates={_shorten(self.dates)})"
 
     def __eq__(self, other: object) -> bool:
         """Check if two groups of dates are equal.
 
-        Parameters
-        ----------
-        other : object
-            The other group of dates.
+        Args:
+            other (object): The other group of dates.
 
-        Returns
-        -------
-        bool
-            True if the groups are equal, False otherwise.
+        Returns:
+            bool: True if the groups are equal, False otherwise.
         """
         return isinstance(other, GroupOfDates) and self.dates == other.dates
 
@@ -112,8 +87,7 @@ class GroupOfDates:
 class Groups:
     """A collection of groups of dates.
 
-    Examples
-    --------
+    Examples:
         >>> list(Groups(group_by="daily", start="2023-01-01 00:00", end="2023-01-05 00:00", frequency=12))[0]
         [datetime.datetime(2023, 1, 1, 0, 0), datetime.datetime(2023, 1, 1, 12, 0)]
 
@@ -145,8 +119,7 @@ class Groups:
 
         Parameters
         ----------
-        **kwargs : Any
-            Arbitrary keyword arguments. Expected keys include:
+            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
                 - group_by: Configuration for the Grouper.
                 - Other keys for DatesProvider configuration.
         """
@@ -164,10 +137,8 @@ class Groups:
     def __iter__(self) -> Iterator[GroupOfDates]:
         """Return an iterator over the groups of dates.
 
-        Returns
-        -------
-        Iterator[GroupOfDates]
-            The iterator over the groups of dates.
+        Returns:
+            Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
         for go in self._grouper(self._dates):
             dates = self._filter(go.dates)
@@ -178,10 +149,8 @@ class Groups:
     def __len__(self) -> int:
         """Return the number of groups of dates.
 
-        Returns
-        -------
-        int
-            The number of groups.
+        Returns:
+            int: The number of groups.
         """
         return self._len
 
@@ -199,30 +168,24 @@ class Groups:
     def __repr__(self) -> str:
         """Return a string representation of the groups of dates.
 
-        Returns
-        -------
-        str
-            The string representation.
+        Returns:
+            str: The string representation.
         """
         return f"{self.__class__.__name__}(dates={len(self)},{_shorten(self._dates)})"
 
     def describe(self) -> str:
         """Return a summary description of the dates.
 
-        Returns
-        -------
-        str
-            The summary description.
+        Returns:
+            str: The summary description.
         """
         return self._dates.summary
 
     def one_date(self) -> GroupOfDates:
         """Return a group containing only one date.
 
-        Returns
-        -------
-        GroupOfDates
-            The group containing only one date.
+        Returns:
+            GroupOfDates: The group containing only one date.
         """
         go = next(iter(self))
         return GroupOfDates([go.dates[0]], go.provider)
@@ -237,24 +200,22 @@ class Filter:
     def __call__(self, dates: list[datetime.datetime]) -> list[datetime.datetime]:
         """Filter out missing dates from the list of dates.
 
-        Parameters
-        ----------
-        dates : List[datetime.datetime]
-            The list of dates.
+        Args:
+            dates (List[datetime.datetime]): The list of dates.
 
-        Returns
-        -------
-        List[datetime.datetime]
-            The filtered list of dates.
+        Returns:
+            List[datetime.datetime]: The filtered list of dates.
         """
         return [d for d in dates if d not in self.missing]
 
 
 class Grouper(ABC):
+    """Abstract base class for grouping dates."""
 
     @classmethod
     def from_config(cls, group_by: Any) -> "Grouper":
         """Create a grouper based on the configuration."""
+
         if isinstance(group_by, int) and group_by > 0:
             return GrouperByFixedSize(group_by)
 
@@ -314,15 +275,11 @@ class GrouperOneGroup(Grouper):
     def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         """Group all dates into a single group.
 
-        Parameters
-        ----------
-        dates : DatesProvider
-            The dates provider.
+        Args:
+            dates (DatesProvider): The dates provider.
 
-        Returns
-        -------
-        Iterator[GroupOfDates]
-            The iterator over the groups of dates.
+        Returns:
+            Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
         assert isinstance(dates, DatesProvider), type(dates)
 
@@ -333,27 +290,16 @@ class GrouperByKey(Grouper):
     """Group dates by a key."""
 
     def __init__(self, key: Callable[[datetime.datetime], Any]) -> None:
-        """Initialise GrouperByKey with a key function.
-
-        Parameters
-        ----------
-        key : Callable[[datetime.datetime], Any]
-            Function to extract grouping key from a datetime.
-        """
         self.key = key
 
     def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         """Group dates based on the provided key.
 
-        Parameters
-        ----------
-        dates : DatesProvider
-            The dates provider.
+        Args:
+            dates (DatesProvider): The dates provider.
 
-        Returns
-        -------
-        Iterator[GroupOfDates]
-            The iterator over the groups of dates.
+        Returns:
+            Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
         for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
             yield GroupOfDates(list(g), dates)
@@ -363,27 +309,16 @@ class GrouperByFixedSize(Grouper):
     """Group dates by a fixed size."""
 
     def __init__(self, size: int) -> None:
-        """Initialise GrouperByFixedSize with batch size.
-
-        Parameters
-        ----------
-        size : int
-            Number of dates per group.
-        """
         self.size = size
 
     def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         """Group dates into fixed-size batches.
 
-        Parameters
-        ----------
-        dates : DatesProvider
-            The dates provider.
+        Args:
+            dates (DatesProvider): The dates provider.
 
-        Returns
-        -------
-        Iterator[GroupOfDates]
-            The iterator over the groups of dates.
+        Returns:
+            Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
         batch = []
 

@@ -53,7 +53,7 @@ def task_factory(name: str, fields: bool = True, trace: str | None = None, **kwa
 
         creator = TaskCreator()
     else:
-        from anemoi.datasets.create.observations.tasks import TaskCreator
+        from anemoi.datasets.create.tabular.tasks import TaskCreator
 
         creator = TaskCreator()
 

@@ -12,7 +12,8 @@ import math
 import os
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.commands import Command
+
+from . import Command
 
 RADIUS_EARTH_KM = 6371.0  # Earth's radius in kilometers
 

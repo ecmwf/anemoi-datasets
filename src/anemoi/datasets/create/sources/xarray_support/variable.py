@@ -17,7 +17,7 @@ from typing import Optional
 import numpy as np
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.field import XArrayField
+from .field import XArrayField
 
 LOG = logging.getLogger(__name__)
 
