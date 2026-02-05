@@ -227,7 +227,7 @@ class InterpolateNearest(Forwards):
         max_distance : Optional[float], optional
             The maximum distance for nearest neighbor search, by default None.
         """
-        from ..grids import nearest_grid_points
+        from anemoi.transform.spatial import nearest_grid_points
 
         super().__init__(dataset)
         self.vars = interpolate_variables
