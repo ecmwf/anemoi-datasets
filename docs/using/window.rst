@@ -36,11 +36,13 @@ The dates of the dataset are then defined as all dates between `start` and `end`
 `frequency`:
 
 .. code:: python
+
     result = []
     date = start
+
     while date <= end:
-    result.append(date)
-    date += frequency
+        result.append(date)
+        date += frequency
 ```
 
 The pseudo-code above builds the list returned by `ds.dates`.
@@ -55,8 +57,21 @@ As a result, the number of samples is:
 which is also the length of the dataset:
 
 .. code:: python
-len(ds)
-```
+
+    len(ds)
+
+
+Examples
+--------
+
+.. code:: python
+
+   ds = open_dataset(
+       path,
+       start=1979,
+       end=2020,
+       window="(-5h,+1h]",
+       frequency="6h")
 
 Some text
 
@@ -64,17 +79,44 @@ Some text
    :width: 75%
    :align: center
 
+.. code:: python
+
+   ds = open_dataset(
+       path,
+       start=1979,
+       end=2020,
+       window="(-5h,+1h]",
+       frequency="6h")
+
 Some text
 
 .. image:: ../_static/window-2.png
    :width: 75%
    :align: center
 
+.. code:: python
+
+   ds = open_dataset(
+       path,
+       start=1979,
+       end=2020,
+       window="(-5h,+1h]",
+       frequency="6h")
+
 Some text
 
 .. image:: ../_static/window-3.png
    :width: 75%
    :align: center
+
+.. code:: python
+
+   ds = open_dataset(
+       path,
+       start=1979,
+       end=2020,
+       window="(-5h,+1h]",
+       frequency="6h")
 
 Some text
 
@@ -85,17 +127,7 @@ Some text
 
 Some text
 
-Support irregular observations datasets
-=======================================
 
-Status
-------
-
-.. raw:: html
-
-   <!--What is the status? -->
-
-Proposed - 30/04/2025
 
 Context
 -------
