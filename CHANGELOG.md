@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.31](https://github.com/ecmwf/anemoi-datasets/compare/0.5.30...0.5.31) (2026-02-05)
+
+
+### Bug Fixes
+
+* Use spatial.py (anemoi-transform) instead of grids.py ([#526](https://github.com/ecmwf/anemoi-datasets/issues/526)) ([719669e](https://github.com/ecmwf/anemoi-datasets/commit/719669ebb2a3738560d974c03fa16c3efb6219b0))
+
 ## [0.5.30](https://github.com/ecmwf/anemoi-datasets/compare/0.5.29...0.5.30) (2026-02-03)
 
 
