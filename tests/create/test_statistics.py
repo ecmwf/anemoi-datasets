@@ -354,6 +354,49 @@ def test_tendencies_multiple_deltas(N=500, C=2):
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
 
+def test_tendencies_with_filter(N=500, C=2, delta=5):
+    """Test computing tendencies with a filter applied."""
+    data, _ = _create_random_stats(N, C)
+
+    # Define a filter that only includes the middle 80% of the data
+    filter_start = int(N * 0.1)  # 50
+    filter_end = int(N * 0.9)  # 450
+    filter = PicklableFilter(filter_start, filter_end)
+
+    # The filter uses searchsorted with side='right', so filter_end is inclusive
+    # Actual filtered range is [filter_start, filter_end] (inclusive on both ends)
+    # For tendencies, we also need the lookback data to be in range
+    # So valid tendencies are for indices in [filter_start + delta, filter_end + 1)
+    # which is data[55:451] - data[50:446]
+    expected_tendencies = data[filter_start + delta : filter_end + 1] - data[filter_start : filter_end + 1 - delta]
+    expected = _compute_statistics(expected_tendencies, nan=False)
+
+    # Create collector with tendency and filter
+    collector = StatisticsCollector(
+        variables_names=[f"var{i}" for i in range(C)], tendencies={f"delta_{delta}": delta}, filter=filter
+    )
+
+    # Collect all data at once
+    collector.collect(data, range(N))
+
+    computed_stats = collector.statistics()
+
+    print("\nResults:")
+    for stat_name, target in expected.items():
+        key = f"statistics_tendencies_delta_{delta}_{stat_name}"
+        computed = computed_stats[key]
+        diff = np.abs(computed - target)
+        print(f"{stat_name.capitalize()}:")
+        print(f"   Target:   {target}")
+        print(f"   Computed: {computed}")
+        print(f"   Max diff: {np.max(diff):.2e}")
+        assert np.allclose(
+            computed, target, rtol=1e-9, equal_nan=True
+        ), f"Tendency {stat_name} with filter does not match!"
+
+    print("✓ Tendencies with filter test PASSED")
+
+
 def test_serialisation():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
     c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
