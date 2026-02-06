@@ -245,6 +245,9 @@ class _TendencyCollector(_CollectorBase):
     ) -> None:
         assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
         assert np.all(np.array(dates[1:]) >= np.array(dates[:-1])), ("Dates must be sorted", dates)
+        if len(dates) > 1:
+            diffs = np.diff(dates)
+            assert np.all(diffs == diffs[0]), f"Dates must be regularly spaced, got diffs: {np.unique(diffs)}"
         if self._last_window_date is not None and len(dates) > 0:
             assert dates[0] > self._last_window_date, (
                 f"New dates must follow window dates chronologically: "
@@ -319,9 +322,19 @@ class _TendencyCollector(_CollectorBase):
         if len(dates) == 0:
             return
 
+        if first_date_idx - self._delta < 0:
+            return  # Not enough data before this point in the dataset
+
         self._window = dataset.data[first_date_idx - self._delta : first_date_idx]
         window_dates = dataset.dates[first_date_idx - self._delta : first_date_idx]
-        self._last_window_date = window_dates[-1] if len(window_dates) > 0 else None
+
+        # Check if window data is within the filter range
+        # Since dates are ordered, we only need to check if the first window date is in range
+        if filter_func.start is not None and window_dates[0] < filter_func.start:
+            self._window = None
+            return
+
+        self._last_window_date = window_dates[-1]
         self.update(data, dates)
         self._window = None
         self._last_window_date = None

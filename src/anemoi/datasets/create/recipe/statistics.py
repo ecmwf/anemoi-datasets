@@ -105,9 +105,12 @@ class PicklableFilter:
         self.start = start
         self.end = end
 
-    def __call__(self, array, dates):
-        mask = np.where((dates >= self.start) & (dates <= self.end))[0]
-        return array[mask]
+    def __call__(self, array, dates, offset=0):
+        start = np.searchsorted(dates, self.start, side="left")
+        end = np.searchsorted(dates, self.end, side="right")
+        start = max(0, min(start, start + offset))
+        end = min(len(array), max(end, end + offset))
+        return array[start:end]
 
     def __eq__(self, other):
         if not isinstance(other, PicklableFilter):

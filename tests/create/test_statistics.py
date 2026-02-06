@@ -15,6 +15,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+from anemoi.datasets.create.recipe.statistics import PicklableFilter
 from anemoi.datasets.create.statistics import StatisticsCollector
 
 # set numpy seed
@@ -27,21 +28,6 @@ class DatasetMock:
     def __init__(self, data, dates):
         self.data = data
         self.dates = dates
-
-
-class Filter:
-    def __init__(self, start=None, end=None):
-        self.start = start or -np.inf
-        self.end = end or np.inf
-
-    def __call__(self, array, indices, offset=0):
-        indices = (indices * 100).astype(np.int64)
-        assert len(indices) == len(array), "Indices length must match array length"
-        mask = np.where((indices + offset >= self.start) & (indices + offset < self.end))[0]
-        # print(f"π Filtering with start={self.start}, end={self.end}: ")
-        # print(f"π  Original indices: {indices}")
-        # print(f"π  Masked indices:   {indices[mask]}")
-        return array[mask]
 
 
 def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
@@ -401,11 +387,17 @@ def test_serialisation():
 def test_merge_statistic_with_filter(filter_start, filter_end, deltas, cutoff):
     if filter_start is not None and filter_end is not None and filter_end < filter_start:
         return
-    filter = Filter(start=filter_start, end=filter_end)
+
     data, _ = _create_random_stats(100, 2)
+    dates = np.arange(len(data)).astype(float)
+
+    if filter_start is None:
+        filter_start = dates[0]
+    if filter_end is None:
+        filter_end = dates[-1]
+    filter = PicklableFilter(filter_start, filter_end)
 
     c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=deltas, filter=filter)
-    dates = np.arange(len(data)) / 100.0
     data = data.copy()
     c0.collect(data, dates)
     c0_stats = deepcopy(c0.statistics())
