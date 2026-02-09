@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.32](https://github.com/ecmwf/anemoi-datasets/compare/0.5.31...0.5.32) (2026-02-06)
+
+
+### Bug Fixes
+
+* Filter out timespan as key for accumulator ([#516](https://github.com/ecmwf/anemoi-datasets/issues/516)) ([6fb7f2b](https://github.com/ecmwf/anemoi-datasets/commit/6fb7f2bcd0f788c4071d18c3953fb1bff715a8fd))
+* **max_distance_km:** Add new max_distance_km argument to cutout ([#530](https://github.com/ecmwf/anemoi-datasets/issues/530)) ([a94f3bc](https://github.com/ecmwf/anemoi-datasets/commit/a94f3bcd9ff1783dad0e603384ef5157e398d0da))
+
 ## [0.5.31](https://github.com/ecmwf/anemoi-datasets/compare/0.5.30...0.5.31) (2026-02-05)
 
 
