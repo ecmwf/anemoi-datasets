@@ -28,7 +28,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.misc.testing import default_test_indexing
-from anemoi.datasets.usage.common.select import Rename
+from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.common.select import Select
 from anemoi.datasets.usage.gridded import save_dataset
 from anemoi.datasets.usage.gridded.concat import Concat
