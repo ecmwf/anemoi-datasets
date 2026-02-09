@@ -354,20 +354,29 @@ def test_tendencies_multiple_deltas(N=500, C=2):
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
 
-def test_tendencies_with_filter(N=500, C=2, delta=5):
-    """Test computing tendencies with a filter applied."""
-    data, _ = _create_random_stats(N, C)
+@pytest.mark.parametrize("delta", [1, 2, 5, 10])
+@pytest.mark.parametrize("filter_end", [None])  # , 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
+@pytest.mark.parametrize("filter_start", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
+def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
+    if filter_start is not None and filter_end is not None and filter_end < filter_start:
+        return
 
-    # Define a filter that only includes the middle 80% of the data
-    filter_start = int(N * 0.1)  # 50
-    filter_end = int(N * 0.9)  # 450
+    data, _ = _create_random_stats(100, C)
+    dates = np.arange(len(data))
+
+    if filter_start is None:
+        filter_start = dates[0]
+    if filter_end is None:
+        filter_end = dates[-1]
+
+    if filter_end - filter_start < delta:
+        return  # Not enough data points for tendencies
+
     filter = PicklableFilter(filter_start, filter_end)
 
-    # The filter uses searchsorted with side='right', so filter_end is inclusive
     # Actual filtered range is [filter_start, filter_end] (inclusive on both ends)
     # For tendencies, we also need the lookback data to be in range
     # So valid tendencies are for indices in [filter_start + delta, filter_end + 1)
-    # which is data[55:451] - data[50:446]
     expected_tendencies = data[filter_start + delta : filter_end + 1] - data[filter_start : filter_end + 1 - delta]
     expected = _compute_statistics(expected_tendencies, nan=False)
 
@@ -377,7 +386,7 @@ def test_tendencies_with_filter(N=500, C=2, delta=5):
     )
 
     # Collect all data at once
-    collector.collect(data, range(N))
+    collector.collect(data, range(len(data)))
 
     computed_stats = collector.statistics()
 
