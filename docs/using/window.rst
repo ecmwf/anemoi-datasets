@@ -43,7 +43,7 @@ The dates of the dataset are then defined as all dates between `start` and `end`
     while date <= end:
         result.append(date)
         date += frequency
-```
+
 
 The pseudo-code above builds the list returned by `ds.dates`.
 
@@ -132,9 +132,6 @@ Some text
 Context
 -------
 
-.. raw:: html
-
-   <!--What is the issue that we are seeing that is motivating this decision or change?-->
 
 The objective of this change is to support observations data which are
 not regular.
@@ -213,8 +210,7 @@ Rows are sorted in lexicographic order of the columns.
 
 The ``date`` and ``time`` columns are separated because ``float32``
 encoding is used. Dates are encoded as days since the Unix epoch. The
-largest integer that can be represented exactly by a 32-bit float is 2²⁴
-− 1 = 16,777,215. When interpreted as seconds, this corresponds to
+largest integer that can be represented exactly by a 32-bit float is 2²⁴ - 1 = 16,777,215. When interpreted as seconds, this corresponds to
 approximately 194 days, which is insufficient. When interpreted as days,
 it corresponds to roughly 46,000 years, which is sufficient.
 
@@ -556,36 +552,3 @@ sorted using a lexicographic order (``date``, ``latitude``,
 ``longitude``, ``data1``, ``data2``, …) and stored in Zarr, the dates of
 each row being rounded to the nearest second. **Duplicate rows are
 discarded**, and the index is constructed.
-
-Scope of Change
----------------
-
-.. raw:: html
-
-   <!--Specify which Anemoi packages/modules will be affected by this decision.-->
-
-Not a breaking change, this only adds functionality to read
-observational datasets.
-
-Must be in line with the change related to multi-datasets.
-
-Consequences
-------------
-
-.. raw:: html
-
-   <!--Discuss the impact of this decision, including benefits, trade-offs, and potential technical debt.-->
-
-Alternatives Considered [Optional]
-----------------------------------
-
-.. raw:: html
-
-   <!--List alternative solutions and why they were not chosen.-->
-
-References [Optional]
----------------------
-
-.. raw:: html
-
-   <!--Links to relevant discussions, documentation, or external resources.-->

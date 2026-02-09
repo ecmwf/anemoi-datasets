@@ -252,13 +252,17 @@ class GriddedCreator(Creator):
         """Return the tendencies to compute for the dataset, based on the recipe configuration."""
         frequency = dataset.frequency
 
-        tendencies_config = self.recipe.statistics.tendencies
-        if tendencies_config is True:
-            tendencies_list = [1, 3, 6, 12, 24]
-        elif tendencies_config is False or tendencies_config is None:
-            tendencies_list = []
-        else:
-            tendencies_list = list(tendencies_config)
+        additions = self.recipe.build.additions
+        tendencies_list = []
+
+        if additions:
+            tendencies_config = self.recipe.statistics.tendencies
+            if tendencies_config is True:
+                tendencies_list = [1, 3, 6, 12, 24]
+            elif tendencies_config is False or tendencies_config is None:
+                tendencies_list = []
+            else:
+                tendencies_list = list(tendencies_config)
 
         tendencies = {}
         for delta in tendencies_list:

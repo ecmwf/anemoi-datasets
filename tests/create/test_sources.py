@@ -353,11 +353,42 @@ def test_csv(get_test_data: callable) -> None:
         },
     )
     dates = GroupOfDates.from_config(
-        {"start": "2025-01-01T00:00:00", "end": "2025-12-21T23:59:59"},
+        {
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-12-21T23:59:59",
+        },
     )
 
     frame = source.execute(dates)
     assert len(frame) == 2526
+
+    assert "latitude" in frame.columns, frame.columns
+    assert "longitude" in frame.columns, frame.columns
+    assert "date" in frame.columns, frame.columns
+
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
+
+
+# @pytest.mark.skip(reason="ODB source currently not functional")
+@skip_if_offline
+def test_odb(get_test_data: callable) -> None:
+    from anemoi.datasets.create.sources import create_source
+    from anemoi.datasets.dates.groups import GroupOfDates
+
+    data = get_test_data("anemoi-datasets/obs/dribu.odb")
+
+    source = create_source(context=None, config={"odb": {"path": data}})
+    dates = GroupOfDates.from_config(
+        {
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-12-21T23:59:59",
+        },
+    )
+
+    frame = source.execute(dates)
+    assert len(frame) == 6838
 
     assert "latitude" in frame.columns, frame.columns
     assert "longitude" in frame.columns, frame.columns
@@ -384,29 +415,3 @@ def test_bufr(get_test_data: callable) -> None:
     )
 
     source.execute(dates)
-
-
-# @pytest.mark.skip(reason="ODB source currently not functional")
-@skip_if_offline
-def test_odb(get_test_data: callable) -> None:
-    from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import GroupOfDates
-
-    data = get_test_data("anemoi-datasets/obs/dribu.odb")
-
-    source = create_source(context=None, config={"odb": {"path": data}})
-    dates = GroupOfDates.from_config(
-        start="2020-01-01T00:00:00",
-        end="2020-01-02:23:59:59",
-    )
-
-    frame = source.execute(dates)
-    assert len(frame) == 2526
-
-    assert "latitude" in frame.columns, frame.columns
-    assert "longitude" in frame.columns, frame.columns
-    assert "date" in frame.columns, frame.columns
-
-    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
-    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
-    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
