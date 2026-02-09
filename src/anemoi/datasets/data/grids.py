@@ -484,6 +484,7 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     axis = kwargs.pop("axis", 3)
     plot = kwargs.pop("plot", None)
     min_distance_km = kwargs.pop("min_distance_km", None)
+    max_distance_km = kwargs.pop("max_distance_km", None)
     cropping_distance = kwargs.pop("cropping_distance", 2.0)
     neighbours = kwargs.pop("neighbours", 5)
 
@@ -498,6 +499,7 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
         axis=axis,
         neighbours=neighbours,
         min_distance_km=min_distance_km,
+        max_distance_km=max_distance_km,
         cropping_distance=cropping_distance,
         plot=plot,
     )._subset(**kwargs)
