@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.33](https://github.com/ecmwf/anemoi-datasets/compare/0.5.32...0.5.33) (2026-02-09)
+
+
+### Bug Fixes
+
+* Expose kwarg in factory ([#531](https://github.com/ecmwf/anemoi-datasets/issues/531)) ([abfa553](https://github.com/ecmwf/anemoi-datasets/commit/abfa5537a1052bbdbbcf4a9eaecd6c0e1a3e5c1d))
+
 ## [0.5.32](https://github.com/ecmwf/anemoi-datasets/compare/0.5.31...0.5.32) (2026-02-06)
 
 
