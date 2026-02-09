@@ -354,9 +354,9 @@ def test_tendencies_multiple_deltas(N=500, C=2):
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
 
-@pytest.mark.parametrize("delta", [1, 2, 5, 10])
-@pytest.mark.parametrize("filter_end", [None])  # , 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
-@pytest.mark.parametrize("filter_start", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
+@pytest.mark.parametrize("delta", [1, 2, 5])
+@pytest.mark.parametrize("filter_end", [None, 1, 2, 3, 4, 5, 6, 50, 94, 95, 96, 97, 98, 99])
+@pytest.mark.parametrize("filter_start", [None, 1, 2, 3, 4, 5, 6, 50, 94, 95, 96, 97, 98, 99, 100])
 def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
     if filter_start is not None and filter_end is not None and filter_end < filter_start:
         return
