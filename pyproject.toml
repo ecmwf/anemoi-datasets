@@ -52,7 +52,7 @@ dependencies = [
   "cfunits",
   "glom",
   "jsonschema",
-  "numcodecs<0.16",           # Until we move to zarr3
+  "numcodecs",
   "numpy",
   "pytest>=8.4.1",
   "pytest-xdist>=3.7",
@@ -60,7 +60,7 @@ dependencies = [
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.7",
+  "zarr",
 ]
 
 optional-dependencies.all = [
