@@ -94,10 +94,16 @@ def fix_provenance(provenance: dict) -> dict:
         if isinstance(v, str):
             v = {"version": v}
             module_versions[k] = v
-            version = v.get("version")
 
         # trash malformed versions
         if not isinstance(v, dict):
+            del module_versions[k]
+            continue
+
+        version = v.get("version")
+
+        # Version must be a string
+        if not isinstance(version, str):
             del module_versions[k]
             continue
 
