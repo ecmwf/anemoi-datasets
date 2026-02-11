@@ -1,0 +1,15 @@
+name: "test.zarr"
+dates:
+  start: "2025-06-01T00:00:00"
+  end: "2025-07-01T00:00:00"  
+  frequency: 3h
+  window : "(-3h:+3h]"
+
+input:
+  dwd_synop:
+    # path: /hpc/uwork/tgoecke/Projects/vis-database/synop_test_202506/monSYNOP2025060100.nc
+    path: "/hpc/uwork/tgoecke/Projects/vis-database/synop_test_202506/monSYNOP{date:strftime(%Y%m%d%H)}.nc"
+    columns: ["VV", "CEIL", "T2M", "RH2M", "CEIL", "NFXME", "GUST", "P", "U10M", "V10M", "RAD_DI", "RAD_GL", "RAD_DF", "RAD_LW", "RR", "P", "TURB"]
+
+output: 
+  format: tabular
