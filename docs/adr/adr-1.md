@@ -78,6 +78,12 @@ Because of the variability of the size of samples, it is not possible to select 
 We will set the chunk sizes to match the best I/O block size (64MB ~ 256MB on Lustre). Chunks will
 also be cached in memory to avoid unnecessary reads.
 
+#### Technical specification
+
+A draft technical specification of the Zarr store for observations datasets is available in the
+[ADR-1-data-specification](adr-1-data-specification.md) document. The specification is still a work in progress, and may be updated as the implementation progresses.
+
+
 ### Index
 
 Ranges of rows sharing the same date/time are indexed together for fast access when extracting
