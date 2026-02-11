@@ -5,13 +5,39 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import glob 
 import logging
+from typing import Any
+import pandas as pd
 
 from ..source import Source
 from . import source_registry
+from earthkit.data.utils.patterns import Pattern
 
 
 LOG = logging.getLogger(__name__)
+
+def _expand(paths: list[str]) -> any:
+    """Expand the given paths using glob.
+
+    Parameters
+    ----------
+    paths : list of str
+        List of paths to expand.
+
+    Returns
+    -------
+    Any
+        The expanded paths.
+    """
+    for path in paths:
+        cnt = 0
+        for p in glob.glob(path):
+            yield p
+            cnt += 1
+        if cnt == 0:
+            yield path
+
 
 @source_registry.register("dwd_synop")
 class DWDSYNOPSource(Source):
@@ -46,11 +72,23 @@ class DWDSYNOPSource(Source):
         self.path = path
         self.columns = columns
 
-    def execute(self, dates):
-            import dacepy 
-            
-            # read in feed back file 
-            feedback_file = dacepy.read_fdbk(self.path)  
+    def execute(self, dates, *args, **kwargs):
+        import dacepy 
+       
+        # reformat dates 
+        dates = [d.isoformat() for d in dates]
+
+        # subsitute wild templates in self.path 
+        paths = Pattern(self.path).substitute(*args, date=dates, allow_extra=True, **kwargs)
+
+        # loop over input files now in paths
+        dataframes = []
+        for file in paths:
+            print(f"{file=}")
+
+            # read feedback_file using dacepy
+            feedback_file = dacepy.read_fdbk(file)  
+
             # convert to data frame useing dacepy 
             df = feedback_file.to_body().to_dataframe()
 
@@ -107,15 +145,18 @@ class DWDSYNOPSource(Source):
                     "lat": "latitude",
                 }
             )
-            print(f"{type(df_wide["date"])=}")
+            print(f"{type(df_wide['date'])=}")
 
             # put datetime, lat and lon in front
             cols_to_move = ['date', 'latitude', 'longitude']
             new_columns = cols_to_move + [col for col in df_wide.columns if col not in cols_to_move]
             df_wide = df_wide[new_columns]
 
-            print(df_wide)
-            return df_wide
+            # append to list 
+            dataframes.append(df_wide)
+
+        # join dfs and return
+        return pd.concat(dataframes)
 
     def create_varno_dictionaries(self):
             import dacepy.fdbk.tables as ftables
