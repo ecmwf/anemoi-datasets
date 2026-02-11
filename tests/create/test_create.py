@@ -81,7 +81,7 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
         reference = os.path.join(directory, name + ".zarr")
 
-        errors = compare_anemoi_datasets(reference=reference, actual=output)
+        errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
         if errors:
             actual_path = os.path.realpath(output)
 
