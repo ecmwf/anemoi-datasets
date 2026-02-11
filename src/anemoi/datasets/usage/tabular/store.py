@@ -102,6 +102,12 @@ class TabularZarr(ZarrStore):
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
+    def statistics(self) -> dict[str, Any]:
+        header = len(self.store.attrs["variables"]) - len(self.variables)
+        assert header >= 0
+        return {k: v[header:] for k, v in super().statistics.items()}
+
+    @property
     def resolution(self) -> tuple[float, float]:
         return None
 

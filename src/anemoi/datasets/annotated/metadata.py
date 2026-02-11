@@ -53,11 +53,10 @@ class WindowMetaData(WindowMetaDataBase):
     @property
     def dates(self) -> np.ndarray:
         """Array of dates for the window."""
-        epoch = self.owner._epochs[self.index]
         days = self.aux_array[:, 0]
         seconds = self.aux_array[:, 1]
-        timestamps = days * 86400 + seconds + epoch
-        return np.array([np.datetime64(epoch_to_date(ts)) for ts in timestamps])
+        timestamps = days * 86400 + seconds
+        return np.array([np.datetime64(epoch_to_date(ts), "s") for ts in timestamps])
 
     @property
     def timedeltas(self) -> np.ndarray:
