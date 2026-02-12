@@ -89,6 +89,8 @@ def fix_provenance(provenance: dict) -> dict:
             del provenance[q]
 
     for k, v in list(provenance["module_versions"].items()):
+        if isinstance(v, dict):  # Anemoi-utils >= 0.5.0
+            provenance["module_versions"][k] = v["version"]
         if v.startswith("<"):
             del provenance["module_versions"][k]
         if v.startswith("/"):
