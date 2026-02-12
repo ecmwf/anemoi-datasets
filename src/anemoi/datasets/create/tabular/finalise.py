@@ -552,6 +552,7 @@ def finalise_tabular_dataset(
     date_indexing: dict | str,
     delete_files: bool,
     max_workers: int | None = None,
+    offset: int = 4,
 ) -> StatisticsCollector:
     """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
 
@@ -656,7 +657,8 @@ def finalise_tabular_dataset(
                     # Wait for previous statistics computation to complete
                     if stats is not None:
                         stat_time += stats.result()
-                    stats = compute_statistics.submit(_statistics_collector_worker, collector, array, dates)
+
+                    stats = compute_statistics.submit(_statistics_collector_worker, collector, array[:, offset:], dates)
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     now = time.time()
@@ -702,12 +704,15 @@ def finalise_tabular_dataset(
     index.bulk_load(dates_ranges)
     LOG.info(f"Duplicate date ranges written to index in {time.time() - start:.2f} seconds")
 
+    del all_dates
+    del dates_ranges
+
     if delete_files:
         os.unlink(dates_ranges_path)
         os.unlink(all_dates_path)
 
     # Set the format attribute to indicate this is a tabular dataset
-    store.attrs.update({"format": "tabular"})
+    store.attrs.update({"layout": "tabular"})
     store.attrs.update({"date_indexing": index.name})
 
     return collector

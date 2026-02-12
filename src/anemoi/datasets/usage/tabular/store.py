@@ -101,11 +101,9 @@ class TabularZarr(ZarrStore):
     def name_to_index(self) -> dict[str, int]:
         return {k: i for i, k in enumerate(self.variables)}
 
-    # @property
-    # def statistics(self) -> dict[str, Any]:
-    #     header = len(self.store.attrs["variables"]) - len(self.variables)
-    #     assert header >= 0
-    #     return {k: v[header:] for k, v in super().statistics.items()}
+    @property
+    def variables(self) -> list[str]:
+        return list(self.store.attrs["variables"])
 
     @property
     def resolution(self) -> tuple[float, float]:
@@ -123,10 +121,6 @@ class TabularZarr(ZarrStore):
 
     def tree(self) -> zarr.hierarchy.Group:
         raise NotImplementedError()
-
-    @property
-    def variables(self) -> list[str]:
-        return [v for v in self.store.attrs["variables"] if not v.startswith("__")]
 
     def variables_metadata(self) -> dict[str, dict[str, Any]]:
         raise NotImplementedError()

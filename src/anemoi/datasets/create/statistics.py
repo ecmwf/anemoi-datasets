@@ -555,6 +555,11 @@ class StatisticsCollector:
         dates : Any
             Date information corresponding to the data samples.
         """
+
+        assert array.shape[1] == len(
+            self._variables_names
+        ), f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+
         filtered_array = self._filter(array, dates)
         filtered_dates = self._filter(dates, dates)
         assert len(filtered_array) == len(

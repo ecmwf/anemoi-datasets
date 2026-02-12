@@ -42,7 +42,12 @@ class TabularCreator(Creator):
 
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
-        metadata["variables"] = variables
+        metadata["variables"] = [v for v in variables if not v.startswith("__")]
+        metadata["meta_variables"] = [v for v in variables if v.startswith("__")]
+
+        assert (
+            variables == metadata["meta_variables"] + metadata["variables"]
+        ), "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
 
     def initialise_dataset(self, dataset: Dataset) -> None:
         """Initialise the dataset arrays and coordinates for tabular data.
@@ -110,6 +115,7 @@ class TabularCreator(Creator):
             recipe=self.recipe,
             variables_names=self.variables_names,
             delete_files=False,
+            offset=4,
         )
 
         collector.add_to_dataset(dataset)

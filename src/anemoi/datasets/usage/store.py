@@ -260,9 +260,9 @@ class ZarrStore(Dataset):
 
     @classmethod
     def from_group(cls, group: zarr.hierarchy.Group, path: str = None) -> "ZarrStore":
-        format = group.attrs.get("format", "gridded")
+        layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
 
-        match format:
+        match layout:
             case "gridded":
                 from anemoi.datasets.usage.gridded.store import GriddedZarr
 
@@ -273,7 +273,7 @@ class ZarrStore(Dataset):
 
                 return TabularZarr(group, path).mutate()
             case _:
-                raise ValueError(f"Unsupported ZarrStore format: {format}")
+                raise ValueError(f"Unsupported ZarrStore layout: {layout}")
 
     @classmethod
     def from_path(cls, path: str) -> "ZarrStore":
