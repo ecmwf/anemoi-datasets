@@ -1,0 +1,9 @@
+accumulate:
+  period: 6h
+  availability: auto
+  source:
+    mars:
+      param: [tp, cp]
+      step: [6, 12, 18, 24]
+      type: fc
+      levtype: sfc

@@ -48,20 +48,23 @@ class InputBuilder:
 
         return Recipe(input, sources)
 
-    def select(self, argument) -> Any:
+    def select(self, argument, actor=None) -> Any:
         """Select data based on the group of dates.
 
         Parameters
         ----------
         argument : GroupOfDates
             Group of dates to select data for.
+        actor : Any, optional
+            The actor (Init/Load) performing the selection, providing
+            access to recipe-level metadata such as the start date.
 
         Returns
         -------
         Any
             Selected data.
         """
-        context = FieldContext(argument, **self.kwargs)
+        context = FieldContext(argument, actor=actor, **self.kwargs)
         return context.create_result(self.action(context, argument))
 
 

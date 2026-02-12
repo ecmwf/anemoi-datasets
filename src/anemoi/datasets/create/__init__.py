@@ -620,7 +620,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
 
         one_date = self.groups.one_date()
         # assert False, (type(one_date), type(self.groups))
-        self.minimal_input = self.input.select(one_date)
+        self.minimal_input = self.input.select(one_date, actor=self)
         LOG.info(f"Minimal input for 'init' step (using only the first date) : {one_date}")
         LOG.info(self.minimal_input)
 
@@ -857,7 +857,7 @@ class Load(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             # assert isinstance(group[0], datetime.datetime), type(group[0])
             LOG.debug(f"Building data for group {igroup}/{self.n_groups}")
 
-            result = self.input.select(argument=group)
+            result = self.input.select(argument=group, actor=self)
             assert result.group_of_dates == group, (len(result.group_of_dates), len(group), group)
 
             # There are several groups.
