@@ -89,10 +89,15 @@ def fix_provenance(provenance: dict) -> dict:
             del provenance[q]
 
     for k, v in list(provenance["module_versions"].items()):
-        if isinstance(v, dict):  # Anemoi-utils >= 0.5.0
-            provenance["module_versions"][k] = v["version"]
+        # Anemoi-utils >= 0.5.0 returns dicts like {"version": "...", ...}
+        if isinstance(v, dict):
+            v = v.get("version", "")
+            provenance["module_versions"][k] = v
+        if not isinstance(v, str):
+            continue
         if v.startswith("<"):
             del provenance["module_versions"][k]
+            continue
         if v.startswith("/"):
             provenance["module_versions"][k] = os.path.join("...", os.path.basename(v))
 
