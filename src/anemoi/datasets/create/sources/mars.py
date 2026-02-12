@@ -27,14 +27,15 @@ DEBUG = False
 def valid_date_to_base_date_given_user_step(
     date: datetime.datetime,
     user_steps: list[int],
-    first_date: datetime.datetime,
+    first_date: datetime.datetime | None,
 ) -> tuple[str, str, int]:
     """Convert a valid date to a base date and step given user-provided steps.
 
     Used to create forecast-based datasets using a user-provided list
-    of steps. The step list defines a repeating hourly cycle of forecast
-    lead times. ``first_date`` is needed because the list of steps may
-    span more than 24 h.
+    of steps. The step list defines a repeating cycle of forecast lead
+    times whose length equals ``max(user_steps)`` hours.
+    ``first_date`` is needed because the list of steps may span more
+    than 24 h.
 
     Parameters
     ----------
@@ -42,16 +43,40 @@ def valid_date_to_base_date_given_user_step(
         The target valid date.
     user_steps : list[int]
         The user-provided list of forecast steps (in hours).
-    first_date : datetime.datetime
+    first_date : datetime.datetime or None
         The recipe start date, used as the reference for the cycle.
 
     Returns
     -------
     tuple[str, str, int]
         A tuple of (base_date_str, base_time_str, step_hours).
+
+    Raises
+    ------
+    ValueError
+        If ``first_date`` is None or if the valid date offset does not
+        match any of the user-provided steps.
     """
-    p = int((date - first_date).total_seconds() // 3600)
-    step = user_steps[p % len(user_steps)]
+    if first_date is None:
+        raise ValueError(
+            "first_date is required when using user-provided steps. "
+            "Ensure the recipe has a valid start date and the actor is available."
+        )
+
+    cycle_length = max(user_steps)
+    hours_offset = int((date - first_date).total_seconds() // 3600)
+    offset_in_cycle = hours_offset % cycle_length
+
+    if offset_in_cycle == 0:
+        step = cycle_length
+    elif offset_in_cycle in user_steps:
+        step = offset_in_cycle
+    else:
+        raise ValueError(
+            f"Valid date {date} has offset {offset_in_cycle}h within the "
+            f"{cycle_length}h cycle, which does not match any user step {user_steps}."
+        )
+
     base = date - datetime.timedelta(hours=step)
     return base.strftime("%Y%m%d"), base.strftime("%H%M"), step
 
