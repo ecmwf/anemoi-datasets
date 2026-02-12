@@ -13,6 +13,7 @@ import logging
 from abc import abstractmethod
 from typing import Iterable
 
+from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
@@ -22,19 +23,21 @@ LOG = logging.getLogger(__name__)
 
 
 def build_interval(
-    current_time: datetime.datetime, start_step: int, end_step: int, base_time: str | int | None
+    current_time: datetime.datetime,
+    start_step: datetime.timedelta,
+    end_step: datetime.timedelta,
+    base_time: str | int | None,
 ) -> SignedInterval:
-    """Build a SignedInterval object corresponding to current_time's day
-    This SignedInterval may not have a base datetime
-
+    """Build a SignedInterval object corresponding to current_time's day.
+    This SignedInterval may not have a base datetime.
     """
     try:
         usable_base_time = int(base_time) if base_time is not None else 0
     except ValueError:
         raise ValueError(f"Invalid base_time: {base_time} ({type(base_time)})")
     base = datetime.datetime(current_time.year, current_time.month, current_time.day, usable_base_time)
-    start = base + datetime.timedelta(hours=start_step)
-    end = base + datetime.timedelta(hours=end_step)
+    start = base + start_step
+    end = base + end_step
 
     interval_base = base if base_time is not None else None
 
@@ -149,8 +152,20 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return intervals
 
 
-def normalise_steps(steps_list: str | list[str]) -> list[list[int]]:
-    """Convert the input step_list to a list of [start,end] pairs"""
+def normalise_steps(steps_list: str | list) -> list[tuple[datetime.timedelta, datetime.timedelta]]:
+    """Convert the input step_list to a list of (start, end) timedelta pairs.
+
+    Parameters
+    ----------
+    steps_list
+        Either a slash-separated string of ``"start-end"`` pairs (hours),
+        or a list of such strings or 2-element sequences of integers (hours).
+
+    Returns
+    -------
+    list of tuple of datetime.timedelta
+        A list of (start, end) pairs as datetime.timedelta objects.
+    """
     res = []
     if isinstance(steps_list, str):
         steps_list = steps_list.split("/")
@@ -161,8 +176,9 @@ def normalise_steps(steps_list: str | list[str]) -> list[list[int]]:
             assert "-" in start_end_step, start_end_step
             start_end_step = start_end_step.split("-")
         assert isinstance(start_end_step, (list, tuple)) and len(start_end_step) == 2, start_end_step
-        start_step, end_step = int(start_end_step[0]), int(start_end_step[1])
-        res.append([start_step, end_step])
+        start_step = datetime.timedelta(hours=int(start_end_step[0]))
+        end_step = datetime.timedelta(hours=int(start_end_step[1]))
+        res.append((start_step, end_step))
     return res
 
 
@@ -182,6 +198,85 @@ class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
             for i in range(0, last_step, frequency):
                 config.append([base, [f"{i}-{i+frequency}"]])
         super().__init__(config)
+
+
+def _is_absolute_sequence_config(config: list) -> bool:
+    """Return True if config is a list of dicts each with 'start' and 'frequency' keys."""
+    return (
+        isinstance(config, list)
+        and len(config) > 0
+        and all(isinstance(item, dict) and "start" in item and "frequency" in item for item in config)
+    )
+
+
+class AbsoluteSequenceIntervalGenerator(IntervalGenerator):
+    """IntervalGenerator for base times defined as an arithmetic sequence of absolute datetimes.
+
+    Parameters
+    ----------
+    config
+        A list of dicts, each with keys ``"start"`` (datetime string or object),
+        ``"frequency"`` (a frequency string such as ``"18h"``), and ``"steps"``
+        (e.g. ``"0-6/0-12/0-18"``).
+
+    Examples
+    --------
+    .. code-block:: yaml
+
+        availability:
+          - {start: "1970-01-01 00:00", frequency: 18h, steps: "0-6/0-12/0-18"}
+    """
+
+    def __init__(self, config: list):
+        self.patterns: list[dict] = []
+        for item in config:
+            self.patterns.append(
+                {
+                    "start": as_datetime(item["start"]),
+                    "frequency": frequency_to_timedelta(item["frequency"]),
+                    "steps": normalise_steps(item["steps"]),
+                }
+            )
+
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        """Return SignedIntervals covering the period start → end."""
+        return covering_intervals(start, end, self)
+
+    def __call__(self, current_time: datetime.datetime) -> Iterable[SignedInterval]:
+        """Generate candidate intervals starting or ending at current_time."""
+        intervals: list[SignedInterval] = []
+
+        for pat in self.patterns:
+            anchor: datetime.datetime = pat["start"]
+            freq: datetime.timedelta = pat["frequency"]
+            steps: list[tuple[datetime.timedelta, datetime.timedelta]] = pat["steps"]
+
+            # Compute the range of k values whose base could touch current_time via a step.
+            max_step_seconds = max(max(abs(s.total_seconds()) for s in pair) for pair in steps)
+            freq_seconds = freq.total_seconds()
+            offset_seconds = (current_time - anchor).total_seconds()
+
+            # int() truncates towards zero, so subtract/add 2 to safely cover floor/ceil.
+            k_lo = int((offset_seconds - max_step_seconds) / freq_seconds) - 2
+            k_hi = int((offset_seconds + max_step_seconds) / freq_seconds) + 2
+
+            for k in range(k_lo, k_hi + 1):
+                base = anchor + k * freq
+                for step_start, step_end in steps:
+                    interval = SignedInterval(start=base + step_start, end=base + step_end, base=base)
+                    if interval not in intervals:
+                        intervals.append(interval)
+
+        # Keep only intervals that start (or, when negated, start) at current_time.
+        filtered: list[SignedInterval] = []
+        for i in intervals:
+            if i.start == current_time:
+                filtered.append(i)
+            elif (-i).start == current_time:
+                filtered.append(-i)
+
+        # Prioritise most recent base (same convention as SearchableIntervalGenerator).
+        return sorted(filtered, key=lambda x: -(x.base or x.start).timestamp())
 
 
 def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | None = None) -> list | tuple:
@@ -277,6 +372,9 @@ def _interval_generator_factory(
             _origin = mars_config.get("origin")
             assert _class is not None, "mars config must have a 'class' key"
             return _match_mars_config(_class, _stream, _origin)
+
+        case list() if _is_absolute_sequence_config(config):
+            return AbsoluteSequenceIntervalGenerator(config)
 
         case dict() | list() | tuple():
             return SearchableIntervalGenerator(config)

@@ -32,13 +32,8 @@ LOG = logging.getLogger(__name__)
 
 
 def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
-    # TODO:
-    # for od-oper: need to do this adjustment, should be in mars source itself?
-    # Modifies the request stream based on the time (so, not here).
-    # if request["time"] in (6, 18, 600, 1800):
-    #    request["stream"] = "scda"
-    # else:
-    #    request["stream"] = "oper"
+    # NOTE: SCDA stream auto-selection (od/oper at 06/18 UTC) is handled
+    # in the mars source after this adjustment is applied.
     r = request.copy()
     if interval.base is None:
         # for some sources, we may not have a base time (grib-index)
@@ -155,6 +150,9 @@ class Accumulator:
             self.values = local_values
         else:
             self.values += local_values
+        # YELLOW = "\033[93m"
+        # RESET = "\033[0m"
+        # print(f"  ✅ -> added values to accumulator for date {YELLOW}{self.valid_date}{RESET} with key {self.key}")
 
         self.todo.remove(matching)
         self.done.append(matching)
@@ -400,6 +398,8 @@ def _compute_accumulations(
     for field in source_object(context, intervals):
         # for each field provided by the catalogue, find which accumulators need it and perform accumulation
 
+        # print(f" {field.metadata(namespace=group_by['namespace'])}", end="")
+
         values = field.values.copy()
 
         key = field.metadata(namespace=group_by["namespace"])
@@ -436,6 +436,13 @@ def _compute_accumulations(
 
         if not field_used:
             logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
+
+    # some accumulators may be empty, remove them
+    # this can happen when the source provides fields that not exactly the one requested (scda/oper)
+    empty_accumulators = [k for k, acc in accumulators.items() if acc.values is None]
+    for k in empty_accumulators:
+        LOG.warning(f"Removing empty accumulator for date {k[0]} and key {k[1]}")
+        del accumulators[k]
 
     # Final checks
     def check_missing_accumulators():

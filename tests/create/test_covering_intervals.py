@@ -308,6 +308,59 @@ def test_rr_oper(test):
     tester.test(test[0], test[1])
 
 
+# Config: bases every 18 h starting at 2024-01-01T00:00.
+# Bases: 2024-01-01T00:00, 2024-01-01T18:00, 2024-01-02T12:00, ...
+# Available steps: 0-6 h, 0-12 h, 0-18 h from each base.
+_ABS_SEQ_CONFIG = [
+    ({"start": "2024-01-01 00:00", "frequency": "18h"}, "0-6/0-12/0-18"),
+]
+
+ABSOLUTE_SEQUENCE_TEST_CASES = [
+    # Single 18-h interval from first base.
+    (
+        _("20240101.0000 -> 20240101.1800"),
+        [_("20240101.0000 -> 20240101.1800, base=20240101.0000")],
+    ),
+    # Single 18-h interval from second base.
+    (
+        _("20240101.1800 -> 20240102.1200"),
+        [_("20240101.1800 -> 20240102.1200, base=20240101.1800")],
+    ),
+    # Single 6-h interval from first base.
+    (
+        _("20240101.0000 -> 20240101.0600"),
+        [_("20240101.0000 -> 20240101.0600, base=20240101.0000")],
+    ),
+    # 6-h interval that requires subtraction: [0-12] minus [0-6] via negation.
+    (
+        _("20240101.0600 -> 20240101.1200"),
+        [
+            _("20240101.0600 -> 20240101.0000, base=20240101.0000"),  # negated [0-6]
+            _("20240101.0000 -> 20240101.1200, base=20240101.0000"),  # [0-12]
+        ],
+    ),
+    # 12-h interval from second base.
+    (
+        _("20240101.1800 -> 20240102.0600"),
+        [_("20240101.1800 -> 20240102.0600, base=20240101.1800")],
+    ),
+    # Period not reachable from any base (24 h at an offset not covered).
+    (
+        _("20240101.0600 -> 20240101.1800"),
+        [
+            _("20240101.0600 -> 20240101.0000, base=20240101.0000"),  # negated [0-6]
+            _("20240101.0000 -> 20240101.1800, base=20240101.0000"),  # [0-18]
+        ],
+    ),
+]
+
+
+@pytest.mark.parametrize("test", ABSOLUTE_SEQUENCE_TEST_CASES, ids=[str(t[0]) for t in ABSOLUTE_SEQUENCE_TEST_CASES])
+def test_absolute_sequence(test):
+    tester = _Tester(interval_generator_factory(_ABS_SEQ_CONFIG))
+    tester.test(test[0], test[1])
+
+
 # def with_reset_candidates(current_time: datetime, current_base:datetime, start:datetime, end:datetime) -> Iterable[SignedInterval]:
 #     # Generate intervals similar to ERA but with reset frequency consideration
 #
