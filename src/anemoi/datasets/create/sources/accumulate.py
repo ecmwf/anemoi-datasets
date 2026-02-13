@@ -32,13 +32,8 @@ LOG = logging.getLogger(__name__)
 
 
 def _adjust_request_to_interval(interval: Any, request: list[dict]) -> tuple[Any]:
-    # TODO:
-    # for od-oper: need to do this adjustment, should be in mars source itself?
-    # Modifies the request stream based on the time (so, not here).
-    # if request["time"] in (6, 18, 600, 1800):
-    #    request["stream"] = "scda"
-    # else:
-    #    request["stream"] = "oper"
+    # NOTE: SCDA stream auto-selection (od/oper at 06/18 UTC) is handled
+    # in the mars source after this adjustment is applied.
     r = request.copy()
     if interval.base is None:
         # for some sources, we may not have a base time (grib-index)
