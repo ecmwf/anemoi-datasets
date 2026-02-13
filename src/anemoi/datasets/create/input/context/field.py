@@ -22,14 +22,12 @@ class FieldContext(Context):
         self,
         /,
         argument: Any,
-        *,
-        actor: Any = None,
         order_by: str,
         flatten_grid: bool,
         remapping: dict[str, Any],
         use_grib_paramid: bool,
     ) -> None:
-        super().__init__(argument, actor=actor)
+        super().__init__(argument)
         self.order_by = order_by
         self.flatten_grid = flatten_grid
         self.remapping = build_remapping(remapping)

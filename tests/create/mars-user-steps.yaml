@@ -1,5 +1,0 @@
-mars:
-  param: [2t, tp]
-  step: [6, 12, 18, 24]
-  type: fc
-  levtype: sfc
