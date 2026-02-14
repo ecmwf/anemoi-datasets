@@ -4,9 +4,9 @@
  Dataset organisation
 ######################
 
-The `anemoi-datasets` package supports two types of data organisation,
-both of which are designed to efficiently store and access large
-datasets:
+The `anemoi-datasets` package supports two types of data organisation
+(called "layouts"), both of which are designed to efficiently store and
+access large datasets:
 
 -  **Gridded** data, such as fields, which are regular in space and time
    (with possibly some missing values).

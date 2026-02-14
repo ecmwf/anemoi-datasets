@@ -127,7 +127,7 @@ You may also have to install pandoc on macOS:
    :hidden:
    :caption: User Guide
 
-   formats/introduction
+   layouts/introduction
    using/introduction
    building/introduction
 
