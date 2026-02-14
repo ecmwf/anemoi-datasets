@@ -16,8 +16,12 @@ import numpy as np
 import pandas as pd
 
 from anemoi.datasets.create.input.result import Result
+from anemoi.datasets.epochs import epoch_to_date
 
 LOG = logging.getLogger(__name__)
+
+
+SCALINGS = {"s": 1, "ms": 1e3, "us": 1e6, "ns": 1e9}
 
 
 class TabularResult(Result):
@@ -35,8 +39,12 @@ class TabularResult(Result):
         assert np.issubdtype(frame["longitude"].dtype, np.floating)
         assert np.issubdtype(frame["date"].dtype, np.datetime64)
 
+        original_dates = frame["date"]
+
         self.frame = frame.reset_index(drop=True)
         start_range, end_range = argument.start_range, argument.end_range
+
+        date_unit = np.datetime_data(frame["date"].dtype)[0]
 
         # Filter the DataFrame rows between start_range and end_range (inclusive)
         mask = (self.frame["date"] >= start_range) & (self.frame["date"] <= end_range)
@@ -49,7 +57,25 @@ class TabularResult(Result):
         # Round date to the nearest second
         # Convert "date" to integer seconds since the Unix epoch
         start = time.time()
-        self.frame["date"] = (self.frame["date"].astype("int64") / 10**9).round().astype("int64")
+        self.frame["date"] = (self.frame["date"].astype("int64") / SCALINGS[date_unit]).round().astype("int64")
+
+        if len(self.frame) > 0:
+            # Validate that the conversion from datetime to integer seconds since epoch is correct
+            encoded_first = epoch_to_date(self.frame["date"].iloc[0])
+            encoded_last = epoch_to_date(self.frame["date"].iloc[-1])
+            original_first = original_dates.iloc[0].to_pydatetime()
+            original_last = original_dates.iloc[-1].to_pydatetime()
+
+            first_delta = abs((encoded_first - original_first).total_seconds())
+            last_delta = abs((encoded_last - original_last).total_seconds())
+
+            assert (
+                first_delta < 1
+            ), f"First date encoding mismatch: {encoded_first} != {original_first} (delta={first_delta} seconds)"
+            assert (
+                last_delta < 1
+            ), f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={last_delta} seconds)"
+
         LOG.info(
             f"Converted 'date' to integer seconds since epoch in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
         )
@@ -68,6 +94,8 @@ class TabularResult(Result):
         self.frame["__time"] = self.frame["__date"] % 86400
         self.frame["__date"] = self.frame["__date"] // 86400
         LOG.info(f"Created __date and __time columns in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)")
+
+        # print(self.frame.head())
 
         # Normalize longitudes to be within [0, 360)
         start = time.time()

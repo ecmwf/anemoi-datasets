@@ -20,6 +20,7 @@ from typing import Any
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import psutil
 import tqdm
 import zarr
@@ -75,6 +76,10 @@ class Fragment:
         self.shape: tuple[int, ...] = shape
         self.offset: int | None = None
 
+        assert (
+            self.first_date <= self.last_date
+        ), f"Fragment {file_path} has invalid date range: {self.first_date} to {self.last_date}"
+
     @classmethod
     def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Fragment"]:
         """Create a Fragment instance from a numpy array.
@@ -129,39 +134,28 @@ class Fragment:
         """Return the size of the fragment in bytes."""
         return os.path.getsize(self.file_path)
 
+    def __repr__(self) -> str:
+        return f"Fragment({self.first_date} to {self.last_date}, shape={self.shape}, file={os.path.basename(self.file_path)})"
+
 
 def _deduplicate_rows(array: np.ndarray) -> np.ndarray:
-    """Remove duplicate rows from a 2D numpy array, handling NaNs correctly.
-
-    This function is designed to efficiently remove duplicate rows from a 2D numpy array, even when the array contains
-    NaN values. Since numpy's unique function does not treat NaNs as equal, this function replaces NaNs with a sentinel
-    value (infinity) before determining uniqueness. The function returns both the number of duplicate rows removed and
-    the resulting array with only unique rows, preserving the original order as much as possible.
-
+    """Removes duplicate rows from a NumPy array.
+    This function converts the input NumPy array to a pandas DataFrame,
+    removes any duplicate rows, and returns the deduplicated data as a NumPy array
+    with the same dtype as the input.
     Parameters
     ----------
-    array : numpy.ndarray
-        2D array from which to remove duplicate rows. NaNs are treated as equal for the purpose of deduplication.
-
+    array : np.ndarray
+        The input NumPy array from which duplicate rows will be removed.
     Returns
     -------
-    numpy.ndarray
-        Array with duplicates removed.
+    np.ndarray
+        A NumPy array with duplicate rows removed, preserving the original dtype.
     """
-    assert len(array.shape) == 2, f"Expected 2D array, got shape {array.shape}"
-    # Remove duplicate rows. np.unique does not work well with NaNs, so we replace them with a sentinel value.
 
-    b: np.ndarray = np.ascontiguousarray(array)
-    # Replace NaNs with inf so np.unique can treat NaNs as equal
-    b2: np.ndarray = np.nan_to_num(b, nan=np.inf)
-
-    # Use a void dtype to treat each row as a single entity for uniqueness
-    row_dtype: np.dtype = np.dtype((np.void, b2.dtype.itemsize * b2.shape[1]))
-    _, idx = np.unique(b2.view(row_dtype), return_index=True)
-
-    unique_array: np.ndarray = b[np.sort(idx)]
-
-    return unique_array
+    df = pd.DataFrame(array)
+    deduped_df = df.drop_duplicates()
+    return deduped_df.to_numpy(dtype=array.dtype)
 
 
 def _date(array: np.ndarray, index: int) -> datetime.datetime:
@@ -253,7 +247,7 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         if num_duplicates == 0:
             return [one, two]
 
-        LOG.info(f"Duplicate rows found in overlapping fragments ({num_duplicates=:,}); deoverlapping")
+        LOG.info(f"Duplicate rows found in overlapping fragments {one} and {two} ({num_duplicates=:,}); deoverlapping")
 
         result = []
 
@@ -349,12 +343,20 @@ def _read_fragment_worker(file_path: str) -> Fragment:
         return Fragment.from_path(file_path)
     except Exception:
         LOG.exception(f"Error reading fragment from {file_path}")
+        try:
+            array: np.ndarray = np.load(file_path, mmap_mode="r")
+            LOG.error(f"Array shape: {array.shape}, dtype: {array.dtype}")
+            LOG.error(f"First row: {array[0] if len(array) > 0 else 'N/A'}")
+            LOG.error(f"Last row: {array[-1] if len(array) > 0 else 'N/A'}")
+        except Exception:
+            LOG.exception(f"Error loading array from {file_path}")
         raise
 
 
 def _find_duplicate_and_overlapping_dates(
     work_dir: str,
     delete_files: bool,
+    max_fragment_size: int,
     max_workers: int | None = None,
 ) -> list[Fragment]:
     """Find and resolve duplicate and overlapping date ranges in fragment files.
@@ -371,6 +373,8 @@ def _find_duplicate_and_overlapping_dates(
         Directory containing fragment files.
     delete_files : bool
         Whether to overwrite original files or create deduped copies.
+    max_fragment_size : int
+        Maximum size of each fragment file in bytes. This is used to estimate memory requirements for parallel
     max_workers : int, optional
         Maximum number of parallel workers to use. If None, uses all available CPUs.
 
@@ -385,7 +389,13 @@ def _find_duplicate_and_overlapping_dates(
 
     memory = available_memory()
     # TODO: read value from recipe
+
+    cpus = os.cpu_count() or 1
+    if "SLURM_CPUS_ON_NODE" in os.environ:
+        cpus = min(cpus, int(os.environ["SLURM_CPUS_ON_NODE"]))
+
     LOG.info(f"Available memory: {memory / (1024**3):.2f} GB")
+    LOG.info(f"Available CPUs: {cpus}")
 
     memory *= 0.8  # Use only 80% of available memory
 
@@ -400,13 +410,15 @@ def _find_duplicate_and_overlapping_dates(
     my_memory = me.memory_full_info().rss
     LOG.info(f"Current process memory usage: {my_memory / (1024**3):.2f} GB")
 
-    estimated_needed_memory = 4 * max_fragment_size + my_memory
+    estimated_needed_memory = 6 * max_fragment_size + my_memory
     estimated_needed_memory *= 1.2  # Safety margin
 
     estimated_max_workers = int(memory / estimated_needed_memory)
 
+    LOG.info(f"Estimated max workers based on memory: {estimated_max_workers}")
+
     if max_workers is None:
-        max_workers = min(max(os.cpu_count() - 1, 1), estimated_max_workers)
+        max_workers = min(max(cpus - 1, 1), estimated_max_workers)
     else:
         LOG.info(
             f"User requested max_workers={max_workers}, estimated max_workers={estimated_max_workers} based on memory"
@@ -551,7 +563,6 @@ def finalise_tabular_dataset(
     variables_names: list[str],
     date_indexing: dict | str,
     delete_files: bool,
-    max_workers: int | None = None,
     offset: int = 4,
 ) -> StatisticsCollector:
     """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
@@ -567,7 +578,10 @@ def finalise_tabular_dataset(
 
     """
     fragments: list[Fragment] = _find_duplicate_and_overlapping_dates(
-        work_dir, max_workers=max_workers, delete_files=delete_files
+        work_dir,
+        max_fragment_size=recipe.build.max_fragment_size,
+        max_workers=recipe.build.max_workers,
+        delete_files=delete_files,
     )
 
     assert fragments, "No data found to finalise"
@@ -720,8 +734,6 @@ def finalise_tabular_dataset(
 
 if __name__ == "__main__":
     import sys
-
-    import zarr
 
     logging.basicConfig(level=logging.INFO)
 

@@ -99,6 +99,18 @@ class DOPZarrSource(Source):
         date_slice = self.dates[start_idx:end_idx]
         date_load_time = time.time() - start
 
+        LOG.info(
+            f"Loaded data slice with {len(data_slice):,} records in {data_load_time:.2f} seconds, date slice in {date_load_time:.2f} seconds"
+        )
+
+        LOG.info(f"First date in slice: {date_slice[0][0]}, last date in slice: {date_slice[-1][0]}")
+        LOG.info(f"Requested date range: {dates.start_range} to {dates.end_range}")
+
+        assert date_slice[0][0] >= np.datetime64(
+            dates.start_range
+        ), "First date in slice is before requested start date"
+        assert date_slice[-1][0] <= np.datetime64(dates.end_range), "Last date in slice is after requested end date"
+
         start = time.time()
         frame = pd.DataFrame(
             {
