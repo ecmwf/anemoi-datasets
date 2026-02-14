@@ -127,8 +127,9 @@ You may also have to install pandoc on macOS:
    :hidden:
    :caption: User Guide
 
-   building/introduction
+   layouts/introduction
    using/introduction
+   building/introduction
 
 .. toctree::
    :maxdepth: 3

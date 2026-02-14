@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.check import DatasetName
+from anemoi.datasets.create.naming import DatasetName
 
 from . import Command
 

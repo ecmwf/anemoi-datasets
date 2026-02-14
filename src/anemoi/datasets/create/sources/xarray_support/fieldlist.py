@@ -10,9 +10,9 @@
 
 import json
 import logging
+from typing import TYPE_CHECKING
 from typing import Any
 
-import xarray as xr
 import yaml
 from earthkit.data import FieldList
 
@@ -23,13 +23,16 @@ from .time import Time
 from .variable import FilteredVariable
 from .variable import Variable
 
+if TYPE_CHECKING:
+    import xarray as xr
+
 LOG = logging.getLogger(__name__)
 
 
 class XarrayFieldList(FieldList):
     """A class to represent a list of fields from an xarray Dataset."""
 
-    def __init__(self, ds: xr.Dataset, variables: list[Variable]) -> None:
+    def __init__(self, ds: "xr.Dataset", variables: list[Variable]) -> None:
         """Initialize the XarrayFieldList.
 
         Parameters
@@ -39,7 +42,7 @@ class XarrayFieldList(FieldList):
         variables : List[Variable]
             The list of variables.
         """
-        self.ds: xr.Dataset = ds
+        self.ds: "xr.Dataset" = ds
         self.variables: list[Variable] = variables.copy()
         self.total_length: int = sum(v.length for v in variables)
 
@@ -84,7 +87,7 @@ class XarrayFieldList(FieldList):
     @classmethod
     def from_xarray(
         cls,
-        ds: xr.Dataset,
+        ds: "xr.Dataset",
         *,
         flavour: str | dict[str, Any] | None = None,
         patch: dict[str, Any] | None = None,

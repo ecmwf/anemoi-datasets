@@ -27,8 +27,8 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.use.gridded.stores import dataset_lookup
-from anemoi.datasets.use.gridded.stores import open_zarr
+from anemoi.datasets.usage.store import dataset_lookup
+from anemoi.datasets.usage.store import open_zarr
 
 from . import Command
 
@@ -421,7 +421,7 @@ class Version:
                 print(f"🕰️  Dataset initialised {when(start)}.")
                 if built and latest:
                     speed = (latest - start) / built
-                    eta = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + speed * (total - built)
+                    eta = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + speed * (total - built)
                     print(f"🏁 ETA {when(eta)}.")
         else:
             if latest:
@@ -556,6 +556,7 @@ class Version0_4(Version):
         """Get the initialization timestamp of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["creation_timestamp"])
 
+    @property
     def statistics_ready(self) -> bool:
         """Check if the statistics are ready."""
         if not self.ready():
@@ -714,12 +715,17 @@ class Version0_13(Version0_12):
         return build.get("lengths")
 
 
+class Version0_14(Version0_13):
+    pass
+
+
 VERSIONS = {
     "0.0.0": NoVersion,
     "0.4.0": Version0_4,
     "0.6.0": Version0_6,
     "0.12.0": Version0_12,
     "0.13.0": Version0_13,
+    "0.14.0": Version0_14,
 }
 
 

@@ -8,11 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
-from anemoi.datasets.use.gridded import MissingDateError
-from anemoi.datasets.use.gridded import add_dataset_path
-from anemoi.datasets.use.gridded import add_named_dataset
-from anemoi.datasets.use.gridded import list_dataset_names
-from anemoi.datasets.use.gridded import open_dataset
+from anemoi.datasets.usage.gridded import MissingDateError
+from anemoi.datasets.usage.gridded import add_dataset_path
+from anemoi.datasets.usage.gridded import add_named_dataset
+from anemoi.datasets.usage.gridded import list_dataset_names
+from anemoi.datasets.usage.gridded import open_dataset
 
 try:
     # NOTE: the `_version.py` file must not be present in the git repository

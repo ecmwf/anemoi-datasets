@@ -15,9 +15,8 @@ from pathlib import Path
 from typing import Any
 
 import codc as odc
+import numpy as np
 import pandas
-
-from anemoi.datasets.create.gridded.typing import DateList
 
 from ..source import Source
 from . import source_registry
@@ -106,12 +105,12 @@ class OdbSource(Source):
         self.pivot_columns = pivot_columns
         self.pivot_values = pivot_values
 
-    def execute(self, dates: DateList) -> pandas.DataFrame:
+    def execute(self, dates: Any) -> pandas.DataFrame:
         """Execute the ODB source.
 
         Parameters
         ----------
-        dates : DateList
+        dates : Any
             The input dates.
 
         Returns
@@ -119,8 +118,10 @@ class OdbSource(Source):
         pandas.dataframe.DataFrame
             The output dataframe.
         """
-        start = dates[0].isoformat()
-        end = dates[-1].isoformat()
+
+        start = np.datetime_as_string(dates.start_range)
+        end = np.datetime_as_string(dates.end_range)
+
         df = odb2df(
             start=start,
             end=end,
@@ -198,7 +199,7 @@ def odb2df(
     -------
     pandas.DataFrame
         DataFrame containing the parsed data. The first three columns are
-        "time", "latitude", and "longitude", followed by any other selected
+        "date", "latitude", and "longitude", followed by any other selected
         columns.
     """
     path = Path(path_str)
@@ -226,14 +227,15 @@ def odb2df(
         )
         df = odc.read_odb(intermediate_odb_path.name, single=True, aggregated=True)
         LOG.info(f"Intermediate ODB file created at: {intermediate_odb_path.name}")
+
     if keep_temp_odb:
         LOG.info(f"Intermediate ODB file kept at: {intermediate_odb_path.name}")
 
     assert isinstance(df, pandas.DataFrame)
 
-    # The new "time" column has to be constructed from the existing date and
+    # The new "date" column has to be constructed from the existing date and
     # time columns which have them as YYYYMMDD and HHMMSS integers
-    df["time"] = pandas.to_datetime(
+    df["date"] = pandas.to_datetime(
         df[flavour["date_column_name"]].astype(str).str.zfill(8)
         + df[flavour["time_column_name"]].astype(str).str.zfill(6),
         format="%Y%m%d%H%M%S",
@@ -254,10 +256,10 @@ def odb2df(
 
     # Make sure first 3 columns are time, latitude, longitude
     cols = df.columns.tolist()
-    cols.remove("time")
+    cols.remove("date")
     cols.remove("latitude")
     cols.remove("longitude")
-    df = df[["time", "latitude", "longitude"] + cols]
+    df = df[["date", "latitude", "longitude"] + cols]
 
     df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
     return df_pivotted
@@ -404,6 +406,8 @@ def subselect_odb_using_odc_sql(
         "-o",
         output_odb_path,
     ]
+
+    LOG.info(f"Running ODC SQL command: {' '.join(str(x) for x in command)}")
 
     try:
         subprocess.run(

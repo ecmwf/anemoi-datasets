@@ -15,52 +15,87 @@ from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
+from anemoi.datasets.create.gridded.result import GriddedResult
 from anemoi.datasets.create.input.context import Context
+from anemoi.datasets.dates.groups import GroupOfDates
 
 LOG = logging.getLogger(__name__)
 
 
-class FieldContext(Context):
+class GriddedContext(Context):
+    """Context for building gridded output data.
 
-    def __init__(
-        self,
-        /,
-        order_by: str,
-        flatten_grid: bool,
-        remapping: dict[str, Any],
-        use_grib_paramid: bool,
-    ) -> None:
+    This class extends the base Context to provide additional logic and configuration
+    for gridded datasets, including remapping, grid flattening, and origin tracking.
+    """
 
-        super().__init__()
+    def __init__(self, recipe: Any) -> None:
+        """Initialise a GriddedContext instance.
 
-        self.order_by = order_by
-        self.flatten_grid = flatten_grid
-        self.remapping = build_remapping(remapping)
-        self.use_grib_paramid = use_grib_paramid
-        self.partial_ok = False
+        Parameters
+        ----------
+        recipe : Any
+            The recipe object containing configuration for output and build steps.
+        """
 
-    def empty_result(self) -> Any:
-        import earthkit.data as ekd
+        super().__init__(recipe)
 
-        return ekd.from_source("empty")
+        self.order_by = recipe.output.order_by
+        self.flatten_grid = recipe.output.flatten_grid
+        self.remapping = build_remapping(recipe.build.remapping)
 
-    def source_argument(self, argument: Any) -> Any:
-        return argument  # .dates
+    def create_result(self, argument: Any, data: Any) -> GriddedResult:
+        """Create a GriddedResult object for the given argument and data.
 
-    def filter_argument(self, argument: Any) -> Any:
-        return argument
+        Parameters
+        ----------
+        argument : Any
+            The argument used to create the result.
+        data : Any
+            The data to be wrapped in the result.
 
-    def create_result(self, argument, data):
-        from anemoi.datasets.create.gridded.result import FieldResult
+        Returns
+        -------
+        GriddedResult
+            The created GriddedResult instance.
+        """
+        return GriddedResult(self, argument, data)
 
-        return FieldResult(self, argument, data)
+    def matching_dates(self, filtering_dates: Any, group_of_dates: Any) -> GroupOfDates:
+        """Find dates that match between filtering_dates and group_of_dates.
 
-    def matching_dates(self, filtering_dates, group_of_dates: Any) -> Any:
-        from anemoi.datasets.dates.groups import GroupOfDates
+        Parameters
+        ----------
+        filtering_dates : Any
+            The dates to filter by.
+        group_of_dates : Any
+            The group of dates to compare against.
+
+        Returns
+        -------
+        GroupOfDates
+            A GroupOfDates object containing the intersection of the two sets.
+        """
 
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
 
     def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
+        """Update the origin metadata for each field in the data.
+
+        Parameters
+        ----------
+        data : Any
+            The data fields to update.
+        action : Any
+            The action providing the new origin.
+        action_arguments : Any
+            Arguments for the action.
+
+        Returns
+        -------
+        Any
+            A new field list with updated origin metadata.
+        """
 
         origin = action.origin()
 
