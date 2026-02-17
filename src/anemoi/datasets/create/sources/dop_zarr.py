@@ -45,11 +45,22 @@ class DOPZarrSource(Source):
         self.dates = self.store["dates"]
         self.data = self.store["data"]
 
-        self.lat_idx = self.data.attrs["colnames"].index("lat")
-        self.lon_idx = self.data.attrs["colnames"].index("lon")
+        self.latitude = None
+        self.longitude = None
+
+        for col in (("lat", "lon"), ("latitude", "longitude")):
+            if all(c in self.data.attrs["colnames"] for c in col):
+                if self.latitude is not None or self.longitude is not None:
+                    raise ValueError(
+                        f"Found multiple latitude/longitude column pairs in data: {self.latitude}/{self.longitude} and {col[0]}/{col[1]}"
+                    )
+                self.latitude, self.longitude = col
+
+        self.lat_idx = self.data.attrs["colnames"].index(self.latitude)
+        self.lon_idx = self.data.attrs["colnames"].index(self.longitude)
 
         self.colnames = ["date", "latitude", "longitude"] + [
-            col for col in self.data.attrs["colnames"] if col not in ["lat", "lon"]
+            col for col in self.data.attrs["colnames"] if col not in [self.latitude, self.longitude]
         ]
         self.dtypes = {col: "float32" for col in self.colnames}
         self.dtypes["date"] = "datetime64[ns]"

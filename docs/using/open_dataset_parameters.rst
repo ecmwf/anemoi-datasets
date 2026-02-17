@@ -32,7 +32,7 @@ documentation (examples in ``.rst`` and ``.py`` files).
 
    -  -  concat
       -  ✅
-      -  ❌
+      -  TODO
       -  List of datasets to concatenate (e.g. ``concat=[d1, d2]``).
 
    -  -  complement
@@ -59,7 +59,7 @@ documentation (examples in ``.rst`` and ``.py`` files).
 
    -  -  drop
       -  ✅
-      -  ❌
+      -  ✅
       -  Variables to drop (list).
 
    -  -  end
@@ -193,7 +193,7 @@ documentation (examples in ``.rst`` and ``.py`` files).
 
    -  -  select
       -  ✅
-      -  ❌
+      -  ✅
       -  Select variables (list, set or string).
 
    -  -  set_missing_dates

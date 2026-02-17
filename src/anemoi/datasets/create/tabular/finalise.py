@@ -25,6 +25,7 @@ import psutil
 import tqdm
 import zarr
 
+from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
@@ -489,42 +490,6 @@ def _find_duplicate_and_overlapping_dates(
     return _sort_and_chain_fragments(list(fragments.values()))
 
 
-def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
-    """Find ranges of duplicate values in a sorted array.
-
-    This function scans a sorted array and identifies contiguous runs of identical values, returning a list of
-    (start, length) tuples for each such run. This is used to efficiently record the locations and extents of
-    duplicate dates in the final dataset, which can then be indexed for fast lookup or further analysis.
-
-    Parameters
-    ----------
-    a : numpy.ndarray
-        Sorted array of values.
-
-    Returns
-    -------
-    list of tuple of int
-        List of (start, length) tuples for each duplicate range.
-    """
-    if a.size == 0:
-        return []
-
-    start = time.time()
-
-    # True where value differs from previous => boundaries
-    boundaries: np.ndarray = np.r_[True, a[1:] != a[:-1], True]
-
-    # Find indices where value changes (start of new group)
-    idx: np.ndarray = np.flatnonzero(boundaries)
-
-    # Each (start, end) pair defines a run of identical values
-    ranges: list[tuple[int, int]] = list(zip(idx[:-1], idx[1:]))
-
-    LOG.info(f"Found {len(ranges):,} duplicate ranges out of {len(a):,} dates in {time.time()-start:.2f} seconds")
-
-    return [(s, e - s) for s, e in ranges]
-
-
 def _statistics_collector_worker(
     statistic_collector: StatisticsCollector,
     array: np.ndarray,
@@ -553,6 +518,98 @@ def _statistics_collector_worker(
     statistic_collector.collect(array, dates)
 
     return time.time() - now
+
+
+class _DuplicateRangeBuilder:  # (value, start_index, length)
+    def __init__(self, length: int, path: str) -> None:
+        # Length of the input array to process, used for pre-allocating the output file
+        # Resulting array will be smaller but we don't know the exact size until we process it, so we use the input length as an upper bound
+        self.total_size = length
+        self.path = path
+
+        # Create an empty file (sparse if supported) to hold the output ranges
+        # We don't uss np.memmap(mode='w')  because that may trigger an OOM if the file is large,
+        # even if it's sparse.Becaue Numpy will access all pages to initialize them,
+        # which can cause the OS to allocate physical memory for the entire file.
+        # By using open() and truncate(), we create a sparse file without triggering OOM.
+
+        self.row_size = 3 * np.dtype(np.int64).itemsize  # Each row has 3 int64 values: (value, start_index, length)
+        bytes_needed = self.total_size * self.row_size
+
+        with open(self.path, "wb") as f:
+            f.truncate(bytes_needed)
+
+        # Mmap the file for writing the output ranges
+        self.dates_ranges = np.memmap(self.path, dtype=np.int64, mode="r+", shape=(length, 3))
+
+        self.current_run_start = 0  # To keep track of where to write the next range in the output
+        self.current_val = None
+
+        self.chunk = 0
+
+        self.start_idx = 0
+        self.range_idx = 0
+        self.current_start_idx = 0
+
+    def _add_range(self, chunk: np.ndarray, data_slice: slice) -> None:
+
+        if self.current_val is None:
+            self.current_val = chunk[0]
+
+        now = time.time()
+
+        # Identify Change Points (where the NEXT run starts)
+        diffs = chunk[:-1] != chunk[1:]
+        internal_changes = np.flatnonzero(diffs) + 1 + self.start_idx
+
+        # Create a unified list of global indices where a change occurs
+        change_points = internal_changes
+
+        # If the start of this chunk differs from what we were tracking,
+        # the boundary itself (start_idx) is a change point.
+        if chunk[0] != self.current_val:
+            change_points = np.concatenate(([self.start_idx], change_points))
+
+        # Remove duplicates and sort.
+        # This prevents the 'current_start_idx == end_point' scenario that creates 0-length entries.
+        change_points = np.unique(change_points)
+
+        # Process the Timeline
+        for end_point in change_points:
+            # Strictly: end_point is where the NEW value begins.
+            # Therefore, the OLD value ends at end_point.
+            length = end_point - self.current_start_idx
+
+            self.dates_ranges[self.range_idx] = (self.current_val, self.current_start_idx, length)
+            self.range_idx += 1
+
+            # Update state
+            self.current_start_idx = end_point
+            self.current_val = chunk[end_point - self.start_idx]
+
+        self.start_idx += len(chunk)
+        return time.time() - now
+
+    def array(self) -> np.ndarray:
+
+        final_len = self.total_size - self.current_start_idx
+        if final_len > 0:
+            self.dates_ranges[self.range_idx] = (self.current_val, self.current_start_idx, final_len)
+            self.range_idx += 1
+
+        del self.dates_ranges  # Close the mapping to allow truncation
+        with open(self.path, "ab") as f:
+            f.truncate(self.range_idx * self.row_size)
+
+        return np.memmap(self.path, dtype=np.int64, mode="r", shape=(self.range_idx, 3))
+
+
+def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice) -> None:
+    try:
+        return builder._add_range(dates, data_slice)
+    except Exception:
+        LOG.exception("Error processing chunk for duplicate range building")
+        raise
 
 
 def finalise_tabular_dataset(
@@ -606,6 +663,10 @@ def finalise_tabular_dataset(
         filter=recipe.statistics.statistics_filter(dates),
     )
 
+    dates_ranges_path = os.path.join(work_dir, "dates_ranges.npy")
+
+    date_range_builer = _DuplicateRangeBuilder(length=shape[0], path=dates_ranges_path)
+
     if "data" in store:
         del store["data"]
 
@@ -628,9 +689,6 @@ def finalise_tabular_dataset(
         compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
     )
 
-    all_dates_path: str = os.path.join(work_dir, "dates.npy")
-    all_dates: np.ndarray = np.memmap(all_dates_path, dtype=np.int64, mode="w+", shape=(shape[0],))
-
     with WriteBehindBuffer(store["data"]) as data:
 
         def _load_fragment(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
@@ -640,7 +698,11 @@ def finalise_tabular_dataset(
                 os.unlink(fragment.file_path)
             return (fragment, array)
 
-        with ThreadPoolExecutor(max_workers=2) as read_ahead, ThreadPoolExecutor(max_workers=1) as compute_statistics:
+        with (
+            ThreadPoolExecutor(max_workers=2) as read_ahead,
+            ThreadPoolExecutor(max_workers=1) as compute_statistics,
+            ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
+        ):
 
             # Double buffering: keep two fragments loaded ahead for performance
             tasks: list[Any] = []
@@ -656,6 +718,8 @@ def finalise_tabular_dataset(
             data_time = 0
             date_time = 0
 
+            build = None
+            build_time = 0
             with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
                     fragment, array = tasks.pop(0).result()
@@ -664,6 +728,7 @@ def finalise_tabular_dataset(
                     data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
                     data_time += time.time() - now
 
+                    # Dates are encoded as (days, seconds) in columns 0 and 1
                     now = time.time()
                     dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
                     date_time += time.time() - now
@@ -674,10 +739,16 @@ def finalise_tabular_dataset(
 
                     stats = compute_statistics.submit(_statistics_collector_worker, collector, array[:, offset:], dates)
 
-                    # Dates are encoded as (days, seconds) in columns 0 and 1
-                    now = time.time()
-                    all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates
-                    date_time += time.time() - now
+                    # Wait for previous duplicate range building to complete
+                    if build is not None:
+                        build_time += build.result()
+
+                    build = build_duplicate_ranges.submit(
+                        _build_duplicate_ranges_worker,
+                        date_range_builer,
+                        dates,
+                        slice(fragment.offset, fragment.offset + fragment.shape[0]),
+                    )
 
                     pbar.update(fragment.shape[0])
 
@@ -693,37 +764,57 @@ def finalise_tabular_dataset(
             if stats is not None:
                 stat_time += stats.result()
 
+            if build is not None:
+                build_time += build.result()
+
             LOG.info(f"Statistics computed in {stat_time:.2f} seconds ({len(data)/stat_time:.2f} rows/second).")
             LOG.info(f"Data written in {data_time:.2f} seconds ({len(data)/data_time:.2f} rows/second).")
             LOG.info(f"Dates written in {date_time:.2f} seconds ({len(data)/date_time:.2f} rows/second).")
+            LOG.info(
+                f"Duplicate date ranges built in {build_time:.2f} seconds ({len(data)/build_time:.2f} rows/second)."
+            )
 
-    all_dates.flush()
-    LOG.info(f"Dates written to {all_dates_path}")
+    dates_ranges = date_range_builer.array()
+
+    LOG.info(f"Duplicate date ranges written to {dates_ranges_path} with {len(dates_ranges):,} ranges")
+
+    ############################# Validation of date ranges (can be removed in production for performance) #############################
+    LOG.info("Validating date ranges")
+    with ReadAheadBuffer(store["data"]) as data:
+        # Check that the number of ranges found matches the count we got during building
+        offset = 0
+        last_date = None
+        for i, (date, start, length) in enumerate(tqdm.tqdm(dates_ranges, desc="Validating date ranges", unit="row")):
+            assert (
+                length > 0
+            ), f"Found non-positive range for date {date} starting at index {start} ({(date, start, length)}) [{i=}]"
+            assert start == offset, f"Found non-contiguous range starting at {start}, expected {offset} [{i=}]"
+            assert last_date is None or date > last_date, f"Found non-increasing date {date} after {last_date} [{i=}]"
+
+            chunk = data[start : start + length, :]
+            date_column = chunk[:, 0].astype(np.int64) * 86400 + chunk[:, 1].astype(np.int64)
+            # Check that column 0 (days since epoch) of data matches the current date
+            assert np.all(
+                date_column == date
+            ), f"Mismatch between date range {date} and data column 0 at rows {start}:{start+length} ({date_column=}) [{i=}]"
+
+            offset += length
+            last_date = date
+
+        assert offset == shape[0], f"Total length of ranges {offset} does not match total number of rows {shape[0]}"
+    ############################# End of validation #############################
 
     index = create_date_indexing(date_indexing, store)
-
-    LOG.info("Compute duplicate date ranges")
-    # Assume dates are sorted for efficient duplicate range finding
-    ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
-    LOG.info(f"Found {len(ranges):,} duplicate date ranges")
-
-    dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
-    dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
-    for i, (start, length) in enumerate(tqdm.tqdm(ranges, desc="Writing dates", unit="dates")):
-        dates_ranges[i, :] = (all_dates[start], start, length)
-    dates_ranges.flush()
 
     start = time.time()
     LOG.info("Bulking load duplicate date ranges into index")
     index.bulk_load(dates_ranges)
     LOG.info(f"Duplicate date ranges written to index in {time.time() - start:.2f} seconds")
 
-    del all_dates
     del dates_ranges
 
     if delete_files:
         os.unlink(dates_ranges_path)
-        os.unlink(all_dates_path)
 
     # Set the format attribute to indicate this is a tabular dataset
     store.attrs.update({"layout": "tabular"})
