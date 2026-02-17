@@ -97,6 +97,7 @@ optional-dependencies.docs = [
 
 optional-dependencies.remote = [
   "boto3",
+  "obstore",
   "requests",
 ]
 
