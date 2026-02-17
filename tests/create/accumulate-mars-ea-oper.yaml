@@ -19,7 +19,9 @@ input:
         grid: 20./20.
         levtype: sfc
         param: [ tp, cp ]
-
+    group_by:
+      namespace: 'mars'
+      ignore: ['date','time','step','timespan']
 
 checks:
   none: {}
