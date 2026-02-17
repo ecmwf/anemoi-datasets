@@ -34,7 +34,7 @@ Concatenating Chunks into Shards (Zarr v3)
 
     The v3 of Zarr is still not the recommended version to use with anemoi-datasets,
     and the ``concatenate`` option requires zarr v3.
-    This option is not yet usable with standard install of anemoi-datasets. 
+    This option is not yet usable with standard install of anemoi-datasets.
     Using it requires installing the zarr v3 package after anemoi-datasets (breaking the dependency on zarr v2).
 
 
@@ -45,7 +45,7 @@ For example::
 
     --concatenate 0
 
-expands shards to the full extent of dimension 0. 
+expands shards to the full extent of dimension 0.
 
 This option:
 
