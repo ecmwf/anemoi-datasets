@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,13 +8,17 @@
 # nor does it submit to any jurisdiction.
 
 
+import itertools
 import logging
+import math
+import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from typing import Any
 
+import numpy as np
 import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
@@ -28,6 +32,185 @@ from ..compat import zarr_version
 from . import Command
 
 LOG = logging.getLogger(__name__)
+
+
+def compute_concatenated_shards(concatenate_dims: list[int], shape: tuple, chunks: tuple) -> tuple:
+    """Compute shard sizes by expanding specified dimensions to the full shape extent.
+
+    Parameters
+    ----------
+    concatenate_dims : list[int]
+        Dimension indices along which to concatenate chunks into shards.
+    shape : tuple
+        Full array shape.
+    chunks : tuple
+        Chunk sizes.
+    """
+    shards = list(chunks)
+    for dim in concatenate_dims:
+        if dim < 0 or dim >= len(shape):
+            raise ValueError(f"Concatenate dimension {dim} out of range for {len(shape)}-D array.")
+        shards[dim] = shape[dim]
+    return tuple(shards)
+
+
+def _morton_order(shape: tuple):
+    """Generate coordinates in morton (Z-order) order for a given grid shape.
+
+    Parameters
+    ----------
+    shape : tuple
+        Grid dimensions.
+    """
+    bits = tuple(math.ceil(math.log2(max(c, 2))) for c in shape)
+    total = 1 << sum(bits)  # 2^(sum of all bits) to cover all morton indices
+    max_bits = max(bits)
+    for z in range(total):
+        coords = [0] * len(shape)
+        input_bit = 0
+        for coord_bit in range(max_bits):
+            for dim in range(len(shape)):
+                if coord_bit < bits[dim]:
+                    bit = (z >> input_bit) & 1
+                    coords[dim] |= bit << coord_bit
+                    input_bit += 1
+        coords = tuple(coords)
+        if all(c < s for c, s in zip(coords, shape)):
+            yield coords
+
+
+class StreamingShardCopier:
+    """Copy data into zarr 3 sharded arrays by streaming chunks to disk.
+
+    Bypasses zarr's write path (which reads the full shard into memory on
+    every partial write) by constructing shard files directly according to
+    the zarr v3 sharding specification (ZEP 2).
+
+    Only 1 chunk + the shard index are held in memory at a time.
+    Local filesystem targets only.
+
+    Parameters
+    ----------
+    source_array : Any
+        Source zarr array to read chunks from.
+    target_group : Any
+        Target zarr group to create the sharded array in.
+    chunks : tuple
+        Inner chunk sizes for the target array.
+    shards : tuple
+        Shard sizes for the target array.
+    target_store_path : str
+        Filesystem path to the target zarr store root.
+    """
+
+    MAX_UINT_64 = 2**64 - 1
+
+    def __init__(self, source_array, target_group, chunks, shards, target_store_path):
+        import numcodecs
+
+        self.source = source_array
+        self.shape = tuple(source_array.shape)
+        self.dtype = source_array.dtype
+        self.chunks = chunks
+        self.shards = shards
+        self.target_store_path = str(target_store_path)
+
+        self.chunks_per_shard = tuple(s // c for s, c in zip(self.shards, self.chunks))
+        self.shard_grid = tuple(-(-sh // sd) for sh, sd in zip(self.shape, self.shards))  # ceil division
+
+        # Create the target array metadata (zarr.json) via zarr
+        if "data" not in target_group:
+            self.target_array = target_group.create_array(
+                "data",
+                shape=self.shape,
+                chunks=chunks,
+                shards=shards,
+                dtype=self.dtype,
+                fill_value=source_array.fill_value,
+            )
+        else:
+            self.target_array = target_group["data"]
+
+        # Default inner codec: Zstd level 0 (matches zarr's default)
+        self._compressor = numcodecs.Zstd(level=0)
+
+    def _encode_chunk(self, data: np.ndarray) -> bytes:
+        """Encode a single chunk: little-endian bytes + zstd compression."""
+        raw = np.ascontiguousarray(data).astype(self.dtype.newbyteorder("<")).tobytes()
+        return self._compressor.encode(raw)
+
+    def _encode_index(self, index_array: np.ndarray) -> bytes:
+        """Encode the shard index with BytesCodec + Crc32cCodec."""
+        import google_crc32c
+
+        raw = index_array.tobytes()
+        crc = google_crc32c.value(raw)
+        return raw + np.array([crc], dtype=np.uint32).tobytes()
+
+    def _shard_file_path(self, shard_grid_pos: tuple) -> str:
+        """Return filesystem path for the shard at given grid position."""
+        parts = "/".join(str(i) for i in shard_grid_pos)
+        return os.path.join(self.target_store_path, "data", "c", parts)
+
+    def _chunk_global_slices(self, shard_pos: tuple, local_coords: tuple) -> tuple[slice, ...]:
+        """Compute the global array slices for a chunk within a shard."""
+        slices = []
+        for dim in range(len(self.shape)):
+            start = shard_pos[dim] * self.shards[dim] + local_coords[dim] * self.chunks[dim]
+            end = min(start + self.chunks[dim], self.shape[dim])
+            slices.append(slice(start, end))
+        return tuple(slices)
+
+    def copy_all(self) -> None:
+        """Stream all data from source to target, one chunk at a time."""
+        total_shards = 1
+        for g in self.shard_grid:
+            total_shards *= g
+        total_chunks = total_shards
+        for c in self.chunks_per_shard:
+            total_chunks *= c
+
+        LOG.info(
+            f"Streaming copy: {total_shards} shard(s), "
+            f"{total_chunks} chunk(s), "
+            f"chunks_per_shard={self.chunks_per_shard}, "
+            f"shard_grid={self.shard_grid}"
+        )
+
+        chunk_count = 0
+        with tqdm.tqdm(total=total_chunks, desc="Streaming chunks") as pbar:
+            for shard_pos in itertools.product(*[range(g) for g in self.shard_grid]):
+                written = self._write_one_shard(shard_pos)
+                chunk_count += written
+                pbar.update(written)
+
+        LOG.info(f"Wrote {chunk_count} chunks into {total_shards} shard file(s)")
+
+    def _write_one_shard(self, shard_pos: tuple) -> int:
+        """Build one shard file by streaming chunks sequentially."""
+        index = np.full(self.chunks_per_shard + (2,), self.MAX_UINT_64, dtype="<u8")
+
+        path = self._shard_file_path(shard_pos)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        chunk_count = 0
+        with open(path, "wb") as f:
+            offset = 0
+            for local_coords in _morton_order(self.chunks_per_shard):
+                global_slices = self._chunk_global_slices(shard_pos, local_coords)
+                chunk_data = self.source[global_slices]
+
+                encoded = self._encode_chunk(chunk_data)
+                f.write(encoded)
+
+                index[local_coords + (0,)] = offset
+                index[local_coords + (1,)] = len(encoded)
+                offset += len(encoded)
+                chunk_count += 1
+
+            f.write(self._encode_index(index))
+
+        return chunk_count
 
 
 class ZarrCopier:
@@ -49,12 +232,12 @@ class ZarrCopier:
         Flag to resume copying an existing dataset.
     verbosity : int
         Verbosity level of logging.
-    nested : bool
-        Flag to use ZARR's nested directory backend.
     rechunk : str
         Rechunk size for the target data array.
     reshard : str
         Reshard size for the target data array.
+    concatenate : list[int] or None
+        Dimension indices along which to concatenate chunks into shards.
     """
 
     def __init__(
@@ -68,6 +251,7 @@ class ZarrCopier:
         verbosity: int,
         rechunk: str,
         reshard: str = None,
+        concatenate: str = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the ZarrCopier.
@@ -92,6 +276,8 @@ class ZarrCopier:
             Rechunk size for the target data array.
         reshard : str
             Reshard size for the target data array.
+        concatenate : str
+            Concatenate chunks into shards along given dimension(s).
         **kwargs : Any
             Additional keyword arguments.
         """
@@ -105,6 +291,7 @@ class ZarrCopier:
 
         self.rechunking = rechunk.split(",") if rechunk else []
         self.resharding = reshard.split(",") if reshard else []
+        self.concatenate = [int(d) for d in concatenate.split(",")] if concatenate else None
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
@@ -190,6 +377,32 @@ class ZarrCopier:
         source_data = source["data"]
         start = time.time()
 
+        if self.concatenate is not None:
+            assert self.transfers == 1, f"Concatenation requires single-threaded writes, got {self.transfers}"
+
+            chunks = self.parse_rechunking(self.rechunking, source_data) if self.rechunking else source_data.chunks
+            shards = compute_concatenated_shards(self.concatenate, source_data.shape, chunks)
+
+            # Validate shard/chunk divisibility
+            for s, c in zip(shards, chunks):
+                if s % c != 0:
+                    raise ValueError(f"Shard size {s} is not divisible by chunk size {c}.")
+
+            LOG.info(f"Concatenating along dims {self.concatenate}: shards={shards}, chunks={chunks}")
+
+            copier = StreamingShardCopier(
+                source_array=source_data,
+                target_group=target,
+                chunks=chunks,
+                shards=shards,
+                target_store_path=self.target,
+            )
+            copier.copy_all()
+
+            end = time.time()
+            LOG.info(f"Copied data in {end - start:.2f} seconds")
+            return
+
         extra = {}
         if self.rechunking:
             extra["chunks"] = self.parse_rechunking(self.rechunking, source_data)
@@ -202,7 +415,7 @@ class ZarrCopier:
             ratio = []
             for shard, chunk in zip(extra["shards"], extra["chunks"]):
                 if shard % chunk != 0:
-                    raise ValueError(f"Chunk size {chunk} is not a multiple of shard size {shard}.")
+                    raise ValueError(f"Shard size {shard} is not a multiple of chunk size {chunk}.")
                 ratio.append(shard // chunk)
 
             LOG.info(f"Shards for target data array: {extra['shards']} (ratio={ratio})")
@@ -521,6 +734,14 @@ class CopyMixin:
                 "--reshard",
                 help="Reshard the target data array. This option will adjust --block-size to that it is divisible by the reshard size.",
             )
+            command_parser.add_argument(
+                "--concatenate",
+                help="Concatenate chunks into shards along given dimension(s). "
+                "E.g. '0' expands shard to full shape along dim 0. "
+                "Comma-separated for multiple dims: '0,1'. "
+                "Requires --transfers 1 (sequential writes). "
+                "Local target store only.",
+            )
 
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
@@ -539,8 +760,21 @@ class CopyMixin:
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
+        concatenate_requested = getattr(args, "concatenate", None)
+
+        if concatenate_requested and getattr(args, "reshard", None):
+            raise ValueError("Cannot use --concatenate and --reshard together.")
+
+        if concatenate_requested and args.transfers != 1:
+            raise ValueError(
+                f"--concatenate requires --transfers 1 (sequential writes), got --transfers {args.transfers}."
+            )
+
+        if concatenate_requested and args.resume:
+            raise ValueError("--concatenate does not support --resume.")
+
         if zarr_version >= 3:
-            reshaping_requested = args.rechunk or args.reshard
+            reshaping_requested = args.rechunk or args.reshard or concatenate_requested
         else:
             reshaping_requested = args.rechunk
 
