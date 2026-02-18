@@ -10,6 +10,7 @@
 
 import datetime
 import logging
+import math
 from abc import abstractmethod
 from typing import Iterable
 
@@ -182,30 +183,28 @@ def normalise_steps(steps_list: str | list) -> list[tuple[datetime.timedelta, da
     return res
 
 
-class AccumulatedFromStartIntervalGenerator(SearchableIntervalGenerator):
-    def __init__(self, basetime: str | datetime.datetime, frequency: int, last_step: int):
-        config = []
-        for base in basetime:
-            for i in range(0, last_step, frequency):
-                config.append([base, [f"0-{i+frequency}"]])
-        super().__init__(config)
-
-
-class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
-    def __init__(self, basetime: str | datetime.datetime, frequency: int, last_step: int):
-        config = []
-        for base in basetime:
-            for i in range(0, last_step, frequency):
-                config.append([base, [f"{i}-{i+frequency}"]])
-        super().__init__(config)
-
-
 def _is_absolute_sequence_config(config: list) -> bool:
     """Return True if config is a list of dicts each with 'start' and 'frequency' keys."""
     return (
         isinstance(config, list)
         and len(config) > 0
         and all(isinstance(item, dict) and "start" in item and "frequency" in item for item in config)
+    )
+
+
+def _is_abs_seq_tuple_config(config: list) -> bool:
+    """Return True if config is a list of (dict_with_start_freq, steps) pairs."""
+    return (
+        isinstance(config, list)
+        and len(config) > 0
+        and all(
+            isinstance(item, (list, tuple))
+            and len(item) == 2
+            and isinstance(item[0], dict)
+            and "start" in item[0]
+            and "frequency" in item[0]
+            for item in config
+        )
     )
 
 
@@ -256,9 +255,9 @@ class AbsoluteSequenceIntervalGenerator(IntervalGenerator):
             freq_seconds = freq.total_seconds()
             offset_seconds = (current_time - anchor).total_seconds()
 
-            # int() truncates towards zero, so subtract/add 2 to safely cover floor/ceil.
-            k_lo = int((offset_seconds - max_step_seconds) / freq_seconds) - 2
-            k_hi = int((offset_seconds + max_step_seconds) / freq_seconds) + 2
+            # ±1 guards against floating-point rounding in the division.
+            k_lo = math.floor((offset_seconds - max_step_seconds) / freq_seconds) - 1
+            k_hi = math.ceil((offset_seconds + max_step_seconds) / freq_seconds) + 1
 
             for k in range(k_lo, k_hi + 1):
                 base = anchor + k * freq
@@ -277,6 +276,61 @@ class AbsoluteSequenceIntervalGenerator(IntervalGenerator):
 
         # Prioritise most recent base (same convention as SearchableIntervalGenerator).
         return sorted(filtered, key=lambda x: -(x.base or x.start).timestamp())
+
+
+def _make_accumulated_generator(basetime, steps: list[str]) -> IntervalGenerator:
+    """Build a SearchableIntervalGenerator or AbsoluteSequenceIntervalGenerator from basetime and steps.
+
+    Parameters
+    ----------
+    basetime
+        Either a list of integer hours of day (e.g. ``[0, 12]``),
+        or a dict ``{"start": <datetime-str>, "frequency": <freq-str>}``
+        for an arithmetic sequence of absolute base times.
+    steps
+        List of ``"start-end"`` step strings (hours), e.g. ``["0-3", "0-6"]``.
+    """
+    if isinstance(basetime, dict):
+        config = [{"start": basetime["start"], "frequency": basetime["frequency"], "steps": steps}]
+        return AbsoluteSequenceIntervalGenerator(config)
+    config = [[base, steps] for base in basetime]
+    return SearchableIntervalGenerator(config)
+
+
+def AccumulatedFromStartIntervalGenerator(basetime, frequency: int, last_step: int) -> IntervalGenerator:
+    """Create an interval generator for fields accumulated from the start of a forecast.
+
+    Parameters
+    ----------
+    basetime
+        Either a list of integer hours of day (e.g. ``[0, 12]``),
+        or a dict ``{"start": <datetime-str>, "frequency": <freq-str>}``
+        for an arithmetic sequence of absolute base times.
+    frequency
+        Step interval in hours.
+    last_step
+        Last forecast step in hours (exclusive upper bound).
+    """
+    steps = [f"0-{i + frequency}" for i in range(0, last_step, frequency)]
+    return _make_accumulated_generator(basetime, steps)
+
+
+def AccumulatedFromPreviousStepIntervalGenerator(basetime, frequency: int, last_step: int) -> IntervalGenerator:
+    """Create an interval generator for fields accumulated since the previous step.
+
+    Parameters
+    ----------
+    basetime
+        Either a list of integer hours of day (e.g. ``[6, 18]``),
+        or a dict ``{"start": <datetime-str>, "frequency": <freq-str>}``
+        for an arithmetic sequence of absolute base times.
+    frequency
+        Step interval in hours.
+    last_step
+        Last forecast step in hours (exclusive upper bound).
+    """
+    steps = [f"{i}-{i + frequency}" for i in range(0, last_step, frequency)]
+    return _make_accumulated_generator(basetime, steps)
 
 
 def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | None = None) -> list | tuple:
@@ -375,6 +429,12 @@ def _interval_generator_factory(
 
         case list() if _is_absolute_sequence_config(config):
             return AbsoluteSequenceIntervalGenerator(config)
+
+        case list() if _is_abs_seq_tuple_config(config):
+            abs_config = [
+                {"start": base["start"], "frequency": base["frequency"], "steps": steps} for base, steps in config
+            ]
+            return AbsoluteSequenceIntervalGenerator(abs_config)
 
         case dict() | list() | tuple():
             return SearchableIntervalGenerator(config)
