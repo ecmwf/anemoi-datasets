@@ -256,7 +256,7 @@ class ComplementNearest(Complement):
             self._target.latitudes,
             self._target.longitudes,
             max_distance=max_distance,
-            k=k,
+            num_neighbours_to_return=k,
         )
 
         if k == 1:
