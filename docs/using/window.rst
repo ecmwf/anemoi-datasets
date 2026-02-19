@@ -1,133 +1,6 @@
-.. _tabular-window:
-
-###################################
- Window selection for tabular data
-###################################
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-3,+3]",
-       frequency="6h")
-
-Windows are **relative** time intervals that can be open or closed at
-each end. A round bracket indicates an open end, while a square bracket
-indicates a closed end. The default units are hours.
-
-Examples:
-
-.. code:: python
-
-   "[-3,+3]" # Both ends are included
-   "(-1d,0]" # Start is open, end is closed
-
-*******
- Dates
-*******
-
-Unlike for fields, where the `start` and `end` must be within the list
-of available dates, in the case of observations, `start` and `end` can
-be anything, and empty records will be returned to the user when no
-observations are available for a given window.
-
-The dates of the dataset are then defined as all dates between `start`
-and `end` with a step of `frequency`:
-
-.. code:: python
-
-   result = []
-   date = start
-
-   while date <= end:
-       result.append(date)
-       date += frequency
-
-The pseudo-code above builds the list returned by `ds.dates`.
-
-As a result, the number of samples is:
-
-.. code:: python
-
-   n = (end - start) // frequency + 1
-
-which is also the length of the dataset:
-
-.. code:: python
-
-   len(ds)
-
-**********
- Examples
-**********
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-5h,+1h]",
-       frequency="6h")
-
-Some text
-
-.. image:: ../_static/window-1.png
-   :width: 75%
-   :align: center
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-5h,+1h]",
-       frequency="6h")
-
-Some text
-
-.. image:: ../_static/window-2.png
-   :width: 75%
-   :align: center
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-5h,+1h]",
-       frequency="6h")
-
-Some text
-
-.. image:: ../_static/window-3.png
-   :width: 75%
-   :align: center
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-5h,+1h]",
-       frequency="6h")
-
-Some text
-
-.. image:: ../_static/window-4.png
-   :width: 75%
-   :align: center
-
-Some text
-
-*********
+#########
  Context
-*********
+#########
 
 The objective of this change is to support observations data which are
 not regular.
@@ -136,9 +9,9 @@ In contrast with the fields data, where each date contains the same
 number of points, in the observations data, the number of points can
 change for every time window.
 
-***********************
+#######################
  High-level principles
-***********************
+#######################
 
 -  Ensure that I/O operations are not the bottleneck during training.
 -  The way fields (gridded data) and observations (tabular data) are
@@ -146,9 +19,9 @@ change for every time window.
 -  Allow users to control which samples are presented during training
    via configuration files, when possible.
 
-***********
+###########
  Decisions
-***********
+###########
 
 -  Observations datasets in Anemoi will use Zarr (but with a different
    structure than fields).
@@ -184,11 +57,12 @@ change for every time window.
 
 -  For observations, date-times are *rounded* to the nearest second.
 
-Zarr array layout
-=================
+*******************
+ Zarr array layout
+*******************
 
 Data
-----
+====
 
 The ``data`` table contains one row per observation. It has four
 mandatory columns (``date``, ``time``, ``latitude``, ``longitude``),
@@ -222,15 +96,16 @@ approximately 194 days, which is insufficient. When interpreted as days,
 it corresponds to roughly 46,000 years, which is sufficient.
 
 Chunking
---------
+========
 
 Because of the variability of the size of samples, it is not possible to
 select a “best” chunking. We will set the chunk sizes to match the best
 I/O block size (64MB ~ 256MB on Lustre). Chunks will also be cached in
 memory to avoid unnecessary reads.
 
-Index
-=====
+*******
+ Index
+*******
 
 Ranges of rows sharing the same date/time are indexed together for fast
 access when extracting windows of observations.
@@ -261,7 +136,7 @@ Two indexing methods are implemented, and others can be added via
 anemoi’s plugin mechanism:
 
 binary search (bisect)
-----------------------
+======================
 
 The index is a simple 2D array with the ``date`` (as integer Unix
 epochs) and the ``start`` and ``length`` as described above. Date lookup
@@ -269,7 +144,7 @@ are done using Python’s `bisect
 <https://docs.python.org/3/library/bisect.html>`__ package.
 
 B-tree
-------
+======
 
 In that case, the index is a Zarr-backed `b+tree
 <https://en.wikipedia.org/wiki/B-tree>`__. (``dates``, ``start``,
@@ -284,7 +159,7 @@ Leaf nodes are linked from smaller keys to larger keys, so that *ranges
 searched* only traverse the tree once.
 
 Tests
------
+=====
 
 Both methods will search for a date is in the order of O(log2(N). For a
 billion dates (~32 years), this is around 30 comparisons, and the number
@@ -307,8 +182,9 @@ Tests have been performed on a 100-years index, with values every second
 In both cases, chunk level caching (512 MB) has been used, and the chunk
 sizes were identical (64 MB).
 
-Using the dataset
-=================
+*******************
+ Using the dataset
+*******************
 
 Example of a call to ``open_dataset``:
 
@@ -328,7 +204,7 @@ full date-times. If they are not, they are internally transformed to
 <https://anemoi.readthedocs.io/projects/datasets/en/latest/using/subsetting.html>`__.
 
 Windows
--------
+=======
 
 Windows are **relative** time intervals that can be open or closed at
 each end. A round bracket indicates an open end, while a square bracket
@@ -342,7 +218,7 @@ Examples:
    "(-1d,0]" # Start is open, end is closed
 
 Dates
------
+=====
 
 Unlike for fields, where the ``start`` and ``end`` must be within the
 list of available dates, in the case of observations, ``start`` and
@@ -375,7 +251,7 @@ which is also the length of the dataset:
    len(ds)
 
 Sample selection
-----------------
+================
 
 A sample ``ds[i]`` is defined by the start date and the frequency (i.e.,
 the date of the sample). The ``window`` specifies how many observations
@@ -395,7 +271,7 @@ empty sample is returned, provided that the requested dates lie between
 ``start`` and ``end``. Otherwise, an error is raised.
 
 Sample format
--------------
+=============
 
 Although the underlying Zarr array contains date and position
 information, a sample will only return the data values (excluding date,
@@ -483,11 +359,12 @@ Auxiliary information can be accessed as:
 For the sake of symmetry, the same behaviour will be implemented for
 gridded data.
 
-Statistics
-==========
+************
+ Statistics
+************
 
 Global Statistics
------------------
+=================
 
 Statistics will be calculated per column and stored as metadata for the
 mean, min, max, standard deviation and NaN count. This can either be
@@ -514,7 +391,7 @@ split into separate columns or datasets.
       period covered (or another percentage)
 
 Tendency Statistics
--------------------
+===================
 
 As for fields, there may eventually be the requirement to provide
 statistics on the variability in time of the observations. This is
@@ -524,11 +401,12 @@ There is an existing ``dask.dataframe`` implementation of this that
 could be used for inspiration (it also uses existing filters for
 assigning grid indices to each row of the dataset).
 
-Building datasets
-=================
+*******************
+ Building datasets
+*******************
 
 Sources
--------
+=======
 
 A source is instantiated with a config (dict-like) which is derived from
 the YAML recipe provided to ``anemoi-datasets create``.
@@ -541,7 +419,7 @@ a number of data columns (with arbitrary names). Each row in the
 dataframe is a different observation.
 
 Filters
--------
+=======
 
 Filters take the output of sources or other filters (i.e. a Pandas
 frame) and return a modified Pandas frame. The only requirement is to
@@ -558,7 +436,7 @@ Filters will be selected through a registry, as is done with the
 existing field filters.
 
 Incremental/parallel build
---------------------------
+==========================
 
 As for fields, ``anemoi-dataset create`` will call sources and filters
 with several ranges of dates, possibly in parallel. The size of the
