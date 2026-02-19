@@ -213,6 +213,12 @@ def _expand_mars_request(
             if r["time"] not in user_time:
                 continue
 
+        # SCDA stream auto-selection for ECMWF operational data:
+        # the 06 and 18 UTC runs use stream "scda" instead of "oper"
+        if r.get("class") == "od" and r.get("stream") == "oper":
+            if int(r.get("time", 0)) in (600, 1800):
+                r["stream"] = "scda"
+
         requests.append(r)
 
     return requests
@@ -435,6 +441,13 @@ class MarsSource(LegacySource):
                 for d, interval in dates.intervals:
                     context.trace("🌧️", "interval:", interval)
                     _, r, _ = dates._adjust_request_to_interval(interval, request)
+
+                    # SCDA stream auto-selection for ECMWF operational data:
+                    # the 06 and 18 UTC runs use stream "scda" instead of "oper"
+                    if r.get("class") == "od" and r.get("stream") == "oper":
+                        if int(r.get("time", 0)) in (600, 1800):
+                            r["stream"] = "scda"
+
                     context.trace("🌧️", "  adjusted request =", r)
                     requests_.append(r)
             requests = requests_
