@@ -22,6 +22,15 @@ variables, etc.
  Concepts
 **********
 
+recipe
+   A `recipe` is a YAML file that describes the sources of data and the
+   operations to perform on them to build a dataset.
+
+layout
+   The `layout` of a dataset refers to the way the data is organised in
+   the underlying Zarr file. See :ref:`dataset layouts
+   <layouts-introduction>` for more information.
+
 date
    Throughout this document, the term `date` refers to a date and time,
    not just a date. A training dataset covers a continuous range of
@@ -98,6 +107,10 @@ operations can be combined to build complex datasets.
 ********************
  Naming Conventions
 ********************
+
+You are free to name datasets as you wish, but having a consistent
+naming convention is important to keep track of the datasets and their
+contents.
 
 .. toctree::
    :maxdepth: 1
