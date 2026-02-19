@@ -13,6 +13,7 @@ import logging
 from abc import abstractmethod
 from typing import Iterable
 
+from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
@@ -149,6 +150,73 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return intervals
 
 
+class CycleIntervalProvider(IntervalGenerator):
+    def __init__(self, **config: dict):
+        print(f"CycleIntervalProvider config: {config}")
+        self.reference = config.pop("start", datetime.datetime(1970, 1, 1, 0, 0))
+        self.reference = as_datetime(self.reference)
+
+        def split(s):
+            i, j = s.split("-")
+            return int(i), int(j)
+
+        def normalise_steps(base_time, steps):
+            steps = steps.split("/")
+            return base_time, [split(s) for s in steps]
+
+        self.config = {split(k): normalise_steps(*v) for k, v in config.items()}
+
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        cycle_length_in_hours = max([k[1] for k in self.config.keys()])
+
+        i_start = (int((start - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
+        i_end = (int((end - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
+        # if i_start == 0: i_start = cycle_length_in_hours
+        if i_end == 0:
+            i_end = cycle_length_in_hours
+        print("💬", start)
+        print("💬", end)
+        print(f"  -> CycleIntervalProvider covering_intervals for (i_start={i_start}, i_end={i_end})")
+
+        if (i_start, i_end) not in self.config:
+            raise ValueError(
+                f"CycleIntervalProvider: no config to find ({i_start}, {i_end}) (start={start}, end={end}, {cycle_length_in_hours=})"
+            )
+
+        base_time, steps = self.config[(i_start, i_end)]
+
+        base_datetime = datetime.datetime(end.year, end.month, end.day, base_time)
+        while base_datetime > end:
+            print(
+                f"  ❌ -> CycleIntervalProvider: base_datetime {base_datetime} is after end {end}, going back one day"
+            )
+            base_datetime -= datetime.timedelta(days=1)
+
+        assert (
+            base_datetime.hour == base_time
+        ), f"Base datetime hour {base_datetime.hour} does not match expected base time {base_time}"
+
+        intervals = []
+        for start_step, end_step in steps:
+            base_ = base_datetime
+            start_ = base_datetime + datetime.timedelta(hours=start_step)
+            end_ = base_datetime + datetime.timedelta(hours=end_step)
+            interval = SignedInterval(base=base_, start=start_, end=end_)
+            intervals.append(interval)
+            print("✅", interval)
+
+        if not (any(i.start == start for i in intervals) or any((-i).start == start for i in intervals)):
+            raise ValueError(
+                f"CycleIntervalProvider: no interval starting at {start} (start={start}, end={end}, {cycle_length_in_hours=})"
+            )
+        if not (any(i.end == end for i in intervals) or any((-i).end == end for i in intervals)):
+            raise ValueError(
+                f"CycleIntervalProvider: no interval ending at {end} (start={start}, end={end}, {cycle_length_in_hours=})"
+            )
+
+        return intervals
+
+
 def normalise_steps(steps_list: str | list[str]) -> list[list[int]]:
     """Convert the input step_list to a list of [start,end] pairs"""
     res = []
@@ -262,6 +330,11 @@ def _interval_generator_factory(
             return AccumulatedFromStartIntervalGenerator(**params)
         case {"accumulated-from-start": params}:
             return AccumulatedFromStartIntervalGenerator(**params)
+
+        case {"type": "cycle", **params}:
+            return CycleIntervalProvider(**params)
+        case {"cycle": params}:
+            return CycleIntervalProvider(**params)
 
         case {"accumulated-from-previous-step": params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)
