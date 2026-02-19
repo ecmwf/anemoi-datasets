@@ -169,10 +169,23 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
         cycle_length_in_hours = max([k[1] for k in self.config.keys()])
 
+        assert end > start, "CycleIntervalProvider only supports positive intervals (end must be after start)"
+
         i_start = (int((start - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
         i_end = (int((end - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
         if i_end == 0:
             i_end = cycle_length_in_hours
+
+        if not (0 <= i_start < cycle_length_in_hours):
+            raise ValueError(
+                f"CycleIntervalProvider: i_start={i_start} out of range [0, {cycle_length_in_hours}) (start={start})"
+            )
+        if not (0 < i_end <= cycle_length_in_hours):
+            raise ValueError(
+                f"CycleIntervalProvider: i_end={i_end} out of range (0, {cycle_length_in_hours}] (end={end})"
+            )
+        if i_start >= i_end:
+            raise ValueError(f"CycleIntervalProvider: i_start={i_start} >= i_end={i_end} (start={start}, end={end})")
 
         if (i_start, i_end) not in self.config:
             raise ValueError(
@@ -186,12 +199,17 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
         while base_datetime >= end:
             base_datetime -= datetime.timedelta(days=1)
 
-        assert (
-            base_datetime.hour == base_time
-        ), f"Base datetime hour {base_datetime.hour} does not match expected base time {base_time}"
+        if base_datetime.hour != base_time:
+            raise ValueError(f"base_datetime hour {base_datetime.hour} does not match expected base_time {base_time}")
+        if base_datetime >= end:
+            raise ValueError(f"base_datetime {base_datetime} must be strictly before end {end}")
 
         intervals = []
         for start_step, end_step in steps:
+            if start_step < 0:
+                raise ValueError(f"start_step {start_step} must be non-negative")
+            if end_step <= start_step:
+                raise ValueError(f"end_step {end_step} must be greater than start_step {start_step}")
             interval = SignedInterval(
                 base=base_datetime,
                 start=base_datetime + datetime.timedelta(hours=start_step),
