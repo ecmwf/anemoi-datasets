@@ -150,7 +150,7 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return intervals
 
 
-class CycleIntervalProvider(IntervalGenerator):
+class CycleIntervalProvider(SearchableIntervalGenerator):
     def __init__(self, **config: dict):
         print(f"CycleIntervalProvider config: {config}")
         self.reference = config.pop("start", datetime.datetime(1970, 1, 1, 0, 0))
@@ -171,12 +171,8 @@ class CycleIntervalProvider(IntervalGenerator):
 
         i_start = (int((start - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
         i_end = (int((end - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
-        # if i_start == 0: i_start = cycle_length_in_hours
         if i_end == 0:
             i_end = cycle_length_in_hours
-        print("💬", start)
-        print("💬", end)
-        print(f"  -> CycleIntervalProvider covering_intervals for (i_start={i_start}, i_end={i_end})")
 
         if (i_start, i_end) not in self.config:
             raise ValueError(
@@ -186,10 +182,8 @@ class CycleIntervalProvider(IntervalGenerator):
         base_time, steps = self.config[(i_start, i_end)]
 
         base_datetime = datetime.datetime(end.year, end.month, end.day, base_time)
-        while base_datetime > end:
-            print(
-                f"  ❌ -> CycleIntervalProvider: base_datetime {base_datetime} is after end {end}, going back one day"
-            )
+        # The base must be strictly before end so step 0-N lands on or before end.
+        while base_datetime >= end:
             base_datetime -= datetime.timedelta(days=1)
 
         assert (
@@ -198,12 +192,12 @@ class CycleIntervalProvider(IntervalGenerator):
 
         intervals = []
         for start_step, end_step in steps:
-            base_ = base_datetime
-            start_ = base_datetime + datetime.timedelta(hours=start_step)
-            end_ = base_datetime + datetime.timedelta(hours=end_step)
-            interval = SignedInterval(base=base_, start=start_, end=end_)
+            interval = SignedInterval(
+                base=base_datetime,
+                start=base_datetime + datetime.timedelta(hours=start_step),
+                end=base_datetime + datetime.timedelta(hours=end_step),
+            )
             intervals.append(interval)
-            print("✅", interval)
 
         if not (any(i.start == start for i in intervals) or any((-i).start == start for i in intervals)):
             raise ValueError(
