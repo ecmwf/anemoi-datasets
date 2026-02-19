@@ -178,24 +178,6 @@ class Dataset(ABC, Sized):
         if "start" in kwargs or "end" in kwargs:
             start = kwargs.pop("start", None)
             end = kwargs.pop("end", None)
-            padding = kwargs.pop("padding", None)
-
-            if padding:
-                Padded = self.usage_factory_load("Padded")
-
-                frequency = kwargs.pop("frequency", self.frequency)
-                return (
-                    Padded(
-                        self,
-                        start=start,
-                        end=end,
-                        frequency=frequency,
-                        padding=padding,
-                        reason=dict(start=start, end=end, frequency=frequency, padding=padding),
-                    )
-                    ._subset(**kwargs)
-                    .mutate()
-                )
 
             Subset = self.usage_factory_load("Subset")
 
