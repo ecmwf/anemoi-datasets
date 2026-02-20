@@ -18,13 +18,16 @@ variables, etc.
    :alt: Building datasets
    :align: center
 
+*********
+ Recipes
+*********
+
+   A `recipe` is a YAML file that describes the sources of data and the
+   operations to perform on them to build a dataset.
+
 **********
  Concepts
 **********
-
-recipe
-   A `recipe` is a YAML file that describes the sources of data and the
-   operations to perform on them to build a dataset.
 
 layout
    The `layout` of a dataset refers to the way the data is organised in
@@ -94,6 +97,7 @@ operations can be combined to build complex datasets.
    :hidden:
    :caption: Building datasets
 
+   recipe
    operations
    sources
    filters
