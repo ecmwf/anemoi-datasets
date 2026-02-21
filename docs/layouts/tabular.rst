@@ -315,17 +315,3 @@ Auxiliary information can be accessed as:
    sample.timedeltas
 
    assert len(sample.timedeltas) == number_of_observations_in_window
-
-.. _tabular-window:
-
-window
-^^^^^^
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-3,+3]",
-       frequency="6h")
