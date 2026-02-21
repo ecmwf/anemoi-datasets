@@ -9,7 +9,7 @@
    This page describe what is specific to the tabular layout. For more
    general information creating and using datasets, see
    :ref:`using-introduction` and :ref:`building-introduction`
-   repectively.
+   respectively.
 
 .. _tabular-creating:
 
@@ -38,11 +38,11 @@ of the dataset, respectively. Because these value may fall on full round
 hours, it is recommended to set them explicitly.
 
 Unlike for gridded datasets, the ``start``, ``end`` and ``frequency``
-parameters can have arbritrary values, and are used to define how
-windows are built and how many samples are in the dataset. Note that
-``start`` and ``end`` can be outside the range of actual dates in the
-datasets. When requesting windows outside the range of actual dates,
-empty records will be returned to the user.
+parameters can have arbitrary values, and are used to define how windows
+are built and how many samples are in the dataset. Note that ``start``
+and ``end`` can be outside the range of actual dates in the datasets.
+When requesting windows outside the range of actual dates, empty records
+will be returned to the user.
 
 The default value for ``window`` is ``(-3h,0]`` and the default value
 for ``frequency`` is ``3h``. Windows are **relative** time intervals
@@ -78,11 +78,11 @@ step of ``frequency``.
 .. note::
 
    The **reference dates** are not necessarily the same as the actual
-   dates in the dataset. There are used, together with the ``window``
-   parameter, used to define the sample returns when iterating the
-   dataset. See below for more information. Nervertheless, in order to
-   insure compatibility with gridded datasets, the refrencnes dates are
-   available as the ``dates`` attribitude of the dataset.
+   dates in the dataset. They are used, together with the ``window``
+   parameter, to define the samples returned when iterating the dataset.
+   See below for more information. Nevertheless, in order to ensure
+   compatibility with gridded datasets, the reference dates are
+   available as the ``dates`` attribute of the dataset.
 
    It is not currently possible to combine tabular and gridded datasets,
    but when this will be implemented, ``ds.dates``, ``ds.frequency``,
@@ -230,21 +230,21 @@ Some text
 
 Some text
 
-Auxiliary information such as latitudes, longitudes, dates, etc. are
-also returned with each sample. To sort --------
+Auxiliary information such as latitudes, longitudes, dates, etc. is also
+returned with each sample.
 
 Tabular data are typically observations. Each observation has its own
-time and location. All observation shoul have the same set of variables,
-which can be NaNs for some observations.
+time and location. All observations should have the same set of
+variables, which can be NaNs for some observations.
 
 .. code:: python
 
    sample = ds[42]
 
-   # A 2D Array is returned, the first dimension is the number of observations in the 43st window.
+   # A 2D array is returned, the first dimension is the number of observations in the 43rd window.
    assert len(sample.shape) == 2
 
-   # The second dimension are the variables
+   # The second dimension is the variables
    assert sample.shape[1] == len(ds.variables)
 
    # Same for statistics
