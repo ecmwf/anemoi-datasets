@@ -207,25 +207,11 @@ Auxiliary information can be accessed as:
 Examples
 --------
 
-The following examples show varous ways to define the window and the
+The following examples show various ways to define the window and the
 frequency parameters when opening a tabular dataset.
 
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-5h,+1h]",
-       frequency="6h")
-
-Some text
-
-.. image:: ../_static/window-1.png
-   :width: 75%
-   :align: center
-
-Some text
+First example, the window width (6h) matches the frequency (6h), so the
+whole dataset is covered:
 
 .. code:: python
 
@@ -233,33 +219,18 @@ Some text
        path,
        start=1979,
        end=2020,
-       window="(-5h,+1h]",
+       window="(-6h,0]",
        frequency="6h")
 
-Some text
-
-.. image:: ../_static/window-2.png
-   :width: 75%
-   :align: center
-
-Some text
-
-.. code:: python
-
-   ds = open_dataset(
-       path,
-       start=1979,
-       end=2020,
-       window="(-5h,+1h]",
-       frequency="6h")
-
-Some text
+The schema below illustrates the window and frequency parameters in this
+case:
 
 .. image:: ../_static/window-3.png
    :width: 75%
    :align: center
 
-Some text
+Second example, the window width (6h) is narrower than the frequency
+(12h), so there are gaps between the windows:
 
 .. code:: python
 
@@ -270,10 +241,27 @@ Some text
        window="(-5h,+1h]",
        frequency="6h")
 
-Some text
+As illustrated in the schema below, there are gaps between the windows:
+
+.. image:: ../_static/window-2.png
+   :width: 75%
+   :align: center
+
+In the third example, the window width (8h) is wider than the frequency
+(6h), so there are overlaps between the windows:
+
+.. code:: python
+
+   ds = open_dataset(
+       path,
+       start=1979,
+       end=2020,
+       window="(-5h,+3h]",
+       frequency="6h")
+
+As illustrated in the schema below, there are overlaps between the
+windows:
 
 .. image:: ../_static/window-4.png
    :width: 75%
    :align: center
-
-Some text
