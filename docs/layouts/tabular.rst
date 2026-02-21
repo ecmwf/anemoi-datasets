@@ -151,22 +151,11 @@ is equivalent to:
        assert len(sample.shape) == 2
        assert sample.shape[1] == len(ds.variables)
 
-The pseudo-code above builds the list returned by `ds.dates`.
-
-As a result, the number of samples is:
-
-.. code:: python
-
-   n = (end - start) // frequency + 1
-
-which is also the length of the dataset:
-
-.. code:: python
-
-   len(ds)
-
 Examples
 --------
+
+The following examples show varous ways to define the window and the
+frequency parameters when opening a tabular dataset.
 
 .. code:: python
 
@@ -183,6 +172,8 @@ Some text
    :width: 75%
    :align: center
 
+Some text
+
 .. code:: python
 
    ds = open_dataset(
@@ -198,6 +189,8 @@ Some text
    :width: 75%
    :align: center
 
+Some text
+
 .. code:: python
 
    ds = open_dataset(
@@ -212,6 +205,8 @@ Some text
 .. image:: ../_static/window-3.png
    :width: 75%
    :align: center
+
+Some text
 
 .. code:: python
 
@@ -230,26 +225,17 @@ Some text
 
 Some text
 
-Auxiliary information such as latitudes, longitudes, dates, etc. is also
-returned with each sample.
+.. _tabular-auxiliary-information:
 
-Tabular data are typically observations. Each observation has its own
-time and location. All observations should have the same set of
-variables, which can be NaNs for some observations.
+Auxiliary information
+---------------------
 
-.. code:: python
-
-   sample = ds[42]
-
-   # A 2D array is returned, the first dimension is the number of observations in the 43rd window.
-   assert len(sample.shape) == 2
-
-   # The second dimension is the variables
-   assert sample.shape[1] == len(ds.variables)
-
-   # Same for statistics
-
-   assert len(ds.statistics['mean']) == len(ds.variables)
+Becuse tabular data is unstructured, information such as the latidudes,
+longitudes and dates if the actual data cannot be provided at the
+dataset level. Instead, it is provided at the sample level. When you
+access a sample, you can also access the corresponding latitudes,
+longitudes, dates, etc. This information is returned as attributes of
+the sample:
 
 Auxiliary information can be accessed as:
 
@@ -272,8 +258,7 @@ Auxiliary information can be accessed as:
 
    assert len(sample.longitudes) == number_of_observations_in_window
 
-
-   x.dates # Returns the corresponding row dates
+   sample.dates # Returns the corresponding row dates
 
    # Returns the corresponding dates
 
