@@ -127,9 +127,17 @@ You may also have to install pandoc on macOS:
    :hidden:
    :caption: User Guide
 
-   layouts/introduction
    using/introduction
    building/introduction
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Layouts
+
+   layouts/introduction
+   layouts/gridded
+   layouts/tabular
 
 .. toctree::
    :maxdepth: 3
@@ -144,15 +152,6 @@ You may also have to install pandoc on macOS:
    :caption: CLI
 
    cli/introduction
-   cli/create
-   cli/inspect
-   cli/grib-index
-   cli/compare
-   cli/copy
-   cli/scan
-   cli/patch
-   cli/compare-lam
-   cli/validate
 
 .. toctree::
    :maxdepth: 1

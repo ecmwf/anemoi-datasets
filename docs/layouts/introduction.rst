@@ -12,11 +12,3 @@ access large datasets
       fields with regularilty in time and space.
    -  :ref:`layouts-tabular` datasets are typically observations which
       are unstrctired both in time and space.
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Dataset layouts
-
-   gridded
-   tabular
