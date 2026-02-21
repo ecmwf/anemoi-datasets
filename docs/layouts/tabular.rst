@@ -80,13 +80,24 @@ step of ``frequency``.
    The **reference dates** are not necessarily the same as the actual
    dates in the dataset. There are used, together with the ``window``
    parameter, used to define the sample returns when iterating the
-   dataset. See below for more informataion.
+   dataset. See below for more information. Nervertheless, in order to
+   insure compatibility with gridded datasets, the refrencnes dates are
+   available as the ``dates`` attribitude of the dataset.
+
+   It is not currently possible to combine tabular and gridded datasets,
+   but when this will be implemented, ``ds.dates``, ``ds.frequency``,
+   ``len(ds)``, etc. will all be compatible and comparable between the
+   two layouts.
+
+   .. code:: python
+
+      ds.dates # Returns the list of reference dates defined by start, end and frequency
 
 The number of samples in the dataset is then given by the formula:
 
 .. code:: python
 
-   n = (end - start) // frequency + 1
+   number_of_samples = (end - start) // frequency + 1
 
 to get the list of dates, you can access the ``dates`` attribute of the
 dataset:
@@ -99,9 +110,9 @@ The length of the dataset is equal to the number of samples:
 
 .. code:: python
 
-   assert len(ds) == n
+   assert len(ds) == number_of_samples
 
-A sample is a 2D numpay array that is returned when indexing the dataset
+A sample is a 2D numpy array that is returned when indexing the dataset
 with an integer. The first dimension of the array is the number of
 observations in the window, and the second dimension is the number of
 variables. Each sample is constructed by applying the window to the
@@ -114,16 +125,16 @@ latter but not the former.
 
    sample = ds[42]
 
-   # A 2D Array is returned, the first dimension is the number of observations
-   # in the 43st window (samples are 0-indexed).
+   # A 2D array is returned, the first dimension is the number of observations
+   # in the 43rd window (samples are 0-indexed).
 
    assert len(sample.shape) == 2
 
-   # The second dimension are the variables
+   # The second dimension is the variables
 
    assert sample.shape[1] == len(ds.variables)
 
-the whole dataset can also be iteared over using a for loop:
+The whole dataset can also be iterated over using a for loop:
 
 .. code:: python
 
@@ -139,40 +150,6 @@ is equivalent to:
        sample = ds[i]
        assert len(sample.shape) == 2
        assert sample.shape[1] == len(ds.variables)
-
-Dates
-=====
-
-The dates of the dataset are defined as all dates between `start` and
-`end` with a step of `frequency`. The number of samples in the dataset
-is then given by the formula:
-
-.. code:: python
-
-   n = (end - start) // frequency + 1
-
-Windows
-=======
-
-Dates
------
-
-Unlike for fields, where the `start` and `end` must be within the list
-of available dates, in the case of observations, `start` and `end` can
-be anything, and empty records will be returned to the user when no
-observations are available for a given window.
-
-The dates of the dataset are then defined as all dates between `start`
-and `end` with a step of `frequency`:
-
-.. code:: python
-
-   result = []
-   date = start
-
-   while date <= end:
-       result.append(date)
-       date += frequency
 
 The pseudo-code above builds the list returned by `ds.dates`.
 

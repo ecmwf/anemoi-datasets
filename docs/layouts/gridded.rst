@@ -6,10 +6,10 @@
 
 .. note::
 
-   This page describe what is specific to the gridded layout. For more
-   general information creating and using datasets, see
+   This page describes what is specific to the gridded layout. For more
+   general information on creating and using datasets, see
    :ref:`using-introduction` and :ref:`building-introduction`
-   repectively.
+   respectively.
 
 .. _gridded-creating:
 
@@ -20,7 +20,7 @@
 To create a gridded dataset, the ``layout`` entry in the recipe must be
 set to ``gridded``:
 
-Please not that this is the default value, so setting it is optional.
+Please note that this is the default value, so setting it is optional.
 
 .. code:: yaml
 
@@ -33,7 +33,7 @@ Please not that this is the default value, so setting it is optional.
  Using
 *******
 
-Soem text here.
+Some text here.
 
 .. code:: python
 
