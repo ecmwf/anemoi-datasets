@@ -151,6 +151,59 @@ is equivalent to:
        assert len(sample.shape) == 2
        assert sample.shape[1] == len(ds.variables)
 
+.. _tabular-auxiliary-information:
+
+Auxiliary information
+---------------------
+
+Becuse tabular data is unstructured, information such as the latidudes,
+longitudes and dates if the actual data cannot be provided at the
+dataset level. Instead, it is provided at the sample level. When you
+access a sample, you can also access the corresponding latitudes,
+longitudes, dates, etc. This information is returned as attributes of
+the sample:
+
+Auxiliary information can be accessed as:
+
+.. code:: python
+
+   sample = ds[42]
+
+   number_of_observations_in_window = sample.shape[0]
+
+
+    # Returns the corresponding latitudes
+
+   sample.latitudes
+
+   assert len(sample.latitudes) == number_of_observations_in_window
+
+   # Returns the corresponding longitudes
+
+   sample.longitudes
+
+   assert len(sample.longitudes) == number_of_observations_in_window
+
+   sample.dates # Returns the corresponding row dates
+
+   # Returns the corresponding dates
+
+   sample.dates
+
+   assert len(sample.dates) == number_of_observations_in_window
+
+   # Return the reference date of the window
+
+   sample.reference_date
+
+   assert sample.reference_date == ds.start_date + 42 * ds.frequency
+
+   # Return the time_deltas in seconds relative to the reference_date
+
+   sample.time_deltas
+
+   assert len(sample.time_deltas) == number_of_observations_in_window
+
 Examples
 --------
 
@@ -224,56 +277,3 @@ Some text
    :align: center
 
 Some text
-
-.. _tabular-auxiliary-information:
-
-Auxiliary information
----------------------
-
-Becuse tabular data is unstructured, information such as the latidudes,
-longitudes and dates if the actual data cannot be provided at the
-dataset level. Instead, it is provided at the sample level. When you
-access a sample, you can also access the corresponding latitudes,
-longitudes, dates, etc. This information is returned as attributes of
-the sample:
-
-Auxiliary information can be accessed as:
-
-.. code:: python
-
-   sample = ds[42]
-
-   number_of_observations_in_window = sample.shape[0]
-
-
-    # Returns the corresponding latitudes
-
-   sample.latitudes
-
-   assert len(sample.latitudes) == number_of_observations_in_window
-
-   # Returns the corresponding longitudes
-
-   sample.longitudes
-
-   assert len(sample.longitudes) == number_of_observations_in_window
-
-   sample.dates # Returns the corresponding row dates
-
-   # Returns the corresponding dates
-
-   sample.dates
-
-   assert len(sample.dates) == number_of_observations_in_window
-
-   # Return the reference date of the window
-
-   sample.reference_date
-
-   assert sample.reference_date == ds.start_date + 42 * ds.frequency
-
-   # Return the timedeltas in seconds relative to the reference_date
-
-   sample.timedeltas
-
-   assert len(sample.timedeltas) == number_of_observations_in_window

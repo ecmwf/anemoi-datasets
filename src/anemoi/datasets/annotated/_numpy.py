@@ -73,9 +73,9 @@ class AnnotatedNDArray(np.ndarray):
         return self._anemoi_annotation.longitudes
 
     @property
-    def timedeltas(self) -> np.ndarray:
+    def time_deltas(self) -> np.ndarray:
         """Array of time deltas associated with the data."""
-        return self._anemoi_annotation.timedeltas
+        return self._anemoi_annotation.time_deltas
 
     @property
     def reference_date(self) -> datetime.datetime:
