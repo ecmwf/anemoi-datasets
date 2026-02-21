@@ -33,13 +33,11 @@ Please note that this is the default value, so setting it is optional.
  Using
 *******
 
-Some text here.
+In addition to the parameters described in :ref:`using-introduction`,
+you can access the following attributes of a gridded dataset:
 
 .. code:: python
 
-   ds = open_dataset(dataset, frequency="6h")
+   ds.latitudes # Latitudes of the grid points
 
-   ds.dates
-   ds.frequency
-   ds.latitudes
-   ds.longitudes
+   ds.longitudes # Longitudes of the grid points
