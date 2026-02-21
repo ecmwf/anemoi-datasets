@@ -225,7 +225,7 @@ whole dataset is covered:
 The schema below illustrates the window and frequency parameters in this
 case:
 
-.. image:: ../_static/window-3.png
+.. image:: ../_static/window-1.png
    :width: 75%
    :align: center
 
@@ -262,6 +262,6 @@ In the third example, the window width (8h) is wider than the frequency
 As illustrated in the schema below, there are overlaps between the
 windows:
 
-.. image:: ../_static/window-4.png
+.. image:: ../_static/window-3.png
    :width: 75%
    :align: center
