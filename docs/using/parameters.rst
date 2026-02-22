@@ -109,7 +109,7 @@ meaning of the emojis is as follows:
          the date must be present in the dataset. For tabular datasets,
          the date is used as-is, and any windows requested between the
          actual end of date of the data and that date will return empty
-         arrays (See :ref:`tabular-window`).
+         arrays (See :ref:`layouts-tabular`).
 
    -  -  ensemble
       -  ✅
@@ -138,7 +138,7 @@ meaning of the emojis is as follows:
          datasets, it is used to create windows of the specified
          frequency (e.g. "1D" for daily windows) and is not connected to
          the dataset frequency (which is undefined) (See
-         :ref:`tabular-window`).
+         :ref:`layouts-tabular`).
 
    -  -  grids
       -  ✅
@@ -249,7 +249,7 @@ meaning of the emojis is as follows:
          datasets, the date must be present in the dataset. For tabular
          datasets, the date is used as-is, and any windows requested
          between that date and the actual start of date of the data will
-         return empty arrays (See :ref:`tabular-window`).
+         return empty arrays (See :ref:`layouts-tabular`).
 
    -  -  statistics
       -  ✅
@@ -273,8 +273,8 @@ meaning of the emojis is as follows:
       -  ✅
 
       -  Window specification for tabular datasets. For gridded
-         datasets, that parameter ignored. See :ref:`tabular-window` for
-         details.
+         datasets, that parameter ignored. See :ref:`layouts-tabular`
+         for details.
 
    -  -  x
       -  🗑️

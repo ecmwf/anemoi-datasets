@@ -62,9 +62,13 @@ Samples
 
 The dataset is made of samples, which are built by applying the
 ``window`` to a list of *reference dates* defined by the ``start``,
-``end`` and ``frequency`` parameters. The references dates of the
-dataset are defined as all dates between ``start`` and ``end`` with a
-step of ``frequency``.
+``end`` and ``frequency`` parameters.
+
+Reference dates
+---------------
+
+The references dates of the dataset are defined as all dates between
+``start`` and ``end`` with a step of ``frequency``.
 
 .. code:: python
 
@@ -112,6 +116,9 @@ The length of the dataset is equal to the number of samples:
 
    assert len(ds) == number_of_samples
 
+Single sample
+-------------
+
 A sample is a 2D numpy array that is returned when indexing the dataset
 with an integer. The first dimension of the array is the number of
 observations in the window, and the second dimension is the number of
@@ -154,7 +161,7 @@ is equivalent to:
 .. _tabular-auxiliary-information:
 
 Auxiliary information
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 Becuse tabular data is unstructured, information such as the latidudes,
 longitudes and dates if the actual data cannot be provided at the
@@ -203,6 +210,63 @@ Auxiliary information can be accessed as:
    sample.time_deltas
 
    assert len(sample.time_deltas) == number_of_observations_in_window
+
+Slices
+------
+
+When slicing the dataset, the same rules apply as for indexing with an
+integer, but you can recover the samples using the ``boudaries``
+attribute of the resulting array . The ``boudaries`` attribute is a list
+of ``slice`` objects that can be used to access the samples in the
+result. You also can retrieve the reference dates with the
+``reference_dates`` attribute of the result.
+
+.. code:: python
+
+   samples = ds[10:30]
+
+   assert len(samples.boudaries) == 20
+   assert len(samples.reference_dates) == 20
+
+   i = 10
+   for b in samples.boudaries:
+         sample = samples[b]
+         assert np.array_equal(sample, ds[i])
+         i += 1
+
+The ``latitudes``, ``longitudes``, ``dates``, ``time_deltas``, etc.
+attributes of the resulting array are the concatenation of the
+corresponding attributes of the samples.
+
+.. code:: python
+
+   assert np.array_equal(samples.latitudes, np.concatenate([ds[i].latitudes for i in range(10,30)]))
+
+   assert np.array_equal(samples.longitudes, np.concatenate([ds[i].longitudes for i in range(10,30)]))
+
+   assert np.array_equal(samples.dates, np.concatenate([ds[i].dates for i in range(10,30)]))
+
+.. warning::
+
+   The two codes below are not equivalent:
+
+   .. code:: python
+
+      samples = ds[10:30]
+      boundaries = samples.boudaries
+
+      latitudes = samples.latitudes[boundaries[1]]
+
+   and:
+
+   .. code:: python
+
+      samples = ds[10:30]
+      boundaries = samples.boudaries
+
+      latitudes = samples[boundaries[1]].latitudes
+
+   Only the first construct will work.
 
 Examples
 --------
