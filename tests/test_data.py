@@ -28,19 +28,19 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.inspect import InspectZarr
 from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.misc.testing import default_test_indexing
-from anemoi.datasets.use.gridded import save_dataset
-from anemoi.datasets.use.gridded.concat import Concat
-from anemoi.datasets.use.gridded.ensemble import Ensemble
-from anemoi.datasets.use.gridded.grids import GridsBase
-from anemoi.datasets.use.gridded.join import Join
-from anemoi.datasets.use.gridded.misc import as_first_date
-from anemoi.datasets.use.gridded.misc import as_last_date
-from anemoi.datasets.use.gridded.padded import Padded
-from anemoi.datasets.use.gridded.select import Rename
-from anemoi.datasets.use.gridded.select import Select
-from anemoi.datasets.use.gridded.statistics import Statistics
-from anemoi.datasets.use.gridded.stores import Zarr
-from anemoi.datasets.use.gridded.subset import Subset
+from anemoi.datasets.usage.common.rename import Rename
+from anemoi.datasets.usage.common.select import Select
+from anemoi.datasets.usage.gridded import save_dataset
+from anemoi.datasets.usage.gridded.concat import Concat
+from anemoi.datasets.usage.gridded.ensemble import Ensemble
+from anemoi.datasets.usage.gridded.grids import GridsBase
+from anemoi.datasets.usage.gridded.join import Join
+from anemoi.datasets.usage.gridded.padded import Padded
+from anemoi.datasets.usage.gridded.statistics import Statistics
+from anemoi.datasets.usage.gridded.store import GriddedZarr
+from anemoi.datasets.usage.gridded.subset import Subset
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
 
@@ -62,7 +62,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", lambda name: name + ".zarr"):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
@@ -519,7 +519,7 @@ def test_simple() -> None:
     """Test a simple dataset."""
     test = DatasetTester("test-2021-2022-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 2 * 4,
         date_to_row=lambda date: simple_row(date, "abcd"),
         start_date=datetime.datetime(2021, 1, 1),
@@ -1135,7 +1135,7 @@ def test_slice_1() -> None:
     """Test slicing a dataset (case 1)."""
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 1 * 4,
         expected_shape=(365 * 1 * 4, 4, 1, VALUES),
         expected_variables="abcd",

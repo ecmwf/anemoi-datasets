@@ -19,7 +19,7 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
-from anemoi.datasets.check import check_zarr
+from anemoi.datasets.misc.check import check_zarr
 
 from . import Command
 
@@ -112,7 +112,7 @@ class ZarrCopier:
         if source_is_ssh or target_is_ssh:
             if self.rechunk:
                 raise NotImplementedError("Rechunking with SSH not implemented.")
-            assert NotImplementedError("SSH not implemented.")
+            raise NotImplementedError("SSH not implemented.")
 
     def _store(self, path: str, nested: bool = False) -> Any:
         """Get the storage path.
@@ -205,6 +205,7 @@ class ZarrCopier:
                 continue
             elif c == "full":
                 chunks[i] = shape[i]
+                continue
             c = int(c)
             c = min(c, shape[i])
             chunks[i] = c

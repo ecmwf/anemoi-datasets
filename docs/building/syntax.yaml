@@ -1,22 +1,73 @@
-description:
+# Dataset description (compulsory)
 
-name:
+description: |
+  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
+  tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+  quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+  Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+  fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident,
+  sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+# The name of the dataset (optional, but recommended). This entry is ingrored by anemoi-datasets
+# but use by some tools to identify the dataset. Best practice is to use hyphens, not underscores or camel case, as these names
+# will be used to build URLs.
+
+name: my-dataset
+
+# The licence under which the dataset is released (optional, but recommended).
 
 licence: CC-BY-4.0
 
-attribution:
+# The name of the author(s) of the dataset (optional, but recommended).
 
-citation:
+attribution: ECMWF
+
+# The range of dates covered by the dataset (compulsory).
+# The various source are called with a list of dates build from start, end and frequency.
+# How the dates are used by the sources depends on the source (gridded or tabular).
+# The frequency can be given in human friendly format (e.g. 6h, 1d) or in ISO 8601 format (e.g. PT6H, P1D).
+# All dates are always undestood as UTC.
 
 dates:
-  start:
-  end:
-  frequency:
+  start: 2000-01-01 00:00:00
+  end: 2000-01-10 18:00:00
+  frequency: 6h
 
-build:
-
+# This part is compulsory and describes how to build the dataset using sources and filters
 
 input:
+  pipe:
+    - grib:
+        path: /path/to/file.grib
+    - rename:
+        t2m: 2t
 
+# An optional section describing named snipets of code that can be reused in the recipe
+
+data_sources:
+  my_source_1:
+    grib:
+      path: /path/to/file.grib
+  my_source_2:
+    netcdf:
+      path: /path/to/file.nc
+
+# List of options to control the output of the dataset (optional)
 
 output:
+  layout: gridded # The layout of the dataset (e.g. gridded, tabular, etc.)
+  dtype: float32 # The data type of the output variables (e.g. float32, int16, etc.)
+
+# List of options to control the building process (optional)
+
+build:
+  group_by: 10 # The number of dates to process together (e.g. 10, monthly, weekly, etc.)
+
+# List of options to control the generation of statistics (optional)
+# Defaults are inferred from the dates section if not provided, using some heuristics
+
+statistics:
+  start: 2000-01-01 00:00:00
+  end: 2000-01-10 18:00:00
+  tendencies: [6h, 12h, 24h] # The list of tendencies to compute (e.g. 6h, 12h, 24h, etc.)

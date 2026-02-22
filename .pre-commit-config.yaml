@@ -5,15 +5,15 @@ repos:
   - id: clear-notebooks-output
     name: clear-notebooks-output
     files: tools/.*\.ipynb$
-    stages: [pre-commit]
+    stages: [ pre-commit ]
     language: python
     entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
-    additional_dependencies: [jupyter]
+    additional_dependencies: [ jupyter ]
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0
   hooks:
   - id: check-yaml # Check YAML files for syntax errors only
-    args: [--unsafe, --allow-multiple-documents]
+    args: [ --unsafe, --allow-multiple-documents ]
   - id: debug-statements # Check for debugger imports and py37+ breakpoint()
   - id: end-of-file-fixer # Ensure files end in a newline
   - id: trailing-whitespace # Trailing whitespace checker
@@ -21,7 +21,7 @@ repos:
   - id: check-added-large-files # Check for large files added to git
   - id: check-merge-conflict # Check for files that contain merge conflict
 - repo: https://github.com/pre-commit/pygrep-hooks
-  rev: v1.10.0  # Use the ref you want to point at
+  rev: v1.10.0 # Use the ref you want to point at
   hooks:
   - id: python-use-type-annotations # Check for missing type annotations
   - id: python-check-blanket-noqa # Check for # noqa: all
@@ -30,7 +30,7 @@ repos:
   rev: 25.9.0
   hooks:
   - id: black
-    args: [--line-length=120]
+    args: [ --line-length=120, --workers=1 ]
 - repo: https://github.com/pycqa/isort
   rev: 7.0.0
   hooks:
@@ -63,23 +63,28 @@ repos:
   rev: "0.1.5"
   hooks:
   - id: docconvert
-    args: ["numpy"]
+    args: [ "numpy" ]
 - repo: https://github.com/tox-dev/pyproject-fmt
   rev: "v2.11.0"
   hooks:
   - id: pyproject-fmt
-    args: ["--max-supported-python", "3.12"]
+    args: [ "--max-supported-python", "3.12" ]
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.21.2
+  hooks:
+  - id: pyupgrade
+    args: [ --py311-plus ]
 - repo: https://github.com/jshwi/docsig # Check docstrings against function sig
   rev: v0.71.0
   hooks:
   - id: docsig
     args:
     - --ignore-no-params # Allow docstrings without parameters
-    - --check-dunders    # Check dunder methods
+    - --check-dunders # Check dunder methods
     - --check-overridden # Check overridden methods
-    - --check-protected  # Check protected methods
-    - --check-class      # Check class docstrings
-    - --disable=SIG101,SIG102     # Disable empty docstrings
+    - --check-protected # Check protected methods
+    - --check-class # Check class docstrings
+    - --disable=SIG101,SIG102 # Disable empty docstrings
 ci:
   autoupdate_schedule: monthly
   autoupdate_commit_msg: "chore(deps): pre-commit.ci autoupdate"

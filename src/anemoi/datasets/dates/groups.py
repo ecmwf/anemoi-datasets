@@ -24,11 +24,11 @@ from anemoi.datasets.dates import as_datetime
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
     """Shorten the list of dates for display.
 
-    backen    Args:
-            dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
+    Args:
+        dates (Union[List[datetime.datetime], Tuple[datetime.datetime, ...]]): The list of dates.
 
-        Returns:
-            Union[str, List[str]]: The shortened list of dates.
+    Returns:
+        Union[str, List[str]]: The shortened list of dates.
     """
     if isinstance(dates, (list, tuple)):
         dates = [d.isoformat() for d in dates]
@@ -47,6 +47,12 @@ class GroupOfDates:
         self.dates = [as_datetime(_) for _ in dates]
         self.provider = provider
         self.partial_ok = partial_ok
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
+        """Used in pytest"""
+        dates = DatesProvider.from_config(config)
+        return cls(dates.values, dates)
 
     def __len__(self) -> int:
         """Return the number of dates in the group.
@@ -83,6 +89,18 @@ class GroupOfDates:
         """
         return isinstance(other, GroupOfDates) and self.dates == other.dates
 
+    @property
+    def start_range(self) -> datetime.datetime:
+        import numpy as np
+
+        return np.datetime64(self.provider.start_range(self.dates), "ns")
+
+    @property
+    def end_range(self) -> datetime.datetime:
+        import numpy as np
+
+        return np.datetime64(self.provider.end_range(self.dates), "ns") - np.timedelta64(1, "ns")
+
 
 class Groups:
     """A collection of groups of dates.
@@ -114,7 +132,7 @@ class Groups:
         2
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, group_by: Any, **kwargs: Any) -> None:
         """Initialize the class with the provided keyword arguments.
 
         Parameters
@@ -124,7 +142,6 @@ class Groups:
                 - Other keys for DatesProvider configuration.
         """
 
-        group_by = kwargs.pop("group_by")
         self._dates = DatesProvider.from_config(**kwargs)
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
@@ -190,6 +207,22 @@ class Groups:
         go = next(iter(self))
         return GroupOfDates([go.dates[0]], go.provider)
 
+    def first_date(self) -> datetime.datetime:
+        """Return the first date across all groups.
+
+        Returns:
+            datetime.datetime: The first date.
+        """
+        return min(self._dates.values)
+
+    def last_date(self) -> datetime.datetime:
+        """Return the last date across all groups.
+
+        Returns:
+            datetime.datetime: The last date.
+        """
+        return max(self._dates.values)
+
 
 class Filter:
     """A class to filter out missing dates."""
@@ -229,6 +262,7 @@ class Grouper(ABC):
             "monthly": lambda dt: (dt.year, dt.month),
             "daily": lambda dt: (dt.year, dt.month, dt.day),
             "weekly": lambda dt: (dt.weekday(),),
+            "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
         return GrouperByKey(key)

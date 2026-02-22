@@ -26,4 +26,4 @@ input:
       #- sin_latitude
 
 statistics:
-  end: 2021-01-02
+  end: 2021-01-02 12:00:00

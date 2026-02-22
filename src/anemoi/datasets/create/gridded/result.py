@@ -60,6 +60,20 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
     }
 
     def _merge(md1: dict[str, Any], md2: dict[str, Any]) -> dict[str, Any]:
+        """Merge two metadata dictionaries, combining differing values into lists.
+
+        Parameters
+        ----------
+        md1 : dict[str, Any]
+            First metadata dictionary.
+        md2 : dict[str, Any]
+            Second metadata dictionary.
+
+        Returns
+        -------
+        dict[str, Any]
+            The merged metadata dictionary.
+        """
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
         result: dict[str, Any] = {}
         for k in md1.keys():
@@ -276,13 +290,24 @@ def _data_request(data: Any) -> dict[str, Any]:
     return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
-class FieldResult(Result):
+class GriddedResult(Result):
     """Class to represent the result of an action in the dataset creation process."""
 
     empty: bool = False
     _coords_already_built: bool = False
 
     def __init__(self, context: Any, argument: Any, datasource: Any) -> None:
+        """Initialise a GriddedResult instance.
+
+        Parameters
+        ----------
+        context : Any
+            The context in which the result is created.
+        argument : Any
+            The group of dates for the result.
+        datasource : Any
+            The data source for the result.
+        """
 
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -297,12 +322,12 @@ class FieldResult(Result):
 
     @property
     def data_request(self) -> dict[str, Any]:
-        """Returns a dictionary with the parameters needed to retrieve the data."""
+        """Return a dictionary with the parameters needed to retrieve the data."""
         return _data_request(self.datasource)
 
     @property
     def origins(self) -> dict[str, Any]:
-        """Returns a dictionary with the parameters needed to retrieve the data."""
+        """Return a dictionary with the parameters needed to retrieve the data origins."""
         return {"version": 1, "origins": self._origins}
 
     def get_cube(self) -> Any:
@@ -320,7 +345,7 @@ class FieldResult(Result):
         self.order_by: Any = self.context.order_by
         self.flatten_grid: Any = self.context.flatten_grid
         self.start: float = time.time()
-        LOG.debug("Sorting dataset %s %s", dict(self.order_by), self.remapping)
+        LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
         assert self.order_by, self.order_by
 
         self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
@@ -334,6 +359,14 @@ class FieldResult(Result):
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
+        except AttributeError:
+            import pandas as pd
+
+            if isinstance(ds, pd.DataFrame):
+                raise ValueError(
+                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'format: tabular' in your recipe?"
+                )
+            raise
         except ValueError:
             self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             # raise ValueError(f"Error in {self}")
@@ -507,6 +540,7 @@ class FieldResult(Result):
         exit(1)
 
     def build_coords(self) -> None:
+        """Build the coordinate arrays for the result if not already built."""
         """Build the coordinates for the result."""
         if self._coords_already_built:
             return
@@ -514,7 +548,7 @@ class FieldResult(Result):
         cube: Any = self.get_cube()
 
         from_data: Any = cube.user_coords
-        from_config: Any = self.context.order_by
+        from_config: Any = {k: "ascending" for k in self.context.order_by}
 
         keys_from_config: list = list(from_config.keys())
         keys_from_data: list = list(from_data.keys())
@@ -615,12 +649,12 @@ class FieldResult(Result):
     @cached_property
     def shape(self) -> list[int]:
         """Retrieve the shape of the result."""
-        return [
+        return (
             len(self.group_of_dates),
             len(self.variables),
             len(self.ensembles),
             len(self.grid_values),
-        ]
+        )
 
     @cached_property
     def coords(self) -> dict[str, Any]:

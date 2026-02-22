@@ -271,6 +271,9 @@ class StartEndDates(DatesProvider):
 
         super().__init__(missing=missing, window=window)
 
+    def dump(self, dumper):
+        return dumper.start_end_dates(self.start, self.end, self.frequency)
+
     def as_dict(self) -> dict[str, Any]:
         """Convert the StartEndDates instance to a dictionary.
 
@@ -285,13 +288,13 @@ class StartEndDates(DatesProvider):
             "frequency": frequency_to_string(self.frequency),
         }.update(self.kwargs)
 
-    @property
-    def start_date(self) -> datetime.datetime:
-        return self.start
+    def start_range(self, dates) -> datetime.datetime:
+        """Used for tabular datasets grouping."""
+        return dates[0]
 
-    @property
-    def end_date(self) -> datetime.datetime:
-        return self.end
+    def end_range(self, dates) -> datetime.datetime:
+        """Used for tabular datasets grouping."""
+        return dates[-1] + self.frequency - datetime.datetime.resolution
 
 
 class Hindcast:

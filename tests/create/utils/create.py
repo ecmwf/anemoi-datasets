@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.tasks import task_factory
+from anemoi.datasets.create.tasks import run_task
 
 
 class TestingContext:
@@ -21,23 +21,20 @@ class TestingContext:
 
 def create_dataset(
     *,
-    config: str | dict[str, Any],
+    recipe: str | dict[str, Any],
     output: str | None,
     delta: list[str] | None = None,
-    is_test: bool = False,
 ) -> str:
     """Create a dataset based on the provided configuration.
 
     Parameters
     ----------
-    config : Union[str, Dict[str, Any]]
+    recipe : str | dict[str, Any]
         The configuration for the dataset. Can be a path to a YAML file or a dictionary.
     output : Optional[str]
         The output path for the dataset. If None, a temporary directory will be created.
     delta : Optional[List[str]], optional
         List of delta for secondary statistics, by default None.
-    is_test : bool, optional
-        Flag indicating if the dataset creation is for testing purposes, by default False.
 
     Returns
     -------
@@ -45,29 +42,29 @@ def create_dataset(
         The path to the created dataset.
     """
 
-    if isinstance(config, dict):
+    if isinstance(recipe, dict):
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".yaml")
-        yaml.dump(config, temp_file)
-        config = temp_file.name
+        yaml.dump(recipe, temp_file)
+        recipe = temp_file.name
 
     if output is None:
         output = tempfile.mkdtemp(suffix=".zarr")
 
-    task_factory("init", config=config, path=output, overwrite=True, test=is_test).run()
-    task_factory("load", path=output).run()
-    task_factory("finalise", path=output).run()
-    task_factory("patch", path=output).run()
+    run_task("init", recipe=recipe, path=output, overwrite=True)
+    run_task("load", path=output)
+    run_task("finalise", path=output)
+    run_task("patch", path=output)
 
     if delta is not None:
-        task_factory("init_additions", path=output, delta=delta).run()
-        task_factory("load_additions", path=output, delta=delta).run()
-        task_factory("finalise_additions", path=output, delta=delta).run()
+        run_task("init_additions", path=output, delta=delta)
+        run_task("load_additions", path=output, delta=delta)
+        run_task("finalise_additions", path=output, delta=delta)
 
-    task_factory("cleanup", path=output).run()
+    run_task("cleanup", path=output)
 
     if delta is not None:
-        task_factory("cleanup", path=output, delta=delta).run()
+        run_task("cleanup", path=output, delta=delta)
 
-    task_factory("verify", path=output).run()
+    run_task("verify", path=output)
 
     return output

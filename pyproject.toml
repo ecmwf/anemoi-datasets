@@ -52,8 +52,10 @@ dependencies = [
   "cfunits",
   "glom",
   "jsonschema",
+  "lru-dict",
   "numcodecs<0.16",                   # Until we move to zarr3
   "numpy",
+  "pydantic",
   "pyyaml",
   "ruamel-yaml",
   "semantic-version",
@@ -77,6 +79,7 @@ optional-dependencies.create = [
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
   "entrypoints",
+  "fasteners",
   "pyproj>=3",
 ]
 
@@ -125,7 +128,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools.package-data]
-"anemoi.datasets.data" = [
+"anemoi.datasets.use" = [
   "*.css",
 ]
 
@@ -138,15 +141,15 @@ profile = "black"
 [tool.pytest.ini_options]
 testpaths = "tests"
 addopts = [
-  "--numprocesses=auto",
-  "--maxprocesses=16",
+  #"--numprocesses=auto",
+  #"--maxprocesses=16",
   "--strict-config",
 ]
 
 [tool.mypy]
 strict = false
 exclude = [
-  "docs/**",
+  "docs/.*",
 ]
 
 [tool.pydocstringformatter]
