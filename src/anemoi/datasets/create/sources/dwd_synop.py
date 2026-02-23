@@ -5,9 +5,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import glob 
 import logging
-from typing import Any
 import pandas as pd
 
 from ..source import Source
@@ -16,27 +14,6 @@ from earthkit.data.utils.patterns import Pattern
 
 
 LOG = logging.getLogger(__name__)
-
-def _expand(paths: list[str]) -> any:
-    """Expand the given paths using glob.
-
-    Parameters
-    ----------
-    paths : list of str
-        List of paths to expand.
-
-    Returns
-    -------
-    Any
-        The expanded paths.
-    """
-    for path in paths:
-        cnt = 0
-        for p in glob.glob(path):
-            yield p
-            cnt += 1
-        if cnt == 0:
-            yield path
 
 
 @source_registry.register("dwd_synop")
@@ -156,7 +133,11 @@ class DWDSYNOPSource(Source):
             dataframes.append(df_wide)
 
         # join dfs and return
-        return pd.concat(dataframes)
+
+        result = pd.concat(dataframes)
+        # currently correct format for datetime unclear?
+        result["date"] = result["date"].astype("datetime64[ns]")
+        return result 
 
     def create_varno_dictionaries(self):
             import dacepy.fdbk.tables as ftables
