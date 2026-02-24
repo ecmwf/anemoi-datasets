@@ -35,7 +35,6 @@ ORDER = (
     "dataset_status",
     "licence",
     "attribution",
-    "env",
     "dates",
     "common",
     "data_sources",

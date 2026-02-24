@@ -658,7 +658,16 @@ class StatisticsCollector:
             if k in variables_metadata:
                 variables_metadata[k]["constant_in_time"] = True
 
-        dataset.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
+        dataset.update_metadata(
+            constant_fields=sorted(constants),
+            variables_metadata=variables_metadata,
+        )
+
+        if hasattr(self._filter, "statistics_start_date"):
+            dataset.update_metadata(statistics_start_date=self._filter.statistics_start_date)
+
+        if hasattr(self._filter, "statistics_end_date"):
+            dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
 
     def adjust_partial_statistics(self, dataset, state) -> None:
         """Adjust statistics for a specific group and data range.

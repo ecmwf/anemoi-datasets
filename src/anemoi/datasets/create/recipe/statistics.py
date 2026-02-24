@@ -97,22 +97,25 @@ class Statistics(BaseModel):
 
         LOG.info(f"Using statistics date range: start={start}, end={end}")
 
-        return PicklableFilter(start, end)
+        return StatisticsFilter(start, end)
 
 
-class PicklableFilter:
+class StatisticsFilter:
     def __init__(self, start, end):
-        self.start = start
-        self.end = end
+        self.statistics_start_date = start
+        self.statistics_end_date = end
 
     def __call__(self, array, dates, offset=0):
-        start = np.searchsorted(dates, self.start, side="left")
-        end = np.searchsorted(dates, self.end, side="right")
+        start = np.searchsorted(dates, self.statistics_start_date, side="left")
+        end = np.searchsorted(dates, self.statistics_end_date, side="right")
         start = max(0, min(start, start + offset))
         end = min(len(array), max(end, end + offset))
         return array[start:end]
 
     def __eq__(self, other):
-        if not isinstance(other, PicklableFilter):
+        if not isinstance(other, StatisticsFilter):
             return False
-        return self.start == other.start and self.end == other.end
+        return (
+            self.statistics_start_date == other.statistics_start_date
+            and self.statistics_end_date == other.statistics_end_date
+        )

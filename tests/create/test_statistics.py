@@ -15,7 +15,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from anemoi.datasets.create.recipe.statistics import PicklableFilter
+from anemoi.datasets.create.recipe.statistics import StatisticsFilter
 from anemoi.datasets.create.statistics import StatisticsCollector
 
 # set numpy seed
@@ -372,7 +372,7 @@ def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
     if filter_end - filter_start < delta:
         return  # Not enough data points for tendencies
 
-    filter = PicklableFilter(filter_start, filter_end)
+    filter = StatisticsFilter(filter_start, filter_end)
 
     # Actual filtered range is [filter_start, filter_end] (inclusive on both ends)
     # For tendencies, we also need the lookback data to be in range
@@ -447,7 +447,7 @@ def test_merge_statistic_with_filter(filter_start, filter_end, deltas, cutoff):
         filter_start = dates[0]
     if filter_end is None:
         filter_end = dates[-1]
-    filter = PicklableFilter(filter_start, filter_end)
+    filter = StatisticsFilter(filter_start, filter_end)
 
     c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=deltas, filter=filter)
     data = data.copy()

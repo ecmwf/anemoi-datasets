@@ -259,8 +259,10 @@ class Creator(ABC):
         pass
 
     def final_metadata(self, dataset: Dataset) -> None:
+        # Metadata for the catalogue
         dataset.update_metadata(
             chunks=dataset.data.chunks,
+            shape=dataset.data.shape,
         )
 
     ######################################################
