@@ -38,7 +38,7 @@ class WindowMetaDataBase(ABC):
 
     @property
     @abstractmethod
-    def timedeltas(self) -> np.ndarray:
+    def time_deltas(self) -> np.ndarray:
         pass
 
     @property

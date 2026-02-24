@@ -59,7 +59,7 @@ class WindowMetaData(WindowMetaDataBase):
         return np.array([np.datetime64(epoch_to_date(ts), "s") for ts in timestamps])
 
     @property
-    def timedeltas(self) -> np.ndarray:
+    def time_deltas(self) -> np.ndarray:
         """Array of time deltas for the window."""
         return self.aux_array[:, 0] * 86400 + self.aux_array[:, 1] - self.owner._epochs[self.index]
 
@@ -112,9 +112,9 @@ class MultipleWindowMetaData(WindowMetaDataBase):
         return np.concatenate([child.dates for child in self.children], axis=0)
 
     @property
-    def timedeltas(self) -> np.ndarray:
+    def time_deltas(self) -> np.ndarray:
         """Array of time deltas for the multiple windows."""
-        return np.concatenate([child.timedeltas for child in self.children], axis=0)
+        return np.concatenate([child.time_deltas for child in self.children], axis=0)
 
     @property
     def reference_date(self) -> np.datetime64:

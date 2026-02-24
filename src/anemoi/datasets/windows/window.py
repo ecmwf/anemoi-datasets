@@ -35,7 +35,7 @@ class Window:
         m = re.match(r"([\[\(])(.*),(.*)([\]\)])", window)
         if not m:
             raise ValueError(f"Window: invalid window string: {window}")
-        # Convert before/after offsets to timedeltas
+        # Convert before/after offsets to time_deltas
         self.before = frequency_to_timedelta(m.group(2))
         self.after = frequency_to_timedelta(m.group(3))
         # Determine if window is exclusive at each end

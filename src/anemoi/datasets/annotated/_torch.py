@@ -82,9 +82,9 @@ class AnnotatedTorchTensor(torch.Tensor):
         return torch.tensor(self._anemoi_annotation.longitudes, device=self.device)
 
     @property
-    def timedeltas(self) -> torch.Tensor:
+    def time_deltas(self) -> torch.Tensor:
         """Array of time deltas associated with the data."""
-        return torch.tensor(self._anemoi_annotation.timedeltas, device=self.device)
+        return torch.tensor(self._anemoi_annotation.time_deltas, device=self.device)
 
     @property
     def reference_date(self) -> datetime.datetime:
