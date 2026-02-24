@@ -9,6 +9,7 @@
 
 import datetime
 import logging
+import sys
 import time
 from typing import Any
 
@@ -29,6 +30,8 @@ class TabularResult(Result):
 
     def __init__(self, context: Any, argument: Any, frame: pd.DataFrame) -> None:
 
+        original_frame = frame
+
         assert isinstance(frame, pd.DataFrame), type(frame)
 
         assert "latitude" in frame.columns, frame.columns
@@ -39,20 +42,18 @@ class TabularResult(Result):
         assert np.issubdtype(frame["longitude"].dtype, np.floating)
         assert np.issubdtype(frame["date"].dtype, np.datetime64)
 
+        # Sort by dates, so the assertions below that check the first and last dates are correct after conversion to epoch seconds are valid
+        frame = frame.sort_values(by="date").reset_index(drop=True)
+        # Do not trust the sources/filters, just re-filter the data to ensure all dates are within the specified range
+        start_range, end_range = argument.start_range, argument.end_range
+        mask = (frame["date"] >= start_range) & (frame["date"] <= end_range)
+        frame = frame.loc[mask].reset_index(drop=True)
+
         original_dates = frame["date"]
 
         self.frame = frame.reset_index(drop=True)
-        start_range, end_range = argument.start_range, argument.end_range
 
         date_unit = np.datetime_data(frame["date"].dtype)[0]
-
-        # Filter the DataFrame rows between start_range and end_range (inclusive)
-        mask = (self.frame["date"] >= start_range) & (self.frame["date"] <= end_range)
-        start = time.time()
-        self.frame = self.frame.loc[mask].reset_index(drop=True)
-        LOG.info(
-            f"Filtered TabularResult between {start_range} and {end_range} in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
-        )
 
         # Round date to the nearest second
         # Convert "date" to integer seconds since the Unix epoch
@@ -69,12 +70,42 @@ class TabularResult(Result):
             first_delta = abs((encoded_first - original_first).total_seconds())
             last_delta = abs((encoded_last - original_last).total_seconds())
 
-            assert (
-                first_delta < 1
-            ), f"First date encoding mismatch: {encoded_first} != {original_first} (delta={first_delta} seconds)"
-            assert (
-                last_delta < 1
-            ), f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={last_delta} seconds)"
+            if not (first_delta < 1):
+                LOG.error(
+                    f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
+                )
+                LOG.error(f"           start_range: {start_range} ({type(start_range)})")
+                LOG.error(f"           end_range: {end_range} ({type(end_range)})")
+                LOG.error(f"           original_first: {original_first} ({type(original_first)})")
+                LOG.error(f"           original_last: {original_last} ({type(original_last)})")
+                LOG.error(f"           encoded_first: {encoded_first} ({type(encoded_first)})")
+                LOG.error(f"           encoded_last: {encoded_last} ({type(encoded_last)})")
+                print(original_frame.head(), file=sys.stderr)
+                print(original_frame.tail(), file=sys.stderr)
+                LOG.error(f"           delta: {datetime.timedelta(seconds=first_delta)}")
+
+                assert (
+                    first_delta < 1
+                ), f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
+
+            if not (last_delta < 1):
+                LOG.error(
+                    f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
+                )
+                LOG.error(f"           start_range: {start_range} ({type(start_range)})")
+                LOG.error(f"           end_range: {end_range} ({type(end_range)})")
+                LOG.error(f"           original_first: {original_first} ({type(original_first)})")
+                LOG.error(f"           original_last: {original_last} ({type(original_last)})")
+                LOG.error(f"           encoded_first: {encoded_first} ({type(encoded_first)})")
+                LOG.error(f"           encoded_last: {encoded_last} ({type(encoded_last)})")
+                LOG.error(f"           delta: {datetime.timedelta(seconds=last_delta)}")
+                print(original_frame.head(), file=sys.stderr)
+                print(original_frame.tail(), file=sys.stderr)
+                LOG.error(f"           delta: {datetime.timedelta(seconds=last_delta)}")
+
+                assert (
+                    last_delta < 1
+                ), f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
 
         LOG.info(
             f"Converted 'date' to integer seconds since epoch in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
