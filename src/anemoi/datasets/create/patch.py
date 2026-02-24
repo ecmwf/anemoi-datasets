@@ -87,12 +87,39 @@ def fix_provenance(provenance: dict) -> dict:
     ):
         if q in provenance:
             del provenance[q]
+    # Clean module_versions (now dicts instead of strings)
+    module_versions = provenance.get("module_versions", {})
+    for k, v in list(module_versions.items()):
+        # Normalise string versions to new dict format
+        if isinstance(v, str):
+            v = {"version": v}
+            module_versions[k] = v
 
-    for k, v in list(provenance["module_versions"].items()):
-        if v.startswith("<"):
-            del provenance["module_versions"][k]
-        if v.startswith("/"):
-            provenance["module_versions"][k] = os.path.join("...", os.path.basename(v))
+        # trash malformed versions
+        if not isinstance(v, dict):
+            del module_versions[k]
+            continue
+
+        version = v.get("version")
+
+        # Version must be a string
+        if not isinstance(version, str):
+            del module_versions[k]
+            continue
+
+        # Drop placeholder / invalid versions
+        if version.startswith("<"):
+            del module_versions[k]
+            continue
+
+        # Sanitize absolute paths if they ever appear
+        if version.startswith("/"):
+            v["version"] = os.path.join("...", os.path.basename(version))
+
+        # Sanitize source URLs / paths if present
+        source = v.get("source")
+        if isinstance(source, str) and source.startswith("/"):
+            v["source"] = os.path.join("...", os.path.basename(source))
 
     for k, v in list(provenance["git_versions"].items()):
         LOG.debug(k, v)

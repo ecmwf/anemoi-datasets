@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.34](https://github.com/ecmwf/anemoi-datasets/compare/0.5.33...0.5.34) (2026-02-17)
+
+
+### Bug Fixes
+
+* Bump anemoi-transform version ([#541](https://github.com/ecmwf/anemoi-datasets/issues/541)) ([09de1b2](https://github.com/ecmwf/anemoi-datasets/commit/09de1b260149c2534a9254997d76e0d8aa8191fe))
+* Bump anemoi-transform version to 0.1.25 ([#543](https://github.com/ecmwf/anemoi-datasets/issues/543)) ([f66c269](https://github.com/ecmwf/anemoi-datasets/commit/f66c26958fd83f343b33cdfe7ad365175ee82e6c))
+* Utils provenance update ([#533](https://github.com/ecmwf/anemoi-datasets/issues/533)) ([5a453bd](https://github.com/ecmwf/anemoi-datasets/commit/5a453bd65367a5fd92ed4000fa61d60fb985fb63))
+
 ## [0.5.33](https://github.com/ecmwf/anemoi-datasets/compare/0.5.32...0.5.33) (2026-02-09)
 
 
