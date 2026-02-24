@@ -260,7 +260,7 @@ class Creator(ABC):
 
     def final_metadata(self, dataset: Dataset) -> None:
         dataset.update_metadata(
-            chunks=dataset.data.chunking,
+            chunks=dataset.data.chunks,
         )
 
     ######################################################

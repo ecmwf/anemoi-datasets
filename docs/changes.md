@@ -197,7 +197,7 @@ creation of datasets to use that feature.
 
 # FIX
 
-chunks (add)
+
 sort(const_fileds)
 additions (remove)
 remove top level env
@@ -210,3 +210,4 @@ updated (????)
 additions (remove)
 data_sources (remove)
 env (remove)
+- rmove "Validating date ranges"

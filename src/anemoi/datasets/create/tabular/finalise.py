@@ -779,29 +779,34 @@ def finalise_tabular_dataset(
     LOG.info(f"Duplicate date ranges written to {dates_ranges_path} with {len(dates_ranges):,} ranges")
 
     ############################# Validation of date ranges (can be removed in production for performance) #############################
-    LOG.info("Validating date ranges")
-    with ReadAheadBuffer(store["data"]) as data:
-        # Check that the number of ranges found matches the count we got during building
-        offset = 0
-        last_date = None
-        for i, (date, start, length) in enumerate(tqdm.tqdm(dates_ranges, desc="Validating date ranges", unit="row")):
-            assert (
-                length > 0
-            ), f"Found non-positive range for date {date} starting at index {start} ({(date, start, length)}) [{i=}]"
-            assert start == offset, f"Found non-contiguous range starting at {start}, expected {offset} [{i=}]"
-            assert last_date is None or date > last_date, f"Found non-increasing date {date} after {last_date} [{i=}]"
+    if recipe.build.validate_date_ranges:
+        LOG.info("Validating date ranges")
+        with ReadAheadBuffer(store["data"]) as data:
+            # Check that the number of ranges found matches the count we got during building
+            offset = 0
+            last_date = None
+            for i, (date, start, length) in enumerate(
+                tqdm.tqdm(dates_ranges, desc="Validating date ranges", unit="row")
+            ):
+                assert (
+                    length > 0
+                ), f"Found non-positive range for date {date} starting at index {start} ({(date, start, length)}) [{i=}]"
+                assert start == offset, f"Found non-contiguous range starting at {start}, expected {offset} [{i=}]"
+                assert (
+                    last_date is None or date > last_date
+                ), f"Found non-increasing date {date} after {last_date} [{i=}]"
 
-            chunk = data[start : start + length, :]
-            date_column = chunk[:, 0].astype(np.int64) * 86400 + chunk[:, 1].astype(np.int64)
-            # Check that column 0 (days since epoch) of data matches the current date
-            assert np.all(
-                date_column == date
-            ), f"Mismatch between date range {date} and data column 0 at rows {start}:{start+length} ({date_column=}) [{i=}]"
+                chunk = data[start : start + length, :]
+                date_column = chunk[:, 0].astype(np.int64) * 86400 + chunk[:, 1].astype(np.int64)
+                # Check that column 0 (days since epoch) of data matches the current date
+                assert np.all(
+                    date_column == date
+                ), f"Mismatch between date range {date} and data column 0 at rows {start}:{start+length} ({date_column=}) [{i=}]"
 
-            offset += length
-            last_date = date
+                offset += length
+                last_date = date
 
-        assert offset == shape[0], f"Total length of ranges {offset} does not match total number of rows {shape[0]}"
+            assert offset == shape[0], f"Total length of ranges {offset} does not match total number of rows {shape[0]}"
     ############################# End of validation #############################
 
     index = create_date_indexing(date_indexing, store)
