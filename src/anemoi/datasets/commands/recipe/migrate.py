@@ -81,7 +81,7 @@ def migrate_accumulations(config):
                 if not isinstance(step1, int) or not isinstance(step2, int):
                     raise ValueError(f"Invalid accumulation_period: {accumulation_period}")
                 period = step2 - step1
-                steps = [f"0-{step1}", f"0-{step2}"]
+                steps = [f"0-{step2}"] if step1 == 0 else [f"0-{step1}", f"0-{step2}"]
                 if "time" in values:
                     raw_times = values.pop("time")
                     base_times = _parse_mars_times(raw_times)
