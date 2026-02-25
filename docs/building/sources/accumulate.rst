@@ -71,6 +71,7 @@ There are multiple ways to specify the ``availability`` parameter:
 - `Option 2: Availability over fixed periods`_
 - `Option 3: Automatic detection for well-known datasets`_
 - `Option 4: Finer control using explicit list of interval`_
+- `Option 5: Cycle availability`_
 
 
 Option 1: Type-based availability
@@ -151,6 +152,54 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
           :language: yaml
 
 These two examples are equivalent to those shown in Option 1 above.
+
+Option 5: Cycle availability
+-----------------------------
+
+Use ``availability: cycle`` when the mapping from valid date to base time follows a
+**repeating periodic pattern** that cannot be described by a single base time.
+This is typical for ECMWF operational forecasts where:
+
+- Forecasts run only at 00Z and 12Z (``oper``) or 06Z and 18Z (``scda``).
+- Depending on the valid date, the same base time may need to supply the accumulation
+  from a single step (low lead time) or from the difference of two steps (higher lead
+  time).
+- A longer cycle (e.g. 72h) may be used when you want to use a consistent forecast
+  lead time across multiple days.
+
+The ``cycle`` key takes a dictionary with the following structure:
+
+- **start** (optional): reference epoch used to locate the valid date within the cycle.
+  Defaults to ``1970-01-01 00:00:00``. For a 24-hour cycle the default is always correct.
+  For longer cycles, set ``start`` so that the first element of the cycle aligns with
+  the intended start of the repeating pattern.
+- **"i_start-i_end"** keys: hours within the cycle (0 ≤ i_start < i_end ≤ cycle_length).
+  The cycle length is inferred as the maximum ``i_end`` value found in the keys.
+  Each key covers one interval of the requested accumulation period.
+- Values: a two-element list ``[base_time_hour, "0-stepA/0-stepB/..."]``:
+
+  - ``base_time_hour`` — the hour-of-day of the forecast base time (0–23).
+    If it is greater than or equal to ``valid_date``, the previous day is used automatically.
+  - The slash-separated step strings ``"0-N"`` denote cumulative-from-start intervals
+    (``startStep=0``, ``endStep=N``).  Two steps produce a difference; one step is used directly.
+
+The example below shows a 24-hour cycle for ECMWF operational 6h accumulations
+(base times 00Z and 12Z):
+
+.. literalinclude:: yaml/accumulations-cycle-mars-ecmwf-operational-forecast.yaml
+   :language: yaml
+
+For each 6-hour valid-date slot:
+
+- **Valid 06Z** — step 0→6h from 00Z base covers [00Z, 06Z] directly.
+- **Valid 12Z** — difference of steps 0→12h and 0→6h from 00Z base gives [06Z, 12Z].
+- **Valid 18Z** — step 0→6h from 12Z base covers [12Z, 18Z] directly.
+- **Valid 00Z** — difference of steps 0→12h and 0→6h from 12Z base gives [18Z, 00Z].
+
+Compared to `Option 4: Finer control using explicit list of interval`_, the cycle approach
+pins **which** base time is used for each valid-date slot, rather than letting the interval
+solver choose. This is useful when the choice must be deterministic (e.g., to reproduce a
+specific dataset exactly) or when the solver could ambiguously pick a longer-lead run.
 
 Controlling the fields regrouped within accumulation
 ====================================================

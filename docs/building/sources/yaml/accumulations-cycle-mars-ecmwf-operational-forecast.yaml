@@ -1,0 +1,21 @@
+accumulate:
+  period: 6h
+  availability:
+    cycle:
+      # 24-hour repeating cycle. Each entry maps one 6h slot to the
+      # base time and cumulative steps that cover it.
+      # Keys are "start_hour-end_hour" within the cycle (hours since midnight).
+      # Values are [base_time_hour, "0-stepA/0-stepB/..."].
+      '0-6':   [0,  "0-6"]        # valid 06Z: base 00Z, step 0→6h
+      '6-12':  [0,  "0-6/0-12"]   # valid 12Z: base 00Z, steps 0→6h and 0→12h (diff)
+      '12-18': [12, "0-6"]        # valid 18Z: base 12Z, step 0→6h
+      '18-24': [12, "0-6/0-12"]   # valid 00Z: base 12Z, steps 0→6h and 0→12h (diff)
+  source:
+    mars:
+      expver: "0001"
+      class: od
+      stream: oper
+      type: fc
+      grid: 20./20.
+      levtype: sfc
+      param: [tp, cp]
