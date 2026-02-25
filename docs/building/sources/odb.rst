@@ -5,12 +5,8 @@
 This source reads data from an ODB_ file using ``earthkit.data`` under
 the hood.
 
-**************************
- Configuration Parameters
-**************************
-
 When configuring the ODB source in your YAML file, you can specify the
-following parameters:
+following parameters, in addition to the ``path`` parameter:
 
 **select** (str, optional)
    Specifies which columns to read from the ODB file. Defaults to all
@@ -37,9 +33,6 @@ following parameters:
    Lists column names whose values will be spread across different
    columns during reshaping. Common examples include
    ``"observed_value"`` and ``"quality_control_value"``.
-
-In the example below, the date is represented in the CSV file as two
-columns, named ``date`` and ``time``, so we specify them as a list.
 
 .. literalinclude:: yaml/odb.yaml
    :language: yaml
