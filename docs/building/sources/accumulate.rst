@@ -10,7 +10,7 @@
    - The parameter ``accumulation_period`` has been renamed to ``period``.
    - The source can be now different from ``mars`` (e.g., ``mars``, ``grib-index``)
      it must now be explicitly specified as a nested dictionary under the ``source`` key.
-   - The (optional) available accumulation intervals can now be specified using the ``availability`` key.
+   - The accumulation intervals must now be specified using the ``availability`` key.
 
 Accumulations and flux variables, such as precipitation, are often
 forecast fields, which are archived for a given base date (or reference
