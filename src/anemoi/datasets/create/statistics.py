@@ -330,9 +330,10 @@ class _TendencyCollector(_CollectorBase):
 
         # Check if window data is within the filter range
         # Since dates are ordered, we only need to check if the first window date is in range
-        if filter_func.start is not None and window_dates[0] < filter_func.start:
-            self._window = None
-            return
+        if hasattr(filter_func, "statistics_start_date"):
+            if filter_func.statistics_start_date is not None and window_dates[0] < filter_func.statistics_start_date:
+                self._window = None
+                return
 
         self._last_window_date = window_dates[-1]
         self.update(data, dates)
