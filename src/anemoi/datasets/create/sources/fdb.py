@@ -24,6 +24,7 @@ from . import source_registry
 from .mars import factorise_requests
 
 
+# TODO: there is some code duplication between here and MARS source, might be reduced
 @source_registry.register("fdb")
 class FdbSource(Source):
     """FDB data source."""
