@@ -168,8 +168,8 @@ class Analysis(Time):
         """
         valid_datetime = coords_values[self.time_coordinate_name]
 
-        metadata["date"] = as_datetime(valid_datetime).strftime("%Y%m%d")
-        metadata["time"] = as_datetime(valid_datetime).strftime("%H%M")
+        metadata["date"] = int(as_datetime(valid_datetime).strftime("%Y%m%d"))
+        metadata["time"] = int(as_datetime(valid_datetime).strftime("%H%M"))
         metadata["step"] = 0
 
         return valid_datetime
@@ -235,8 +235,8 @@ class ForecastFromValidTimeAndStep(Time):
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
-        metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
+        metadata["date"] = int(as_datetime(base_datetime).strftime("%Y%m%d"))
+        metadata["time"] = int(as_datetime(base_datetime).strftime("%H%M"))
         metadata["step"] = int(hours)
 
         # When date is present, it should be compatible with time and step
@@ -305,8 +305,8 @@ class ForecastFromValidTimeAndBaseTime(Time):
         hours = step.total_seconds() / 3600
         assert int(hours) == hours
 
-        metadata["date"] = as_datetime(base_datetime).strftime("%Y%m%d")
-        metadata["time"] = as_datetime(base_datetime).strftime("%H%M")
+        metadata["date"] = int(as_datetime(base_datetime).strftime("%Y%m%d"))
+        metadata["time"] = int(as_datetime(base_datetime).strftime("%H%M"))
         metadata["step"] = int(hours)
 
         return valid_datetime
@@ -362,8 +362,8 @@ class ForecastFromBaseTimeAndDate(Time):
         step = coords_values[self.step_coordinate_name]
         assert isinstance(step, datetime.timedelta)
 
-        metadata["date"] = as_datetime(date).strftime("%Y%m%d")
-        metadata["time"] = as_datetime(date).strftime("%H%M")
+        metadata["date"] = int(as_datetime(date).strftime("%Y%m%d"))
+        metadata["time"] = int(as_datetime(date).strftime("%H%M"))
 
         hours = step.total_seconds() / 3600
 
