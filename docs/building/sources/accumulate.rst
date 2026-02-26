@@ -176,12 +176,12 @@ The ``cycle`` key takes a dictionary with the following structure:
 - **"i_start-i_end"** keys: hours within the cycle (0 ≤ i_start < i_end ≤ cycle_length).
   The cycle length is inferred as the maximum ``i_end`` value found in the keys.
   Each key covers one interval of the requested accumulation period.
-- Values: a two-element list ``[base_time_hour, "0-stepA/0-stepB/..."]``:
+- Values: a two-element list ``[base_time_hour, "stepA-stepB/stepC-stepD/..."]`` where:
 
   - ``base_time_hour`` — the hour-of-day of the forecast base time (0–23).
     If it is greater than or equal to ``valid_date``, the previous day is used automatically.
-  - The slash-separated step strings ``"0-N"`` denote cumulative-from-start intervals
-    (``startStep=0``, ``endStep=N``).  Two steps produce a difference; one step is used directly.
+  - The slash-separated step strings ``"N-P"`` denote cumulative-from-start intervals
+    (``startStep=N``, ``endStep=P``).  Two steps produce a difference; one step is used directly.
 
 The example below shows a 24-hour cycle for ECMWF operational 6h accumulations
 (base times 00Z and 12Z):
@@ -191,10 +191,10 @@ The example below shows a 24-hour cycle for ECMWF operational 6h accumulations
 
 For each 6-hour valid-date slot:
 
-- **Valid 06Z** — step 0→6h from 00Z base covers [00Z, 06Z] directly.
-- **Valid 12Z** — difference of steps 0→12h and 0→6h from 00Z base gives [06Z, 12Z].
-- **Valid 18Z** — step 0→6h from 12Z base covers [12Z, 18Z] directly.
-- **Valid 00Z** — difference of steps 0→12h and 0→6h from 12Z base gives [18Z, 00Z].
+- ** Data for 06Z** — step 0→6h from 00Z base covers [00Z, 06Z] directly.
+- ** Data for 12Z** — difference of steps 0→12h and 0→6h from 00Z base gives [06Z, 12Z].
+- ** Data for 18Z** — step 0→6h from 12Z base covers [12Z, 18Z] directly.
+- ** Data for 00Z** — difference of steps 0→12h and 0→6h from 12Z base gives [18Z, 00Z].
 
 Compared to `Option 4: Finer control using explicit list of interval`_, the cycle approach
 pins **which** base time is used for each valid-date slot, rather than letting the interval
