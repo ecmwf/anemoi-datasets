@@ -9,6 +9,7 @@
 
 import os
 
+import earthkit.data as ekd
 import xarray as xr
 from multiurl import download
 
@@ -43,6 +44,21 @@ URLS = {
     "https://github.com/ecmwf/magics-test/raw/master/test/gallery/tos_O1_2001-2002.nc": dict(length=24),
     "https://github.com/ecmwf/magics-test/raw/master/test/gallery/z_500.nc": dict(length=1),
 }
+
+
+def test_netcdf_metadata_types_compare_with_ekd():
+    ekd_fl = ekd.from_source("sample", "era5-hourly-2t-20230724T1200Z.nc")
+    ds = ekd_fl.to_xarray()
+
+    ads_fl = XarrayFieldList.from_xarray(ds)
+    assert len(ekd_fl) == len(ads_fl)
+
+    common_keys = set(ekd_fl[0].metadata().keys()) & set(ads_fl[0].metadata().keys())
+    assert {"date", "time", "variable"}.issubset(common_keys)
+
+    # check that metadata value types are the same whether going via earthkit-data or anemoi-datasets
+    for key in common_keys:
+        assert type(ekd_fl[0].metadata(key)) is type(ads_fl[0].metadata(key)), f"Type mismatch for key '{key}'"
 
 
 def skip_test_netcdf() -> None:
