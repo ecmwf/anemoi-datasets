@@ -56,7 +56,7 @@ class WindowMetaData(WindowMetaDataBase):
         days = self.aux_array[:, 0]
         seconds = self.aux_array[:, 1]
         timestamps = days * 86400 + seconds
-        return np.array([np.datetime64(epoch_to_date(ts), "s") for ts in timestamps])
+        return np.array([np.datetime64(epoch_to_date(int(ts)), "s") for ts in timestamps])
 
     @property
     def time_deltas(self) -> np.ndarray:
