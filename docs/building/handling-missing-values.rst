@@ -18,3 +18,6 @@ Here's an example of how to implement it:
 
 .. literalinclude:: ../yaml/nan.yaml
    :language: yaml
+
+You can also set `allow_nans` to `true` to allow `NaNs` in any
+variable.
