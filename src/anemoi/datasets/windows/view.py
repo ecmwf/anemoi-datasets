@@ -301,11 +301,10 @@ class WindowView:
             )
 
         range_slice = "(not set)"
+        range_slice = self._slice(index)
+
         try:
             # Find the boundaries in the date_indexing for the window
-
-            range_slice = self._slice(index)
-
             values = self.data[range_slice]
         except (IndexError, StopIteration) as e:
             # We don't have that error to stop iterations in the caller
