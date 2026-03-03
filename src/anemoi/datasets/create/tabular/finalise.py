@@ -155,7 +155,7 @@ class Fragment:
         return cls(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
 
     @classmethod
-    def from_path(cls, file_path: str, check: np.array = None) -> "Fragment":
+    def from_path(cls, file_path: str) -> "Fragment":
         """Create a Fragment instance from a file path.
 
         This method loads a numpy array from the specified file path (using memory mapping for efficiency),
@@ -174,10 +174,7 @@ class Fragment:
         """
         array: np.ndarray = np.load(file_path, mmap_mode="r")
         array.flags.writeable = False
-        if check is not None:
-            assert np.array_equal(
-                array, check
-            ), f"Array loaded from {file_path} does not match expected data for fragment. This may indicate a file corruption or mismatch. Please check the file contents and integrity."
+
         return cls.from_array(array, file_path=file_path)
 
     @cached_property
@@ -304,14 +301,14 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
             path = _path(dirname, first_region, short_hash)
             np.save(path + ".tmp", first_region)
             os.rename(path + ".tmp.npy", path + ".deduped.1.npy")
-            result.append(Fragment.from_path(path + ".deduped.1.npy", check=first_region))
+            result.append(Fragment.from_path(path + ".deduped.1.npy"))
 
         second_region = concat[split_point:]
         if len(second_region) > 0:
             path = _path(dirname, second_region, short_hash)
             np.save(path + ".tmp", second_region)
             os.rename(path + ".tmp.npy", path + ".deduped.2.npy")
-            result.append(Fragment.from_path(path + ".deduped.2.npy", check=second_region))
+            result.append(Fragment.from_path(path + ".deduped.2.npy"))
 
         with LOG_LOCK:
             LOG.info(f"Deoverlapping fragments\n    {one}\n    {two}")
@@ -355,7 +352,7 @@ def _sort_and_chain_fragments(fragments: list[Fragment]) -> list[Fragment]:
         fragment.offset = offset
         offset += fragment.shape[0]
         previous_date = fragment.last_date
-        LOG.info(f"{fragment} -> offset {fragment.offset}")
+
     return fragments
 
 
@@ -498,9 +495,6 @@ def _find_duplicate_and_overlapping_dates(
 
         LOG.info(f"Loaded {len(fragments):,} fragments in {time.time()-now:.2f} seconds")
 
-        for fragment in sorted(fragments.values(), key=lambda x: x.first_date):
-            LOG.info(f"Loaded fragment {fragment}")
-
         now = time.time()
         LOG.info("Checking overlaps")
 
@@ -529,7 +523,7 @@ def _find_duplicate_and_overlapping_dates(
                 LOG.info("No more overlaps detected")
                 break
 
-            with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair", disable=len(tasks) < 10) as pbar:
+            with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair") as pbar:
                 for future in as_completed(tasks):
                     updates = future.result()
                     fragments.update({update.file_path: update for update in updates})
@@ -606,20 +600,13 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
         first_date = epoch_to_date(dates[0])
         last_date = epoch_to_date(dates[-1])
 
-        LOG.info(
-            f"Adding range for fragment {fragment}\ndates {first_date}\nto    {last_date}\n   data slice {data_slice}"
-        )
-
         assert (
             first_date == fragment.first_date
         ), f"First date {first_date} does not match fragment first date {fragment.first_date}  ({type(first_date)=}) ({type(fragment.first_date)=} {first_date-fragment.first_date=})"
+
         assert (
             last_date == fragment.last_date
         ), f"Last date {last_date} does not match fragment last date {fragment.last_date} {fragment.last_date-last_date=})"
-
-        LOG.info(
-            f"Adding duplicate range for fragment {fragment}\ndates {first_date}\nto    {last_date}\n   data slice {data_slice}"
-        )
 
         if self.last_date is not None and dates[0] <= self.last_date:
             raise ValueError(
@@ -721,7 +708,7 @@ def finalise_tabular_dataset(
     shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
 
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
-    LOG.info(f"Last fragment: {fragments[-1].first_date} to {fragments[-1].last_date}")
+    LOG.info(f"Last fragment : {fragments[-1].first_date} to {fragments[-1].last_date}")
 
     epochs = []
     date = fragments[0].first_date
@@ -790,11 +777,9 @@ def finalise_tabular_dataset(
             previous_date = None
             expected_offset = 0
 
-            with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row", disable=len(fragments) < 100) as pbar:
+            with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
                     fragment, array = tasks.pop(0).result()
-
-                    LOG.info(f"Processing fragment {fragment}")
 
                     if previous_date is not None and fragment.first_date <= previous_date:
                         raise ValueError(

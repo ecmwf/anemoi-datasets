@@ -89,12 +89,51 @@ class TabularCreator(Creator):
         one_row_size = array.shape[1] * array.itemsize
         rows_per_file = max(round(self.recipe.build.max_fragment_size / one_row_size), 1)
 
-        for i, row_start in enumerate(range(0, array.shape[0], rows_per_file)):
-            row_end = min(row_start + rows_per_file, array.shape[0])
+        # Split on the change of date/time so we minimmise the numper of depluplications done in the "finalise" step
 
+        # Find indices when the date or time changes
+        mask = np.any(array[1:, :2] != array[:-1, :2], axis=1)
+        change_indices = np.where(mask)[0] + 1
+
+        def partition(start, end):
+            # Base Case: Segment fits
+            if (end - start) <= rows_per_file:
+                return [slice(int(start), int(end))]
+
+            # Find change points strictly within the current range (start, end)
+
+            idx_start = np.searchsorted(change_indices, start, side="right")
+            idx_end = np.searchsorted(change_indices, end, side="left")
+            valid_changes = change_indices[idx_start:idx_end]
+
+            if valid_changes.size > 0:
+                # Find the change point closest to the midpoint for a balanced tree
+                mid = (start + end) // 2
+                split_idx = valid_changes[np.argmin(np.abs(valid_changes - mid))]
+            else:
+                # No change points exist in this range; force a split at max_rows
+                split_idx = start + rows_per_file
+
+            # Recurse
+            return partition(start, split_idx) + partition(split_idx, end)
+
+        partitions = partition(0, len(array))
+
+        # for i, row_start in enumerate(range(0, array.shape[0], rows_per_file)):
+        #     row_end = min(row_start + rows_per_file, array.shape[0])
+
+        #     np.save(
+        #         os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}-{i:04d}.npy"),
+        #         array[row_start:row_end],
+        #     )
+
+        for i, part in enumerate(partitions):
+            LOG.info(
+                f"{result.start_range}-{result.end_range}: Saving rows {part.start} to {part.stop} as part {i:04d} (len={part.stop - part.start}, max={rows_per_file})."
+            )
             np.save(
                 os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}-{i:04d}.npy"),
-                array[row_start:row_end],
+                array[part],
             )
 
     def finalise_dataset(self, dataset: Dataset) -> None:
