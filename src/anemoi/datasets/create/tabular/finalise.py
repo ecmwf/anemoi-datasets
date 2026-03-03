@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -28,10 +28,10 @@ import psutil
 import tqdm
 import zarr
 
-from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
+from anemoi.datasets.epochs import array_to_epoch
 from anemoi.datasets.epochs import epoch_to_date
 from anemoi.datasets.memory import available_memory
 
@@ -204,11 +204,6 @@ def _deduplicate_rows(array: np.ndarray) -> np.ndarray:
     df = pd.DataFrame(array)
     deduped_df = df.drop_duplicates()
     return deduped_df.to_numpy(dtype=array.dtype)
-
-
-def _epochs(array: np.ndarray) -> np.ndarray:
-    # The order of casting and operation is important to avoid overflows
-    return array[:, 0].astype("int64") * 86400 + array[:, 1].astype("int64")
 
 
 def _date(array: np.ndarray, index: int) -> datetime.datetime:
@@ -797,7 +792,7 @@ def finalise_tabular_dataset(
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     now = time.time()
-                    epochs = _epochs(array)
+                    epochs = array_to_epoch(array)
                     date_time += time.time() - now
 
                     # Wait for previous statistics computation to complete
@@ -850,36 +845,10 @@ def finalise_tabular_dataset(
 
     LOG.info(f"Duplicate date ranges written to {dates_ranges_path} with {len(dates_ranges):,} ranges")
 
-    ############################# Validation of date ranges (can be removed in production for performance) #############################
     if recipe.build.validate_date_ranges:
-        LOG.info("Validating date ranges")
-        with ReadAheadBuffer(store["data"]) as data:
-            # Check that the number of ranges found matches the count we got during building
-            offset = 0
-            previous_date = None
-            for i, (date, start, length) in enumerate(
-                tqdm.tqdm(dates_ranges, desc="Validating date ranges", unit="row")
-            ):
-                assert (
-                    length > 0
-                ), f"Found non-positive range for date {date} starting at index {start} ({(date, start, length)}) [{i=}]"
-                assert start == offset, f"Found non-contiguous range starting at {start}, expected {offset} [{i=}]"
-                assert (
-                    previous_date is None or date > previous_date
-                ), f"Found non-increasing date {date} after {previous_date} [{i=}]"
+        from .validate import validate_date_ranges
 
-                chunk = data[start : start + length, :]
-                date_column = _epochs(chunk)
-                # Check that column 0 (days since epoch) of data matches the current date
-                assert np.all(
-                    date_column == date
-                ), f"Mismatch between date range {date} and data column 0 at rows {start}:{start+length} ({date_column=}) [{i=}]"
-
-                offset += length
-                previous_date = date
-
-            assert offset == shape[0], f"Total length of ranges {offset} does not match total number of rows {shape[0]}"
-    ############################# End of validation #############################
+        validate_date_ranges(store["data"], dates_ranges)
 
     index = create_date_indexing(date_indexing, store)
 

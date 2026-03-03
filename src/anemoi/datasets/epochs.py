@@ -15,6 +15,8 @@ depend on the local timezone.
 from datetime import datetime
 from datetime import timezone
 
+import numpy as np
+
 
 def date_to_epoch(date):
     """Convert UTC date/time to Unix timestamp (epoch)."""
@@ -38,3 +40,8 @@ def epoch_to_date(timestamp):
 
 def date_time_epoch_to_date(date, time):
     return epoch_to_date(date * 24 * 3600 + time)
+
+
+def array_to_epoch(array: np.ndarray) -> np.ndarray:
+    # The order of casting and operation is important to avoid overflows
+    return array[:, 0].astype("int64") * 86400 + array[:, 1].astype("int64")
