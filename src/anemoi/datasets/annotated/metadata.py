@@ -7,13 +7,13 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import datetime
 import logging
-from functools import cached_property
 
 import numpy as np
 
+from anemoi.datasets.epochs import array_to_epoch
 from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import epochs_to_datetime64
 
 from .base import WindowMetaDataBase
 
@@ -39,34 +39,28 @@ class WindowMetaData(WindowMetaDataBase):
         """
         super().__init__(owner, index)
 
-        self._dates = aux_array[:, 0]
-        self._times = aux_array[:, 1]
-        self._latitudes = aux_array[:, 2]
-        self._longitudes = aux_array[:, 3]
-
-        self.slice_obj = slice_obj  # for debugging purposes
+        self._aux_array = aux_array
+        self._slice_obj = slice_obj  # for debugging purposes
 
     @property
     def latitudes(self) -> np.ndarray:
         """Array of latitudes for the window."""
-        return self._latitudes
+        return self._aux_array[:, 2]
 
     @property
     def longitudes(self) -> np.ndarray:
         """Array of longitudes for the window."""
-        return self._longitudes
+        return self._aux_array[:, 3]
 
-    @cached_property
+    @property
     def dates(self) -> np.ndarray:
         """Array of dates for the window."""
-        dates = self._dates * 86400 + self._times
-        dates = dates.astype("datetime64[s]")
-        return dates
+        return epochs_to_datetime64(array_to_epoch(self._aux_array))
 
-    @cached_property
-    def time_deltas(self) -> np.ndarray:
+    @property
+    def timedeltas(self) -> np.ndarray:
         """Array of time deltas for the window."""
-        return self._dates * 86400 + self._times - self.owner._epochs[self.index]
+        return (array_to_epoch(self._aux_array) - self.owner._epochs[self.index]).astype("float32")
 
     @property
     def reference_date(self) -> np.datetime64:
@@ -74,13 +68,13 @@ class WindowMetaData(WindowMetaDataBase):
         return np.datetime64(epoch_to_date(self.owner._epochs[self.index]))
 
     @property
-    def reference_dates(self) -> datetime.datetime:
+    def reference_dates(self) -> np.ndarray:
         """The reference date for the window."""
         return np.array([self.reference_date])
 
     @property
     def boundaries(self) -> list[slice]:
-        return [slice(0, len(self.aux_array))]
+        return [slice(0, len(self._aux_array))]
 
 
 class MultipleWindowMetaData(WindowMetaDataBase):
@@ -117,9 +111,9 @@ class MultipleWindowMetaData(WindowMetaDataBase):
         return np.concatenate([child.dates for child in self.children], axis=0)
 
     @property
-    def time_deltas(self) -> np.ndarray:
+    def timedeltas(self) -> np.ndarray:
         """Array of time deltas for the multiple windows."""
-        return np.concatenate([child.time_deltas for child in self.children], axis=0)
+        return np.concatenate([child.timedeltas for child in self.children], axis=0)
 
     @property
     def reference_date(self) -> np.datetime64:

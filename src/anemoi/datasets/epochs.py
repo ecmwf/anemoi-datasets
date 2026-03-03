@@ -45,3 +45,7 @@ def date_time_epoch_to_date(date, time):
 def array_to_epoch(array: np.ndarray) -> np.ndarray:
     # The order of casting and operation is important to avoid overflows
     return array[:, 0].astype("int64") * 86400 + array[:, 1].astype("int64")
+
+
+def epochs_to_datetime64(epochs: np.ndarray) -> np.ndarray:
+    return epochs.astype("datetime64[s]")

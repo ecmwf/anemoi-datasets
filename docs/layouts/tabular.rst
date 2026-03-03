@@ -205,11 +205,11 @@ Auxiliary information can be accessed as:
 
    assert sample.reference_date == ds.start_date + 42 * ds.frequency
 
-   # Return the time_deltas in seconds relative to the reference_date
+   # Return the timedeltas in seconds relative to the reference_date
 
-   sample.time_deltas
+   sample.timedeltas
 
-   assert len(sample.time_deltas) == number_of_observations_in_window
+   assert len(sample.timedeltas) == number_of_observations_in_window
 
 Slices
 ------
@@ -234,7 +234,7 @@ result. You also can retrieve the reference dates with the
          assert np.array_equal(sample, ds[i])
          i += 1
 
-The ``latitudes``, ``longitudes``, ``dates``, ``time_deltas``, etc.
+The ``latitudes``, ``longitudes``, ``dates``, ``timedeltas``, etc.
 attributes of the resulting array are the concatenation of the
 corresponding attributes of the samples.
 

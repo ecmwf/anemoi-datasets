@@ -105,9 +105,6 @@ class Check(Command):
 
         check_zarr(zarr)
 
-        # ds = xr.open_dataset(zarr)
-        # print(ds)
-
     def _check_index(self, index: str) -> None:
         name = dataset_lookup(index)
         store = open_zarr(name)
