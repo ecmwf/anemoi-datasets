@@ -22,7 +22,9 @@ date_indexing_registry = Registry(__name__)
 
 
 def create_date_indexing(config: Any, store: Any) -> Any:
-    return date_indexing_registry.from_config(config, store=store)
+    indexing = date_indexing_registry.from_config(config, store=store)
+    LOG.info(f"Created date indexing: {indexing}")
+    return indexing
 
 
 class DateIndexing(ABC):

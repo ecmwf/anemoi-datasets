@@ -16,6 +16,7 @@ import numpy as np
 import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
+from rich import print
 
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
@@ -229,7 +230,7 @@ class WindowView:
             case _:
                 raise TypeError(f"WindowView: invalid index type: {type(index)}")
 
-    def _slice(self, index: tuple) -> np.ndarray:
+    def _slice(self, index: int) -> np.ndarray:
         assert isinstance(index, int)
         if index < 0:
             index = self._len - index
@@ -241,9 +242,26 @@ class WindowView:
         query_start = self.start_date + index * self.frequency + self.window.before
         query_end = self.start_date + index * self.frequency + self.window.after
 
+        print("query_start", query_start)
+        print("query_end", query_end)
+
+        query_start_save = query_start
+        query_end_save = query_end
+
         # Convert datetime to integer timestamps (seconds since epoch)
         query_start = round(date_to_epoch(query_start))
         query_end = round(date_to_epoch(query_end))
+
+        assert epoch_to_date(query_start) - query_start_save < datetime.timedelta(seconds=1), (
+            query_start,
+            query_start_save,
+            epoch_to_date(query_start),
+        )
+        assert epoch_to_date(query_end) - query_end_save < datetime.timedelta(seconds=1), (
+            query_end,
+            query_end_save,
+            epoch_to_date(query_end),
+        )
 
         # Because the accuracy is the second, we can adjust the query
         # to exclude the boundaries if needed. THe index must return the range of
@@ -255,6 +273,9 @@ class WindowView:
         if self.window.exclude_after:
             query_end -= 1
 
+        print("adjusted query_start", epoch_to_date(query_start))
+        print("adjusted query_end", epoch_to_date(query_end))
+
         range_slice = "(not set)"
 
         # Find the boundaries in the date_indexing for the window
@@ -265,6 +286,20 @@ class WindowView:
             assert range_slice.start >= 0, range_slice.start
             assert range_slice.stop >= range_slice.start, range_slice
             assert range_slice.stop <= len(self.data), (range_slice, len(self.data))
+
+            x = self.data[range_slice.start + 200]
+            print("start+200", epoch_to_date(int(x[0] * 24 * 3600 + x[1])))
+            x = self.data[range_slice.stop - 3]
+            print("stop-3", epoch_to_date(int(x[0] * 24 * 3600 + x[1])))
+
+            values = self.data[range_slice]
+            dates = []
+            for i in range(values.shape[0]):
+                dates.append(epoch_to_date(int(values[i, 0] * 24 * 3600 + values[i, 1])))
+
+            print(dates[0], dates[-1], query_start_save, query_end_save)
+
+            print(f"{range_slice.start=:,} {range_slice.stop=:,}")
 
             return range_slice
 
@@ -291,6 +326,7 @@ class WindowView:
         # Find the boundaries in the date_indexing for the window
 
         range_slice = self._slice(index)
+        print("range_slice", range_slice)
 
         try:
             values = self.data[range_slice]

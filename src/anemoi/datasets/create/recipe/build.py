@@ -64,7 +64,7 @@ class Build(BaseModel):
     max_workers: int | None = None
     """Maximum number of parallel workers to use when creating tabular datasets. If None, uses heuristic based on available CPUs, available memory, and max_fragment_size."""
 
-    validate_date_ranges: bool = False
+    validate_date_ranges: bool = True
     """Whether to validate date ranges after building a tabular dataset. This can be very time-consuming as it scans through the entire dataset."""
 
     def _post_init(self, recipe: Recipe) -> None:

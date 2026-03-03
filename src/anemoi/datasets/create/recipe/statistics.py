@@ -72,8 +72,6 @@ class Statistics(BaseModel):
 
     def statistics_dates(self, dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
 
-        print(dates)
-
         start = self.start
         end = self.end
         # if not specified, use the default statistics dates

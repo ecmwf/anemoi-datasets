@@ -34,3 +34,7 @@ def date_to_epoch(date):
 def epoch_to_date(timestamp):
     """Convert Unix timestamp (epoch) to naive UTC datetime."""
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).replace(tzinfo=None)
+
+
+def date_time_epoch_to_date(date, time):
+    return epoch_to_date(date * 24 * 3600 + time)

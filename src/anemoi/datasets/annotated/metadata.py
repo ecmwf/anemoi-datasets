@@ -9,6 +9,7 @@
 
 import datetime
 import logging
+from functools import cached_property
 
 import numpy as np
 
@@ -37,31 +38,35 @@ class WindowMetaData(WindowMetaDataBase):
             Auxiliary array containing date and location information.
         """
         super().__init__(owner, index)
-        self.aux_array = aux_array
+
+        self._dates = aux_array[:, 0]
+        self._times = aux_array[:, 1]
+        self._latitudes = aux_array[:, 2]
+        self._longitudes = aux_array[:, 3]
+
         self.slice_obj = slice_obj  # for debugging purposes
 
     @property
     def latitudes(self) -> np.ndarray:
         """Array of latitudes for the window."""
-        return self.aux_array[:, 2]
+        return self._latitudes
 
     @property
     def longitudes(self) -> np.ndarray:
         """Array of longitudes for the window."""
-        return self.aux_array[:, 3]
+        return self._longitudes
 
-    @property
+    @cached_property
     def dates(self) -> np.ndarray:
         """Array of dates for the window."""
-        days = self.aux_array[:, 0]
-        seconds = self.aux_array[:, 1]
-        timestamps = days * 86400 + seconds
-        return np.array([np.datetime64(epoch_to_date(int(ts)), "s") for ts in timestamps])
+        dates = self._dates * 86400 + self._times
+        dates = dates.astype("datetime64[s]")
+        return dates
 
-    @property
+    @cached_property
     def time_deltas(self) -> np.ndarray:
         """Array of time deltas for the window."""
-        return self.aux_array[:, 0] * 86400 + self.aux_array[:, 1] - self.owner._epochs[self.index]
+        return self._dates * 86400 + self._times - self.owner._epochs[self.index]
 
     @property
     def reference_date(self) -> np.datetime64:
