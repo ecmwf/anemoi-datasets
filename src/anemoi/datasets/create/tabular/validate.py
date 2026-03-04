@@ -18,7 +18,7 @@ from anemoi.datasets.epochs import array_to_epoch
 LOG = logging.getLogger(__name__)
 
 
-def validate(data_array, dates_ranges):
+def validate_date_ranges(data_array, dates_ranges):
 
     LOG.info("Validating date ranges")
     with ReadAheadBuffer(data_array) as data:

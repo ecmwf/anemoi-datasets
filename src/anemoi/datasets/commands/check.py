@@ -14,7 +14,7 @@ from typing import Any
 import yaml
 
 from anemoi.datasets.create.naming import DatasetName
-from anemoi.datasets.create.tabular.validate import validate
+from anemoi.datasets.create.tabular.validate import validate_date_ranges
 from anemoi.datasets.usage.store import dataset_lookup
 from anemoi.datasets.usage.store import open_zarr
 
@@ -110,7 +110,7 @@ class Check(Command):
         store = open_zarr(name)
         data = store["data"]
         index = store["date_index_ranges"]
-        validate(data, index)
+        validate_date_ranges(data, index)
 
 
 command = Check

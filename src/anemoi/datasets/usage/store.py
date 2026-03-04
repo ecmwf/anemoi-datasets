@@ -449,3 +449,27 @@ class ZarrStore(Dataset):
                     return result
 
         raise ValueError(f"Operation '{name}' is not supported for dataset '{self}', ({type(self).__name__})")
+
+    def obfuscator_filter(self):
+        class ObfuscatorFilter:
+            def __init__(self, dataset: ZarrStore, skip_columns: set[str]):
+                self.dataset = dataset
+                self.skip_columns = skip_columns
+                self.mean = self.dataset.statistics["mean"]
+                self.stdev = self.dataset.statistics["stdev"]
+                self.maximum = self.dataset.statistics["maximum"]
+                self.minimum = self.dataset.statistics["minimum"]
+
+            def obfuscate(self, data: NDArray[Any]) -> NDArray[Any]:
+                if data.shape[1] != len(self.mean) + self.skip_columns:
+                    raise ValueError(f"Data shape {data.shape} does not match expected shape")
+
+                result = data.copy()
+                col_idx = self.skip_columns
+
+                for i, (mean, stdev) in enumerate(zip(self.mean, self.stdev)):
+                    result[:, col_idx + i] = np.random.normal(mean, stdev, data.shape[0])
+
+                return result
+
+        return ObfuscatorFilter(self, self._skip_columns)

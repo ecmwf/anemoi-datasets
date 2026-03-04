@@ -29,6 +29,7 @@ class TabularZarr(ZarrStore):
         super().__init__(group, path=path)
 
         self._window_view = WindowView(self.store)
+        self._skip_columns = 4  # TODO: We should not hardcode this
 
     def _subset(self, **kwargs):
         if "frequency" in kwargs:

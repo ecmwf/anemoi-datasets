@@ -128,9 +128,9 @@ class TabularCreator(Creator):
         #     )
 
         for i, part in enumerate(partitions):
-            LOG.info(
-                f"{result.start_range}-{result.end_range}: Saving rows {part.start} to {part.stop} as part {i:04d} (len={part.stop - part.start}, max={rows_per_file})."
-            )
+            # LOG.info(
+            #     f"{result.start_range}-{result.end_range}: Saving rows {part.start} to {part.stop} as part {i:04d} (len={part.stop - part.start}, max={rows_per_file})."
+            # )
             np.save(
                 os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}-{i:04d}.npy"),
                 array[part],
