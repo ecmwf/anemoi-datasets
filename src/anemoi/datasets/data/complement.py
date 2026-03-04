@@ -252,13 +252,14 @@ class ComplementNearest(Complement):
         super().__init__(target, source)
 
         self.k = k
-        self._distances, self._nearest_grid_points = nearest_grid_points(
+        self._nearest_grid_points, self._distances = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
             self._target.latitudes,
             self._target.longitudes,
             max_distance=max_distance,
-            k=k,
+            num_neighbours_to_return=k,
+            return_distances=True,
         )
 
         if k == 1:
