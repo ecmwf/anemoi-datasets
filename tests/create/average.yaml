@@ -1,0 +1,20 @@
+dates:
+  start: 2020-12-30 00:00:00
+  end: 2021-01-03 12:00:00
+  frequency: 24h
+
+input:
+  average:
+    what: [-18h, -12h, -6h, 0h]
+    source:
+      mars:
+        expver: "0001"
+        class: ea
+        grid: 20./20.
+        param: [2t]
+        levtype: sfc
+        stream: oper
+        type: an
+
+checks:
+  - compare_to_reference: {}
