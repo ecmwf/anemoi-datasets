@@ -196,12 +196,12 @@ class Version:
     @property
     def frequency(self) -> str:
         """Get the frequency of the dataset."""
-        return self.metadata["frequency"]
+        return self.metadata.get("frequency")
 
     @property
     def resolution(self) -> str:
         """Get the resolution of the dataset."""
-        return self.metadata["resolution"]
+        return self.metadata.get("resolution")
 
     @property
     def field_shape(self) -> tuple | None:
@@ -687,12 +687,12 @@ class Version0_12(Version0_6):
     @property
     def first_date(self) -> datetime.datetime:
         """Get the first date of the dataset."""
-        return datetime.datetime.fromisoformat(self.metadata["start_date"])
+        return datetime.datetime.fromisoformat(self.metadata.get("start_date", self.metadata.get("first_date")))
 
     @property
     def last_date(self) -> datetime.datetime:
         """Get the last date of the dataset."""
-        return datetime.datetime.fromisoformat(self.metadata["end_date"])
+        return datetime.datetime.fromisoformat(self.metadata.get("end_date", self.metadata.get("last_date")))
 
 
 class Version0_13(Version0_12):

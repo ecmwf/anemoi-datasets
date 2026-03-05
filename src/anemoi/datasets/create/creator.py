@@ -190,7 +190,7 @@ class Creator(ABC):
         ##############
         metadata["dtype"] = self.recipe.output.dtype
 
-        metadata["first_date"] = str(self.groups.first_date())
+        metadata["start_date"] = str(self.groups.first_date())
         metadata["last_date"] = str(self.groups.last_date())
 
         #####

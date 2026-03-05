@@ -166,3 +166,6 @@ class DateBisect(DateIndexing):
         start_idx = bisect.bisect_left(_Proxy(self.index), start)
         end_idx = bisect.bisect_right(_Proxy(self.index), end)
         return (self.index[start_idx], self.index[end_idx - 1])
+
+    def length(self):
+        return len(self.index)
