@@ -160,10 +160,14 @@ class TabularCreator(Creator):
 
         collector.add_to_dataset(dataset)
 
+        LOG.info("Computing date indexing for the dataset.")
+
         date_indexing = create_date_indexing(dataset.store.attrs["date_indexing"], dataset.store)
         start, end = date_indexing.start_end_dates()
         dataset.update_metadata(
-            index_start_date=start.isoformat(), index_end_date=end.isoformat(), index_length=date_indexing.length()
+            index_start_date=start.isoformat(),
+            index_end_date=end.isoformat(),
+            index_length=date_indexing.length(),
         )
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
