@@ -21,8 +21,10 @@ from .dataset import FullIndex
 from .dataset import Shape
 from .dataset import TupleIndex
 from .debug import Node
+from .debug import debug_indexing
 from .forwards import GivenAxis
 from .indexing import apply_index_to_slices_changes
+from .indexing import expand_list_indexing
 from .indexing import index_to_slices
 from .misc import _auto_adjust
 from .misc import _open
@@ -313,6 +315,8 @@ class Cutout(GridsBase):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
+    @debug_indexing
+    @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Helper method that applies masks and retrieves data from each dataset according to the specified index.
 
