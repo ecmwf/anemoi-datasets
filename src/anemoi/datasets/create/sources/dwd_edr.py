@@ -116,6 +116,9 @@ class DWDEDRource(Source):
             )
             print(f"{type(df_wide['date'])=}")
 
+            # add separate datetime column not to be stored in index but in the learnable values
+            df_wide["eventtime"] = df_wide["date"]
+
             # put datetime, lat and lon in front
             cols_to_move = ['date', 'latitude', 'longitude']
             new_columns = cols_to_move + [col for col in df_wide.columns if col not in cols_to_move]
@@ -129,6 +132,7 @@ class DWDEDRource(Source):
         result = pd.concat(dataframes)
         # currently correct format for datetime unclear?
         result["date"] = result["date"].astype("datetime64[ns]")
+        print(result["date"])
         return result 
 
     def create_varno_dictionaries(self):
