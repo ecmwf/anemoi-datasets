@@ -246,6 +246,11 @@ class Forwards(Dataset):
     def usage_factory_load(self, name: str) -> Any:
         return self.forward.usage_factory_load(name)
 
+    @property
+    def window(self) -> Any:
+        """Returns the window of the forward dataset."""
+        return self.forward.window
+
 
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""
