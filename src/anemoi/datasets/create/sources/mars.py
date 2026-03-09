@@ -166,7 +166,7 @@ def _expand_mars_request(
     user_time = None
     user_date = None
     if not request_already_using_valid_datetime:
-        user_time = request.get("user_time")
+        user_time = request.get("user_time", request.get("time"))
         if user_time is not None:
             user_time = to_list(user_time)
             user_time = [_normalise_time(t) for t in user_time]
@@ -177,7 +177,7 @@ def _expand_mars_request(
                 user_date = str(user_date)
             elif isinstance(user_date, datetime.datetime):
                 user_date = user_date.strftime("%Y%m%d")
-            else:
+            elif not isinstance(user_date, str):
                 raise ValueError(f"Invalid type for {user_date}")
             user_date = re.compile("^{}$".format(user_date.replace("-", "").replace("?", ".")))
 
@@ -205,6 +205,8 @@ def _expand_mars_request(
                     r[pproc] = "/".join(str(x) for x in r[pproc])
 
         if user_date is not None:
+            # If date is provided by the user, we only keep the requests that match the date
+            # user_date is a regex pattern, so we use it to match the date in the request
             if not user_date.match(r["date"]):
                 continue
 
@@ -213,6 +215,15 @@ def _expand_mars_request(
             if r["time"] not in user_time:
                 continue
 
+        # SCDA stream auto-selection for ECMWF operational data:
+        # the 06 and 18 UTC runs use stream "scda" instead of "oper"
+        if r.get("class") == "od" and r.get("stream") == "oper":
+            if int(r.get("time", 0)) in (600, 1800):
+                r["stream"] = "scda"
+
+        # Strip internal filter keys that must not be forwarded to MARS.
+        r.pop("user_date", None)
+        r.pop("user_time", None)
         requests.append(r)
 
     return requests
@@ -251,6 +262,16 @@ def factorise_requests(
     updates = []
     for d in sorted(dates):
         for req in requests:
+            # A wildcard date pattern (e.g. "????-??-01") is a user-defined filter,
+            # not a real date. Rename to user_date so _expand_mars_request treats it
+            # as a filter and the pre-filter below does not do a broken literal comparison.
+            # Also rename time -> user_time in this context, since the actual base time
+            # is computed from the date-step arithmetic and time was used as a filter.
+            if isinstance(req.get("date"), str) and "?" in req["date"]:
+                req = dict(req)
+                req["user_date"] = req.pop("date")
+                if "time" in req and "user_time" not in req:
+                    req["user_time"] = req.pop("time")
             if not no_date_here and (
                 ("date" in req)
                 and ("time" in req)
@@ -436,6 +457,7 @@ class MarsSource(LegacySource):
                 for d, interval in dates.intervals:
                     context.trace("🌧️", "interval:", interval)
                     _, r, _ = dates._adjust_request_to_interval(interval, request)
+
                     context.trace("🌧️", "  adjusted request =", r)
                     requests_.append(r)
             requests = requests_
