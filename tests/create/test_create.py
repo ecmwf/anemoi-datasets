@@ -81,6 +81,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     AssertionError
         If the comparison fails.
     """
+    import requests
+
     with patch("earthkit.data.from_source", load_source):
         from anemoi.datasets.create.creator import VERSION
 
@@ -89,11 +91,18 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
 
         create_dataset(recipe=recipe, output=output, delta=["12h"])
 
-        directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
-        reference = os.path.join(directory, name + ".zarr")
+        missing_reference = False
+        try:
+            directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
+        except requests.exceptions.HTTPError:
+            missing_reference = True
+            errors = [f"Reference data for {name} is missing, cannot compare."]
 
-        errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
-        if errors:
+        if not missing_reference:
+            reference = os.path.join(directory, name + ".zarr")
+            errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
+
+        if errors or missing_reference:
             actual_path = os.path.realpath(output)
 
             print()

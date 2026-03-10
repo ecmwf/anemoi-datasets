@@ -135,7 +135,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     }
 
     # get a reference dataset
-    reference = create_dataset(config=reference_config, output=None)
+    reference = create_dataset(recipe=reference_config, output=None)
     ds2 = open_dataset(reference)
     # creating configuration using the previously created grib-index
     config_grib_index = {
@@ -164,7 +164,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config_grib_index, output=None)
+    created = create_dataset(recipe=config_grib_index, output=None)
     ds = open_dataset(created)
 
     # shapes should be divided by 'accumulation_period'
@@ -179,7 +179,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["accumulation_period"] = 24
 
     with pytest.raises(Exception):
-        created = create_dataset(config=config_grib_index, output=None)
+        created = create_dataset(recipe=config_grib_index, output=None)
 
 
 @pytest.mark.skipif(

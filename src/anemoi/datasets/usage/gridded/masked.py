@@ -237,11 +237,15 @@ class Masking(Masked):
         except Exception as e:
             raise ValueError(f"Could not load data from {mask_file}: {e}")
 
+        mask = mask.flatten()
+
         if mask.dtype != bool:
             raise ValueError(f"Mask file {mask_file} does not contain boolean values.")
-        if mask.shape != forward.field_shape:
-            raise ValueError(f"Mask length {mask.shape} does not match field size {forward.field_shape}.")
-        if sum(mask) == 0:
+
+        if len(mask) != forward.shape[-1]:
+            raise ValueError(f"Mask length {len(mask)} does not match field size {forward.shape[-1]}.")
+
+        if np.sum(mask) == 0:
             LOG.warning(f"Mask in {mask_file} eliminates all points in field.")
 
         super().__init__(forward, mask)

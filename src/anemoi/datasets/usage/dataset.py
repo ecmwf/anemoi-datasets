@@ -237,7 +237,7 @@ class Dataset(ABC, Sized):
             return Statistics(self, statistics)._subset(**kwargs).mutate()
 
         if "mask" in kwargs:
-            from .masked import Masking
+            from .gridded.masked import Masking
 
             mask_file = kwargs.pop("mask")
             return Masking(self, mask_file)._subset(**kwargs).mutate()
