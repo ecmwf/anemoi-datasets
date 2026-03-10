@@ -22,3 +22,21 @@ The commands are:
 - :ref:`Scan Command <scan_command>`
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
+
+
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: CLI
+
+   cli/create
+   cli/inspect
+   cli/grib-index
+   cli/compare
+   cli/copy
+   cli/scan
+   cli/patch
+   cli/compare-lam
+   cli/validate

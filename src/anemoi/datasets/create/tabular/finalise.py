@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,8 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import hashlib
 import logging
 import os
+import socket
+import threading
 import time
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
@@ -20,6 +23,7 @@ from typing import Any
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import psutil
 import tqdm
 import zarr
@@ -27,10 +31,14 @@ import zarr
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
+from anemoi.datasets.epochs import array_to_epoch
 from anemoi.datasets.epochs import epoch_to_date
 from anemoi.datasets.memory import available_memory
 
 LOG = logging.getLogger(__name__)
+
+
+LOG_LOCK = threading.Lock()
 
 
 class Fragment:
@@ -69,11 +77,54 @@ class Fragment:
         file_path : str
             Path to the file containing the fragment data.
         """
-        self.file_path: str = file_path
-        self.first_date: datetime.datetime = first_date
-        self.last_date: datetime.datetime = last_date
-        self.shape: tuple[int, ...] = shape
-        self.offset: int | None = None
+        self._file_path: str = file_path
+        self._first_date: datetime.datetime = first_date
+        self._last_date: datetime.datetime = last_date
+        self._shape: tuple[int, ...] = shape
+        self._offset: int | None = None
+
+        assert (
+            self.first_date <= self.last_date
+        ), f"Fragment {file_path} has invalid date range: {self.first_date} to {self.last_date}"
+
+    @property
+    def file_path(self) -> str:
+        """Get the file path of the fragment."""
+        return self._file_path
+
+    @property
+    def first_date(self) -> datetime.datetime:
+        """Get the first date of the fragment."""
+        return self._first_date
+
+    @property
+    def last_date(self) -> datetime.datetime:
+        """Get the last date of the fragment."""
+        return self._last_date
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Get the shape of the fragment array."""
+        return self._shape
+
+    @property
+    def offset(self) -> int | None:
+        """Get the offset of the fragment in the final dataset."""
+        return self._offset
+
+    @offset.setter
+    def offset(self, value: int) -> None:
+        """Set the offset of the fragment in the final dataset.
+
+        Parameters
+        ----------
+        value : int
+            The offset value to set.
+        """
+        assert (
+            self._offset is None
+        ), f"Offset for fragment {self.file_path} is already set to {self._offset}, cannot overwrite with {value}"
+        self._offset = value
 
     @classmethod
     def from_array(cls, array: np.ndarray, file_path: str) -> Optional["Fragment"]:
@@ -122,6 +173,8 @@ class Fragment:
             The created Fragment instance.
         """
         array: np.ndarray = np.load(file_path, mmap_mode="r")
+        array.flags.writeable = False
+
         return cls.from_array(array, file_path=file_path)
 
     @cached_property
@@ -129,39 +182,28 @@ class Fragment:
         """Return the size of the fragment in bytes."""
         return os.path.getsize(self.file_path)
 
+    def __repr__(self) -> str:
+        return f"[{self.first_date}; {self.last_date}; {self.shape}; {os.path.basename(self.file_path)}]"
+
 
 def _deduplicate_rows(array: np.ndarray) -> np.ndarray:
-    """Remove duplicate rows from a 2D numpy array, handling NaNs correctly.
-
-    This function is designed to efficiently remove duplicate rows from a 2D numpy array, even when the array contains
-    NaN values. Since numpy's unique function does not treat NaNs as equal, this function replaces NaNs with a sentinel
-    value (infinity) before determining uniqueness. The function returns both the number of duplicate rows removed and
-    the resulting array with only unique rows, preserving the original order as much as possible.
-
+    """Removes duplicate rows from a NumPy array.
+    This function converts the input NumPy array to a pandas DataFrame,
+    removes any duplicate rows, and returns the deduplicated data as a NumPy array
+    with the same dtype as the input.
     Parameters
     ----------
-    array : numpy.ndarray
-        2D array from which to remove duplicate rows. NaNs are treated as equal for the purpose of deduplication.
-
+    array : np.ndarray
+        The input NumPy array from which duplicate rows will be removed.
     Returns
     -------
-    numpy.ndarray
-        Array with duplicates removed.
+    np.ndarray
+        A NumPy array with duplicate rows removed, preserving the original dtype.
     """
-    assert len(array.shape) == 2, f"Expected 2D array, got shape {array.shape}"
-    # Remove duplicate rows. np.unique does not work well with NaNs, so we replace them with a sentinel value.
 
-    b: np.ndarray = np.ascontiguousarray(array)
-    # Replace NaNs with inf so np.unique can treat NaNs as equal
-    b2: np.ndarray = np.nan_to_num(b, nan=np.inf)
-
-    # Use a void dtype to treat each row as a single entity for uniqueness
-    row_dtype: np.dtype = np.dtype((np.void, b2.dtype.itemsize * b2.shape[1]))
-    _, idx = np.unique(b2.view(row_dtype), return_index=True)
-
-    unique_array: np.ndarray = b[np.sort(idx)]
-
-    return unique_array
+    df = pd.DataFrame(array)
+    deduped_df = df.drop_duplicates()
+    return deduped_df.to_numpy(dtype=array.dtype)
 
 
 def _date(array: np.ndarray, index: int) -> datetime.datetime:
@@ -185,6 +227,12 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
     """
     # Convert (days, seconds) to a datetime object
     return epoch_to_date(int(array[index][0]) * 86400 + int(array[index][1]))
+
+
+def _path(dirname: str, array: np.ndarray, short_hash: str) -> str:
+    first_date = _date(array, 0)
+    last_date = _date(array, -1)
+    return os.path.join(dirname, f"{first_date.isoformat()}-{last_date.isoformat()}-{short_hash}")
 
 
 def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[Fragment]:
@@ -220,63 +268,46 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         array_one = np.load(one.file_path, **extra)
         array_two = np.load(two.file_path, **extra)
 
-        # Find the range where both arrays have identical first two columns (date columns)
-        # Concatenate to find the overlap region around the junction
-        concatenated = np.vstack([array_one, array_two])
-        junction_index = len(array_one)
+        concat = np.vstack([array_one, array_two])
+        del array_one
+        del array_two
 
-        # Find the range where dates are identical around the junction
-        # Look backwards from junction to find where duplicates start
-        start_idx = junction_index - 1
+        concat = _deduplicate_rows(concat)
 
-        while start_idx > 0 and np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
-            start_idx -= 1
-        if not np.array_equal(concatenated[start_idx, :2], concatenated[junction_index, :2]):
-            start_idx += 1
+        _, counts = np.unique(concat[:, :2], axis=0, return_counts=True)
+        sum = np.sum(counts)
+        cumsum = np.cumsum(counts)
+        half_point = np.searchsorted(cumsum, sum // 2)
+        # assert False, (half_point, np.sum(counts[:half_point]), np.sum(counts[half_point:]))
 
-        # Look forwards from junction to find where duplicates end
-        end_idx = junction_index
-        junction_date = concatenated[junction_index, :2]
-        while end_idx < len(concatenated) and np.array_equal(concatenated[end_idx, :2], junction_date):
-            end_idx += 1
-
-        LOG.debug(f"Found overlapping date range  {start_idx}:{end_idx} around junction at {junction_index}")
-
-        # Check for duplicate rows in the overlap region
-        overlap_region = concatenated[start_idx:end_idx]
-        num_duplicates = 0
-        deduped_region = None
-        if overlap_region.shape[0] > 1:
-            deduped_region = _deduplicate_rows(overlap_region)
-            num_duplicates = overlap_region.shape[0] - deduped_region.shape[0]
-
-        if num_duplicates == 0:
-            return [one, two]
-
-        LOG.info(f"Duplicate rows found in overlapping fragments ({num_duplicates=:,}); deoverlapping")
+        split_point = np.sum(counts[:half_point])
 
         result = []
 
-        base = f"{one.file_path}-{time.time()}"
+        pid = os.getpid()
+        hostname = socket.gethostname()
+        timestamp = str(time.time())
+        hash_input = f"{pid}{hostname}{timestamp}".encode()
+        dirname = os.path.dirname(one.file_path)
+        short_hash = hashlib.sha1(hash_input).hexdigest()[:7]
 
-        first_region = overlap_region[:start_idx]
+        first_region = concat[:split_point]
         if len(first_region) > 0:
-            np.save(base + ".tmp", first_region)
-            os.rename(base + ".tmp.npy", base + ".deduped.one.npy")
-            result.append(Fragment.from_path(base + ".deduped.one.npy"))
+            path = _path(dirname, first_region, short_hash)
+            np.save(path + ".tmp", first_region)
+            os.rename(path + ".tmp.npy", path + ".deduped.1.npy")
+            result.append(Fragment.from_path(path + ".deduped.1.npy"))
 
-        second_region = overlap_region[end_idx:]
+        second_region = concat[split_point:]
         if len(second_region) > 0:
-            np.save(base + ".tmp", second_region)
-            os.rename(base + ".tmp.npy", base + ".deduped.two.npy")
-            result.append(Fragment.from_path(base + ".deduped.two.npy"))
+            path = _path(dirname, second_region, short_hash)
+            np.save(path + ".tmp", second_region)
+            os.rename(path + ".tmp.npy", path + ".deduped.2.npy")
+            result.append(Fragment.from_path(path + ".deduped.2.npy"))
 
-        np.save(base + ".tmp", deduped_region)
-        os.rename(base + ".tmp.npy", base + ".deduped.overlap.npy")
-        overlap_fragment = Fragment.from_path(base + ".deduped.overlap.npy")
-
-        assert overlap_fragment is not None
-        result.append(overlap_fragment)
+        with LOG_LOCK:
+            LOG.info(f"Deoverlapping fragments\n    {one}\n    {two}")
+            LOG.info("\n -> ".join([""] + [repr(r) for r in result]))
 
         return result
 
@@ -307,9 +338,16 @@ def _sort_and_chain_fragments(fragments: list[Fragment]) -> list[Fragment]:
     # Sort by first date and assign offsets for each fragment
     fragments = sorted(fragments, key=lambda x: x.first_date)
     offset: int = 0
+    previous_date = None
     for fragment in fragments:
+        if previous_date is not None and fragment.first_date <= previous_date:
+            raise ValueError(
+                f"Fragment {fragment.file_path} has first date {fragment.first_date} which is before last date {previous_date} of previous fragment. This may indicate an overlap that was not resolved."
+            )
         fragment.offset = offset
         offset += fragment.shape[0]
+        previous_date = fragment.last_date
+
     return fragments
 
 
@@ -349,12 +387,20 @@ def _read_fragment_worker(file_path: str) -> Fragment:
         return Fragment.from_path(file_path)
     except Exception:
         LOG.exception(f"Error reading fragment from {file_path}")
+        try:
+            array: np.ndarray = np.load(file_path, mmap_mode="r")
+            LOG.error(f"Array shape: {array.shape}, dtype: {array.dtype}")
+            LOG.error(f"First row: {array[0] if len(array) > 0 else 'N/A'}")
+            LOG.error(f"Last row: {array[-1] if len(array) > 0 else 'N/A'}")
+        except Exception:
+            LOG.exception(f"Error loading array from {file_path}")
         raise
 
 
 def _find_duplicate_and_overlapping_dates(
     work_dir: str,
     delete_files: bool,
+    max_fragment_size: int,
     max_workers: int | None = None,
 ) -> list[Fragment]:
     """Find and resolve duplicate and overlapping date ranges in fragment files.
@@ -371,6 +417,8 @@ def _find_duplicate_and_overlapping_dates(
         Directory containing fragment files.
     delete_files : bool
         Whether to overwrite original files or create deduped copies.
+    max_fragment_size : int
+        Maximum size of each fragment file in bytes. This is used to estimate memory requirements for parallel
     max_workers : int, optional
         Maximum number of parallel workers to use. If None, uses all available CPUs.
 
@@ -385,7 +433,13 @@ def _find_duplicate_and_overlapping_dates(
 
     memory = available_memory()
     # TODO: read value from recipe
+
+    cpus = os.cpu_count() or 1
+    if "SLURM_CPUS_ON_NODE" in os.environ:
+        cpus = min(cpus, int(os.environ["SLURM_CPUS_ON_NODE"]))
+
     LOG.info(f"Available memory: {memory / (1024**3):.2f} GB")
+    LOG.info(f"Available CPUs: {cpus}")
 
     memory *= 0.8  # Use only 80% of available memory
 
@@ -400,13 +454,15 @@ def _find_duplicate_and_overlapping_dates(
     my_memory = me.memory_full_info().rss
     LOG.info(f"Current process memory usage: {my_memory / (1024**3):.2f} GB")
 
-    estimated_needed_memory = 4 * max_fragment_size + my_memory
+    estimated_needed_memory = 6 * max_fragment_size + my_memory
     estimated_needed_memory *= 1.2  # Safety margin
 
     estimated_max_workers = int(memory / estimated_needed_memory)
 
+    LOG.info(f"Estimated max workers based on memory: {estimated_max_workers}")
+
     if max_workers is None:
-        max_workers = min(max(os.cpu_count() - 1, 1), estimated_max_workers)
+        max_workers = min(max(cpus - 1, 1), estimated_max_workers)
     else:
         LOG.info(
             f"User requested max_workers={max_workers}, estimated max_workers={estimated_max_workers} based on memory"
@@ -477,51 +533,15 @@ def _find_duplicate_and_overlapping_dates(
     return _sort_and_chain_fragments(list(fragments.values()))
 
 
-def _duplicate_ranges(a: np.ndarray) -> list[tuple[int, int]]:
-    """Find ranges of duplicate values in a sorted array.
-
-    This function scans a sorted array and identifies contiguous runs of identical values, returning a list of
-    (start, length) tuples for each such run. This is used to efficiently record the locations and extents of
-    duplicate dates in the final dataset, which can then be indexed for fast lookup or further analysis.
-
-    Parameters
-    ----------
-    a : numpy.ndarray
-        Sorted array of values.
-
-    Returns
-    -------
-    list of tuple of int
-        List of (start, length) tuples for each duplicate range.
-    """
-    if a.size == 0:
-        return []
-
-    start = time.time()
-
-    # True where value differs from previous => boundaries
-    boundaries: np.ndarray = np.r_[True, a[1:] != a[:-1], True]
-
-    # Find indices where value changes (start of new group)
-    idx: np.ndarray = np.flatnonzero(boundaries)
-
-    # Each (start, end) pair defines a run of identical values
-    ranges: list[tuple[int, int]] = list(zip(idx[:-1], idx[1:]))
-
-    LOG.info(f"Found {len(ranges):,} duplicate ranges out of {len(a):,} dates in {time.time()-start:.2f} seconds")
-
-    return [(s, e - s) for s, e in ranges]
-
-
 def _statistics_collector_worker(
     statistic_collector: StatisticsCollector,
     array: np.ndarray,
-    dates: np.ndarray,
+    epochs: np.ndarray,
 ) -> None:
     """Worker function to collect statistics for a fragment of data.
 
     This function is designed to be executed in a separate thread or process. It takes a StatisticsCollector instance,
-    an offset, a data array, and corresponding dates, and invokes the collect method of the StatisticsCollector.
+    an offset, a data array, and corresponding epochs, and invokes the collect method of the StatisticsCollector.
     This allows for concurrent computation of statistics while the main thread handles I/O operations, improving
     overall performance during the finalisation process.
 
@@ -531,16 +551,121 @@ def _statistics_collector_worker(
         The statistics collector instance to use.
     array : numpy.ndarray
         The data array for which to collect statistics.
-    dates : numpy.ndarray
-        The corresponding dates for the data array.
+    epochs : numpy.ndarray
+        The corresponding epochs for the data array.
     """
 
     now = time.time()
 
-    dates = dates.astype("datetime64[s]")
+    dates = epochs.astype("datetime64[s]")
     statistic_collector.collect(array, dates)
 
     return time.time() - now
+
+
+class _DuplicateRangeBuilder:  # (value, start_index, length)
+    def __init__(self, length: int, path: str) -> None:
+        # Length of the input array to process, used for pre-allocating the output file
+        # Resulting array will be smaller but we don't know the exact size until we process it, so we use the input length as an upper bound
+        self.total_size = length
+        self.path = path
+
+        # Create an empty file (sparse if supported) to hold the output ranges
+        # We don't uss np.memmap(mode='w')  because that may trigger an OOM if the file is large,
+        # even if it's sparse.Becaue Numpy will access all pages to initialize them,
+        # which can cause the OS to allocate physical memory for the entire file.
+        # By using open() and truncate(), we create a sparse file without triggering OOM.
+
+        self.row_size = 3 * np.dtype(np.int64).itemsize  # Each row has 3 int64 values: (value, start_index, length)
+        bytes_needed = self.total_size * self.row_size
+
+        with open(self.path, "wb") as f:
+            f.truncate(bytes_needed)
+
+        # Mmap the file for writing the output ranges
+        self.dates_ranges = np.memmap(self.path, dtype=np.int64, mode="r+", shape=(length, 3))
+        self.last_date = None
+        self.range_idx = 0
+
+    def _add_range(self, dates: np.ndarray, data_slice: slice, fragment: Fragment) -> None:
+
+        now = time.time()
+        assert len(dates) > 0
+
+        first_date = epoch_to_date(dates[0])
+        last_date = epoch_to_date(dates[-1])
+
+        assert (
+            first_date == fragment.first_date
+        ), f"First date {first_date} does not match fragment first date {fragment.first_date}  ({type(first_date)=}) ({type(fragment.first_date)=} {first_date-fragment.first_date=})"
+
+        assert (
+            last_date == fragment.last_date
+        ), f"Last date {last_date} does not match fragment last date {fragment.last_date} {fragment.last_date-last_date=})"
+
+        if self.last_date is not None and dates[0] <= self.last_date:
+            raise ValueError(
+                f"Dates are not strictly increasing: {dates[0]} <= last date {self.last_date} ({first_date} <= {epoch_to_date(self.last_date)})"
+            )
+
+        self.last_date = dates[-1]
+
+        assert np.all(dates[:-1] <= dates[1:]), "Dates must be sorted in ascending order"
+
+        # assert False, dates
+
+        unique_dates, counts = np.unique(dates, return_counts=True)
+
+        # Add cumulative sum of counts, starting with 0 for the first row
+        offsets = np.concatenate(([0], np.cumsum(counts)[:-1])) + data_slice.start
+        assert offsets[-1] + counts[-1] == data_slice.stop, (offsets[-1] + counts[-1], data_slice)
+        result = np.column_stack((unique_dates, offsets, counts))
+        size = len(result)
+
+        self.dates_ranges[self.range_idx : self.range_idx + size, :] = result
+
+        self.range_idx += size
+
+        return time.time() - now
+
+    def array(self) -> np.ndarray:
+
+        del self.dates_ranges  # Close the mapping to allow truncation
+        with open(self.path, "ab") as f:
+            f.truncate(self.range_idx * self.row_size)
+
+        return np.memmap(self.path, dtype=np.int64, mode="r", shape=(self.range_idx, 3))
+
+
+def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice, fragment: Fragment) -> None:
+    try:
+        return builder._add_range(dates, data_slice, fragment)
+    except Exception:
+        LOG.exception("Error processing chunk for duplicate range building")
+        raise
+
+
+def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
+    try:
+        # Remove deduped files after loading to save disk space
+        array: np.ndarray = np.load(fragment.file_path)
+        if "deduped" in fragment.file_path:
+            os.unlink(fragment.file_path)
+
+        first = _date(array, 0)
+        last = _date(array, -1)
+
+        assert (
+            first == fragment.first_date
+        ), f"First date {first} does not match fragment first date {fragment.first_date} for file {fragment.file_path}"
+        assert (
+            last == fragment.last_date
+        ), f"Last date {last} does not match fragment last date {fragment.last_date} for file {fragment.file_path}"
+
+        return (fragment, array)
+    except Exception:
+        LOG.exception("Error loading fragment")
+        raise
 
 
 def finalise_tabular_dataset(
@@ -551,7 +676,7 @@ def finalise_tabular_dataset(
     variables_names: list[str],
     date_indexing: dict | str,
     delete_files: bool,
-    max_workers: int | None = None,
+    offset: int = 4,
 ) -> StatisticsCollector:
     """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
 
@@ -566,7 +691,10 @@ def finalise_tabular_dataset(
 
     """
     fragments: list[Fragment] = _find_duplicate_and_overlapping_dates(
-        work_dir, max_workers=max_workers, delete_files=delete_files
+        work_dir,
+        max_fragment_size=recipe.build.max_fragment_size,
+        max_workers=recipe.build.max_workers,
+        delete_files=delete_files,
     )
 
     assert fragments, "No data found to finalise"
@@ -575,21 +703,25 @@ def finalise_tabular_dataset(
     shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
 
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
-    LOG.info(f"Last fragment: {fragments[-1].first_date} to {fragments[-1].last_date}")
+    LOG.info(f"Last fragment : {fragments[-1].first_date} to {fragments[-1].last_date}")
 
-    dates = []
+    epochs = []
     date = fragments[0].first_date
     last = fragments[-1].last_date
     while date <= last:
-        dates.append(date)
+        epochs.append(date)
         date += datetime.timedelta(days=1)
 
-    dates = np.array(dates, dtype="datetime64[s]")
+    epochs = np.array(epochs, dtype="datetime64[s]")
 
     collector = StatisticsCollector(
         variables_names=variables_names,
-        filter=recipe.statistics.statistics_filter(dates),
+        filter=recipe.statistics.statistics_filter(epochs),
     )
+
+    dates_ranges_path = os.path.join(work_dir, "dates_ranges.npy")
+
+    date_range_builer = _DuplicateRangeBuilder(length=shape[0], path=dates_ranges_path)
 
     if "data" in store:
         del store["data"]
@@ -613,25 +745,19 @@ def finalise_tabular_dataset(
         compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
     )
 
-    all_dates_path: str = os.path.join(work_dir, "dates.npy")
-    all_dates: np.ndarray = np.memmap(all_dates_path, dtype=np.int64, mode="w+", shape=(shape[0],))
-
     with WriteBehindBuffer(store["data"]) as data:
 
-        def _load_fragment(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
-            # Remove deduped files after loading to save disk space
-            array: np.ndarray = np.load(fragment.file_path)
-            if "deduped" in fragment.file_path:
-                os.unlink(fragment.file_path)
-            return (fragment, array)
-
-        with ThreadPoolExecutor(max_workers=2) as read_ahead, ThreadPoolExecutor(max_workers=1) as compute_statistics:
+        with (
+            ThreadPoolExecutor(max_workers=2) as read_ahead,
+            ThreadPoolExecutor(max_workers=1) as compute_statistics,
+            ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
+        ):
 
             # Double buffering: keep two fragments loaded ahead for performance
             tasks: list[Any] = []
             i: int = 0
             for i in range(len(fragments)):
-                tasks.append(read_ahead.submit(_load_fragment, fragments[i]))
+                tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
                 if i >= 2:
                     break
 
@@ -641,27 +767,53 @@ def finalise_tabular_dataset(
             data_time = 0
             date_time = 0
 
+            build = None
+            build_time = 0
+            previous_date = None
+            expected_offset = 0
+
             with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
                     fragment, array = tasks.pop(0).result()
+
+                    if previous_date is not None and fragment.first_date <= previous_date:
+                        raise ValueError(
+                            f"Fragment {fragment.file_path} has first date {fragment.first_date} which is before last date {previous_date} of previous fragment. This may indicate an overlap that was not resolved."
+                        )
+                    previous_date = fragment.last_date
+
+                    assert (
+                        expected_offset == fragment.offset
+                    ), f"Fragment {fragment.file_path} has offset {fragment.offset} which does not match expected offset {expected_offset}"
 
                     now = time.time()
                     data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
                     data_time += time.time() - now
 
+                    # Dates are encoded as (days, seconds) in columns 0 and 1
                     now = time.time()
-                    dates = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
+                    epochs = array_to_epoch(array)
                     date_time += time.time() - now
 
                     # Wait for previous statistics computation to complete
                     if stats is not None:
                         stat_time += stats.result()
-                    stats = compute_statistics.submit(_statistics_collector_worker, collector, array, dates)
 
-                    # Dates are encoded as (days, seconds) in columns 0 and 1
-                    now = time.time()
-                    all_dates[fragment.offset : fragment.offset + fragment.shape[0]] = dates
-                    date_time += time.time() - now
+                    stats = compute_statistics.submit(
+                        _statistics_collector_worker, collector, array[:, offset:], epochs
+                    )
+
+                    # Wait for previous duplicate range building to complete
+                    if build is not None:
+                        build_time += build.result()
+
+                    build = build_duplicate_ranges.submit(
+                        _build_duplicate_ranges_worker,
+                        date_range_builer,
+                        epochs,
+                        slice(fragment.offset, fragment.offset + fragment.shape[0]),
+                        fragment,
+                    )
 
                     pbar.update(fragment.shape[0])
 
@@ -670,44 +822,48 @@ def finalise_tabular_dataset(
 
                     # Pre-load next fragment
                     if i < len(fragments):
-                        tasks.append(read_ahead.submit(_load_fragment, fragments[i]))
+                        tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
                         i += 1
+
+                    expected_offset += fragment.shape[0]
 
             # Ensure last statistics computation is complete
             if stats is not None:
                 stat_time += stats.result()
 
+            if build is not None:
+                build_time += build.result()
+
             LOG.info(f"Statistics computed in {stat_time:.2f} seconds ({len(data)/stat_time:.2f} rows/second).")
             LOG.info(f"Data written in {data_time:.2f} seconds ({len(data)/data_time:.2f} rows/second).")
             LOG.info(f"Dates written in {date_time:.2f} seconds ({len(data)/date_time:.2f} rows/second).")
+            LOG.info(
+                f"Duplicate date ranges built in {build_time:.2f} seconds ({len(data)/build_time:.2f} rows/second)."
+            )
 
-    all_dates.flush()
-    LOG.info(f"Dates written to {all_dates_path}")
+    dates_ranges = date_range_builer.array()
+
+    LOG.info(f"Duplicate date ranges written to {dates_ranges_path} with {len(dates_ranges):,} ranges")
+
+    if recipe.build.validate_date_ranges:
+        from .validate import validate_date_ranges
+
+        validate_date_ranges(store["data"], dates_ranges)
 
     index = create_date_indexing(date_indexing, store)
-
-    LOG.info("Compute duplicate date ranges")
-    # Assume dates are sorted for efficient duplicate range finding
-    ranges: list[tuple[int, int]] = _duplicate_ranges(all_dates)
-    LOG.info(f"Found {len(ranges):,} duplicate date ranges")
-
-    dates_ranges_path: str = os.path.join(work_dir, "dates_ranges.npy")
-    dates_ranges: np.ndarray = np.memmap(dates_ranges_path, dtype=np.int64, mode="w+", shape=(len(ranges), 3))
-    for i, (start, length) in enumerate(tqdm.tqdm(ranges, desc="Writing dates", unit="dates")):
-        dates_ranges[i, :] = (all_dates[start], start, length)
-    dates_ranges.flush()
 
     start = time.time()
     LOG.info("Bulking load duplicate date ranges into index")
     index.bulk_load(dates_ranges)
     LOG.info(f"Duplicate date ranges written to index in {time.time() - start:.2f} seconds")
 
+    del dates_ranges
+
     if delete_files:
         os.unlink(dates_ranges_path)
-        os.unlink(all_dates_path)
 
     # Set the format attribute to indicate this is a tabular dataset
-    store.attrs.update({"format": "tabular"})
+    store.attrs.update({"layout": "tabular"})
     store.attrs.update({"date_indexing": index.name})
 
     return collector
@@ -715,8 +871,6 @@ def finalise_tabular_dataset(
 
 if __name__ == "__main__":
     import sys
-
-    import zarr
 
     logging.basicConfig(level=logging.INFO)
 

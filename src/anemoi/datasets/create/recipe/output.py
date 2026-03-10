@@ -93,11 +93,11 @@ class TabularOutput(OutputBase):
 def _output_discriminator(v: Any) -> str:
     """Discriminator function for Output union type."""
     if isinstance(v, dict):
-        return v.get("format", "gridded")
-    return getattr(v, "format", "gridded")
+        return v.get("layout", v.get("format", "gridded"))
+    return getattr(v, "layout", getattr(v, "format", "gridded"))
 
 
-# if format is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput
+# if layout is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput
 Output = Annotated[
     Union[
         Annotated[GriddedOutput, Tag("gridded")],

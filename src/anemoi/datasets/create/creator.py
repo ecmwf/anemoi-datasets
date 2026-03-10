@@ -102,6 +102,9 @@ class Creator(ABC):
             os.environ[k] = str(v)
 
         format_type = recipe.output.format
+
+        LOG.info(f"Creating dataset with format: {format_type}")
+
         match format_type:
 
             case "gridded":
@@ -187,7 +190,7 @@ class Creator(ABC):
         ##############
         metadata["dtype"] = self.recipe.output.dtype
 
-        metadata["first_date"] = str(self.groups.first_date())
+        metadata["start_date"] = str(self.groups.first_date())
         metadata["last_date"] = str(self.groups.last_date())
 
         #####
@@ -212,7 +215,6 @@ class Creator(ABC):
         for i, group in enumerate(self.groups):
 
             if not filter(i):
-                LOG.info(f" -> Skipping {i} total={total} (filtered out)")
                 continue
 
             if dataset.is_done(i):
@@ -249,11 +251,19 @@ class Creator(ABC):
         LOG.info("Finalising dataset.")
         dataset = Dataset(self.path, update=True)
         self.finalise_dataset(dataset)
+        self.final_metadata(dataset)
         dataset.touch()
 
     @abstractmethod
     def finalise_dataset(self, dataset: Dataset) -> None:
         pass
+
+    def final_metadata(self, dataset: Dataset) -> None:
+        # Metadata for the catalogue
+        dataset.update_metadata(
+            chunks=dataset.data.chunks,
+            shape=dataset.data.shape,
+        )
 
     ######################################################
     # Misc tasks
@@ -301,11 +311,6 @@ class Creator(ABC):
     def task_verify(self) -> None:
         LOG.info("BACK: Verifying dataset.")
         return
-        """Run verification on the dataset and log the results."""
-        """Run the verification."""
-        self.dataset = self.open_writable_dataset(self.path)
-        LOG.info(f"Verifying dataset at {self.path}")
-        LOG.info(str(self.dataset.anemoi_dataset))
 
     ########################
     def task_statistics(self) -> None:

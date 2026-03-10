@@ -167,12 +167,16 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
         return True
 
 
-def _compare_zarrs(errors, reference, actual, *path) -> None:
+def _compare_zarrs(errors, reference, actual, data, *path) -> None:
     """Compare two datasets."""
 
-    IGNORE_VALUES = [
-        "zarr.data",
-    ]
+    IGNORE_VALUES = (
+        []
+        if data
+        else [
+            "zarr.data",
+        ]
+    )
 
     IGNORE_MISSINGS = [
         "zarr.sums",
@@ -217,7 +221,7 @@ def _compare_zarrs(errors, reference, actual, *path) -> None:
             continue
 
         if isinstance(a, zarr.Group) and isinstance(b, zarr.Group):
-            _compare_zarrs(errors, a, b, *path, key)
+            _compare_zarrs(errors, a, b, data, *path, key)
             continue
 
         if not isinstance(a, zarr.Array) or not isinstance(b, zarr.Array):
@@ -310,7 +314,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         errors.error(msg)
 
 
-def compare_anemoi_datasets(reference, actual) -> None:
+def compare_anemoi_datasets(reference, actual, data) -> None:
     """Compare the actual dataset with the reference dataset."""
 
     actual = open_zarr(dataset_lookup(actual))
@@ -319,7 +323,7 @@ def compare_anemoi_datasets(reference, actual) -> None:
     errors = ErrorCollector()
 
     _compare_dot_zattrs(errors, dict(reference.attrs), dict(actual.attrs), "metadata")
-    _compare_zarrs(errors, reference, actual, "zarr")
+    _compare_zarrs(errors, reference, actual, data, "zarr")
 
     errors.report()
 
@@ -337,6 +341,11 @@ class Compare(Command):
         command_parser : Any
             The command parser to which arguments are added.
         """
+        command_parser.add_argument(
+            "--data",
+            action="store_true",
+            help="Compare data contents in addition to metadata.",
+        )
         command_parser.add_argument("dataset1")
         command_parser.add_argument("dataset2")
 
@@ -349,7 +358,12 @@ class Compare(Command):
             The arguments passed to the command.
         """
 
-        errors = compare_anemoi_datasets(args.dataset1, args.dataset2)
+        if not args.data:
+            LOG.warning(
+                "Comparing Zarr metadata and statistics, not data contents. Use --data to compare data contents."
+            )
+
+        errors = compare_anemoi_datasets(args.dataset1, args.dataset2, data=args.data)
         if errors:
             raise RuntimeError("Datasets are different")
 

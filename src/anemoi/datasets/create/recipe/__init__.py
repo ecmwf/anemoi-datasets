@@ -100,6 +100,8 @@ def loader_recipe_from_yaml(path: str) -> dict:
     dict
         The dataset recipe.
     """
+    LOG.info(f"Loading recipe from YAML file at {path}")
+
     with open(path) as f:
         recipe_yaml = f.read()
     recipe = yaml.safe_load(recipe_yaml)
@@ -120,6 +122,8 @@ def loader_recipe_from_zarr(path: str) -> dict:
         The dataset recipe.
     """
     import zarr
+
+    LOG.info(f"Loading recipe from Zarr store at {path}")
 
     z = zarr.open(path, mode="r")
 

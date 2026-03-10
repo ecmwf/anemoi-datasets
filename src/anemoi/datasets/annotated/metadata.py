@@ -7,12 +7,13 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import datetime
 import logging
 
 import numpy as np
 
+from anemoi.datasets.epochs import array_to_epoch
 from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import epochs_to_datetime64
 
 from .base import WindowMetaDataBase
 
@@ -37,32 +38,29 @@ class WindowMetaData(WindowMetaDataBase):
             Auxiliary array containing date and location information.
         """
         super().__init__(owner, index)
-        self.aux_array = aux_array
-        self.slice_obj = slice_obj  # for debugging purposes
+
+        self._aux_array = aux_array
+        self._slice_obj = slice_obj  # for debugging purposes
 
     @property
     def latitudes(self) -> np.ndarray:
         """Array of latitudes for the window."""
-        return self.aux_array[:, 2]
+        return self._aux_array[:, 2]
 
     @property
     def longitudes(self) -> np.ndarray:
         """Array of longitudes for the window."""
-        return self.aux_array[:, 3]
+        return self._aux_array[:, 3]
 
     @property
     def dates(self) -> np.ndarray:
         """Array of dates for the window."""
-        epoch = self.owner._epochs[self.index]
-        days = self.aux_array[:, 0]
-        seconds = self.aux_array[:, 1]
-        timestamps = days * 86400 + seconds + epoch
-        return np.array([np.datetime64(epoch_to_date(ts)) for ts in timestamps])
+        return epochs_to_datetime64(array_to_epoch(self._aux_array))
 
     @property
     def timedeltas(self) -> np.ndarray:
         """Array of time deltas for the window."""
-        return self.aux_array[:, 0] * 86400 + self.aux_array[:, 1] - self.owner._epochs[self.index]
+        return (array_to_epoch(self._aux_array) - self.owner._epochs[self.index]).astype("float32")
 
     @property
     def reference_date(self) -> np.datetime64:
@@ -70,13 +68,13 @@ class WindowMetaData(WindowMetaDataBase):
         return np.datetime64(epoch_to_date(self.owner._epochs[self.index]))
 
     @property
-    def reference_dates(self) -> datetime.datetime:
+    def reference_dates(self) -> np.ndarray:
         """The reference date for the window."""
         return np.array([self.reference_date])
 
     @property
     def boundaries(self) -> list[slice]:
-        return [slice(0, len(self.aux_array))]
+        return [slice(0, len(self._aux_array))]
 
 
 class MultipleWindowMetaData(WindowMetaDataBase):

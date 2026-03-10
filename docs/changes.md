@@ -193,3 +193,21 @@ creation of datasets to use that feature.
 
 - start end dates and frequency as default in the recipe, to be used when not specified in open_dataset (currently using the first date of the data, but should use the date in the recipe)
 - check alignment of tabular with gridded for start-end dates and len(ds.dates). Check that len(ds) is the same for tabular and gridded when start end frequency are the same.
+
+
+# FIX
+
+
+sort(const_fileds)
+additions (remove)
+remove top level env
+name missing (default None?)
+allow_nans in build only
+maybe keep recipe as-is?
+shape (missing)
+statistics (missing)
+updated (????)
+additions (remove)
+data_sources (remove)
+env (remove)
+- rmove "Validating date ranges"

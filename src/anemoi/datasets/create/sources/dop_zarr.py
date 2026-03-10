@@ -45,11 +45,22 @@ class DOPZarrSource(Source):
         self.dates = self.store["dates"]
         self.data = self.store["data"]
 
-        self.lat_idx = self.data.attrs["colnames"].index("lat")
-        self.lon_idx = self.data.attrs["colnames"].index("lon")
+        self.latitude = None
+        self.longitude = None
+
+        for col in (("lat", "lon"), ("latitude", "longitude")):
+            if all(c in self.data.attrs["colnames"] for c in col):
+                if self.latitude is not None or self.longitude is not None:
+                    raise ValueError(
+                        f"Found multiple latitude/longitude column pairs in data: {self.latitude}/{self.longitude} and {col[0]}/{col[1]}"
+                    )
+                self.latitude, self.longitude = col
+
+        self.lat_idx = self.data.attrs["colnames"].index(self.latitude)
+        self.lon_idx = self.data.attrs["colnames"].index(self.longitude)
 
         self.colnames = ["date", "latitude", "longitude"] + [
-            col for col in self.data.attrs["colnames"] if col not in ["lat", "lon"]
+            col for col in self.data.attrs["colnames"] if col not in [self.latitude, self.longitude]
         ]
         self.dtypes = {col: "float32" for col in self.colnames}
         self.dtypes["date"] = "datetime64[ns]"
@@ -98,6 +109,18 @@ class DOPZarrSource(Source):
         start = time.time()
         date_slice = self.dates[start_idx:end_idx]
         date_load_time = time.time() - start
+
+        LOG.info(
+            f"Loaded data slice with {len(data_slice):,} records in {data_load_time:.2f} seconds, date slice in {date_load_time:.2f} seconds"
+        )
+
+        LOG.info(f"First date in slice: {date_slice[0][0]}, last date in slice: {date_slice[-1][0]}")
+        LOG.info(f"Requested date range: {dates.start_range} to {dates.end_range}")
+
+        assert date_slice[0][0] >= np.datetime64(
+            dates.start_range
+        ), "First date in slice is before requested start date"
+        assert date_slice[-1][0] <= np.datetime64(dates.end_range), "Last date in slice is after requested end date"
 
         start = time.time()
         frame = pd.DataFrame(

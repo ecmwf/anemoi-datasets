@@ -330,9 +330,10 @@ class _TendencyCollector(_CollectorBase):
 
         # Check if window data is within the filter range
         # Since dates are ordered, we only need to check if the first window date is in range
-        if filter_func.start is not None and window_dates[0] < filter_func.start:
-            self._window = None
-            return
+        if hasattr(filter_func, "statistics_start_date"):
+            if filter_func.statistics_start_date is not None and window_dates[0] < filter_func.statistics_start_date:
+                self._window = None
+                return
 
         self._last_window_date = window_dates[-1]
         self.update(data, dates)
@@ -555,6 +556,11 @@ class StatisticsCollector:
         dates : Any
             Date information corresponding to the data samples.
         """
+
+        assert array.shape[1] == len(
+            self._variables_names
+        ), f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+
         filtered_array = self._filter(array, dates)
         filtered_dates = self._filter(dates, dates)
         assert len(filtered_array) == len(
@@ -653,7 +659,16 @@ class StatisticsCollector:
             if k in variables_metadata:
                 variables_metadata[k]["constant_in_time"] = True
 
-        dataset.update_metadata(constant_fields=constants, variables_metadata=variables_metadata)
+        dataset.update_metadata(
+            constant_fields=sorted(constants),
+            variables_metadata=variables_metadata,
+        )
+
+        if hasattr(self._filter, "statistics_start_date"):
+            dataset.update_metadata(statistics_start_date=self._filter.statistics_start_date)
+
+        if hasattr(self._filter, "statistics_end_date"):
+            dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
 
     def adjust_partial_statistics(self, dataset, state) -> None:
         """Adjust statistics for a specific group and data range.

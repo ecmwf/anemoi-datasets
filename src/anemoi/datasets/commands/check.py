@@ -14,6 +14,9 @@ from typing import Any
 import yaml
 
 from anemoi.datasets.create.naming import DatasetName
+from anemoi.datasets.create.tabular.validate import validate_date_ranges
+from anemoi.datasets.usage.store import dataset_lookup
+from anemoi.datasets.usage.store import open_zarr
 
 from . import Command
 
@@ -56,6 +59,11 @@ class Check(Command):
             help="Specify the metadata file to check.",
         )
 
+        exclusive_group.add_argument(
+            "--index",
+            help="Specify the index file to check.",
+        )
+
     def run(self, args: Any) -> None:
 
         if args.recipe:
@@ -69,6 +77,9 @@ class Check(Command):
 
         if args.zarr:
             self._check_zarr(args.zarr)
+
+        if args.index:
+            self._check_index(args.index)
 
     def _check_metadata(self, metadata: str) -> None:
         pass
@@ -94,8 +105,12 @@ class Check(Command):
 
         check_zarr(zarr)
 
-        # ds = xr.open_dataset(zarr)
-        # print(ds)
+    def _check_index(self, index: str) -> None:
+        name = dataset_lookup(index)
+        store = open_zarr(name)
+        data = store["data"]
+        index = store["date_index_ranges"]
+        validate_date_ranges(data, index)
 
 
 command = Check

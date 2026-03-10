@@ -29,6 +29,7 @@ class TabularZarr(ZarrStore):
         super().__init__(group, path=path)
 
         self._window_view = WindowView(self.store)
+        self._skip_columns = 4  # TODO: We should not hardcode this
 
     def _subset(self, **kwargs):
         if "frequency" in kwargs:
@@ -102,6 +103,10 @@ class TabularZarr(ZarrStore):
         return {k: i for i, k in enumerate(self.variables)}
 
     @property
+    def variables(self) -> list[str]:
+        return list(self.store.attrs["variables"])
+
+    @property
     def resolution(self) -> tuple[float, float]:
         return None
 
@@ -117,10 +122,6 @@ class TabularZarr(ZarrStore):
 
     def tree(self) -> zarr.hierarchy.Group:
         raise NotImplementedError()
-
-    @property
-    def variables(self) -> list[str]:
-        return [v for v in self.store.attrs["variables"] if not v.startswith("__")]
 
     def variables_metadata(self) -> dict[str, dict[str, Any]]:
         raise NotImplementedError()

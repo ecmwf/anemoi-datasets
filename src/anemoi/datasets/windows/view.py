@@ -229,7 +229,7 @@ class WindowView:
             case _:
                 raise TypeError(f"WindowView: invalid index type: {type(index)}")
 
-    def _slice(self, index: tuple) -> np.ndarray:
+    def _slice(self, index: int) -> np.ndarray:
         assert isinstance(index, int)
         if index < 0:
             index = self._len - index
@@ -241,9 +241,23 @@ class WindowView:
         query_start = self.start_date + index * self.frequency + self.window.before
         query_end = self.start_date + index * self.frequency + self.window.after
 
+        query_start_save = query_start
+        query_end_save = query_end
+
         # Convert datetime to integer timestamps (seconds since epoch)
         query_start = round(date_to_epoch(query_start))
         query_end = round(date_to_epoch(query_end))
+
+        assert abs(epoch_to_date(query_start) - query_start_save) < datetime.timedelta(seconds=1), (
+            query_start,
+            query_start_save,
+            epoch_to_date(query_start),
+        )
+        assert abs(epoch_to_date(query_end) - query_end_save) < datetime.timedelta(seconds=1), (
+            query_end,
+            query_end_save,
+            epoch_to_date(query_end),
+        )
 
         # Because the accuracy is the second, we can adjust the query
         # to exclude the boundaries if needed. THe index must return the range of
@@ -287,12 +301,10 @@ class WindowView:
             )
 
         range_slice = "(not set)"
-
-        # Find the boundaries in the date_indexing for the window
-
         range_slice = self._slice(index)
 
         try:
+            # Find the boundaries in the date_indexing for the window
             values = self.data[range_slice]
         except (IndexError, StopIteration) as e:
             # We don't have that error to stop iterations in the caller
