@@ -11,7 +11,7 @@
 import datetime
 import logging
 from abc import abstractmethod
-from typing import Iterable
+from collections.abc import Iterable
 
 from anemoi.utils.dates import frequency_to_timedelta
 

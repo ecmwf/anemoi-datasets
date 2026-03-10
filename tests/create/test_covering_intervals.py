@@ -222,7 +222,7 @@ class _Tester:
     def __init__(self, candidates):
         self.candidates = candidates
 
-    def test(self, target: SignedInterval, expected: None | List[SignedInterval]):
+    def test(self, target: SignedInterval, expected: None | list[SignedInterval]):
         from rich import print
 
         start = target.start
@@ -287,7 +287,7 @@ def test_enda(test):
     tester.test(test[0], test[1])
 
 
-grib_index_config: Dict[int, str] = [
+grib_index_config: dict[int, str] = [
     # all period [i, i+1] are available
     (
         None,
