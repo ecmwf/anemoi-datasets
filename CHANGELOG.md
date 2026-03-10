@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.35](https://github.com/ecmwf/anemoi-datasets/compare/0.5.34...0.5.35) (2026-03-09)
+
+
+### Features
+
+* Accept only copy from *.zarr to *.zarr, no '/' are allowed ([#548](https://github.com/ecmwf/anemoi-datasets/issues/548)) ([d584e6e](https://github.com/ecmwf/anemoi-datasets/commit/d584e6ec6390cb7485ce51bc81f93814f4a12a13))
+* **create:** Support FDB as base source for accumulate ([#550](https://github.com/ecmwf/anemoi-datasets/issues/550)) ([506e397](https://github.com/ecmwf/anemoi-datasets/commit/506e397a782fbe420d75a0185a95b1071511fd30))
+* Fix corner case when using cutout ([#558](https://github.com/ecmwf/anemoi-datasets/issues/558)) ([a2594ab](https://github.com/ecmwf/anemoi-datasets/commit/a2594ab307eedab2626bf23e1bab1483c7c6f58c))
+
+
+### Bug Fixes
+
+* Update argument name in complement.py and bump anemoi-transform dep version ([#544](https://github.com/ecmwf/anemoi-datasets/issues/544)) ([d8ffa01](https://github.com/ecmwf/anemoi-datasets/commit/d8ffa01e9ceba8e43f800e47999d93230987ae10))
+
+
+### Documentation
+
+* Explain option `allow_nans` ([#547](https://github.com/ecmwf/anemoi-datasets/issues/547)) ([00396bb](https://github.com/ecmwf/anemoi-datasets/commit/00396bb40f003389c6827490539abe88e61867b6))
+* Fix accumulation availability specification ([#551](https://github.com/ecmwf/anemoi-datasets/issues/551)) ([c26a9d8](https://github.com/ecmwf/anemoi-datasets/commit/c26a9d8d0e4e11990674440745b108206c86ac00))
+
 ## [0.5.34](https://github.com/ecmwf/anemoi-datasets/compare/0.5.33...0.5.34) (2026-02-17)
 
 
