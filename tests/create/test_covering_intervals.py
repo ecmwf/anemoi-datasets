@@ -8,8 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 from datetime import datetime
-from typing import Dict
-from typing import List
 
 import pytest
 

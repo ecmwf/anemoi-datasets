@@ -9,15 +9,13 @@
 
 import itertools
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
 from heapq import heappop
 from heapq import heappush
-from collections.abc import Callable
-from typing import List
-from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
