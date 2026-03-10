@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import os
+import shutil
 import sys
 
 import numpy as np
@@ -511,6 +512,8 @@ def test_csv(get_test_data: callable) -> None:
 
 # @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
+@skip_if_offline
+@pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
 def test_odb(get_test_data: callable) -> None:
     from anemoi.datasets.create.sources import create_source
     from anemoi.datasets.dates.groups import GroupOfDates
