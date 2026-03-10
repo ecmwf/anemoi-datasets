@@ -17,11 +17,14 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
 from anemoi.datasets.create.types import DateList
+from anemoi.datasets.create.types import IntervalsDatesProvider
 
 from ..source import Source
 from . import source_registry
+from .mars import factorise_requests
 
 
+# TODO: there is some code duplication between here and MARS source, might be reduced
 @source_registry.register("fdb")
 class FdbSource(Source):
     """FDB data source."""
@@ -76,7 +79,7 @@ class FdbSource(Source):
         # thus not documented
         self.offset_from_date = kwargs.pop("offset_from_date", None)
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def execute(self, dates: DateList | IntervalsDatesProvider) -> ekd.FieldList:
         """Execute the FDB source.
 
         Parameters
@@ -89,15 +92,23 @@ class FdbSource(Source):
         ekd.FieldList
             The output data.
         """
-
-        requests = []
-        for date in dates:
-            time_request = _time_request_keys(date, self.offset_from_date)
-            requests.append(self.request | time_request)
+        if isinstance(dates, IntervalsDatesProvider):
+            requests = []
+            for date, interval in dates.intervals:
+                _, r, _ = dates._adjust_request_to_interval(interval, self.request)
+                requests.append(r)
+        else:
+            requests = []
+            for date in dates:
+                time_request = _time_request_keys(date, self.offset_from_date)
+                requests.append(self.request | time_request)
 
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
         # defined request already and an empty dates list
         requests = requests or [self.request]
+        requests = factorise_requests(
+            ["no_date_here"], *requests, request_already_using_valid_datetime=True, date_key="date", no_date_here=True
+        )
 
         fl = ekd.from_source("empty")
         for request in requests:

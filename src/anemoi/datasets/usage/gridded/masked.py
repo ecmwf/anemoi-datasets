@@ -10,9 +10,11 @@
 
 import logging
 from functools import cached_property
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+from anemoi.transform.spatial import cropping_mask
 from numpy.typing import NDArray
 
 from ..dataset import Dataset
@@ -22,7 +24,6 @@ from ..dataset import TupleIndex
 from ..debug import Node
 from ..debug import debug_indexing
 from ..forwards import Forwards
-from ..grids import cropping_mask
 from ..mixins.thinning import ThinningMixin
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
@@ -66,6 +67,12 @@ class Masked(Forwards):
     def longitudes(self) -> NDArray[Any]:
         """Get the masked longitudes."""
         return self.forward.longitudes[self.mask]
+
+    @property
+    def grids(self) -> TupleIndex:
+        """Returns the number of grid points after masking"""
+        grids = np.sum(self.mask)
+        return (grids,)
 
     @debug_indexing
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
@@ -149,10 +156,115 @@ class Thinning(ThinningMixin, Masked):
         self.method = method
         self.grid_shape = forward.field_shape
 
-        # We use [:] to ensure the arrays are loaded in memory
-        mask = self.thinner.mask(forward.latitudes[:], forward.longitudes[:])
+        if thinning is not None:
+
+            shape = forward.field_shape
+            if len(shape) != 2:
+                raise ValueError("Thinning only works latitude/longitude fields")
+
+            mask = np.full(shape, False, dtype=bool)
+            mask[::thinning, ::thinning] = True
+            mask = mask.flatten()
+        else:
+            mask = None
 
         super().__init__(forward, mask)
+
+    def mutate(self) -> Dataset:
+        """Mutate the dataset.
+
+        Returns
+        -------
+        Dataset
+            The mutated dataset.
+        """
+        if self.thinning is None:
+            return self.forward.mutate()
+        return super().mutate()
+
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
+        return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the Thinning subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the Thinning subclass.
+        """
+        return dict(thinning=self.thinning, method=self.method)
+
+    @property
+    def field_shape(self) -> Shape:
+        """Returns the field shape of the dataset."""
+        if self.thinning is None:
+            return self.forward.field_shape
+        x, y = self.forward.field_shape
+        x = (x + self.thinning - 1) // self.thinning
+        y = (y + self.thinning - 1) // self.thinning
+        return x, y
+
+
+class Masking(Masked):
+    """A class that applies a precomputed boolean mask from a .npy file."""
+
+    def __init__(self, forward: Dataset, mask_file: str) -> None:
+        """Initialize the Masking class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be masked.
+        mask_file : str
+            Path to a .npy file containing a boolean mask of same shape as fields.
+        """
+        self.mask_file = mask_file
+
+        # Check path
+        if not Path(self.mask_file).exists():
+            raise FileNotFoundError(f"Mask file not found: {self.mask_file}")
+        # Load mask
+        try:
+            mask = np.load(self.mask_file)
+        except Exception as e:
+            raise ValueError(f"Could not load data from {mask_file}: {e}")
+
+        if mask.dtype != bool:
+            raise ValueError(f"Mask file {mask_file} does not contain boolean values.")
+        if mask.shape != forward.field_shape:
+            raise ValueError(f"Mask length {mask.shape} does not match field size {forward.field_shape}.")
+        if sum(mask) == 0:
+            LOG.warning(f"Mask in {mask_file} eliminates all points in field.")
+
+        super().__init__(forward, mask)
+
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
+        return Node(self, [self.forward.tree()], mask_file=self.mask_file)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the Masking subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the Masking subclass.
+        """
+        return dict(mask_file=self.mask_file)
 
 
 class Cropping(Masked):

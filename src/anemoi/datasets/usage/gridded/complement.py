@@ -14,6 +14,7 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
+from anemoi.transform.spatial import nearest_grid_points
 from numpy.typing import NDArray
 
 from ..dataset import Dataset
@@ -22,10 +23,10 @@ from ..dataset import Shape
 from ..dataset import TupleIndex
 from ..debug import Node
 from ..forwards import Combined
-from ..grids import nearest_grid_points
 from ..misc import _auto_adjust
 from ..misc import _open_dataset
 from .indexing import apply_index_to_slices_changes
+from .indexing import expand_list_indexing
 from .indexing import index_to_slices
 from .indexing import update_tuple
 
@@ -212,6 +213,7 @@ class ComplementNone(Complement):
         """
         super().__init__(target, source)
 
+    @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Gets the data at the specified tuple index without interpolation.
 
@@ -250,13 +252,14 @@ class ComplementNearest(Complement):
         super().__init__(target, source)
 
         self.k = k
-        self._distances, self._nearest_grid_points = nearest_grid_points(
+        self._nearest_grid_points, self._distances = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
             self._target.latitudes,
             self._target.longitudes,
             max_distance=max_distance,
-            k=k,
+            num_neighbours_to_return=k,
+            return_distances=True,
         )
 
         if k == 1:
@@ -275,6 +278,7 @@ class ComplementNearest(Complement):
         """
         pass
 
+    @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Gets the data at the specified tuple index using nearest neighbor interpolation.
 

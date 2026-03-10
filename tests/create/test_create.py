@@ -13,6 +13,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+import yaml
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
 from anemoi.utils.testing import GetTestArchive
@@ -26,17 +27,27 @@ from .utils.mock_sources import LoadSource
 
 HERE = os.path.dirname(__file__)
 # find_yamls
-NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
-SKIP = ["recentre"]
-SKIP += ["accumulation"]  # test not in s3 yet
-SKIP += ["regrid"]
-NAMES = [name for name in NAMES if name not in SKIP]
-assert NAMES, "No yaml files found in " + HERE
+
+IGNORE = ["recentre"]
+
+NAMES = []
+for path in glob.glob(os.path.join(HERE, "*.yaml")):
+    name, _ = os.path.splitext(os.path.basename(path))
+    if name in IGNORE:
+        continue
+    with open(path) as f:
+        conf = yaml.safe_load(f)
+        if conf.get("skip_test", False):
+            continue
+        if conf.get("slow_test", False):
+            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
+            continue
+    NAMES.append(name)
 
 
 # Used by pipe.yaml
 @filter_registry.register("filter")
-class TestFilter(Filter):
+class FilterForTesting(Filter):
 
     def __init__(self, **kwargs):
 

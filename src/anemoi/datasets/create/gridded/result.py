@@ -537,7 +537,6 @@ class GriddedResult(Result):
         print()
         print("❌" * 40)
         print()
-        exit(1)
 
     def build_coords(self) -> None:
         """Build the coordinate arrays for the result if not already built."""

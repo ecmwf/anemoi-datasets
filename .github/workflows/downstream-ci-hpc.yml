@@ -48,6 +48,8 @@ jobs:
         gnu@rocky-8.6
         clang@rocky-8.6
         gnu@ubuntu-22.04
+      python_versions: |+
+        - '3.11'
     secrets: inherit
 
   # # Build downstream packages on HPC
