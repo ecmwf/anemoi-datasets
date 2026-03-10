@@ -560,7 +560,7 @@ class DefaultCoordinateGuesser(CoordinateGuesser):
         """
         super().__init__(ds)
 
-    def _is_point(self, c: xr.DataArray, attributes: CoordinateAttributes) -> PointCoordinate | None:
+    def _is_point(self, c: "xr.DataArray", attributes: CoordinateAttributes) -> PointCoordinate | None:
         if attributes.standard_name in ["location", "cell", "id", "station", "poi", "point"]:
             return PointCoordinate(c)
 
