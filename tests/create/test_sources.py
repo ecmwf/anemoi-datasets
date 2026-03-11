@@ -264,7 +264,7 @@ def test_grib_gridfile_with_refinement_level(
         "grid_definition": {
             "icon": {
                 "path": gridfile,
-                "refinement_level_c": input_refinement_level_c,
+                "refinement_level_c": None,
             }
         },
         "param": param,
