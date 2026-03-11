@@ -389,6 +389,8 @@ def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     ----------
     config : dict
         The configuration dictionary.
+    is_test : bool
+        If True, applies test mode to reduce dates, grid, and ensembles.
 
     Returns
     -------
