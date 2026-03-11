@@ -201,7 +201,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
             if process is None:
                 raise ValueError(
                     f"Unknown for {md['param']}:"
-                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get('stepTypeForConversion')}),"
+                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)}),"
                     f" {typeOfStatisticalProcessing=} ({TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)}),"
                     f" {timeRangeIndicator=} ({TIME_RANGE_INDICATOR.get(timeRangeIndicator)})"
                 )
