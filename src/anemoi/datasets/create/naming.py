@@ -47,9 +47,6 @@ class DatasetName:
         """
         self.name = name
         self.parsed = self._parse(name)
-        print("---------------")
-        print(self.parsed)
-        print("---------------")
 
         self.messages = []
 
@@ -106,9 +103,6 @@ class DatasetName:
         """
         pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
         match = re.match(pattern, name)
-
-        if not match:
-            raise ValueError(f"the dataset name '{name}' does not follow naming convention. Does not match {pattern}")
 
         parsed = {}
         if match:

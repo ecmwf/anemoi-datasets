@@ -131,13 +131,13 @@ class Creator(ABC):
         LOG.info(f"Dataset path: {self.path}")
         LOG.info(f"Groups: {len(self.groups)}")
 
+        self.check_dataset_name(self.path)
+
         metadata = {}
         self.fill_metadata(metadata)
         dataset.update_metadata(metadata)
 
         assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
-
-        self.check_dataset_name(self.path)
 
         # Initialize the dataset
         self.initialise_dataset(dataset)

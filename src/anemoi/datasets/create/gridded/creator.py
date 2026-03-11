@@ -170,7 +170,24 @@ class GriddedCreator(Creator):
             self._load_cube(cube, array, indexes)
 
     def check_dataset_name(self, path: str) -> None:
-        LOG.warning("BACK: Dataset name checking not yes implemented.")
+        from pathlib import Path
+
+        from ..naming import DatasetName
+
+        name = Path(path).stem
+
+        dates = self.groups.provider.values
+        frequency = self.groups.provider.frequency
+
+        try:
+            DatasetName(
+                name,
+                start_date=dates[0],
+                end_date=dates[-1],
+                frequency=frequency_to_timedelta(frequency),
+            ).raise_if_not_valid()
+        except ValueError as e:
+            LOG.warning("Dataset name error: %s", e)
 
     def load_done(self, dataset, group):
         """Compure statistics after loading is done."""
