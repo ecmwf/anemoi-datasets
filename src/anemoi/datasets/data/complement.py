@@ -24,6 +24,7 @@ from .dataset import TupleIndex
 from .debug import Node
 from .forwards import Combined
 from .indexing import apply_index_to_slices_changes
+from .indexing import expand_list_indexing
 from .indexing import index_to_slices
 from .indexing import update_tuple
 from .misc import _auto_adjust
@@ -212,6 +213,7 @@ class ComplementNone(Complement):
         """
         super().__init__(target, source)
 
+    @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Gets the data at the specified tuple index without interpolation.
 
@@ -250,13 +252,14 @@ class ComplementNearest(Complement):
         super().__init__(target, source)
 
         self.k = k
-        self._distances, self._nearest_grid_points = nearest_grid_points(
+        self._nearest_grid_points, self._distances = nearest_grid_points(
             self._source.latitudes,
             self._source.longitudes,
             self._target.latitudes,
             self._target.longitudes,
             max_distance=max_distance,
-            k=k,
+            num_neighbours_to_return=k,
+            return_distances=True,
         )
 
         if k == 1:
@@ -275,6 +278,7 @@ class ComplementNearest(Complement):
         """
         pass
 
+    @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Gets the data at the specified tuple index using nearest neighbor interpolation.
 
