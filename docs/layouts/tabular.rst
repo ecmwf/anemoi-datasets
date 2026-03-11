@@ -88,7 +88,7 @@ The references dates of the dataset are defined as all dates between
    compatibility with gridded datasets, the reference dates are
    available as the ``dates`` attribute of the dataset.
 
-   It is not currently possible to combine tabular and gridded datasets,
+   It is not currently possible to combine tabular and gridded datasets within a single call to ``open_dataset``,
    but when this will be implemented, ``ds.dates``, ``ds.frequency``,
    ``len(ds)``, etc. will all be compatible and comparable between the
    two layouts.
@@ -215,7 +215,7 @@ Slices
 ------
 
 When slicing the dataset, the same rules apply as for indexing with an
-integer, but you can recover the samples using the ``boudaries``
+integer, but you can recover the samples using the ``boundaries``
 attribute of the resulting array . The ``boudaries`` attribute is a list
 of ``slice`` objects that can be used to access the samples in the
 result. You also can retrieve the reference dates with the
@@ -225,11 +225,11 @@ result. You also can retrieve the reference dates with the
 
    samples = ds[10:30]
 
-   assert len(samples.boudaries) == 20
+   assert len(samples.boundaries) == 20
    assert len(samples.reference_dates) == 20
 
    i = 10
-   for b in samples.boudaries:
+   for b in samples.boundaries:
          sample = samples[b]
          assert np.array_equal(sample, ds[i])
          i += 1
@@ -253,7 +253,7 @@ corresponding attributes of the samples.
    .. code:: python
 
       samples = ds[10:30]
-      boundaries = samples.boudaries
+      boundaries = samples.boundaries
 
       latitudes = samples.latitudes[boundaries[1]]
 
@@ -262,7 +262,7 @@ corresponding attributes of the samples.
    .. code:: python
 
       samples = ds[10:30]
-      boundaries = samples.boudaries
+      boundaries = samples.boundaries
 
       latitudes = samples[boundaries[1]].latitudes
 
@@ -303,7 +303,7 @@ Second example, the window width (6h) is narrower than the frequency
        start=1979,
        end=2020,
        window="(-5h,+1h]",
-       frequency="6h")
+       frequency="12h")
 
 As illustrated in the schema below, there are gaps between the windows:
 
