@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 import os
+import shutil
+import sys
 
 import numpy as np
 import pytest
@@ -32,7 +34,7 @@ def test_grib(get_test_data: callable) -> None:
 
     path = os.path.dirname(data1)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2010-01-01T00:00:00",
             "end": "2010-01-02T18:00:00",
@@ -45,11 +47,145 @@ def test_grib(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 12, 1, 162)
 
 
+@skip_if_offline
+def test_accumulate_grib_index(get_test_data: callable) -> None:
+    """Test the creation of a accumulation from grib index.
+
+    This function tests the creation of a dataset using GRIB files from
+    specific dates and verifies the shape of the resulting dataset.
+    """
+
+    filelist = [
+        "2021-01-01_23h00/mod_precip.grib",
+        "2021-01-02_00h00/mod_precip.grib",
+        "2021-01-02_01h00/mod_precip.grib",
+        "2021-01-02_02h00/mod_precip.grib",
+    ]
+
+    keys = [
+        "class",
+        "date",
+        "expver",
+        "level",
+        "levelist",
+        "levtype",
+        "number",
+        "paramId",
+        "shortName",
+        "step",
+        "stream",
+        "time",
+        "type",
+        "valid_datetime",
+    ]
+
+    data1 = []
+    for file in filelist:
+        data1.append(get_test_data(f"meteo-france/grib/{file}"))
+        parent = os.path.dirname(os.path.dirname(data1[-1]))
+    assert all([os.path.dirname(os.path.dirname(d)) == parent for d in data1])
+
+    path_db = os.path.dirname(data1[-1])
+    from anemoi.datasets.create.sources.grib_index import GribIndex
+
+    # create a GribIndex database with grib files
+    index = GribIndex(
+        os.path.join(path_db, "grib-index-accumulate-tp.db"),
+        keys=keys,
+        update=True,
+        overwrite=True,
+        flavour=None,
+    )
+
+    paths = []
+    for path in data1:
+        if os.path.isfile(path):
+            paths.append(path)
+        else:
+            for root, _, files in os.walk(path):
+                for file in files:
+                    full = os.path.join(root, file)
+                    paths.append(full)
+
+    for path in paths:
+        index.add_grib_file(path)
+
+    reference_config = {
+        "dates": {
+            "start": "2021-01-02T00:00:00",
+            "end": "2021-01-02T02:00:00",
+            "frequency": "1h",
+        },
+        "input": {
+            "pipe": [
+                {
+                    "grib-index": {
+                        "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
+                        "levtype": "sfc",
+                        "param": ["tp"],
+                    }
+                },
+                {"remove-nans": {}},
+            ]
+        },
+    }
+
+    # get a reference dataset
+    reference = create_dataset(recipe=reference_config, output=None)
+    ds2 = open_dataset(reference)
+    # creating configuration using the previously created grib-index
+    config_grib_index = {
+        "dates": {
+            "start": "2021-01-02T02:00:00",
+            "end": "2021-01-02T02:00:00",
+            "frequency": "1h",
+        },
+        "input": {
+            "pipe": [
+                {
+                    "accumulate": {
+                        "period": 3,  # requesting 3 hour accumulation
+                        "availability": "1h",  # available data is accumulated every 1 hour
+                        "source": {
+                            "grib-index": {
+                                "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
+                                "levtype": "sfc",
+                                "param": ["tp"],
+                            },
+                        },
+                    }
+                },
+                {"remove-nans": {}},  # needed because data has Nans due to projection
+            ]
+        },
+    }
+
+    created = create_dataset(recipe=config_grib_index, output=None)
+    ds = open_dataset(created)
+
+    # shapes should be divided by 'accumulation_period'
+    assert ds.shape[0] == ds2.shape[0] // 3, (ds.shape, ds2.shape)
+
+    assert np.max(np.abs(ds[0] - np.sum(ds2[:3], axis=(0, 1, 2)))) <= 1e-3, (
+        "max of absolute difference, t=0",
+        np.max(np.abs(ds[0] - np.sum(ds2[:3], axis=(0, 1, 2)))),
+    )
+
+    # this construction should fail because dates are missing
+    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["accumulation_period"] = 24
+
+    with pytest.raises(Exception):
+        created = create_dataset(recipe=config_grib_index, output=None)
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
+)
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
@@ -66,7 +202,7 @@ def test_grib_gridfile(get_test_data) -> None:
 
     path = os.path.dirname(data1)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2025-01-01T00:00:00",
             "end": "2025-01-02T18:00:00",
@@ -81,7 +217,7 @@ def test_grib_gridfile(get_test_data) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (8, 1, 1, 1147980)
     assert ds.variables == ["2t"]
@@ -141,7 +277,7 @@ def test_grib_gridfile_with_refinement_level(
         }
     }
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01T00:00:00",
             "end": "2023-01-01T03:00:00",
@@ -160,7 +296,7 @@ def test_grib_gridfile_with_refinement_level(
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == shape
     assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
@@ -186,7 +322,7 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
 
     path = os.path.dirname(data1)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01T00:00:00",
             "end": "2023-01-01T03:00:00",
@@ -207,7 +343,7 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(date=0, variable="u_119.0", member=0)
 
@@ -224,7 +360,7 @@ def test_netcdf(get_test_data: callable) -> None:
     This function tests the creation of a dataset from a NetCDF file.
     """
     data = get_test_data("anemoi-datasets/create/netcdf.nc")
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01",
             "end": "2023-01-02",
@@ -235,7 +371,7 @@ def test_netcdf(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (2, 2, 1, 162)
 
@@ -246,7 +382,7 @@ def test_eccs_fstd(get_test_data: callable) -> None:
     # See https://github.com/neishm/fstd2nc
 
     data = get_test_data("anemoi-datasets/create/2025031000_000_TT.fstd", gzipped=True)
-    config = {
+    recipe = {
         "dates": {
             "start": "2023-01-01",
             "end": "2023-01-02",
@@ -257,7 +393,7 @@ def test_eccs_fstd(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (2, 2, 1, 162)
 
@@ -275,7 +411,7 @@ def test_kerchunk(get_test_data: callable) -> None:
 
     data = get_test_data("anemoi-datasets/create/kerchunck.json", gzipped=True)
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2024-03-01T00:00:00",
             "end": "2024-03-01T18:00:00",
@@ -290,7 +426,7 @@ def test_kerchunk(get_test_data: callable) -> None:
         },
     }
 
-    created = create_dataset(config=config, output=None)
+    created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == (4, 1, 1, 1038240)
 
@@ -299,8 +435,9 @@ def test_kerchunk(get_test_data: callable) -> None:
 @skip_missing_packages("planetary_computer", "adlfs")
 def test_planetary_computer_conus404() -> None:
     """Test loading and validating the planetary_computer_conus404 dataset."""
+    import pystac_client
 
-    config = {
+    recipe = {
         "dates": {
             "start": "2022-01-01",
             "end": "2022-01-02",
@@ -324,8 +461,10 @@ def test_planetary_computer_conus404() -> None:
             }
         },
     }
-
-    created = create_dataset(config=config, output=None)
+    try:
+        created = create_dataset(recipe=recipe, output=None)
+    except pystac_client.exceptions.APIError:
+        pytest.skip("Planetary Computer data catalog is not available")
     ds = open_dataset(created)
     assert ds.shape == (2, 1, 1, 1387505), ds.shape
 
@@ -334,7 +473,7 @@ def test_planetary_computer_conus404() -> None:
 def test_csv(get_test_data: callable) -> None:
     """Test for CSV source registration."""
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import DatesProvider
+    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.csv")
 
@@ -344,7 +483,7 @@ def test_csv(get_test_data: callable) -> None:
             "csv": {
                 "path": data,
                 "flavour": {
-                    "time": [
+                    "date": [
                         "typicalDate",
                         "typicalTime",
                     ]
@@ -352,55 +491,53 @@ def test_csv(get_test_data: callable) -> None:
             }
         },
     )
-    window = DatesProvider.from_config(
+    dates = GroupOfDates.from_config(
         {
             "start": "2025-01-01T00:00:00",
             "end": "2025-12-21T23:59:59",
-            "window": "(-3h:+3h]",
-        }
+        },
     )
 
-    frame = source.execute(window)
+    frame = source.execute(dates)
     assert len(frame) == 2526
 
     assert "latitude" in frame.columns, frame.columns
     assert "longitude" in frame.columns, frame.columns
-    assert "time" in frame.columns, frame.columns
+    assert "date" in frame.columns, frame.columns
 
     assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
     assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
-    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
 # @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
+@skip_if_offline
+@pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
 def test_odb(get_test_data: callable) -> None:
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import DatesProvider
+    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.odb")
 
     source = create_source(context=None, config={"odb": {"path": data}})
-    window = DatesProvider.from_config(
+    dates = GroupOfDates.from_config(
         {
             "start": "2025-01-01T00:00:00",
-            "end": "2025-01-02:23:59:59",
-            "window": "(-3h:+3h]",
-        }
+            "end": "2025-12-21T23:59:59",
+        },
     )
 
-    frame = source.execute(window)
+    frame = source.execute(dates)
+    assert len(frame) == 6838
 
-    assert "latitude" in frame.columns
-    assert "longitude" in frame.columns
-    assert "time" in frame.columns
+    assert "latitude" in frame.columns, frame.columns
+    assert "longitude" in frame.columns, frame.columns
+    assert "date" in frame.columns, frame.columns
 
     assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
     assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
-    assert frame["time"].dtype == "datetime64[ns]" or np.issubdtype(frame["time"].dtype, np.datetime64)
-
-    assert len(frame) == 6838
-    assert len(frame.columns) == 70
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
 @pytest.mark.skip(reason="BUFR source currently not functional")
@@ -408,17 +545,14 @@ def test_odb(get_test_data: callable) -> None:
 def test_bufr(get_test_data: callable) -> None:
 
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates import DatesProvider
+    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.bufr")
 
     source = create_source(context=None, config={"bufr": {"path": data}})
-    window = DatesProvider.from_config(
-        {
-            "start": "2020-01-01T00:00:00",
-            "end": "2020-01-02:23:59:59",
-            "window": "(-3h:+3h]",
-        }
+    dates = GroupOfDates.from_config(
+        start="2020-01-01T00:00:00",
+        end="2020-01-02:23:59:59",
     )
 
-    source.execute(window)
+    source.execute(dates)

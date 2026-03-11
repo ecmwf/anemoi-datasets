@@ -19,7 +19,9 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
-from anemoi.datasets.check import check_zarr
+from anemoi.datasets.misc.check import check_zarr
+from anemoi.datasets.usage.store import dataset_lookup
+from anemoi.datasets.usage.store import open_zarr
 
 from . import Command
 
@@ -29,6 +31,11 @@ try:
     isatty = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
 except AttributeError:
     isatty = False
+
+
+class Identity:
+    def obfuscate(self, x: Any) -> Any:
+        return x
 
 
 class ZarrCopier:
@@ -52,6 +59,8 @@ class ZarrCopier:
         Verbosity level of logging.
     nested : bool
         Flag to use ZARR's nested directory backend.
+    obfuscate : bool
+        Flag to obfuscate the data during transfer. This will generate random data that match the statistics. Useful for testing and benchmarking.
     rechunk : str
         Rechunk size for the target data array.
     """
@@ -66,6 +75,7 @@ class ZarrCopier:
         resume: bool,
         verbosity: int,
         nested: bool,
+        obfuscate: bool,
         rechunk: str,
         **kwargs: Any,
     ) -> None:
@@ -89,6 +99,8 @@ class ZarrCopier:
             Verbosity level of logging.
         nested : bool
             Flag to use ZARR's nested directory backend.
+        obfuscate : bool
+            Flag to obfuscate the data during transfer.
         rechunk : str
             Rechunk size for the target data array.
         **kwargs : Any
@@ -103,6 +115,7 @@ class ZarrCopier:
         self.verbosity = verbosity
         self.nested = nested
         self.rechunk = rechunk
+        self.obfuscate = obfuscate
 
         self.rechunking = rechunk.split(",") if rechunk else []
 
@@ -112,7 +125,7 @@ class ZarrCopier:
         if source_is_ssh or target_is_ssh:
             if self.rechunk:
                 raise NotImplementedError("Rechunking with SSH not implemented.")
-            assert NotImplementedError("SSH not implemented.")
+            raise NotImplementedError("SSH not implemented.")
 
     def _store(self, path: str, nested: bool = False) -> Any:
         """Get the storage path.
@@ -162,8 +175,14 @@ class ZarrCopier:
             LOG.info(f"Skipping {n} to {m}")
             return None
 
+        if self.block_size < self.data_chunks[0]:
+            LOG.warning(
+                f"Block size ({self.block_size}) is smaller than target chunk size ({self.data_chunks[0]}). Adjusting."
+            )
+            self.block_size = self.data_chunks[0]
+
         if self.block_size % self.data_chunks[0] == 0:
-            target[slice(n, m)] = source[slice(n, m)]
+            target[slice(n, m)] = self.filter.obfuscate(source[slice(n, m)])
         else:
             LOG.warning(
                 f"Block size ({self.block_size}) is not a multiple of target chunk size ({self.data_chunks[0]}). Slow copy expected."
@@ -179,7 +198,7 @@ class ZarrCopier:
                 leave=False,
                 disable=not isatty and not verbosity,
             ):
-                target[i] = source[i]
+                target[i] = self.filter.obfuscate(source[i])
 
         return slice(n, m)
 
@@ -205,6 +224,7 @@ class ZarrCopier:
                 continue
             elif c == "full":
                 chunks[i] = shape[i]
+                continue
             c = int(c)
             c = min(c, shape[i])
             chunks[i] = c
@@ -235,6 +255,9 @@ class ZarrCopier:
 
         self.data_chunks = self.parse_rechunking(self.rechunking, source_data)
 
+        if self.block_size is None:
+            self.block_size = max(self.data_chunks[0], 100)
+
         target_data = (
             target["data"]
             if "data" in target
@@ -246,6 +269,8 @@ class ZarrCopier:
                 fill_value=source_data.fill_value,
             )
         )
+
+        LOG.info(f"Using {self.transfers} parallel transfers and block size of {self.block_size}")
 
         executor = ThreadPoolExecutor(max_workers=self.transfers)
         tasks = []
@@ -388,6 +413,13 @@ class ZarrCopier:
 
             LOG.info(f"copy {np.sum(_copy_np)} of {len(_copy_np)}")
 
+        self.filter = Identity()
+        if self.obfuscate:
+            from anemoi.datasets.usage.store import ZarrStore
+
+            store = ZarrStore.from_group(source)
+            self.filter = store.obfuscator_filter()
+
         self.copy_group(source, target, _copy_np, verbosity)
         del target["_copy"]
 
@@ -453,7 +485,7 @@ class ZarrCopier:
         if self.verbosity > 0:
             LOG.info(f"Open source: {self.source}")
 
-        source = zarr.open(self._store(self.source), mode="r")
+        source = open_zarr(dataset_lookup(self.source))
         # zarr.consolidate_metadata(source)
 
         self.copy(source, target, self.verbosity)
@@ -501,8 +533,12 @@ class CopyMixin:
         command_parser.add_argument(
             "--block-size",
             type=int,
-            default=100,
-            help="For optimisation purposes, data is transfered by blocks. Default is 100.",
+            help="For optimisation purposes, data is transfered by blocks.",
+        )
+        command_parser.add_argument(
+            "--obfuscate",
+            action="store_true",
+            help="Obfuscate the data during transfer. This will generate random data that match the statistics. Useful for testing and benchmarking.",
         )
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
@@ -521,7 +557,14 @@ class CopyMixin:
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
-        if not args.rechunk:
+        for name, path in (("Source", args.source), ("Target", args.target)):
+            if path.endswith("/"):
+                raise ValueError(f"{name} path must not end with '/': {path!r}")
+            basename = path.split("/")[-1].split("?")[0]  # handle query strings in URLs
+            if not basename.endswith(".zarr") or basename == ".zarr":
+                raise ValueError(f"{name} path must match '*.zarr' pattern: {path!r}")
+
+        if not args.rechunk and not args.obfuscate:
             # rechunking is only supported for ZARR datasets, it is implemented in this package
             try:
                 if args.source.startswith("s3://") and not args.source.endswith("/"):

@@ -15,61 +15,55 @@ requires = [
 
 [project]
 name = "anemoi-datasets"
-
 description = "A package to hold various functions to support training of ML models on ECMWF data."
 keywords = [
   "ai",
   "datasets",
   "tools",
 ]
-
 license = { file = "LICENSE" }
 authors = [
   { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
 ]
-
-requires-python = ">=3.10"
-
+requires-python = ">=3.11,<3.14"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-
 dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.10",
-  "anemoi-utils[provenance]>=0.4.38",
+  "anemoi-transform>=0.1.27",
+  "anemoi-utils>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
-  "numcodecs<0.16",                   # Until we move to zarr3
+  "lru-dict",
+  "numcodecs<0.16",           # Until we move to zarr3
   "numpy",
+  "pydantic",
   "pyyaml",
-  "ruamel-yaml",
+  "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.4",
+  "zarr<=2.18.7",
 ]
-
 optional-dependencies.all = [
   "anemoi-datasets[comparelam,create,remote,xarray]",
 ]
-
 optional-dependencies.comparelam = [
   "prettytable",
   "termcolor",
 ]
-
 optional-dependencies.create = [
   "cachetools",
   "earthkit-data[mars]>=0.14",
@@ -77,13 +71,12 @@ optional-dependencies.create = [
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
   "entrypoints",
+  "fasteners",
   "pyproj>=3",
 ]
-
 optional-dependencies.dev = [
   "anemoi-datasets[all,docs,tests]",
 ]
-
 optional-dependencies.docs = [
   "anemoi-datasets[all]",
   "nbsphinx",
@@ -92,20 +85,17 @@ optional-dependencies.docs = [
   "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
-
 optional-dependencies.remote = [
   "boto3",
   "requests",
 ]
-
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pyodc>=1.6",
-  "pytest",
+  "pytest>=8.4.1",
   "pytest-skip-slow",
-  "pytest-xdist",
+  "pytest-xdist>=3.7",
 ]
-
 optional-dependencies.xarray = [
   "adlfs",
   "gcsfs",
@@ -115,17 +105,15 @@ optional-dependencies.xarray = [
   "pystac-client",
   "s3fs",
 ]
-
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
-
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
 urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
 urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
-[tool.setuptools.package-data]
-"anemoi.datasets.data" = [
+[tool.setuptools]
+package-data."anemoi.datasets.use" = [
   "*.css",
 ]
 
@@ -135,9 +123,9 @@ version_file = "src/anemoi/datasets/_version.py"
 [tool.isort]
 profile = "black"
 
-[tool.pytest.ini_options]
-testpaths = "tests"
-addopts = [
+[tool.pytest]
+ini_options.testpaths = "tests"
+ini_options.addopts = [
   "--numprocesses=auto",
   "--maxprocesses=16",
   "--strict-config",
@@ -146,7 +134,7 @@ addopts = [
 [tool.mypy]
 strict = false
 exclude = [
-  "docs/**",
+  "docs/.*",
 ]
 
 [tool.pydocstringformatter]

@@ -10,7 +10,6 @@
 
 import datetime
 import os
-import tempfile
 from collections.abc import Callable
 from functools import cache
 from functools import wraps
@@ -25,22 +24,19 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.commands.inspect import InspectZarr
-from anemoi.datasets.commands.inspect import NoVersion
 from anemoi.datasets.misc.testing import default_test_indexing
-from anemoi.datasets.use.gridded import save_dataset
-from anemoi.datasets.use.gridded.concat import Concat
-from anemoi.datasets.use.gridded.ensemble import Ensemble
-from anemoi.datasets.use.gridded.grids import GridsBase
-from anemoi.datasets.use.gridded.join import Join
-from anemoi.datasets.use.gridded.misc import as_first_date
-from anemoi.datasets.use.gridded.misc import as_last_date
-from anemoi.datasets.use.gridded.padded import Padded
-from anemoi.datasets.use.gridded.select import Rename
-from anemoi.datasets.use.gridded.select import Select
-from anemoi.datasets.use.gridded.statistics import Statistics
-from anemoi.datasets.use.gridded.stores import Zarr
-from anemoi.datasets.use.gridded.subset import Subset
+from anemoi.datasets.usage.common.rename import Rename
+from anemoi.datasets.usage.gridded.concat import Concat
+from anemoi.datasets.usage.gridded.ensemble import Ensemble
+from anemoi.datasets.usage.gridded.grids import GridsBase
+from anemoi.datasets.usage.gridded.join import Join
+from anemoi.datasets.usage.gridded.masked import Masking
+from anemoi.datasets.usage.gridded.select import Select
+from anemoi.datasets.usage.gridded.statistics import Statistics
+from anemoi.datasets.usage.gridded.store import GriddedZarr
+from anemoi.datasets.usage.gridded.subset import Subset
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
 
@@ -62,7 +58,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch("anemoi.datasets.use.gridded.stores.dataset_lookup", lambda name: name + ".zarr"):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
@@ -519,7 +515,7 @@ def test_simple() -> None:
     """Test a simple dataset."""
     test = DatasetTester("test-2021-2022-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 2 * 4,
         date_to_row=lambda date: simple_row(date, "abcd"),
         start_date=datetime.datetime(2021, 1, 1),
@@ -623,25 +619,6 @@ def test_join_3() -> None:
         ),
         statistics_reference_dataset="test-2021-2021-6h-o96-abcd-2",
         statistics_reference_variables="abcd",
-    )
-
-
-@mockup_open_zarr
-def test_padding_1() -> None:
-    """Test subsetting a dataset (case 2)."""
-    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00:00", padding="empty")
-    test.run(
-        expected_class=Padded,
-        expected_length=365 * 24 * 3,
-        expected_shape=(365 * 24 * 3, 4, 1, VALUES),
-        expected_variables="abcd",
-        expected_name_to_index="abcd",
-        date_to_row=lambda date: simple_row(date, "abcd") if date.year == 2022 else np.zeros((4, 1, 0)),
-        start_date=datetime.datetime(2021, 1, 1),
-        time_increment=datetime.timedelta(hours=1),
-        statistics_reference_dataset="test-2022-2022-1h-o96-abcd",
-        statistics_reference_variables="abcd",
-        regular_shape=False,
     )
 
 
@@ -1135,7 +1112,7 @@ def test_slice_1() -> None:
     """Test slicing a dataset (case 1)."""
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 1 * 4,
         expected_shape=(365 * 1 * 4, 4, 1, VALUES),
         expected_variables="abcd",
@@ -1417,26 +1394,65 @@ def test_invalid_trim_edge() -> None:
         )
 
 
-@pytest.mark.skip("Saving datasets not yet supported in that branch")
-def test_save_dataset() -> None:
-    """Test save datasets."""
+@mockup_open_zarr
+def test_masking() -> None:
+    """Test masking a dataset."""
+    test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
+    with (
+        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+    ):
 
-    @mockup_open_zarr
-    def mock_save_dataset():
-        tmp_dir = tempfile.mkdtemp(suffix=".zarr")
-        test = DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02")
-        save_dataset(test.ds, tmp_dir)
-        return tmp_dir
+        test = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+        test.run(
+            expected_class=Masking,
+            expected_length=365 * 2 * 4,
+            date_to_row=lambda date: simple_row(date, "abcd")[..., test_mask],
+            start_date=datetime.datetime(2021, 1, 1),
+            time_increment=datetime.timedelta(hours=6),
+            expected_shape=(365 * 2 * 4, 4, 1, sum(test_mask)),
+            expected_variables="abcd",
+            expected_name_to_index="abcd",
+            statistics_reference_dataset="test-2021-2022-6h-o96-abcd",
+            statistics_reference_variables="abcd",
+        )
+    return
 
-    tmp_dir = mock_save_dataset()
-    iz = InspectZarr()
-    version = iz._info(tmp_dir)
-    if isinstance(version, NoVersion):
-        pytest.skip("No version information found, test not supported")
-    print(iz.inspect_zarr(tmp_dir))
-    saved = open_dataset(tmp_dir)
-    assert saved.variables == ["a", "b"]
-    assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
+
+@mockup_open_zarr
+def test_masking_wrong_mask_dims() -> None:
+    """Test masking a dataset (wrong dims in mask)."""
+    test_mask = np.array([True, False, True, True, True, True, False, False, True])
+    with (
+        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+    ):
+        with pytest.raises(ValueError):
+            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
+
+
+@mockup_open_zarr
+def test_masking_mask_file_not_found() -> None:
+    """Test masking a dataset (mask file not found)."""
+    test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
+    with patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask):
+        with pytest.raises(FileNotFoundError):
+            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
+
+
+@mockup_open_zarr
+def test_masking_wrong_dtype() -> None:
+    """Test masking a dataset (mask file not found)."""
+    test_mask = np.array([1, 0, 1, 1, 1, 1, 0, 0, 1, 0])
+    with (
+        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+    ):
+        with pytest.raises(ValueError):
+            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
 
 
 @mockup_open_zarr

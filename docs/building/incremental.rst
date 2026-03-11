@@ -25,7 +25,7 @@ the dataset, so it will not be needed by following commands.
    anemoi-datasets init dataset.yaml dataset.zarr --overwrite
 
 You can then load the dataset in parts with the `load` command. You just
-pass which part you want to load with the `--part` flag.
+pass which part you want to load with the `--parts` flag.
 
 .. note::
 
@@ -40,17 +40,17 @@ concurrent writes.
 
 .. code:: bash
 
-   anemoi-datasets load dataset.zarr --part 1/20
+   anemoi-datasets load dataset.zarr --parts 1/20
 
 .. code:: bash
 
-   anemoi-datasets load dataset.zarr --part 2/20
+   anemoi-datasets load dataset.zarr --parts 2/20
 
 ... and so on ... until:
 
 .. code:: bash
 
-   anemoi-datasets load dataset.zarr --part 20/20
+   anemoi-datasets load dataset.zarr --parts 20/20
 
 Once you have loaded all the parts, you can finalise the dataset with
 the `finalise` command. This will write the metadata and the attributes
@@ -87,8 +87,8 @@ To add statistics for 6h increments:
 .. code:: bash
 
    anemoi-datasets init-additions dataset.zarr --delta 6h
-   anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 6h
-   anemoi-datasets load-additions dataset.zarr --part 2/2 --delta 6h
+   anemoi-datasets load-additions dataset.zarr --parts 1/2 --delta 6h
+   anemoi-datasets load-additions dataset.zarr --parts 2/2 --delta 6h
    anemoi-datasets finalise-additions dataset.zarr --delta 6h
 
 To add statistics for 12h increments:
@@ -96,8 +96,8 @@ To add statistics for 12h increments:
 .. code:: bash
 
    anemoi-datasets init-additions dataset.zarr --delta 12h
-   anemoi-datasets load-additions dataset.zarr --part 1/2 --delta 12h
-   anemoi-datasets load-additions dataset.zarr --part 2/2 --delta 12h
+   anemoi-datasets load-additions dataset.zarr --parts 1/2 --delta 12h
+   anemoi-datasets load-additions dataset.zarr --parts 2/2 --delta 12h
    anemoi-datasets finalise-additions dataset.zarr --delta 12h
 
 If this process leaves temporary files behind, you can clean them up

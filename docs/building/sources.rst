@@ -16,10 +16,14 @@ NetCDF files, etc.
 
 The following `sources` are currently available:
 
+*****************
+ Gridded sources
+*****************
+
 .. toctree::
    :maxdepth: 1
 
-   sources/accumulations
+   sources/accumulate
    sources/anemoi-dataset
    sources/cds
    sources/eccc-fstd
@@ -36,3 +40,16 @@ The following `sources` are currently available:
    sources/xarray-kerchunk
    sources/xarray-zarr
    sources/zenodo
+
+*****************
+ Tabular sources
+*****************
+
+.. toctree::
+   :maxdepth: 1
+
+   sources/csv
+   sources/odb
+
+..
+   sources/bufr

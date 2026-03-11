@@ -1,0 +1,12 @@
+dates:
+  start: 2021-06-28T00:00:00
+  end: 2021-06-29T23:59:59
+
+input:
+  csv:
+    path: path.to.csv
+    columns: [ pressure, temperature, humidity ]
+    flavour:
+      latitude: lat
+      longitude: lon
+      date: [ date, time ]

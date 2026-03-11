@@ -29,9 +29,13 @@ input:
         - filter:
             level: [50]
 
-    - accumulations:
-        <<: *mars_request
-        param: [cp, tp]
+    - accumulate:
+        period: 6
+        availability: "auto"
+        source:
+          mars:
+            <<: *mars_request
+            param: [cp, tp]
 
     - forcings:
         template: ${input.join.0.mars}
@@ -40,3 +44,6 @@ input:
 
 statistics:
   end: 2021
+
+checks:
+  - compare_to_reference: {}

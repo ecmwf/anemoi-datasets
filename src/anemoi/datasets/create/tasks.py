@@ -7,54 +7,67 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from abc import ABC
-from abc import abstractmethod
-from typing import Any
+import logging
+
+LOG = logging.getLogger(__name__)
 
 
-class Task(ABC):
-    @abstractmethod
-    def run(self) -> None:
-        """Run the task."""
-        pass
+class TaskDispatcher:
+    """A class to create and run dataset creation tasks."""
+
+    def __init__(self, creator):
+        self.creator = creator
+
+    def task_init(self):
+        return self.creator.task_init()
+
+    def task_load(self):
+        return self.creator.task_load()
+
+    def task_size(self):
+        return self.creator.task_size()
+
+    def task_patch(self):
+        return self.creator.task_patch()
+
+    def task_statistics(self):
+        return self.creator.task_statistics()
+
+    def task_finalise(self):
+        self.creator.task_finalise()
+        self.creator.task_statistics()
+        self.creator.task_size()
+        self.creator.task_cleanup()
+
+    def task_cleanup(self):
+        self.creator.task_cleanup()
+
+    def task_verify(self):
+        self.creator.task_verify()
+
+    def task_init_additions(self):
+        self.creator.task_init_additions()
+
+    def task_load_additions(self):
+        self.creator.task_load_additions()
+
+    def task_finalise_additions(self):
+        self.creator.task_finalise_additions()
+        self.creator.task_size()
+
+    def task_additions(self):
+        self.creator.task_init_additions()
+        self.creator.task_load_additions()
+        self.creator.task_finalise_additions()
+        self.creator.task_cleanup()
 
 
-def chain(tasks: list) -> type:
-    """Create a class to chain multiple tasks.
+def run_task(name: str, recipe=None, **kwargs):
 
-    Parameters
-    ----------
-    tasks : list
-        The list of tasks to chain.
+    from anemoi.datasets.create.creator import Creator
 
-    Returns
-    -------
-    type
-        The class to chain multiple tasks.
-    """
+    LOG.info(f"Running task: {name}, recipe: {recipe}, kwargs: {kwargs}")
 
-    class Chain(Task):
-        def __init__(self, **kwargs: Any):
-            self.kwargs = kwargs
-
-        def run(self) -> None:
-            """Run the chained tasks."""
-            for cls in tasks:
-                t = cls(**self.kwargs)
-                t.run()
-
-    return Chain
-
-
-def task_factory(name: str, fields: bool = True, trace: str | None = None, **kwargs):
-
-    if fields:
-        from anemoi.datasets.create.gridded.tasks import TaskCreator
-
-        creator = TaskCreator()
-    else:
-        from anemoi.datasets.create.tabular.tasks import TaskCreator
-
-        creator = TaskCreator()
-
-    return getattr(creator, name)(trace=trace, **kwargs)
+    creator = Creator.from_recipe(recipe, **kwargs)
+    dispatch = TaskDispatcher(creator)
+    return getattr(dispatch, f"task_{name}")()
