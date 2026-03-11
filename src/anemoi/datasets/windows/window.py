@@ -42,6 +42,16 @@ class Window:
         self.exclude_before = m.group(1) == "("
         self.exclude_after = m.group(4) == ")"
 
+    @property
+    def width(self) -> float:
+        """Calculate the total width of the window in seconds."""
+        return (self.after - self.before).total_seconds()
+
+    @property
+    def closed(self) -> tuple[bool, bool]:
+        """Determine if the window is closed (inclusive at both ends)."""
+        return (not self.exclude_before, not self.exclude_after)
+
     def __repr__(self) -> str:
         """Return a string representation of the window.
 
