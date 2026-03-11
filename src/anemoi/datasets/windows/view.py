@@ -300,7 +300,6 @@ class WindowView:
                 ),
             )
 
-        range_slice = "(not set)"
         range_slice = self._slice(index)
 
         try:
@@ -339,7 +338,7 @@ class WindowView:
 
     def _getitem_tuple(self, index: tuple) -> np.ndarray:
         result = self.__getitem__(index[0])
-        return result[index[1:]]
+        return result[:, *index[1:]]
 
     def __repr__(self) -> str:
         """Return a string representation of the WindowView.

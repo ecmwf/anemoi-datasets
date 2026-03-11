@@ -41,6 +41,8 @@ class Thinning(ThinningMixin, Forwards):
 
         super().__init__(forward)
 
+        raise NotImplementedError("Thinning: __getitem__ is not implemented yet")
+
     def __getitem__(self, n):
         data = super().__getitem__(n)
         mask = self.thinner.mask(data.latitudes, data.longitudes)
