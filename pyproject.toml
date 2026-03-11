@@ -15,21 +15,17 @@ requires = [
 
 [project]
 name = "anemoi-datasets"
-
 description = "A package to hold various functions to support training of ML models on ECMWF data."
 keywords = [
   "ai",
   "datasets",
   "tools",
 ]
-
 license = { file = "LICENSE" }
 authors = [
   { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
 ]
-
 requires-python = ">=3.11,<3.14"
-
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
@@ -42,12 +38,11 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-
 dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.25",
+  "anemoi-transform>=0.1.27",
   "anemoi-utils>=0.5",
   "cfunits",
   "glom",
@@ -62,16 +57,13 @@ dependencies = [
   "tqdm",
   "zarr<=2.18.7",
 ]
-
 optional-dependencies.all = [
   "anemoi-datasets[comparelam,create,remote,xarray]",
 ]
-
 optional-dependencies.comparelam = [
   "prettytable",
   "termcolor",
 ]
-
 optional-dependencies.create = [
   "cachetools",
   "earthkit-data[mars]>=0.14",
@@ -81,11 +73,9 @@ optional-dependencies.create = [
   "entrypoints",
   "pyproj>=3",
 ]
-
 optional-dependencies.dev = [
   "anemoi-datasets[all,docs,tests]",
 ]
-
 optional-dependencies.docs = [
   "anemoi-datasets[all]",
   "nbsphinx",
@@ -94,19 +84,16 @@ optional-dependencies.docs = [
   "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
-
 optional-dependencies.remote = [
   "boto3",
   "requests",
 ]
-
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pytest",
   "pytest-skip-slow",
   "pytest-xdist",
 ]
-
 optional-dependencies.xarray = [
   "adlfs",
   "gcsfs",
@@ -116,17 +103,15 @@ optional-dependencies.xarray = [
   "pystac-client",
   "s3fs",
 ]
-
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
-
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
 urls.Issues = "https://github.com/ecmwf/anemoi-datasets/issues"
 urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
-[tool.setuptools.package-data]
-"anemoi.datasets.data" = [
+[tool.setuptools]
+package-data."anemoi.datasets.data" = [
   "*.css",
 ]
 
@@ -136,9 +121,9 @@ version_file = "src/anemoi/datasets/_version.py"
 [tool.isort]
 profile = "black"
 
-[tool.pytest.ini_options]
-testpaths = "tests"
-addopts = [
+[tool.pytest]
+ini_options.testpaths = "tests"
+ini_options.addopts = [
   "--numprocesses=auto",
   "--maxprocesses=16",
   "--strict-config",
