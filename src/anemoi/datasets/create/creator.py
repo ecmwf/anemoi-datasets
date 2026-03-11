@@ -21,7 +21,6 @@ import numpy as np
 import tqdm
 import zarr
 from anemoi.utils.humanize import bytes_to_human
-from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
@@ -132,13 +131,13 @@ class Creator(ABC):
         LOG.info(f"Dataset path: {self.path}")
         LOG.info(f"Groups: {len(self.groups)}")
 
+        self.check_dataset_name(self.path)
+
         metadata = {}
         self.fill_metadata(metadata)
         dataset.update_metadata(metadata)
 
         assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
-
-        self.check_dataset_name(self.path)
 
         # Initialize the dataset
         self.initialise_dataset(dataset)
@@ -177,7 +176,10 @@ class Creator(ABC):
 
         model_dump = json.loads(model_dump)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
-        recipe = sanitise(model_dump)
+
+        # TODO: make it an option
+        # recipe = sanitise(model_dump)
+        recipe = model_dump
 
         # Remove stuff added by prepml
         allow_keys = set(model_dump.keys())

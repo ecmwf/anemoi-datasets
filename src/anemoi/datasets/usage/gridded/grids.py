@@ -307,6 +307,7 @@ class Cutout(GridsBase):
         cropping_distance: float = 2.0,
         neighbours: int = 5,
         min_distance_km: float | None = None,
+        max_distance_km: float | None = None,
         plot: bool | None = None,
     ) -> None:
         """Initializes a Cutout object for hierarchical management of Limited Area
@@ -324,6 +325,8 @@ class Cutout(GridsBase):
             Number of neighboring points to consider when constructing masks.
         min_distance_km : float, optional
             Minimum distance threshold in km between grid points.
+        max_distance_km : float, optional
+            Maximum distance threshold in km between grid points.
         plot : bool, optional
             Flag to enable or disable visualization plots.
         """
@@ -333,6 +336,8 @@ class Cutout(GridsBase):
         assert cropping_distance >= 0, "cropping_distance must be a non-negative number"
         if min_distance_km is not None:
             assert min_distance_km >= 0, "min_distance_km must be a non-negative number"
+        if max_distance_km is not None:
+            assert max_distance_km >= 0, "max_distance_km must be a non-negative number"
 
         self.lams = datasets[:-1]  # Assume the last dataset is the global one
         self.globe = datasets[-1]
@@ -340,6 +345,7 @@ class Cutout(GridsBase):
         self.cropping_distance = cropping_distance
         self.neighbours = neighbours
         self.min_distance_km = min_distance_km
+        self.max_distance_km = max_distance_km
         self._plot = plot
         self.masks = []  # To store the masks for each LAM dataset
         self.global_mask = np.ones(self.globe.shape[-1], dtype=bool)
@@ -355,7 +361,7 @@ class Cutout(GridsBase):
         ValueError
             If the global mask dimension does not match the global dataset grid points.
         """
-        from anemoi.datasets.usage.grids import cutout_mask
+        from anemoi.transform.spatial import cutout_mask
 
         for i, lam in enumerate(self.lams):
             assert len(lam.shape) == len(
@@ -371,6 +377,7 @@ class Cutout(GridsBase):
                 self.globe.longitudes,
                 plot=self._plot,
                 min_distance_km=self.min_distance_km,
+                max_distance_km=self.max_distance_km,
                 cropping_distance=self.cropping_distance,
                 neighbours=self.neighbours,
             )
@@ -397,6 +404,7 @@ class Cutout(GridsBase):
                             lam_lons,
                             plot=self._plot,
                             min_distance_km=self.min_distance_km,
+                            max_distance_km=self.max_distance_km,
                             cropping_distance=self.cropping_distance,
                             neighbours=self.neighbours,
                         )
@@ -457,6 +465,8 @@ class Cutout(GridsBase):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
+    @debug_indexing
+    @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Helper method that applies masks and retrieves data from each dataset according to the specified index.
 
@@ -636,6 +646,7 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     axis = kwargs.pop("axis", 3)
     plot = kwargs.pop("plot", None)
     min_distance_km = kwargs.pop("min_distance_km", None)
+    max_distance_km = kwargs.pop("max_distance_km", None)
     cropping_distance = kwargs.pop("cropping_distance", 2.0)
     neighbours = kwargs.pop("neighbours", 5)
 
@@ -650,6 +661,7 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
         axis=axis,
         neighbours=neighbours,
         min_distance_km=min_distance_km,
+        max_distance_km=max_distance_km,
         cropping_distance=cropping_distance,
         plot=plot,
     )._subset(**kwargs)

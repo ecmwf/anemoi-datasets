@@ -557,6 +557,13 @@ class CopyMixin:
         if args.overwrite and args.resume:
             raise ValueError("Cannot use --overwrite and --resume together.")
 
+        for name, path in (("Source", args.source), ("Target", args.target)):
+            if path.endswith("/"):
+                raise ValueError(f"{name} path must not end with '/': {path!r}")
+            basename = path.split("/")[-1].split("?")[0]  # handle query strings in URLs
+            if not basename.endswith(".zarr") or basename == ".zarr":
+                raise ValueError(f"{name} path must match '*.zarr' pattern: {path!r}")
+
         if not args.rechunk and not args.obfuscate:
             # rechunking is only supported for ZARR datasets, it is implemented in this package
             try:

@@ -1,0 +1,14 @@
+accumulate:
+  period: 6h
+  availability:
+    - [0, "0-6/0-12/0-18"]
+    - [12, "0-6/0-12/0-18"]
+  source:
+    mars:
+      expver: "0001"
+      class: od
+      stream: oper
+      type: fc
+      grid: 20./20.
+      levtype: sfc
+      param: [tp, cp]

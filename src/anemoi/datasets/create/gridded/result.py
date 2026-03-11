@@ -140,8 +140,11 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
-            endStep = f.metadata("P1")
-            startStep = f.metadata("P2")
+            endStep = as_timedelta(f.metadata("P1"))
+            startStep = as_timedelta(f.metadata("P2"))
+
+        if startStep is not None and endStep is not None:
+            assert endStep >= startStep, (startStep, endStep, md)
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
@@ -201,7 +204,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
             if process is None:
                 raise ValueError(
                     f"Unknown for {md['param']}:"
-                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get('stepTypeForConversion')}),"
+                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)}),"
                     f" {typeOfStatisticalProcessing=} ({TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)}),"
                     f" {timeRangeIndicator=} ({TIME_RANGE_INDICATOR.get(timeRangeIndicator)})"
                 )
@@ -537,11 +540,9 @@ class GriddedResult(Result):
         print()
         print("❌" * 40)
         print()
-        exit(1)
 
     def build_coords(self) -> None:
         """Build the coordinate arrays for the result if not already built."""
-        """Build the coordinates for the result."""
         if self._coords_already_built:
             return
 

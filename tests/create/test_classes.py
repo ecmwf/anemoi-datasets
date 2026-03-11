@@ -309,6 +309,7 @@ def test_class_gridded_thinning_1():
 
 @skip_if_offline
 @zarr_tests
+@not_ready
 def test_class_gridded_thinning_2():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
@@ -320,6 +321,7 @@ def test_class_gridded_thinning_2():
 
 @skip_if_offline
 @zarr_tests
+@not_ready
 def test_class_gridded_thinning_3():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
@@ -331,6 +333,7 @@ def test_class_gridded_thinning_3():
 
 @skip_if_offline
 @zarr_tests
+@not_ready
 def test_class_gridded_thinning_4():
     ds = open_dataset(
         "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",

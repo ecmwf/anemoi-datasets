@@ -218,7 +218,7 @@ def _test_window_view(view, expect):
             # print(f"+++++++++++++ Sample {i}: EMPTY slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
             continue
 
-        slice_obj = sample._anemoi_annotation.slice_obj
+        slice_obj = sample._anemoi_annotation._slice_obj
         assert slice_obj.start == offset, (slice_obj, offset, offset - slice_obj.start)
         # print(f"+++++++++++++ Sample {i}: slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
         # print(sample)

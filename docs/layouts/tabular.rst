@@ -57,8 +57,8 @@ Windows can be open or closed at each end:
    "[-3,+3]" # Both ends are included
    "(-1d,0]" # Start is open, end is closed
 
-Samples
-=======
+Data samples
+============
 
 The dataset is made of samples, which are built by applying the
 ``window`` to a list of *reference dates* defined by the ``start``,

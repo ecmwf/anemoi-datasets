@@ -48,11 +48,15 @@ class Cropping(Forwards):
 
         super().__init__(forward)
 
+        raise NotImplementedError("Cropping: __getitem__ is not implemented yet")
+
     def __getitem__(self, n):
         result = self.forward[n]
+        assert len(result.shape) == 2, "Expected a 2D array"
         north, west, south, east = self.area
-        latitudes = result[:, 1]
-        longitudes = result[:, 2]
+
+        latitudes = result.latitudes
+        longitudes = result.longitudes
 
         north, west, south, east = self.area
 

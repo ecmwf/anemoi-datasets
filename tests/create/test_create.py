@@ -13,6 +13,7 @@ import os
 from unittest.mock import patch
 
 import pytest
+import yaml
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
 from anemoi.utils.testing import GetTestArchive
@@ -26,17 +27,43 @@ from .utils.mock_sources import LoadSource
 
 HERE = os.path.dirname(__file__)
 # find_yamls
-NAMES = sorted([os.path.basename(path).split(".")[0] for path in glob.glob(os.path.join(HERE, "*.yaml"))])
-SKIP = ["recentre"]
-SKIP += ["accumulation"]  # test not in s3 yet
-SKIP += ["regrid"]
-NAMES = [name for name in NAMES if name not in SKIP]
-assert NAMES, "No yaml files found in " + HERE
+
+IGNORE = ["recentre"]
+
+NAMES = []
+for path in glob.glob(os.path.join(HERE, "*.yaml")):
+    name, _ = os.path.splitext(os.path.basename(path))
+    if name in IGNORE:
+        continue
+    with open(path) as f:
+        conf = yaml.safe_load(f)
+        if conf.get("skip_test", False):
+            continue
+        if conf.get("slow_test", False):
+            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
+            continue
+    NAMES.append(name)
+
+IGNORE = ["recentre"]
+
+NAMES = []
+for path in glob.glob(os.path.join(HERE, "*.yaml")):
+    name, _ = os.path.splitext(os.path.basename(path))
+    if name in IGNORE:
+        continue
+    with open(path) as f:
+        conf = yaml.safe_load(f)
+        if conf.get("skip_test", False):
+            continue
+        if conf.get("slow_test", False):
+            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
+            continue
+    NAMES.append(name)
 
 
 # Used by pipe.yaml
 @filter_registry.register("filter")
-class TestFilter(Filter):
+class FilterForTesting(Filter):
 
     def __init__(self, **kwargs):
 
@@ -70,6 +97,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     AssertionError
         If the comparison fails.
     """
+    import requests
+
     with patch("earthkit.data.from_source", load_source):
         from anemoi.datasets.create.creator import VERSION
 
@@ -78,11 +107,18 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
 
         create_dataset(recipe=recipe, output=output, delta=["12h"])
 
-        directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
-        reference = os.path.join(directory, name + ".zarr")
+        missing_reference = False
+        try:
+            directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
+        except requests.exceptions.HTTPError:
+            missing_reference = True
+            errors = [f"Reference data for {name} is missing, cannot compare."]
 
-        errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
-        if errors:
+        if not missing_reference:
+            reference = os.path.join(directory, name + ".zarr")
+            errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
+
+        if errors or missing_reference:
             actual_path = os.path.realpath(output)
 
             print()
