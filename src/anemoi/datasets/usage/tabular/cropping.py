@@ -53,8 +53,8 @@ class Cropping(Forwards):
         assert len(result.shape) == 2, "Expected a 2D array"
         north, west, south, east = self.area
 
-        latitudes = result[:, 2]
-        longitudes = result[:, 3]
+        latitudes = result.latitudes
+        longitudes = result.longitudes
 
         north, west, south, east = self.area
 
