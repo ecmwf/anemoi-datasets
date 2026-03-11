@@ -18,6 +18,8 @@ from anemoi.utils.config import DotDict
 from anemoi.utils.config import load_any_dict_format
 from earthkit.data.core.order import normalize_order_by
 
+from anemoi.datasets.dates.groups import Groups
+
 LOG = logging.getLogger(__name__)
 
 
@@ -338,13 +340,58 @@ def _prepare_serialisation(o: Any) -> Any:
     return str(o)
 
 
-def loader_config(config: dict) -> LoadersConfig:
+def set_to_test_mode(cfg: dict) -> None:
+    NUMBER_OF_DATES = 4
+    LOG.warning(f"Running in test mode. Changing the list of dates to use only {NUMBER_OF_DATES}.")
+    groups = Groups(**LoadersConfig(cfg).dates)
+    dates = groups.provider.values
+    cfg["dates"] = dict(
+        start=dates[0],
+        end=dates[NUMBER_OF_DATES - 1],
+        frequency=groups.provider.frequency,
+        group_by=NUMBER_OF_DATES,
+    )
+
+    num_ensembles = count_ensembles(cfg)
+
+    def set_element_to_test(obj):
+        if isinstance(obj, (list, tuple)):
+            for v in obj:
+                set_element_to_test(v)
+            return
+
+        if isinstance(obj, (dict, DotDict)):
+            if "grid" in obj and num_ensembles > 1:
+                previous = obj["grid"]
+                obj["grid"] = "20./20."
+                LOG.warning(f"Running in test mode. Setting grid to {obj['grid']} instead of {previous}")
+
+            if "number" in obj and num_ensembles > 1:
+                if isinstance(obj["number"], (list, tuple)):
+                    previous = obj["number"]
+                    obj["number"] = previous[0:3]
+                    LOG.warning(f"Running in test mode. Setting number to {obj['number']} instead of {previous}")
+
+            for k, v in obj.items():
+                set_element_to_test(v)
+
+            if "constants" in obj:
+                constants = obj["constants"]
+                if "param" in constants and isinstance(constants["param"], list):
+                    constants["param"] = ["cos_latitude"]
+
+    set_element_to_test(cfg)
+
+
+def loader_config(config: dict, is_test: bool = False) -> LoadersConfig:
     """Loads and validates the configuration for dataset loaders.
 
     Parameters
     ----------
     config : dict
         The configuration dictionary.
+    is_test : bool
+        If True, applies test mode to reduce dates, grid, and ensembles.
 
     Returns
     -------
@@ -352,6 +399,8 @@ def loader_config(config: dict) -> LoadersConfig:
         The validated configuration object.
     """
     config = Config(config)
+    if is_test:
+        set_to_test_mode(config)
     obj = LoadersConfig(config)
 
     # yaml round trip to check that serialisation works as expected
