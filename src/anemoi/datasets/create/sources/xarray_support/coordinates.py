@@ -96,7 +96,7 @@ class Coordinate:
     is_y = False
     is_point = False
 
-    def __init__(self, variable: "xr.DataArray") -> None:
+    def __init__(self, variable: xr.DataArray) -> None:
         """Initialize the coordinate.
 
         Parameters
