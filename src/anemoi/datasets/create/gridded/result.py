@@ -540,7 +540,6 @@ class GriddedResult(Result):
 
     def build_coords(self) -> None:
         """Build the coordinate arrays for the result if not already built."""
-        """Build the coordinates for the result."""
         if self._coords_already_built:
             return
 
