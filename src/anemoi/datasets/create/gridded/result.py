@@ -140,8 +140,11 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
-            endStep = f.metadata("P1")
-            startStep = f.metadata("P2")
+            endStep = as_timedelta(f.metadata("P1"))
+            startStep = as_timedelta(f.metadata("P2"))
+
+        if startStep is not None and endStep is not None:
+            assert endStep >= startStep, (startStep, endStep, md)
 
         if startStep != endStep:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/

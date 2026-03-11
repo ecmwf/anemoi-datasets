@@ -50,9 +50,11 @@ class Cropping(Forwards):
 
     def __getitem__(self, n):
         result = self.forward[n]
+        assert len(result.shape) == 2, "Expected a 2D array"
         north, west, south, east = self.area
-        latitudes = result[:, 1]
-        longitudes = result[:, 2]
+
+        latitudes = result[:, 2]
+        longitudes = result[:, 3]
 
         north, west, south, east = self.area
 

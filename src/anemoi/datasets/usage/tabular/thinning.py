@@ -43,7 +43,7 @@ class Thinning(ThinningMixin, Forwards):
 
     def __getitem__(self, n):
         data = super().__getitem__(n)
-        latitudes = data[:, 3]
-        longitudes = data[:, 4]
+        latitudes = data[:, 2]
+        longitudes = data[:, 3]
         mask = self.thinner.mask(latitudes, longitudes)
         return data[mask]

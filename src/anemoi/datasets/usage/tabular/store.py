@@ -95,8 +95,9 @@ class TabularZarr(ZarrStore):
     def longitudes(self) -> np.ndarray:
         return None
 
+    @property
     def missing(self) -> Any:
-        raise NotImplementedError()
+        return set()
 
     @cached_property
     def name_to_index(self) -> dict[str, int]:
