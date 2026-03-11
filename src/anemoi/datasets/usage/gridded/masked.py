@@ -165,6 +165,9 @@ class Thinning(ThinningMixin, Masked):
             mask = np.full(shape, False, dtype=bool)
             mask[::thinning, ::thinning] = True
             mask = mask.flatten()
+            mask = np.full(shape, False, dtype=bool)
+            mask[::thinning, ::thinning] = True
+            mask = mask.flatten()
         else:
             mask = None
 

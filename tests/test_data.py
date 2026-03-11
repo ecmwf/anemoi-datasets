@@ -24,19 +24,19 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.misc.testing import default_test_indexing
-from anemoi.datasets.usage.common.rename import Rename
-from anemoi.datasets.usage.gridded.concat import Concat
-from anemoi.datasets.usage.gridded.ensemble import Ensemble
-from anemoi.datasets.usage.gridded.grids import GridsBase
-from anemoi.datasets.usage.gridded.join import Join
+from anemoi.datasets.testing import default_test_indexing
+from anemoi.datasets.usage.concat import Concat
+from anemoi.datasets.usage.ensemble import Ensemble
 from anemoi.datasets.usage.gridded.masked import Masking
-from anemoi.datasets.usage.gridded.select import Select
-from anemoi.datasets.usage.gridded.statistics import Statistics
 from anemoi.datasets.usage.gridded.store import GriddedZarr
-from anemoi.datasets.usage.gridded.subset import Subset
+from anemoi.datasets.usage.grids import GridsBase
+from anemoi.datasets.usage.join import Join
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
+from anemoi.datasets.usage.select import Rename
+from anemoi.datasets.usage.select import Select
+from anemoi.datasets.usage.statistics import Statistics
+from anemoi.datasets.usage.subset import Subset
 
 VALUES = 10
 
@@ -1399,8 +1399,8 @@ def test_masking() -> None:
     """Test masking a dataset."""
     test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
     with (
-        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.masked.Path.exists", return_value=True),
     ):
 
         test = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
@@ -1424,8 +1424,8 @@ def test_masking_wrong_mask_dims() -> None:
     """Test masking a dataset (wrong dims in mask)."""
     test_mask = np.array([True, False, True, True, True, True, False, False, True])
     with (
-        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.masked.Path.exists", return_value=True),
     ):
         with pytest.raises(ValueError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
@@ -1436,7 +1436,7 @@ def test_masking_wrong_mask_dims() -> None:
 def test_masking_mask_file_not_found() -> None:
     """Test masking a dataset (mask file not found)."""
     test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
-    with patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask):
+    with patch("anemoi.datasets.usage.masked.np.load", return_value=test_mask):
         with pytest.raises(FileNotFoundError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
     return
@@ -1447,8 +1447,8 @@ def test_masking_wrong_dtype() -> None:
     """Test masking a dataset (mask file not found)."""
     test_mask = np.array([1, 0, 1, 1, 1, 1, 0, 0, 1, 0])
     with (
-        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.masked.Path.exists", return_value=True),
     ):
         with pytest.raises(ValueError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")

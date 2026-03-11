@@ -43,6 +43,8 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.27",
+  "anemoi-transform>=0.1.27",
+  "anemoi-utils>=0.5",
   "anemoi-utils>=0.5",
   "cfunits",
   "glom",
@@ -53,8 +55,10 @@ dependencies = [
   "pydantic",
   "pyyaml",
   "ruamel-yaml>=0.16",
+  "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
+  "zarr<=2.18.7",
   "zarr<=2.18.7",
 ]
 optional-dependencies.all = [
@@ -113,7 +117,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools]
-package-data."anemoi.datasets.use" = [
+package-data."anemoi.datasets.usage" = [
   "*.css",
 ]
 

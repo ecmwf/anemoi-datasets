@@ -19,3 +19,6 @@ build:
 statistics:
   end: 2020
   tendencies: ['6h', '12h']
+
+checks:
+  - compare_to_reference: {}
