@@ -16,8 +16,9 @@ from typing import Any
 import yaml
 from anemoi.utils.config import DotDict
 from anemoi.utils.config import load_any_dict_format
-from anemoi.datasets.dates.groups import Groups
 from earthkit.data.core.order import normalize_order_by
+
+from anemoi.datasets.dates.groups import Groups
 
 LOG = logging.getLogger(__name__)
 

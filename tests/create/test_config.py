@@ -9,7 +9,9 @@
 
 import os
 
-from anemoi.datasets.create.config import Config, LoadersConfig, set_to_test_mode
+from anemoi.datasets.create.config import Config
+from anemoi.datasets.create.config import LoadersConfig
+from anemoi.datasets.create.config import set_to_test_mode
 from anemoi.datasets.dates.groups import Groups
 
 HERE = os.path.dirname(__file__)
@@ -55,4 +57,3 @@ def test_set_to_test_mode_reduces_grid_and_ensemble():
 
     assert cfg["input"]["mars"]["grid"] == "20./20."
     assert cfg["input"]["mars"]["number"] == [0, 1, 2]
-
