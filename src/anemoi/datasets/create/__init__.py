@@ -257,6 +257,7 @@ class Dataset:
         dates: list[datetime.datetime],
         frequency: datetime.timedelta,
         raise_exception: bool = False,
+        is_test: bool = False,
     ) -> None:
         """Check the name of the dataset.
 
@@ -270,12 +271,14 @@ class Dataset:
             The frequency of the dataset.
         raise_exception : bool, optional
             Whether to raise an exception if the name is invalid.
+        is_test : bool, optional
+            Whether running in test mode.
         """
         basename, _ = os.path.splitext(os.path.basename(self.path))
         try:
             DatasetName(basename, resolution, dates[0], dates[-1], frequency).raise_if_not_valid()
         except Exception as e:
-            if raise_exception:
+            if raise_exception and not is_test:
                 raise
             else:
                 LOG.warning(f"Dataset name error: {e}")
@@ -571,6 +574,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         config: dict,
         check_name: bool = False,
         overwrite: bool = False,
+        test: bool = False,
         use_threads: bool = False,
         statistics_temp_dir: str | None = None,
         progress: Any = None,
@@ -604,11 +608,12 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
         super().__init__(path, cache=cache)
         self.config = config
         self.check_name = check_name
+        self.test = test
         self.use_threads = use_threads
         self.statistics_temp_dir = statistics_temp_dir
         self.progress = progress
 
-        self.main_config = loader_config(config)
+        self.main_config = loader_config(config, is_test=test)
 
         # self.registry.delete() ??
         self.tmp_statistics.delete()
@@ -744,6 +749,7 @@ class Init(Actor, HasRegistryMixin, HasStatisticTempMixin, HasElementForDataMixi
             resolution=resolution,
             dates=dates,
             frequency=frequency,
+            is_test=self.test,
         )
 
         if len(dates) != total_shape[0]:
