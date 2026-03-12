@@ -82,6 +82,8 @@ class DateMapperClosest(DateMapper):
 
         Parameters
         ----------
+        context: 
+            The context of the RepeatedSource using the DateMapper
         group_of_dates : Any
             The group of dates to transform.
 
@@ -196,6 +198,8 @@ class DateMapperClimatology(DateMapper):
 
         Parameters
         ----------
+        context: 
+            The context of the RepeatedSource using the DateMapper (not used here)
         group_of_dates : Any
             The group of dates to transform.
 
@@ -245,6 +249,8 @@ class DateMapperConstant(DateMapper):
 
         Parameters
         ----------
+        context: 
+            The context of the RepeatedSource using the DateMapper (not used here)
         group_of_dates : Any
             The group of dates to transform.
 
