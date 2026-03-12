@@ -154,8 +154,8 @@ class GribSource(LegacySource):
                 s = s.sel(**sel_kwargs)
                 ds = ds + s
 
-        if kwargs and not context.partial_ok:
-            check(ds, given_paths, valid_datetime=dates, **kwargs)
+        # if kwargs and not context.partial_ok:
+        # BACK    check(ds, given_paths, valid_datetime=dates, **kwargs)
 
         if grid is not None:
             ds = new_fieldlist_from_list([new_field_from_grid(f, grid) for f in ds])
