@@ -387,6 +387,8 @@ MARS_KEYS = [
     "truncation",
     "type",
     "year",
+    "paramtype",
+    "timespan",
 ]
 
 
