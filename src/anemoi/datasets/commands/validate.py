@@ -10,13 +10,11 @@ import importlib
 import logging
 from typing import Any
 
-from anemoi.datasets.validate import validate_dataset
+from anemoi.datasets.misc.validate import validate_dataset
 
 from . import Command
 
 LOG = logging.getLogger(__name__)
-
-DEFAULT_DATASET = "aifs-ea-an-oper-0001-mars-o96-1979-2023-6h-v8"
 
 
 class Validate(Command):
@@ -48,9 +46,6 @@ class Validate(Command):
         module_path, func_name = args.callable.rsplit(".", 1)
         module = importlib.import_module(module_path)
         callable_func = getattr(module, func_name)
-
-        if args.path == "default":
-            args.path = DEFAULT_DATASET
 
         dataset = callable_func(args.path)
         validate_dataset(dataset, costly_checks=args.costly_checks, detailed=args.detailed)

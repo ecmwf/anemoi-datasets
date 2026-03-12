@@ -43,18 +43,22 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.27",
+  "anemoi-transform>=0.1.27",
+  "anemoi-utils>=0.5",
   "anemoi-utils>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
+  "lru-dict",
   "numcodecs<0.16",           # Until we move to zarr3
   "numpy",
-  "pytest>=8.4.1",
-  "pytest-xdist>=3.7",
+  "pydantic",
   "pyyaml",
+  "ruamel-yaml>=0.16",
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
+  "zarr<=2.18.7",
   "zarr<=2.18.7",
 ]
 optional-dependencies.all = [
@@ -71,6 +75,7 @@ optional-dependencies.create = [
   "earthkit-meteo>=0.3",
   "eccodes>=2.39.1",
   "entrypoints",
+  "fasteners",
   "pyproj>=3",
 ]
 optional-dependencies.dev = [
@@ -90,9 +95,10 @@ optional-dependencies.remote = [
 ]
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
-  "pytest",
+  "pyodc>=1.6",
+  "pytest>=8.4.1",
   "pytest-skip-slow",
-  "pytest-xdist",
+  "pytest-xdist>=3.7",
 ]
 optional-dependencies.xarray = [
   "adlfs",
@@ -111,7 +117,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools]
-package-data."anemoi.datasets.data" = [
+package-data."anemoi.datasets.usage" = [
   "*.css",
 ]
 
@@ -132,7 +138,7 @@ ini_options.addopts = [
 [tool.mypy]
 strict = false
 exclude = [
-  "docs/**",
+  "docs/.*",
 ]
 
 [tool.pydocstringformatter]
