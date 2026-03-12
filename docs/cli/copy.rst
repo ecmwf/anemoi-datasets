@@ -25,7 +25,7 @@ very likely to have a negative impact on the performance.
 .. warning::
 
     When resuming the copying process (using ``--resume``), calling the script with the same arguments for ``--block-size`` and ``--rechunk`` is recommended.
-    Using different values for these arguments to resume copying the same dataset may lead to unexpected behavior.
+    Using different values for these arguments to resume copying the same dataset may lead to unexpected behaviour.
 
 
 .. argparse::

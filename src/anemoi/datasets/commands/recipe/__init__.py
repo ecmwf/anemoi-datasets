@@ -15,11 +15,11 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create import validate_config
-
 from .. import Command
+from .dump import dump_recipe
 from .format import format_recipe
 from .migrate import migrate_recipe
+from .validate import validate_recipe
 
 LOG = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class Recipe(Command):
         command_parser.add_argument("--validate", action="store_true", help="Validate recipe.")
         command_parser.add_argument("--format", action="store_true", help="Format the recipe.")
         command_parser.add_argument("--migrate", action="store_true", help="Migrate the recipe to the latest version.")
+        command_parser.add_argument("--dump", action="store_true", help="Dump the recipe.")
 
         group = command_parser.add_mutually_exclusive_group()
         group.add_argument("--inplace", action="store_true", help="Overwrite the recipe file in place.")
@@ -49,22 +50,18 @@ class Recipe(Command):
 
     def run(self, args: Any) -> None:
 
-        if not args.validate and not args.format and not args.migrate:
-            args.validate = True
-
         with open(args.path) as file:
             config = yaml.safe_load(file)
 
-        assert isinstance(config, dict)
-
         if args.validate:
-            if args.inplace and (not args.format and not args.migrate):
+
+            if args.inplace and (not args.format and not args.migrate and not args.dump):
                 argparse.ArgumentError(None, "--inplace is not supported with --validate.")
 
-            if args.output and (not args.format and not args.migrate):
+            if args.output and (not args.format and not args.migrate and not args.dump):
                 argparse.ArgumentError(None, "--output is not supported with --validate.")
 
-            validate_config(config)
+            validate_recipe(config)
             LOG.info(f"{args.path}: Recipe is valid.")
             return
 
@@ -87,6 +84,19 @@ class Recipe(Command):
                 f = open(args.path, "w")
 
             print(formatted, file=f)
+            f.close()
+
+        if args.dump:
+
+            dumped = dump_recipe(config)
+            f = sys.stdout
+            if args.output:
+                f = open(args.output, "w")
+
+            if args.inplace:
+                f = open(args.path, "w")
+
+            print(dumped, file=f)
             f.close()
 
 
