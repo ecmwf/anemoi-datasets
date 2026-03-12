@@ -27,13 +27,14 @@ class RepeatedDatesSource(Source):
     def __init__(self, context, source: Any, mode: str, **kwargs) -> None:
         # assert False, (context, source, mode, kwargs)
         super().__init__(context, **kwargs)
+
         source = self.context.create_source(source, "data_sources", str(id(self)))
+        
         self.mapper = DateMapper.from_mode(mode, source, kwargs)
         self.source = source
 
     def execute(self, group_of_dates):
-        #source = self.context.create_source(self.source, "data_sources", str(id(self)))
-        LOG.debug(f"SOURCE: {self.source}")
+
         result = []
         for one_date_group, many_dates_group in self.mapper.transform(self.context, group_of_dates):
             print(f"one_date_group: {one_date_group}, many_dates_group: {many_dates_group}")

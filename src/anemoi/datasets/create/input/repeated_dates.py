@@ -191,7 +191,7 @@ class DateMapperClimatology(DateMapper):
         self.day: int = day
         self.hour: int | None = hour
 
-    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
         Parameters
@@ -240,7 +240,7 @@ class DateMapperConstant(DateMapper):
         self.source: Any = source
         self.date: Any | None = date
 
-    def transform(self, group_of_dates: Any) -> tuple[Any, Any]:
+    def transform(self, context, group_of_dates: Any) -> tuple[Any, Any]:
         """Transform the group of dates to a constant date.
 
         Parameters
