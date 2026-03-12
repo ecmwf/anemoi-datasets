@@ -29,7 +29,7 @@ class RepeatedDatesSource(Source):
         super().__init__(context, **kwargs)
 
         source = self.context.create_source(source, "data_sources", str(id(self)))
-        
+
         self.mapper = DateMapper.from_mode(mode, source, kwargs)
         self.source = source
 

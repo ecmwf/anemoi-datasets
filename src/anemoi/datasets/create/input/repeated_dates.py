@@ -117,12 +117,12 @@ class DateMapperClosest(DateMapper):
 
         if to_try:
             result = self.source(
-                context, 
+                context,
                 GroupOfDates(
                     sorted(to_try),
                     group_of_dates.provider,
                     partial_ok=True,
-                )
+                ),
             )
 
             cnt = 0
