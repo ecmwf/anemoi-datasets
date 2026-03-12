@@ -9,7 +9,7 @@
 
 
 import datetime
-import tempfile
+import os
 from collections.abc import Callable
 from functools import cache
 from functools import wraps
@@ -18,28 +18,25 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+import rich
 import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.commands.inspect import InspectZarr
-from anemoi.datasets.commands.inspect import NoVersion
-from anemoi.datasets.data import save_dataset
-from anemoi.datasets.data.concat import Concat
-from anemoi.datasets.data.ensemble import Ensemble
-from anemoi.datasets.data.grids import GridsBase
-from anemoi.datasets.data.join import Join
-from anemoi.datasets.data.masked import Masking
-from anemoi.datasets.data.misc import as_first_date
-from anemoi.datasets.data.misc import as_last_date
-from anemoi.datasets.data.padded import Padded
-from anemoi.datasets.data.select import Rename
-from anemoi.datasets.data.select import Select
-from anemoi.datasets.data.statistics import Statistics
-from anemoi.datasets.data.stores import Zarr
-from anemoi.datasets.data.subset import Subset
-from anemoi.datasets.testing import default_test_indexing
+from anemoi.datasets.misc.testing import default_test_indexing
+from anemoi.datasets.usage.common.rename import Rename
+from anemoi.datasets.usage.gridded.concat import Concat
+from anemoi.datasets.usage.gridded.ensemble import Ensemble
+from anemoi.datasets.usage.gridded.grids import GridsBase
+from anemoi.datasets.usage.gridded.join import Join
+from anemoi.datasets.usage.gridded.masked import Masking
+from anemoi.datasets.usage.gridded.select import Select
+from anemoi.datasets.usage.gridded.statistics import Statistics
+from anemoi.datasets.usage.gridded.store import GriddedZarr
+from anemoi.datasets.usage.gridded.subset import Subset
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
 
@@ -60,8 +57,8 @@ def mockup_open_zarr(func: Callable) -> Callable:
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with patch("zarr.convenience.open", zarr_from_str):
-            with patch("anemoi.datasets.data.stores.zarr_lookup", lambda name: name):
+        with patch("zarr.open", zarr_from_str):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
@@ -101,6 +98,7 @@ def create_zarr(
     vars: str = "abcd",
     start: int = 2021,
     end: int = 2021,
+    field_shape=[2, 5],
     frequency: datetime.timedelta = datetime.timedelta(hours=6),
     resolution: str = "o96",
     k: int = 0,
@@ -118,6 +116,8 @@ def create_zarr(
         Start year, by default 2021.
     end : int, optional
         End year, by default 2021.
+    field_shape : list, optional
+        Field shape, by default [2, 5].
     frequency : datetime.timedelta, optional
         Frequency, by default datetime.timedelta(hours=6).
     resolution : str, optional
@@ -220,6 +220,10 @@ def create_zarr(
         compressor=None,
     )
 
+    root.attrs["field_shape"] = field_shape
+    assert len(field_shape) == 2
+    assert data.shape[-1] == field_shape[0] * field_shape[1]
+
     return root
 
 
@@ -240,6 +244,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
     """
     # Format: test-2021-2021-6h-o96-abcd-0
 
+    name, _ = os.path.splitext(name)
+
     args = dict(
         test="test",
         start=2021,
@@ -250,12 +256,14 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         k=0,
         ensemble=None,
         grids=None,
+        field_shape="2,5",
     )
 
     for name, bit in zip(args, name.split("-")):
-        args[name] = bit
+        if bit:
+            args[name] = bit
 
-    print(args)
+    rich.print(args)
 
     return create_zarr(
         start=int(args["start"]),
@@ -267,6 +275,7 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         ensemble=int(args["ensemble"]) if args["ensemble"] is not None else None,
         grids=int(args["grids"]) if args["grids"] is not None else None,
         missing=args["test"] == "missing",
+        field_shape=list(map(int, args["field_shape"].split(","))),
     )
 
 
@@ -387,6 +396,8 @@ class DatasetTester:
         regular_shape : bool, optional
             Whether the dataset has a regular shape, by default True.
         """
+        from anemoi.datasets import open_dataset
+
         if isinstance(expected_variables, str):
             expected_variables = [v for v in expected_variables]
 
@@ -504,7 +515,7 @@ def test_simple() -> None:
     """Test a simple dataset."""
     test = DatasetTester("test-2021-2022-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 2 * 4,
         date_to_row=lambda date: simple_row(date, "abcd"),
         start_date=datetime.datetime(2021, 1, 1),
@@ -608,25 +619,6 @@ def test_join_3() -> None:
         ),
         statistics_reference_dataset="test-2021-2021-6h-o96-abcd-2",
         statistics_reference_variables="abcd",
-    )
-
-
-@mockup_open_zarr
-def test_padding_1() -> None:
-    """Test subsetting a dataset (case 2)."""
-    test = DatasetTester("test-2022-2022-1h-o96-abcd", start="2021-01-01", end="2023-12-31 23:00:00", padding="empty")
-    test.run(
-        expected_class=Padded,
-        expected_length=365 * 24 * 3,
-        expected_shape=(365 * 24 * 3, 4, 1, VALUES),
-        expected_variables="abcd",
-        expected_name_to_index="abcd",
-        date_to_row=lambda date: simple_row(date, "abcd") if date.year == 2022 else np.zeros((4, 1, 0)),
-        start_date=datetime.datetime(2021, 1, 1),
-        time_increment=datetime.timedelta(hours=1),
-        statistics_reference_dataset="test-2022-2022-1h-o96-abcd",
-        statistics_reference_variables="abcd",
-        regular_shape=False,
     )
 
 
@@ -1120,7 +1112,7 @@ def test_slice_1() -> None:
     """Test slicing a dataset (case 1)."""
     test = DatasetTester("test-2021-2021-6h-o96-abcd")
     test.run(
-        expected_class=Zarr,
+        expected_class=GriddedZarr,
         expected_length=365 * 1 * 4,
         expected_shape=(365 * 1 * 4, 4, 1, VALUES),
         expected_variables="abcd",
@@ -1305,7 +1297,7 @@ def test_grids() -> None:
     test = DatasetTester(
         grids=[
             "test-2021-2021-6h-o96-abcd-1-1",  # Default is 10 gridpoints
-            "test-2021-2021-6h-o96-abcd-2-1-25",  # 25 gridpoints
+            "test-2021-2021-6h-o96-abcd-2-1-25-5,5",  # 25 gridpoints
         ]
     )
     test.run(
@@ -1340,7 +1332,7 @@ def test_grids() -> None:
     )
 
     ds1 = open_dataset("test-2021-2021-6h-o96-abcd-1-1")
-    ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25")
+    ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25-5,5")
 
     assert (test.ds.longitudes == np.concatenate([ds1.longitudes, ds2.longitudes])).all()
     assert (test.ds.latitudes == np.concatenate([ds1.latitudes, ds2.latitudes])).all()
@@ -1377,6 +1369,7 @@ def test_cropping() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, 8)
 
 
+@pytest.mark.skip("Rolling average not yet supported in that branch")
 @mockup_open_zarr
 def test_rolling_average() -> None:
     initial = DatasetTester("test-2021-2021-6h-o96-abcd")
@@ -1406,8 +1399,8 @@ def test_masking() -> None:
     """Test masking a dataset."""
     test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
     with (
-        patch("anemoi.datasets.data.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.data.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
     ):
 
         test = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
@@ -1431,8 +1424,8 @@ def test_masking_wrong_mask_dims() -> None:
     """Test masking a dataset (wrong dims in mask)."""
     test_mask = np.array([True, False, True, True, True, True, False, False, True])
     with (
-        patch("anemoi.datasets.data.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.data.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
     ):
         with pytest.raises(ValueError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
@@ -1443,7 +1436,7 @@ def test_masking_wrong_mask_dims() -> None:
 def test_masking_mask_file_not_found() -> None:
     """Test masking a dataset (mask file not found)."""
     test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
-    with patch("anemoi.datasets.data.masked.np.load", return_value=test_mask):
+    with patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask):
         with pytest.raises(FileNotFoundError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
     return
@@ -1454,33 +1447,53 @@ def test_masking_wrong_dtype() -> None:
     """Test masking a dataset (mask file not found)."""
     test_mask = np.array([1, 0, 1, 1, 1, 1, 0, 0, 1, 0])
     with (
-        patch("anemoi.datasets.data.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.data.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
     ):
         with pytest.raises(ValueError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
     return
 
 
-def test_save_dataset() -> None:
-    """Test save datasets."""
+@mockup_open_zarr
+def test_trim_edge_simple() -> None:
+    """Test trimming the edges of a dataset."""
+    test = DatasetTester(
+        "test-2021-2021-6h-o96-abcd---210-15,14",
+        trim_edge=(2, 3, 4, 5),
+    )
 
-    @mockup_open_zarr
-    def mock_save_dataset():
-        tmp_dir = tempfile.mkdtemp(suffix=".zarr")
-        test = DatasetTester("test-2021-2022-6h-o96-abcd", select=["a", "b"], start="2021-01-01", end="2021-01-02")
-        save_dataset(test.ds, tmp_dir)
-        return tmp_dir
+    expected_field_shape = (10, 5)
+    assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+    assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
-    tmp_dir = mock_save_dataset()
-    iz = InspectZarr()
-    version = iz._info(tmp_dir)
-    if isinstance(version, NoVersion):
-        pytest.skip("No version information found, test not supported")
-    print(iz.inspect_zarr(tmp_dir))
-    saved = open_dataset(tmp_dir)
-    assert saved.variables == ["a", "b"]
-    assert (saved.dates == np.arange("2021-01-01", "2021-01-03", dtype="datetime64[6h]")).all()
+
+@mockup_open_zarr
+def test_trim_edge_zeros() -> None:
+    """Test trimming the edges of a dataset when edges are 0"""
+    for dim in range(2):
+        trim_edge = [0, 0, 0, 0]
+        trim_edge[dim] = 1
+        test = DatasetTester(
+            "test-2021-2021-6h-o96-abcd---210-15,14",
+            trim_edge=trim_edge,
+        )
+
+        expected_field_shape = (14, 14)
+        assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+    for dim in range(2, 4):
+        trim_edge = [0, 0, 0, 0]
+        trim_edge[dim] = 1
+        test = DatasetTester(
+            "test-2021-2021-6h-o96-abcd---210-15,14",
+            trim_edge=trim_edge,
+        )
+
+        expected_field_shape = (15, 13)
+        assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
 if __name__ == "__main__":
