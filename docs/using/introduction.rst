@@ -71,3 +71,5 @@ or the variable dimension depending on the dataset's structure.
    matching
    miscellaneous
    configuration
+   window
+   parameters

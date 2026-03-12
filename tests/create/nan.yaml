@@ -13,9 +13,12 @@ input:
     stream: oper
     type: an
 
+build:
+  allow_nans: [sst]
+
 statistics:
   end: 2020
-  allow_nans: [sst]
+  tendencies: ['6h', '12h']
 
 checks:
   - compare_to_reference: {}
