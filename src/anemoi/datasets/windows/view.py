@@ -43,7 +43,7 @@ class WindowView:
 
     def __init__(
         self,
-        store: zarr.hierarchy.Group | str,
+        store: zarr.Group | str,
         start_date: datetime.datetime | None = None,
         end_date: datetime.datetime | None = None,
         frequency: int | str | datetime.timedelta = 3,
@@ -53,7 +53,7 @@ class WindowView:
 
         Parameters
         ----------
-        store : zarr.hierarchy.Group or str
+        store : zarr.Group or str
             The Zarr group or path to open.
         start_date : datetime.datetime, optional
             The first date in the windowed view.
@@ -65,7 +65,7 @@ class WindowView:
             The window specification.
         """
         # Open the zarr group if a path is provided
-        self.store = store if isinstance(store, zarr.hierarchy.Group) else zarr.open(store, mode="r")
+        self.store = store if isinstance(store, zarr.Group) else zarr.open(store, mode="r")
 
         # Use provided date_indexing or create a new one for indexing
         self.date_indexing = create_date_indexing(store.attrs["date_indexing"], self.store)

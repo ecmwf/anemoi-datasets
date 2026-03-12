@@ -31,7 +31,7 @@ def _check_group(group, verbosity: int, *path) -> None:
                 LOG.info(f"Check group: skipping {name}")
             continue
 
-        if isinstance(group[name], zarr.hierarchy.Group):
+        if isinstance(group[name], zarr.Group):
             _check_group(group[name], verbosity, *path, name)
         else:
             _check_array(group[name], verbosity, *path, name)
