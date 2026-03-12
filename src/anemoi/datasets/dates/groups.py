@@ -17,8 +17,9 @@ from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.dates import DatesProvider
-from anemoi.datasets.dates import as_datetime
+from anemoi.utils.dates import as_datetime
+
+from anemoi.datasets.create.recipe.dates import DatesProvider
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
@@ -265,6 +266,7 @@ class Grouper(ABC):
             "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
+
         return GrouperByKey(key)
 
     @abstractmethod
@@ -335,6 +337,7 @@ class GrouperByKey(Grouper):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
+
         for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
             yield GroupOfDates(list(g), dates)
 
