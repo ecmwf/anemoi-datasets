@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.36](https://github.com/ecmwf/anemoi-datasets/compare/0.5.35...0.5.36) (2026-03-13)
+
+
+### Features
+
+* Fix issue 569 ([#574](https://github.com/ecmwf/anemoi-datasets/issues/574)) ([7f4e40a](https://github.com/ecmwf/anemoi-datasets/commit/7f4e40a00bc186725e82edbfde1d2b35f1356266))
+* Observations feature branch ([#480](https://github.com/ecmwf/anemoi-datasets/issues/480)) ([92d5ac9](https://github.com/ecmwf/anemoi-datasets/commit/92d5ac95506f363ad5d9a8eec94b21cc0e11b692))
+
+
+### Bug Fixes
+
+* **create:** Repeated-dates ([#572](https://github.com/ecmwf/anemoi-datasets/issues/572)) ([b73d533](https://github.com/ecmwf/anemoi-datasets/commit/b73d533ee5dd351e8cc390255eff6642b497823f))
+* Remove empty accumulators from accumulation computation ([#561](https://github.com/ecmwf/anemoi-datasets/issues/561)) ([3bc087d](https://github.com/ecmwf/anemoi-datasets/commit/3bc087d3e365fbf60b1e9b47350b039af61027de))
+
 ## [0.5.35](https://github.com/ecmwf/anemoi-datasets/compare/0.5.34...0.5.35) (2026-03-09)
 
 
