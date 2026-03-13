@@ -77,11 +77,13 @@ class DateMapperClosest(DateMapper):
         self.tried: set[Any] = set()
         self.found: set[Any] = set()
 
-    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the closest available dates.
 
         Parameters
         ----------
+        context:
+            The context of the RepeatedSource using the DateMapper
         group_of_dates : Any
             The group of dates to transform.
 
@@ -116,16 +118,17 @@ class DateMapperClosest(DateMapper):
             # return []
 
         if to_try:
-            result = self.source.select(
+            result = self.source(
+                context,
                 GroupOfDates(
                     sorted(to_try),
                     group_of_dates.provider,
                     partial_ok=True,
-                )
+                ),
             )
 
             cnt = 0
-            for f in result.datasource:
+            for f in result:
                 cnt += 1
                 # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
                 date = as_datetime(f.metadata("valid_datetime"))
@@ -190,11 +193,13 @@ class DateMapperClimatology(DateMapper):
         self.day: int = day
         self.hour: int | None = hour
 
-    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
         Parameters
         ----------
+        context:
+            The context of the RepeatedSource using the DateMapper (not used here)
         group_of_dates : Any
             The group of dates to transform.
 
@@ -239,11 +244,13 @@ class DateMapperConstant(DateMapper):
         self.source: Any = source
         self.date: Any | None = date
 
-    def transform(self, group_of_dates: Any) -> tuple[Any, Any]:
+    def transform(self, context, group_of_dates: Any) -> tuple[Any, Any]:
         """Transform the group of dates to a constant date.
 
         Parameters
         ----------
+        context:
+            The context of the RepeatedSource using the DateMapper (not used here)
         group_of_dates : Any
             The group of dates to transform.
 
