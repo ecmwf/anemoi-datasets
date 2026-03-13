@@ -198,6 +198,12 @@ class Dataset(ABC, Sized):
                 .mutate()
             )
 
+        if "apply_mask" in kwargs:
+            from .masked import ApplyMask
+
+            apply_mask = kwargs.pop("apply_mask")
+            return ApplyMask(self, apply_mask)._subset(**kwargs).mutate()
+
         if "select" in kwargs:
             Select = self.usage_factory_load("Select")
 

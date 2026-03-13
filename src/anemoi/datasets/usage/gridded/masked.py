@@ -33,6 +33,109 @@ from .indexing import update_tuple
 LOG = logging.getLogger(__name__)
 
 
+class ApplyMask(Forwards):
+    """Apply a time-varying boolean field mask to all non-mask variables."""
+
+    def __init__(self, forward: Dataset, mask: str) -> None:
+        super().__init__(forward)
+
+        if mask not in self.forward.name_to_index:
+            raise ValueError(f"Mask variable {mask!r} not found in dataset variables {self.forward.variables}")
+
+        self.mask = mask
+        self.mask_index = self.forward.name_to_index[mask]
+        self.indices = [i for i, variable in enumerate(self.forward.variables) if variable != mask]
+
+        if not self.indices:
+            raise ValueError("`apply_mask` requires at least one non-mask variable to keep")
+
+        self._dtype = np.result_type(self.forward.dtype, np.float64)
+
+    def mutate(self) -> Dataset:
+        return self
+
+    def _mask_result(self, result: NDArray[Any], variable_axis: int) -> NDArray[Any]:
+        data = np.take(result, self.indices, axis=variable_axis)
+        mask = np.take(result, self.mask_index, axis=variable_axis) != 0
+        mask = np.expand_dims(mask, axis=variable_axis)
+        return np.where(mask, data, np.nan)
+
+    @debug_indexing
+    @expand_list_indexing
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        index, changes = index_to_slices(index, self.shape)
+        index, previous = update_tuple(index, 1, slice(None))
+        result = self._get_slice(previous)
+        return apply_index_to_slices_changes(result[index], changes)
+
+    @debug_indexing
+    def _get_slice(self, s: slice) -> NDArray[Any]:
+        result = self.forward[s]
+        return self._mask_result(result, variable_axis=1)
+
+    @debug_indexing
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
+        if isinstance(index, tuple):
+            return self._get_tuple(index)
+
+        if isinstance(index, slice):
+            return self._get_slice(index)
+
+        result = self.forward[index]
+        return self._mask_result(result, variable_axis=0)
+
+    @cached_property
+    def shape(self) -> Shape:
+        return (len(self), len(self.indices)) + self.forward.shape[2:]
+
+    @property
+    def dtype(self) -> Any:
+        return self._dtype
+
+    @cached_property
+    def variables(self) -> list[str]:
+        return [self.forward.variables[i] for i in self.indices]
+
+    @cached_property
+    def variables_metadata(self) -> dict[str, Any]:
+        return {variable: self.forward.variables_metadata[variable] for variable in self.variables}
+
+    @cached_property
+    def name_to_index(self) -> dict[str, int]:
+        return {variable: i for i, variable in enumerate(self.variables)}
+
+    @cached_property
+    def statistics(self) -> dict[str, NDArray[Any]]:
+        data = self[:]
+        return {
+            "mean": np.nanmean(data, axis=0),
+            "stdev": np.nanstd(data, axis=0),
+            "maximum": np.nanmax(data, axis=0),
+            "minimum": np.nanmin(data, axis=0),
+        }
+
+    def statistics_tendencies(self, delta=None) -> dict[str, NDArray[Any]]:
+        if delta is None:
+            delta = self.frequency
+        data = self[:]
+        tendencies = np.diff(data, axis=0)
+        return {
+            "mean": np.nanmean(tendencies, axis=0),
+            "stdev": np.nanstd(tendencies, axis=0),
+            "maximum": np.nanmax(tendencies, axis=0),
+            "minimum": np.nanmin(tendencies, axis=0),
+        }
+
+    def source(self, index: int) -> Source:
+        return Source(self, index, self.forward.source(self.indices[index]))
+
+    def tree(self) -> Node:
+        return Node(self, [self.forward.tree()], apply_mask=self.mask)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        return {"apply_mask": self.mask}
+
+
 class Masked(Forwards):
     """A class to represent a masked dataset."""
 
