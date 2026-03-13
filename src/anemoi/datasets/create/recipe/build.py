@@ -16,6 +16,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from pydantic import BeforeValidator
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic_core import PydanticCustomError
 
@@ -41,9 +42,7 @@ def validate_mapping(value):
 
 class Build(BaseModel):
 
-    class Config:
-        # arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     use_grib_paramid: bool = False
     allow_nans: bool | list[str] = False
@@ -51,21 +50,10 @@ class Build(BaseModel):
     variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = validate_variable_naming("default")
     group_by: str | int = "monthly"
     additions: bool = False
-
     env: dict[str, str] = {}
     """Environment variables to set when creating the dataset."""
-
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     """Remapping configuration for the dataset."""
-
-    max_fragment_size: int = 128 * 1024 * 1024
-    """Maximum size of each fragment file in bytes. Default is 128 MB. Used when creating tabular datasets to split large arrays into smaller files."""
-
-    max_workers: int | None = None
-    """Maximum number of parallel workers to use when creating tabular datasets. If None, uses heuristic based on available CPUs, available memory, and max_fragment_size."""
-
-    validate_date_ranges: bool = True
-    """Whether to validate date ranges after building a tabular dataset. This can be very time-consuming as it scans through the entire dataset."""
 
     def _post_init(self, recipe: Recipe) -> None:
         """Post-initialisation hook to handle legacy config options.

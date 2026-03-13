@@ -34,6 +34,9 @@ class OutputBase(BaseModel):
         deprecated="'output.remapping' is deprecated. Please use 'build.remapping' instead.",
     )
 
+    sanitise: bool = True
+    """Whether to sanitise the metadata to remove sensitive information like paths, URLs..."""
+
 
 class GriddedOutput(OutputBase):
     """Output configuration for gridded datasets."""

@@ -10,8 +10,9 @@
 import logging
 from abc import ABC
 from abc import abstractmethod
+from functools import cache
 
-from anemoi.datasets.dates import DatesProvider
+from anemoi.datasets.create.recipe.dates import StartEndDates
 
 LOG = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class Concat(Action):
         for i, item in enumerate(config):
 
             dates = item["dates"]
-            filtering_dates = DatesProvider.from_config(**dates)
+            filtering_dates = StartEndDates(**dates)
             action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
             self.choices.append((filtering_dates, action))
 
@@ -308,47 +309,54 @@ class Recipe(Action):
         return self.input(context, argument)
 
 
-KLASS = {
-    "concat": Concat,
-    "join": Join,
-    "pipe": Pipe,
-    "data-sources": DataSources,
-}
+@cache
+def _action_factories():
 
-LEN_KLASS = len(KLASS)
+    factories = {
+        "concat": Concat,
+        "join": Join,
+        "pipe": Pipe,
+        "data-sources": DataSources,
+    }
+
+    # Load pluggins
+    from anemoi.transform.filters import filter_registry as transform_filter_registry
+    from anemoi.transform.sources import source_registry as transform_source_registry
+
+    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
+
+    # Register sources, local first
+    for name in dataset_source_registry.registered:
+        if name not in factories:
+            factories[name.replace("_", "-")] = new_source(name, DatasetSourceMixin)
+
+    for name in transform_source_registry.registered:
+        if name not in factories:
+            factories[name.replace("_", "-")] = new_source(name, TransformSourceMixin)
+
+    # Register filters
+    for name in transform_filter_registry.registered:
+        if name not in factories:
+            factories[name.replace("_", "-")] = new_filter(name, TransformFilterMixin)
+
+    return factories
 
 
 def make(key, config, *path):
 
-    if LEN_KLASS == len(KLASS):
+    factories = _action_factories()
 
-        # Load pluggins
-        from anemoi.transform.filters import filter_registry as transform_filter_registry
-        from anemoi.transform.sources import source_registry as transform_source_registry
-
-        from anemoi.datasets.create.sources import source_registry as dataset_source_registry
-
-        # Register sources, local first
-        for name in dataset_source_registry.registered:
-            if name not in KLASS:
-                KLASS[name.replace("_", "-")] = new_source(name, DatasetSourceMixin)
-
-        for name in transform_source_registry.registered:
-            if name not in KLASS:
-                KLASS[name.replace("_", "-")] = new_source(name, TransformSourceMixin)
-
-        # Register filters
-        for name in transform_filter_registry.registered:
-            if name not in KLASS:
-                KLASS[name.replace("_", "-")] = new_filter(name, TransformFilterMixin)
-
-    return KLASS[key.replace("_", "-")](config, *path)
+    return factories[key.replace("_", "-")](config, *path)
 
 
 def action_factory(data, *path):
+    from pydantic import BaseModel
 
     assert len(path) > 0, f"Path must contain at least one element {path}"
     assert path[0] in ("input", "data_sources")
+
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
 
     assert isinstance(data, dict), f"Input data must be a dictionary, got {type(data)}"
     assert len(data) == 1, f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"

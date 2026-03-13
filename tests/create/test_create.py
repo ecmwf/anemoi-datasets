@@ -20,10 +20,13 @@ from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from anemoi.datasets.commands.compare import compare_anemoi_datasets
-
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
+
+# Don't import any anemoi.datasets* here,
+# otherwise the "Filter" filter will be registered too late
+# and not be part of the Recipe pydantic model
+
 
 HERE = os.path.dirname(__file__)
 # find_yamls
@@ -115,6 +118,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
             errors = [f"Reference data for {name} is missing, cannot compare."]
 
         if not missing_reference:
+            from anemoi.datasets.commands.compare import compare_anemoi_datasets
+
             reference = os.path.join(directory, name + ".zarr")
             errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
 

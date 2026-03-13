@@ -21,6 +21,7 @@ import numpy as np
 import tqdm
 import zarr
 from anemoi.utils.humanize import bytes_to_human
+from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
@@ -32,7 +33,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.14"
+VERSION = "0.15"
 
 LOG = logging.getLogger(__name__)
 
@@ -177,9 +178,10 @@ class Creator(ABC):
         model_dump = json.loads(model_dump)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
 
-        # TODO: make it an option
-        # recipe = sanitise(model_dump)
-        recipe = model_dump
+        if self.recipe.output.sanitise:
+            recipe = sanitise(model_dump)
+        else:
+            recipe = model_dump
 
         # Remove stuff added by prepml
         allow_keys = set(model_dump.keys())
@@ -348,7 +350,7 @@ class Creator(ABC):
     @cached_property
     def groups(self) -> Groups:
         """Return the date groups for the dataset."""
-        return Groups(**self.recipe.dates, group_by=self.recipe.build.group_by)
+        return Groups(self.recipe.dates, group_by=self.recipe.build.group_by)
 
     @cached_property
     def minimal_input(self) -> Any:

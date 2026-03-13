@@ -1,0 +1,121 @@
+# (C) Copyright 2025 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+from __future__ import annotations
+
+import logging
+from functools import cache
+from typing import Annotated
+from typing import Any
+from typing import Union
+
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Discriminator
+from pydantic import Tag
+from pydantic import create_model
+from pydantic_core import PydanticCustomError
+
+LOG = logging.getLogger(__name__)
+
+
+def _hyphen_alias(name: str) -> str:
+    return name.replace("_", "-")
+
+
+class BaseAction(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=_hyphen_alias,
+        populate_by_name=True,
+    )
+
+
+class Pipe(BaseAction):
+    pipe: list[Action] = []
+
+
+class Join(BaseAction):
+    join: list[Action] = []
+
+
+class Concat(BaseAction):
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+
+class Function(BaseAction):
+    pass
+
+
+@cache
+def _factories():
+    from anemoi.transform.filters import filter_registry as transform_filter_registry
+    from anemoi.transform.sources import source_registry as transform_source_registry
+
+    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
+
+    # TODO: For now, for source to be loade3d firt
+    # to load dev sources/filters before the main ones
+    dataset_source_registry.factories
+
+    factories = {}
+
+    factories.update(transform_filter_registry.factories)
+    factories.update(transform_source_registry.factories)
+    factories.update(dataset_source_registry.factories)
+
+    return {name.replace("-", "_"): klass for name, klass in factories.items()}
+
+
+@cache
+def _schemas():
+
+    union = []
+
+    for name, klass in _factories().items():
+        schema = getattr(klass, "schema", None)
+        if schema is None:
+            schema = dict
+        name = name.replace("-", "_")
+        model = create_model(name, **{name: (schema, ...)}, __base__=Function)
+        union.append(Annotated[model, Tag(name)])
+
+    union.extend(
+        [
+            Annotated[Pipe, Tag("pipe")],
+            Annotated[Join, Tag("join")],
+            Annotated[Concat, Tag("concat")],
+        ]
+    )
+
+    return tuple(union)
+
+
+def _action_discriminator(config_or_model: Any) -> str:
+    config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
+    assert len(config) == 1, config
+
+    verb = list(config.keys())[0]
+    verb = verb.replace("-", "_")
+
+    # assert verb != "concat", "Concat should be at the Action level"
+
+    # This will give us a much more readable error message than the default pydantic exception
+
+    if verb not in ("pipe", "join", "concat"):
+        if verb not in _factories():
+            values = "', '".join(sorted(_factories().keys()))
+            raise PydanticCustomError(
+                "unknown-name",
+                f"Unknown source or filter: '{verb}' (expected one of: '{values}')",
+            )
+
+    return verb
+
+
+Action = Annotated[Union[_schemas()], Discriminator(_action_discriminator)]

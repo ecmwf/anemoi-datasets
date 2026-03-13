@@ -9,16 +9,16 @@
 
 import json
 import logging
-from typing import Annotated
 
 import yaml
-from anemoi.utils.config import DotDict
 from pydantic import BaseModel
-from pydantic import BeforeValidator
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
+from .action import Action
 from .build import Build
+from .dates import Dates
 from .output import GriddedOutput
 from .output import Output
 from .statistics import Statistics
@@ -26,16 +26,9 @@ from .statistics import Statistics
 LOG = logging.getLogger(__name__)
 
 
-def validate_dotdict(v):
-    if isinstance(v, dict):
-        return DotDict(v)
-    return v
-
-
-DotDictField = Annotated[DotDict, BeforeValidator(validate_dotdict)]
-
-
 class Recipe(BaseModel):
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     @model_validator(mode="after")
     def _post_init(self) -> "Recipe":
@@ -47,21 +40,17 @@ class Recipe(BaseModel):
                 member._post_init(self)
         return self
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
-
     description: str = "No description provided."
     licence: str = "unknown"
     attribution: str = "unknown"
 
-    dates: DotDictField
+    dates: Dates
     """The date configuration for the dataset."""
 
-    input: DotDictField
+    input: Action | None = None
     """The input data sources configuration."""
 
-    data_sources: list[DotDictField] | DotDictField | None = None
+    data_sources: dict[str, Action] | list[Action] | None = None
     """The data sources configuration."""
 
     output: Output = Field(default_factory=GriddedOutput)
@@ -69,7 +58,8 @@ class Recipe(BaseModel):
 
     build: Build = Build()
     """The build configuration."""
-    additions: DotDictField | None = Field(
+
+    additions: dict | None = Field(
         default=None,
         deprecated="Top-level 'additions' is deprecated. Use 'statistics.tendencies' instead.",
     )
@@ -81,9 +71,48 @@ class Recipe(BaseModel):
         deprecated="Top-level 'env' is deprecated. Please use 'build.env' instead.",
     )
 
+    def only_non_defaults(self, data: dict) -> dict:
+        """Return a dictionary containing only non-default values from the recipe.
+
+        Parameters
+        ----------
+        data : dict
+            The recipe data as a dictionary.
+
+        Returns
+        -------
+        dict
+            A dictionary containing only non-default values.
+        """
+
+        defaults = Recipe(dates={"values": []}).model_dump()
+
+        def _only_non_defaults(d, default_d):
+
+            if type(d) is not type(default_d):
+                return d
+
+            if isinstance(d, dict):
+                res = d.copy()
+                for k, v in list(d.items()):
+                    if k not in default_d:
+                        del res[k]
+                        continue
+
+                    if v == default_d[k]:
+                        del res[k]
+                        continue
+
+                    res[k] = _only_non_defaults(v, default_d[k])
+                return res
+
+            return d
+
+        return _only_non_defaults(data, defaults)
+
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
-        defaults = Recipe(dates={}, input={}).model_dump()
+        defaults = Recipe(dates={"values": []}).model_dump()
         return {key: data[key] for key in defaults.keys()}
 
 
@@ -100,8 +129,6 @@ def loader_recipe_from_yaml(path: str) -> dict:
     dict
         The dataset recipe.
     """
-    LOG.info(f"Loading recipe from YAML file at {path}")
-
     with open(path) as f:
         recipe_yaml = f.read()
     recipe = yaml.safe_load(recipe_yaml)
@@ -123,12 +150,12 @@ def loader_recipe_from_zarr(path: str) -> dict:
     """
     import zarr
 
-    LOG.info(f"Loading recipe from Zarr store at {path}")
-
     z = zarr.open(path, mode="r")
 
     for name in ("_recipe", "recipe"):
         if name not in z.attrs:
+            # return None
+            LOG.error(f"No '{name}' found in Zarr store at {path}")
             continue
 
         recipe = z.attrs[name]
