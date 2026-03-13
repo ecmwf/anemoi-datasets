@@ -199,7 +199,7 @@ class Dataset(ABC, Sized):
             )
 
         if "apply_mask" in kwargs:
-            from .masked import ApplyMask
+            ApplyMask = self.usage_factory_load("ApplyMask")
 
             apply_mask = kwargs.pop("apply_mask")
             return ApplyMask(self, apply_mask)._subset(**kwargs).mutate()

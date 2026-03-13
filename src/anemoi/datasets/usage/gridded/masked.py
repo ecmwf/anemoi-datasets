@@ -22,6 +22,7 @@ from ..dataset import FullIndex
 from ..dataset import Shape
 from ..dataset import TupleIndex
 from ..debug import Node
+from ..debug import Source
 from ..debug import debug_indexing
 from ..forwards import Forwards
 from ..mixins.thinning import ThinningMixin

@@ -265,7 +265,7 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
 
     rich.print(args)
 
-    return create_zarr(
+    root = create_zarr(
         start=int(args["start"]),
         end=int(args["end"]),
         frequency=frequency_to_timedelta(args["frequency"]),
@@ -277,6 +277,26 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         missing=args["test"] == "missing",
         field_shape=list(map(int, args["field_shape"].split(","))),
     )
+
+    if args["test"] == "mask":
+        data = root["data"]
+        values = data.shape[-1]
+        half = values // 2
+
+        for i in range(data.shape[0]):
+            mask = np.zeros(values, dtype=data.dtype)
+            if i % 2 == 0:
+                mask[:half] = 1
+            else:
+                mask[half:] = 1
+            data[i, 0, 0, :] = mask
+
+        root["mean"][:] = np.mean(data[:], axis=0)
+        root["stdev"][:] = np.std(data[:], axis=0)
+        root["maximum"][:] = np.max(data[:], axis=0)
+        root["minimum"][:] = np.min(data[:], axis=0)
+
+    return root
 
 
 def make_row(*args: Any, ensemble: bool = False, grid: bool = False) -> np.ndarray:
@@ -620,6 +640,29 @@ def test_join_3() -> None:
         statistics_reference_dataset="test-2021-2021-6h-o96-abcd-2",
         statistics_reference_variables="abcd",
     )
+
+
+@mockup_open_zarr
+def test_apply_time_varying_mask_from_join() -> None:
+    ds = open_dataset(
+        join=[
+            "test-2021-2021-6h-o96-ab",
+            "mask-2021-2021-6h-o96-m",
+        ],
+        apply_mask="m",
+    )
+
+    assert ds.variables == ["a", "b"]
+    assert ds.name_to_index == {"a": 0, "b": 1}
+    assert ds.shape == (365 * 4, 2, 1, VALUES)
+
+    first = ds[0]
+    assert np.isnan(first[:, :, VALUES // 2 :]).all()
+    assert not np.isnan(first[:, :, : VALUES // 2]).any()
+
+    second = ds[1]
+    assert np.isnan(second[:, :, : VALUES // 2]).all()
+    assert not np.isnan(second[:, :, VALUES // 2 :]).any()
 
 
 @mockup_open_zarr
