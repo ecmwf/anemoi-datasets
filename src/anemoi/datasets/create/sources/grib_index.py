@@ -105,18 +105,7 @@ class GribIndex:
         self.cache = {}
 
     def _quote_column(self, column: str) -> str:
-        """Quote a column name for use in SQL queries.
-
-        Parameters
-        ----------
-        column : str
-            The column name to quote.
-
-        Returns
-        -------
-        str
-            The quoted column name.
-        """
+        """Quote a column name for use in SQL queries."""
         return f'"{column}"'
 
     def _create_tables(self) -> None:
