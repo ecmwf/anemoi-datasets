@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 class GriddedZarr(ZarrStore):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
         self._missing = set()
 
@@ -82,7 +82,7 @@ class GriddedZarr(ZarrStore):
     @cached_property
     def chunks(self) -> TupleIndex:
         """Return the chunks of the dataset."""
-        return self.store.data.chunks
+        return self.data.chunks
 
     @cached_property
     def shape(self) -> Shape:
@@ -92,39 +92,39 @@ class GriddedZarr(ZarrStore):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.store.data.dtype
+        return self.data.dtype
 
     @cached_property
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates of the dataset."""
-        return self.store.dates[:]  # Convert to numpy
+        return self.store["dates"][:]  # Convert to numpy
 
     @property
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the dataset."""
         try:
-            return self.store.latitudes[:]
-        except AttributeError:
+            return self.store["latitudes"][:]
+        except KeyError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.store.latitude[:]
+            return self.store["latitude"][:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the dataset."""
         try:
-            return self.store.longitudes[:]
-        except AttributeError:
+            return self.store["longitudes"][:]
+        except KeyError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.store.longitude[:]
+            return self.store["longitude"][:]
 
     @property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         return dict(
-            mean=self.store.mean[:],
-            stdev=self.store.stdev[:],
-            maximum=self.store.maximum[:],
-            minimum=self.store.minimum[:],
+            mean=self.store["mean"][:],
+            stdev=self.store["stdev"][:],
+            maximum=self.store["maximum"][:],
+            minimum=self.store["minimum"][:],
         )
 
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
@@ -288,7 +288,7 @@ class GriddedZarr(ZarrStore):
 class ZarrWithMissingDates(GriddedZarr):
     """A zarr dataset with missing dates."""
 
-    def __init__(self, store: zarr.hierarchy.Group, path: str) -> None:
+    def __init__(self, store: zarr.Group, path: str) -> None:
         """Initialize the ZarrWithMissingDates dataset with a path or zarr group."""
         super().__init__(store, path)
 

@@ -12,7 +12,6 @@ import datetime
 import logging
 import os
 import tempfile
-import warnings
 from functools import cached_property
 from typing import Any
 from urllib.parse import urlparse
@@ -22,6 +21,10 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.compat import DebugStore
+from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import S3Store
+from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
 from anemoi.datasets.usage.dataset import TupleIndex
@@ -33,99 +36,7 @@ from anemoi.datasets.usage.misc import load_config
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyStore(zarr.storage.BaseStore):
-    """A base class for read-only stores."""
-
-    def __delitem__(self, key: str) -> None:
-        """Prevent deletion of items."""
-        raise NotImplementedError()
-
-    def __setitem__(self, key: str, value: bytes) -> None:
-        """Prevent setting of items."""
-        raise NotImplementedError()
-
-    def __len__(self) -> int:
-        """Return the number of items in the store."""
-        raise NotImplementedError()
-
-    def __iter__(self) -> iter:
-        """Return an iterator over the store."""
-        raise NotImplementedError()
-
-
-class HTTPStore(ReadOnlyStore):
-    """A read-only store for HTTP(S) resources."""
-
-    def __init__(self, url: str) -> None:
-        """Initialize the HTTPStore with a URL."""
-        self.url = url
-
-    def __getitem__(self, key: str) -> bytes:
-        """Retrieve an item from the store."""
-        import requests
-
-        r = requests.get(self.url + "/" + key)
-
-        if r.status_code == 404:
-            raise KeyError(key)
-
-        r.raise_for_status()
-        return r.content
-
-
-class S3Store(ReadOnlyStore):
-    """A read-only store for S3 resources."""
-
-    """We write our own S3Store because the one used by zarr (s3fs)
-    does not play well with fork(). We also get to control the s3 client
-    options using the anemoi configs.
-    """
-
-    def __init__(self, url: str) -> None:
-        """Initialize the S3Store with a URL."""
-
-        self.url = url
-
-    def __getitem__(self, key: str) -> bytes:
-        """Retrieve an item from the store."""
-        from anemoi.utils.remote.s3 import get_object
-
-        try:
-            return get_object(os.path.join(self.url, key))
-        except FileNotFoundError:
-            raise KeyError(key)
-
-
-class DebugStore(ReadOnlyStore):
-    """A store to debug the zarr loading."""
-
-    def __init__(self, store: ReadOnlyStore) -> None:
-        """Initialize the DebugStore with another store."""
-        assert not isinstance(store, DebugStore)
-        self.store = store
-
-    def __getitem__(self, key: str) -> bytes:
-        """Retrieve an item from the store and print debug information."""
-        # print()
-        print("GET", key, self)
-        # traceback.print_stack(file=sys.stdout)
-        return self.store[key]
-
-    def __len__(self) -> int:
-        """Return the number of items in the store."""
-        return len(self.store)
-
-    def __iter__(self) -> iter:
-        """Return an iterator over the store."""
-        warnings.warn("DebugStore: iterating over the store")
-        return iter(self.store)
-
-    def __contains__(self, key: str) -> bool:
-        """Check if the store contains a key."""
-        return key in self.store
-
-
-def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
+def name_to_zarr_store(path_or_url: str) -> Any:
     """Convert a path or URL to a zarr store."""
     store = path_or_url
 
@@ -159,7 +70,7 @@ def name_to_zarr_store(path_or_url: str) -> ReadOnlyStore:
     return store
 
 
-def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hierarchy.Group:
+def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Group:
     """Open a zarr store from a path."""
     try:
         store = name_to_zarr_store(path)
@@ -179,10 +90,10 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
         if cache is not None:
             store = zarr.LRUStoreCache(store, max_size=cache)
 
-        return zarr.open(store, "r")
-    except zarr.errors.PathNotFoundError:
+        return zarr.open(store, mode="r")
+    except ZarrFileNotFoundError:
         if not dont_fail:
-            raise zarr.errors.PathNotFoundError(path)
+            raise ZarrFileNotFoundError(path)
 
 
 QUIET = set()
@@ -236,7 +147,7 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
                     LOG.info("Opening `%s` as `%s`", name, full)
                     QUIET.add(name)
                 return full
-        except zarr.errors.PathNotFoundError:
+        except ZarrFileNotFoundError:
             pass
 
     if fail:
@@ -251,15 +162,15 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
 class ZarrStore(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         self.store = group
         self.path = path if path is not None else "<zarr>"
 
         # This seems to speed up the reading of the data a lot
-        self.data = self.store.data
+        self.data = self.store["data"]
 
     @classmethod
-    def from_group(cls, group: zarr.hierarchy.Group, path: str = None) -> "ZarrStore":
+    def from_group(cls, group: zarr.Group, path: str = None) -> "ZarrStore":
         layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
 
         match layout:
@@ -288,7 +199,7 @@ class ZarrStore(Dataset):
     @cached_property
     def chunks(self) -> TupleIndex:
         """Return the chunks of the dataset."""
-        return self.store.data.chunks
+        return self.data.chunks
 
     @cached_property
     def shape(self) -> Shape:
@@ -298,16 +209,16 @@ class ZarrStore(Dataset):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.store.data.dtype
+        return self.data.dtype
 
     @property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
         return dict(
-            mean=self.store.mean[:],
-            stdev=self.store.stdev[:],
-            maximum=self.store.maximum[:],
-            minimum=self.store.minimum[:],
+            mean=self.store["mean"][:],
+            stdev=self.store["stdev"][:],
+            maximum=self.store["maximum"][:],
+            minimum=self.store["minimum"][:],
         )
 
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:

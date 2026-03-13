@@ -24,6 +24,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.misc.testing import FastGroup
 from anemoi.datasets.misc.testing import default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.gridded.concat import Concat
@@ -39,6 +40,8 @@ from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
+
+true_zarr_open = zarr.open
 
 
 def mockup_open_zarr(func: Callable) -> Callable:
@@ -157,24 +160,23 @@ def create_zarr(
             for e in range(ensembles):
                 data[i, j, e] = _(date.astype(object), var, k, e, values)
 
-    root.create_dataset(
+    root.create_array(
         "data",
         data=data,
-        dtype=data.dtype,
         chunks=data.shape,
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "dates",
         data=dates,
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "latitudes",
         data=np.array([x + values for x in range(values)]),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "longitudes",
         data=np.array([x + values for x in range(values)]),
         compressor=None,
@@ -199,22 +201,22 @@ def create_zarr(
 
         root.attrs["missing_dates"] = [d.isoformat() for d in missing_dates]
 
-    root.create_dataset(
+    root.create_array(
         "mean",
         data=np.mean(data, axis=0),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "stdev",
         data=np.std(data, axis=0),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "maximum",
         data=np.max(data, axis=0),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "minimum",
         data=np.min(data, axis=0),
         compressor=None,
@@ -223,6 +225,21 @@ def create_zarr(
     root.attrs["field_shape"] = field_shape
     assert len(field_shape) == 2
     assert data.shape[-1] == field_shape[0] * field_shape[1]
+
+    # This wrapping significantly speeds up tests.
+    # It can be removed when https://github.com/zarr-developers/zarr-python/issues/3524 is resolved.
+    #
+    # Duration of tests in test_data.py (with 16 workers):
+    #   with zarr 2                : ~1 minute
+    #   with zarr 3.1.5            : ~6 minutes
+    #   with zarr 3 + this wrapper : ~13 seconds
+    #
+    # This is not ideal, as we don't test with the real zarr, but is fine since we are testing
+    # anemoi-datasets functionality, not zarr functionality.
+    # It can still break things if zarr3 changes the API we are relying on, which is unlikely.
+    #
+    if zarr.__version__.startswith("3."):
+        root = FastGroup(root)
 
     return root
 
@@ -243,6 +260,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         Zarr dataset.
     """
     # Format: test-2021-2021-6h-o96-abcd-0
+    if "/" in name:
+        return true_zarr_open(name)
 
     name, _ = os.path.splitext(name)
 

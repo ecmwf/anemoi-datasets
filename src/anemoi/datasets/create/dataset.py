@@ -20,6 +20,8 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+
 LOG = logging.getLogger(__name__)
 
 
@@ -123,7 +125,7 @@ class Dataset:
 
         LOG.info(f"Creating array {name} with kwargs={_(kwargs)} (dimensions={dimensions})")
 
-        a = zarr_root.create_dataset(name, **kwargs)
+        a = zarr_root.create_array(name, **kwargs)
         a.attrs["_ARRAY_DIMENSIONS"] = dimensions
         return a
 
