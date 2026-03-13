@@ -49,12 +49,6 @@ class GroupOfDates:
         self.provider = provider
         self.partial_ok = partial_ok
 
-    @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
-        """Used in pytest"""
-        dates = DatesProvider.from_config(config)
-        return cls(dates.values, dates)
-
     def __len__(self) -> int:
         """Return the number of dates in the group.
 
@@ -133,17 +127,16 @@ class Groups:
         2
     """
 
-    def __init__(self, group_by: Any, **kwargs: Any) -> None:
-        """Initialize the class with the provided keyword arguments.
+    def __init__(self, dates: DatesProvider, group_by: Any) -> None:
+        """Initialize the Groups collection.
 
-        Parameters
-        ----------
-            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
-                - group_by: Configuration for the Grouper.
-                - Other keys for DatesProvider configuration.
+        Args:
+            dates (DatesProvider): The dates provider.
+            group_by (Any): Configuration for the Grouper (e.g., "daily", "monthly", int, etc.).
+
+        The groups are created by grouping the provided dates according to the group_by parameter.
         """
-
-        self._dates = DatesProvider.from_config(**kwargs)
+        self._dates = dates
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 

@@ -12,7 +12,7 @@ from abc import ABC
 from abc import abstractmethod
 from functools import cache
 
-from anemoi.datasets.create.recipe.dates import DatesProvider
+from anemoi.datasets.create.recipe.dates import StartEndDates
 
 LOG = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class Concat(Action):
         for i, item in enumerate(config):
 
             dates = item["dates"]
-            filtering_dates = DatesProvider.from_config(**dates)
+            filtering_dates = StartEndDates(**dates)
             action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
             self.choices.append((filtering_dates, action))
 
@@ -350,9 +350,13 @@ def make(key, config, *path):
 
 
 def action_factory(data, *path):
+    from pydantic import BaseModel
 
     assert len(path) > 0, f"Path must contain at least one element {path}"
     assert path[0] in ("input", "data_sources")
+
+    if isinstance(data, BaseModel):
+        data = data.model_dump()
 
     assert isinstance(data, dict), f"Input data must be a dictionary, got {type(data)}"
     assert len(data) == 1, f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"

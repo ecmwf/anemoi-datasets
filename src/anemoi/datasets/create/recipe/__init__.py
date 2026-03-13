@@ -50,7 +50,7 @@ class Recipe(BaseModel):
     input: Action | None = None
     """The input data sources configuration."""
 
-    data_sources: dict[str, Action] | None = None
+    data_sources: dict[str, Action] | list[Action] | None = None
     """The data sources configuration."""
 
     output: Output = Field(default_factory=GriddedOutput)
@@ -109,6 +109,11 @@ class Recipe(BaseModel):
             return d
 
         return _only_non_defaults(data, defaults)
+
+    def strip_unknown_keys(self, data: dict) -> dict:
+        assert isinstance(data, dict)
+        defaults = Recipe(dates={"values": []}).model_dump()
+        return {key: data[key] for key in defaults.keys()}
 
 
 def loader_recipe_from_yaml(path: str) -> dict:

@@ -472,8 +472,9 @@ def test_planetary_computer_conus404() -> None:
 @skip_if_offline
 def test_csv(get_test_data: callable) -> None:
     """Test for CSV source registration."""
+    from anemoi.datasets.create.recipe import Recipe
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import GroupOfDates
+    from anemoi.datasets.dates.groups import Groups
 
     data = get_test_data("anemoi-datasets/obs/dribu.csv")
 
@@ -491,14 +492,16 @@ def test_csv(get_test_data: callable) -> None:
             }
         },
     )
-    dates = GroupOfDates.from_config(
-        {
+    recipe = Recipe(
+        dates={
             "start": "2025-01-01T00:00:00",
             "end": "2025-12-21T23:59:59",
         },
     )
 
-    frame = source.execute(dates)
+    group = Groups(recipe.dates, recipe.build.group_by)
+
+    frame = source.execute(next(iter(group)))
     assert len(frame) == 2526
 
     assert "latitude" in frame.columns, frame.columns
@@ -512,23 +515,27 @@ def test_csv(get_test_data: callable) -> None:
 
 # @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
-@skip_if_offline
 @pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
 def test_odb(get_test_data: callable) -> None:
+    from anemoi.datasets.create.recipe import Recipe
     from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import GroupOfDates
+    from anemoi.datasets.dates.groups import Groups
 
     data = get_test_data("anemoi-datasets/obs/dribu.odb")
 
     source = create_source(context=None, config={"odb": {"path": data}})
-    dates = GroupOfDates.from_config(
-        {
+
+    recipe = Recipe(
+        dates={
             "start": "2025-01-01T00:00:00",
             "end": "2025-12-21T23:59:59",
         },
     )
 
-    frame = source.execute(dates)
+    group = Groups(recipe.dates, recipe.build.group_by)
+
+    frame = source.execute(next(iter(group)))
+
     assert len(frame) == 6838
 
     assert "latitude" in frame.columns, frame.columns

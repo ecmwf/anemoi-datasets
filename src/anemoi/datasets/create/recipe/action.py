@@ -25,8 +25,15 @@ from pydantic_core import PydanticCustomError
 LOG = logging.getLogger(__name__)
 
 
+def _hyphen_alias(name: str) -> str:
+    return name.replace("_", "-")
+
+
 class BaseAction(BaseModel):
-    pass
+    model_config = ConfigDict(
+        alias_generator=_hyphen_alias,
+        populate_by_name=True,
+    )
 
 
 class Pipe(BaseAction):
