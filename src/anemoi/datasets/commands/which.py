@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Which(Command):
-    """Print the path to a dataset."""
+    """Prints the path to a dataset given its name."""
 
     timestamp = False
 

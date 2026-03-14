@@ -249,6 +249,7 @@ def open_zarr_store(
     cache: int = None,
     return_path: bool = False,
     quiet: bool = False,
+    print_analytics_only=False,
 ) -> zarr.hierarchy.Group | str:
     """Open a zarr store by name."""
     path = dataset_lookup(name, fail=fail)
@@ -263,7 +264,9 @@ def open_zarr_store(
             QUIET.add(name)
 
     store = open_zarr(path, cache=cache)
-    collect_analytics("open-zarr-store", path=path, name=name, uuid=store.attrs.get("uuid"))
+    collect_analytics(
+        "open-zarr-store", path=path, name=name, uuid=store.attrs.get("uuid"), print_analytics_only=print_analytics_only
+    )
 
     if return_path:
         return store, path

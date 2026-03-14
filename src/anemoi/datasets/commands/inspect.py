@@ -153,8 +153,7 @@ class Version:
         self.zarr = zarr
         self.metadata = metadata
         self.version = version
-        self.dataset = None
-        self.dataset = open_dataset(self.path)
+        self.dataset = open_dataset(zarr)
 
     def describe(self) -> None:
         """Print a description of the dataset."""

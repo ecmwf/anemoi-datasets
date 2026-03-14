@@ -116,6 +116,7 @@ scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 [tool.setuptools]
 package-data."anemoi.datasets.usage" = [
   "*.css",
+  "*.md",
 ]
 
 [tool.setuptools_scm]
