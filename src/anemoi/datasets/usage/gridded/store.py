@@ -191,6 +191,14 @@ class GriddedZarr(ZarrStore):
             )
         ]
 
+    @property
+    def units(self) -> list[str]:
+        """Return the units of the dataset."""
+        units = self.store.attrs.get("units")
+        if units is None:
+            units = {v: None for v in self.variables}
+        return [units[v] for v in self.variables]
+
     @cached_property
     def constant_fields(self) -> list[str]:
         """Return the constant fields of the dataset."""

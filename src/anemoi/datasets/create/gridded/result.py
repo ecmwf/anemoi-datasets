@@ -566,6 +566,7 @@ class GriddedResult(Result):
 
         self._variables: Any = from_data[variables_key]  # "param_level"
         self._ensembles: Any = from_data[ensembles_key]  # "number"
+        self._units = [None for v in self._variables]
 
         first_field: Any = self.datasource[0]
         grid_points: Any = first_field.grid_points()
@@ -605,6 +606,12 @@ class GriddedResult(Result):
         """Retrieve the variables for the result."""
         self.build_coords()
         return self._variables
+
+    @property
+    def units(self) -> list[str]:
+        """Retrieve the variables for the result."""
+        self.build_coords()
+        return self._units
 
     @property
     def variables_metadata(self) -> dict[str, Any]:

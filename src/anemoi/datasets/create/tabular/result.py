@@ -176,3 +176,8 @@ class TabularResult(Result):
     @property
     def variables(self) -> list[str]:
         return self.frame.columns.tolist()
+
+    @property
+    def units(self) -> list[str]:
+        # TODO: Implement me
+        return [None for _ in self.variables]
