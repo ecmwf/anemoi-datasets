@@ -19,8 +19,7 @@ import tqdm
 import zarr
 
 from anemoi.datasets.create.statistics import STATISTICS
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -317,8 +316,8 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 def compare_anemoi_datasets(reference, actual, data) -> None:
     """Compare the actual dataset with the reference dataset."""
 
-    actual = open_zarr(dataset_lookup(actual))
-    reference = open_zarr(dataset_lookup(reference))
+    actual = open_zarr_store(actual)
+    reference = open_zarr_store(reference)
 
     errors = ErrorCollector()
 

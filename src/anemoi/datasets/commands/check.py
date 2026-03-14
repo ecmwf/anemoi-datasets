@@ -15,8 +15,7 @@ import yaml
 
 from anemoi.datasets.create.naming import DatasetName
 from anemoi.datasets.create.tabular.validate import validate_date_ranges
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -100,14 +99,10 @@ class Check(Command):
         DatasetName(name=name).raise_if_not_valid()
 
     def _check_zarr(self, zarr: str) -> None:
+        raise NotImplementedError("Zarr archive checking is not implemented yet.")
 
-        from anemoi.datasets.check import check_zarr
-
-        check_zarr(zarr)
-
-    def _check_index(self, index: str) -> None:
-        name = dataset_lookup(index)
-        store = open_zarr(name)
+    def _check_index(self, name: str) -> None:
+        store = open_zarr_store(name)
         data = store["data"]
         index = store["date_index_ranges"]
         validate_date_ranges(data, index)

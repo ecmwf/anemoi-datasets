@@ -22,6 +22,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.usage.analytics import collect_analytics
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
 from anemoi.datasets.usage.dataset import TupleIndex
@@ -185,9 +186,6 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.hie
             raise zarr.errors.PathNotFoundError(path)
 
 
-QUIET = set()
-
-
 def dataset_lookup(name: str, fail: bool = True) -> str | None:
     """Look up a zarr dataset by name."""
 
@@ -211,13 +209,10 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
             # There will be an error triggered by the open_zarr
             return name
 
-        LOG.warning("File %s not found, trying to search in the search path", name)
         name = os.path.splitext(os.path.basename(name))[0]
 
     if name in config["named"]:
-        if name not in QUIET:
-            LOG.info("Opening `%s` as `%s`", name, config["named"][name])
-            QUIET.add(name)
+
         return str(config["named"][name])
 
     tried = []
@@ -230,12 +225,9 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         try:
             z = open_zarr(full, dont_fail=True)
             if z is not None:
-                # Cache for next time
                 config["named"][name] = full
-                if name not in QUIET:
-                    LOG.info("Opening `%s` as `%s`", name, full)
-                    QUIET.add(name)
                 return full
+
         except zarr.errors.PathNotFoundError:
             pass
 
@@ -246,6 +238,40 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         raise ValueError(f"Cannot find a dataset that matched '{name}'")
 
     return None
+
+
+QUIET = set()
+
+
+def open_zarr_store(
+    name: str,
+    fail: bool = True,
+    cache: int = None,
+    return_path: bool = False,
+    quiet: bool = False,
+    print_analytics_only=False,
+) -> zarr.hierarchy.Group | str:
+    """Open a zarr store by name."""
+    path = dataset_lookup(name, fail=fail)
+
+    if path is None:
+        return None
+
+    if name != path:
+        if name not in QUIET:
+            if not quiet:
+                LOG.info("Opening `%s` as `%s`", name, path)
+            QUIET.add(name)
+
+    store = open_zarr(path, cache=cache)
+    collect_analytics(
+        "open-zarr-store", path=path, name=name, uuid=store.attrs.get("uuid"), print_analytics_only=print_analytics_only
+    )
+
+    if return_path:
+        return store, path
+
+    return store
 
 
 class ZarrStore(Dataset):
@@ -276,8 +302,9 @@ class ZarrStore(Dataset):
                 raise ValueError(f"Unsupported ZarrStore layout: {layout}")
 
     @classmethod
-    def from_path(cls, path: str) -> "ZarrStore":
-        return cls.from_group(open_zarr(path), path=path)
+    def from_name_or_path(cls, name: str) -> "ZarrStore":
+        store, path = open_zarr_store(name, return_path=True)
+        return cls.from_group(store, path=path)
 
     ####################################################
 
