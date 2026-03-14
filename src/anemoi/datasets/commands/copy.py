@@ -20,8 +20,7 @@ from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.misc.check import check_zarr
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -485,7 +484,7 @@ class ZarrCopier:
         if self.verbosity > 0:
             LOG.info(f"Open source: {self.source}")
 
-        source = open_zarr(dataset_lookup(self.source))
+        source = open_zarr_store(self.source)
         # zarr.consolidate_metadata(source)
 
         self.copy(source, target, self.verbosity)
