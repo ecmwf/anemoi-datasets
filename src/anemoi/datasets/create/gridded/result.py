@@ -25,6 +25,7 @@ from earthkit.data.core.order import build_remapping
 from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
+QUIET = set()
 
 
 def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
@@ -322,6 +323,7 @@ class GriddedResult(Result):
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
         self._origins = []
+        self._units = {}
 
     @property
     def data_request(self) -> dict[str, Any]:
@@ -353,6 +355,21 @@ class GriddedResult(Result):
 
         self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
 
+        # Collect units
+        for field in ds:
+            metadata = self.remapping(field.metadata)
+            variable = metadata(self.context.variable_name)
+            units = metadata("units", default=None)
+            if variable in self._units:
+                if self._units[variable] != units:
+                    raise ValueError(f"Variable {variable} has multiple units: {self._units[variable]} and {units}")
+
+            if units is None and variable not in QUIET:
+                LOG.warning(f"Cannot establish units for variable '{variable}'.")
+                QUIET.add(variable)
+
+            self._units[variable] = units
+
         try:
             cube: Any = ds.cube(
                 self.order_by,
@@ -367,7 +384,7 @@ class GriddedResult(Result):
 
             if isinstance(ds, pd.DataFrame):
                 raise ValueError(
-                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'format: tabular' in your recipe?"
+                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'layout: tabular' in your recipe?"
                 )
             raise
         except ValueError:
@@ -566,7 +583,6 @@ class GriddedResult(Result):
 
         self._variables: Any = from_data[variables_key]  # "param_level"
         self._ensembles: Any = from_data[ensembles_key]  # "number"
-        self._units = [None for v in self._variables]
 
         first_field: Any = self.datasource[0]
         grid_points: Any = first_field.grid_points()

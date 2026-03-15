@@ -57,6 +57,7 @@ class GriddedCreator(Creator):
         metadata["proj_string"] = self.minimal_input.proj_string
 
         metadata["variables_metadata"] = self.minimal_input.variables_metadata
+        metadata["units"] = self.minimal_input.units
 
         # TODO: below may be common with tabular
         metadata["variables"] = variables
@@ -115,6 +116,8 @@ class GriddedCreator(Creator):
         dates_in_data = cube.user_coords["valid_datetime"]
 
         # LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
+        for name, value in cube.user_coords.items():
+            print(f"Cube coordinate {name}: {value}")
 
         def check_shape(cube, dates, dates_in_data):
             if cube.extended_user_shape[0] != len(dates):
@@ -169,6 +172,10 @@ class GriddedCreator(Creator):
             LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
             self._load_cube(cube, array, indexes)
 
+        # The units have been set during the first load, so we can check for consistency here
+        saved = dataset.units
+        assert saved == result.units, f"Units in dataset {saved} do not match units in result {result.units}"
+
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
 
@@ -214,6 +221,7 @@ class GriddedCreator(Creator):
     ######################################################
 
     def context(self):
+        #
         return GriddedContext(self.recipe)
 
     def _load_cube(self, cube: Any, array: Any, indexes: Any) -> None:
