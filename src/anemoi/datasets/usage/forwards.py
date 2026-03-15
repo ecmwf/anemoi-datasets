@@ -437,7 +437,19 @@ class Combined(Forwards):
             If the units are not the same.
         """
         if d1.units != d2.units:
-            raise ValueError(f"{self.__class__.__name__}: Incompatible units: {d1.units} and {d2.units} ({d1} {d2})")
+            diffs = []
+            for v1, v2, u1, u2 in zip(d1.variables, d2.variables, d1.units, d2.units):
+                assert v1 == v2, f"Variables must be the same when checking units: {v1} and {v2}"
+
+                if u1 != u2:
+                    if u1 is None or u2 is None:
+                        LOG.warning(
+                            f"Variable {v1} no units in one of the datasets, cannot check compatibility ({u1} {u2})({d1} {d2})"
+                        )
+                    else:
+                        diffs.append(f"{v1}: {u1} and {u2}")
+            if diffs:
+                raise ValueError(f"{self.__class__.__name__}: Incompatible units: {', '.join(diffs)} ({d1} {d2})")
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.
