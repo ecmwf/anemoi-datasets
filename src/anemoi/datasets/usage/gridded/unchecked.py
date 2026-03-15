@@ -170,6 +170,12 @@ class Unchecked(Combined):
         raise NotImplementedError()
 
     @property
+    @check("check_same_units")
+    def units(self) -> list[str]:
+        """Get the list of units in the dataset."""
+        raise NotImplementedError()
+
+    @property
     @check("check_same_variables")
     def variables_metadata(self) -> dict:
         """Get the metadata for the variables."""

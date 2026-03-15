@@ -57,6 +57,7 @@ class GriddedCreator(Creator):
         metadata["proj_string"] = self.minimal_input.proj_string
 
         metadata["variables_metadata"] = self.minimal_input.variables_metadata
+        metadata["units"] = self.minimal_input.units
 
         # TODO: below may be common with tabular
         metadata["variables"] = variables
@@ -115,6 +116,8 @@ class GriddedCreator(Creator):
         dates_in_data = cube.user_coords["valid_datetime"]
 
         # LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
+        for name, value in cube.user_coords.items():
+            print(f"Cube coordinate {name}: {value}")
 
         def check_shape(cube, dates, dates_in_data):
             if cube.extended_user_shape[0] != len(dates):
@@ -169,6 +172,26 @@ class GriddedCreator(Creator):
             LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
             self._load_cube(cube, array, indexes)
 
+        # The units have been set during the first load, so we can check for consistency here
+        saved = dataset.units
+        if saved != result.units:
+            saved_set = set(saved)
+            result_set = set(result.units)
+            if saved_set != result_set:
+                extra = result_set - saved_set
+                missing = saved_set - result_set
+                raise ValueError(f"Units in dataset do not match units in result {extra=}, {missing=}")
+
+            changes = []
+            for k in saved:
+                if saved[k] != result.units[k]:
+                    LOG.error(f"Unit for variable {k} does not match: {saved[k]} != {result.units[k]}")
+                    changes.append(k)
+
+            raise ValueError(
+                f"Unit for variables {changes} does not match: {[(k, saved[k], result.units[k]) for k in changes]}"
+            )
+
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
 
@@ -214,6 +237,7 @@ class GriddedCreator(Creator):
     ######################################################
 
     def context(self):
+        #
         return GriddedContext(self.recipe)
 
     def _load_cube(self, cube: Any, array: Any, indexes: Any) -> None:
