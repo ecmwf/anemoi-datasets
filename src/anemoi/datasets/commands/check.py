@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from anemoi.datasets.create.naming import DatasetName
+from anemoi.datasets.create.naming import check_dataset_name
 from anemoi.datasets.create.tabular.validate import validate_date_ranges
 from anemoi.datasets.usage.store import dataset_lookup
 from anemoi.datasets.usage.store import open_zarr
@@ -92,18 +92,19 @@ class Check(Command):
         if recipe_name != in_recipe_name:
             print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
 
-        name = in_recipe_name
-        DatasetName(name=name).raise_if_not_valid()
+        self._check_name(in_recipe_name)
 
     def _check_name(self, name: str) -> None:
 
-        DatasetName(name=name).raise_if_not_valid()
+        fail = False
+        for message in check_dataset_name(name):
+            print("Dataset name warning: %s", message)
+            fail = True
+        if fail:
+            raise ValueError("Dataset name does not follow naming conventions.")
 
     def _check_zarr(self, zarr: str) -> None:
-
-        from anemoi.datasets.check import check_zarr
-
-        check_zarr(zarr)
+        raise NotImplementedError("Checking Zarr archives is not implemented yet.")
 
     def _check_index(self, index: str) -> None:
         name = dataset_lookup(index)
