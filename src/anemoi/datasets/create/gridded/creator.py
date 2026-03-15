@@ -174,7 +174,23 @@ class GriddedCreator(Creator):
 
         # The units have been set during the first load, so we can check for consistency here
         saved = dataset.units
-        assert saved == result.units, f"Units in dataset {saved} do not match units in result {result.units}"
+        if saved != result.units:
+            saved_set = set(saved)
+            result_set = set(result.units)
+            if saved_set != result_set:
+                extra = result_set - saved_set
+                missing = saved_set - result_set
+                raise ValueError(f"Units in dataset do not match units in result {extra=}, {missing=}")
+
+            changes = []
+            for k in saved:
+                if saved[k] != result.units[k]:
+                    LOG.error(f"Unit for variable {k} does not match: {saved[k]} != {result.units[k]}")
+                    changes.append(k)
+
+            raise ValueError(
+                f"Unit for variables {changes} does not match: {[(k, saved[k], result.units[k]) for k in changes]}"
+            )
 
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
