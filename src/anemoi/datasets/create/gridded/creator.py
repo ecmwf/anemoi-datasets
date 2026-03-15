@@ -195,22 +195,17 @@ class GriddedCreator(Creator):
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
 
-        from ..naming import DatasetName
+        from ..naming import check_dataset_name
 
         name = Path(path).stem
 
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
 
-        try:
-            DatasetName(
-                name,
-                start_date=dates[0],
-                end_date=dates[-1],
-                frequency=frequency_to_timedelta(frequency),
-            ).raise_if_not_valid()
-        except ValueError as e:
-            LOG.warning("Dataset name error: %s", e)
+        for message in check_dataset_name(
+            name, resolution=self.minimal_input.resolution, start_date=dates[0], end_date=dates[-1], frequency=frequency
+        ):
+            LOG.warning("Dataset name warning: %s", message)
 
     def load_done(self, dataset, group):
         """Compure statistics after loading is done."""

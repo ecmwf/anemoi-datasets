@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+from anemoi.datasets.create.naming import check_dataset_name
 from anemoi.datasets.usage.gridded import MissingDateError
 from anemoi.datasets.usage.gridded import add_dataset_path
 from anemoi.datasets.usage.gridded import add_named_dataset
@@ -25,6 +26,7 @@ except ImportError:  # pragma: no cover
 __all__: list[str] = [
     "add_dataset_path",
     "add_named_dataset",
+    "check_dataset_name",
     "list_dataset_names",
     "MissingDateError",
     "open_dataset",
