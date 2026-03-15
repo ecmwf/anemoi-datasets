@@ -89,6 +89,11 @@ class SelectBase(Forwards):
         return [self.dataset.variables[i] for i in self.indices]
 
     @cached_property
+    def units(self) -> list[str]:
+        """Get the units of the dataset."""
+        return [self.dataset.units[i] for i in self.indices]
+
+    @cached_property
     def variables_metadata(self) -> dict[str, Any]:
         """Get the metadata of the variables."""
         return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}

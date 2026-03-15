@@ -685,6 +685,11 @@ class Version0_6(Version):
         return self.metadata["variables"]
 
     @property
+    def units(self) -> list[str]:
+        """Get the list of units in the dataset."""
+        return self.metadata["units"]
+
+    @property
     def variables_metadata(self) -> dict:
         """Get the metadata for the variables."""
         return self.metadata.get("variables_metadata", {})

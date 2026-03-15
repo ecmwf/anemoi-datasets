@@ -118,6 +118,11 @@ class Forwards(Dataset):
         return self.forward.variables
 
     @property
+    def units(self) -> list[str]:
+        """Returns the units of the forward dataset."""
+        return self.forward.units
+
+    @property
     def variables_metadata(self) -> dict[str, Any]:
         """Returns the metadata of the variables in the forward dataset."""
         return self.forward.variables_metadata
@@ -416,6 +421,36 @@ class Combined(Forwards):
                 f"{self.__class__.__name__}: Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})"
             )
 
+    def check_same_units(self, d1: Dataset, d2: Dataset) -> None:
+        """Checks if the units of two datasets are the same.
+
+        Parameters
+        ----------
+        d1 : Any
+            First dataset.
+        d2 : Any
+            Second dataset.
+
+        Raises
+        ------
+        ValueError
+            If the units are not the same.
+        """
+        if d1.units != d2.units:
+            diffs = []
+            for v1, v2, u1, u2 in zip(d1.variables, d2.variables, d1.units, d2.units):
+                assert v1 == v2, f"Variables must be the same when checking units: {v1} and {v2}"
+
+                if u1 != u2:
+                    if u1 is None or u2 is None:
+                        LOG.warning(
+                            f"Variable {v1} no units in one of the datasets, cannot check compatibility ({u1} {u2})({d1} {d2})"
+                        )
+                    else:
+                        diffs.append(f"{v1}: {u1} and {u2}")
+            if diffs:
+                raise ValueError(f"{self.__class__.__name__}: Incompatible units: {', '.join(diffs)} ({d1} {d2})")
+
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.
 
@@ -483,6 +518,7 @@ class Combined(Forwards):
         self.check_same_grid(d1, d2)
         self.check_same_lengths(d1, d2)
         self.check_same_variables(d1, d2)
+        self.check_same_units(d1, d2)
         self.check_same_dates(d1, d2)
 
     def provenance(self) -> list[Any]:

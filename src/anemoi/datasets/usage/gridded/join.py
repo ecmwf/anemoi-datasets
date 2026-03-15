@@ -63,6 +63,19 @@ class Join(Combined):
         # Turned off because we are joining along the variables axis
         pass
 
+    def check_same_units(self, d1: Dataset, d2: Dataset) -> None:
+        """Check if the datasets have the same units.
+
+        Parameters
+        ----------
+        d1 : Dataset
+            The first dataset.
+        d2 : Dataset
+            The second dataset.
+        """
+        # Turned off because we are joining along the variables axis
+        pass
+
     def __len__(self) -> int:
         """Get the length of the joined dataset.
 
@@ -177,18 +190,31 @@ class Join(Combined):
 
         return Select(self, indices, {"overlay": variables})
 
-    @cached_property
-    def variables(self) -> list[str]:
-        """Get the variables of the joined dataset."""
+    def _variables_and_units(self) -> tuple:
+        """Get the variables/units of the joined dataset."""
         seen = set()
-        result: list[str] = []
+        variables: list[str] = []
+        units: list[str] = []
         for d in reversed(self.datasets):
-            for v in reversed(d.variables):
+            for v, u in zip(reversed(d.variables), reversed(d.units)):
                 while v in seen:
                     v = f"({v})"
                 seen.add(v)
-                result.insert(0, v)
+                variables.insert(0, v)
+                units.insert(0, u)
 
+        return variables, units
+
+    @cached_property
+    def variables(self) -> list[str]:
+        """Get the variables of the joined dataset."""
+        result, _ = self._variables_and_units()
+        return result
+
+    @cached_property
+    def units(self) -> list[str]:
+        """Get the units of the joined dataset."""
+        _, result = self._variables_and_units()
         return result
 
     @property

@@ -44,6 +44,9 @@ class GriddedContext(Context):
         self.flatten_grid = recipe.output.flatten_grid
         self.remapping = build_remapping(recipe.build.remapping)
 
+        assert len(recipe.build.remapping) == 1, "Currently only one variable naming scheme is supported."
+        self.variable_name = list(recipe.build.remapping.keys())[0]
+
     def create_result(self, argument: Any, data: Any) -> GriddedResult:
         """Create a GriddedResult object for the given argument and data.
 

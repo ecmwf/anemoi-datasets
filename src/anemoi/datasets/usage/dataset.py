@@ -951,6 +951,12 @@ class Dataset(ABC, Sized):
 
     @property
     @abstractmethod
+    def units(self) -> list[str]:
+        """Return the list of units in the dataset."""
+        pass
+
+    @property
+    @abstractmethod
     def frequency(self) -> datetime.timedelta:
         """Return the frequency of the dataset."""
         pass

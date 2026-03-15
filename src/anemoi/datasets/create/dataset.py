@@ -240,3 +240,8 @@ class Dataset:
 
     def touch(self) -> None:
         self.update_metadata(latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None))
+
+    @cached_property
+    def units(self) -> dict[str, Any]:
+        """Get the units for each variable in the dataset."""
+        return self.store.attrs.get("units", {})

@@ -11,7 +11,6 @@
 import datetime
 import logging
 import re
-from collections.abc import Callable
 
 from anemoi.utils.config import load_config
 from anemoi.utils.dates import frequency_to_string
@@ -19,214 +18,112 @@ from anemoi.utils.dates import frequency_to_string
 LOG = logging.getLogger(__name__)
 
 
-class DatasetName:
-    """Validate and parse dataset names according to naming conventions."""
+def check_dataset_name(
+    name: str,
+    resolution: str | None = None,
+    start_date: datetime.date | None = None,
+    end_date: datetime.date | None = None,
+    frequency: datetime.timedelta | None = None,
+) -> list[str]:
+    """Check if a dataset name follows the naming conventions.
 
-    def __init__(
-        self,
-        name: str,
-        resolution: str | None = None,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
-        frequency: datetime.timedelta | None = None,
-    ):
-        """Initialize a DatasetName instance.
+    Parameters
+    ----------
+    name : str
+        The name of the dataset.
+    resolution : Optional[str], optional
+        The expected resolution of the dataset.
+    start_date : Optional[datetime.date], optional
+        The expected start date of the dataset.
+    end_date : Optional[datetime.date], optional
+        The expected end date of the dataset.
+    frequency : Optional[datetime.timedelta], optional
+        The expected frequency of the dataset.
 
-        Parameters
-        ----------
-        name : str
-            The name of the dataset.
-        resolution : Optional[str], optional
-            The resolution of the dataset.
-        start_date : Optional[datetime.date], optional
-            The start date of the dataset.
-        end_date : Optional[datetime.date], optional
-            The end date of the dataset.
-        frequency : Optional[datetime.timedelta], optional
-            The frequency of the dataset.
-        """
-        self.name = name
-        self.parsed = self._parse(name)
+    Returns
+    -------
+    list[str]
+        A list of error messages, or an empty list if the name is valid.
+    """
+    config = load_config().get("datasets", {})
+    if config.get("ignore_naming_conventions", False):
+        return []
 
-        self.messages = []
+    messages = []
 
-        config = load_config().get("datasets", {})
+    # check_characters
+    if not name.islower():
+        messages.append(f"The dataset name '{name}' should be in lower case.")
+    if "_" in name:
+        messages.append(f"The dataset name '{name}' should use '-' instead of '_'.")
+    for c in name:
+        if not c.isalnum() and c not in "-":
+            messages.append(f"The dataset name '{name}' should only contain alphanumeric characters and '-'.")
 
-        if config.get("ignore_naming_conventions", False):
-            # setting the env variable ANEMOI_CONFIG_DATASETS_IGNORE_NAMING_CONVENTIONS=1
-            # will ignore the naming conventions
-            return
+    # parse
+    pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
+    match = re.match(pattern, name)
+    parsed = {}
+    if match:
+        keys = [
+            "purpose",
+            "labelling",
+            "source",
+            "resolution",
+            "start_date",
+            "end_date",
+            "frequency",
+            "version",
+            "additional",
+        ]
+        parsed = {k: v for k, v in zip(keys, match.groups())}
 
-        self.check_characters()
-        self.check_parsed()
-        self.check_resolution(resolution)
-        self.check_frequency(frequency)
-        self.check_start_date(start_date)
-        self.check_end_date(end_date)
+    # check_parsed
+    if not parsed:
+        messages.append(
+            f"The dataset name '{name}' does not follow the naming convention. "
+            "See here for details: "
+            "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
+        )
 
-        if self.messages:
-            self.messages.append(f"{self} is parsed as :" + "/".join(f"{k}={v}" for k, v in self.parsed.items()))
-
-    @property
-    def error_message(self) -> str:
-        """Generate an error message based on the collected messages."""
-        out = " And ".join(self.messages)
-        if out:
-            out[0].upper() + out[1:]
-        return out
-
-    def raise_if_not_valid(self, print: Callable = print) -> None:
-        """Raise a ValueError if the dataset name is not valid.
-
-        Parameters
-        ----------
-        print : Callable
-            The function to use for printing messages.
-        """
-        if self.messages:
-            for m in self.messages:
-                print(m)
-            raise ValueError(self.error_message)
-
-    def _parse(self, name: str) -> dict:
-        """Parse the dataset name into its components.
-
-        Parameters
-        ----------
-        name : str
-            The name of the dataset.
-
-        Returns
-        -------
-        dict
-            The parsed components of the dataset name.
-        """
-        pattern = r"^(\w+)-([\w-]+)-(\w+)-(\w+)-(\d\d\d\d)-(\d\d\d\d)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
-        match = re.match(pattern, name)
-
-        parsed = {}
-        if match:
-            keys = [
-                "purpose",
-                "labelling",
-                "source",
-                "resolution",
-                "start_date",
-                "end_date",
-                "frequency",
-                "version",
-                "additional",
-            ]
-            parsed = {k: v for k, v in zip(keys, match.groups())}
-
-        return parsed
-
-    def __str__(self) -> str:
-        """Return the string representation of the dataset name."""
-        return self.name
-
-    def check_parsed(self) -> None:
-        """Check if the dataset name was parsed correctly."""
-        if not self.parsed:
-            self.messages.append(
-                f"the dataset name {self} does not follow naming convention. "
-                "See here for details: "
-                "https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html"
-            )
-
-    def check_resolution(self, resolution: str | None) -> None:
-        """Check if the resolution matches the expected format.
-
-        Parameters
-        ----------
-        resolution : str or None
-            The expected resolution.
-        """
-        if self.parsed.get("resolution") and self.parsed["resolution"][0] not in "0123456789on":
-            self.messages.append(
-                f"the resolution {self.parsed['resolution'] } should start "
-                f"with a number or 'o' or 'n' in the dataset name {self}."
-            )
-
-        if resolution is None:
-            return
+    # check_resolution
+    if parsed.get("resolution") and parsed["resolution"][0] not in "0123456789on":
+        messages.append(
+            f"The resolution '{parsed['resolution']}' should start "
+            f"with a number, 'o', or 'n' in the dataset name '{name}'."
+        )
+    if resolution is not None:
         resolution_str = str(resolution).replace(".", "p").lower()
-        self._check_missing("resolution", resolution_str)
-        self._check_mismatch("resolution", resolution_str)
+        if resolution_str not in name:
+            messages.append(f"The resolution is '{resolution_str}', but it is missing in '{name}'.")
+        if parsed.get("resolution") and parsed["resolution"] != resolution_str:
+            messages.append(f"The resolution is '{resolution_str}', but it is '{parsed['resolution']}' in '{name}'.")
 
-    def check_characters(self) -> None:
-        if not self.name.islower():
-            self.messages.append(f"the {self.name} should be in lower case.")
-        if "_" in self.name:
-            self.messages.append(f"the {self.name} should use '-' instead of '_'.")
-        for c in self.name:
-            if not c.isalnum() and c not in "-":
-                self.messages.append(f"the {self.name} should only contain alphanumeric characters and '-'.")
-
-    def check_frequency(self, frequency: datetime.timedelta | None) -> None:
-        """Check if the frequency matches the expected format.
-
-        Parameters
-        ----------
-        frequency : datetime.timedelta or None
-            The expected frequency.
-        """
-        if frequency is None:
-            return
+    # check_frequency
+    if frequency is not None:
         frequency_str = frequency_to_string(frequency)
-        self._check_missing("frequency", frequency_str)
-        self._check_mismatch("frequency", frequency_str)
+        if frequency_str not in name:
+            messages.append(f"The frequency is '{frequency_str}', but it is missing in '{name}'.")
+        if parsed.get("frequency") and parsed["frequency"] != frequency_str:
+            messages.append(f"The frequency is '{frequency_str}', but it is '{parsed['frequency']}' in '{name}'.")
 
-    def check_start_date(self, start_date: datetime.date | None) -> None:
-        """Check if the start date matches the expected format.
-
-        Parameters
-        ----------
-        start_date : datetime.date or None
-            The expected start date.
-        """
-        if start_date is None:
-            return
+    # check_start_date
+    if start_date is not None:
         start_date_str = str(start_date.year)
-        self._check_missing("start_date", start_date_str)
-        self._check_mismatch("start_date", start_date_str)
+        if start_date_str not in name:
+            messages.append(f"The start date is '{start_date_str}', but it is missing in '{name}'.")
+        if parsed.get("start_date") and parsed["start_date"] != start_date_str:
+            messages.append(f"The start date is '{start_date_str}', but it is '{parsed['start_date']}' in '{name}'.")
 
-    def check_end_date(self, end_date: datetime.date | None) -> None:
-        """Check if the end date matches the expected format.
-
-        Parameters
-        ----------
-        end_date : datetime.date or None
-            The expected end date.
-        """
-        if end_date is None:
-            return
+    # check_end_date
+    if end_date is not None:
         end_date_str = str(end_date.year)
-        self._check_missing("end_date", end_date_str)
-        self._check_mismatch("end_date", end_date_str)
+        if end_date_str not in name:
+            messages.append(f"The end date is '{end_date_str}', but it is missing in '{name}'.")
+        if parsed.get("end_date") and parsed["end_date"] != end_date_str:
+            messages.append(f"The end date is '{end_date_str}', but it is '{parsed['end_date']}' in '{name}'.")
 
-    def _check_missing(self, key: str, value: str) -> None:
-        """Check if a component is missing from the dataset name.
+    if messages:
+        messages.append(f"'{name}' is parsed as: " + "/".join(f"{k}={v}" for k, v in parsed.items()) + ".")
 
-        Parameters
-        ----------
-        key : str
-            The component key.
-        value : str
-            The expected value.
-        """
-        if value not in self.name:
-            self.messages.append(f"the {key} is {value}, but is missing in {self.name}.")
-
-    def _check_mismatch(self, key: str, value: str) -> None:
-        """Check if a component value mismatches the expected value.
-
-        Parameters
-        ----------
-        key : str
-            The component key.
-        value : str
-            The expected value.
-        """
-        if self.parsed.get(key) and self.parsed[key] != value:
-            self.messages.append(f"the {key} is {value}, but is {self.parsed[key]} in {self.name}.")
+    return messages
