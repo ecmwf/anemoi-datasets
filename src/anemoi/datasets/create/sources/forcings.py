@@ -14,6 +14,8 @@ from earthkit.data import from_source
 from . import source_registry
 from .legacy import LegacySource
 
+# This table is not complete and needs updating
+
 UNITS = dict(
     cos_julian_day="dimensionless",
     cos_latitude="dimensionless",

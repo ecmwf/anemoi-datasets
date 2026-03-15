@@ -627,6 +627,15 @@ class GriddedResult(Result):
     def units(self) -> list[str]:
         """Retrieve the variables for the result."""
         self.build_coords()
+        # Add the periods to the units
+        variables_metadata = self.variables_metadata
+        for variable in self.variables:
+            md = variables_metadata[variable]
+            period = md.get("period", None)
+            process = md.get("process", None)
+            if period is not None:
+                assert isinstance(period, tuple) and len(period) == 2, (variable, period)
+                self._units[variable] = f"{self._units[variable]};{process}({period[1]-period[0]})"
         return self._units
 
     @property
