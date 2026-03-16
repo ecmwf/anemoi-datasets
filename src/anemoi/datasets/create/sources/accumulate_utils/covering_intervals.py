@@ -9,15 +9,13 @@
 
 import itertools
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
 from heapq import heappop
 from heapq import heappush
-from typing import Callable
-from typing import List
-from typing import Optional
 
 LOG = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class SignedInterval:
-    def __init__(self, start: datetime, end: datetime, base: Optional[datetime] = None):
+    def __init__(self, start: datetime, end: datetime, base: datetime | None = None):
         self.start = start
         self.end = end
         self.base = base
@@ -127,8 +125,8 @@ class HeapState:
     covered: float
     counter: int
     current_time: datetime
-    current_base: Optional[datetime]
-    path: List[SignedInterval] = field(compare=False)
+    current_base: datetime | None
+    path: list[SignedInterval] = field(compare=False)
 
 
 def covering_intervals(
@@ -139,7 +137,7 @@ def covering_intervals(
     switch_penalty: int = 24 * 3600 * 7,
     max_delta: timedelta = timedelta(hours=24 * 2),
     error_on_fail: bool = True,
-) -> List[SignedInterval] | None:
+) -> list[SignedInterval] | None:
     """Find a path of intervals covering [start, end] with minimal base switches, then minimal total absolute length.
     Uses a Dijkstra-like algorithm to find the optimal path.
 
@@ -163,14 +161,14 @@ def covering_intervals(
     """
     target_length = (end - start).total_seconds()
 
-    pq: List[HeapState] = []  # pq: priority queue
+    pq: list[HeapState] = []  # pq: priority queue
     counter = itertools.count()
     heappush(
         pq,
         HeapState(total_cost=0.0, covered=0.0, counter=next(counter), current_time=start, current_base=None, path=[]),
     )
 
-    visited: dict[tuple[datetime, Optional[datetime], float], float] = {}
+    visited: dict[tuple[datetime, datetime | None, float], float] = {}
 
     while pq:
         state = heappop(pq)

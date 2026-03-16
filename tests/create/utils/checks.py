@@ -15,7 +15,7 @@ import yaml
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.data.stores import open_zarr
+from anemoi.datasets.usage.stores import open_zarr
 
 
 class _Check:

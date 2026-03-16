@@ -119,6 +119,10 @@ intersphinx_mapping = {
         "https://anemoi-plugins.readthedocs.io/en/latest/",
         ("../../anemoi-plugins/docs/_build/html/objects.inv", None),
     ),
+    "earthkit-data": (
+        "https://earthkit-data.readthedocs.io/en/latest/",
+        ("../../earthkit-data/docs/_build/html/objects.inv", None),
+    ),
 }
 
 

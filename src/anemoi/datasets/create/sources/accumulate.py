@@ -437,6 +437,13 @@ def _compute_accumulations(
         if not field_used:
             logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
 
+    # some accumulators may be empty, remove them
+    # this can happen when the source provides fields that not exactly the one requested (scda/oper)
+    empty_accumulators = [k for k, acc in accumulators.items() if acc.values is None]
+    for k in empty_accumulators:
+        LOG.warning(f"Removing empty accumulator for date {k[0]} and key {k[1]}")
+        del accumulators[k]
+
     # Final checks
     def check_missing_accumulators():
         for date in dates:

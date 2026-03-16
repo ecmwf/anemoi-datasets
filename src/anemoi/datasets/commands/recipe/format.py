@@ -11,7 +11,7 @@
 import datetime
 import logging
 
-from ...dumper import yaml_dump
+from anemoi.datasets.misc.dumper import yaml_dump
 
 LOG = logging.getLogger(__name__)
 
@@ -35,7 +35,6 @@ ORDER = (
     "dataset_status",
     "licence",
     "attribution",
-    "env",
     "dates",
     "common",
     "data_sources",

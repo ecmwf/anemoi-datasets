@@ -8,13 +8,15 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from abc import ABC
+from abc import abstractmethod
 
 from anemoi.datasets.dates import DatesProvider
 
 LOG = logging.getLogger(__name__)
 
 
-class Action:
+class Action(ABC):
     """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
     pipe, join, etc.
 
@@ -29,6 +31,17 @@ class Action:
             "input",
             "data_sources",
         ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
+
+    @abstractmethod
+    def __call__(self, context, argument):
+        pass
+
+    @abstractmethod
+    def dump(self, dumper):
+        pass
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({'.'.join(str(x) for x in self.path)}, {self.config})"
 
 
 class Concat(Action):
@@ -75,15 +88,22 @@ class Concat(Action):
 
     def __call__(self, context, argument):
 
-        results = context.empty_result()
+        results = []
 
         for filtering_dates, action in self.choices:
             dates = context.matching_dates(filtering_dates, argument)
             if len(dates) == 0:
                 continue
-            results += action(context, dates)
+            results.append(action(context, dates))
+
+        results = context.join(results)
 
         return context.register(results, self.path)
+
+    def dump(self, dumper):
+        return dumper.concat(
+            {filtering_dates.dump(dumper): action.dump(dumper) for filtering_dates, action in self.choices}
+        )
 
 
 class Join(Action):
@@ -114,12 +134,11 @@ class Join(Action):
         return f"Join({self.actions})"
 
     def __call__(self, context, argument):
-        results = context.empty_result()
-
-        for action in self.actions:
-            results += action(context, argument)
-
+        results = context.join(action(context, argument) for action in self.actions)
         return context.register(results, self.path)
+
+    def dump(self, dumper) -> None:
+        return dumper.join([a.dump(dumper) for a in self.actions])
 
 
 class Pipe(Action):
@@ -149,7 +168,7 @@ class Pipe(Action):
         return f"Pipe({self.actions})"
 
     def __call__(self, context, argument):
-        result = context.empty_result()
+        result = None
 
         for i, action in enumerate(self.actions):
             if i == 0:
@@ -157,7 +176,12 @@ class Pipe(Action):
             else:
                 result = action(context, result)
 
+        assert result is not None, "Pipe action produced no result"
+
         return context.register(result, self.path)
+
+    def dump(self, dumper) -> None:
+        return dumper.pipe([a.dump(dumper) for a in self.actions])
 
 
 class Function(Action):
@@ -176,6 +200,13 @@ class Function(Action):
 
         return context.register(self.call_object(context, source, argument), self.path)
 
+    def dump(self, dumper) -> str:
+        # For now...
+        if "source" in self.config:
+            source = action_factory(self.config["source"], *self.path, "source")
+            self.config["source"] = source.dump(dumper)
+        return dumper.call(self.name, self.config)
+
 
 class DatasetSourceMixin:
     """Mixin class for sources defined in anemoi-datasets"""
@@ -186,7 +217,7 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(context.source_argument(argument))
+        return source.execute(argument)
 
 
 class TransformSourceMixin:
@@ -207,14 +238,14 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return filter.forward(context.filter_argument(argument))
+        return filter.forward(argument)
 
 
 class FilterFunction(Function):
     """Action to call a filter on the argument (e.g. rename, regrid, etc.)."""
 
     def __call__(self, context, argument):
-        return self.call(context, argument, context.filter_argument)
+        return self.call(context, argument)
 
 
 def _make_name(name, what):
@@ -250,6 +281,9 @@ class DataSources(Action):
         else:
             self.sources = {i: action_factory(v, *path, str(i)) for i, v in enumerate(config)}
 
+    def dump(self, dumper):
+        return dumper.sources({k: v.dump(dumper) for k, v in self.sources.items()})
+
     def __call__(self, context, argument):
         for name, source in self.sources.items():
             context.register(source(context, argument), self.path + (name,))
@@ -261,6 +295,12 @@ class Recipe(Action):
     def __init__(self, input, data_sources):
         self.input = input
         self.data_sources = data_sources
+
+    def dump(self, dumper):
+        return dumper.recipe(
+            self.input.dump(dumper),
+            self.data_sources.dump(dumper),
+        )
 
     def __call__(self, context, argument):
         # Load data_sources

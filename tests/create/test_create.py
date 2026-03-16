@@ -10,7 +10,6 @@
 import glob
 import logging
 import os
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -21,12 +20,29 @@ from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from .utils.checks import check_dataset
+from anemoi.datasets.commands.compare import compare_anemoi_datasets
+
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 
 HERE = os.path.dirname(__file__)
 # find_yamls
+
+IGNORE = ["recentre"]
+
+NAMES = []
+for path in glob.glob(os.path.join(HERE, "*.yaml")):
+    name, _ = os.path.splitext(os.path.basename(path))
+    if name in IGNORE:
+        continue
+    with open(path) as f:
+        conf = yaml.safe_load(f)
+        if conf.get("skip_test", False):
+            continue
+        if conf.get("slow_test", False):
+            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
+            continue
+    NAMES.append(name)
 
 IGNORE = ["recentre"]
 
@@ -81,26 +97,42 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     AssertionError
         If the comparison fails.
     """
+    import requests
+
     with patch("earthkit.data.from_source", load_source):
-        config = os.path.join(HERE, name + ".yaml")
+        from anemoi.datasets.create.creator import VERSION
+
+        recipe = os.path.join(HERE, name + ".yaml")
         output = os.path.join(HERE, name + ".zarr")
 
-        create_dataset(config=config, output=output, delta=["12h"])
+        create_dataset(recipe=recipe, output=output, delta=["12h"])
 
-        check_dataset(name, config, output, get_test_archive)
+        missing_reference = False
+        try:
+            directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
+        except requests.exceptions.HTTPError:
+            missing_reference = True
+            errors = [f"Reference data for {name} is missing, cannot compare."]
+
+        if not missing_reference:
+            reference = os.path.join(directory, name + ".zarr")
+            errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
+
+        if errors or missing_reference:
+            actual_path = os.path.realpath(output)
+
+            print()
+            print("⚠️ To update the reference data, run this:")
+            print("cd " + os.path.dirname(actual_path))
+            base = os.path.basename(actual_path)
+            print(f"tar zcf {base}.tgz {base}")
+            print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars-{VERSION}/")
+            print()
+            raise AssertionError(f"Comparison failed {errors}")
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    if len(sys.argv) > 1:
-        names = sys.argv[1:]
-    else:
-        names = NAMES
-
-    for name in names:
-        logging.info(f"Running test for {name}")
-        try:
-            test_run(name)
-        except AssertionError:
-            pass
+    # Then run pytest
+    pytest.main([__file__, "-v", "-k", "nan"])

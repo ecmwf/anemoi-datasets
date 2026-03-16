@@ -26,7 +26,7 @@ this, positive clipping is performed using the alternative formula:
    members_{new} = max(0, centre + ( members - \overline{members} ))
 
 The current implementation enforces that the following variables are
-positive when using the `perturbations` function:
+positive when using the `recentre` function:
 
 +----------+------------------------------+
 | Variable | Description                  |
