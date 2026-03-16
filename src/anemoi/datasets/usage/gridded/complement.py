@@ -76,14 +76,11 @@ class Complement(Combined):
         self._source: Dataset = source
 
         self._variables = []
-        self._units = []
 
         # Keep the same order as the original dataset
-        for v, u in zip(self._source.variables, self._source.units):
+        for v in self._source.variables:
             if v not in self._target.variables:
                 self._variables.append(v)
-                self._units.append(u)
-
         LOG.info(f"The following variables will be complemented: {self._variables}")
 
         if not self._variables:
@@ -93,11 +90,6 @@ class Complement(Combined):
     def variables(self) -> list[str]:
         """Returns the list of variables to be added to the target dataset."""
         return self._variables
-
-    @property
-    def units(self) -> list[str]:
-        """Returns the list of units to be added to the target dataset."""
-        return self._units
 
     @property
     def statistics(self) -> dict[str, NDArray[Any]]:
@@ -145,7 +137,7 @@ class Complement(Combined):
         """
         pass
 
-    def check_same_units(self, d1: Dataset, d2: Dataset) -> None:
+    def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the units in two datasets are the same.
 
         Parameters

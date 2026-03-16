@@ -28,21 +28,8 @@ LOG = logging.getLogger(__name__)
 QUIET = set()
 
 
-def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
-    """Retrieve metadata for the given variables and cube.
-
-    Parameters
-    ----------
-    variables : tuple of str
-        The variables to retrieve metadata for.
-    cube : Any
-        The data cube.
-
-    Returns
-    -------
-    dict
-        The metadata dictionary.
-    """
+def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
+    """Retrieve metadata for the given variables and cube."""
     assert isinstance(variables, tuple), variables
 
     KNOWN: dict[str, dict[str, bool]] = {
@@ -214,6 +201,17 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
             other[variables[i]]["process"] = process
             other[variables[i]]["period"] = (startStep, endStep)
 
+        units = f.metadata("units", default=None)
+        if variables[i] in units_seen:
+            if units_seen[variables[i]] != units:
+                raise ValueError(f"Variable {variables[i]} has multiple units: {units_seen[variables[i]]} and {units}")
+
+        if units is None and variables[i] not in QUIET:
+            LOG.warning(f"Cannot establish units for variable '{variables[i]}'.")
+            QUIET.add(variables[i])
+
+        other[variables[i]]["units"] = units
+
         for k in md.copy().keys():
             if k.startswith("_"):
                 md.pop(k)
@@ -323,7 +321,9 @@ class GriddedResult(Result):
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
         self._origins = []
-        self._units = {}
+        # Used to check if units are consistent across fields for the same variable
+        # TODO: Needs to presist in case of incremental builds
+        self._past_units = {}
 
     @property
     def data_request(self) -> dict[str, Any]:
@@ -354,21 +354,6 @@ class GriddedResult(Result):
         assert self.order_by, self.order_by
 
         self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
-
-        # Collect units
-        for field in ds:
-            metadata = self.remapping(field.metadata)
-            variable = metadata(self.context.variable_name)
-            units = metadata("units", default=None)
-            if variable in self._units:
-                if self._units[variable] != units:
-                    raise ValueError(f"Variable {variable} has multiple units: {self._units[variable]} and {units}")
-
-            if units is None and variable not in QUIET:
-                LOG.warning(f"Cannot establish units for variable '{variable}'.")
-                QUIET.add(variable)
-
-            self._units[variable] = units
 
         try:
             cube: Any = ds.cube(
@@ -624,24 +609,16 @@ class GriddedResult(Result):
         return self._variables
 
     @property
-    def units(self) -> list[str]:
-        """Retrieve the variables for the result."""
-        self.build_coords()
-        # Add the periods to the units
-        variables_metadata = self.variables_metadata
-        for variable in self.variables:
-            md = variables_metadata[variable]
-            period = md.get("period", None)
-            process = md.get("process", None)
-            if period is not None:
-                assert isinstance(period, tuple) and len(period) == 2, (variable, period)
-                self._units[variable] = f"{self._units[variable]};{process}({period[1]-period[0]})"
-        return self._units
-
-    @property
     def variables_metadata(self) -> dict[str, Any]:
         """Retrieve the metadata for the variables."""
-        return _fields_metatata(self.variables, self._cube)
+        return _fields_metatata(self.variables, self._cube, self._past_units)
+
+    @property
+    def typed_variables(self) -> dict[str, Any]:
+        """Retrieve the typed metadata for the variables."""
+        from anemoi.transform.variables import Variable
+
+        return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
 
     @property
     def ensembles(self) -> Any:

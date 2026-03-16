@@ -241,7 +241,14 @@ class Dataset:
     def touch(self) -> None:
         self.update_metadata(latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None))
 
+    @property
+    def variables_metadata(self) -> dict[str, Any]:
+        """Get the metadata for each variable in the dataset."""
+        return self.store.attrs["variables_metadata"]
+
     @cached_property
-    def units(self) -> dict[str, Any]:
-        """Get the units for each variable in the dataset."""
-        return self.store.attrs.get("units", {})
+    def typed_variables(self) -> dict[str, Any]:
+        from anemoi.transform.variables import Variable
+
+        """Get the metadata for each variable in the dataset."""
+        return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
