@@ -221,7 +221,6 @@ class GriddedCreator(Creator):
     ######################################################
 
     def context(self):
-        #
         return GriddedContext(self.recipe)
 
     def _load_cube(self, cube: Any, array: Any, indexes: Any) -> None:

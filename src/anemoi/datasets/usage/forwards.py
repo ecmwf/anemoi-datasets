@@ -118,11 +118,6 @@ class Forwards(Dataset):
         return self.forward.variables
 
     @property
-    def units(self) -> list[str]:
-        """Returns the units of the forward dataset."""
-        return self.forward.units
-
-    @property
     def variables_metadata(self) -> dict[str, Any]:
         """Returns the metadata of the variables in the forward dataset."""
         return self.forward.variables_metadata

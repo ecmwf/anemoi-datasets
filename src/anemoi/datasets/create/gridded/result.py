@@ -322,7 +322,6 @@ class GriddedResult(Result):
 
         self._origins = []
         # Used to check if units are consistent across fields for the same variable
-        # TODO: Needs to presist in case of incremental builds
         self._past_units = {}
 
     @property
