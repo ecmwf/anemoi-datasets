@@ -163,7 +163,7 @@ def migrate(config: dict) -> dict:
 
 def migrate_recipe(args: Any, config) -> None:
 
-    print(f"Migrating {args.path}")
+    LOG.info("Migrating %s", args.path)
 
     migrated = migrate(config)
 
