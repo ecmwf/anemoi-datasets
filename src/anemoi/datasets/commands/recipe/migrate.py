@@ -57,8 +57,7 @@ def migrate_accumulations(config):
             values = dict(config["accumulations"])
             if "accumulation_period" not in values:
                 LOG.warning(
-                    "No 'accumulation_period' specified in accumulations source — "
-                    "using default value of 6 hours."
+                    "No 'accumulation_period' specified in accumulations source — " "using default value of 6 hours."
                 )
             accumulation_period = values.pop("accumulation_period", 6)
             if "step" in values:

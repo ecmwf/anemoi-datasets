@@ -12,12 +12,10 @@ import datetime
 
 import pytest
 
-from anemoi.datasets.commands.recipe.migrate import (
-    fix_datetimes,
-    migrate,
-    migrate_accumulations,
-    remove_useless_common_block,
-)
+from anemoi.datasets.commands.recipe.migrate import fix_datetimes
+from anemoi.datasets.commands.recipe.migrate import migrate
+from anemoi.datasets.commands.recipe.migrate import migrate_accumulations
+from anemoi.datasets.commands.recipe.migrate import remove_useless_common_block
 
 
 def test_migrate_accumulations_with_int_period():
@@ -82,7 +80,12 @@ def test_migrate_accumulations_with_tuple_period_non_zero():
     }
     result = migrate_accumulations(config)
     assert result["accumulate"]["period"] == 6
-    assert result["accumulate"]["availability"] == [[0, ["0-6", "0-12"]], [6, ["0-6", "0-12"]], [12, ["0-6", "0-12"]], [18, ["0-6", "0-12"]]]
+    assert result["accumulate"]["availability"] == [
+        [0, ["0-6", "0-12"]],
+        [6, ["0-6", "0-12"]],
+        [12, ["0-6", "0-12"]],
+        [18, ["0-6", "0-12"]],
+    ]
 
 
 def test_migrate_accumulations_with_time_field(caplog):
