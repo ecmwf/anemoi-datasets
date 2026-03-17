@@ -45,10 +45,21 @@ def _parse_mars_times(raw_times) -> list[int]:
 
 
 def migrate_accumulations(config):
-    """Migrate source 'accumulations' to the new 'accumulate' structure recursively."""
+    """Migrate source 'accumulations' to the new 'accumulate' structure recursively.
+
+    Recursively processes the config structure:
+    - If a dict contains 'accumulations', converts it to new 'accumulate' format
+    - Otherwise, recursively processes all nested dicts and lists
+    - Returns primitive values unchanged (base case)
+    """
     if isinstance(config, dict):
         if "accumulations" in config:
             values = dict(config["accumulations"])
+            if "accumulation_period" not in values:
+                LOG.warning(
+                    "No 'accumulation_period' specified in accumulations source — "
+                    "using default value of 6 hours."
+                )
             accumulation_period = values.pop("accumulation_period", 6)
             if "step" in values:
                 LOG.warning(
@@ -110,9 +121,11 @@ def migrate_accumulations(config):
                 },
             }
             return result
+        # No 'accumulations' key: recursively process nested structures
         return {k: migrate_accumulations(v) for k, v in config.items()}
     if isinstance(config, list):
         return [migrate_accumulations(item) for item in config]
+    # Base case: return primitive values unchanged
     return config
 
 
