@@ -17,7 +17,6 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
-from anemoi.transform.units import Units
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
@@ -202,7 +201,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             other[variables[i]]["process"] = process
             other[variables[i]]["period"] = (startStep, endStep)
 
-        units = Units.to_canonical(f.metadata("units", default=None))
+        units = f.metadata("units", default=None)
         if variables[i] in units_seen:
             if units_seen[variables[i]] != units:
                 raise ValueError(f"Variable {variables[i]} has multiple units: {units_seen[variables[i]]} and {units}")
@@ -369,7 +368,7 @@ class GriddedResult(Result):
 
             if isinstance(ds, pd.DataFrame):
                 raise ValueError(
-                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'layout: tabular' in your recipe?"
+                    "Did you meant to build a tabular dataset? Did you forget to specify 'layout: tabular' in your recipe?"
                 )
             raise
         except ValueError:
