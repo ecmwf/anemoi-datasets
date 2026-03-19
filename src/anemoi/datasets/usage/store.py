@@ -86,6 +86,10 @@ class S3Store(ReadOnlyStore):
 
         self.url = url
 
+        from multiprocessing import set_start_method
+
+        set_start_method("spawn", force=True)
+
     def __getitem__(self, key: str) -> bytes:
         """Retrieve an item from the store."""
         from anemoi.utils.remote.s3 import get_object
