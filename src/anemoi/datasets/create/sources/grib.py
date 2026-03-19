@@ -120,7 +120,6 @@ class GribSource(LegacySource):
             The loaded dataset.
         """
         given_paths = path if isinstance(path, list) else [path]
-
         if flavour is not None:
             flavour = RuleBasedFlavour(flavour)
 
@@ -146,12 +145,6 @@ class GribSource(LegacySource):
 
             for path in _expand(paths):
                 context.trace("📁", "PATH", path)
-
-            if isinstance(path, str) and (path.startswith("ec:") or path.startswith("ectmp:")):
-                from anemoi.datasets.create.ecfs import get_ecfs_file
-
-                path = get_ecfs_file(path)
-
                 s = from_source("file", path)
                 if flavour is not None:
                     s = flavour.map(s)
