@@ -506,6 +506,17 @@ class Version:
             )
         )
 
+    def recipe(self, path: str) -> None:
+        import yaml
+
+        z = open_zarr(dataset_lookup(path))
+        for name in ("_create_yaml_config", "_recipe", "recipe"):
+            if name in z.attrs:
+                print(yaml.safe_dump(z.attrs[name], sort_keys=False))
+                return
+
+        print("No recipe found in the dataset.")
+
 
 class NoVersion(Version):
     """Represents a dataset with no version."""
@@ -769,6 +780,7 @@ class InspectZarr(Command):
         command_parser.add_argument("--progress", action="store_true")
         command_parser.add_argument("--statistics", action="store_true")
         command_parser.add_argument("--size", action="store_true", help="Print size")
+        command_parser.add_argument("--recipe", action="store_true", help="Print recipe")
 
     def run(self, args: Any) -> None:
         """Run the command.
@@ -787,6 +799,7 @@ class InspectZarr(Command):
         statistics: bool = False,
         detailed: bool = False,
         size: bool = False,
+        recipe: bool = False,
         **kwargs: Any,
     ) -> None:
         """Inspect a zarr dataset.
@@ -803,6 +816,8 @@ class InspectZarr(Command):
             Whether to print detailed information, by default False.
         size : bool, optional
             Whether to print the size of the dataset, by default False.
+        recipe : bool, optional
+            Whether to print the recipe used to create the dataset, by default False.
         **kwargs : Any
             Additional keyword arguments.
         """
@@ -817,6 +832,10 @@ class InspectZarr(Command):
 
             if statistics:
                 version.brute_force_statistics()
+
+            if recipe:
+                version.recipe(path)
+                return
 
             version.info(detailed, size)
 
