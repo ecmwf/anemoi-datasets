@@ -412,12 +412,6 @@ def test_class_gridded_rescale_1():
 @skip_if_offline
 @zarr_tests
 def test_class_gridded_rescale_2():
-    try:
-        import cfunits  # noqa: F401
-    except FileNotFoundError:
-        # cfunits requires the library udunits2 to be installed
-        raise pytest.skip("udunits2 library not installed")
-
     ds = open_dataset(
         "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
         rescale={"2t": ("K", "degC")},

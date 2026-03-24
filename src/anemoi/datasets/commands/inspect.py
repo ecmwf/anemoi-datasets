@@ -257,6 +257,11 @@ class Version:
         size : bool
             Whether to print the size of the dataset.
         """
+        from rich.console import Console
+        from rich.table import Table
+
+        console = Console()
+
         print()
         print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M")}')
         print(f'📅 End        : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
@@ -281,24 +286,33 @@ class Version:
         print(shape_str)
         self.print_sizes(size)
         print()
-        rows = []
 
         if self.statistics_ready:
             stats = self.statistics
         else:
-            stats = [["-"] * len(self.variables)] * 4
+            stats = [["-"] * len(self.variables)] * 5
+
+        table = Table(title="Statistics")
+        table.add_column("Index", justify="right")
+        table.add_column("Variable", justify="left")
+        table.add_column("Min", justify="right")
+        table.add_column("Max", justify="right")
+        table.add_column("Mean", justify="right")
+        table.add_column("Stdev", justify="right")
+        table.add_column("Units", justify="left")
+
+        def _(x):
+            if isinstance(x, float):
+                return f"{x:.3g}"
+            return str(x)
 
         for i, v in enumerate(self.variables):
-            rows.append([i, v] + [x[i] for x in stats])
+            row = [i, v] + [x[i] for x in stats] + [self.variables_metadata.get(v, {}).get("units", "-")]
+            table.add_row(*map(_, row))
 
-        print(
-            table(
-                rows,
-                header=["Index", "Variable", "Min", "Max", "Mean", "Stdev"],
-                align=[">", "<", ">", ">", ">", ">"],
-                margin=3,
-            )
-        )
+        console.print()
+        console.print(table)
+        console.print()
 
         if detailed:
             self.details()
