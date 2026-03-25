@@ -154,11 +154,24 @@ def migrate_allow_nans(config: dict) -> dict:
     return config
 
 
+def migrate_remapping(config: dict) -> dict:
+    remapping = config.get("output", {}).get("remapping")
+    if remapping is not None:
+        if isinstance(remapping, str):
+            config = config.copy()
+            config["output"] = config["output"].copy()
+            del config["output"]["remapping"]
+            if not config["output"]:
+                del config["output"]
+    return config
+
+
 def migrate(config: dict) -> dict:
     config = fix_datetimes(config)
     config = migrate_accumulations(config)
     config = migrate_allow_nans(config)
     config = remove_useless_common_block(config)
+    config = migrate_remapping(config)
     return config
 
 
