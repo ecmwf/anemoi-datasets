@@ -165,11 +165,25 @@ def migrate_remapping(config: dict) -> dict:
     return config
 
 
+def migrate_group_by(config: dict) -> dict:
+    group_by = config.get("dates", {}).get("group_by")
+    if group_by is not None:
+        config = config.copy()
+        group_by = config["dates"]["group_by"]
+        del config["dates"]["group_by"]
+
+        config.setdefault("build", {})
+        config["build"] = config["build"].copy()
+        config["build"].setdefault("group_by", group_by)
+
+    return config
+
+
 def migrate(config: dict) -> dict:
     config = fix_datetimes(config)
     config = migrate_accumulations(config)
     config = migrate_allow_nans(config)
-    config = migrate_remapping(config)
+    config = migrate_group_by(config)
     config = remove_useless_common_block(config)
     return config
 
