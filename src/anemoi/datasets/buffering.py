@@ -339,11 +339,13 @@ class ReadAheadWriteBehindBuffer:
                 return self._lru_chunks_cache[chunk_index]
 
         # Create the chunk outside the lock so we don't block other operations while loading from disk
-        # In the unlikely event of multiple threads loading the same chunk, the LRU cache will handle duplicates
-        # and the garbage collector will clean up unreferenced chunks
         chunk = _Buffer(self._arr, chunk_index)
 
         with self._lock:
+
+            # Another thread may have loaded this chunk while we were outside the lock
+            if chunk_index in self._lru_chunks_cache:
+                return self._lru_chunks_cache[chunk_index]
 
             # For debugging purposes, check again if the chunk was loaded while we were outside the lock
             if self._no_reload:
