@@ -387,3 +387,215 @@ class TrimEdge(Masked):
         x -= self.edge[0] + self.edge[1]
         y -= self.edge[2] + self.edge[3]
         return x, y
+
+class MaskedWithFill(Forwards):
+    """A class that applies a mask and fills the masked values with a specified fill value."""
+
+    def __init__(self, forward: Dataset, mask: NDArray[np.bool_], fill_value: float = np.nan) -> None:
+        """Initialize the MaskingWithFill class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be masked.
+        mask_file : str
+            Path to a .npy file containing a boolean mask of same shape as fields.
+        fill_value : float, optional
+            The value to fill the masked values with, by default np.nan.
+        """
+        super().__init__(forward)
+        assert len(forward.shape) == 4, "Grids must be 1D for now"
+        self.fill_value = fill_value
+        self.mask = mask
+        self.axis = 3
+
+        self.mask_name = f"{self.__class__.__name__.lower()}_mask"
+
+    @debug_indexing
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
+        """Get the masked data at the specified index, filling masked values with the fill value.
+
+        Parameters
+        ----------
+        index : FullIndex
+            The index to retrieve data from.
+
+        Returns
+        -------
+        NDArray[Any]
+            The masked data at the specified index, with masked values filled.
+        """
+        if isinstance(index, tuple):
+            return self._get_tuple(index)
+
+        result = self.forward[index]
+        # We don't support subsetting the grid values
+        assert result.shape[-1] == len(self.mask), (result.shape, len(self.mask))
+
+        result[..., self.mask] = self.fill_value
+        return result
+
+    @debug_indexing
+    @expand_list_indexing
+    def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
+        """Get the masked data for a tuple index, filling masked values with the fill value.
+
+        Parameters
+        ----------
+        index : TupleIndex
+            The tuple index to retrieve data from.
+
+        Returns
+        -------
+        NDArray[Any]
+            The masked data for the tuple index, with masked values filled.
+        """
+        index, changes = index_to_slices(index, self.shape)
+        index, previous = update_tuple(index, self.axis, slice(None))
+        result = self.forward[index]
+        result[..., self.mask] = self.fill_value
+        result = result[..., previous]
+        result = apply_index_to_slices_changes(result, changes)
+        return result
+
+    def collect_supporting_arrays(self, collected: list[tuple], *path: Any) -> None:
+        """Collect supporting arrays.
+
+        Parameters
+        ----------
+        collected : List[Tuple]
+            The list to collect supporting arrays into.
+        path : Any
+            Additional path arguments.
+        """
+        super().collect_supporting_arrays(collected, *path)
+        collected.append((path, self.mask_name, self.mask))
+
+class MaskingWithFill(MaskedWithFill):
+    
+    def __init__(self, forward: Dataset, mask_file: str, fill_value: float = np.nan) -> None:
+        """Initialize the MaskedWithFill class.
+
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be masked.
+        mask_file : str
+            Path to a .npy file containing a boolean mask of same shape as fields.
+        fill_value : float, optional
+            The value to fill the masked values with, by default np.nan.
+        """
+        self.mask_file = mask_file
+
+        # Check path
+        if not Path(self.mask_file).exists():
+            raise FileNotFoundError(f"Mask file not found: {self.mask_file}")
+        # Load mask
+        try:
+            mask = np.load(self.mask_file)
+        except Exception as e:
+            raise ValueError(f"Could not load data from {mask_file}: {e}")
+
+        mask = mask.flatten()
+
+        if mask.dtype != bool:
+            raise ValueError(f"Mask file {mask_file} does not contain boolean values.")
+
+        if len(mask) != forward.shape[-1]:
+            raise ValueError(f"Mask length {len(mask)} does not match field size {forward.shape[-1]}.")
+
+        if np.sum(mask) == 0:
+            LOG.warning(f"Mask in {mask_file} eliminates all points in field.")
+
+        super().__init__(forward, mask, fill_value)
+    
+class MaskingWithFillFromVar(MaskedWithFill):
+
+    def __init__(
+        self, 
+        forward: Dataset,
+        mask_file: str,
+        mask_variable: str, 
+        mask_value: float | None = None, 
+        mask_threshold_upper: float | None = None,
+        mask_threshold_lower: float | None = None,
+        fill_value: float = np.nan,
+    ) -> None:
+        """Initialize the MaskedWithFillFromVar class.
+        
+        Parameters
+        ----------
+        forward : Dataset
+            The dataset to be masked.
+        mask_file : str
+           path to a .nc file containing the variable to be used as a mask. 
+        mask_variable : str
+            The variable in the dataset to be used as a mask.
+        mask_value : Optional[float]
+            If provided, the mask will be created by comparing the mask variable to this value.
+        mask_treshold_upper : Optional[float]
+            If provided, the mask will be created by comparing the mask variable to this upper threshold.
+        mask_treshold_lower : Optional[float]
+            If provided, the mask will be created by comparing the mask variable to this lower threshold.
+        fill_value : float, optional
+            The value to fill the masked values with, by default np.nan.
+        """
+
+        self.mask_file = mask_file
+
+        if not Path(self.mask_file).exists():
+            raise FileNotFoundError(f"Mask file not found: {self.mask_file}")
+        
+        import xarray as xr
+        try:
+            ds = xr.open_dataset(self.mask_file)
+        except Exception as e:
+            raise ValueError(f"Could not load data from {mask_file}: {e}")
+        
+        if mask_variable not in ds:
+            raise ValueError(f"Mask variable {mask_variable} not found in dataset variables {list(ds)}")
+
+        mask_data = ds[mask_variable].values.flatten()
+
+        if mask_value is not None:
+            mask = mask_data == mask_value
+
+        elif mask_threshold_upper is not None or mask_threshold_lower is not None:
+            mask = np.full(mask_data.shape, True, dtype=bool)
+            if mask_threshold_upper is not None:
+                mask &= mask_data <= mask_threshold_upper
+            if mask_threshold_lower is not None:
+                mask &= mask_data >= mask_threshold_lower
+        else:
+            raise ValueError("Either mask_value or mask_treshold_upper/lower must be provided to create the mask.")
+
+        if mask.dtype != bool:
+            raise ValueError(f"Mask created from variable {mask_variable} does not contain boolean values.")
+
+        if len(mask) != forward.shape[-1]:
+            raise ValueError(f"Mask length {len(mask)} does not match field size {forward.shape[-1]}.")
+
+        if np.sum(mask) == len(mask):
+            LOG.warning(f"Mask created from variable {mask_variable} masks all points in the field.")
+
+        super().__init__(forward, mask, fill_value)
+
+    def tree(self) -> Node:
+        """Get the tree representation of the dataset.
+
+        Returns
+        -------
+        Node
+            The tree representation of the dataset.
+        """
+        return Node(self, [self.forward.tree()], mask_file=self.mask_file)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the MaskedWithFillFromVar subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the MaskedWithFillFromVar subclass.
+        """
+        return dict(mask_file=self.mask_file)

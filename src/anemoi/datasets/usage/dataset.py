@@ -241,6 +241,26 @@ class Dataset(ABC, Sized):
 
             mask_file = kwargs.pop("mask")
             return Masking(self, mask_file)._subset(**kwargs).mutate()
+        
+        if "mask_with_fill" in kwargs:
+            MaskingWithFillFromVar = self.usage_factory_load("MaskingWithFillFromVar")
+
+            mask_file = kwargs.pop("mask_with_fill")
+            mask_variable = kwargs.pop("mask_variable")
+            fill_value = kwargs.pop("fill_value", np.nan)
+            mask_value = kwargs.pop("mask_value", None)
+            mask_threshold_upper = kwargs.pop("mask_threshold_upper", None)
+            mask_threshold_lower = kwargs.pop("mask_threshold_lower", None)
+
+            return MaskingWithFillFromVar(
+                self, 
+                mask_file = mask_file,
+                mask_variable = mask_variable,
+                mask_value = mask_value,
+                mask_threshold_upper = mask_threshold_upper,
+                mask_threshold_lower = mask_threshold_lower, 
+                fill_value = fill_value,
+            )._subset(**kwargs).mutate()
 
         # Note: trim_edge should go before thinning
         if kwargs.get("trim_edge") is not None:
