@@ -275,9 +275,9 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         concat = _deduplicate_rows(concat)
 
         _, counts = np.unique(concat[:, :2], axis=0, return_counts=True)
-        sum = np.sum(counts)
+        sum_ = np.sum(counts)
         cumsum = np.cumsum(counts)
-        half_point = np.searchsorted(cumsum, sum // 2)
+        half_point = np.searchsorted(cumsum, sum_ // 2)
         # assert False, (half_point, np.sum(counts[:half_point]), np.sum(counts[half_point:]))
 
         split_point = np.sum(counts[:half_point])
