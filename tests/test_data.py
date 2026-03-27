@@ -1388,7 +1388,6 @@ def test_cropping() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, 8)
 
 
-@pytest.mark.skip("Rolling average not yet supported in that branch")
 @mockup_open_zarr
 def test_rolling_average() -> None:
     initial = DatasetTester("test-2021-2021-6h-o96-abcd")
