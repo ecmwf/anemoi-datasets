@@ -122,9 +122,10 @@ def migrate_accumulations(config):
             return result
         # No 'accumulations' key: recursively process nested structures
         return {k: migrate_accumulations(v) for k, v in config.items()}
+
     if isinstance(config, list):
         return [migrate_accumulations(item) for item in config]
-    # Base case: return primitive values unchanged
+
     return config
 
 
@@ -153,9 +154,47 @@ def remove_useless_common_block(config):
     return {k: v for k, v in config.items() if k != "common"}
 
 
+def migrate_allow_nans(config: dict) -> dict:
+    allow_nans = config.get("statistics", {}).get("allow_nans")
+    if allow_nans is not None:
+        if isinstance(allow_nans, list):
+            config = config.copy()
+            config["statistics"] = config["statistics"].copy()
+            config["statistics"]["allow_nans"] = bool(allow_nans)
+
+    return config
+
+
+def migrate_remapping(config: dict) -> dict:
+    remapping = config.get("output", {}).get("remapping")
+    if remapping is not None:
+        config = config.copy()
+        config["output"] = config["output"].copy()
+        del config["output"]["remapping"]
+        if not config["output"]:
+            del config["output"]
+    return config
+
+
+def migrate_group_by(config: dict) -> dict:
+    group_by = config.get("dates", {}).get("group_by")
+    if group_by is not None:
+        config = config.copy()
+        group_by = config["dates"]["group_by"]
+        del config["dates"]["group_by"]
+
+        config.setdefault("build", {})
+        config["build"] = config["build"].copy()
+        config["build"].setdefault("group_by", group_by)
+
+    return config
+
+
 def migrate(config: dict) -> dict:
     config = fix_datetimes(config)
     config = migrate_accumulations(config)
+    config = migrate_allow_nans(config)
+    config = migrate_group_by(config)
     config = remove_useless_common_block(config)
     return config
 
