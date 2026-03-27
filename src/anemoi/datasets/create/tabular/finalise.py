@@ -756,7 +756,7 @@ def finalise_tabular_dataset(
             i: int = 0
             for i in range(len(fragments)):
                 tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
-                if i > 2:
+                if i >= 1:  # Keep two fragments max : i=0 and i=1, then stop
                     break
 
             i = len(tasks)
