@@ -651,13 +651,20 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
 
         super().__init__(array, *args, **kwargs, no_reload=True)
         self._read_ahead = ThreadPoolExecutor(max_workers=1)
-        self._read_ahead.submit(self._read_ahead_worker, slice(start, self.chunks_in_cache + start, 1))
+        self._last_future = self._read_ahead.submit(
+            self._read_ahead_worker, slice(start, self.chunks_in_cache + start, 1)
+        )
 
     def __setitem__(self, key, value):
         raise RuntimeError("ReadAheadBuffer is read-only")
 
     def __getitem__(self, key):
         key = self._normalise_key(key)
+
+        # Surface any exception raised by the previous read-ahead job.
+        # done() is non-blocking; result() re-raises a stored exception.
+        if self._last_future is not None and self._last_future.done():
+            self._last_future.result()
 
         if isinstance(key, tuple):
             first_key = key[0]
@@ -667,16 +674,18 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
         match first_key:
             case int():
                 chunk_index = first_key // self._nrows_in_chunks
-                self._read_ahead.submit(self._read_ahead_worker, slice(chunk_index + 1, chunk_index + 2, 1))
+                self._last_future = self._read_ahead.submit(
+                    self._read_ahead_worker, slice(chunk_index + 1, chunk_index + 2, 1)
+                )
 
             case slice():
                 # TODO: optimize for step > 1
                 start, stop, _ = first_key.indices(self._arr.shape[0])
                 start = start // self._nrows_in_chunks
                 stop = (stop - 1) // self._nrows_in_chunks + 1
-                self._read_ahead.submit(self._read_ahead_worker, slice(start, stop, 1))
+                self._last_future = self._read_ahead.submit(self._read_ahead_worker, slice(start, stop, 1))
             case _:
-                pass
+                self._last_future = None
 
         return super().__getitem__(key)
 
@@ -692,7 +701,7 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
             LOG.debug(f"Read-ahead loading buffer {index}")
 
         for i in range(index.start, index.stop, index.step):
-            if i > self._max_buffer_index:
+            if i > self.max_cached_chunks:
                 break
 
             self._ensure_chunk_in_cache(i)
