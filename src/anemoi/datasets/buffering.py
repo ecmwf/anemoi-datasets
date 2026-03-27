@@ -701,7 +701,7 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
             LOG.debug(f"Read-ahead loading buffer {index}")
 
         for i in range(index.start, index.stop, index.step):
-            if i > self.max_cached_chunks:
+            if i > self._max_chunk_index:
                 break
 
             self._ensure_chunk_in_cache(i)
