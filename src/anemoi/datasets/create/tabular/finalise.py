@@ -400,7 +400,7 @@ def _read_fragment_worker(file_path: str) -> Fragment:
 def _find_duplicate_and_overlapping_dates(
     work_dir: str,
     delete_files: bool,
-    max_fragment_size: int,
+    max_fragment_size: int = 256 * 1024 * 1024,  # 256 MB
     max_workers: int | None = None,
 ) -> list[Fragment]:
     """Find and resolve duplicate and overlapping date ranges in fragment files.
@@ -442,8 +442,6 @@ def _find_duplicate_and_overlapping_dates(
     LOG.info(f"Available CPUs: {cpus}")
 
     memory *= 0.8  # Use only 80% of available memory
-
-    max_fragment_size = 256 * 1024 * 1024  # 256 MB
 
     # Each pairs of deoverlapping fragments requires loading both into memory.
     # Then double it for safety
