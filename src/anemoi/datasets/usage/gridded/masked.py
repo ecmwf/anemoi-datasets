@@ -391,7 +391,7 @@ class TrimEdge(Masked):
 class MaskedWithFill(Forwards):
     """A class that applies a mask and fills the masked values with a specified fill value."""
 
-    def __init__(self, forward: Dataset, mask: NDArray[np.bool_], fill_value: float = np.nan) -> None:
+    def __init__(self, forward: Dataset, mask: NDArray[np.bool_], fill_value: float = np.nan, vars_to_mask: list | None = None) -> None:
         """Initialize the MaskingWithFill class.
 
         Parameters
@@ -408,6 +408,10 @@ class MaskedWithFill(Forwards):
         self.fill_value = fill_value
         self.mask = mask
         self.axis = 3
+        if vars_to_mask is not None:
+            self.mask_vars = [index for name, index in forward.name_to_index.items() if name in vars_to_mask]
+        else:
+            self.mask_vars = []
 
         self.mask_name = f"{self.__class__.__name__.lower()}_mask"
 
@@ -431,8 +435,7 @@ class MaskedWithFill(Forwards):
         result = self.forward[index]
         # We don't support subsetting the grid values
         assert result.shape[-1] == len(self.mask), (result.shape, len(self.mask))
-
-        result[..., self.mask] = self.fill_value
+        result[self.mask_vars,:, self.mask] = self.fill_value
         return result
 
     @debug_indexing
@@ -453,9 +456,10 @@ class MaskedWithFill(Forwards):
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, self.axis, slice(None))
         result = self.forward[index]
-        result[..., self.mask] = self.fill_value
         result = result[..., previous]
         result = apply_index_to_slices_changes(result, changes)
+        mask_vars = tuple(i for i, _  in enumerate(slice_to_indices(index[1])) if i in self.mask_vars)
+        result[:,mask_vars,:, self.mask] = self.fill_value
         return result
 
     def collect_supporting_arrays(self, collected: list[tuple], *path: Any) -> None:
@@ -473,7 +477,7 @@ class MaskedWithFill(Forwards):
 
 class MaskingWithFill(MaskedWithFill):
     
-    def __init__(self, forward: Dataset, mask_file: str, fill_value: float = np.nan) -> None:
+    def __init__(self, forward: Dataset, mask_file: str, fill_value: float = np.nan, vars_to_mask: list | None = None) -> None:
         """Initialize the MaskedWithFill class.
 
         Parameters
@@ -507,7 +511,7 @@ class MaskingWithFill(MaskedWithFill):
         if np.sum(mask) == 0:
             LOG.warning(f"Mask in {mask_file} eliminates all points in field.")
 
-        super().__init__(forward, mask, fill_value)
+        super().__init__(forward, mask, fill_value, vars_to_mask)
     
 class MaskingWithFillFromVar(MaskedWithFill):
 
@@ -520,6 +524,7 @@ class MaskingWithFillFromVar(MaskedWithFill):
         mask_threshold_upper: float | None = None,
         mask_threshold_lower: float | None = None,
         fill_value: float = np.nan,
+        vars_to_mask: list | None = None
     ) -> None:
         """Initialize the MaskedWithFillFromVar class.
         
@@ -578,7 +583,7 @@ class MaskingWithFillFromVar(MaskedWithFill):
         if np.sum(mask) == len(mask):
             LOG.warning(f"Mask created from variable {mask_variable} masks all points in the field.")
 
-        super().__init__(forward, mask, fill_value)
+        super().__init__(forward, mask, fill_value, vars_to_mask)
 
     def tree(self) -> Node:
         """Get the tree representation of the dataset.
@@ -599,3 +604,6 @@ class MaskingWithFillFromVar(MaskedWithFill):
             The metadata specific to the MaskedWithFillFromVar subclass.
         """
         return dict(mask_file=self.mask_file)
+    
+def slice_to_indices(s: slice):
+    return tuple(i for i in range(s.start, s.stop, s.step))

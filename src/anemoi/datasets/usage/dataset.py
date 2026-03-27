@@ -251,6 +251,7 @@ class Dataset(ABC, Sized):
             mask_value = kwargs.pop("mask_value", None)
             mask_threshold_upper = kwargs.pop("mask_threshold_upper", None)
             mask_threshold_lower = kwargs.pop("mask_threshold_lower", None)
+            vars_to_mask = kwargs.pop("vars_to_mask", None)
 
             return MaskingWithFillFromVar(
                 self, 
@@ -260,6 +261,7 @@ class Dataset(ABC, Sized):
                 mask_threshold_upper = mask_threshold_upper,
                 mask_threshold_lower = mask_threshold_lower, 
                 fill_value = fill_value,
+                vars_to_mask = vars_to_mask,
             )._subset(**kwargs).mutate()
 
         # Note: trim_edge should go before thinning
