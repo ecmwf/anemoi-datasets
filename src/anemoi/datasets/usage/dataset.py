@@ -303,6 +303,12 @@ class Dataset(ABC, Sized):
             max_distance = kwargs.pop("max_distance", None)
             return InterpolateNearest(self, interpolate_variables, max_distance=max_distance)._subset(**kwargs).mutate()
 
+        if "rolling_average" in kwargs:
+            RollingAverage = self.usage_factory_load("RollingAverage")
+
+            rolling_average = kwargs.pop("rolling_average")
+            return RollingAverage(self, rolling_average)._subset(**kwargs).mutate()
+
         # Keep last
         if "shuffle" in kwargs:
             Subset = self.usage_factory_load("Subset")
