@@ -8,7 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 import threading
+import weakref
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -18,6 +20,9 @@ import zarr
 from lru import LRU
 
 LOG = logging.getLogger(__name__)
+
+# Weak registry of all live buffer instances, used to reinitialise them after os.fork()
+_buffer_registry: weakref.WeakSet = weakref.WeakSet()
 
 
 class _Buffer:
@@ -253,6 +258,7 @@ class ReadAheadWriteBehindBuffer:
         self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_buffer)
         self._lock = threading.RLock()
         self.chunks_in_cache = chunks_in_cache
+        _buffer_registry.add(self)
 
     @property
     def max_cached_chunks(self) -> int:
@@ -504,6 +510,21 @@ class ReadAheadWriteBehindBuffer:
 
             self._nrows_in_chunks = self._arr.chunks[0]
 
+    def _reinit_after_fork(self) -> None:
+        """Reinitialise threading state in a child process after os.fork()."""
+        self._lock = threading.RLock()
+
+    def __getstate__(self) -> dict:
+        self.flush()
+        return {
+            "array": self._arr,
+            "chunks_in_cache": self.chunks_in_cache,
+            "no_reload": self._no_reload,
+        }
+
+    def __setstate__(self, state: dict) -> None:
+        self.__init__(state["array"], max_cached_chunks=state["chunks_in_cache"], no_reload=state["no_reload"])
+
     def __enter__(self) -> "ReadAheadWriteBehindBuffer":
         return self
 
@@ -708,6 +729,22 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
 
             self._ensure_chunk_in_cache(i)
 
+    def _reinit_after_fork(self) -> None:
+        super()._reinit_after_fork()
+        self._last_future = None
+        self._read_ahead = ThreadPoolExecutor(max_workers=1)
+
+    def __getstate__(self) -> dict:
+        if self._last_future is not None:
+            try:
+                self._last_future.result()
+            except Exception:
+                pass
+        return super().__getstate__()
+
+    def __setstate__(self, state: dict) -> None:
+        self.__init__(state["array"], max_cached_chunks=state["chunks_in_cache"])
+
     def resize(self, *new_shape: int) -> None:
         raise RuntimeError("Resizing not supported with ReadAheadBuffer enabled")
 
@@ -728,3 +765,12 @@ class RandomReadBuffer(ReadAheadWriteBehindBuffer):
 
 class WriteBehindBuffer(ReadAheadWriteBehindBuffer):
     pass
+
+
+def _reinit_buffers_after_fork() -> None:
+    for buf in list(_buffer_registry):
+        buf._reinit_after_fork()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reinit_buffers_after_fork)
