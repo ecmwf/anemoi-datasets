@@ -21,6 +21,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+from .locking import Locking
 
 LOG = logging.getLogger(__name__)
 
@@ -40,19 +41,6 @@ def _tidy_json(obj: Any) -> Any:
 
         case _:
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-
-class Synchronizer:
-    """A placeholder for now"""
-
-    def __init__(self, path):
-        pass
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
 
 
 class Dataset:
@@ -92,7 +80,7 @@ class Dataset:
             mode = "a"
 
         self.store = zarr.open(self.path, mode=mode)
-        self.synchronizer = Synchronizer(self.path)
+        self.synchronizer = Locking(self.path + ".lock")
 
     def add_array(
         self,
