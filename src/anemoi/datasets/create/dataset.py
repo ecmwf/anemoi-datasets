@@ -21,6 +21,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+
 from .locking import Locking
 
 LOG = logging.getLogger(__name__)
