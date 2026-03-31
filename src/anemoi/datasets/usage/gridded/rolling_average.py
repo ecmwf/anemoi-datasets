@@ -15,6 +15,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from anemoi.datasets import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
 from ..dataset import Dataset
@@ -67,6 +68,15 @@ class RollingAverage(Forwards):
         shape[0] = len(self)
         return tuple(shape)
 
+    def _raise_if_missing_in_window(self, i: int, forward_missing: set[int]) -> None:
+        """Raise MissingDateError if any forward index in the rolling window for output index i is missing."""
+        for j in range(i, i + self.i_start + self.i_end):
+            if j in forward_missing:
+                raise MissingDateError(
+                    f"Rolling average window for date {self.forward.dates[i + self.i_start - 1]} "
+                    f"overlaps with missing forward index {j} (date {self.forward.dates[j]})"
+                )
+
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
@@ -84,6 +94,9 @@ class RollingAverage(Forwards):
                 rest = ()
 
             if isinstance(first, int):
+                forward_missing = self.forward.missing
+                if forward_missing:
+                    self._raise_if_missing_in_window(first, forward_missing)
                 slice_ = slice(first, first + self.i_start + self.i_end)
                 data = self.forward[(slice_,) + rest]
                 return f(data)
@@ -95,6 +108,10 @@ class RollingAverage(Forwards):
                 first = [i if i >= 0 else len(self) + i for i in first]
                 if any(i >= len(self) for i in first):
                     raise IndexError(f"Index out of range: {first}")
+                forward_missing = self.forward.missing
+                if forward_missing:
+                    for i in first:
+                        self._raise_if_missing_in_window(i, forward_missing)
                 slices = [slice(i, i + self.i_start + self.i_end) for i in first]
                 data = [self.forward[(slice_,) + rest] for slice_ in slices]
                 res = [f(d) for d in data]
@@ -109,6 +126,9 @@ class RollingAverage(Forwards):
         if n >= len(self):
             raise IndexError(f"Index out of range: {n}")
 
+        forward_missing = self.forward.missing
+        if forward_missing:
+            self._raise_if_missing_in_window(n, forward_missing)
         slice_ = slice(n, n + self.i_start + self.i_end)
         data = self.forward[slice_]
         return f(data)

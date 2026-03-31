@@ -43,7 +43,7 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.27",
-  "anemoi-utils>=0.5",
+  "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
