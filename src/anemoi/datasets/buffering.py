@@ -192,10 +192,7 @@ class _Buffer:
             if len(self.cache.shape) != len(new_array_shape):
                 return self._remove(
                     lru,
-                    "Size mismatch resizing shape from ",
-                    self.cache.shape,
-                    " to ",
-                    new_array_shape,
+                    f"Size mismatch resizing shape from {self.cache.shape} to {new_array_shape}",
                 )
 
             if len(new_array_shape) > 1 and self.cache.shape[1:] != new_array_shape[1:]:

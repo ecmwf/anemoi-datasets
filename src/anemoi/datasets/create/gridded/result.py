@@ -140,6 +140,8 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
+            # in such case of incorrect encoding, P1 refers to endStep and P2 to startStep.
+            # Note that this is, on purpose, the opposite of the usual convention.
             endStep = as_timedelta(f.metadata("P1"))
             startStep = as_timedelta(f.metadata("P2"))
 
