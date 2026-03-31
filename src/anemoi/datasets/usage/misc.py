@@ -352,7 +352,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     if isinstance(a, Dataset):
         return a.mutate()
 
-    if isinstance(a, zarr.hierarchy.Group):
+    if isinstance(a, zarr.Group):
         return ZarrStore.from_group(a).mutate()
 
     if isinstance(a, str):
