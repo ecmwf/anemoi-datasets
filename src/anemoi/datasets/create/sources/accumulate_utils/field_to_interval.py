@@ -43,7 +43,15 @@ def _set_start_step_from_end_step_ceiled_to_24_hours(startStep, endStep, field=N
     return endStep - (endStep % 24), endStep
 
 
-patch_registry = {"reset_24h_accumulations": _set_start_step_from_end_step_ceiled_to_24_hours}
+def _set_start_step_to_zero(startStep, endStep, field=None):
+    # Because the data wrongly encode start_step, but end_step is correct
+    return 0, endStep
+
+
+patch_registry = {
+    "reset_24h_accumulations": _set_start_step_from_end_step_ceiled_to_24_hours,
+    "set_start_step_to_zero": _set_start_step_to_zero,
+}
 
 
 class FieldToInterval:
