@@ -249,7 +249,7 @@ class _TendencyCollector(_CollectorBase):
             diffs = np.diff(dates)
             assert np.all(diffs == diffs[0]), f"Dates must be regularly spaced, got diffs: {np.unique(diffs)}"
         if self._last_window_date is not None and len(dates) > 0:
-            assert dates[0] > self._last_window_date, (
+            assert dates[0] >= self._last_window_date, (
                 f"New dates must follow window dates chronologically: "
                 f"window ends at {self._last_window_date}, new data starts at {dates[0]}"
             )

@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 
 
 class TabularZarr(ZarrStore):
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
         self._window_view = WindowView(self.store)
@@ -121,7 +121,7 @@ class TabularZarr(ZarrStore):
     def statistics_tendencies(self) -> dict[str, Any]:
         raise NotImplementedError()
 
-    def tree(self) -> zarr.hierarchy.Group:
+    def tree(self) -> zarr.Group:
         raise NotImplementedError()
 
     def variables_metadata(self) -> dict[str, dict[str, Any]]:
