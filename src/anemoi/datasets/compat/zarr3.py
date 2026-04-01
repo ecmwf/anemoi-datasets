@@ -35,9 +35,3 @@ def HTTPStore(url: str) -> zarr.storage.FsspecStore:
 
 
 DebugStore = zarr.storage.LoggingStore
-
-
-def resize_array(array: zarr.Array, *new_shape: int) -> None:
-    """Resize helper compatible with zarr 2 and 3 APIs."""
-    shape = new_shape[0] if len(new_shape) == 1 else new_shape
-    array.resize(shape)

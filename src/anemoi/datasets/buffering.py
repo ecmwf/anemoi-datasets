@@ -16,7 +16,6 @@ from typing import Any
 import numpy as np
 import zarr
 from lru import LRU
-from anemoi.datasets.compat import resize_array
 
 LOG = logging.getLogger(__name__)
 
@@ -493,7 +492,8 @@ class ReadAheadWriteBehindBuffer:
         """
         with self._lock:
 
-            resize_array(self._arr, *new_shape)
+            shape = new_shape[0] if len(new_shape) == 1 else tuple(new_shape)
+            self._arr.resize(shape)
 
             for chunk in list(self._lru_chunks_cache.values()):
                 chunk.resize(self._lru_chunks_cache, new_shape)
