@@ -13,13 +13,10 @@ import datetime
 import json
 import logging
 import os
-import time
 from threading import RLock
 from typing import Any
 
 from anemoi.utils.config import load_config as load_settings
-from rich.console import Console
-from rich.markdown import Markdown
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
@@ -55,12 +52,31 @@ def _payload(event: str, **kwargs: Any) -> dict:
     return payload
 
 
-def _collect_analytics(event: str, **kwargs: Any) -> None:
+COLLECT_ANALYTICS = None
+LOCK = RLock()
+
+
+def _do_collect_event(event: str, **kwargs: Any) -> None:
+    global COLLECT_ANALYTICS, LOCK
+    with LOCK:
+        if COLLECT_ANALYTICS is not None:
+            return COLLECT_ANALYTICS
+
+        options = analytics_options()
+
+        COLLECT_ANALYTICS = options.get("enabled", False)
+
+        return COLLECT_ANALYTICS
+
+
+def _collect_analytics_worker(event: str, **kwargs: Any) -> None:
     import requests
+
+    global COLLECT_ANALYTICS
 
     try:
 
-        if not _collect_event_worker(event, **kwargs):
+        if not _do_collect_event(event, **kwargs):
             return
 
         payload = _payload(event, **kwargs)
@@ -74,10 +90,7 @@ def _collect_analytics(event: str, **kwargs: Any) -> None:
 
     except Exception:
         LOG.exception("Failed to collect analytics")
-
-
-def _week(seconds: int) -> int:
-    return seconds * 7 * 24 * 3600
+        COLLECT_ANALYTICS = False
 
 
 def analytics_options(options=None):
@@ -96,58 +109,6 @@ def analytics_options(options=None):
             json.dump(options, f, indent=2)
 
 
-def _collect_analytics_message(event, **kwargs) -> None:
-
-    now = time.time()
-    options = analytics_options()
-    shown = options.get("message_shown", [])
-
-    if shown:
-        first = min(shown)
-        last = max(shown)
-
-        if now - first > _week(4):
-            # Don't show ever again
-            LOG.debug("Don't show analytics message ever again")
-            return
-
-        if now - last < _week(1):
-            # Too soon
-            LOG.debug("Don't show analytics message: too soon")
-            return
-
-    here = os.path.dirname(__file__)
-    message = open(os.path.join(here, "analytics.md")).read()
-    message = message.format(payload=json.dumps(_payload(event, **kwargs), indent=2))
-    Console().print(Markdown(message))
-
-    shown.append(now)
-    options["message_shown"] = sorted(shown)
-    analytics_options(options)
-
-
-COLLECT_ANALYTICS = None
-LOCK = RLock()
-
-
-def _collect_event_worker(event: str, **kwargs: Any) -> None:
-    global COLLECT_ANALYTICS, LOCK
-    with LOCK:
-        if COLLECT_ANALYTICS is not None:
-            return COLLECT_ANALYTICS
-
-        options = analytics_options()
-        enabled = options.get("enabled")
-
-        if enabled is None:
-            _collect_analytics_message(event, **kwargs)
-            COLLECT_ANALYTICS = False
-        else:
-            COLLECT_ANALYTICS = enabled
-
-        return COLLECT_ANALYTICS
-
-
 def collect_analytics(event: str, print_analytics_only=False, **kwargs: Any) -> None:
     """Collect analytics data for a given event.
     This function is non-blocking and will return immediately.
@@ -157,4 +118,4 @@ def collect_analytics(event: str, print_analytics_only=False, **kwargs: Any) -> 
         print(json.dumps(_payload(event, **kwargs), indent=2))
         return
 
-    _executor.submit(_collect_analytics, event, **kwargs)
+    _executor.submit(_collect_analytics_worker, event, **kwargs)
