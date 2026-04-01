@@ -19,6 +19,7 @@ import numpy as np
 import zarr
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
+from anemoi.datasets.compat import resize_array
 
 if TYPE_CHECKING:
     from anemoi.datasets.usage.dataset import Dataset
@@ -597,13 +598,13 @@ def append_to_zarr(new_data: np.ndarray, new_dates: np.ndarray, zarr_path: str) 
     new_dates = np.array(new_dates, dtype="datetime64[s]")
     dates_ds = root["dates"]
     old_len = dates_ds.shape[0]
-    dates_ds.resize((old_len + len(new_dates),))
+    resize_array(dates_ds, (old_len + len(new_dates),))
     dates_ds[old_len:] = new_dates
     # Append to "data" dataset.
     data_ds = root["data"]
     old_shape = data_ds.shape  # (time, n_vars, ensembles, gridpoints)
     new_shape = (old_shape[0] + len(new_dates),) + old_shape[1:]
-    data_ds.resize(new_shape)
+    resize_array(data_ds, new_shape)
     data_ds[old_shape[0] :] = new_data
 
 

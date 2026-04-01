@@ -18,19 +18,28 @@ if zarr_version < 3:
     from .zarr2 import HTTPStore
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
+    from .zarr2 import MemoryStore
+    from .zarr2 import resize_array
     from .zarr2 import zarr_append_mode
 else:
     from .zarr3 import DebugStore
     from .zarr3 import HTTPStore
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
+    from .zarr3 import MemoryStore
+    from .zarr3 import resize_array
     from .zarr3 import zarr_append_mode
+
+if not hasattr(zarr, "MemoryStore"):
+    zarr.MemoryStore = MemoryStore
 
 __all__ = [
     "ZarrFileNotFoundError",
     "HTTPStore",
     "S3Store",
     "DebugStore",
+    "MemoryStore",
+    "resize_array",
     "zarr_append_mode",
     "zarr_version",
     "zarr_private_files",

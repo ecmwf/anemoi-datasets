@@ -15,6 +15,12 @@ from zarr.hierarchy import Group
 
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
 zarr_append_mode = "w+"
+MemoryStore = zarr.storage.MemoryStore
+
+
+def resize_array(array: zarr.Array, *new_shape: int) -> None:
+    """Resize helper compatible with zarr 2 and 3 APIs."""
+    array.resize(*new_shape)
 
 
 class _ReadOnlyStore(zarr.storage.BaseStore):
