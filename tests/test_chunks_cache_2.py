@@ -28,7 +28,7 @@ def make_array():
     random = np.random.randint(-SIZE, SIZE, size=SHAPE, dtype=np.int32)
 
     array = zarr.open_array(
-        store=zarr.MemoryStore(),
+        store=zarr.storage.MemoryStore(),
         shape=data.shape,
         chunks=(1000, 10),
         dtype=data.dtype,

@@ -480,7 +480,7 @@ class ReadAheadWriteBehindBuffer:
 
     def __len__(self) -> int:
         """Return the number of elements in the underlying array."""
-        return len(self._arr)
+        return int(self._arr.shape[0])
 
     def resize(self, *new_shape: int) -> None:
         """Resize the underlying Zarr array and adjust cached chunks.
@@ -492,7 +492,7 @@ class ReadAheadWriteBehindBuffer:
         """
         with self._lock:
 
-            self._arr.resize(*new_shape)
+            self._arr.resize(new_shape)
 
             for chunk in list(self._lru_chunks_cache.values()):
                 chunk.resize(self._lru_chunks_cache, new_shape)
