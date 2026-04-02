@@ -492,8 +492,7 @@ class ReadAheadWriteBehindBuffer:
         """
         with self._lock:
 
-            shape = new_shape[0] if len(new_shape) == 1 else tuple(new_shape)
-            self._arr.resize(shape)
+            self._arr.resize(tuple(new_shape))
 
             for chunk in list(self._lru_chunks_cache.values()):
                 chunk.resize(self._lru_chunks_cache, new_shape)
