@@ -488,8 +488,13 @@ class ReadAheadWriteBehindBuffer:
         Parameters
         ----------
         *new_shape : int
-            The new shape of the array.
+            The new shape of the array. Can be passed as
+            ``resize(a, b)`` or ``resize((a, b))``.
         """
+        # Normalise: accept both resize(a, b) and resize((a, b))
+        if len(new_shape) == 1 and isinstance(new_shape[0], (tuple, list)):
+            new_shape = tuple(new_shape[0])
+
         with self._lock:
 
             self._arr.resize(new_shape)
