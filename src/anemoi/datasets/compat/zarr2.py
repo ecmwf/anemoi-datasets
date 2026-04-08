@@ -22,19 +22,19 @@ class _ReadOnlyStore(zarr.storage.BaseStore):
 
     def __delitem__(self, key: str) -> None:
         """Prevent deletion of items."""
-        raise NotImplementedError()
+        pass
 
     def __setitem__(self, key: str, value: bytes) -> None:
         """Prevent setting of items."""
-        raise NotImplementedError()
+        pass
 
     def __len__(self) -> int:
         """Return the number of items in the store."""
-        raise NotImplementedError()
+        pass
 
     def __iter__(self) -> iter:
         """Return an iterator over the store."""
-        raise NotImplementedError()
+        pass
 
 
 class HTTPStore(_ReadOnlyStore):
