@@ -30,11 +30,11 @@ class _ReadOnlyStore(zarr.storage.BaseStore):
 
     def __len__(self) -> int:
         """Return the number of items in the store."""
-        pass
+        raise NotImplementedError()
 
     def __iter__(self) -> iter:
         """Return an iterator over the store."""
-        pass
+        raise NotImplementedError()
 
 
 class HTTPStore(_ReadOnlyStore):
