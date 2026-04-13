@@ -142,7 +142,7 @@ class Dataset:
     ##################################
 
     def total_todo(self) -> int:
-        return len(self.store["_build"]["flags"])
+        return self.store["_build"]["flags"].shape[0]
 
     def todo_remaining(self) -> int:
         with self.synchronizer:
