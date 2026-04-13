@@ -6,7 +6,6 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
 [build-system]
 requires = [
   "setuptools>=60",
@@ -120,18 +119,18 @@ version_file = "src/anemoi/datasets/_version.py"
 [tool.isort]
 profile = "black"
 
+[tool.mypy]
+strict = false
+exclude = [
+  "docs/.*",
+]
+
 [tool.pytest]
 ini_options.testpaths = "tests"
 ini_options.addopts = [
   "--numprocesses=auto",
   "--maxprocesses=16",
   "--strict-config",
-]
-
-[tool.mypy]
-strict = false
-exclude = [
-  "docs/.*",
 ]
 
 [tool.pydocstringformatter]
