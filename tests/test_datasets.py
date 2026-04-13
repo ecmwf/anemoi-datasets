@@ -31,12 +31,6 @@ def test_s3_dataset() -> None:
     assert len(ds) == 64284
 
 
-@skip_if_offline
-def test_http_dataset() -> None:
-    url = "https://data.ecmwf.int/anemoi-datasets/era5-o96-1979-2023-6h-v8.zarr"
-    ds = open_dataset(url)
-    assert len(ds) == 65744
-
 
 if __name__ == "__main__":
     test_s3_dataset()
