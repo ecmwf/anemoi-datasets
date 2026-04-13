@@ -15,6 +15,7 @@ import yaml
 from anemoi.utils.config import DotDict
 from pydantic import BaseModel
 from pydantic import BeforeValidator
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
@@ -47,9 +48,7 @@ class Recipe(BaseModel):
                 member._post_init(self)
         return self
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     description: str = "No description provided."
     licence: str = "unknown"
