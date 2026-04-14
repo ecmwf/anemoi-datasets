@@ -63,6 +63,7 @@ def test_weatherbench() -> None:
     ds = xr.open_zarr(
         "gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr",
         storage_options=dict(token="anon"),
+        decode_timedelta=True,
     )
 
     # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
