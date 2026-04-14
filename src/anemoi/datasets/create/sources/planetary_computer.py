@@ -147,6 +147,7 @@ def _resolve_asset(asset: pystac.Asset) -> tuple[str, dict]:
         if engine:
             open_kwargs["engine"] = engine
 
+    open_kwargs.setdefault("decode_timedelta", True)
     return abfs_uri, open_kwargs
 
 
