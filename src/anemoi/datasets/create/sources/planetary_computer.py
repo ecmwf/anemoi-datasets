@@ -7,7 +7,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 from urllib.parse import urlparse
 
 import planetary_computer
@@ -206,10 +207,7 @@ class MultipartPlanetaryComputerSource(Source):
 
         dt = query.pop("datetime", None)
         # build CQL2 AND filter from remaining query fields, if any
-        filter_args = [
-            {"op": "=", "args": [{"property": k}, v]}
-            for k, v in query.items()
-        ]
+        filter_args = [{"op": "=", "args": [{"property": k}, v]} for k, v in query.items()]
         cql2_filter = None
         if len(filter_args) > 1:
             cql2_filter = {"op": "and", "args": filter_args}
@@ -231,7 +229,7 @@ class MultipartPlanetaryComputerSource(Source):
         # assets.* not queryable server-side, filter client-side
         self.uris: dict[str, tuple[dict, datetime | None]] = {}
         for item in search.items():
-            for p in (params or item.assets):
+            for p in params or item.assets:
                 if p in item.assets:
                     # kwargs per item to enable different locations and / or options
                     abfs_uri, open_kwargs = _resolve_asset(item.assets[p])
@@ -240,10 +238,7 @@ class MultipartPlanetaryComputerSource(Source):
                     self.uris[abfs_uri] = (open_kwargs, item.datetime)
 
         if not self.uris:
-            msg = (
-                f"No STAC items or assets found: collection={collection_id}, "
-                f"query={query}"
-            )
+            msg = f"No STAC items or assets found: collection={collection_id}, " f"query={query}"
             raise ValueError(msg)
 
     def execute(self, dates: DateList) -> MultiFieldList:
