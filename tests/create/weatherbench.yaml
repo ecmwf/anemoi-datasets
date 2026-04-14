@@ -1,0 +1,38 @@
+skip_test: true  # online test: requires GCS access
+
+dates:
+  start: 2020-01-01T06:00:00
+  end: 2020-01-03T06:00:00
+  frequency: 24h
+
+input:
+  xarray-zarr:
+    url: "gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr"
+    options:
+      storage_options:
+        token: anon
+      decode_timedelta: True
+    flavour:
+      rules:
+        latitude:
+          name: latitude
+        longitude:
+          name: longitude
+        step:
+          name: prediction_timedelta
+        date:
+          name: time
+        level:
+          name: level
+      levtype: pl
+    param:
+      - geopotential
+      - temperature
+    level:
+      - 500
+      - 850
+    step: 6
+
+statistics:
+  start: 2020-01-01
+  end: 2020-01-04
