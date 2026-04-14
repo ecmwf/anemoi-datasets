@@ -5,7 +5,7 @@ from anemoi.datasets.buffering import ReadAheadWriteBehindBuffer
 
 
 def create_zarr_array(shape=(20, 3), chunks=(5, 3), dtype=np.int64):
-    store = zarr.MemoryStore()
+    store = zarr.storage.MemoryStore()
     arr = zarr.create(shape=shape, chunks=chunks, dtype=dtype, store=store, overwrite=True)
     arr[:] = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
     return arr
