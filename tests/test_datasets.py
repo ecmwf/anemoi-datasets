@@ -31,6 +31,5 @@ def test_s3_dataset() -> None:
     assert len(ds) == 64284
 
 
-
 if __name__ == "__main__":
     test_s3_dataset()
