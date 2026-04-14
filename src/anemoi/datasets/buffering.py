@@ -192,10 +192,7 @@ class _Buffer:
             if len(self.cache.shape) != len(new_array_shape):
                 return self._remove(
                     lru,
-                    "Size mismatch resizing shape from ",
-                    self.cache.shape,
-                    " to ",
-                    new_array_shape,
+                    f"Size mismatch resizing shape from {self.cache.shape} to {new_array_shape}",
                 )
 
             if len(new_array_shape) > 1 and self.cache.shape[1:] != new_array_shape[1:]:
@@ -483,7 +480,7 @@ class ReadAheadWriteBehindBuffer:
 
     def __len__(self) -> int:
         """Return the number of elements in the underlying array."""
-        return len(self._arr)
+        return int(self._arr.shape[0])
 
     def resize(self, *new_shape: int) -> None:
         """Resize the underlying Zarr array and adjust cached chunks.
@@ -491,11 +488,16 @@ class ReadAheadWriteBehindBuffer:
         Parameters
         ----------
         *new_shape : int
-            The new shape of the array.
+            The new shape of the array. Can be passed as
+            ``resize(a, b)`` or ``resize((a, b))``.
         """
+        # Normalise: accept both resize(a, b) and resize((a, b))
+        if len(new_shape) == 1 and isinstance(new_shape[0], (tuple, list)):
+            new_shape = tuple(new_shape[0])
+
         with self._lock:
 
-            self._arr.resize(*new_shape)
+            self._arr.resize(new_shape)
 
             for chunk in list(self._lru_chunks_cache.values()):
                 chunk.resize(self._lru_chunks_cache, new_shape)
