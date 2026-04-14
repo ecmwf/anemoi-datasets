@@ -146,6 +146,8 @@ class Coordinate:
         Coordinate
             A new coordinate with the selected value.
         """
+        if self.scalar:
+            return self.__class__(self.variable, **self.kwargs)
         return self.__class__(
             self.variable.isel({self.variable.dims[0]: i}),
             **self.kwargs,
