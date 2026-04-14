@@ -275,9 +275,9 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         concat = _deduplicate_rows(concat)
 
         _, counts = np.unique(concat[:, :2], axis=0, return_counts=True)
-        sum = np.sum(counts)
+        sum_ = np.sum(counts)
         cumsum = np.cumsum(counts)
-        half_point = np.searchsorted(cumsum, sum // 2)
+        half_point = np.searchsorted(cumsum, sum_ // 2)
         # assert False, (half_point, np.sum(counts[:half_point]), np.sum(counts[half_point:]))
 
         split_point = np.sum(counts[:half_point])
@@ -400,7 +400,7 @@ def _read_fragment_worker(file_path: str) -> Fragment:
 def _find_duplicate_and_overlapping_dates(
     work_dir: str,
     delete_files: bool,
-    max_fragment_size: int,
+    max_fragment_size: int = 256 * 1024 * 1024,  # 256 MB
     max_workers: int | None = None,
 ) -> list[Fragment]:
     """Find and resolve duplicate and overlapping date ranges in fragment files.
@@ -442,8 +442,6 @@ def _find_duplicate_and_overlapping_dates(
     LOG.info(f"Available CPUs: {cpus}")
 
     memory *= 0.8  # Use only 80% of available memory
-
-    max_fragment_size = 256 * 1024 * 1024  # 256 MB
 
     # Each pairs of deoverlapping fragments requires loading both into memory.
     # Then double it for safety
@@ -758,7 +756,7 @@ def finalise_tabular_dataset(
             i: int = 0
             for i in range(len(fragments)):
                 tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
-                if i > 2:
+                if i >= 1:  # Keep two fragments max : i=0 and i=1, then stop
                     break
 
             i = len(tasks)

@@ -671,7 +671,7 @@ class Version0_6(Version):
         if "_build_flags" not in self.zarr:
             return False
 
-        build_flags = self.zarr["_build_flags"]
+        build_flags = self.zarr["_build_flags"][:]
         return all(build_flags)
 
     @property
@@ -727,7 +727,7 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("flags")
+        return build.get("flags")[:]
 
     @property
     def build_lengths(self) -> NDArray | None:
@@ -735,7 +735,7 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("lengths")
+        return build.get("lengths")[:]
 
 
 class Version0_14(Version0_13):
