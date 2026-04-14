@@ -96,6 +96,11 @@ def load_one(
 
     context.trace(emoji, dataset, options, kwargs)
 
+    if isinstance(dataset, str) and (dataset.startswith("ec:") or dataset.startswith("ectmp:")):
+        from anemoi.datasets.create.ecfs import get_ecfs_file
+
+        dataset = get_ecfs_file(dataset)
+
     if isinstance(dataset, str) and dataset.endswith(".zarr"):
         # If the dataset is a zarr store, we need to use the zarr engine
         options["engine"] = "zarr"
