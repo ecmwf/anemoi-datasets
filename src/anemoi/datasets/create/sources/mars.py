@@ -296,6 +296,80 @@ def factorise_requests(
         yield r
 
 
+def _expand_cycle_hack_requests(
+    dates: list[datetime.datetime],
+    request: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Expands a request containing a cycle_hack key into explicit per-date MARS requests.
+
+    Parameters
+    ----------
+    dates : list[datetime.datetime]
+        The valid datetimes for which to generate requests.
+    request : dict[str, Any]
+        A MARS request containing a ``cycle_hack`` key.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Explicit MARS requests with ``date``, ``time``, ``step`` and ``stream`` set;
+        the ``cycle_hack`` key is removed.
+    """
+    hack = request["cycle_hack"]
+
+    start_str = hack["start"]
+    if not start_str.endswith("T00:00:00"):
+        raise ValueError(f"cycle_hack 'start' must be at midnight (T00:00:00), got: {start_str!r}")
+    start = datetime.datetime.fromisoformat(start_str)
+
+    cycle_length = int(hack["cycle_length"])
+    loop = hack["loop"]
+
+    # loop[0]: list of {time, stream, ...} dicts — one per segment
+    # loop[1]: dict with step list
+    time_stream_combos = loop[0]
+    step_list = to_list(loop[1]["step"])
+
+    num_segments = len(time_stream_combos)
+    num_steps = len(step_list)
+    expected_cycle_length = num_segments * num_steps
+    if cycle_length != expected_cycle_length:
+        raise ValueError(
+            f"cycle_hack cycle_length={cycle_length} does not match "
+            f"len(loop[0]) * len(step) = {num_segments} * {num_steps} = {expected_cycle_length}"
+        )
+
+    segment_length = num_steps  # hours per segment
+
+    base_request = {k: v for k, v in request.items() if k != "cycle_hack"}
+
+    expanded = []
+    for valid_dt in dates:
+        elapsed_hours = (valid_dt - start).total_seconds() / 3600
+        if elapsed_hours < 0:
+            raise ValueError(f"Valid datetime {valid_dt} is before cycle_hack start {start}")
+        cycle_pos = int(elapsed_hours) % cycle_length
+        segment_idx = cycle_pos // segment_length
+        step_idx = cycle_pos % segment_length
+
+        combo = time_stream_combos[segment_idx]
+        time_str = str(combo["time"])
+        stream_override = combo.get("stream")
+        step = step_list[step_idx]
+
+        base_dt = valid_dt - datetime.timedelta(hours=int(step))
+
+        r = dict(base_request)
+        r["date"] = base_dt.strftime("%Y%m%d")
+        r["time"] = f"{int(time_str):04d}"
+        r["step"] = step
+        if stream_override is not None:
+            r["stream"] = stream_override
+        expanded.append(r)
+
+    return expanded
+
+
 def use_grib_paramid(r: dict[str, Any]) -> dict[str, Any]:
     """Converts the parameter short names to GRIB parameter IDs.
 
@@ -452,7 +526,41 @@ class MarsSource(LegacySource):
                         "'param' cannot be 'True'. If you wrote 'param: on' in yaml, you may want to use quotes?"
                     )
 
-        if isinstance(dates, IntervalsDatesProvider):
+        # Pre-process any requests using cycle_hack before the normal date expansion.
+        cycle_hack_requests = []
+        normal_requests = []
+        for req in requests:
+            if "cycle_hack" in req:
+                cycle_hack_requests.append(req)
+            else:
+                normal_requests.append(req)
+
+        if cycle_hack_requests:
+            expanded = []
+            for req in cycle_hack_requests:
+                expanded.extend(_expand_cycle_hack_requests(dates, req))
+            cycle_hack_factorised = list(
+                factorise_requests(
+                    ["no_date_here"],
+                    *expanded,
+                    request_already_using_valid_datetime=True,
+                    date_key=date_key,
+                    no_date_here=True,
+                )
+            )
+            context.trace("✅", f"cycle_hack expanded to {len(cycle_hack_factorised)} requests")
+        else:
+            cycle_hack_factorised = []
+
+        requests = normal_requests
+
+        if not requests and not cycle_hack_factorised:
+            return from_source("empty")
+
+        if not requests:
+            # All requests were cycle_hack; skip normal date expansion.
+            pass
+        elif isinstance(dates, IntervalsDatesProvider):
             # When using accumulate source
             requests_ = []
             for request in requests:
@@ -485,7 +593,7 @@ class MarsSource(LegacySource):
                 date_key=date_key,
             )
 
-        requests = list(requests)
+        requests = list(requests) + cycle_hack_factorised
 
         ds = from_source("empty")
         context.trace("✅", f"{[str(d) for d in dates]}, {len(dates)}")
