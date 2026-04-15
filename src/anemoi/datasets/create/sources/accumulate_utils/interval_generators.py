@@ -229,6 +229,91 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
         return intervals
 
 
+class CycleHackAccumulatedIntervalProvider(IntervalGenerator):
+    """Interval generator for accumulated-from-0 data using a cycle_hack-like config.
+
+    For data where MARS fields are accumulated from step 0 (e.g. od-oper tp),
+    to get the 1-hour accumulation at valid time base+step, we compute:
+    a(0, step) - a(0, step-1).
+
+    This class accepts the same loop config format as cycle_hack and automatically
+    generates the correct positive/negative interval pairs.
+
+    Parameters
+    ----------
+    loop
+        A two-element list: [bases_list, steps_dict].
+        bases_list is a list of dicts with 'time' keys (e.g. [{time: '1200'}, ...]).
+        steps_dict is a dict with 'step' key containing available step numbers.
+    start
+        Reference datetime for the cycle (same as cycle_hack start).
+    cycle_length
+        Optional cycle length for validation. Computed as n_bases * n_steps.
+    **kwargs
+        Additional keyword arguments (ignored).
+    """
+
+    def __init__(self, loop: list, start: str, cycle_length: int | None = None, **kwargs):
+        self.reference = as_datetime(start)
+
+        bases_config, steps_config = loop
+
+        self.base_hours = [int(str(b["time"]).zfill(4)[:2]) for b in bases_config]
+        self.steps = steps_config["step"]
+
+        self.n_steps = len(self.steps)
+        self.n_bases = len(self.base_hours)
+        self.cycle_length_in_hours = self.n_steps * self.n_bases
+
+        if cycle_length is not None:
+            assert (
+                cycle_length == self.cycle_length_in_hours
+            ), f"Computed cycle_length {self.cycle_length_in_hours} != given {cycle_length}"
+
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
+        assert end > start, "End must be after start"
+
+        i_end = (int((end - self.reference).total_seconds()) // 3600) % self.cycle_length_in_hours
+
+        # Position in cycle (0-based): i_end maps directly to the position
+        # (i_end=cycle_length wraps to 0 via the modulo above)
+        P = i_end
+
+        base_idx = P // self.n_steps
+        step_idx = P % self.n_steps
+
+        base_hour = self.base_hours[base_idx]
+        step = self.steps[step_idx]
+
+        # Compute base datetime: valid_time = base + step hours, so base = end - step hours
+        base_datetime = end - datetime.timedelta(hours=step)
+
+        if base_datetime.hour != base_hour:
+            raise ValueError(
+                f"Computed base hour {base_datetime.hour} != expected {base_hour} "
+                f"(end={end}, step={step}, position={P})"
+            )
+
+        # a(0, step) - a(0, step-1) = 1h accumulation
+        # Positive interval: fetch a(0, step), sign = +1
+        pos_interval = SignedInterval(
+            start=base_datetime,
+            end=base_datetime + datetime.timedelta(hours=step),
+            base=base_datetime,
+        )
+        # Negative interval: fetch a(0, step-1), sign = -1
+        neg_interval = SignedInterval(
+            start=base_datetime + datetime.timedelta(hours=step - 1),
+            end=base_datetime,
+            base=base_datetime,
+        )
+
+        return [pos_interval, neg_interval]
+
+    def __call__(self, current_time: datetime.datetime) -> list[SignedInterval]:
+        raise NotImplementedError("CycleHackAccumulatedIntervalProvider uses covering_intervals directly")
+
+
 def normalise_steps(steps_list: str | list[str]) -> list[list[int]]:
     """Convert the input step_list to a list of [start,end] pairs"""
     res = []
@@ -347,6 +432,9 @@ def _interval_generator_factory(
             return CycleIntervalProvider(**params)
         case {"cycle": params}:
             return CycleIntervalProvider(**params)
+
+        case {"type": "cycle_hack_accumulated", **params}:
+            return CycleHackAccumulatedIntervalProvider(**params)
 
         case {"accumulated-from-previous-step": params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)
