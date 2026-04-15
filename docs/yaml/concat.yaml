@@ -1,17 +1,12 @@
 input:
-  concat:
-  - dates:
-      start: 2020-12-30 00:00:00
-      end: 2021-01-01 12:00:00
-      frequency: 12h
+  dataset:
+    concat:
+      - dataset: path_to_zarr_1
+        start: 2025-03-01
+        end: 2025-03-31
+        frequency: 6h
 
-    source1:
-    - args
-
-  - dates:
-      start: 2021-01-02 00:00:00
-      end: 2021-01-03 12:00:00
-      frequency: 12h
-
-    source2:
-    - args
+      - dataset: path_to_zarr_2
+        start: 2025-04-01
+        end: 2025-04-30
+        frequency: 6h
