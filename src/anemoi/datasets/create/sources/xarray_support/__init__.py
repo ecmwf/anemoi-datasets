@@ -9,21 +9,25 @@
 
 import datetime
 import logging
+from typing import TYPE_CHECKING
 from typing import Any
 
 import earthkit.data as ekd
-import xarray as xr
 from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 
-from ..legacy import legacy_source
+from .. import source_registry
+from ..legacy import LegacySource
 from .fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    import xarray as xr
 
-def check(what: str, ds: xr.Dataset, paths: list[str], **kwargs: Any) -> None:
+
+def check(what: str, ds: "xr.Dataset", paths: list[str], **kwargs: Any) -> None:
     """Checks if the dataset has the expected number of fields.
 
     Parameters
@@ -50,7 +54,7 @@ def load_one(
     emoji: str,
     context: Any,
     dates: list[str],
-    dataset: str | xr.Dataset,
+    dataset: Any,
     *,
     options: dict[str, Any] | None = None,
     flavour: str | None = None,
@@ -84,10 +88,18 @@ def load_one(
         The loaded dataset.
     """
 
+    # Loading xarray may be long, so import it here to avoid slowing down module imports
+    import xarray as xr
+
     if options is None:
         options = {}
 
     context.trace(emoji, dataset, options, kwargs)
+
+    if isinstance(dataset, str) and (dataset.startswith("ec:") or dataset.startswith("ectmp:")):
+        from anemoi.datasets.create.ecfs import get_ecfs_file
+
+        dataset = get_ecfs_file(dataset)
 
     if isinstance(dataset, str) and dataset.endswith(".zarr"):
         # If the dataset is a zarr store, we need to use the zarr engine
@@ -96,6 +108,7 @@ def load_one(
     if isinstance(dataset, xr.Dataset):
         data = dataset
     else:
+        print(f"Opening dataset {dataset} with options {options}")
         data = xr.open_dataset(dataset, **options)
 
     fs = XarrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
@@ -152,26 +165,30 @@ def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern:
     return MultiFieldList(result)
 
 
-@legacy_source("xarray")
-def execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-    """Executes the loading of datasets.
+@source_registry.register("xarray")
+class LegacyXarraySource(LegacySource):
+    name = "xarray"
 
-    Parameters
-    ----------
-    context : Any
-        Context object.
-    dates : List[str]
-        List of dates.
-    url : str
-        URL pattern for loading datasets.
-    *args : Any
-        Additional arguments.
-    **kwargs : Any
-        Additional keyword arguments.
+    @staticmethod
+    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+        """Executes the loading of datasets.
 
-    Returns
-    -------
-    ekd.FieldList
-        The loaded datasets.
-    """
-    return load_many("🌐", context, dates, url, *args, **kwargs)
+        Parameters
+        ----------
+        context : Any
+            Context object.
+        dates : List[str]
+            List of dates.
+        url : str
+            URL pattern for loading datasets.
+        *args : Any
+            Additional arguments.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        ekd.FieldList
+            The loaded datasets.
+        """
+        return load_many("🌐", context, dates, url, *args, **kwargs)

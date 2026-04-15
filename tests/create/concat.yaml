@@ -11,22 +11,25 @@ common:
     levtype: sfc
     stream: oper
     type: an
-    param: [2t]
+    param: [ 2t ]
 
 input:
   concat:
-    - dates:
-        start: 2020-12-30 00:00:00
-        end: 2021-01-01 12:00:00
-        frequency: 12h
-      mars:
-        <<: *mars_request
-    - dates:
-        start: 2021-01-02 00:00:00
-        end: 2021-01-03 12:00:00
-        frequency: 12h
-      mars:
-        <<: *mars_request
+  - dates:
+      start: 2020-12-30 00:00:00
+      end: 2021-01-01 12:00:00
+      frequency: 12h
+    mars:
+      <<: *mars_request
+  - dates:
+      start: 2021-01-02 00:00:00
+      end: 2021-01-03 12:00:00
+      frequency: 12h
+    mars:
+      <<: *mars_request
 
 statistics:
   end: 2021
+
+checks:
+  - compare_to_reference: {}

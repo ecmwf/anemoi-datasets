@@ -9,65 +9,69 @@
 
 import numpy as np
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 
-@legacy_source(__file__)
-def execute(context, dates, params=None, **kwargs):
-    import earthkit.data as ekd
+@source_registry.register("anemoi_dataset")
+class AnemoiDatasetSource(LegacySource):
 
-    from anemoi.datasets import open_dataset
+    @staticmethod
+    def _execute(context, dates, params=None, **kwargs):
+        import earthkit.data as ekd
 
-    ds = open_dataset(**kwargs)
-    # dates_to_index = {date: i for i, date in enumerate(ds.dates)}
+        from anemoi.datasets import open_dataset
 
-    indices = []
-    for date in dates:
-        idx = np.where(ds.dates == date)[0]
-        if len(idx) == 0:
-            continue
-        indices.append((int(idx[0]), date))
+        ds = open_dataset(**kwargs)
+        # dates_to_index = {date: i for i, date in enumerate(ds.dates)}
 
-    vars = ds.variables
-    if params is None:
-        params = vars
-
-    if not isinstance(params, (list, tuple, set)):
-        params = [params]
-
-    params = set(params)
-    results = []
-
-    ensemble = ds.shape[2] > 1
-    latitudes = ds.latitudes
-    longitudes = ds.longitudes
-
-    for idx, date in indices:
-
-        metadata = dict(valid_datetime=date, latitudes=latitudes, longitudes=longitudes)
-
-        for j, y in enumerate(ds[idx]):
-
-            param = vars[j]
-            if param not in params:
+        indices = []
+        for date in dates:
+            idx = np.where(ds.dates == date)[0]
+            if len(idx) == 0:
                 continue
+            indices.append((int(idx[0]), date))
 
-            # metadata['name'] = param
-            # metadata['param_level'] = param
-            metadata["param"] = param
+        vars = ds.variables
+        if params is None:
+            params = vars
 
-            for k, e in enumerate(y):
-                if ensemble:
-                    metadata["number"] = k + 1
+        if not isinstance(params, (list, tuple, set)):
+            params = [params]
 
-                metadata["values"] = e
+        params = set(params)
+        results = []
 
-                results.append(metadata.copy())
+        ensemble = ds.shape[2] > 1
+        latitudes = ds.latitudes
+        longitudes = ds.longitudes
 
-    print(results[0].keys())
+        for idx, date in indices:
 
-    # "list-of-dicts" does support resolution
-    results = ekd.from_source("list-of-dicts", results)
+            metadata = dict(valid_datetime=date, latitudes=latitudes, longitudes=longitudes)
 
-    # return new_fieldlist_from_list([new_field_from_latitudes_longitudes(x, latitudes, longitudes) for x in results])
-    return results
+            for j, y in enumerate(ds[idx]):
+
+                param = vars[j]
+                if param not in params:
+                    continue
+
+                # metadata['name'] = param
+                # metadata['param_level'] = param
+                metadata["param"] = param
+
+                for k, e in enumerate(y):
+                    if ensemble:
+                        metadata["number"] = k + 1
+
+                    metadata["values"] = e
+
+                    results.append(metadata.copy())
+
+        print(results[0].keys())
+
+        # "list-of-dicts" does support resolution
+        results = ekd.from_source("list-of-dicts", results)
+
+        # return new_fieldlist_from_list([new_field_from_latitudes_longitudes(x, latitudes, longitudes) for x in results])
+        return results

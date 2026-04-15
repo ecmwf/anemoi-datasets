@@ -15,7 +15,7 @@ This command will output the metadata of the dataset, including the variables, d
 
 which will output something like the following. The output should be self-explanatory.
 
-.. literalinclude:: ../datasets/yaml/building1.txt
+.. literalinclude:: ../yaml/building1.txt
    :language: console
 
 .. argparse::

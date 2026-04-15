@@ -7,9 +7,12 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import hashlib
+import json
 import logging
 import os
 import sqlite3
+from collections import defaultdict
 from collections.abc import Iterator
 from typing import Any
 
@@ -19,7 +22,8 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from .legacy import legacy_source
+from . import source_registry
+from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -45,8 +49,8 @@ class GribIndex:
         ----------
         database : str
             Path to the SQLite database file.
-        keys : Optional[List[str] | str], optional
-            List of keys or a string of keys to use for indexing, by default None.
+        keys : Optional[list[str] | str], optional
+            list of keys or a string of keys to use for indexing, by default None.
         flavour : Optional[str], optional
             Flavour configuration for mapping fields, by default None.
         update : bool, optional
@@ -102,21 +106,18 @@ class GribIndex:
         """Create the necessary tables in the database."""
         assert self.update
 
-        self.cursor.execute(
-            """
+        self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS paths (
             id INTEGER PRIMARY KEY,
             path TEXT not null
         )
-        """
-        )
+        """)
 
         columns = ("valid_datetime",)
         # We don't use NULL as a default because NULL is considered a different value
         # in UNIQUE INDEX constraints (https://www.sqlite.org/lang_createindex.html)
 
-        self.cursor.execute(
-            f"""
+        self.cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS grib_index (
             _id INTEGER PRIMARY KEY,
             _path_id INTEGER not null,
@@ -124,30 +125,23 @@ class GribIndex:
             _length INTEGER not null,
             {', '.join(f"{key} TEXT not null default ''" for key in columns)},
             FOREIGN KEY(_path_id) REFERENCES paths(id))
-        """
-        )  # ,
+        """)  # ,
 
-        self.cursor.execute(
-            """
+        self.cursor.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_path_offset
         ON grib_index (_path_id, _offset)
-        """
-        )
+        """)
 
-        self.cursor.execute(
-            f"""
+        self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
         ON grib_index ({', '.join(columns)})
-        """
-        )
+        """)
 
         for key in columns:
-            self.cursor.execute(
-                f"""
+            self.cursor.execute(f"""
             CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
             ON grib_index ({key})
-            """
-            )
+            """)
 
         self._commit()
 
@@ -160,7 +154,7 @@ class GribIndex:
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of metadata keys stored in the database.
         """
         self.cursor.execute("SELECT key FROM metadata_keys")
@@ -228,7 +222,7 @@ class GribIndex:
 
         Returns
         -------
-        List[str]
+        list[str]
             A list of column names.
         """
         if self._columns is not None:
@@ -244,8 +238,8 @@ class GribIndex:
 
         Parameters
         ----------
-        columns : List[str]
-            List of column names to ensure in the table.
+        columns : list[str]
+            list of column names to ensure in the table.
         """
         assert self.update
 
@@ -263,20 +257,16 @@ class GribIndex:
         self.cursor.execute("""DROP INDEX IF EXISTS idx_grib_index_all_keys""")
         all_columns = self._all_columns()
 
-        self.cursor.execute(
-            f"""
+        self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
         ON grib_index ({', '.join(all_columns)})
-        """
-        )
+        """)
 
         for key in all_columns:
-            self.cursor.execute(
-                f"""
+            self.cursor.execute(f"""
             CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
             ON grib_index ({key})
-            """
-            )
+            """)
 
     def add_grib_file(self, path: str) -> None:
         """Add a GRIB file to the database.
@@ -363,7 +353,7 @@ class GribIndex:
 
         Returns
         -------
-        List[dict]
+        list[dict]
             A list of GRIB2 parameter information.
         """
         if ("grib2", paramId) in self.cache:
@@ -523,8 +513,8 @@ class GribIndex:
 
         Parameters
         ----------
-        dates : List[Any]
-            List of dates to retrieve data for.
+        dates : list[Any]
+            list of dates to retrieve data for.
         **kwargs : Any
             Additional filtering criteria.
 
@@ -538,12 +528,13 @@ class GribIndex:
         dates = [d.isoformat() for d in dates]
 
         query = """SELECT _path_id, _offset, _length
-                   FROM grib_index WHERE valid_datetime IN ({})""".format(
-            ", ".join("?" for _ in dates)
-        )
+                   FROM grib_index WHERE valid_datetime IN ({})""".format(", ".join("?" for _ in dates))
         params = dates
 
         for k, v in kwargs.items():
+            if k not in self._columns:
+                LOG.warning(f"Warning : {k} not in database columns, key discarded")
+                continue
             if isinstance(v, list):
                 query += f" AND {k} IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
@@ -551,11 +542,14 @@ class GribIndex:
                 query += f" AND {k} = ?"
                 params.append(str(v))
 
-        print("SELECT", query)
-        print("SELECT", params)
+        print("SELECT (query)", query)
+        print("SELECT (params)", params)
 
         self.cursor.execute(query, params)
-        for path_id, offset, length in self.cursor.fetchall():
+
+        fetch = self.cursor.fetchall()
+
+        for path_id, offset, length in fetch:
             if path_id in self.cache:
                 file = self.cache[path_id]
             else:
@@ -569,44 +563,82 @@ class GribIndex:
             yield data
 
 
-@legacy_source(__file__)
-def execute(
-    context: Any,
-    dates: list[Any],
-    indexdb: str,
-    flavour: str | None = None,
-    **kwargs: Any,
-) -> FieldArray:
-    """Execute the GRIB data retrieval process.
+@source_registry.register("grib-index")
+class GribIndexSource(LegacySource):
+    @staticmethod
+    def _execute(
+        context: Any,
+        dates: list[Any],
+        indexdb: str,
+        flavour: str | None = None,
+        **kwargs: Any,
+    ) -> FieldArray:
+        """Execute the GRIB data retrieval process.
 
-    Parameters
-    ----------
-    context : Any
-        The execution context.
-    dates : List[Any]
-        List of dates to retrieve data for.
-    indexdb : str
-        Path to the GRIB index database.
-    flavour : Optional[str], optional
-        Flavour configuration for mapping fields, by default None.
-    **kwargs : Any
-        Additional filtering criteria.
+        Parameters
+        ----------
+        context : Any
+            The execution context.
+        dates : List[Any]
+            List of dates to retrieve data for.
+        indexdb : str
+            Path to the GRIB index database.
+        flavour : Optional[str], optional
+            Flavour configuration for mapping fields, by default None.
+        **kwargs : Any
+            Additional filtering criteria.
 
-    Returns
-    -------
-    FieldArray
-        An array of retrieved GRIB fields.
-    """
-    index = GribIndex(indexdb)
-    result = []
+        Returns
+        -------
+        FieldArray
+            An array of retrieved GRIB fields.
+        """
+        index = GribIndex(indexdb)
 
-    if flavour is not None:
-        flavour = RuleBasedFlavour(flavour)
+        if flavour is not None:
+            flavour = RuleBasedFlavour(flavour)
 
-    for grib in index.retrieve(dates, **kwargs):
-        field = ekd.from_source("memory", grib)[0]
-        if flavour:
-            field = flavour.apply(field)
-        result.append(field)
+        if hasattr(dates, "date_to_intervals"):
+            # When using accumulate source
+            full_requests = []
+            for d, interval in dates.intervals:
+                context.trace("🌧️", "interval:", interval)
+                valid_date, request, _ = dates._adjust_request_to_interval(interval, kwargs)
+                context.trace("🌧️", "  request =", request)
+                full_requests.append(([valid_date], request))
+        else:
+            # Normal case, without accumulate source
+            full_requests = [(dates, kwargs)]
 
-    return FieldArray(result)
+        full_requests = factorise(full_requests)
+        context.trace("🌧️", f"number of (factorised) requests: {len(full_requests)}")
+        for valid_dates, request in full_requests:
+            context.trace("🌧️", f"  dates: {valid_dates}, request: {request}")
+
+        result = []
+        for valid_dates, request in full_requests:
+            for grib in index.retrieve(valid_dates, **request):
+                field = ekd.from_source("memory", grib)[0]
+                if flavour:
+                    field = flavour.apply(field)
+                result.append(field)
+
+        return FieldArray(result)
+
+
+def factorise(lst):
+    """Factorise a list of (dates, request) tuples by merging dates with identical requests."""
+    content = dict()
+
+    d = defaultdict(list)
+    for dates, request in lst:
+        assert isinstance(request, dict), type(request)
+        key = hashlib.md5(json.dumps(request, sort_keys=True).encode()).hexdigest()
+        content[key] = request
+        d[key] += dates
+
+    res = []
+    for key, dates in d.items():
+        dates = list(sorted(set(dates)))
+        res.append((dates, content[key]))
+    return res

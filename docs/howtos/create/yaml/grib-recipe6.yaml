@@ -1,0 +1,13 @@
+dates:
+  start: 2023-01-01T00:00:00
+  end: 2023-01-02T18:00:00
+  frequency: 6h
+
+input:
+  grib:
+    path: /path/to/input.grib
+    param: ["T_SO"]
+    topLevel:d: [0.0, 0.01, 0.8099999999999999, 7.290000000000001]
+
+build:
+  variable_naming: "{param}_{topLevel:d}"

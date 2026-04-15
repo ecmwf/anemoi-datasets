@@ -28,3 +28,6 @@ input:
         method: nearest
         in_grid: o32
         out_grid: o48
+
+checks:
+  - none: {}

@@ -1,0 +1,35 @@
+dates:
+  frequency: 3h
+  start: 2021-01-10 18:00:00
+  end: 2021-01-12 12:00:00
+
+#  inspired by: https://anemoi.ecmwf.int/datasets/cerra-rr-an-oper-se-al-ec-mars-5p5km-1985-2023-3h-v2?tab=recipe
+
+input:
+  accumulate:
+    period: 3h
+    availability:
+      - [0, "0-3"]
+      - [3, "0-3"]
+      - [6, "0-3"]
+      - [9, "0-3"]
+      - [12, "0-3"]
+      - [15, "0-3"]
+      - [18, "0-3"]
+      - [21, "0-3"]
+    source:
+      mars:
+        class: rr
+        stream: oper
+        expver: prod
+        origin: se-al-ec
+        levtype: sfc
+        type: fc
+        param: ["tp","ssrd","strd"]
+        grid: 20./20.
+
+statistics:
+  allow_nans: [ssrd, ci]
+
+checks:
+  none: {}

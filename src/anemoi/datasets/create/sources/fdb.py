@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 from datetime import datetime
+from datetime import timedelta
 from typing import Any
 
 import earthkit.data as ekd
@@ -16,12 +17,15 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
-from anemoi.datasets.create.typing import DateList
+from anemoi.datasets.create.sources.accumulate import IntervalsDatesProvider
+from anemoi.datasets.create.types import DateList
 
 from ..source import Source
 from . import source_registry
+from .mars import factorise_requests
 
 
+# TODO: there is some code duplication between here and MARS source, might be reduced
 @source_registry.register("fdb")
 class FdbSource(Source):
     """FDB data source."""
@@ -75,8 +79,9 @@ class FdbSource(Source):
         # temporary workarounds for FDB use at MeteoSwiss (adoption is ongoing)
         # thus not documented
         self.offset_from_date = kwargs.pop("offset_from_date", None)
+        self.step_zero_from_previous_date = kwargs.pop("step_zero_from_previous_date", False)
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def execute(self, dates: DateList | IntervalsDatesProvider) -> ekd.FieldList:
         """Execute the FDB source.
 
         Parameters
@@ -89,15 +94,23 @@ class FdbSource(Source):
         ekd.FieldList
             The output data.
         """
-
-        requests = []
-        for date in dates:
-            time_request = _time_request_keys(date, self.offset_from_date)
-            requests.append(self.request | time_request)
+        if isinstance(dates, IntervalsDatesProvider):
+            requests = []
+            for date, interval in dates.intervals:
+                _, r, _ = dates._adjust_request_to_interval(interval, self.request)
+                requests.append(r)
+        else:
+            requests = []
+            for date in dates:
+                time_request = _time_request_keys(date, self.offset_from_date, self.step_zero_from_previous_date)
+                requests.append(self.request | time_request)
 
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
         # defined request already and an empty dates list
         requests = requests or [self.request]
+        requests = factorise_requests(
+            ["no_date_here"], *requests, request_already_using_valid_datetime=True, date_key="date", no_date_here=True
+        )
 
         fl = ekd.from_source("empty")
         for request in requests:
@@ -112,13 +125,18 @@ class FdbSource(Source):
         return fl
 
 
-def _time_request_keys(dt: datetime, offset_from_date: bool | None = None) -> str:
+def _time_request_keys(
+    dt: datetime, offset_from_date: bool | None = None, step_zero_from_previous_date: bool = False
+) -> str:
     """Defines the time-related keys for the FDB request."""
     out = {}
     out["date"] = dt.strftime("%Y%m%d")
     if offset_from_date:
         out["time"] = "0000"
         out["step"] = int((dt - dt.replace(hour=0, minute=0)).total_seconds() // 3600)
+        if out["step"] == 0 and step_zero_from_previous_date:
+            out["date"] = (dt - timedelta(days=1)).strftime("%Y%m%d")
+            out["step"] = 24
     else:
         out["time"] = dt.strftime("%H%M")
     return out

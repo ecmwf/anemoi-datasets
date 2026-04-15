@@ -2,9 +2,9 @@
  How-Tos
 #########
 
-How-Tos are a collection of guides that help you to use anemoi-datasets
-in different ways. They are not exhaustive, but they should give you a
-good starting point.
+How-Tos are a collection of guides to help you use anemoi-datasets in
+different ways. They are not exhaustive, but they should give you a good
+starting point.
 
 **************************
  Creating anemoi-datasets
@@ -35,4 +35,4 @@ good starting point.
    :hidden:
    :caption: Using anemoi-datasets
 
-   usage/*
+   using/*

@@ -27,8 +27,8 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.data.stores import open_zarr
-from anemoi.datasets.data.stores import zarr_lookup
+from anemoi.datasets.usage.store import dataset_lookup
+from anemoi.datasets.usage.store import open_zarr
 
 from . import Command
 
@@ -194,14 +194,29 @@ class Version:
         return datetime.datetime.fromisoformat(self.metadata["last_date"])
 
     @property
+    def index_start_date(self):
+        """Get the first date of the dataset."""
+        return self.metadata.get("index_start_date")
+
+    @property
+    def index_end_date(self):
+        """Get the last date of the dataset."""
+        return self.metadata.get("index_end_date")
+
+    @property
+    def index_length(self):
+        """Get the length of the index."""
+        return self.metadata.get("index_length")
+
+    @property
     def frequency(self) -> str:
         """Get the frequency of the dataset."""
-        return self.metadata["frequency"]
+        return self.metadata.get("frequency")
 
     @property
     def resolution(self) -> str:
         """Get the resolution of the dataset."""
-        return self.metadata["resolution"]
+        return self.metadata.get("resolution")
 
     @property
     def field_shape(self) -> tuple | None:
@@ -250,6 +265,12 @@ class Version:
             print(f"🚫 Missing    : {self.n_missing_dates:,}")
         print(f"🌎 Resolution : {self.resolution}")
         print(f"🌎 Field shape: {self.field_shape}")
+
+        print()
+        print(f"📅 Data start : {self.index_start_date}")
+        print(f"📅 Data end   : {self.index_end_date}")
+        if self.index_length is not None:
+            print(f"📇 Index size : {self.index_length:,}")
 
         print()
         shape_str = "📐 Shape      : "
@@ -338,10 +359,12 @@ class Version:
     @property
     def statistics_ready(self) -> bool:
         """Check if the statistics are ready."""
-        for d in reversed(self.metadata.get("history", [])):
-            if d["action"] == "compute_statistics_end":
-                return True
-        return False
+
+        try:
+            self.dataset.statistics
+            return True
+        except AttributeError:
+            return False
 
     @property
     def statistics_started(self) -> datetime.datetime | None:
@@ -396,13 +419,9 @@ class Version:
             )
             return
 
-        if self.build_flags is None:
-            print("🪫 Dataset not initialised")
-            return
+        build_flags = self.build_flags or np.array([], dtype=bool)
 
-        build_flags = self.build_flags
-
-        build_lengths = self.build_lengths
+        build_lengths = self.build_lengths or np.array([], dtype=bool)
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
@@ -425,7 +444,7 @@ class Version:
                 print(f"🕰️  Dataset initialised {when(start)}.")
                 if built and latest:
                     speed = (latest - start) / built
-                    eta = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + speed * (total - built)
+                    eta = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + speed * (total - built)
                     print(f"🏁 ETA {when(eta)}.")
         else:
             if latest:
@@ -560,6 +579,7 @@ class Version0_4(Version):
         """Get the initialization timestamp of the dataset."""
         return datetime.datetime.fromisoformat(self.metadata["creation_timestamp"])
 
+    @property
     def statistics_ready(self) -> bool:
         """Check if the statistics are ready."""
         if not self.ready():
@@ -651,7 +671,7 @@ class Version0_6(Version):
         if "_build_flags" not in self.zarr:
             return False
 
-        build_flags = self.zarr["_build_flags"]
+        build_flags = self.zarr["_build_flags"][:]
         return all(build_flags)
 
     @property
@@ -690,12 +710,12 @@ class Version0_12(Version0_6):
     @property
     def first_date(self) -> datetime.datetime:
         """Get the first date of the dataset."""
-        return datetime.datetime.fromisoformat(self.metadata["start_date"])
+        return datetime.datetime.fromisoformat(self.metadata.get("start_date", self.metadata.get("first_date")))
 
     @property
     def last_date(self) -> datetime.datetime:
         """Get the last date of the dataset."""
-        return datetime.datetime.fromisoformat(self.metadata["end_date"])
+        return datetime.datetime.fromisoformat(self.metadata.get("end_date", self.metadata.get("last_date")))
 
 
 class Version0_13(Version0_12):
@@ -707,7 +727,7 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("flags")
+        return build.get("flags")[:]
 
     @property
     def build_lengths(self) -> NDArray | None:
@@ -715,7 +735,11 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("lengths")
+        return build.get("lengths")[:]
+
+
+class Version0_14(Version0_13):
+    pass
 
 
 VERSIONS = {
@@ -724,6 +748,7 @@ VERSIONS = {
     "0.6.0": Version0_6,
     "0.12.0": Version0_12,
     "0.13.0": Version0_13,
+    "0.14.0": Version0_14,
 }
 
 
@@ -814,7 +839,7 @@ class InspectZarr(Command):
         Version
             The version object of the dataset.
         """
-        z = open_zarr(zarr_lookup(path))
+        z = open_zarr(dataset_lookup(path))
 
         metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")

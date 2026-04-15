@@ -1,0 +1,28 @@
+dates:
+  #start: 1979-01-01 00:00:00
+  #end: 2024-12-31 18:00:00
+  start: 2020-01-01 00:00:00
+  end: 2020-01-03 00:00:00
+  frequency: 6h
+
+input:
+    accumulate:
+     period: 6h
+     availability:
+         - [0, "0-6/6-12/12-18/18-24"]
+     source:
+      mars:
+       expver: isc8
+       grid: 20./20.
+       levtype: sfc
+       time: 0
+       type: fc
+       class: rd
+       param: [ro, e, sshf, slhf, strd, ssrd, ssr, str, tp, sf]
+
+
+statistics:
+  allow_nans: True
+
+checks:
+   compare_to_reference: {}

@@ -13,7 +13,7 @@ from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets.create.sources.xarray import XarrayFieldList
-from anemoi.datasets.testing import assert_field_list
+from anemoi.datasets.misc.testing import assert_field_list
 
 
 @skip_if_offline
@@ -63,6 +63,7 @@ def test_weatherbench() -> None:
     ds = xr.open_zarr(
         "gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr",
         storage_options=dict(token="anon"),
+        decode_timedelta=True,
     )
 
     # https://weatherbench2.readthedocs.io/en/latest/init-vs-valid-time.html
@@ -115,6 +116,7 @@ def test_noaa_replay() -> None:
     ds = xr.open_zarr(
         "gs://noaa-ufs-gefsv13replay/ufs-hr1/1.00-degree/03h-freq/zarr/fv3.zarr",
         storage_options={"token": "anon"},
+        decode_timedelta=True,
     )
 
     flavour = {
