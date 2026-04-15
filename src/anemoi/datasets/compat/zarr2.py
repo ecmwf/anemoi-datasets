@@ -21,12 +21,10 @@ class _ReadOnlyStore(zarr.storage.BaseStore):
     """A base class for read-only stores."""
 
     def __delitem__(self, key: str) -> None:
-        """Prevent deletion of items."""
-        raise NotImplementedError()
+        raise TypeError("Deleting items is not allowed")
 
     def __setitem__(self, key: str, value: bytes) -> None:
-        """Prevent setting of items."""
-        raise NotImplementedError()
+        raise TypeError("Setting items is not allowed")
 
     def __len__(self) -> int:
         """Return the number of items in the store."""
