@@ -116,6 +116,7 @@ def test_noaa_replay() -> None:
     ds = xr.open_zarr(
         "gs://noaa-ufs-gefsv13replay/ufs-hr1/1.00-degree/03h-freq/zarr/fv3.zarr",
         storage_options={"token": "anon"},
+        decode_timedelta=True,
     )
 
     flavour = {
