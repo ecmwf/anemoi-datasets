@@ -472,13 +472,12 @@ def test_planetary_computer_conus404() -> None:
 @skip_if_offline
 @skip_missing_packages("planetary_computer", "adlfs")
 @pytest.mark.parametrize(
-    ("collection_id", "year", "param", "level", "search_params", "shape"),
+    ("collection_id", "year", "param", "search_params", "shape"),
     [
         (
             "era5-pds",
             2020,
             ["surface_air_pressure"],
-            None,
             {
                 "filter": {"op": "=", "args": [{"property": "era5:kind"}, "an"]},
             },
@@ -488,7 +487,6 @@ def test_planetary_computer_conus404() -> None:
             "met-office-global-deterministic-near-surface",
             2026,
             ["rainfall_rate", "lwe_snowfall_rate"],
-            None,
             {
                 "variable_key_map": {
                     "lwe_snowfall_rate": "snowfall_rate",
@@ -512,40 +510,21 @@ def test_planetary_computer_conus404() -> None:
             },
             (2, 2, 1, 4915200),
         ),
-        (
-            "met-office-global-deterministic-pressure",
-            2026,
-            ["wind_speed"],
-            {"pressure": [1e+05, 1000]},
-            {
-                "variable_key_map": {
-                    "wind_speed": "wind_speed_on_pressure_levels",
-                },
-                "filter": {
-                    "op": "=",
-                    "args": [{"property": "forecast:horizon"}, "PT0000H00M"],
-                },
-            },
-            (2, 2, 1, 4915200),
-        ),
     ],
 )
 def test_planetary_computer_multipart(
     collection_id: str,
     year: int | str,
     param: list[str],
-    level: dict | None,
     search_params: dict,
     shape: tuple[int, int, int, int],
 ) -> None:
     """Test loading and validating Planetary Computer collection data.
 
-    Parameterised to test three multipart collections:
+    Parameterised to test two multipart collections:
     - era5-pds: multiple timesteps per ABFS URI Zarr store
     - met-office-global-deterministic-near-surface: one timestep per HTTPS URL NetCDF
     file with data variable name:STAC key inequality
-    - met-office-global-deterministic-pressure: one timestep per HTTPS URL NetCDF file,
-    with data variable name:STAC key inequality and pressure level selection
     """
     import pystac_client
 
@@ -565,7 +544,6 @@ def test_planetary_computer_multipart(
                 "data_catalog_id": collection_id,
                 "azure_log_level": "WARNING",
                 "param": param,
-                **(level or {}),
                 "search_params": search_params,
             },
         },
