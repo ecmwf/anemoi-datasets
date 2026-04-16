@@ -472,21 +472,61 @@ def test_planetary_computer_conus404() -> None:
 @skip_if_offline
 @skip_missing_packages("planetary_computer", "adlfs")
 @pytest.mark.parametrize(
-    ("collection_id", "year", "param", "query", "shape"),
+    ("collection_id", "year", "param", "level", "search_params", "shape"),
     [
         (
             "era5-pds",
             2020,
             ["surface_air_pressure"],
-            {"era5:kind": "an"},
+            None,
+            {
+                "filter": {"op": "=", "args": [{"property": "era5:kind"}, "an"]},
+            },
             (2, 1, 1, 1038240),
         ),
         (
             "met-office-global-deterministic-near-surface",
             2026,
-            ["rainfall_rate"],
-            {"forecast:horizon": "PT0000H00M"},
-            (2, 1, 1, 4915200),
+            ["rainfall_rate", "lwe_snowfall_rate"],
+            None,
+            {
+                "variable_key_map": {
+                    "lwe_snowfall_rate": "snowfall_rate",
+                },
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {
+                            "op": "=",
+                            "args": [{"property": "forecast:horizon"}, "PT0000H00M"],
+                        },
+                        {
+                            "op": "=",
+                            "args": [
+                                {"property": "met_office_deterministic:model"},
+                                "global",
+                            ],
+                        },
+                    ],
+                },
+            },
+            (2, 2, 1, 4915200),
+        ),
+        (
+            "met-office-global-deterministic-pressure",
+            2026,
+            ["wind_speed"],
+            {"pressure": [1e+05, 1000]},
+            {
+                "variable_key_map": {
+                    "wind_speed": "wind_speed_on_pressure_levels",
+                },
+                "filter": {
+                    "op": "=",
+                    "args": [{"property": "forecast:horizon"}, "PT0000H00M"],
+                },
+            },
+            (2, 2, 1, 4915200),
         ),
     ],
 )
@@ -494,17 +534,25 @@ def test_planetary_computer_multipart(
     collection_id: str,
     year: int | str,
     param: list[str],
-    query: dict,
+    level: dict | None,
+    search_params: dict,
     shape: tuple[int, int, int, int],
 ) -> None:
     """Test loading and validating Planetary Computer collection data.
 
-    Parameterised to test multiple collections:
+    Parameterised to test three multipart collections:
     - era5-pds: multiple timesteps per ABFS URI Zarr store
     - met-office-global-deterministic-near-surface: one timestep per HTTPS URL NetCDF
-    file
+    file with data variable name:STAC key inequality
+    - met-office-global-deterministic-pressure: one timestep per HTTPS URL NetCDF file,
+    with data variable name:STAC key inequality and pressure level selection
     """
     import pystac_client
+
+    search_params = {
+        **search_params,
+        "datetime": f"{year}-01-01T00:00:00Z/{year}-01-01T06:00:00Z",
+    }
 
     recipe = {
         "dates": {
@@ -513,14 +561,12 @@ def test_planetary_computer_multipart(
             "frequency": "6h",
         },
         "input": {
-            "planetary_computer_multipart": {
-                "collection_id": collection_id,
+            "planetary_computer": {
+                "data_catalog_id": collection_id,
                 "azure_log_level": "WARNING",
                 "param": param,
-                "query": {
-                    "datetime": f"{year}-01-01T00:00:00Z/{year}-01-01T06:00:00Z",
-                    **query,
-                },
+                **(level or {}),
+                "search_params": search_params,
             },
         },
     }
