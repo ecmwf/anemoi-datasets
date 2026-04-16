@@ -71,7 +71,9 @@ optional-dependencies.create = [
   "eccodes>=2.39.1",
   "entrypoints",
   "fasteners",
+  "pandas",
   "pyproj>=3",
+  "xarray",
 ]
 optional-dependencies.dev = [
   "anemoi-datasets[all,docs,tests]",
@@ -96,7 +98,6 @@ optional-dependencies.xarray = [
   "adlfs",
   "gcsfs",
   "kerchunk",
-  "pandas",
   "planetary-computer",
   "pystac-client",
   "s3fs",
