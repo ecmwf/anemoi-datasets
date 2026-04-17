@@ -594,6 +594,11 @@ class GriddedResult(Result):
 
         self._grid_points: Any = grid_points
         self._resolution: Any = first_field.resolution
+        if self._resolution is None:
+            try:
+                self._resolution = first_field.metadata().get("resolution")
+            except Exception:
+                pass
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
