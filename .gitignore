@@ -51,6 +51,7 @@ docs/_api/
 .env
 .envrc
 .venv
+uv.lock
 env/
 venv/
 ENV/
@@ -146,8 +147,3 @@ trace.txt
 *.prof
 prof/
 *.gz
-*.odb
-*.bufr
-*.csv
-*.done
-dev/
