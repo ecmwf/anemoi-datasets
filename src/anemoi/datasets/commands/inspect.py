@@ -27,8 +27,7 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -154,8 +153,7 @@ class Version:
         self.zarr = zarr
         self.metadata = metadata
         self.version = version
-        self.dataset = None
-        self.dataset = open_dataset(self.path)
+        self.dataset = open_dataset(zarr)
 
     def describe(self) -> None:
         """Print a description of the dataset."""
@@ -839,7 +837,7 @@ class InspectZarr(Command):
         Version
             The version object of the dataset.
         """
-        z = open_zarr(dataset_lookup(path))
+        z, real_path = open_zarr_store(path, return_path=True)
 
         metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")
@@ -855,7 +853,7 @@ class InspectZarr(Command):
             if version >= v:
                 candidate = klass
 
-        return candidate(path, z, metadata, version)
+        return candidate(real_path, z, metadata, version)
 
 
 command = InspectZarr
