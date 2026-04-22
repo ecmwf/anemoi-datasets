@@ -13,21 +13,22 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
+    from anemoi.datasets.create.input.action import Action
     from anemoi.datasets.create.input.action import Recipe
 
 
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: dict | list, **kwargs: Any) -> None:
+    def __init__(self, config: "Action", data_sources: "Action", **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
         ----------
-        config : dict
-            Configuration dictionary.
-        data_sources : dict
-            Data sources.
+        config : Action
+            Input part of the recipe.
+        data_sources : Action
+            Data sources part of the recipe.
         **kwargs : Any
             Additional keyword arguments.
         """

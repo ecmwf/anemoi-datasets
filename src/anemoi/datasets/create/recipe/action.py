@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2026- Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -59,7 +59,7 @@ def _factories():
 
     from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
-    # TODO: For now, for source to be loade3d firt
+    # TODO: For now, for source to be loaded firt
     # to load dev sources/filters before the main ones
     dataset_source_registry.factories
 
