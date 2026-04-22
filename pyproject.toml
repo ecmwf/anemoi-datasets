@@ -95,6 +95,8 @@ optional-dependencies.tests = [
 optional-dependencies.xarray = [
   "adlfs",
   "gcsfs",
+  "h5netcdf>=1.8.1",
+  "h5py>=3.16",
   "kerchunk",
   "pandas",
   "planetary-computer",
