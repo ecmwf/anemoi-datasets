@@ -40,6 +40,10 @@ class Recipe(BaseModel):
                 member._post_init(self)
         return self
 
+    class Config:
+        arbitrary_types_allowed = True
+        extra = "allow"
+
     description: str = "No description provided."
     licence: str = "unknown"
     attribution: str = "unknown"

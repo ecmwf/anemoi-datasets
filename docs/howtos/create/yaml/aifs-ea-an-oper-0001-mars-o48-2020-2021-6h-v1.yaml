@@ -49,15 +49,18 @@ input:
       - q
       - t
       - z
-  - accumulations:
-      use_cdsapi_dataset: "reanalysis-era5-complete"
-      accumulation_period: 6
-      class: ea
-      expver: '0001'
-      grid: o48
-      param:
-      - cp
-      - tp
+  - accumulate:
+      period: 6h
+      availability: auto
+      source:
+        mars:
+          use_cdsapi_dataset: "reanalysis-era5-complete"
+          class: ea
+          expver: '0001'
+          grid: o48
+          param:
+          - cp
+          - tp
   - constants:
       param:
       - cos_latitude

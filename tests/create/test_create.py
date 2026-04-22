@@ -30,30 +30,9 @@ from .utils.mock_sources import LoadSource
 
 HERE = os.path.dirname(__file__)
 # find_yamls
-
-IGNORE = ["recentre"]
-
 NAMES = []
 for path in glob.glob(os.path.join(HERE, "*.yaml")):
     name, _ = os.path.splitext(os.path.basename(path))
-    if name in IGNORE:
-        continue
-    with open(path) as f:
-        conf = yaml.safe_load(f)
-        if conf.get("skip_test", False):
-            continue
-        if conf.get("slow_test", False):
-            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
-            continue
-    NAMES.append(name)
-
-IGNORE = ["recentre"]
-
-NAMES = []
-for path in glob.glob(os.path.join(HERE, "*.yaml")):
-    name, _ = os.path.splitext(os.path.basename(path))
-    if name in IGNORE:
-        continue
     with open(path) as f:
         conf = yaml.safe_load(f)
         if conf.get("skip_test", False):
@@ -81,6 +60,9 @@ def load_source(get_test_data: GetTestData) -> LoadSource:
     return LoadSource(get_test_data)
 
 
+SKIPPED_TESTS = ["recentre"]
+
+
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
 def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSource) -> None:
@@ -100,6 +82,9 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     AssertionError
         If the comparison fails.
     """
+    if name in SKIPPED_TESTS:
+        pytest.skip("Not ready yet")
+
     import requests
 
     with patch("earthkit.data.from_source", load_source):

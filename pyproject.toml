@@ -6,7 +6,6 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
 [build-system]
 requires = [
   "setuptools>=60",
@@ -43,9 +42,7 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.1.27",
-  "anemoi-transform>=0.1.27",
-  "anemoi-utils>=0.5",
-  "anemoi-utils>=0.5",
+  "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
@@ -55,10 +52,8 @@ dependencies = [
   "pydantic",
   "pyyaml",
   "ruamel-yaml>=0.16",
-  "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.7",
   "zarr<=2.18.7",
 ]
 optional-dependencies.all = [
@@ -89,10 +84,7 @@ optional-dependencies.docs = [
   "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
-optional-dependencies.remote = [
-  "boto3",
-  "requests",
-]
+optional-dependencies.remote = [ "anemoi-utils[s3]", "requests" ]
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pyodc>=1.6",
@@ -127,18 +119,18 @@ version_file = "src/anemoi/datasets/_version.py"
 [tool.isort]
 profile = "black"
 
+[tool.mypy]
+strict = false
+exclude = [
+  "docs/.*",
+]
+
 [tool.pytest]
 ini_options.testpaths = "tests"
 ini_options.addopts = [
   "--numprocesses=auto",
   "--maxprocesses=16",
   "--strict-config",
-]
-
-[tool.mypy]
-strict = false
-exclude = [
-  "docs/.*",
 ]
 
 [tool.pydocstringformatter]
