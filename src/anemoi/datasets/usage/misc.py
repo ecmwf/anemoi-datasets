@@ -347,7 +347,6 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     """
     from anemoi.datasets.usage.dataset import Dataset
     from anemoi.datasets.usage.store import ZarrStore
-    from anemoi.datasets.usage.store import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
@@ -356,7 +355,7 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         return ZarrStore.from_group(a).mutate()
 
     if isinstance(a, str):
-        return ZarrStore.from_path(dataset_lookup(a)).mutate()
+        return ZarrStore.from_name_or_path(a).mutate()
 
     if isinstance(a, PurePath):
         return _open(str(a)).mutate()

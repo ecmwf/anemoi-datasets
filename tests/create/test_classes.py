@@ -20,7 +20,7 @@ from anemoi.utils.testing import skip_if_offline
 from anemoi.datasets import open_dataset
 
 
-def _tests_zarrs(name: str) -> str:
+def _tests_zarrs(name: str, fail: bool = True) -> str:
     return os.path.join(TEST_DATA_URL, "anemoi-datasets", f"{name}.zarr")
 
 
@@ -63,63 +63,54 @@ def test_class_gridded_complement_none():
     # )
 
 
-@skip_if_offline
-@zarr_tests
-def test_class_gridded_complement_nearest_1():
-
-    ds = open_dataset(
-        complement="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
-        source="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        interpolation="nearest",
-    )
-    _test_dataset(
-        ds,
-        variables=[
-            "2t",
-            "cos_latitude",
-            "cp",
-            "insolation",
-            "lsm",
-            "msl",
-            "orog",
-            "sf",
-            "t_500",
-            "t_850",
-            "tp",
-            "z",
-            "z_500",
-            "z_850",
-        ],
-    )
+interpolation = "nearest"
+complement_variables = [
+    "2t",
+    "cos_latitude",
+    "cp",
+    "insolation",
+    "lsm",
+    "msl",
+    "orog",
+    "sf",
+    "t_500",
+    "t_850",
+    "tp",
+    "z",
+    "z_500",
+    "z_850",
+]
+cerra = "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1"
+aifs_oper_2017 = "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1"
+COMPLEMENT_TEST_CASES = [
+    (cerra, aifs_oper_2017, interpolation, complement_variables),
+    (aifs_oper_2017, cerra, interpolation, complement_variables),
+]
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_gridded_complement_nearest_2():
-    ds = open_dataset(
-        source="cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
-        complement="aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        interpolation="nearest",
-    )
-    _test_dataset(
-        ds,
-        variables=[
-            "2t",
-            "cos_latitude",
-            "cp",
-            "insolation",
-            "lsm",
-            "msl",
-            "orog",
-            "sf",
-            "t_500",
-            "t_850",
-            "tp",
-            "z",
-            "z_500",
-            "z_850",
-        ],
-    )
+@pytest.mark.parametrize("source,complement,interpolation,variables", COMPLEMENT_TEST_CASES)
+def test_class_gridded_complement(source, complement, interpolation, variables):
+    ds = open_dataset(source=source, complement=complement, interpolation=interpolation)
+    _test_dataset(ds, variables=variables)
+
+
+aifs_oper_2016 = "aifs-ea-an-oper-0001-mars-20p0-2016-2016-6h-v1"
+commmon_variables = [
+    "2t",
+    "cos_latitude",
+    "cp",
+    "insolation",
+    "lsm",
+    "msl",
+    "t_500",
+    "t_850",
+    "tp",
+    "z",
+    "z_500",
+    "z_850",
+]
 
 
 @skip_if_offline
@@ -127,53 +118,30 @@ def test_class_gridded_complement_nearest_2():
 def test_class_gridded_concat():
     ds = open_dataset(
         [
-            "aifs-ea-an-oper-0001-mars-20p0-2016-2016-6h-v1",
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+            aifs_oper_2016,
+            aifs_oper_2017,
         ]
     )
-    _test_dataset(
-        ds,
-        variables=[
-            "2t",
-            "cos_latitude",
-            "cp",
-            "insolation",
-            "lsm",
-            "msl",
-            "t_500",
-            "t_850",
-            "tp",
-            "z",
-            "z_500",
-            "z_850",
-        ],
-    )
+    _test_dataset(ds, variables=commmon_variables)
+
+
+aifs_an_enda = "aifs-ea-an-enda-0001-mars-20p0-2017-2017-6h-v1"
 
 
 @skip_if_offline
 @zarr_tests
 def test_class_gridded_number():
     ds = open_dataset(
-        "aifs-ea-an-enda-0001-mars-20p0-2017-2017-6h-v1",
+        aifs_an_enda,
         members=[0, 2],
     )
     _test_dataset(
         ds,
-        variables=[
-            "2t",
-            "cos_latitude",
-            "cp",
-            "insolation",
-            "lsm",
-            "msl",
-            "t_500",
-            "t_850",
-            "tp",
-            "z",
-            "z_500",
-            "z_850",
-        ],
+        variables=commmon_variables,
     )
+
+
+aifs_em_enda = "aifs-ea-em-enda-0001-mars-20p0-2017-2017-6h-v1"
 
 
 @skip_if_offline
@@ -181,26 +149,13 @@ def test_class_gridded_number():
 def test_class_gridded_ensemble():
     ds = open_dataset(
         ensemble=[
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-            "aifs-ea-em-enda-0001-mars-20p0-2017-2017-6h-v1",
+            aifs_oper_2017,
+            aifs_em_enda,
         ]
     )
     _test_dataset(
         ds,
-        variables=[
-            "2t",
-            "cos_latitude",
-            "cp",
-            "insolation",
-            "lsm",
-            "msl",
-            "t_500",
-            "t_850",
-            "tp",
-            "z",
-            "z_500",
-            "z_850",
-        ],
+        variables=commmon_variables,
     )
 
 
@@ -230,8 +185,8 @@ def test_class_gridded_missing_dates_interpolate():
 def test_class_gridded_grids():
     ds = open_dataset(
         grids=[
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-            "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+            aifs_oper_2017,
+            cerra,
         ],
         adjust="all",
     )
@@ -244,8 +199,8 @@ def test_class_gridded_grids():
 def test_class_gridded_cutout() -> None:
     ds = open_dataset(
         cutout=[
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-            "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+            aifs_oper_2017,
+            cerra,
         ],
         adjust="all",
     )
@@ -273,73 +228,51 @@ def test_class_gridded_interpolate_nearest():
     pass
 
 
+aifs_sfc = "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-sfc"
+aifs_pl = "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-pl"
+JOIN_TEST_CASES = [
+    (aifs_sfc, aifs_pl, ["2t", "lsm", "msl", "z", "t_500", "t_850", "z_500", "z_850"]),
+    (aifs_pl, aifs_sfc, ["t_500", "t_850", "z_500", "z_850", "2t", "lsm", "msl", "z"]),
+]
+
+
 @skip_if_offline
 @zarr_tests
-def test_class_gridded_join_1():
+@pytest.mark.parametrize("first_dataset,second_dataset,variables", JOIN_TEST_CASES)
+def test_class_gridded_join(first_dataset, second_dataset, variables):
     ds = open_dataset(
         [
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-sfc",
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-pl",
+            first_dataset,
+            second_dataset,
         ],
     )
-    _test_dataset(ds, ["2t", "lsm", "msl", "z", "t_500", "t_850", "z_500", "z_850"])
+    _test_dataset(ds, variables=variables)
+
+
+skipped_methods = ["grid", "distance-based", "random"]
+small_thinning_factor_in_km = 4
+large_thinning_factor_in_km = 100
+thinning_factor_as_fraction = 0.50
+THINNING_TEST_CASES = [
+    (cerra, None, small_thinning_factor_in_km),
+    (cerra, "distance-based", large_thinning_factor_in_km),
+    (cerra, "grid", large_thinning_factor_in_km),
+    (cerra, "random", thinning_factor_as_fraction),
+]
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_gridded_join_2():
-    ds = open_dataset(
-        [
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-pl",
-            "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1-sfc",
-        ],
-    )
-    _test_dataset(ds, ["t_500", "t_850", "z_500", "z_850", "2t", "lsm", "msl", "z"])
+@pytest.mark.parametrize("dataset,method,thinning", THINNING_TEST_CASES)
+def test_class_gridded_thinning(dataset, method, thinning):
+    if method in skipped_methods:
+        pytest.skip("Not ready yet")
 
+    kwargs = {"thinning": thinning}
+    if method is not None:
+        kwargs.update({"method": method})
 
-@skip_if_offline
-@zarr_tests
-def test_class_gridded_thinning_1():
-    ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
-        thinning=4,
-    )
-    _test_dataset(ds)
-
-
-@skip_if_offline
-@zarr_tests
-@not_ready
-def test_class_gridded_thinning_2():
-    ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
-        method="distance-based",
-        thinning=100,  # 100km
-    )
-    _test_dataset(ds)
-
-
-@skip_if_offline
-@zarr_tests
-@not_ready
-def test_class_gridded_thinning_3():
-    ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
-        method="grid",
-        thinning=100,  # 100km
-    )
-    _test_dataset(ds)
-
-
-@skip_if_offline
-@zarr_tests
-@not_ready
-def test_class_gridded_thinning_4():
-    ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
-        method="random",
-        thinning=0.5,  # 50% of points
-    )
+    ds = open_dataset(dataset, **kwargs)
     _test_dataset(ds)
 
 
@@ -347,7 +280,7 @@ def test_class_gridded_thinning_4():
 @zarr_tests
 def test_class_gridded_cropping():
     ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        cerra,
         area=[80, -10, 30, 40],
     )
     _test_dataset(ds)
@@ -358,7 +291,7 @@ def test_class_gridded_cropping():
 @not_ready
 def test_class_gridded_trim_edge():
     ds = open_dataset(
-        "cerra-rr-an-oper-0001-mars-5p0-2017-2017-6h-v1",
+        cerra,
         trim_edge=(1, 2, 3, 4),
     )
     _test_dataset(ds)
@@ -399,60 +332,41 @@ def test_class_gridded_padded():
     pass
 
 
+RESCALE_TEST_CASES = [
+    (aifs_oper_2017, {"2t": (1.0, -273.15)}, None),
+    (aifs_oper_2017, {"2t": {"scale": 1.0, "offset": -273.15}}, None),
+    (aifs_oper_2017, {"2t": ("K", "degC")}, "cfunits"),
+]
+
+
 @skip_if_offline
 @zarr_tests
-def test_class_gridded_rescale_1():
-    ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        rescale={"2t": (1.0, -273.15)},
-    )
+@pytest.mark.parametrize("dataset,rescale,cfunits", RESCALE_TEST_CASES)
+def test_class_gridded_rescale(dataset, rescale, cfunits):
+    if cfunits == "cfunits":
+        try:
+            import cfunits  # noqa: F401
+        except FileNotFoundError:
+            # cfunits requires the library udunits2 to be installed
+            pytest.skip("udunits2 library not installed")
+
+    ds = open_dataset(dataset, rescale=rescale)
     _test_dataset(ds)
 
 
-@skip_if_offline
-@zarr_tests
-def test_class_gridded_rescale_2():
-    try:
-        import cfunits  # noqa: F401
-    except FileNotFoundError:
-        # cfunits requires the library udunits2 to be installed
-        raise pytest.skip("udunits2 library not installed")
-
-    ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        rescale={"2t": ("K", "degC")},
-    )
-    _test_dataset(ds)
+SELECT_TEST_CASES = [
+    (aifs_oper_2017, ["msl", "2t"]),
+    (aifs_oper_2017, {"msl", "2t"}),
+]
 
 
 @skip_if_offline
 @zarr_tests
-def test_class_gridded_rescale_3():
+@pytest.mark.parametrize("dataset,select", SELECT_TEST_CASES)
+def test_class_gridded_select(dataset, select):
     ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        rescale={
-            "2t": {"scale": 1.0, "offset": -273.15},
-        },
-    )
-    _test_dataset(ds)
-
-
-@skip_if_offline
-@zarr_tests
-def test_class_gridded_select_select_1():
-    ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        select=["msl", "2t"],
-    )
-    _test_dataset(ds)
-
-
-@skip_if_offline
-@zarr_tests
-def test_class_gridded_select_select_2():
-    ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
-        select={"msl", "2t"},
+        dataset,
+        select=select,
     )
     _test_dataset(ds)
 
@@ -461,7 +375,7 @@ def test_class_gridded_select_select_2():
 @zarr_tests
 def test_class_gridded_select_drop():
     ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        aifs_oper_2017,
         drop=["2t", "msl"],
     )
     _test_dataset(ds)
@@ -471,7 +385,7 @@ def test_class_gridded_select_drop():
 @zarr_tests
 def test_class_gridded_rename() -> None:
     ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        aifs_oper_2017,
         rename={"2t": "temperature", "msl": "pressure"},
     )
     _test_dataset(ds)
@@ -484,7 +398,7 @@ def test_class_gridded_rename_with_overlap() -> None:
     ds = open_dataset(
         [
             {
-                "dataset": "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+                "dataset": aifs_oper_2017,
                 "select": ["cp", "tp"],
                 "end": 2023,
                 "frequency": "6h",
@@ -512,7 +426,7 @@ def test_class_gridded_statistics():
 @skip_if_offline
 @zarr_tests
 def test_class_gridded_zarr():
-    ds = open_dataset("aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1")
+    ds = open_dataset(aifs_oper_2017)
     _test_dataset(ds)
 
 
@@ -528,7 +442,7 @@ def test_class_gridded_zarr_with_missing_dates():
 @zarr_tests
 def test_class_gridded_subset():
     ds = open_dataset(
-        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        aifs_oper_2017,
         frequency="12h",
         start=2017,
         end=2018,
