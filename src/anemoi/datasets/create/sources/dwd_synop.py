@@ -72,6 +72,7 @@ class DWDSYNOPSource(Source):
             # sub select columns 
             df = df[
                 ["varno",
+                 "veri_data",
                  "obs",
                  "level",
                  "time",
@@ -85,6 +86,12 @@ class DWDSYNOPSource(Source):
                 ]
             ]
 
+            # rename to model , key is used later for idexing/pivoting
+            df = df.rename(
+                columns={
+                    "veri_data": "model"
+                }
+            )
             # create dictionary to map varno id to variables namev
             varno_to_var = self.create_varno_dictionaries()
 
@@ -92,6 +99,7 @@ class DWDSYNOPSource(Source):
             df["vname"] = df["varno"].map(varno_to_var)
 
             # reshape for each variable have its own column
+            print(f"{df.columns}")
             df_wide = df.pivot_table( 
                 index=[
                     "level",
@@ -104,7 +112,7 @@ class DWDSYNOPSource(Source):
                     "sso_stdh",
                     "z_station"
                 ],
-                columns='vname', values='obs').reset_index(
+                columns='vname', values=['obs', 'model']).reset_index(
                 [
                     "time", "lat", "lon", 
                     "level",
@@ -114,7 +122,10 @@ class DWDSYNOPSource(Source):
                      "sso_stdh",
                      "z_station"
                 ])
+            # flatten MultiIndex columns
+            df_wide.columns = [f"{var}_{val}" if var else val for val, var in df_wide.columns]
 
+            # rename 
             df_wide = df_wide.rename(
                 columns={
                     "time": "date", 
@@ -122,7 +133,6 @@ class DWDSYNOPSource(Source):
                     "lat": "latitude",
                 }
             )
-            print(f"{type(df_wide['date'])=}")
 
             # put datetime, lat and lon in front
             cols_to_move = ['date', 'latitude', 'longitude']
@@ -151,12 +161,6 @@ class DWDSYNOPSource(Source):
             for key, value in zip(varno_list, self.columns):
                 varno_to_var[key] = value
             
-            # TODO:remove if not needed:  create dict that maps varno to sub dict that holds {key, name, desctiption, units } INFO
-            # varno_to_vardict = {} 
-            # for element in  get_table("varno"):
-            #     for id in varno_list:
-            #         if element["key"] == id:
-            #            varno_to_vardict[id] = element
 
             return varno_to_var
 
