@@ -20,7 +20,7 @@ from anemoi.utils.testing import skip_if_offline
 from anemoi.datasets import open_dataset
 
 
-def _tests_zarrs(name: str) -> str:
+def _tests_zarrs(name: str, fail: bool = True) -> str:
     return os.path.join(TEST_DATA_URL, "anemoi-datasets", f"{name}.zarr")
 
 

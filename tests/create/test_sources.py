@@ -492,6 +492,93 @@ def test_planetary_computer_conus404() -> None:
 
 
 @skip_if_offline
+@skip_missing_packages("planetary_computer", "adlfs")
+@pytest.mark.parametrize(
+    ("collection_id", "year", "param", "search_params", "shape"),
+    [
+        (
+            "era5-pds",
+            2020,
+            ["surface_air_pressure"],
+            {
+                "filter": {"op": "=", "args": [{"property": "era5:kind"}, "an"]},
+            },
+            (2, 1, 1, 1038240),
+        ),
+        (
+            "met-office-global-deterministic-near-surface",
+            2026,
+            ["rainfall_rate", "lwe_snowfall_rate"],
+            {
+                "variable_key_map": {
+                    "lwe_snowfall_rate": "snowfall_rate",
+                },
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {
+                            "op": "=",
+                            "args": [{"property": "forecast:horizon"}, "PT0000H00M"],
+                        },
+                        {
+                            "op": "=",
+                            "args": [
+                                {"property": "met_office_deterministic:model"},
+                                "global",
+                            ],
+                        },
+                    ],
+                },
+            },
+            (2, 2, 1, 4915200),
+        ),
+    ],
+)
+def test_planetary_computer_multipart(
+    collection_id: str,
+    year: int | str,
+    param: list[str],
+    search_params: dict,
+    shape: tuple[int, int, int, int],
+) -> None:
+    """Test loading and validating Planetary Computer collection data.
+
+    Parameterised to test two multipart collections:
+    - era5-pds: multiple timesteps per ABFS URI Zarr store
+    - met-office-global-deterministic-near-surface: one timestep per HTTPS URL NetCDF
+    file with data variable name:STAC key inequality
+    """
+    import pystac_client
+
+    search_params = {
+        **search_params,
+        "datetime": f"{year}-01-01T00:00:00Z/{year}-01-01T06:00:00Z",
+    }
+
+    recipe = {
+        "dates": {
+            "start": f"{year}-01-01T00:00:00",
+            "end": f"{year}-01-01T06:00:00",
+            "frequency": "6h",
+        },
+        "input": {
+            "planetary_computer": {
+                "data_catalog_id": collection_id,
+                "azure_log_level": "WARNING",
+                "param": param,
+                "search_params": search_params,
+            },
+        },
+    }
+    try:
+        created = create_dataset(recipe=recipe, output=None)
+    except pystac_client.exceptions.APIError:
+        pytest.skip("Planetary Computer data catalog is not available")
+    ds = open_dataset(created)
+    assert ds.shape == shape, ds.shape
+
+
+@skip_if_offline
 def test_csv(get_test_data: callable) -> None:
     """Test for CSV source registration."""
 
