@@ -40,10 +40,6 @@ class Recipe(BaseModel):
                 member._post_init(self)
         return self
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
-
     description: str = "No description provided."
     licence: str = "unknown"
     attribution: str = "unknown"
@@ -116,7 +112,7 @@ class Recipe(BaseModel):
 
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
-        defaults = Recipe(dates={"values": []}).model_dump()
+        defaults = Recipe(input={"empty": {}}, dates={"values": []}).model_dump()
         return {key: data[key] for key in defaults.keys()}
 
 

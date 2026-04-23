@@ -147,6 +147,3 @@ trace.txt
 *.prof
 prof/
 *.gz
-dev/
-*.lock
-*.odb

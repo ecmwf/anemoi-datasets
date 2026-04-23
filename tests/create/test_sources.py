@@ -9,7 +9,7 @@
 
 import os
 import shutil
-import sys
+from typing import Any
 
 import numpy as np
 import pytest
@@ -19,6 +19,22 @@ from anemoi.utils.testing import skip_missing_packages
 from anemoi.datasets import open_dataset
 
 from .utils.create import create_dataset
+
+
+def _run_one_group(recipe):
+    from anemoi.datasets.create.input.builder import InputBuilder
+    from anemoi.datasets.create.input.context import Context
+    from anemoi.datasets.create.recipe import Recipe
+    from anemoi.datasets.dates.groups import Groups
+
+    class TestContext(Context):
+        def create_result(self, argument: Any, data: Any) -> Any:
+            return data
+
+    recipe = Recipe(**recipe)
+    builder = InputBuilder(recipe.input, recipe.data_sources)
+    group = Groups(recipe.dates, recipe.build.group_by)
+    return builder.select(TestContext(recipe), next(iter(group)))
 
 
 @skip_if_offline
@@ -183,9 +199,6 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
         created = create_dataset(recipe=config_grib_index, output=None)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
-)
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
@@ -260,7 +273,10 @@ def test_grib_gridfile_with_refinement_level(
     assert len(param) * len(level) + len(forcings) == shape[1]
 
     grib = {
-        "path": os.path.join(path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"),
+        "path": os.path.join(
+            path,
+            "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}",
+        ),
         "grid_definition": {
             "icon": {
                 "path": gridfile,
@@ -288,7 +304,12 @@ def test_grib_gridfile_with_refinement_level(
                 {
                     "join": [
                         {"grib": grib},
-                        {"forcings": {"param": forcings, "template": "${input.pipe.0.join.0.grib}"}},
+                        {
+                            "forcings": {
+                                "param": forcings,
+                                "template": "${input.pipe.0.join.0.grib}",
+                            }
+                        },
                     ]
                 },
                 refinement_filter,
@@ -331,7 +352,8 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
         "input": {
             "grib": {
                 "path": os.path.join(
-                    path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"
+                    path,
+                    "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}",
                 ),
                 "grid_definition": {"icon": {"path": gridfile}},
                 "param": ["u"],
@@ -472,15 +494,14 @@ def test_planetary_computer_conus404() -> None:
 @skip_if_offline
 def test_csv(get_test_data: callable) -> None:
     """Test for CSV source registration."""
-    from anemoi.datasets.create.recipe import Recipe
-    from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import Groups
 
     data = get_test_data("anemoi-datasets/obs/dribu.csv")
-
-    source = create_source(
-        context=None,
-        config={
+    recipe = {
+        "dates": {
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-12-21T23:59:59",
+        },
+        "input": {
             "csv": {
                 "path": data,
                 "flavour": {
@@ -491,17 +512,9 @@ def test_csv(get_test_data: callable) -> None:
                 },
             }
         },
-    )
-    recipe = Recipe(
-        dates={
-            "start": "2025-01-01T00:00:00",
-            "end": "2025-12-21T23:59:59",
-        },
-    )
+    }
+    frame = _run_one_group(recipe)
 
-    group = Groups(recipe.dates, recipe.build.group_by)
-
-    frame = source.execute(next(iter(group)))
     assert len(frame) == 2526
 
     assert "latitude" in frame.columns, frame.columns
@@ -517,24 +530,16 @@ def test_csv(get_test_data: callable) -> None:
 @skip_if_offline
 @pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
 def test_odb(get_test_data: callable) -> None:
-    from anemoi.datasets.create.recipe import Recipe
-    from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import Groups
 
     data = get_test_data("anemoi-datasets/obs/dribu.odb")
-
-    source = create_source(context=None, config={"odb": {"path": data}})
-
-    recipe = Recipe(
-        dates={
+    recipe = {
+        "dates": {
             "start": "2025-01-01T00:00:00",
             "end": "2025-12-21T23:59:59",
         },
-    )
-
-    group = Groups(recipe.dates, recipe.build.group_by)
-
-    frame = source.execute(next(iter(group)))
+        "input": {"csv": {"odb": {"path": data}}},
+    }
+    frame = _run_one_group(recipe)
 
     assert len(frame) == 6838
 

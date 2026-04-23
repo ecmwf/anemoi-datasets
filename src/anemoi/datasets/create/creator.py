@@ -364,7 +364,7 @@ class Creator(ABC):
 
         return InputBuilder(
             self.recipe.input,
-            data_sources=self.recipe.data_sources or {},
+            data_sources=self.recipe.data_sources,
         )
 
     @cached_property

@@ -7,6 +7,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from __future__ import annotations
+
 from copy import deepcopy
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -20,21 +22,22 @@ if TYPE_CHECKING:
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: "Action", data_sources: "Action", **kwargs: Any) -> None:
+    def __init__(self, config: "Action" | None, data_sources: "Action" | None, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
         ----------
-        config : Action
+        config : Action | None
             Input part of the recipe.
-        data_sources : Action
+        data_sources : Action   | None
             Data sources part of the recipe.
         **kwargs : Any
             Additional keyword arguments.
         """
         self.kwargs = kwargs
-        self.config = deepcopy(config.model_dump())
-        self.data_sources = deepcopy(dict(data_sources=data_sources))
+        # self.config = deepcopy(config.model_dump() if config is not None else {"empty": {}})
+        self.config = deepcopy(config.model_dump() if config is not None else {})
+        self.data_sources = deepcopy(dict(data_sources=data_sources or {}))
 
     @cached_property
     def action(self) -> "Recipe":
