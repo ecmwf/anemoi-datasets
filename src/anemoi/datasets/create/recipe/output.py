@@ -41,17 +41,62 @@ class GriddedOutput(OutputBase):
     format: Literal["gridded"] = "gridded"
     """The format of the dataset."""
 
-    flatten_grid: bool = True
-    """Whether to flatten the grid."""
+    @property
+    def layout(self) -> str:
+        return self.format
 
-    order_by: list[str] = Field(default_factory=lambda: ["valid_datetime", "param_level", "number"])
-    """The order of dimensions in the output."""
+    order_by: list[str] | None = Field(
+        default=None,
+        deprecated=(
+            "'output.order_by' is deprecated and no longer read from the recipe. "
+            "The cube ordering is hard-coded to "
+            "['valid_datetime', 'param_level', 'number']. Remove this key from "
+            "the recipe."
+        ),
+    )
+    """Deprecated.  Kept temporarily so existing recipes keep parsing, but
+    it is no longer honoured: the cube ordering is hard-coded in
+    :class:`SimpleGriddedContext`.  If present, it must match the fixed
+    default value; any other value raises an error (see
+    :meth:`Output._post_init`-style validation in :class:`Recipe`)."""
 
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
     """The chunking configuration for the output."""
 
     ensemble_dimension: int = 2
     """The ensemble dimension size."""
+
+    # Fixed value that the deprecated ``order_by`` field must match, if set.
+    # Kept in sync with ``SimpleGriddedContext.order_by``.
+    _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
+
+    def _post_init(self, recipe: Any) -> None:
+        """Validate the deprecated ``order_by`` field.
+
+        Accept the value only if it equals the hard-coded default; any other
+        value is rejected.  Emit a ``DeprecationWarning`` when the user has
+        set the field in the recipe (even to the default value).
+        """
+        if "order_by" not in self.model_fields_set:
+            return
+
+        import warnings
+
+        user = self.__dict__.get("order_by")
+        if user is not None and list(user) != self._FIXED_ORDER_BY:
+            raise ValueError(
+                "'output.order_by' is deprecated and the cube ordering is now "
+                f"hard-coded to {self._FIXED_ORDER_BY}. Got {list(user)!r}."
+            )
+        warnings.warn(
+            "'output.order_by' is deprecated and no longer read from the "
+            "recipe. The cube ordering is hard-coded to "
+            f"{self._FIXED_ORDER_BY}. Remove this key from the recipe.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # Drop the user-supplied value so it is not persisted in metadata.
+        self.__dict__["order_by"] = None
 
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
@@ -86,8 +131,54 @@ class TabularOutput(OutputBase):
     format: Literal["tabular"] = "tabular"
     """The format of the dataset."""
 
+    @property
+    def layout(self) -> str:
+        return self.format
+
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
+
+class TrajectoriesOutput(OutputBase):
+    """Output configuration for trajectory datasets.
+
+    Unlike :class:`GriddedOutput`, this class has no user-configurable
+    ``order_by``: the trajectory cube ordering is an internal detail
+    tightly coupled to the composite ``traj_point`` remapping key injected
+    by :class:`TrajectoryGriddedContext`, and per-field placement in
+    :meth:`TrajectoryGriddedCreator.load_result` reads ``date/time/step``
+    from field metadata directly.
+    """
+
+    layout: Literal["trajectories"] = "trajectories"
+
+    chunking: dict[str, int] = Field(default_factory=lambda: {"base_dates": 1, "steps": 1, "ensembles": 1})
+    """Chunking configuration for the 5-D output array (base_dates, variables, ensembles, steps, cells)."""
+
+    def get_chunking(self, coords: dict) -> tuple:
+        """Return chunking tuple for the 5-D Zarr array.
+
+        Parameters
+        ----------
+        coords : dict
+            Coordinate arrays keyed by dimension name.
+
+        Returns
+        -------
+        tuple
+            Chunk sizes in dimension order.
+        """
+        user = self.chunking.copy()
+        chunks = []
+        for k, v in coords.items():
+            if k in user:
+                chunks.append(user.pop(k))
+            else:
+                chunks.append(len(v))
+        if user:
+            raise ValueError(
+                f"Unused chunking keys from config: {list(user.keys())}, not in known keys: {list(coords.keys())}"
+            )
+        return tuple(chunks)
 
 
 def _output_discriminator(v: Any) -> str:
@@ -102,6 +193,7 @@ Output = Annotated[
     Union[
         Annotated[GriddedOutput, Tag("gridded")],
         Annotated[TabularOutput, Tag("tabular")],
+        Annotated[TrajectoriesOutput, Tag("trajectories")],
     ],
     Discriminator(_output_discriminator),
 ]

@@ -98,6 +98,59 @@ class Forwards(Dataset):
         return self.forward.frequency
 
     @property
+    def start_date(self):
+        """Returns the start date of the forward dataset."""
+        return self.forward.start_date
+
+    @property
+    def end_date(self):
+        """Returns the end date of the forward dataset."""
+        return self.forward.end_date
+
+    # Trajectory-specific properties — forwarded so that wrappers
+    # (StepSubset, SingleStepView, Subset, etc.) work transparently.
+
+    @property
+    def base_dates(self):
+        """Returns the base dates of the forward dataset."""
+        return self.forward.base_dates
+
+    @property
+    def base_start_date(self):
+        """Returns the first base date of the forward dataset."""
+        return self.forward.base_start_date
+
+    @property
+    def base_end_date(self):
+        """Returns the last base date of the forward dataset."""
+        return self.forward.base_end_date
+
+    @property
+    def base_frequency(self):
+        """Returns the base-date frequency of the forward dataset."""
+        return self.forward.base_frequency
+
+    @property
+    def steps(self):
+        """Returns the steps of the forward dataset."""
+        return self.forward.steps
+
+    @property
+    def step_start(self):
+        """Returns the first step of the forward dataset."""
+        return self.forward.step_start
+
+    @property
+    def step_end(self):
+        """Returns the last step of the forward dataset."""
+        return self.forward.step_end
+
+    @property
+    def step_frequency(self):
+        """Returns the step frequency of the forward dataset."""
+        return self.forward.step_frequency
+
+    @property
     def latitudes(self) -> NDArray[Any]:
         """Returns the latitudes of the forward dataset."""
         return self.forward.latitudes

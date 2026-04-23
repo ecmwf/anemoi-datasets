@@ -211,6 +211,12 @@ class ZarrStore(Dataset):
                 from anemoi.datasets.usage.tabular.store import TabularZarr
 
                 return TabularZarr(group, path).mutate()
+
+            case "trajectories":
+                from anemoi.datasets.usage.trajectories.store import TrajectoriesZarr
+
+                return TrajectoriesZarr(group, path).mutate()
+
             case _:
                 raise ValueError(f"Unsupported ZarrStore layout: {layout}")
 

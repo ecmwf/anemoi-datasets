@@ -18,6 +18,7 @@ from functools import cached_property
 from typing import Any
 
 from anemoi.datasets.dates import DatesProvider
+from anemoi.datasets.dates import TrajectoryDates
 from anemoi.datasets.dates import as_datetime
 
 
@@ -44,7 +45,9 @@ class GroupOfDates:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
-        self.dates = [as_datetime(_) for _ in dates]
+        # Trajectory providers yield ``(basetime, step)`` pairs; they are
+        # opaque to ``GroupOfDates`` and stored as-is.
+        self.dates = [d if isinstance(d, tuple) else as_datetime(d) for d in dates]
         self.provider = provider
         self.partial_ok = partial_ok
 
@@ -326,6 +329,13 @@ class GrouperByKey(Grouper):
     def __init__(self, key: Callable[[datetime.datetime], Any]) -> None:
         self.key = key
 
+    def _key(self, d: Any) -> Any:
+        # Trajectory providers yield ``(basetime, step)`` pairs; apply the key
+        # to the basetime so monthly/daily/yearly grouping still makes sense.
+        if isinstance(d, tuple):
+            return self.key(d[0])
+        return self.key(d)
+
     def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         """Group dates based on the provided key.
 
@@ -335,7 +345,7 @@ class GrouperByKey(Grouper):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
-        for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
+        for _, g in itertools.groupby(sorted(dates, key=self._key), key=self._key):
             yield GroupOfDates(list(g), dates)
 
 
@@ -364,3 +374,65 @@ class GrouperByFixedSize(Grouper):
 
         if batch:
             yield GroupOfDates(batch, dates)
+
+
+class TrajectoryGroups(Groups):
+    """Groups whose provider is a :class:`TrajectoryDates`.
+
+    Values iterated by the provider are ``(basetime, step)`` pairs rather than
+    plain datetimes, so ``first_date`` / ``last_date`` are sourced from
+    :meth:`TrajectoryDates.factorise` (basetimes only) to keep metadata
+    meaningful.
+
+    Parameters
+    ----------
+    steps : dict
+        ``recipe.steps`` mapping (``start``, ``end``, ``frequency``) describing
+        the list of forecast steps.
+    group_by : Any
+        Grouping configuration forwarded to :meth:`Grouper.from_config`.
+    base_dates : Any
+        Configuration forwarded to :class:`TrajectoryDates` to build the
+        underlying basetimes provider (``start``, ``end``, ``frequency``,
+        ``missing``, …).
+    **kwargs : Any
+        Additional keyword arguments forwarded to :class:`TrajectoryDates`.
+    """
+
+    def __init__(self, steps: Any, group_by: Any, base_dates: Any, **kwargs: Any) -> None:
+        self._dates = TrajectoryDates(steps=steps, **base_dates, **kwargs)
+        self._grouper = Grouper.from_config(group_by)
+        self._filter = Filter(self._dates.missing)
+
+    def __iter__(self):
+        import numpy as np
+
+        from anemoi.datasets.create.arguments import ForecastDates
+
+        for go in self._grouper(self._dates):
+            pairs = self._filter(go.dates)
+            if not pairs:
+                continue
+            items = []
+            for basetime, step_td in pairs:
+                step_seconds = int(step_td / np.timedelta64(1, "s"))
+                step = datetime.timedelta(seconds=step_seconds)
+                items.append((basetime + step, basetime))
+            yield ForecastDates(items)
+
+    def one_date(self):
+        """Return a single-item ForecastDates for minimal input probing."""
+        go = next(iter(self))
+        from anemoi.datasets.create.arguments import ForecastDates
+
+        return ForecastDates([go.items[0]])
+
+    def first_date(self) -> datetime.datetime:
+        basetimes, steps = self._dates.factorise()
+        step_start = steps[0].astype("timedelta64[s]").astype(datetime.timedelta)
+        return min(basetimes) + step_start
+
+    def last_date(self) -> datetime.datetime:
+        basetimes, steps = self._dates.factorise()
+        step_end = steps[-1].astype("timedelta64[s]").astype(datetime.timedelta)
+        return max(basetimes) + step_end

@@ -217,7 +217,24 @@ class Dataset:
 
     @cached_property
     def dates(self):
-        return self.store["dates"][:]
+        # For gridded/tabular the array is called ``dates``.  Trajectories
+        # datasets store the forecast initialisation times under
+        # ``base_dates`` — fall back to that so shared statistics / loading
+        # code keeps working without a special-case.
+        if "dates" in self.store:
+            return self.store["dates"][:]
+        return self.store["base_dates"][:]
+
+    @cached_property
+    def base_dates(self):
+        """Return the base-date (forecast initialisation time) array for
+        trajectories datasets."""
+        return self.store["base_dates"][:]
+
+    @cached_property
+    def steps(self):
+        """Return the forecast steps array for trajectories datasets."""
+        return self.store["steps"][:]
 
     @property
     def data(self):

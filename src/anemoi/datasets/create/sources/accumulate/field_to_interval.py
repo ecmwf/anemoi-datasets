@@ -11,7 +11,7 @@
 import datetime
 import logging
 
-from .covering_intervals import SignedInterval
+from anemoi.datasets.create.intervals import SignedInterval
 
 LOG = logging.getLogger(__name__)
 

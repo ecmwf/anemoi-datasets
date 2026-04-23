@@ -255,20 +255,51 @@ class Version:
         size : bool
             Whether to print the size of the dataset.
         """
+        is_trajectories = getattr(self.dataset, "steps", None) is not None
         print()
-        print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M")}')
-        print(f'📅 End        : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
-        print(f"⏰ Frequency  : {self.frequency}")
+        if is_trajectories:
+            from anemoi.utils.dates import frequency_to_string
+
+            def _fmt(dt64: np.datetime64) -> str:
+                return dt64.astype("datetime64[s]").astype(datetime.datetime).strftime("%Y-%m-%d %H:%M")
+
+            print(f"📅 Date start : {_fmt(self.dataset.start_date)}")
+            print(f"📅 Date end   : {_fmt(self.dataset.end_date)}")
+        else:
+            print(f'📅 Date      start: {self.first_date.strftime("%Y-%m-%d %H:%M")}')
+            print(f'📅 Date      end  : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
+            print(f"⏰ Frequency  : {self.frequency}")
         if self.n_missing_dates is not None:
             print(f"🚫 Missing    : {self.n_missing_dates:,}")
         print(f"🌎 Resolution : {self.resolution}")
         print(f"🌎 Field shape: {self.field_shape}")
 
-        print()
-        print(f"📅 Data start : {self.index_start_date}")
-        print(f"📅 Data end   : {self.index_end_date}")
-        if self.index_length is not None:
-            print(f"📇 Index size : {self.index_length:,}")
+        # Trajectories-specific base-date and step-axis summary
+        if is_trajectories:
+            try:
+                base_start = _fmt(self.dataset.base_start_date)
+                base_end = _fmt(self.dataset.base_end_date)
+                base_freq = frequency_to_string(self.dataset.base_frequency)
+                n_bases = len(self.dataset.base_dates)
+                print(f"⏱️  Base dates : {base_start} → {base_end} every {base_freq} ({n_bases})")
+
+                start_step = self.dataset.step_start
+                end_step = self.dataset.step_end
+                freq = self.dataset.step_frequency
+                freq_str = frequency_to_string(freq) if freq is not None else "irregular"
+                start_str = frequency_to_string(start_step)
+                end_str = frequency_to_string(end_step)
+                n_steps = len(self.dataset.steps)
+                print(f"⏱️  Steps      : {start_str} → {end_str}, every {freq_str} ({n_steps})")
+            except AttributeError:
+                pass
+
+        if not is_trajectories:
+            print()
+            print(f"📅 Data start : {self.index_start_date}")
+            print(f"📅 Data end   : {self.index_end_date}")
+            if self.index_length is not None:
+                print(f"📇 Index size : {self.index_length:,}")
 
         print()
         shape_str = "📐 Shape      : "

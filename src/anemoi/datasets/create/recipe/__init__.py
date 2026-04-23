@@ -22,6 +22,7 @@ from pydantic import model_validator
 from .build import Build
 from .output import GriddedOutput
 from .output import Output
+from .output import TrajectoriesOutput
 from .statistics import Statistics
 
 LOG = logging.getLogger(__name__)
@@ -39,6 +40,31 @@ DotDictField = Annotated[DotDict, BeforeValidator(validate_dotdict)]
 class Recipe(BaseModel):
 
     @model_validator(mode="after")
+    def _check_steps(self) -> "Recipe":
+        is_traj = isinstance(self.output, TrajectoriesOutput)
+        if is_traj and self.steps is None:
+            raise ValueError("'steps' is required when output layout is 'trajectories'")
+        if is_traj:
+            if self.base_dates is None:
+                raise ValueError(
+                    "'base_dates' is required when output layout is 'trajectories' "
+                    "(use 'base_dates:' instead of 'dates:')"
+                )
+            if self.dates is not None:
+                raise ValueError(
+                    "'dates' is not accepted for the 'trajectories' layout; "
+                    "use 'base_dates:' instead"
+                )
+        else:
+            if self.base_dates is not None:
+                raise ValueError(
+                    "'base_dates' is only accepted for the 'trajectories' layout"
+                )
+            if self.dates is None:
+                raise ValueError("'dates' is required")
+        return self
+
+    @model_validator(mode="after")
     def _post_init(self) -> "Recipe":
         # We need to call _post_init on nested BaseModel members
         # So that they can do their own post-initialization
@@ -54,8 +80,13 @@ class Recipe(BaseModel):
     licence: str = "unknown"
     attribution: str = "unknown"
 
-    dates: DotDictField
-    """The date configuration for the dataset."""
+    dates: DotDictField | None = None
+    """The date configuration for gridded and tabular datasets.  Mutually
+    exclusive with ``base_dates`` (which is the trajectories equivalent)."""
+
+    base_dates: DotDictField | None = None
+    """The base-date (forecast initialisation time) configuration for the
+    ``trajectories`` layout.  Mutually exclusive with ``dates``."""
 
     input: DotDictField
     """The input data sources configuration."""
@@ -75,6 +106,9 @@ class Recipe(BaseModel):
 
     statistics: Statistics = Statistics()
 
+    steps: DotDictField | None = None
+    """The steps configuration for trajectory datasets (start, end, frequency)."""
+
     env: dict[str, str] | None = Field(
         default=None,
         deprecated="Top-level 'env' is deprecated. Please use 'build.env' instead.",
@@ -83,7 +117,14 @@ class Recipe(BaseModel):
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
         defaults = Recipe(dates={}, input={}).model_dump()
-        return {key: data[key] for key in defaults.keys()}
+        result = {key: data[key] for key in defaults.keys()}
+        # Trajectory-only keys are omitted when unused, so gridded/tabular
+        # recipes keep the same metadata shape they had before these fields
+        # existed.
+        for key in ("base_dates", "steps"):
+            if result.get(key) is None:
+                result.pop(key, None)
+        return result
 
 
 def loader_recipe_from_yaml(path: str) -> dict:

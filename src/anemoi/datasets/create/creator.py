@@ -21,6 +21,7 @@ import numpy as np
 import tqdm
 import zarr
 from anemoi.utils.humanize import bytes_to_human
+from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
@@ -100,20 +101,24 @@ class Creator(ABC):
         for k, v in recipe.build.env.items():
             os.environ[k] = str(v)
 
-        format_type = recipe.output.format
+        format_type = recipe.output.layout
 
         LOG.info(f"Creating dataset with format: {format_type}")
 
         match format_type:
 
             case "gridded":
-                from .gridded.creator import GriddedCreator
+                from .gridded.creator import SimpleGriddedCreator
 
-                return GriddedCreator(recipe=recipe, **kwargs)
+                return SimpleGriddedCreator(recipe=recipe, **kwargs)
             case "tabular":
                 from .tabular.creator import TabularCreator
 
                 return TabularCreator(recipe=recipe, **kwargs)
+            case "trajectories":
+                from .trajectories.creator import TrajectoryGriddedCreator
+
+                return TrajectoryGriddedCreator(recipe=recipe, **kwargs)
             case _:
                 raise ValueError(f"Unknown format type: {format_type}")
 
@@ -134,7 +139,7 @@ class Creator(ABC):
         self.check_dataset_name(self.path)
 
         metadata = {}
-        self.fill_metadata(metadata)
+        self.collect_metadata(metadata)
         dataset.update_metadata(metadata)
 
         assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
@@ -156,7 +161,7 @@ class Creator(ABC):
     def initialise_dataset(self, dataset: Dataset) -> None:
         pass
 
-    def fill_metadata(self, metadata: dict) -> None:
+    def collect_metadata(self, metadata: dict) -> None:
         metadata["version"] = VERSION
         metadata["uuid"] = str(uuid.uuid4())
 
@@ -176,7 +181,6 @@ class Creator(ABC):
 
         model_dump = json.loads(model_dump)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
-
         # TODO: make it an option
         # recipe = sanitise(model_dump)
         recipe = model_dump
@@ -195,14 +199,6 @@ class Creator(ABC):
         metadata["start_date"] = str(self.groups.first_date())
         metadata["last_date"] = str(self.groups.last_date())
 
-        #####
-        # Call subclass
-        self.collect_metadata(metadata)
-
-    @abstractmethod
-    def collect_metadata(self, metadata: dict) -> None:
-        pass
-
     ######################################################
     # Main loading loop
     ######################################################
@@ -215,7 +211,6 @@ class Creator(ABC):
         filter = PartFilter(parts=self.parts, total=total)
 
         for i, group in enumerate(self.groups):
-
             if not filter(i):
                 continue
 
@@ -353,8 +348,7 @@ class Creator(ABC):
     @cached_property
     def minimal_input(self) -> Any:
         """Return a minimal input selection for a single date."""
-        one_date = self.groups.one_date()
-        return self.input.select(self.context(), one_date)
+        return self.input.select(self.context(), self.groups.one_date())
 
     @cached_property
     def input(self) -> InputBuilder:
