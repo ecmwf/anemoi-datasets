@@ -95,9 +95,7 @@ def write_accumulated_forecast_field(
     end_step = (valid_date - basetime).total_seconds() / 3600
     start_step = (valid_date - basetime - period).total_seconds() / 3600
     if not (end_step.is_integer() and start_step.is_integer()):
-        raise ValueError(
-            f"Trajectory accumulation requires integer-hour steps; got start={start_step}, end={end_step}"
-        )
+        raise ValueError(f"Trajectory accumulation requires integer-hour steps; got start={start_step}, end={end_step}")
     end_step = int(end_step)
     start_step = int(start_step)
 

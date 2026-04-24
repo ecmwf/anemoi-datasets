@@ -27,7 +27,14 @@ class Accumulator:
     values: NDArray | None = None
     locked: bool = False
 
-    def __init__(self, valid_date: datetime.datetime, period: datetime.timedelta, key: dict[str, Any], coverage, basetime: datetime.datetime | None = None):
+    def __init__(
+        self,
+        valid_date: datetime.datetime,
+        period: datetime.timedelta,
+        key: dict[str, Any],
+        coverage,
+        basetime: datetime.datetime | None = None,
+    ):
         # The accumulator only accumulates fields and does not know about the rest
         # Accumulator object for a given param/member/valid_date
 

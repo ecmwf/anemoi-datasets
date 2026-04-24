@@ -126,10 +126,7 @@ class ForecastCovering(Covering):
 
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
         if accumulation not in _VALID_ACCUMULATIONS:
-            raise ValueError(
-                f"Invalid accumulation {accumulation!r}; "
-                f"expected one of {_VALID_ACCUMULATIONS}"
-            )
+            raise ValueError(f"Invalid accumulation {accumulation!r}; " f"expected one of {_VALID_ACCUMULATIONS}")
         self.period = period
         self.accumulation = accumulation
 
@@ -162,9 +159,7 @@ class ForecastCovering(Covering):
                 f"(step_start={step_start_h}h); not supported in v1."
             )
         if step_end_h <= step_start_h:
-            raise ValueError(
-                f"Window {start}..{end} has non-positive length relative to basetime {basetime}."
-            )
+            raise ValueError(f"Window {start}..{end} has non-positive length relative to basetime {basetime}.")
 
         if self.accumulation == "from-zero":
             covering: list[SignedInterval] = []

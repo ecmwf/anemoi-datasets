@@ -21,7 +21,6 @@ from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.dispatch import for_intervals
 from anemoi.datasets.create.dispatch import for_valid_dates
-from anemoi.datasets.create.types import DateList
 
 from ..source import Source
 from . import source_registry

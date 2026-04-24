@@ -7,11 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from abc import abstractmethod
 import glob
 import logging
 import os
 import time
+from abc import abstractmethod
 from typing import Any
 
 import numpy as np
@@ -31,6 +31,7 @@ from ..statistics import StatisticsCollector
 from .context import SimpleGriddedContext
 
 LOG = logging.getLogger(__name__)
+
 
 class GriddedCreator(Creator):
 
@@ -112,7 +113,6 @@ class GriddedCreator(Creator):
     @abstractmethod
     def initialise_dataset(self, dataset) -> None:
         pass
-
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
         """Load the result into the dataset."""
@@ -333,6 +333,7 @@ class GriddedCreator(Creator):
         LOG.info("Computing statistics for the full dataset")
         collector = self._compute_partial_statistics(dataset, 0, len(dataset.dates))
         collector.add_to_dataset(dataset)
+
 
 class SimpleGriddedCreator(GriddedCreator):
     def context(self):

@@ -60,7 +60,6 @@ def patch_groupby_keys(group_by: dict | None = None):
         return group_by
 
 
-
 @source_registry.register("accumulate")
 class AccumulateSource(Source):
 
@@ -106,9 +105,9 @@ class AccumulateSource(Source):
     def _prepare_source(self):
         """Validate source config and apply MARS defaults."""
         source = self.source
-        assert isinstance(source, dict) and len(source) == 1, (
-            f"Source must have exactly one key, got {list(source.keys())}"
-        )
+        assert (
+            isinstance(source, dict) and len(source) == 1
+        ), f"Source must have exactly one key, got {list(source.keys())}"
         source_name, source_config = next(iter(source.items()))
         if source_name == "mars":
             if "type" not in source_config:
@@ -209,8 +208,11 @@ class AccumulateSource(Source):
                 accumulator_key = (*target, key)
                 if accumulator_key not in accumulators:
                     accumulators[accumulator_key] = Accumulator(
-                        vdate, period=self.period, key=key,
-                        coverage=coverages[target], basetime=basetime,
+                        vdate,
+                        period=self.period,
+                        key=key,
+                        coverage=coverages[target],
+                        basetime=basetime,
                     )
 
                 acc = accumulators[accumulator_key]

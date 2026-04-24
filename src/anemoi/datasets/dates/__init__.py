@@ -498,10 +498,7 @@ class TrajectoryDates(DatesProvider):
     def __repr__(self) -> str:
         bt0, st0 = self.values[0]
         btN, stN = self.values[-1]
-        return (
-            f"{self.__class__.__name__}(basetimes={bt0}..{btN}, "
-            f"steps={st0}..{stN}, pairs={len(self.values)})"
-        )
+        return f"{self.__class__.__name__}(basetimes={bt0}..{btN}, " f"steps={st0}..{stN}, pairs={len(self.values)})"
 
 
 if __name__ == "__main__":

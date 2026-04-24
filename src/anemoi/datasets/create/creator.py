@@ -21,7 +21,6 @@ import numpy as np
 import tqdm
 import zarr
 from anemoi.utils.humanize import bytes_to_human
-from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder

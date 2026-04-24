@@ -51,15 +51,10 @@ class Recipe(BaseModel):
                     "(use 'base_dates:' instead of 'dates:')"
                 )
             if self.dates is not None:
-                raise ValueError(
-                    "'dates' is not accepted for the 'trajectories' layout; "
-                    "use 'base_dates:' instead"
-                )
+                raise ValueError("'dates' is not accepted for the 'trajectories' layout; " "use 'base_dates:' instead")
         else:
             if self.base_dates is not None:
-                raise ValueError(
-                    "'base_dates' is only accepted for the 'trajectories' layout"
-                )
+                raise ValueError("'base_dates' is only accepted for the 'trajectories' layout")
             if self.dates is None:
                 raise ValueError("'dates' is required")
         return self

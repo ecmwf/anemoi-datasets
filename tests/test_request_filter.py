@@ -52,9 +52,7 @@ class TestRequestFilterWildcard:
         assert not f.keep("20200102", "0000")
 
     def test_wildcard_date_and_time(self) -> None:
-        f, cleaned = RequestFilter.extract(
-            {"date": "????-??-01", "time": 0, "param": "2t"}
-        )
+        f, cleaned = RequestFilter.extract({"date": "????-??-01", "time": 0, "param": "2t"})
         assert "date" not in cleaned
         assert "time" not in cleaned
         assert cleaned == {"param": "2t"}
@@ -63,9 +61,7 @@ class TestRequestFilterWildcard:
         assert not f.keep("20200102", "0000")  # date fails
 
     def test_wildcard_date_time_list(self) -> None:
-        f, _ = RequestFilter.extract(
-            {"date": "????????", "time": [0, 1200]}
-        )
+        f, _ = RequestFilter.extract({"date": "????????", "time": [0, 1200]})
         assert f.time == frozenset({"0000", "1200"})
         assert f.keep("20200101", "0000")
         assert f.keep("20200101", "1200")

@@ -228,7 +228,8 @@ class Dataset:
     @cached_property
     def base_dates(self):
         """Return the base-date (forecast initialisation time) array for
-        trajectories datasets."""
+        trajectories datasets.
+        """
         return self.store["base_dates"][:]
 
     @cached_property

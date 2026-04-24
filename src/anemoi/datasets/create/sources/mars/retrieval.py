@@ -25,7 +25,6 @@ from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 
-
 # ---------------------------------------------------------------------------
 # MARS key whitelist
 # ---------------------------------------------------------------------------

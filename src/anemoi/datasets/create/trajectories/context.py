@@ -24,9 +24,9 @@ LOG = logging.getLogger(__name__)
 
 class Steps:
     def __init__(self, steps: dict):
-        start = frequency_to_timedelta(steps['start'])
-        end = frequency_to_timedelta(steps['end'])
-        frequency = frequency_to_timedelta(steps['frequency'])
+        start = frequency_to_timedelta(steps["start"])
+        end = frequency_to_timedelta(steps["end"])
+        frequency = frequency_to_timedelta(steps["frequency"])
         self.steps = np.arange(start, end + frequency, frequency)
 
     def __len__(self):

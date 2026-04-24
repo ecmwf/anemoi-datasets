@@ -90,8 +90,7 @@ class FromTrajectoriesSource(Source):
 
         if len(source_config) != 1:
             raise ValueError(
-                f"from-trajectories: 'source' must be a single-key dict, "
-                f"got keys: {list(source_config.keys())}"
+                f"from-trajectories: 'source' must be a single-key dict, " f"got keys: {list(source_config.keys())}"
             )
 
         from anemoi.datasets.create.sources import create_source

@@ -35,10 +35,7 @@ def _reject_filters(requests: list[dict[str, Any]], context_label: str) -> None:
     for r in requests:
         filter_, _ = RequestFilter.extract(r)
         if not filter_.is_empty:
-            raise ValueError(
-                f"Wildcard 'date' filters are not supported in "
-                f"{context_label} mars blocks."
-            )
+            raise ValueError(f"Wildcard 'date' filters are not supported in " f"{context_label} mars blocks.")
 
 
 # TODO: there is some code duplication between here and FDB source, might be reduced

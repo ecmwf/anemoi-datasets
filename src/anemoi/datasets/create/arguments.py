@@ -43,7 +43,6 @@ import datetime
 from typing import Any
 from typing import Callable
 
-
 # ---------------------------------------------------------------------------
 # Base class
 # ---------------------------------------------------------------------------
@@ -89,9 +88,7 @@ class ValidDates(Argument):
 
         return Intervals(self.dates, [SignedInterval(d - period, d) for d in self.dates])
 
-    def with_basetime(
-        self, basetime_of: Callable[[datetime.datetime], datetime.datetime]
-    ) -> "ForecastDates":
+    def with_basetime(self, basetime_of: Callable[[datetime.datetime], datetime.datetime]) -> "ForecastDates":
         """Attach a model-run time to each instant.
 
         Parameters
@@ -233,9 +230,7 @@ class Intervals(ValidDates):
         r["step"] = step
         return interval.max, r, step
 
-    def with_basetime(
-        self, basetime_of: Callable[[datetime.datetime], datetime.datetime]
-    ) -> "ForecastIntervals":
+    def with_basetime(self, basetime_of: Callable[[datetime.datetime], datetime.datetime]) -> "ForecastIntervals":
         """Attach a model-run time to each window.
 
         Parameters

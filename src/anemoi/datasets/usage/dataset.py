@@ -488,10 +488,7 @@ class Dataset(ABC, Sized):
             indices = [i for i in indices if (td[i] - base) % freq == datetime.timedelta(0)]
 
         if not indices:
-            raise ValueError(
-                f"No steps found in range [{lo}, {hi}] with frequency {freq}. "
-                f"Available steps: {td}"
-            )
+            raise ValueError(f"No steps found in range [{lo}, {hi}] with frequency {freq}. " f"Available steps: {td}")
         return indices
 
     def _base_dates_to_indices(

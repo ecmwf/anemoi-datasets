@@ -166,14 +166,12 @@ class TrajectoryGriddedCreator(GriddedCreator):
         base_dates_from_provider, steps_from_provider = provider.factorise()
 
         all_basetimes = dataset.base_dates  # numpy datetime64[s] – authoritative
-        all_steps = dataset.steps           # numpy timedelta64  – authoritative
+        all_steps = dataset.steps  # numpy timedelta64  – authoritative
 
-        assert np.array_equal(np.array(base_dates_from_provider, dtype="datetime64[s]"), all_basetimes), (
-            "provider.factorise() base_dates do not match dataset.base_dates"
-        )
-        assert np.array_equal(steps_from_provider, all_steps), (
-            "provider.factorise() steps do not match dataset.steps"
-        )
+        assert np.array_equal(
+            np.array(base_dates_from_provider, dtype="datetime64[s]"), all_basetimes
+        ), "provider.factorise() base_dates do not match dataset.base_dates"
+        assert np.array_equal(steps_from_provider, all_steps), "provider.factorise() steps do not match dataset.steps"
 
         variables = list(dataset.get_metadata("variables"))
         var_to_idx = {v: i for i, v in enumerate(variables)}
@@ -228,9 +226,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
                 var_idx = var_to_idx.get(var_name)
                 if var_idx is None:
-                    raise ValueError(
-                        f"Trajectories: field variable {var_name!r} not in dataset variables"
-                    )
+                    raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
 
                 array[(date_idx, var_idx, ens_idx, step_idx)] = data
 

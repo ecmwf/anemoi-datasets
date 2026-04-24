@@ -138,6 +138,7 @@ class TabularOutput(OutputBase):
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
 
+
 class TrajectoriesOutput(OutputBase):
     """Output configuration for trajectory datasets.
 

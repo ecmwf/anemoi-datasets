@@ -103,8 +103,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
             break
     if variables_axis_idx is None:
         raise ValueError(
-            f"Could not find variables axis among {list(cube.user_coords.keys())}; "
-            f"variables={variables}"
+            f"Could not find variables axis among {list(cube.user_coords.keys())}; " f"variables={variables}"
         )
 
     # We hold the first axis fixed (so we only walk one "row" of the cube) and
