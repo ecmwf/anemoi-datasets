@@ -73,18 +73,21 @@ class DWDSYNOPSource(Source):
             df = df[
                 ["varno",
                  "veri_data",
+                 "veri_description",
                  "obs",
                  "level",
                  "time",
                  "lon",
                  "lat",
                  "fr_land",
-                 # "statid",
                  "r_state",
                  "sso_stdh",
                  "z_station"
                 ]
             ]
+
+            first_guess_value = df["veri_description"].values[0]
+            df = df[df["veri_description"] == first_guess_value]
 
             # rename to model , key is used later for idexing/pivoting
             df = df.rename(
@@ -107,20 +110,20 @@ class DWDSYNOPSource(Source):
                     "lon",
                     "lat",
                     "fr_land",
-                    # "statid",
                     "r_state",
                     "sso_stdh",
-                    "z_station"
+                    "z_station",
+                    # "veri_description",
                 ],
                 columns='vname', values=['obs', 'model']).reset_index(
                 [
                     "time", "lat", "lon", 
                     "level",
                     "fr_land",
-                     # "statid",
                      "r_state",
                      "sso_stdh",
-                     "z_station"
+                     "z_station", 
+                    # "veri_description",
                 ])
             # flatten MultiIndex columns
             df_wide.columns = [f"{var}_{val}" if var else val for val, var in df_wide.columns]
