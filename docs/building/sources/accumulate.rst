@@ -1,3 +1,5 @@
+.. _sources-accumulate:
+
 ###############
  accumulate
 ###############
@@ -10,7 +12,11 @@
    - The parameter ``accumulation_period`` has been renamed to ``period``.
    - The source can be now different from ``mars`` (e.g., ``mars``, ``grib-index``)
      it must now be explicitly specified as a nested dictionary under the ``source`` key.
-   - The available accumulation intervals must now be specified using the ``availability`` key.
+   - The available accumulation intervals used to be specified using an
+     ``availability`` key. That key is now **deprecated** and replaced by
+     the discriminator form ``covering: { auto: <value> }`` (see below).
+     The ``anemoi datasets recipe migrate`` command rewrites old recipes
+     automatically.
 
 Accumulations and flux variables, such as precipitation, are often
 forecast fields, which are archived for a given base date (or reference
@@ -31,9 +37,14 @@ The ``accumulate`` source requires the following parameters:
   This can be specified as a string with units ``"6h"``.
   Periods shorter than one hour such as ``"30min"`` are not supported yet.
 - **source**: The data source configuration. Currently only ``mars`` and ``grib-index`` sources are supported.
-- **availability**: Information about how accumulations are stored in
-  the data source. This allows the package to determine which intervals to use
-  for reconstructing the requested accumulation period (see below).
+- **covering**: Information about how accumulations are stored in the
+  data source, in discriminator form. The current form is
+  ``covering: { auto: <value> }`` where ``<value>`` accepts the four
+  shapes described under `Specifying covering of accumulation intervals`_
+  below. The legacy key name ``availability:`` is accepted for one
+  release with a ``DeprecationWarning``.
+- **accumulation** (trajectory recipes only): one of ``from-zero`` or
+  ``from-previous-step``; see `Forecast accumulations (trajectory recipes)`_.
 - **patch** (optional): Patches to apply to fields returned by the source to fix metadata issues.
   Default patching is to set ``startStep`` to ``0`` when ``startStep==endStep``.
 
@@ -48,8 +59,34 @@ The ``accumulate`` source requires the following parameters:
      **If the metadata is incomplete or inconsistent, the package may produce incorrect results.**
 
 
-Specifying the ``availability`` of accumulation intervals
-=========================================================
+Specifying covering of accumulation intervals
+=============================================
+
+.. note::
+
+   The recipe key has been renamed from ``availability`` to ``covering``
+   and now takes a discriminator form:
+
+   .. code:: yaml
+
+      accumulate:
+        period: 6h
+        covering: {auto: <value>}
+        source: {mars: {...}}
+
+   All four value shapes documented below are passed as the ``auto:``
+   discriminator value. Other discriminators (``cycle:``) are reserved
+   for future use; the ``forecast:`` discriminator is explicitly
+   rejected — forecast accumulations are selected implicitly by using
+   ``accumulate:`` inside a trajectory recipe (see
+   `Forecast accumulations (trajectory recipes)`_). The legacy
+   ``availability:`` key is accepted for one release with a
+   ``DeprecationWarning``.
+
+Historical note: the section and examples below still use the word
+"availability" for the value shapes, which is correct — the covering
+layer is the strategy that *uses* the availability description to pick
+intervals.
 
 Data accumulation methods differ between datasets. Two common methods are to
 accumulate data either from the start of the forecast or from the previous time step.
@@ -162,6 +199,58 @@ Note that ``date,time,step`` should be ignored by default.
 
 .. literalinclude:: yaml/accumulations-mars-groupby.yaml
    :language: yaml
+
+
+Forecast accumulations (trajectory recipes)
+===========================================
+
+Inside a :ref:`trajectory recipe <layouts-trajectories>`, ``accumulate:``
+produces per-step accumulation fields anchored on the caller-imposed
+basetime. The ``covering:`` key used in archive accumulations is **not**
+used; the covering is determined by the basetime and a new flag:
+
+- **accumulation**: required; one of ``from-zero`` or
+  ``from-previous-step``.
+
+  -  ``from-zero`` — the archive stores accumulations from the basetime
+     (``a(0, step)``). A window ``[bt + sA, bt + sE]`` is built as
+     ``+a(0, sE) − a(0, sA)``.
+  -  ``from-previous-step`` — the archive stores per-step increments
+     (``a(step − period, step)``). The window is a single interval.
+
+If ``accumulation:`` is omitted in a trajectory recipe, the source
+raises an error at build time. Conversely, declaring
+``covering: { forecast: ... }`` explicitly is **not supported** — the
+forecast branch is selected by the pipeline's argument type, not by the
+recipe.
+
+Example (extracted from ``tests/create/trajectories_accumulation.yaml``):
+
+.. code:: yaml
+
+   base_dates: {start: 2021-01-01, end: 2021-01-03, frequency: 12h}
+   steps:      {start: 6, end: 30, frequency: 3h}
+
+   input:
+     join:
+       - pipe:
+           - accumulate:
+               period: 1h
+               accumulation: from-zero
+               source:
+                 mars:
+                   type: fc
+                   expver: "0001"
+                   class: od
+                   grid: 20./20.
+                   param: [tp]
+                   levtype: sfc
+                   stream: oper
+           - rename:
+               param: {tp: tp_accum_1h}
+
+   output:
+     layout: trajectories
 
 
 .. [1]
