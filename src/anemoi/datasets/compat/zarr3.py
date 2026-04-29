@@ -10,6 +10,8 @@
 
 import zarr
 
+# Export Group for compatibility - in zarr 3, Group is in zarr.core.group
+ZarrGroup = zarr.Group
 ZarrFileNotFoundError = FileNotFoundError
 zarr_append_mode = "a"
 

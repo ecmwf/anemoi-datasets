@@ -18,6 +18,7 @@ if zarr_version < 3:
     from .zarr2 import HTTPStore
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
+    from .zarr2 import ZarrGroup
     from .zarr2 import zarr_append_mode
 
     MemoryStore = zarr.storage.MemoryStore
@@ -26,6 +27,7 @@ else:
     from .zarr3 import HTTPStore
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
+    from .zarr3 import ZarrGroup
     from .zarr3 import zarr_append_mode
 
     MemoryStore = zarr.storage.MemoryStore
@@ -36,6 +38,7 @@ __all__ = [
     "S3Store",
     "DebugStore",
     "MemoryStore",
+    "ZarrGroup",
     "zarr_append_mode",
     "zarr_version",
     "zarr_private_files",

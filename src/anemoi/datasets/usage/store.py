@@ -25,6 +25,7 @@ from anemoi.datasets.compat import DebugStore
 from anemoi.datasets.compat import HTTPStore
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import ZarrGroup
 from anemoi.datasets.usage.analytics import collect_analytics
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
@@ -163,7 +164,7 @@ def open_zarr_store(
     return_path: bool = False,
     quiet: bool = False,
     print_analytics_only=False,
-) -> zarr.hierarchy.Group | str:
+) -> ZarrGroup | str:
     """Open a zarr store by name."""
     path = dataset_lookup(name, fail=fail)
 

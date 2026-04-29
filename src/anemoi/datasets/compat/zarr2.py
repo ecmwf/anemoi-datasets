@@ -13,6 +13,8 @@ import warnings
 import zarr
 from zarr.hierarchy import Group
 
+# Export Group for compatibility
+ZarrGroup = Group
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
 zarr_append_mode = "w+"
 
