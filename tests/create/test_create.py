@@ -87,7 +87,9 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
 
     import requests
 
-    with patch("earthkit.data.from_source", load_source):
+    with patch("earthkit.data.from_source", load_source), patch(
+        "anemoi.datasets.create.sources.mars.from_source", load_source
+    ):
         from anemoi.datasets.create.creator import VERSION
 
         recipe = os.path.join(HERE, name + ".yaml")
