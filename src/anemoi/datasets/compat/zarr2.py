@@ -11,7 +11,7 @@ import os
 import warnings
 
 import zarr
-from zarr.hierarchy import Group
+from zarr import Group
 
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
 zarr_append_mode = "w+"
