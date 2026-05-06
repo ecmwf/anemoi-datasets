@@ -16,6 +16,7 @@ from anemoi.transform.fields import new_fieldlist_from_list
 
 from anemoi.datasets.create.input.repeated_dates import DateMapper
 from anemoi.datasets.create.source import Source
+from anemoi.datasets.create.source import reject_trajectory_dates
 from anemoi.datasets.create.sources import source_registry
 
 LOG = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class RepeatedDatesSource(Source):
         self.source = source
 
     def execute(self, group_of_dates):
+        reject_trajectory_dates(group_of_dates, type(self).__name__)
 
         result = []
         for one_date_group, many_dates_group in self.mapper.transform(self.context, group_of_dates):

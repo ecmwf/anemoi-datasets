@@ -119,6 +119,16 @@ class _MultiDispatch:
                     return method(obj, argument)
 
             registered = [t.__name__ for t in registry]
+
+            from anemoi.datasets.create.arguments import ForecastDates
+            from anemoi.datasets.create.arguments import ForecastIntervals
+
+            if isinstance(argument, (ForecastDates, ForecastIntervals)):
+                raise NotImplementedError(
+                    f"'{obj_class_name}' does not support the trajectory layout. "
+                    f"Received {arg_type.__name__} but this source only handles: {registered}."
+                )
+
             raise TypeError(
                 f"{obj_class_name}.execute() has no overload for argument type "
                 f"'{arg_type.__name__}'. Registered: {registered}"

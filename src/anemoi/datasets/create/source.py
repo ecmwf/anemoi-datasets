@@ -15,6 +15,22 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 
+def reject_trajectory_dates(dates, source_name):
+    """Raise ``NotImplementedError`` if *dates* are trajectory dates.
+
+    Call this at the top of ``execute()`` in sources that do not support
+    the trajectory layout.
+    """
+    from anemoi.datasets.create.arguments import ForecastDates
+    from anemoi.datasets.create.arguments import ForecastIntervals
+
+    if isinstance(dates, (ForecastDates, ForecastIntervals)):
+        raise NotImplementedError(
+            f"'{source_name}' does not support the trajectory layout. "
+            f"Received {type(dates).__name__} but this source only handles plain dates (ValidDates)."
+        )
+
+
 class Source(ABC):
     """Represents a data source with a given context."""
 
