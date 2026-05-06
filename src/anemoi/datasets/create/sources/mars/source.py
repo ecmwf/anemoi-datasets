@@ -14,10 +14,6 @@ from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.dispatch import for_forecast_dates
-from anemoi.datasets.create.dispatch import for_forecast_intervals
-from anemoi.datasets.create.dispatch import for_intervals
-from anemoi.datasets.create.dispatch import for_valid_dates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
@@ -48,8 +44,7 @@ class MarsSource(Source):
         self.args = args
         self.kwargs = kwargs
 
-    @for_valid_dates
-    def execute(self, dates: ValidDates) -> Any:
+    def execute_valid_dates(self, dates: ValidDates) -> Any:
         """Handle instant analysis / reanalysis requests."""
         if not dates.dates:
             # No validity dates: the request already encodes its own date
@@ -65,8 +60,7 @@ class MarsSource(Source):
             self.context, dates.dates, *self.args, use_cdsapi_dataset=self.use_cdsapi_dataset, **self.kwargs
         )
 
-    @for_forecast_dates
-    def execute(self, dates: ForecastDates) -> Any:
+    def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (basetime, valid_time) requests — trajectories / step products."""
         base_requests = list(self.args) or [self.kwargs]
         _reject_filters(base_requests, "forecast-date")
@@ -83,8 +77,7 @@ class MarsSource(Source):
         self.context.trace("🛰️", f"Forecast dates: {len(dates)} items → {len(per_item_requests)} requests")
         return fire_prebuilt_requests(self.context, per_item_requests, self.use_cdsapi_dataset)
 
-    @for_intervals
-    def execute(self, dates: Intervals) -> Any:
+    def execute_intervals(self, dates: Intervals) -> Any:
         """Handle archive-resolved interval requests from AccumulateSource."""
         base_requests = list(self.args) or [self.kwargs]
         _reject_filters(base_requests, "accumulation")
@@ -105,8 +98,7 @@ class MarsSource(Source):
         self.context.trace("🌧️", f"Total requests: {len(per_interval_requests)}")
         return fire_prebuilt_requests(self.context, per_interval_requests, self.use_cdsapi_dataset)
 
-    @for_forecast_intervals
-    def execute(self, dates: ForecastIntervals) -> Any:
+    def execute_forecast_intervals(self, dates: ForecastIntervals) -> Any:
         """Handle forecast (trajectory) accumulation requests.
 
         One MARS request per ``(valid_time, basetime, SignedInterval)``

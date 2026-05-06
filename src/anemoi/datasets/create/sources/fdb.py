@@ -19,8 +19,6 @@ from anemoi.transform.grids import grid_registry
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.dispatch import for_intervals
-from anemoi.datasets.create.dispatch import for_valid_dates
 
 from ..source import Source
 from . import source_registry
@@ -83,8 +81,7 @@ class FdbSource(Source):
         self.offset_from_date = kwargs.pop("offset_from_date", None)
         self.step_zero_from_previous_date = kwargs.pop("step_zero_from_previous_date", False)
 
-    @for_valid_dates
-    def execute(self, dates: ValidDates) -> ekd.FieldList:
+    def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
         """Handle instant requests."""
         requests = []
         for date in dates:
@@ -92,8 +89,7 @@ class FdbSource(Source):
             requests.append(self.request | time_request)
         return self._execute_requests(requests)
 
-    @for_intervals
-    def execute(self, dates: Intervals) -> ekd.FieldList:
+    def execute_intervals(self, dates: Intervals) -> ekd.FieldList:
         """Handle archive-resolved interval requests from AccumulateSource."""
         requests = []
         for interval in dates.intervals:

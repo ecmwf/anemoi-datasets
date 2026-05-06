@@ -14,7 +14,6 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 from ..source import Source
-from ..source import reject_trajectory_dates
 from .xarray_support import XarrayFieldList
 from .xarray_support import load_many
 from .xarray_support import load_one
@@ -58,7 +57,7 @@ class XarraySourceBase(Source):
         self.args = args
         self.kwargs = kwargs
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def execute_valid_dates(self, dates: DateList) -> ekd.FieldList:
         """Execute the data loading process for the given dates.
 
         Parameters
@@ -71,8 +70,6 @@ class XarraySourceBase(Source):
         ekd.FieldList
             The loaded data fields.
         """
-
-        reject_trajectory_dates(dates, type(self).__name__)
 
         # For now, just a simple wrapper around load_many
         # TODO: move the implementation here

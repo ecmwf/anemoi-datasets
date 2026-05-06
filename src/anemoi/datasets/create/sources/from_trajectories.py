@@ -12,7 +12,7 @@
 Wraps any single forecast-aware source (``mars:``, ``fdb:``, …) and, for each
 validity time the pipeline asks for, picks a ``(basetime, step)`` pair that
 produces it.  The inner source is then invoked with a typed ``ForecastDates``
-argument and dispatches through ``@for_forecast_dates`` — no step injection
+argument and dispatches through ``execute_forecast_dates`` — no step injection
 into the config, no post-retrieval filtering.
 
 Recipe example::
@@ -56,7 +56,7 @@ class FromTrajectoriesSource(Source):
     matches the configured ``bases`` pattern and whose step is in the
     configured ``steps`` list.  The resulting ``ForecastDates`` is passed to
     the inner source, which is expected to dispatch on
-    ``@for_forecast_dates`` (as ``MarsSource`` does).
+    ``execute_forecast_dates`` (as ``MarsSource`` does).
 
     Parameters
     ----------

@@ -26,8 +26,6 @@ from earthkit.data.indexing.fieldlist import FieldArray
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.dispatch import for_intervals
-from anemoi.datasets.create.dispatch import for_valid_dates
 
 from ..source import Source
 from . import source_registry
@@ -613,14 +611,12 @@ class GribIndexSource(Source):
         self.grid = grid_registry.from_config(grid_definition) if grid_definition else None
         self.request = kwargs
 
-    @for_valid_dates
-    def execute(self, dates: ValidDates) -> FieldArray:
+    def execute_valid_dates(self, dates: ValidDates) -> FieldArray:
         """Retrieve grib-indexed fields for a list of validity times."""
         full_requests = [(list(dates), self.request)]
         return self._run_requests(full_requests)
 
-    @for_intervals
-    def execute(self, dates: Intervals) -> FieldArray:
+    def execute_intervals(self, dates: Intervals) -> FieldArray:
         """Retrieve grib-indexed fields covering accumulation windows.
 
         grib-index is valid-time indexed: each interval is resolved to its

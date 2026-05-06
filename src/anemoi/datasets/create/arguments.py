@@ -25,7 +25,7 @@ With basetime     ForecastDates             ForecastIntervals
 
 Inheritance:
     Intervals        ← ValidDates      (MRO fallback: sources that only register
-    ForecastIntervals ← ForecastDates   @for_valid_dates / @for_forecast_dates
+    ForecastIntervals ← ForecastDates   execute_valid_dates / execute_forecast_dates
                                         automatically handle the interval subtypes)
 
 Conversion helpers on each class let composite sources transform the caller's
@@ -166,8 +166,8 @@ class Intervals(ValidDates):
     """Archive-resolved accumulation windows.
 
     Subclass of ``ValidDates`` so that sources registering only
-    ``@for_valid_dates`` receive ``Intervals`` via MRO fallback.  Sources that
-    care about the period (e.g. ``MarsSource``) register ``@for_intervals``
+    ``execute_valid_dates`` receive ``Intervals`` via the default fallback.  Sources that
+    care about the period (e.g. ``MarsSource``) override ``execute_intervals``
     explicitly to build step-range requests.
 
     Each ``SignedInterval`` carries its own ``base_time`` (the model-run
@@ -203,7 +203,7 @@ class Intervals(ValidDates):
         Rewrites the request as a full ``date``/``time``/``step`` triplet
         anchored on the interval's model-run time. ``interval.base`` must be
         set; valid-time-indexed backends (grib_index) handle ``base=None``
-        intervals in their own ``@for_intervals`` overload rather than going
+        intervals in their own ``execute_intervals`` override rather than going
         through this helper.
 
         Parameters
@@ -220,7 +220,7 @@ class Intervals(ValidDates):
         """
         assert interval.base is not None, (
             f"Intervals.adjust_request requires a basetime; got {interval!r}. "
-            "Valid-time-indexed sources (e.g. grib_index) must override @for_intervals "
+            "Valid-time-indexed sources (e.g. grib_index) must override execute_intervals "
             "and not call this helper."
         )
         r = request.copy()
@@ -256,8 +256,8 @@ class ForecastIntervals(ForecastDates):
     """Forecast accumulations: ``(valid_time, basetime, period)`` items plus a flat list of intervals.
 
     Subclass of ``ForecastDates`` so that sources registering only
-    ``@for_forecast_dates`` receive ``ForecastIntervals`` via MRO fallback.
-    Sources that care about the period register ``@for_forecast_intervals``
+    ``execute_forecast_dates`` receive ``ForecastIntervals`` via the default fallback.
+    Sources that care about the period override ``execute_forecast_intervals``
     explicitly.
 
     Each ``SignedInterval`` already carries its ``base_time`` (the

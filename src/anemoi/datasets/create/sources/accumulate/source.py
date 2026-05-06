@@ -23,8 +23,6 @@ from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.dispatch import for_forecast_dates
-from anemoi.datasets.create.dispatch import for_valid_dates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
@@ -233,8 +231,7 @@ class AccumulateSource(Source):
 
     # ── dispatch branches ────────────────────────────────────────────
 
-    @for_valid_dates
-    def execute(self, dates: ValidDates) -> Any:
+    def execute_valid_dates(self, dates: ValidDates) -> Any:
         """Handle archive (validity-date) accumulations."""
         if self.covering is None:
             raise ValueError(
@@ -276,8 +273,7 @@ class AccumulateSource(Source):
 
         return self._finalise(accumulators, output, tmp)
 
-    @for_forecast_dates
-    def execute(self, dates: ForecastDates) -> Any:
+    def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations."""
         if self.accumulation is None:
             raise ValueError(

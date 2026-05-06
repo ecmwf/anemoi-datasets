@@ -15,7 +15,6 @@ from typing import Any
 from anemoi.datasets.create.input.context import Context
 
 from ..source import Source
-from ..source import reject_trajectory_dates
 
 LOG = logging.getLogger(__name__)
 
@@ -43,6 +42,5 @@ class LegacySource(Source):
     def _execute(context, *args, **kwargs):
         pass
 
-    def execute(self, dates: Any) -> Any:
-        reject_trajectory_dates(dates, type(self).__name__)
+    def execute_valid_dates(self, dates: Any) -> Any:
         return self._execute(self.context, dates, *self.args, **self.kwargs)

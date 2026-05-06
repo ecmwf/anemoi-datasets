@@ -15,8 +15,6 @@ from earthkit.data.indexing.fieldlist import SimpleFieldList
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.dispatch import for_forecast_dates
-from anemoi.datasets.create.dispatch import for_valid_dates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry
@@ -30,13 +28,11 @@ class ForcingsSource(Source):
         self.template = template
         self.param = param
 
-    @for_valid_dates
-    def execute(self, dates: ValidDates) -> Any:
+    def execute_valid_dates(self, dates: ValidDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
         return from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
 
-    @for_forecast_dates
-    def execute(self, dates: ForecastDates) -> Any:
+    def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
 
         valid_times = [vt for vt, _bt in dates]
