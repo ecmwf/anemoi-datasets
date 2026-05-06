@@ -121,6 +121,27 @@ class Recipe(BaseModel):
                 result.pop(key, None)
         return result
 
+    def make_groups(self):
+        """Build the appropriate Groups object for this recipe.
+
+        Returns
+        -------
+        Groups or TrajectoryGroups
+            Date groups matching the recipe output layout.
+        """
+        if isinstance(self.output, TrajectoriesOutput):
+            from anemoi.datasets.dates.groups import TrajectoryGroups
+
+            return TrajectoryGroups(
+                steps=self.steps,
+                group_by=self.build.group_by,
+                base_dates=self.base_dates,
+            )
+
+        from anemoi.datasets.dates.groups import Groups
+
+        return Groups(**self.dates, group_by=self.build.group_by)
+
 
 def loader_recipe_from_yaml(path: str) -> dict:
     """Load a dataset recipe from a YAML file.

@@ -35,11 +35,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
         pairs; basetimes and steps are recovered via
         :meth:`TrajectoryDates.factorise`.
         """
-        return TrajectoryGroups(
-            steps=self.recipe.steps,
-            group_by=self.recipe.build.group_by,
-            base_dates=self.recipe.base_dates,
-        )
+        return self.recipe.make_groups()
 
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
