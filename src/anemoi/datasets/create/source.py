@@ -69,8 +69,7 @@ class Source:
         if isinstance(argument, ValidDates):
             return self.execute_valid_dates(argument)
         raise TypeError(
-            f"{type(self).__name__}.execute() received unsupported argument type "
-            f"'{type(argument).__name__}'."
+            f"{type(self).__name__}.execute() received unsupported argument type " f"'{type(argument).__name__}'."
         )
 
     def execute_valid_dates(self, argument: "ValidDates") -> ekd.FieldList:
@@ -107,8 +106,7 @@ class Source:
             The output data.
         """
         raise NotImplementedError(
-            f"'{type(self).__name__}' does not support the trajectory layout "
-            f"(received {type(argument).__name__})."
+            f"'{type(self).__name__}' does not support the trajectory layout " f"(received {type(argument).__name__})."
         )
 
     def execute_intervals(self, argument: "Intervals") -> ekd.FieldList:
