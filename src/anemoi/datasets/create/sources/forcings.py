@@ -9,6 +9,7 @@
 
 from typing import Any
 
+from anemoi.transform.fields import new_field_with_metadata
 from earthkit.data import from_source
 from earthkit.data.indexing.fieldlist import SimpleFieldList
 
@@ -17,7 +18,6 @@ from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.dispatch import for_forecast_dates
 from anemoi.datasets.create.dispatch import for_valid_dates
 from anemoi.datasets.create.source import Source
-from anemoi.transform.fields import new_field_with_metadata
 
 from . import source_registry
 
