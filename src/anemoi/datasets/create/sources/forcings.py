@@ -10,33 +10,54 @@
 from typing import Any
 
 from earthkit.data import from_source
+from earthkit.data.indexing.fieldlist import SimpleFieldList
+
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.dispatch import for_forecast_dates
+from anemoi.datasets.create.dispatch import for_valid_dates
+from anemoi.datasets.create.source import Source
+from anemoi.transform.fields import new_field_with_metadata
 
 from . import source_registry
-from .legacy import LegacySource
 
 
 @source_registry.register("forcings")
-class ForcingsSource(LegacySource):
+class ForcingsSource(Source):
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], template: str, param: str) -> Any:
-        """Loads forcing data from a specified source.
+    def __init__(self, context: Any, template: Any, param: list[str]) -> None:
+        super().__init__(context)
+        self.template = template
+        self.param = param
 
-        Parameters
-        ----------
-        context : object
-            The context in which the function is executed.
-        dates : list
-            List of dates for which data is to be loaded.
-        template : FieldList
-            Template for the data source.
-        param : str
-            Parameter for the data source.
+    @for_valid_dates
+    def execute(self, dates: ValidDates) -> Any:
+        self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
+        return from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
 
-        Returns
-        -------
-        object
-            Loaded forcing data.
-        """
-        context.trace("✅", f"from_source(forcings, {template}, {param}")
-        return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
+    @for_forecast_dates
+    def execute(self, dates: ForecastDates) -> Any:
+        self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
+
+        valid_times = [vt for vt, _bt in dates]
+        fields = from_source("forcings", source_or_dataset=self.template, date=valid_times, param=self.param)
+
+        # Index forcing fields by valid_datetime for quick lookup
+        fields_by_vdt = {}
+        for f in fields:
+            fields_by_vdt.setdefault(f.metadata("valid_datetime"), []).append(f)
+
+        # For each (valid_time, basetime) pair, clone the forcing fields
+        # with the correct date/time/step metadata
+        result = []
+        for vt, bt in dates:
+            step_hours = int((vt - bt).total_seconds() // 3600)
+            meta = dict(
+                date=int(bt.strftime("%Y%m%d")),
+                time=int(bt.strftime("%H%M")),
+                step=step_hours,
+            )
+            for f in fields_by_vdt.get(vt.isoformat(), []):
+                result.append(new_field_with_metadata(f, **meta))
+
+        return SimpleFieldList(result)
