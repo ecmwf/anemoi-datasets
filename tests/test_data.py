@@ -14,6 +14,7 @@ from collections.abc import Callable
 from functools import cache
 from functools import wraps
 from typing import Any
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import numpy as np
@@ -29,6 +30,7 @@ from anemoi.datasets.misc.testing import default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.ensemble import Ensemble
+from anemoi.datasets.usage.gridded.grids import Cutout
 from anemoi.datasets.usage.gridded.grids import GridsBase
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.masked import Masking
@@ -1512,6 +1514,59 @@ def test_trim_edge_zeros() -> None:
         expected_field_shape = (15, 13)
         assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
         assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+
+def _make_cutout(n_lams=1, cropping_distance=2.0, neighbours=5, min_distance_km=None, max_distance_km=None):
+    """Build a Cutout instance with known masks, bypassing __init__."""
+    obj = object.__new__(Cutout)
+    obj.axis = 3
+    obj.cropping_distance = cropping_distance
+    obj.neighbours = neighbours
+    obj.min_distance_km = min_distance_km
+    obj.max_distance_km = max_distance_km
+    obj.lams = [MagicMock() for _ in range(n_lams)]
+    obj.masks = [np.array([True, False, True, True]) for _ in range(n_lams)]
+    obj.global_mask = np.array([False, True, True, False])
+    return obj
+
+
+def test_cutout_masks_save_load_roundtrip(tmp_path):
+    masks_path = tmp_path / "masks.npz"
+    original = _make_cutout(n_lams=2)
+    Cutout._save_cutout_masks(original, masks_path)
+
+    assert masks_path.exists()
+
+    loaded = _make_cutout(n_lams=2)
+    loaded.masks = []
+    loaded.global_mask = None
+    Cutout._load_cutout_masks(loaded, masks_path)
+
+    assert len(loaded.masks) == 2
+    for i in range(2):
+        np.testing.assert_array_equal(loaded.masks[i], original.masks[i])
+    np.testing.assert_array_equal(loaded.global_mask, original.global_mask)
+
+
+def test_cutout_masks_parameter_mismatch_raises(tmp_path):
+    masks_path = tmp_path / "masks.npz"
+    original = _make_cutout(cropping_distance=2.0)
+    Cutout._save_cutout_masks(original, masks_path)
+
+    different = _make_cutout(cropping_distance=99.0)
+    with pytest.raises(ValueError, match="Mismatch between user-provided masks"):
+        Cutout._load_cutout_masks(different, masks_path)
+
+
+def test_cutout_masks_file_has_correct_keys(tmp_path):
+    masks_path = tmp_path / "masks.npz"
+    obj = _make_cutout(n_lams=1)
+    Cutout._save_cutout_masks(obj, masks_path)
+
+    data = np.load(masks_path)
+    assert "lam_0" in data
+    assert "global" in data
+    assert "_params" in data
 
 
 if __name__ == "__main__":
