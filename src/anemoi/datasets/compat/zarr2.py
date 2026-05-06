@@ -11,7 +11,7 @@ import os
 import warnings
 
 import zarr
-from zarr.hierarchy import Group
+from zarr import Group
 
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
 zarr_append_mode = "w+"
@@ -76,6 +76,19 @@ class S3Store(_ReadOnlyStore):
             return get_object(os.path.join(self.url, key))
         except FileNotFoundError:
             raise KeyError(key)
+
+    def getitems(self, keys: list[str], **kwargs) -> dict[str, bytes]:
+        """Fetch multiple chunks in parallel — overrides Zarr's default
+        sequential getitems() for significantly higher throughput on S3.
+        """
+        from anemoi.utils.remote.s3 import get_objects_parallel
+
+        urls = [os.path.join(self.url, k) for k in keys]
+        results = get_objects_parallel(urls)
+        out = {}
+        for key, data in zip(keys, results):
+            out[key] = data
+        return out
 
 
 class DebugStore(_ReadOnlyStore):

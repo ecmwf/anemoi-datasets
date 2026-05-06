@@ -163,7 +163,7 @@ def open_zarr_store(
     return_path: bool = False,
     quiet: bool = False,
     print_analytics_only=False,
-) -> zarr.hierarchy.Group | str:
+) -> zarr.Group:
     """Open a zarr store by name."""
     path = dataset_lookup(name, fail=fail)
 
