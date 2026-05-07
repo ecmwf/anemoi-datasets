@@ -431,6 +431,9 @@ def compress_prebuilt_requests(
         for grid_key in ("grid", "rotation", "frame", "area", "bitmap", "resol"):
             if grid_key in r and isinstance(r[grid_key], (list, tuple)):
                 r[grid_key] = "/".join(str(x) for x in r[grid_key])
+        if r.get("class") == "od" and r.get("stream") == "oper":
+            if int(r.get("time", 0)) in (600, 1800):
+                r["stream"] = "scda"
         normalised.append(r)
 
     compressed = Availability(normalised)
