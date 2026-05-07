@@ -764,7 +764,13 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("lengths")[:]
+        # New format: 2D "shapes" array (n_groups, n_dims)
+        if "shapes" in build:
+            return build["shapes"][:, 0]
+        # Old format: 1D "lengths" array
+        if "lengths" in build:
+            return build["lengths"][:]
+        return None
 
 
 class Version0_14(Version0_13):

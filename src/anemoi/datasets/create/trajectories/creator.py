@@ -228,3 +228,16 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
     def context(self):
         return TrajectoryGriddedContext(self.recipe)
+
+    def group_shapes(self) -> list[tuple[int, ...]]:
+        """Return the shape of each group's footprint in the data array.
+
+        Each entry is ``(n_base_dates, n_steps)``.  The first element is
+        used by ``group_to_range`` to index axis 0.
+        """
+        shapes = []
+        for g in self.groups:
+            n_base_dates = len(set(bt for _, bt in g))
+            n_steps = len(set(vt - bt for vt, bt in g)) if len(g) > 0 else 0
+            shapes.append((n_base_dates, n_steps))
+        return shapes

@@ -147,10 +147,19 @@ class Creator(ABC):
         self.initialise_dataset(dataset)
 
         # Initialize progress tracking
-        dataset.initalise_done_flags(len(self.groups))
-        dataset.initalise_groups_lengths([len(g) for g in self.groups])
+        dataset.initialise_done_flags(len(self.groups))
+        dataset.initialise_group_shapes(self.group_shapes())
 
         dataset.touch()
+
+    def group_shapes(self) -> list[tuple[int, ...]]:
+        """Return the shape of each group's footprint in the data array.
+
+        Each entry is a tuple whose first element is the number of
+        entries along axis 0 of the data array.  Subclasses may add
+        extra dimensions (e.g. steps for trajectory datasets).
+        """
+        return [(len(g),) for g in self.groups]
 
     @abstractmethod
     def check_dataset_name(self, path: str) -> None:

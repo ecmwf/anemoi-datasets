@@ -166,10 +166,11 @@ class Dataset:
     ##################################
 
     def group_to_range(self, group: int) -> tuple[int, int]:
-        """Convert group indices to slice in the data array."""
+        """Convert group indices to slice in the data array's first axis."""
 
         with self.synchronizer:
-            lengths = self.store["_build"]["lengths"][:]
+            shapes = self.store["_build"]["shapes"][:]
+            lengths = shapes[:, 0]
             start = sum(lengths[:group])
             end = start + lengths[group]
             return (start, end)
@@ -184,16 +185,16 @@ class Dataset:
             self.store.attrs[name] = gather_provenance_info()
 
     # For statistics about
-    def initalise_groups_lengths(self, lengths: list[int]) -> None:
-        """Initialize the progress tracking datasets."""
+    def initialise_group_shapes(self, shapes: list[tuple[int, ...]]) -> None:
+        """Initialise the per-group shape tracking array."""
 
         self.add_array(
-            name="_build/lengths",
-            data=np.array(lengths, dtype=np.int64),
-            dimensions=("group",),
+            name="_build/shapes",
+            data=np.array(shapes, dtype=np.int64),
+            dimensions=("group", "dim"),
         )
 
-    def initalise_done_flags(self, groups: int) -> None:
+    def initialise_done_flags(self, groups: int) -> None:
         """Initialize the progress tracking datasets."""
 
         self.add_array(
