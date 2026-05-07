@@ -67,13 +67,14 @@ class SimpleGriddedContext(Context):
         """
         return SimpleGriddedResult(self, argument, data)
 
-    def matching_dates(self, filtering_dates: Any, group_of_dates: Any) -> GroupOfDates:
-        """Find dates that match between filtering_dates and group_of_dates.
+    def matching_dates(self, filters: dict, group_of_dates: Any) -> GroupOfDates:
+        """Find dates that match between filters and group_of_dates.
 
         Parameters
         ----------
-        filtering_dates : Any
-            The dates to filter by.
+        filters : dict
+            A dict mapping filter keys to DatesProvider objects.
+            Gridded layouts only support ``'dates'``.
         group_of_dates : Any
             The group of dates to compare against.
 
@@ -82,7 +83,14 @@ class SimpleGriddedContext(Context):
         GroupOfDates
             A GroupOfDates object containing the intersection of the two sets.
         """
+        unsupported = set(filters) - {"dates"}
+        if unsupported:
+            raise ValueError(
+                f"Gridded layout does not support filtering by {unsupported}. "
+                "Use 'dates' instead."
+            )
 
+        filtering_dates = filters["dates"]
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
 
     def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:

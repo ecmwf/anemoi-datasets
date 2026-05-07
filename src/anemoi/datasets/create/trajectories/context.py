@@ -74,26 +74,41 @@ class TrajectoryGriddedContext(Context):
     def create_result(self, argument: Any, data: Any) -> TrajectoryGriddedResult:
         return TrajectoryGriddedResult(self, argument, data)
 
-    def matching_dates(self, filtering_dates: Any, group_of_dates: Any) -> Any:
-        """Find dates that match between filtering_dates and group_of_dates.
+    def matching_dates(self, filters: dict, group_of_dates: Any) -> Any:
+        """Find dates that match between filters and group_of_dates.
 
         Parameters
         ----------
-        filtering_dates : Any
-            The dates to filter by.
+        filters : dict
+            A dict mapping filter keys to DatesProvider objects.
+            Trajectory layouts support ``'base_dates'`` and ``'steps'``.
         group_of_dates : ForecastDates
             The ``(valid_time, basetime)`` pairs for this group.
 
         Returns
         -------
         ForecastDates
-            A ForecastDates containing only the pairs whose basetime is in
-            ``filtering_dates``.
+            A ForecastDates containing only the matching pairs.
         """
+        unsupported = set(filters) - {"base_dates", "steps"}
+        if unsupported:
+            raise ValueError(
+                f"Trajectory layout does not support filtering by {unsupported}. "
+                "Use 'base_dates' and/or 'steps' instead."
+            )
+
         from anemoi.datasets.create.arguments import ForecastDates
 
-        filter_set = set(filtering_dates)
-        matched = [(vt, bt) for vt, bt in group_of_dates if bt in filter_set]
+        matched = list(group_of_dates)
+
+        if "base_dates" in filters:
+            base_dates_set = set(filters["base_dates"])
+            matched = [(vt, bt) for vt, bt in matched if bt in base_dates_set]
+
+        if "steps" in filters:
+            steps_set = set(filters["steps"])
+            matched = [(vt, bt) for vt, bt in matched if (vt - bt) in steps_set]
+
         return ForecastDates(matched)
 
     def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
