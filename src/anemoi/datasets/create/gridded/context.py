@@ -85,10 +85,7 @@ class SimpleGriddedContext(Context):
         """
         unsupported = set(filters) - {"dates"}
         if unsupported:
-            raise ValueError(
-                f"Gridded layout does not support filtering by {unsupported}. "
-                "Use 'dates' instead."
-            )
+            raise ValueError(f"Gridded layout does not support filtering by {unsupported}. " "Use 'dates' instead.")
 
         filtering_dates = filters["dates"]
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)

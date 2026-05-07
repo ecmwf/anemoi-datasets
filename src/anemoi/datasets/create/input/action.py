@@ -91,9 +91,7 @@ class Concat(Action):
                         filters[key] = DatesProvider.from_config(**item[key])
 
             if not filters:
-                raise ValueError(
-                    f"Concat entry must have at least one of {self.FILTER_KEYS}."
-                )
+                raise ValueError(f"Concat entry must have at least one of {self.FILTER_KEYS}.")
 
             action_config = {k: v for k, v in item.items() if k not in self.FILTER_KEYS}
             action = action_factory(action_config, *self.path, str(i))
