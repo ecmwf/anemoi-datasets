@@ -22,6 +22,7 @@ The commands are:
 - :ref:`Scan Command <scan_command>`
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
+- :ref:`Extract Command <extract_command>`
 
 
 
