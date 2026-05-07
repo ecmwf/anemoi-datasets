@@ -40,3 +40,4 @@ The commands are:
    cli/patch
    cli/compare-lam
    cli/validate
+   cli/extract

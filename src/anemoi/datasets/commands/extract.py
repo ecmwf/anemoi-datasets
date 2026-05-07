@@ -53,7 +53,20 @@ class Extract(Command):
 
         from anemoi.datasets import open_dataset
 
-        ds = open_dataset(args.dataset)
+        dataset = args.dataset
+
+        if dataset.endswith(".yaml") or dataset.endswith(".json"):
+            import json
+
+            import yaml
+
+            with open(dataset) as f:
+                if dataset.endswith(".yaml"):
+                    dataset = yaml.safe_load(f)
+                else:
+                    dataset = json.load(f)
+
+        ds = open_dataset(dataset)
 
         constants = args.constant
         climatologies = args.climatology
