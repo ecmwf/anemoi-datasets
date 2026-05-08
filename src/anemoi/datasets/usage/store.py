@@ -379,20 +379,33 @@ class ZarrStore(Dataset):
         if result is not None:
             return result
 
-        module = importlib.import_module(package)
-        assert hasattr(module, "__file__")
+        def scan_submodules(pkg: str):
+            """Scan ``pkg`` for any submodule that exposes ``name``."""
+            try:
+                pkg_module = importlib.import_module(pkg)
+            except ModuleNotFoundError:
+                return None
+            assert hasattr(pkg_module, "__file__")
+            pkg_path = os.path.dirname(pkg_module.__file__)
+            for submodule in os.listdir(pkg_path):
+                if (submodule.endswith(".py") and submodule != "__init__.py") or os.path.isdir(
+                    os.path.join(pkg_path, submodule)
+                ):
+                    submodule_name, _ = os.path.splitext(submodule)
+                    found = try_import(f"{pkg}.{submodule_name}", name)
+                    if found is not None:
+                        return found
+            return None
 
-        # Scan all submodules of the current package
-        # This is the last resort, and should be avoided if possible
-        module_path = os.path.dirname(module.__file__)
-        for submodule in os.listdir(module_path):
-            if (submodule.endswith(".py") and submodule != "__init__.py") or os.path.isdir(
-                os.path.join(module_path, submodule)
-            ):
-                module_name, _ = os.path.splitext(submodule)
-                result = try_import(f"{package}.{module_name}", name)
-                if result is not None:
-                    return result
+        # Scan all submodules of the current package, then of the common
+        # package.  This is the last resort, and should be avoided if possible.
+        result = scan_submodules(package)
+        if result is not None:
+            return result
+
+        result = scan_submodules(common)
+        if result is not None:
+            return result
 
         raise ValueError(f"Operation '{name}' is not supported for dataset '{self}', ({type(self).__name__})")
 

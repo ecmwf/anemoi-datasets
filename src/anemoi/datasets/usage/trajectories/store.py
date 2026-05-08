@@ -51,7 +51,11 @@ class TrajectoriesZarr(ZarrStore):
         super().__init__(group, path=path)
 
     def mutate(self) -> Dataset:
-        """Return self — trajectories datasets have no missing-date concept."""
+        """Wrap with :class:`TrajectoriesZarrWithMissingDates` if the store
+        records any missing base dates; return ``self`` otherwise."""
+        if len(self.store.attrs.get("missing_dates", [])):
+            LOG.warning(f"Dataset {self} has missing base dates")
+            return TrajectoriesZarrWithMissingDates(self.store, self.path)
         return self
 
     def __len__(self) -> int:
@@ -364,7 +368,12 @@ class TrajectoriesZarr(ZarrStore):
 
     @cached_property
     def missing(self) -> set[int]:
-        """Return the set of missing date indices — always empty for trajectories."""
+        """Return the set of missing base-date indices.
+
+        Empty for the plain :class:`TrajectoriesZarr`; populated by
+        :class:`TrajectoriesZarrWithMissingDates` when the store records a
+        non-empty ``missing_dates`` attribute.
+        """
         return set()
 
     @cached_property
@@ -378,3 +387,82 @@ class TrajectoriesZarr(ZarrStore):
     def usage_factory_load(self, name: str) -> Any:
         """Load an operation class from the trajectories sub-package."""
         return self._usage_factory_load(name, __package__)
+
+
+class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
+    """A trajectories zarr dataset with one or more missing base dates.
+
+    The store records the missing base dates under the ``missing_dates`` zarr
+    attribute (set by :class:`anemoi.datasets.create.trajectories.creator.
+    TrajectoryGriddedCreator` from the recipe ``base_dates: { missing: ... }``
+    list).  Indexing along axis 0 raises :class:`MissingDateError` when a
+    missing base date is hit; otherwise the dataset behaves like a regular
+    :class:`TrajectoriesZarr`.
+    """
+
+    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+        super().__init__(group, path=path)
+
+        missing = self.store.attrs.get("missing_dates", [])
+        missing = {np.datetime64(x, "s") for x in missing}
+        self.missing_to_dates = {i: d for i, d in enumerate(self.base_dates) if d in missing}
+        self._missing = set(self.missing_to_dates)
+
+    @property
+    def missing(self) -> set[int]:
+        """Return the set of base-date indices that are missing."""
+        return self._missing
+
+    def mutate(self) -> Dataset:
+        """Idempotent: already wrapped."""
+        return self
+
+    @debug_indexing
+    @expand_list_indexing
+    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
+        """Same as :meth:`TrajectoriesZarr.__getitem__` but raises on missing dates."""
+        if isinstance(n, int):
+            if n in self._missing:
+                self._report_missing(n)
+            return self.data[n]
+
+        if isinstance(n, slice):
+            common = set(range(*n.indices(len(self)))) & self._missing
+            if common:
+                self._report_missing(next(iter(common)))
+            return self.data[n]
+
+        if isinstance(n, tuple):
+            first = n[0]
+            if isinstance(first, int):
+                if first in self._missing:
+                    self._report_missing(first)
+                return self.data[n]
+
+            if isinstance(first, slice):
+                common = set(range(*first.indices(len(self)))) & self._missing
+                if common:
+                    self._report_missing(next(iter(common)))
+                return self.data[n]
+
+            if isinstance(first, (list, tuple)):
+                common = set(first) & self._missing
+                if common:
+                    self._report_missing(next(iter(common)))
+                return self.data[n]
+
+            raise TypeError(f"Unsupported index {n} {type(n)}, {first} {type(first)}")
+
+        raise TypeError(f"Unsupported index {n} {type(n)}")
+
+    def _report_missing(self, n: int) -> None:
+        from anemoi.datasets import MissingDateError
+
+        raise MissingDateError(f"Base date {self.missing_to_dates[n]} is missing (index={n})")
+
+    def tree(self) -> Node:
+        return Node(self, [], path=self.path, missing=sorted(self._missing))
+
+    @property
+    def label(self) -> str:
+        return "trajectories*"

@@ -245,6 +245,19 @@ class Filter:
         return [d for d in dates if d not in self.missing]
 
 
+class TrajectoryFilter(Filter):
+    """Filter out ``(basetime, step)`` pairs whose basetime is missing.
+
+    Used by :class:`TrajectoryGroups` because the items yielded by the grouper
+    are pairs, not plain datetimes.  The plain :class:`Filter` would compare a
+    pair to a set of datetimes and find no match — silently leaving missing
+    base dates in the iteration.
+    """
+
+    def __call__(self, pairs):
+        return [(bt, st) for (bt, st) in pairs if bt not in self.missing]
+
+
 class Grouper(ABC):
     """Abstract base class for grouping dates."""
 
@@ -402,7 +415,7 @@ class TrajectoryGroups(Groups):
     def __init__(self, steps: Any, group_by: Any, base_dates: Any, **kwargs: Any) -> None:
         self._dates = TrajectoryDates(steps=steps, **base_dates, **kwargs)
         self._grouper = Grouper.from_config(group_by)
-        self._filter = Filter(self._dates.missing)
+        self._filter = TrajectoryFilter(self._dates.missing)
 
     def __iter__(self):
         import numpy as np
