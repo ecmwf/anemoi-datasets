@@ -25,10 +25,7 @@ LOG = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # ``...-<purpose>-<labelling>-<source>-<resolution>-<start>-<end>-<freq>-v<n>[-extra]``
-GRIDDED_PATTERN = (
-    r"^(\w+)-([\w-]+)-(\w+)-([0-9on]\w*)-(\d\d\d\d)-(\d\d\d\d)-"
-    r"(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
-)
+GRIDDED_PATTERN = r"^(\w+)-([\w-]+)-(\w+)-([0-9on]\w*)-(\d\d\d\d)-(\d\d\d\d)-" r"(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
 GRIDDED_KEYS = [
     "purpose",
     "labelling",
@@ -43,8 +40,7 @@ GRIDDED_KEYS = [
 
 # ``...-<source>-<resolution>-<start>-<end>-<date-freq>-<step-freq>-v<n>[-extra]``
 TRAJECTORIES_PATTERN = (
-    r"^(\w+)-([\w-]+)-(\w+)-([0-9on]\w*)-(\d\d\d\d)-(\d\d\d\d)-"
-    r"(\d+h|\d+m)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
+    r"^(\w+)-([\w-]+)-(\w+)-([0-9on]\w*)-(\d\d\d\d)-(\d\d\d\d)-" r"(\d+h|\d+m)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
 )
 TRAJECTORIES_KEYS = [
     "purpose",
@@ -62,10 +58,7 @@ TRAJECTORIES_KEYS = [
 # ``...-<source>[-<resolution>]-<start>-<end>-v<n>[-extra]``
 # Resolution is optional: tabular datasets may have no meaningful spatial
 # resolution (e.g. station observations).
-TABULAR_PATTERN = (
-    r"^(\w+)-([\w-]+)-(\w+)(?:-([0-9on]\w*))?-(\d\d\d\d)-(\d\d\d\d)-"
-    r"v(\d+)-?([a-zA-Z0-9-]+)?$"
-)
+TABULAR_PATTERN = r"^(\w+)-([\w-]+)-(\w+)(?:-([0-9on]\w*))?-(\d\d\d\d)-(\d\d\d\d)-" r"v(\d+)-?([a-zA-Z0-9-]+)?$"
 TABULAR_KEYS = [
     "purpose",
     "labelling",
