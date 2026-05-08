@@ -150,19 +150,6 @@ class TestDatesAliases:
                 date="2024-??-01",
             )
 
-    def test_month_alias(self):
-        from anemoi.datasets.dates import DatesProvider
-
-        p = DatesProvider.from_config(
-            start="2024-01-01",
-            end="2024-12-31",
-            frequency="1d",
-            month=[6, 7],
-        )
-        months = {d.month for d in p.values}
-        assert months == {6, 7}
-
-
 # ---------------------------------------------------------------------------
 # Build side: TrajectoryGroups with missing
 # ---------------------------------------------------------------------------

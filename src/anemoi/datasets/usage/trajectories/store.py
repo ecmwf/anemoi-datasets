@@ -421,39 +421,19 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Same as :meth:`TrajectoriesZarr.__getitem__` but raises on missing dates."""
-        if isinstance(n, int):
-            if n in self._missing:
-                self._report_missing(n)
-            return self.data[n]
+        first = n[0] if isinstance(n, tuple) else n
+        if isinstance(first, int):
+            hit = first if first in self._missing else None
+        elif isinstance(first, slice):
+            hit = next(iter(set(range(*first.indices(len(self)))) & self._missing), None)
+        elif isinstance(first, (list, tuple)):
+            hit = next(iter(set(first) & self._missing), None)
+        else:
+            raise TypeError(f"Unsupported index {n!r} ({type(first).__name__})")
 
-        if isinstance(n, slice):
-            common = set(range(*n.indices(len(self)))) & self._missing
-            if common:
-                self._report_missing(next(iter(common)))
-            return self.data[n]
-
-        if isinstance(n, tuple):
-            first = n[0]
-            if isinstance(first, int):
-                if first in self._missing:
-                    self._report_missing(first)
-                return self.data[n]
-
-            if isinstance(first, slice):
-                common = set(range(*first.indices(len(self)))) & self._missing
-                if common:
-                    self._report_missing(next(iter(common)))
-                return self.data[n]
-
-            if isinstance(first, (list, tuple)):
-                common = set(first) & self._missing
-                if common:
-                    self._report_missing(next(iter(common)))
-                return self.data[n]
-
-            raise TypeError(f"Unsupported index {n} {type(n)}, {first} {type(first)}")
-
-        raise TypeError(f"Unsupported index {n} {type(n)}")
+        if hit is not None:
+            self._report_missing(hit)
+        return self.data[n]
 
     def _report_missing(self, n: int) -> None:
         from anemoi.datasets import MissingDateError
