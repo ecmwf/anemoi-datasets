@@ -16,7 +16,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Schema(Command):
-    """Export the JSON schema of a recipe"""
+    """Export the JSON schema of the recipe"""
 
     timestamp = False
 
