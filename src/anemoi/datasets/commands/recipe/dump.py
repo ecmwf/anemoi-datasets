@@ -41,7 +41,7 @@ def dump_recipe(config: dict, dumper=None) -> str:
     recipe = Recipe(**config)
     input = InputBuilder(
         recipe.input,
-        data_sources=recipe.data_sources or {},
+        data_sources=recipe.data_sources,
     )
     if dumper is None:
         dumper = Dumper()
