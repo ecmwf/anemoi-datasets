@@ -128,6 +128,8 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
+            # in such case of incorrect encoding, P1 refers to endStep and P2 to startStep.
+            # Note that this is, on purpose, the opposite of the usual convention.
             endStep = as_timedelta(f.metadata("P1"))
             startStep = as_timedelta(f.metadata("P2"))
 
@@ -593,6 +595,11 @@ class GriddedResult(Result):
 
         self._grid_points: Any = grid_points
         self._resolution: Any = first_field.resolution
+        if self._resolution is None:
+            try:
+                self._resolution = first_field.metadata().get("resolution")
+            except Exception:
+                pass
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None

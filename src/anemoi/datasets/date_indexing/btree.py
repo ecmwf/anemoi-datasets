@@ -269,7 +269,7 @@ class ZarrBTree:
 
         if self.number_of_rows >= self.pages.shape[0]:
             # Resize Zarr array to add more pages
-            self.pages.resize(self.pages.shape[0] + self.pages.chunks[0], self.pages.shape[1])
+            self.pages.resize((self.pages.shape[0] + self.pages.chunks[0], self.pages.shape[1]))
 
         new_row = self.number_of_rows
         self.number_of_rows += 1
@@ -835,7 +835,7 @@ class ZarrBTree:
 
         # Allocate all pages at once
         if total_pages > self.pages.shape[0]:
-            self.pages.resize(total_pages, cols_per_page)
+            self.pages.resize((total_pages, cols_per_page))
 
         # Build leaf pages starting after the existing root
         # If root is at page 1 (row 0), start at row 1
