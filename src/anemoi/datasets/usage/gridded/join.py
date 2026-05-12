@@ -190,31 +190,18 @@ class Join(Combined):
 
         return Select(self, indices, {"overlay": variables})
 
-    def _variables_and_units(self) -> tuple:
-        """Get the variables/units of the joined dataset."""
-        seen = set()
-        variables: list[str] = []
-        units: list[str] = []
-        for d in reversed(self.datasets):
-            for v, u in zip(reversed(d.variables), reversed(d.units)):
-                while v in seen:
-                    v = f"({v})"
-                seen.add(v)
-                variables.insert(0, v)
-                units.insert(0, u)
-
-        return variables, units
-
     @cached_property
     def variables(self) -> list[str]:
         """Get the variables of the joined dataset."""
-        result, _ = self._variables_and_units()
-        return result
+        seen = set()
+        result: list[str] = []
+        for d in reversed(self.datasets):
+            for v in reversed(d.variables):
+                while v in seen:
+                    v = f"({v})"
+                seen.add(v)
+                result.insert(0, v)
 
-    @cached_property
-    def units(self) -> list[str]:
-        """Get the units of the joined dataset."""
-        _, result = self._variables_and_units()
         return result
 
     @property
