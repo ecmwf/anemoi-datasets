@@ -20,37 +20,19 @@ from anemoi.utils.testing import GetTestArchive
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
 
-from anemoi.datasets.commands.compare import compare_anemoi_datasets
-
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 
+# Don't import any anemoi.datasets* here,
+# otherwise the "Filter" filter will be registered too late
+# and not be part of the Recipe pydantic model
+
+
 HERE = os.path.dirname(__file__)
 # find_yamls
-
-IGNORE = ["recentre"]
-
 NAMES = []
 for path in glob.glob(os.path.join(HERE, "*.yaml")):
     name, _ = os.path.splitext(os.path.basename(path))
-    if name in IGNORE:
-        continue
-    with open(path) as f:
-        conf = yaml.safe_load(f)
-        if conf.get("skip_test", False):
-            continue
-        if conf.get("slow_test", False):
-            NAMES.append(pytest.param(name, marks=pytest.mark.slow))
-            continue
-    NAMES.append(name)
-
-IGNORE = ["recentre"]
-
-NAMES = []
-for path in glob.glob(os.path.join(HERE, "*.yaml")):
-    name, _ = os.path.splitext(os.path.basename(path))
-    if name in IGNORE:
-        continue
     with open(path) as f:
         conf = yaml.safe_load(f)
         if conf.get("skip_test", False):
@@ -78,6 +60,9 @@ def load_source(get_test_data: GetTestData) -> LoadSource:
     return LoadSource(get_test_data)
 
 
+SKIPPED_TESTS = ["recentre"]
+
+
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
 def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSource) -> None:
@@ -97,9 +82,15 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
     AssertionError
         If the comparison fails.
     """
+    if name in SKIPPED_TESTS:
+        pytest.skip("Not ready yet")
+
     import requests
 
-    with patch("earthkit.data.from_source", load_source):
+    with (
+        patch("earthkit.data.from_source", load_source),
+        patch("anemoi.datasets.create.sources.mars.from_source", load_source),
+    ):
         from anemoi.datasets.create.creator import VERSION
 
         recipe = os.path.join(HERE, name + ".yaml")
@@ -115,6 +106,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
             errors = [f"Reference data for {name} is missing, cannot compare."]
 
         if not missing_reference:
+            from anemoi.datasets.commands.compare import compare_anemoi_datasets
+
             reference = os.path.join(directory, name + ".zarr")
             errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
 

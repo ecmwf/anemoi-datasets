@@ -27,8 +27,7 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -154,8 +153,7 @@ class Version:
         self.zarr = zarr
         self.metadata = metadata
         self.version = version
-        self.dataset = None
-        self.dataset = open_dataset(self.path)
+        self.dataset = open_dataset(zarr)
 
     def describe(self) -> None:
         """Print a description of the dataset."""
@@ -523,7 +521,7 @@ class Version:
     def recipe(self, path: str) -> None:
         import yaml
 
-        z = open_zarr(dataset_lookup(path))
+        z = open_zarr_store(path)
         for name in ("_create_yaml_config", "_recipe", "recipe"):
             if name in z.attrs:
                 print(yaml.safe_dump(z.attrs[name], sort_keys=False))
@@ -696,7 +694,7 @@ class Version0_6(Version):
         if "_build_flags" not in self.zarr:
             return False
 
-        build_flags = self.zarr["_build_flags"]
+        build_flags = self.zarr["_build_flags"][:]
         return all(build_flags)
 
     @property
@@ -752,7 +750,7 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("flags")
+        return build.get("flags")[:]
 
     @property
     def build_lengths(self) -> NDArray | None:
@@ -760,10 +758,14 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("lengths")
+        return build.get("lengths")[:]
 
 
 class Version0_14(Version0_13):
+    pass
+
+
+class Version0_15(Version0_14):
     pass
 
 
@@ -774,6 +776,7 @@ VERSIONS = {
     "0.12.0": Version0_12,
     "0.13.0": Version0_13,
     "0.14.0": Version0_14,
+    "0.15.0": Version0_15,
 }
 
 
@@ -872,7 +875,7 @@ class InspectZarr(Command):
         Version
             The version object of the dataset.
         """
-        z = open_zarr(dataset_lookup(path))
+        z, real_path = open_zarr_store(path, return_path=True)
 
         metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")
@@ -888,7 +891,7 @@ class InspectZarr(Command):
             if version >= v:
                 candidate = klass
 
-        return candidate(path, z, metadata, version)
+        return candidate(real_path, z, metadata, version)
 
 
 command = InspectZarr

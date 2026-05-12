@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 from datetime import datetime
+from datetime import timedelta
 from typing import Any
 
 import earthkit.data as ekd
@@ -78,6 +79,7 @@ class FdbSource(Source):
         # temporary workarounds for FDB use at MeteoSwiss (adoption is ongoing)
         # thus not documented
         self.offset_from_date = kwargs.pop("offset_from_date", None)
+        self.step_zero_from_previous_date = kwargs.pop("step_zero_from_previous_date", False)
 
     def execute(self, dates: DateList | IntervalsDatesProvider) -> ekd.FieldList:
         """Execute the FDB source.
@@ -100,7 +102,7 @@ class FdbSource(Source):
         else:
             requests = []
             for date in dates:
-                time_request = _time_request_keys(date, self.offset_from_date)
+                time_request = _time_request_keys(date, self.offset_from_date, self.step_zero_from_previous_date)
                 requests.append(self.request | time_request)
 
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
@@ -123,13 +125,18 @@ class FdbSource(Source):
         return fl
 
 
-def _time_request_keys(dt: datetime, offset_from_date: bool | None = None) -> str:
+def _time_request_keys(
+    dt: datetime, offset_from_date: bool | None = None, step_zero_from_previous_date: bool = False
+) -> str:
     """Defines the time-related keys for the FDB request."""
     out = {}
     out["date"] = dt.strftime("%Y%m%d")
     if offset_from_date:
         out["time"] = "0000"
         out["step"] = int((dt - dt.replace(hour=0, minute=0)).total_seconds() // 3600)
+        if out["step"] == 0 and step_zero_from_previous_date:
+            out["date"] = (dt - timedelta(days=1)).strftime("%Y%m%d")
+            out["step"] = 24
     else:
         out["time"] = dt.strftime("%H%M")
     return out
