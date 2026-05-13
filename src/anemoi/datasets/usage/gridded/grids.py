@@ -311,7 +311,8 @@ class Cutout(GridsBase):
         min_distance_km: float | None = None,
         max_distance_km: float | None = None,
         plot: bool | None = None,
-        masks: str | Path | None = None,
+        cache: bool | str | Path = False,
+        cutout_spec: list | None = None,
     ) -> None:
         """Initializes a Cutout object for hierarchical management of Limited Area
         Models (LAMs) and a global dataset, handling overlapping regions.
@@ -332,8 +333,15 @@ class Cutout(GridsBase):
             Maximum distance threshold in km between grid points.
         plot : bool, optional
             Flag to enable or disable visualization plots.
-        masks : str, optional
-            Path to .npz file containing pre-computed cutout masks.
+        cache : bool or str or Path, optional
+            Cache control for the cutout masks. ``False`` (default) recomputes the
+            masks without persisting them. A path to a ``.npz`` file reads pre-computed
+            masks if the file exists, otherwise computes them and saves them at that
+            location. ``True`` is reserved for a future default cache location and
+            currently raises ``NotImplementedError``.
+        cutout_spec : list, optional
+            Original list of dataset specifications (strings or dicts) passed by the
+            user. Stored in the cache metadata to detect mismatches when reloading.
         """
         super().__init__(datasets, axis)
         assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
@@ -352,29 +360,38 @@ class Cutout(GridsBase):
         self.min_distance_km = min_distance_km
         self.max_distance_km = max_distance_km
         self._plot = plot
+        self._cutout_spec = cutout_spec
 
         self.masks = []  # To store the masks for each LAM dataset
         self.global_mask = np.ones(self.globe.shape[-1], dtype=bool)
 
-        if masks is not None and Path(masks).exists():
-            LOG.info("Using provided masks file '%s'.", masks)
-            self._load_cutout_masks(masks)
-        elif masks is not None:
+        self._setup_masks(cache)
+
+    def _setup_masks(self, cache: bool | str | Path) -> None:
+        """Initialize ``self.masks`` and ``self.global_mask`` based on the cache argument."""
+        if cache is True:
+            raise NotImplementedError(
+                "cache=True is reserved for a future default cache location; " "pass a .npz path or leave cache=False."
+            )
+        if cache is False or cache is None:
+            self._initialize_masks()
+            return
+        cache_path = Path(cache)
+        if cache_path.suffix != ".npz":
+            raise ValueError(f"Cutout cache file must end with '.npz', got '{cache_path.name}'.")
+        if cache_path.exists():
+            LOG.info("Using provided cutout cache file '%s'.", cache_path)
+            self._load_cutout_masks(cache_path)
+        else:
             LOG.warning(
-                "Provided masks file '%s' does not exist. Will compute new masks and save to this location.", masks
+                "Cutout cache file '%s' does not exist. Will compute new masks and save to this location.",
+                cache_path,
             )
             self._initialize_masks()
-            self._save_cutout_masks(masks)
-        else:
-            self._initialize_masks()
+            self._save_cutout_masks(cache_path)
 
-    def _cutout_masks_parameters(self) -> dict[str, Any]:
-        """Return the arguments used for caching cutout masks.
-
-        These are the parameters that influence the generation of cutout masks.
-        For now we use them for a basic check when loading pre-computed masks.
-        Eventually, they could be used for more advanced caching strategies.
-        """
+    def _cutout_masks_params(self) -> dict[str, Any]:
+        """Return the cutout parameters that influence mask generation."""
         return {
             "axis": self.axis,
             "cropping_distance": self.cropping_distance,
@@ -383,26 +400,54 @@ class Cutout(GridsBase):
             "max_distance_km": self.max_distance_km,
         }
 
+    def _cutout_masks_metadata(self) -> dict[str, Any]:
+        """Return the metadata payload persisted alongside cached cutout masks."""
+        return {
+            "version": 1,
+            "type": "cutout_mask",
+            "params": self._cutout_masks_params(),
+            "datasets": self._cutout_spec,
+        }
+
     def _save_cutout_masks(self, path: str | Path) -> None:
         """Save the masks to a .npz file."""
-        params = self._cutout_masks_parameters()
         masks = {f"lam_{i}": self.masks[i] for i in range(len(self.lams))}
         masks["global"] = self.global_mask
         # we can avoid pickling with json.dumps
-        np.savez(path, **masks, _params=np.array(json.dumps(params)))
+        np.savez(path, **masks, metadata=np.array(json.dumps(self._cutout_masks_metadata())))
 
     def _load_cutout_masks(self, path: str | Path) -> None:
         """Load the masks from a .npz file."""
-        masks = np.load(path)
+        data = np.load(path)
+        if "metadata" not in data.files:
+            raise ValueError(f"Cutout cache file '{path}' is missing the 'metadata' entry; " "regenerate the cache.")
         # we can avoid pickling with json.loads
-        params = json.loads(str(masks["_params"]))
-        if params != self._cutout_masks_parameters():
-            msg = "Mismatch between user-provided masks and current cutout parameters. "
-            msg += f"Cutout class initialized with {self._cutout_masks_parameters()}, but provided masks file contains masks generated with {params}."
-            raise ValueError(msg)
-        else:
-            self.masks = [masks[f"lam_{i}"] for i in range(len(self.lams))]
-            self.global_mask = masks["global"]
+        metadata = json.loads(str(data["metadata"]))
+        if metadata.get("type") != "cutout_mask":
+            raise ValueError(
+                f"Cutout cache file '{path}' has unexpected type " f"{metadata.get('type')!r}; expected 'cutout_mask'."
+            )
+        if metadata.get("version") != 1:
+            raise ValueError(
+                f"Cutout cache file '{path}' has unsupported version " f"{metadata.get('version')!r}; expected 1."
+            )
+        params = metadata.get("params", {})
+        current_params = self._cutout_masks_params()
+        if params != current_params:
+            raise ValueError(
+                "Mismatch between user-provided masks and current cutout parameters. "
+                f"Cutout class initialized with {current_params}, but provided masks "
+                f"file contains masks generated with {params}."
+            )
+        cached_datasets = metadata.get("datasets")
+        if cached_datasets is not None and self._cutout_spec is not None and cached_datasets != self._cutout_spec:
+            raise ValueError(
+                "Mismatch between user-provided masks and current cutout datasets. "
+                f"Cutout class initialized with {self._cutout_spec}, but provided "
+                f"masks file was generated with {cached_datasets}."
+            )
+        self.masks = [data[f"lam_{i}"] for i in range(len(self.lams))]
+        self.global_mask = data["global"]
 
     def _initialize_masks(self) -> None:
         """Generate hierarchical masks for each LAM dataset by excluding overlapping regions with previous LAMs and creating a global mask for the global dataset.
@@ -715,5 +760,6 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
         max_distance_km=max_distance_km,
         cropping_distance=cropping_distance,
         plot=plot,
-        masks=kwargs.pop("masks", None),
+        cache=kwargs.pop("cache", False),
+        cutout_spec=cutout,
     )._subset(**kwargs)

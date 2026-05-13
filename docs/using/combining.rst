@@ -218,6 +218,31 @@ To debug the combination, you can pass `plot=True` to the `cutout`
 function (when running from a Notebook), or use `plot="prefix"` to save
 the plots to series of PNG files in the current directory.
 
+Caching pre-computed masks
+==========================
+
+Computing the cutout masks can be expensive for large grids. You can
+persist them across runs by passing a `cache` argument to `cutout`:
+
+.. code:: python
+
+   ds = open_dataset(
+       cutout=[lam_dataset, global_dataset],
+       cache="my-cutout-masks.npz",
+   )
+
+The first call computes the masks and saves them to the given file.
+Subsequent calls with the same `cache` path will load the pre-computed
+masks instead of recomputing them. The cache file must end with `.npz`.
+On load, the cutout parameters (`axis`, `cropping_distance`,
+`neighbours`, `min_distance_km`, `max_distance_km`) and the dataset
+specifications are compared against the values stored in the file; a
+mismatch raises an error so stale caches cannot be used silently.
+
+`cache=False` (the default) recomputes the masks without writing
+anything to disk. `cache=True` is reserved for a future default cache
+location and currently raises `NotImplementedError`.
+
 .. _complement:
 
 ************
