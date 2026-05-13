@@ -255,6 +255,11 @@ class Version:
         size : bool
             Whether to print the size of the dataset.
         """
+        from rich.console import Console
+        from rich.table import Table
+
+        console = Console()
+
         print()
         print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M")}')
         print(f'📅 End        : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
@@ -279,24 +284,33 @@ class Version:
         print(shape_str)
         self.print_sizes(size)
         print()
-        rows = []
 
         if self.statistics_ready:
             stats = self.statistics
         else:
-            stats = [["-"] * len(self.variables)] * 4
+            stats = [["-"] * len(self.variables)] * 5
+
+        table = Table(title="Statistics")
+        table.add_column("Index", justify="right")
+        table.add_column("Variable", justify="left")
+        table.add_column("Min", justify="right")
+        table.add_column("Max", justify="right")
+        table.add_column("Mean", justify="right")
+        table.add_column("Stdev", justify="right")
+        table.add_column("Units", justify="left")
+
+        def _(x):
+            if isinstance(x, float):
+                return f"{x:.3g}"
+            return str(x)
 
         for i, v in enumerate(self.variables):
-            rows.append([i, v] + [x[i] for x in stats])
+            row = [i, v] + [x[i] for x in stats] + [self.variables_metadata.get(v, {}).get("units", "-")]
+            table.add_row(*map(_, row))
 
-        print(
-            table(
-                rows,
-                header=["Index", "Variable", "Min", "Max", "Mean", "Stdev"],
-                align=[">", "<", ">", ">", ">", ">"],
-                margin=3,
-            )
-        )
+        console.print()
+        console.print(table)
+        console.print()
 
         if detailed:
             self.details()
@@ -503,6 +517,17 @@ class Version:
                 margin=3,
             )
         )
+
+    def recipe(self, path: str) -> None:
+        import yaml
+
+        z = open_zarr_store(path)
+        for name in ("_create_yaml_config", "_recipe", "recipe"):
+            if name in z.attrs:
+                print(yaml.safe_dump(z.attrs[name], sort_keys=False))
+                return
+
+        print("No recipe found in the dataset.")
 
 
 class NoVersion(Version):
@@ -772,6 +797,7 @@ class InspectZarr(Command):
         command_parser.add_argument("--progress", action="store_true")
         command_parser.add_argument("--statistics", action="store_true")
         command_parser.add_argument("--size", action="store_true", help="Print size")
+        command_parser.add_argument("--recipe", action="store_true", help="Print recipe")
 
     def run(self, args: Any) -> None:
         """Run the command.
@@ -790,6 +816,7 @@ class InspectZarr(Command):
         statistics: bool = False,
         detailed: bool = False,
         size: bool = False,
+        recipe: bool = False,
         **kwargs: Any,
     ) -> None:
         """Inspect a zarr dataset.
@@ -806,6 +833,8 @@ class InspectZarr(Command):
             Whether to print detailed information, by default False.
         size : bool, optional
             Whether to print the size of the dataset, by default False.
+        recipe : bool, optional
+            Whether to print the recipe used to create the dataset, by default False.
         **kwargs : Any
             Additional keyword arguments.
         """
@@ -820,6 +849,10 @@ class InspectZarr(Command):
 
             if statistics:
                 version.brute_force_statistics()
+
+            if recipe:
+                version.recipe(path)
+                return
 
             version.info(detailed, size)
 

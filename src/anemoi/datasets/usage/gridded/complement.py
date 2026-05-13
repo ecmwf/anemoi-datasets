@@ -137,6 +137,18 @@ class Complement(Combined):
         """
         pass
 
+    def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """Checks if the units in two datasets are the same.
+
+        Parameters
+        ----------
+        d1 : Dataset
+            The first dataset.
+        d2 : Dataset
+            The second dataset.
+        """
+        pass
+
     @cached_property
     def missing(self) -> set[int]:
         """Returns the set of missing indices in the source and target datasets."""

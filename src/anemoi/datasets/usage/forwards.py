@@ -416,6 +416,25 @@ class Combined(Forwards):
                 f"{self.__class__.__name__}: Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})"
             )
 
+    def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """Checks if the variables of two datasets are compatible (e.g. same units)
+
+        Parameters
+        ----------
+        d1 : Any
+            First dataset.
+        d2 : Any
+            Second dataset.
+
+        Raises
+        ------
+        ValueError
+            If the variables are not compatible.
+        """
+        from anemoi.transform.variables import Variable
+
+        Variable.check_compatibility(d1.typed_variables, d2.typed_variables)
+
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.
 
@@ -483,6 +502,7 @@ class Combined(Forwards):
         self.check_same_grid(d1, d2)
         self.check_same_lengths(d1, d2)
         self.check_same_variables(d1, d2)
+        self.check_variables_compatibility(d1, d2)
         self.check_same_dates(d1, d2)
 
     def provenance(self) -> list[Any]:

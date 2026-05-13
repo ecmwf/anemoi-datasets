@@ -63,6 +63,19 @@ class Join(Combined):
         # Turned off because we are joining along the variables axis
         pass
 
+    def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """Check if the datasets have the same units.
+
+        Parameters
+        ----------
+        d1 : Dataset
+            The first dataset.
+        d2 : Dataset
+            The second dataset.
+        """
+        # Turned off because we are joining along the variables axis
+        pass
+
     def __len__(self) -> int:
         """Get the length of the joined dataset.
 
