@@ -24,6 +24,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets import __version__ as _anemoi_datasets_version
 from anemoi.datasets import open_dataset
 from anemoi.datasets.misc.testing import FastGroup
 from anemoi.datasets.misc.testing import default_test_indexing
@@ -1583,7 +1584,7 @@ def test_cutout_masks_file_has_correct_keys(tmp_path):
     assert "global" in data
     assert "metadata" in data
     metadata = _json.loads(str(data["metadata"]))
-    assert metadata["version"] == 1
+    assert metadata["version"] == _anemoi_datasets_version
     assert metadata["type"] == "cutout_mask"
     assert metadata["datasets"] == ["lam.zarr", "global.zarr"]
     assert "params" in metadata
@@ -1601,8 +1602,9 @@ def test_cutout_masks_cache_true_not_implemented():
         Cutout._setup_masks(obj, True)
 
 
-def test_cutout_masks_version_mismatch_raises(tmp_path):
+def test_cutout_masks_version_mismatch_warns(tmp_path, caplog):
     import json as _json
+    import logging
 
     masks_path = tmp_path / "masks.npz"
     obj = _make_cutout(n_lams=1)
@@ -1610,12 +1612,13 @@ def test_cutout_masks_version_mismatch_raises(tmp_path):
 
     data = dict(np.load(masks_path))
     meta = _json.loads(str(data["metadata"]))
-    meta["version"] = 99
+    meta["version"] = "0.0.0-bogus"
     data["metadata"] = np.array(_json.dumps(meta))
     np.savez(masks_path, **data)
 
-    with pytest.raises(ValueError, match="unsupported version"):
+    with caplog.at_level(logging.WARNING, logger="anemoi.datasets.usage.gridded.grids"):
         Cutout._load_cutout_masks(_make_cutout(n_lams=1), masks_path)
+    assert any("0.0.0-bogus" in r.message for r in caplog.records)
 
 
 if __name__ == "__main__":

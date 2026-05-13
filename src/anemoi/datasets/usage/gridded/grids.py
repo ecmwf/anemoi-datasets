@@ -18,6 +18,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import KDTree
 
+from anemoi.datasets import __version__
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
@@ -403,7 +404,7 @@ class Cutout(GridsBase):
     def _cutout_masks_metadata(self) -> dict[str, Any]:
         """Return the metadata payload persisted alongside cached cutout masks."""
         return {
-            "version": 1,
+            "version": __version__,
             "type": "cutout_mask",
             "params": self._cutout_masks_params(),
             "datasets": self._cutout_spec,
@@ -427,9 +428,13 @@ class Cutout(GridsBase):
             raise ValueError(
                 f"Cutout cache file '{path}' has unexpected type " f"{metadata.get('type')!r}; expected 'cutout_mask'."
             )
-        if metadata.get("version") != 1:
-            raise ValueError(
-                f"Cutout cache file '{path}' has unsupported version " f"{metadata.get('version')!r}; expected 1."
+        cached_version = metadata.get("version")
+        if cached_version != __version__:
+            LOG.warning(
+                "Cutout cache file '%s' was written by anemoi-datasets %s, but the current version is %s.",
+                path,
+                cached_version,
+                __version__,
             )
         params = metadata.get("params", {})
         current_params = self._cutout_masks_params()
