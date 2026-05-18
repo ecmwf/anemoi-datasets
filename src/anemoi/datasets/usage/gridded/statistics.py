@@ -72,9 +72,7 @@ class Statistics(Forwards):
         ds = open_dataset(source, select=dataset.variables)
         # TODO: relax that check to allow for a subset of variables
         if dataset.variables != ds.variables:
-            raise ValueError(
-                f"Incompatible variables: {dataset.variables} and {ds.variables} ({dataset} {ds})"
-            )
+            raise ValueError(f"Incompatible variables: {dataset.variables} and {ds.variables} ({dataset} {ds})")
         return ds
 
     @cached_property
