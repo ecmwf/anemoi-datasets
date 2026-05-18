@@ -130,10 +130,10 @@ class OdbSource(Source):
         paths = Pattern(self.path).substitute(date=iso_dates, allow_extra=True)
         # Ensure that the result is always a list
         path_list = paths if isinstance(paths, list) else [paths]
-        LOG.info(f'Paths: {paths}')
+        LOG.info(f"Paths: {paths}")
         df_list = []
         for fname in _expand(path_list):
-            LOG.info(f'Working on {fname}')
+            LOG.info(f"Working on {fname}")
             temp_df = odb2df(
                 start=start,
                 end=end,
@@ -242,6 +242,7 @@ def odb2df(
             sql_query_string=sql,
         )
         import os
+
         if os.path.getsize(intermediate_odb_path.name) == 0:
             LOG.info(f"SQL query returned no results for ODB file at {path} with query: {sql}")
             return None

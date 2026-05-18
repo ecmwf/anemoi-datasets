@@ -51,7 +51,7 @@ dependencies = [
   "numpy",
   "pint",
   "pydantic",
-  "pyodc>=1.6.0",
+  "pyodc>=1.6",
   "pyyaml",
   "rich",
   "ruamel-yaml>=0.16",
