@@ -9,6 +9,7 @@
 
 import glob
 import logging
+import os
 import subprocess
 import tempfile
 from datetime import datetime
@@ -241,8 +242,6 @@ def odb2df(
             output_odb_path=intermediate_odb_path.name,
             sql_query_string=sql,
         )
-        import os
-
         if os.path.getsize(intermediate_odb_path.name) == 0:
             LOG.info(f"SQL query returned no results for ODB file at {path} with query: {sql}")
             return None
