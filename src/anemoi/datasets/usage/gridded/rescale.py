@@ -52,13 +52,13 @@ def make_rescale(variable: str, rescale: tuple[float, float] | list[str] | dict[
         if isinstance(rescale[0], (int, float)):
             return rescale
 
-        from cfunits import Units
+        import pint
 
-        u0 = Units(rescale[0])
-        u1 = Units(rescale[1])
+        ureg = pint.UnitRegistry()
 
         x1, x2 = 0.0, 1.0
-        y1, y2 = Units.conform([x1, x2], u0, u1)
+        y1 = ureg.Quantity(x1, rescale[0]).to(rescale[1]).magnitude
+        y2 = ureg.Quantity(x2, rescale[0]).to(rescale[1]).magnitude
 
         a = (y2 - y1) / (x2 - x1)
         b = y1 - a * x1

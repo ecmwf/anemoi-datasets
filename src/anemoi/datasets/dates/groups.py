@@ -17,8 +17,9 @@ from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.dates import DatesProvider
-from anemoi.datasets.dates import as_datetime
+from anemoi.utils.dates import as_datetime
+
+from anemoi.datasets.create.recipe.dates import DatesProvider
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
@@ -47,12 +48,6 @@ class GroupOfDates:
         self.dates = [as_datetime(_) for _ in dates]
         self.provider = provider
         self.partial_ok = partial_ok
-
-    @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
-        """Used in pytest"""
-        dates = DatesProvider.from_config(config)
-        return cls(dates.values, dates)
 
     def __len__(self) -> int:
         """Return the number of dates in the group.
@@ -132,17 +127,16 @@ class Groups:
         2
     """
 
-    def __init__(self, group_by: Any, **kwargs: Any) -> None:
-        """Initialize the class with the provided keyword arguments.
+    def __init__(self, dates: DatesProvider, group_by: Any) -> None:
+        """Initialize the Groups collection.
 
-        Parameters
-        ----------
-            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
-                - group_by: Configuration for the Grouper.
-                - Other keys for DatesProvider configuration.
+        Args:
+            dates (DatesProvider): The dates provider.
+            group_by (Any): Configuration for the Grouper (e.g., "daily", "monthly", int, etc.).
+
+        The groups are created by grouping the provided dates according to the group_by parameter.
         """
-
-        self._dates = DatesProvider.from_config(**kwargs)
+        self._dates = dates
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 
@@ -265,6 +259,7 @@ class Grouper(ABC):
             "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
+
         return GrouperByKey(key)
 
     @abstractmethod
@@ -335,6 +330,7 @@ class GrouperByKey(Grouper):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
+
         for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
             yield GroupOfDates(list(g), dates)
 

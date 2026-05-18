@@ -26,9 +26,9 @@ def _missing_credentials(url) -> bool:
 @skip_if_offline
 @pytest.mark.skipif(_missing_credentials("s3://ml-datasets/"), reason="No credentials for S3 access")
 def test_s3_dataset() -> None:
-    url = "s3://ml-datasets/aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v6.zarr"
+    url = "s3://ml-datasets/aifs-ea-an-oper-0001-mars-o96-1979-2023-6h-v8.zarr"
     ds = open_dataset(url)
-    assert len(ds) == 64284
+    assert len(ds) == 65744
 
 
 if __name__ == "__main__":
