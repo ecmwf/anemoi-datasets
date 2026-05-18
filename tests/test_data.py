@@ -224,7 +224,8 @@ def create_zarr(
 
     # Statistics tendencies: simple finite differences along the time axis for the
     # configured frequency, stored under the `statistics_tendencies_<delta>_<k>` keys
-    # expected by the store.
+    # expected by the store. Real anemoi zarr stores per-variable scalars (shape
+    # `(V,)`), so we reduce over the (time, ensemble, grid) axes to match.
     delta = frequency_to_string(frequency)
     if data.shape[0] >= 2:
         tendencies = np.diff(data, axis=0)
@@ -232,22 +233,22 @@ def create_zarr(
         tendencies = data
     root.create_array(
         f"statistics_tendencies_{delta}_mean",
-        data=np.mean(tendencies, axis=0),
+        data=np.mean(tendencies, axis=(0, 2, 3)),
         compressor=None,
     )
     root.create_array(
         f"statistics_tendencies_{delta}_stdev",
-        data=np.std(tendencies, axis=0),
+        data=np.std(tendencies, axis=(0, 2, 3)),
         compressor=None,
     )
     root.create_array(
         f"statistics_tendencies_{delta}_maximum",
-        data=np.max(tendencies, axis=0),
+        data=np.max(tendencies, axis=(0, 2, 3)),
         compressor=None,
     )
     root.create_array(
         f"statistics_tendencies_{delta}_minimum",
-        data=np.min(tendencies, axis=0),
+        data=np.min(tendencies, axis=(0, 2, 3)),
         compressor=None,
     )
 
