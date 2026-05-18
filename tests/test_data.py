@@ -1420,14 +1420,14 @@ def test_statistics() -> None:
 
 @mockup_open_zarr
 def test_only_tendencies() -> None:
-    """Test overriding only statistics_tendencies via the ``only_tendencies`` kwarg."""
+    """Test overriding only ``statistics_tendencies`` via the ``statistics_tendencies`` kwarg."""
     base_name = "test-2021-2021-6h-o96-abcd"
     ref_name = "test-2000-2010-6h-o96-abcd"
 
     base = open_dataset(base_name)
     ref = open_dataset(ref_name)
 
-    ds = open_dataset(base_name, only_tendencies=ref_name)
+    ds = open_dataset(base_name, statistics_tendencies=ref_name)
 
     # Goes through the Statistics wrapper.
     assert isinstance(ds, Statistics)
@@ -1441,6 +1441,29 @@ def test_only_tendencies() -> None:
     ds_tend = ds.statistics_tendencies()
     for k in ("mean", "stdev", "maximum", "minimum"):
         assert (ds_tend[k] == ref_tend[k]).all()
+
+
+@mockup_open_zarr
+def test_statistics_and_tendencies_from_two_datasets() -> None:
+    """Test overriding ``statistics`` and ``statistics_tendencies`` from two different datasets in a single call."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    stats_name = "test-2000-2010-6h-o96-abcd"
+    tend_name = "test-2010-2020-6h-o96-abcd"
+
+    stats_ref = open_dataset(stats_name)
+    tend_ref = open_dataset(tend_name)
+
+    ds = open_dataset(base_name, statistics=stats_name, statistics_tendencies=tend_name)
+
+    assert isinstance(ds, Statistics)
+
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds.statistics[k] == stats_ref.statistics[k]).all()
+
+    ds_tend = ds.statistics_tendencies()
+    tend = tend_ref.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds_tend[k] == tend[k]).all()
 
 
 @mockup_open_zarr
