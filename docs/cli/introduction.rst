@@ -22,6 +22,7 @@ The commands are:
 - :ref:`Scan Command <scan_command>`
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
+- :ref:`Schema Command <schema_command>`
 
 
 
@@ -40,3 +41,4 @@ The commands are:
    cli/patch
    cli/compare-lam
    cli/validate
+   cli/schema

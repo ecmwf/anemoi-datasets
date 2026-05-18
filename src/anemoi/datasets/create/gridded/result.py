@@ -25,23 +25,11 @@ from earthkit.data.core.order import build_remapping
 from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
+QUIET = set()
 
 
-def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
-    """Retrieve metadata for the given variables and cube.
-
-    Parameters
-    ----------
-    variables : tuple of str
-        The variables to retrieve metadata for.
-    cube : Any
-        The data cube.
-
-    Returns
-    -------
-    dict
-        The metadata dictionary.
-    """
+def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
+    """Retrieve metadata for the given variables and cube."""
     assert isinstance(variables, tuple), variables
 
     KNOWN: dict[str, dict[str, bool]] = {
@@ -215,6 +203,17 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
             other[variables[i]]["process"] = process
             other[variables[i]]["period"] = (startStep, endStep)
 
+        units = f.metadata("units", default=None)
+        if variables[i] in units_seen:
+            if units_seen[variables[i]] != units:
+                raise ValueError(f"Variable {variables[i]} has multiple units: {units_seen[variables[i]]} and {units}")
+
+        if units is None and variables[i] not in QUIET:
+            LOG.warning(f"Cannot establish units for variable '{variables[i]}'.")
+            QUIET.add(variables[i])
+
+        other[variables[i]]["units"] = units
+
         for k in md.copy().keys():
             if k.startswith("_"):
                 md.pop(k)
@@ -324,6 +323,8 @@ class GriddedResult(Result):
         ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
         self._origins = []
+        # Used to check if units are consistent across fields for the same variable
+        self._past_units = {}
 
     @property
     def data_request(self) -> dict[str, Any]:
@@ -369,7 +370,7 @@ class GriddedResult(Result):
 
             if isinstance(ds, pd.DataFrame):
                 raise ValueError(
-                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'format: tabular' in your recipe?"
+                    "Did you meant to build a tabular dataset? Did you forget to specify 'layout: tabular' in your recipe?"
                 )
             raise
         except ValueError:
@@ -594,6 +595,11 @@ class GriddedResult(Result):
 
         self._grid_points: Any = grid_points
         self._resolution: Any = first_field.resolution
+        if self._resolution is None:
+            try:
+                self._resolution = first_field.metadata().get("resolution")
+            except Exception:
+                pass
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
@@ -611,7 +617,14 @@ class GriddedResult(Result):
     @property
     def variables_metadata(self) -> dict[str, Any]:
         """Retrieve the metadata for the variables."""
-        return _fields_metatata(self.variables, self._cube)
+        return _fields_metatata(self.variables, self._cube, self._past_units)
+
+    @property
+    def typed_variables(self) -> dict[str, Any]:
+        """Retrieve the typed metadata for the variables."""
+        from anemoi.transform.variables import Variable
+
+        return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
 
     @property
     def ensembles(self) -> Any:
