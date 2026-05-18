@@ -236,6 +236,14 @@ class Dataset(ABC, Sized):
 
             return Statistics(self, statistics)._subset(**kwargs).mutate()
 
+        if "only_tendencies" in kwargs:
+
+            Statistics = self.usage_factory_load("Statistics")
+
+            only_tendencies = kwargs.pop("only_tendencies")
+
+            return Statistics(self, only_tendencies, only_tendencies=True)._subset(**kwargs).mutate()
+
         if "mask" in kwargs:
             Masking = self.usage_factory_load("Masking")
 

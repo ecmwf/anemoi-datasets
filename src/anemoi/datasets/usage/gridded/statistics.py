@@ -34,7 +34,7 @@ class Statistics(Forwards):
         The statistic data.
     """
 
-    def __init__(self, dataset: Dataset, statistic: Any) -> None:
+    def __init__(self, dataset: Dataset, statistic: Any, only_tendencies: bool = False) -> None:
         """Initialize the Statistics object.
 
         Parameters
@@ -43,8 +43,11 @@ class Statistics(Forwards):
             The dataset object.
         statistic : Any
             The statistic data.
+        only_tendencies : bool, optional
+            Whether to only consider tendencies, by default False
         """
         super().__init__(dataset)
+        self._only_tendencies = only_tendencies
         self._statistic = open_dataset(statistic, select=dataset.variables)
         # TODO: relax that check to allow for a subset of variables
         if dataset.variables != self._statistic.variables:
@@ -55,7 +58,10 @@ class Statistics(Forwards):
     @cached_property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics."""
-        return self._statistic.statistics
+        if self._only_tendencies:
+            return self.forward.statistics
+        else:
+            return self._statistic.statistics
 
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies.
