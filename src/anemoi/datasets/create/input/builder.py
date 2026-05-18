@@ -7,33 +7,37 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from __future__ import annotations
+
 from copy import deepcopy
 from functools import cached_property
 from typing import TYPE_CHECKING
 from typing import Any
 
 if TYPE_CHECKING:
+    from anemoi.datasets.create.input.action import Action
     from anemoi.datasets.create.input.action import Recipe
 
 
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(self, config: dict, data_sources: dict | list, **kwargs: Any) -> None:
+    def __init__(self, config: "Action" | None, data_sources: "Action" | None, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
         ----------
-        config : dict
-            Configuration dictionary.
-        data_sources : dict
-            Data sources.
+        config : Action | None
+            Input part of the recipe.
+        data_sources : Action   | None
+            Data sources part of the recipe.
         **kwargs : Any
             Additional keyword arguments.
         """
         self.kwargs = kwargs
-        self.config = deepcopy(config)
-        self.data_sources = deepcopy(dict(data_sources=data_sources))
+        # self.config = deepcopy(config.model_dump() if config is not None else {"empty": {}})
+        self.config = deepcopy(config.model_dump() if config is not None else {})
+        self.data_sources = deepcopy(dict(data_sources=data_sources or {}))
 
     @cached_property
     def action(self) -> "Recipe":
