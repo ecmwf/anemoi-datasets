@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import glob
 import logging
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ from typing import Any
 import codc as odc
 import numpy as np
 import pandas
+from earthkit.data.utils.patterns import Pattern
 
 from ..source import Source
 from . import source_registry
@@ -122,19 +124,33 @@ class OdbSource(Source):
         start = np.datetime_as_string(dates.start_range)
         end = np.datetime_as_string(dates.end_range)
 
-        df = odb2df(
-            start=start,
-            end=end,
-            path_str=self.path,
-            select=self.select,
-            where=self.where,
-            flavour=self.flavour,
-            pivot_columns=self.pivot_columns,
-            pivot_values=self.pivot_values,
-        )
-        LOG.info(f"ODB source read {len(df)} rows from {self.path}")
-        LOG.info(df)
-        return df
+        iso_dates = [d.isoformat() for d in dates]
+
+        # Substitute any dates into the file-path
+        paths = Pattern(self.path).substitute(date=iso_dates, allow_extra=True)
+        # Ensure that the result is always a list
+        path_list = paths if isinstance(paths, list) else [paths]
+        LOG.info(f'Paths: {paths}')
+        df_list = []
+        for fname in _expand(path_list):
+            LOG.info(f'Working on {fname}')
+            temp_df = odb2df(
+                start=start,
+                end=end,
+                path_str=fname,
+                select=self.select,
+                where=self.where,
+                flavour=self.flavour,
+                pivot_columns=self.pivot_columns,
+                pivot_values=self.pivot_values,
+            )
+            if temp_df is not None:
+                df_list.append(temp_df)
+                LOG.info(f"ODB source read {len(temp_df)} rows from {fname}")
+        if len(df_list) > 0:
+            return pandas.concat(df_list, ignore_index=True)
+        else:
+            return None
 
 
 def odb2df(
@@ -225,6 +241,10 @@ def odb2df(
             output_odb_path=intermediate_odb_path.name,
             sql_query_string=sql,
         )
+        import os
+        if os.path.getsize(intermediate_odb_path.name) == 0:
+            LOG.info(f"SQL query returned no results for ODB file at {path} with query: {sql}")
+            return None
         df = odc.read_odb(intermediate_odb_path.name, single=True, aggregated=True)
         LOG.info(f"Intermediate ODB file created at: {intermediate_odb_path.name}")
 
@@ -485,3 +505,25 @@ def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.Da
     # Reset the dataframe index
     pivoted = pivoted.reset_index()
     return pivoted
+
+
+def _expand(paths: list[str]) -> Any:
+    """Expand the given paths using glob.
+
+    Parameters
+    ----------
+    paths : list of str
+        List of paths to expand.
+
+    Returns
+    -------
+    Any
+        The expanded paths.
+    """
+    for path in paths:
+        cnt = 0
+        for p in glob.glob(path):
+            yield p
+            cnt += 1
+        if cnt == 0:
+            yield path
