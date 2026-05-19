@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import glob
 import logging
 import os
 import subprocess
@@ -20,6 +19,7 @@ import codc as odc
 import numpy as np
 import pandas
 from earthkit.data.utils.patterns import Pattern
+from .utils import expand_paths
 
 from ..source import Source
 from . import source_registry
@@ -131,23 +131,22 @@ class OdbSource(Source):
         paths = Pattern(self.path).substitute(date=iso_dates, allow_extra=True)
         # Ensure that the result is always a list
         path_list = paths if isinstance(paths, list) else [paths]
-        LOG.info(f"Paths: {paths}")
         df_list = []
-        for fname in _expand(path_list):
-            LOG.info(f"Working on {fname}")
-            temp_df = odb2df(
+        for expanded_path in expand_paths(path_list):
+            LOG.info(f"Working on {expanded_path}")
+            df = odb2df(
                 start=start,
                 end=end,
-                path_str=fname,
+                path_str=expanded_path,
                 select=self.select,
                 where=self.where,
                 flavour=self.flavour,
                 pivot_columns=self.pivot_columns,
                 pivot_values=self.pivot_values,
             )
-            if temp_df is not None:
-                df_list.append(temp_df)
-                LOG.info(f"ODB source read {len(temp_df)} rows from {fname}")
+            if df is not None:
+                df_list.append(df)
+                LOG.info(f"ODB source read {len(df)} rows from {expanded_path}")
         if len(df_list) > 0:
             return pandas.concat(df_list, ignore_index=True)
         else:
@@ -505,25 +504,3 @@ def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.Da
     # Reset the dataframe index
     pivoted = pivoted.reset_index()
     return pivoted
-
-
-def _expand(paths: list[str]) -> Any:
-    """Expand the given paths using glob.
-
-    Parameters
-    ----------
-    paths : list of str
-        List of paths to expand.
-
-    Returns
-    -------
-    Any
-        The expanded paths.
-    """
-    for path in paths:
-        cnt = 0
-        for p in glob.glob(path):
-            yield p
-            cnt += 1
-        if cnt == 0:
-            yield path

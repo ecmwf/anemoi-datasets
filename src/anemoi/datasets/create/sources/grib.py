@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -19,6 +19,7 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
+from .utils import expand_paths
 
 from . import source_registry
 from .legacy import LegacySource
@@ -58,28 +59,6 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
 
     if len(ds) != count:
         raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
-
-
-def _expand(paths: list[str]) -> Any:
-    """Expand the given paths using glob.
-
-    Parameters
-    ----------
-    paths : list of str
-        List of paths to expand.
-
-    Returns
-    -------
-    Any
-        The expanded paths.
-    """
-    for path in paths:
-        cnt = 0
-        for p in glob.glob(path):
-            yield p
-            cnt += 1
-        if cnt == 0:
-            yield path
 
 
 @source_registry.register("grib")
@@ -144,7 +123,7 @@ class GribSource(LegacySource):
                 if name in kwargs:
                     raise ValueError(f"MARS interpolation parameter '{name}' not supported")
 
-            for path in _expand(paths):
+            for path in expand_paths(paths):
                 context.trace("📁", "PATH", path)
 
                 if isinstance(path, str) and (path.startswith("ec:") or path.startswith("ectmp:")):
