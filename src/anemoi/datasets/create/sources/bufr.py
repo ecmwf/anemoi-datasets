@@ -7,6 +7,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import logging
+
 import pandas as pd
 
 from anemoi.datasets.create.source import Source
@@ -16,6 +18,8 @@ from anemoi.datasets.create.sources import source_registry
 from .bufr_support.bufr_reader import BUFRReader
 from .bufr_support.bufr_to_df import BUFRToDataFrame
 from .bufr_support.bufr_to_df import bufr_to_dataframe_parallel
+
+LOG = logging.getLogger(__name__)
 
 
 @source_registry.register("bufr")
@@ -180,6 +184,13 @@ class BUFRSource(Source):
             bufr_reader = BUFRReader(ekd_ds.path)
             df = bufr_to_dataframe_parallel(bufr_reader, self.bufr_to_df, self.num_processes)
             df.rename(columns={"lat": "latitude", "lon": "longitude"}, inplace=True)
+            LOG.debug(f"Extracted {len(df)} BUFR rows for date range {start_dt} - {end_dt}")
             df_list.append(df)
+
+        if not df_list:
+            LOG.debug(f"No BUFR records were extracted for {len(dates)} date range(s)")
+            return pd.DataFrame()
+
         df = pd.concat(df_list, ignore_index=True)
+        LOG.debug(f"Combined BUFR dataframe contains {len(df)} rows")
         return df
