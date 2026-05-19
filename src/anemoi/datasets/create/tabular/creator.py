@@ -63,12 +63,12 @@ class TabularCreator(Creator):
         if hasattr(self, "recipe"):
             if hasattr(self.recipe, "build"):
                 if not hasattr(self.recipe.build, "max_fragment_size"):
-                    LOG.info("self.recipe.build.max_fragment_size was not specified, "
-                             "defaulting to 268435456 (256MiB)")
+                    LOG.info(
+                        "self.recipe.build.max_fragment_size was not specified, " "defaulting to 268435456 (256MiB)"
+                    )
                     setattr(self.recipe.build, "max_fragment_size", 268435456)
                 if not hasattr(self.recipe.build, "validate_date_ranges"):
-                    LOG.info("self.recipe.build.validate_date_ranges was not specified, "
-                             "defaulting to true")
+                    LOG.info("self.recipe.build.validate_date_ranges was not specified, " "defaulting to true")
                     setattr(self.recipe.build, "validate_date_ranges", True)
                 if not hasattr(self.recipe.build, "max_workers"):
                     LOG.info("self.recipe.build.max_workers was not specified, " "defaulting to 1")

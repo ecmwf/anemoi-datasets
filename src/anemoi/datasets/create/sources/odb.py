@@ -19,10 +19,10 @@ import codc as odc
 import numpy as np
 import pandas
 from earthkit.data.utils.patterns import Pattern
-from .utils import expand_paths
 
 from ..source import Source
 from . import source_registry
+from .utils import expand_paths
 
 LOG = logging.getLogger(__name__)
 
