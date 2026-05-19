@@ -1517,9 +1517,7 @@ def test_trim_edge_zeros() -> None:
         assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
-def _make_cutout(
-    n_lams=1, cropping_distance=2.0, neighbours=5, min_distance_km=None, max_distance_km=None, cutout_spec=None
-):
+def _make_cutout(n_lams=1, cropping_distance=2.0, neighbours=5, min_distance_km=None, max_distance_km=None):
     """Build a Cutout instance with known masks, bypassing __init__."""
     obj = object.__new__(Cutout)
     obj.axis = 3
@@ -1527,8 +1525,8 @@ def _make_cutout(
     obj.neighbours = neighbours
     obj.min_distance_km = min_distance_km
     obj.max_distance_km = max_distance_km
-    obj._cutout_spec = cutout_spec
-    obj.lams = [MagicMock() for _ in range(n_lams)]
+    obj.lams = [MagicMock(path=f"/path/to/lam_{i}.zarr") for i in range(n_lams)]
+    obj.globe = MagicMock(path="/path/to/global.zarr")
     obj.masks = [np.array([True, False, True, True]) for _ in range(n_lams)]
     obj.global_mask = np.array([False, True, True, False])
     return obj
@@ -1564,11 +1562,12 @@ def test_cutout_masks_parameter_mismatch_raises(tmp_path):
 
 def test_cutout_masks_dataset_mismatch_raises(tmp_path):
     masks_path = tmp_path / "masks.npz"
-    original = _make_cutout(cutout_spec=["lam-a.zarr", "global.zarr"])
+    original = _make_cutout()
     Cutout._save_cutout_masks(original, masks_path)
 
-    different = _make_cutout(cutout_spec=["lam-b.zarr", "global.zarr"])
-    with pytest.raises(ValueError, match="cutout datasets"):
+    different = _make_cutout()
+    different.globe = MagicMock(path="/path/to/different_global.zarr")
+    with pytest.raises(ValueError, match="Mismatch between user-provided masks"):
         Cutout._load_cutout_masks(different, masks_path)
 
 
@@ -1576,7 +1575,7 @@ def test_cutout_masks_file_has_correct_keys(tmp_path):
     import json as _json
 
     masks_path = tmp_path / "masks.npz"
-    obj = _make_cutout(n_lams=1, cutout_spec=["lam.zarr", "global.zarr"])
+    obj = _make_cutout(n_lams=1)
     Cutout._save_cutout_masks(obj, masks_path)
 
     data = np.load(masks_path)
@@ -1586,7 +1585,7 @@ def test_cutout_masks_file_has_correct_keys(tmp_path):
     metadata = _json.loads(str(data["metadata"]))
     assert metadata["version"] == _anemoi_datasets_version
     assert metadata["type"] == "cutout_mask"
-    assert metadata["datasets"] == ["lam.zarr", "global.zarr"]
+    assert metadata["params"]["datasets"] == ["/path/to/lam_0.zarr", "/path/to/global.zarr"]
     assert "params" in metadata
 
 
