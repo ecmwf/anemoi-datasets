@@ -12,9 +12,9 @@ import operator
 import os
 import warnings
 from collections.abc import Sequence
-from itertools import batched
 from multiprocessing import Pool
 from typing import Any
+from typing import Iterator
 from typing import Literal
 
 import eccodes
@@ -31,6 +31,17 @@ logging.basicConfig(
     format="%(asctime)s - %(processName)s - %(levelname)s - %(message)s",
     force=True,
 )
+
+
+def batched(lst: Sequence[Any], chunk_size: int) -> Iterator[Sequence[Any]]:
+    if chunk_size < 1:
+        raise ValueError(f"chunk_size must be at least 1, got {chunk_size}.")
+
+    i = 0
+    while i < len(lst):
+        chunk = lst[i : i + chunk_size]
+        i += chunk_size
+        yield chunk
 
 
 class BUFRMessageSelector:
