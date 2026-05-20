@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 
-import glob
 import logging
 from typing import Any
 
@@ -19,10 +18,10 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
-from .utils import expand_paths
 
 from . import source_registry
 from .legacy import LegacySource
+from .utils import expand_paths
 
 LOG = logging.getLogger(__name__)
 
