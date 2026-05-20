@@ -228,13 +228,14 @@ class Dataset(ABC, Sized):
             rescale = kwargs.pop("rescale")
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
-        if "statistics" in kwargs:
+        if "statistics" in kwargs or "statistics_tendencies" in kwargs:
 
             Statistics = self.usage_factory_load("Statistics")
 
-            statistics = kwargs.pop("statistics")
+            statistics = kwargs.pop("statistics", None)
+            statistics_tendencies = kwargs.pop("statistics_tendencies", None)
 
-            return Statistics(self, statistics)._subset(**kwargs).mutate()
+            return Statistics(self, statistics, statistic_tendencies=statistics_tendencies)._subset(**kwargs).mutate()
 
         if "mask" in kwargs:
             Masking = self.usage_factory_load("Masking")
