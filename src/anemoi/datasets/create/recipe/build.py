@@ -51,6 +51,9 @@ class Build(BaseModel):
     group_by: str | int = "monthly"
     additions: bool = False
     env: dict[str, str] = {}
+    max_fragment_size: int = 268435456  # 256 MiB
+    validate_date_ranges: bool = True
+    max_workers: int | None = None
     """Environment variables to set when creating the dataset."""
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     """Remapping configuration for the dataset."""
