@@ -22,7 +22,7 @@ from earthkit.data.utils.patterns import Pattern
 
 from ..source import Source
 from . import source_registry
-from .utils import expand_paths
+from .patterns import iterate_patterns
 
 LOG = logging.getLogger(__name__)
 
@@ -125,15 +125,9 @@ class OdbSource(Source):
         start = np.datetime_as_string(dates.start_range)
         end = np.datetime_as_string(dates.end_range)
 
-        iso_dates = [d.isoformat() for d in dates]
-
-        # Substitute any dates into the file-path
-        paths = Pattern(self.path).substitute(date=iso_dates, allow_extra=True)
-        # Ensure that the result is always a list
-        path_list = paths if isinstance(paths, list) else [paths]
         df_list = []
-        for expanded_path in expand_paths(path_list):
-            LOG.info(f"Working on {expanded_path}")
+        for expanded_path, date in iterate_patterns(self.path, dates):
+            LOG.info(f"Working on {expanded_path} {date}")
             df = odb2df(
                 start=start,
                 end=end,
