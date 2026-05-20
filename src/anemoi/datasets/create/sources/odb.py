@@ -18,7 +18,6 @@ from typing import Any
 import codc as odc
 import numpy as np
 import pandas
-from earthkit.data.utils.patterns import Pattern
 
 from ..source import Source
 from . import source_registry
