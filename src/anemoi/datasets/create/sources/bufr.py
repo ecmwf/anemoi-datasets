@@ -8,8 +8,14 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+from typing import Annotated
+from typing import Any
+from typing import Literal
 
 import pandas as pd
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
 
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import create_source
@@ -20,6 +26,32 @@ from .bufr_support.bufr_to_df import BUFRToDataFrame
 from .bufr_support.bufr_to_df import bufr_to_dataframe_parallel
 
 LOG = logging.getLogger(__name__)
+
+
+BUFRCondition = Annotated[list[Any], Field(min_length=2, max_length=2)]
+
+
+class BUFRExtractSchema(BaseModel):
+    """Validation schema for BUFR extraction options."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    per_report: dict[str, str]
+    preselect_msg_header: dict[str, BUFRCondition] | None = None
+    preselect_msg_data: dict[str, BUFRCondition] | None = None
+    datetime_position_prefix: str = ""
+    per_datum: dict[str, dict[str, str | int]] | None = None
+    per_datum_format: Literal["long", "wide"] = "wide"
+
+
+class BUFRSourceSchema(BaseModel):
+    """Validation schema for the `bufr` source in recipes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: dict[Literal["mars"], dict[str, Any]] = Field(..., min_length=1, max_length=1)
+    extract: BUFRExtractSchema
+    num_processes: int = Field(default=1, ge=1)
 
 
 @source_registry.register("bufr")
@@ -160,6 +192,8 @@ class BUFRSource(Source):
                 impactParameter:
                   name: vertco_reference_1
     """
+
+    schema = BUFRSourceSchema
 
     def __init__(self, context, *, source: dict, extract: dict, num_processes: int = 1):
         super().__init__(context)
