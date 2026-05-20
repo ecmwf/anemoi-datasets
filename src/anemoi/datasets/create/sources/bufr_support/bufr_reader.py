@@ -39,6 +39,7 @@ class BUFRMessage:
         eccodes.codes_set(self.bid, key, value)
 
 
+# TODO: eventually use earthkit-data to read BUFR files rather than custom reader
 class BUFRReader:
     def __init__(self, filename: str):
         with open(filename, "rb") as fobj:
