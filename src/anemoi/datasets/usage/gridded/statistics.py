@@ -19,10 +19,10 @@ from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.usage.dataset import Dataset
-
-DatasetSource = Union[str, "os.PathLike[str]", Dataset, "dict[str, Any]"]
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Forwards
+
+DatasetSource = Union[str, "os.PathLike[str]", Dataset, "dict[str, Any]"]
 
 LOG = logging.getLogger(__name__)
 
