@@ -163,7 +163,12 @@ class BUFRToDataFrame:
         per_report: Mapping of BUFR key names to output column names for
             values that occur once per observation report (subset).  Each key
             is extracted as a 1-D array of length ``numberOfSubsets`` (as found
-            in the BUFR message header).
+            in the BUFR message header). Coordinate columns are produced
+            independently via ``latitude`` and ``longitude``.
+        latitude: BUFR key name used to populate the canonical ``latitude``
+            output column. Defaults to ``"latitude"``.
+        longitude: BUFR key name used to populate the canonical ``longitude``
+            output column. Defaults to ``"longitude"``.
         preselect_msg_header: Optional dictionary of header-section selection
             conditions applied _before_ the message is unpacked.  Each entry
             maps a BUFR key to a ``[operator, value]`` pair (see
@@ -195,13 +200,21 @@ class BUFRToDataFrame:
         self,
         *,
         per_report: dict,
+        latitude: str = "latitude",
+        longitude: str = "longitude",
         preselect_msg_header: dict = None,
         preselect_msg_data: dict = None,
         datetime_position_prefix: str = "",
         per_datum: dict = None,
         per_datum_format: Literal["long", "wide"] = "wide",
     ):
-        self.per_report = per_report
+        reserved = {v for v in per_report.values() if v in ("datetime", "latitude", "longitude")}
+        if reserved:
+            raise ValueError(
+                f"'per_report' must not map to reserved coordinate column names {sorted(reserved)}. "
+                "Use the 'latitude' and 'longitude' constructor arguments to specify the source BUFR keys."
+            )
+        self.per_report = {latitude: "latitude", longitude: "longitude", **per_report}
         self.preselect_msg_header = self._build_selectors(preselect_msg_header)
         self.preselect_msg_data = self._build_selectors(preselect_msg_data)
         self.datetime_position_prefix = datetime_position_prefix
@@ -296,6 +309,7 @@ class BUFRToDataFrame:
         per_report_data = {
             item: message.get_array(col, float, nreports).astype(np.float32) for col, item in self.per_report.items()
         }
+
         per_report_data["datetime"] = self.extract_datetimes(message, nreports)
         df = pd.DataFrame(per_report_data)
         return df

@@ -36,7 +36,9 @@ class BUFRExtractSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    per_report: dict[str, str]
+    latitude: str = "latitude"
+    longitude: str = "longitude"
+    per_report: dict[str, str] = Field(default_factory=dict)
     preselect_msg_header: dict[str, BUFRCondition] | None = None
     preselect_msg_data: dict[str, BUFRCondition] | None = None
     datetime_position_prefix: str = ""
@@ -74,6 +76,12 @@ class BUFRSource(Source):
     extract : dict
         Configuration forwarded to :class:`BUFRToDataFrame`. Accepted keys:
 
+        latitude : str, optional
+            BUFR key to use for the canonical ``latitude`` output column.
+            Defaults to ``"latitude"``.
+        longitude : str, optional
+            BUFR key to use for the canonical ``longitude`` output column.
+            Defaults to ``"longitude"``.
         per_report : dict
             Mapping of BUFR key names to output column names for values that
             occur once per observation report (subset).
@@ -128,9 +136,9 @@ class BUFRSource(Source):
                 satelliteID: ["==", 223]
               prefilter_msg_data:
                 satelliteSensorIndicator: ["==", 11]
+              latitude: latitude
+              longitude: longitude
               per_report:
-                latitude: latitude
-                longitude: longitude
                 bearingOrAzimuth: azimuth
                 satelliteZenithAngle: zenith
                 "#1#brightnessTemperature": obsvalue_rawbt_1
@@ -151,9 +159,9 @@ class BUFRSource(Source):
                 type: ai
                 obstype: iasi
             extract:
+              latitude: latitude
+              longitude: longitude
               per_report:
-                latitude: latitude
-                longitude: longitude
                 satelliteZenithAngle: zenith
               per_datum:
                 nonNormalizedPrincipalComponentScore:
@@ -176,6 +184,8 @@ class BUFRSource(Source):
                 obstype: gpsro
                 times: "00/06/12/18"
             extract:
+              latitude: latitude
+              longitude: longitude
               per_report:
                 satelliteIdentifier: satellite_id
                 earthLocalRadiusOfCurvature: radcurv
@@ -198,7 +208,9 @@ class BUFRSource(Source):
     def __init__(self, context, *, source: dict, extract: dict, num_processes: int = 1):
         super().__init__(context)
         self.source = self._create_source(source)
-        self.bufr_to_df = BUFRToDataFrame(**extract)
+        extract_cfg = BUFRExtractSchema.model_validate(extract)
+        bufr_to_df_args = extract_cfg.model_dump()
+        self.bufr_to_df = BUFRToDataFrame(**bufr_to_df_args)
         self.num_processes = num_processes
 
     def _create_source(self, source_config: dict):
@@ -217,7 +229,6 @@ class BUFRSource(Source):
                 continue
             bufr_reader = BUFRReader(ekd_ds.path)
             df = bufr_to_dataframe_parallel(bufr_reader, self.bufr_to_df, self.num_processes)
-            df.rename(columns={"lat": "latitude", "lon": "longitude"}, inplace=True)
             LOG.debug(f"Extracted {len(df)} BUFR rows for date range {start_dt} - {end_dt}")
             df_list.append(df)
 

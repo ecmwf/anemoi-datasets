@@ -25,10 +25,11 @@ def test_bufr_schema_accepts_mars_embedded_source():
                     }
                 },
                 "extract": {
+                    "latitude": "latitude",
+                    "longitude": "longitude",
                     "per_report": {
-                        "latitude": "latitude",
-                        "longitude": "longitude",
-                    }
+                        "bearingOrAzimuth": "azimuth",
+                    },
                 },
             }
         }
@@ -43,10 +44,11 @@ def test_bufr_schema_rejects_non_mars_embedded_source():
             "bufr": {
                 "source": {"invalid_source": {"path": "/some/path"}},
                 "extract": {
+                    "latitude": "latitude",
+                    "longitude": "longitude",
                     "per_report": {
-                        "latitude": "latitude",
-                        "longitude": "longitude",
-                    }
+                        "bearingOrAzimuth": "azimuth",
+                    },
                 },
             }
         }
@@ -70,10 +72,11 @@ def test_bufr_source_mars_config():
                 }
             },
             "extract": {
+                "latitude": "latitude",
+                "longitude": "longitude",
                 "per_report": {
-                    "latitude": "latitude",
-                    "longitude": "longitude",
-                }
+                    "bearingOrAzimuth": "azimuth",
+                },
             },
         }
     }
@@ -81,21 +84,22 @@ def test_bufr_source_mars_config():
     assert isinstance(source, BUFRSource)
 
 
-def test_bufr_source_bad_config():
+def test_bufr_source_rejects_coordinate_names_in_per_report():
     config = {
         "bufr": {
             "source": {
-                "invalid_source": {
-                    "foo": "bar",
+                "mars": {
+                    "class": "od",
                 }
             },
             "extract": {
+                "latitude": "lat",
+                "longitude": "lon",
                 "per_report": {
-                    "latitude": "latitude",
-                    "longitude": "longitude",
-                }
+                    "someLatitudeCopy": "latitude",
+                },
             },
         }
     }
-    with pytest.raises(ValueError, match="Invalid source name"):
+    with pytest.raises(ValueError, match="reserved coordinate column names"):
         _ = create_source(context=None, config=config)
