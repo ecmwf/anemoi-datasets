@@ -10,13 +10,17 @@
 
 import datetime
 import logging
+import os
 from functools import cached_property
 from typing import Any
+from typing import Union
 
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.usage.dataset import Dataset
+
+DatasetSource = Union[str, "os.PathLike[str]", Dataset, "dict[str, Any]"]
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Forwards
 
@@ -30,17 +34,17 @@ class Statistics(Forwards):
     ----------
     dataset : Dataset
         The dataset object.
-    statistic : Any
-        Dataset providing the override for ``statistics``. Optional.
-    statistic_tendencies : Any
-        Dataset providing the override for ``statistics_tendencies``. Optional.
+    statistic : DatasetSource, optional
+        Dataset providing the override for ``statistics``.
+    statistic_tendencies : DatasetSource, optional
+        Dataset providing the override for ``statistics_tendencies``.
     """
 
     def __init__(
         self,
         dataset: Dataset,
-        statistic: Any = None,
-        statistic_tendencies: Any = None,
+        statistic: DatasetSource | None = None,
+        statistic_tendencies: DatasetSource | None = None,
     ) -> None:
         """Initialize the Statistics object.
 
@@ -48,10 +52,10 @@ class Statistics(Forwards):
         ----------
         dataset : Dataset
             The forward dataset.
-        statistic : Any, optional
+        statistic : DatasetSource, optional
             Dataset whose ``statistics`` will be used as override. If ``None``,
             ``statistics`` falls back to the forward dataset.
-        statistic_tendencies : Any, optional
+        statistic_tendencies : DatasetSource, optional
             Dataset whose ``statistics_tendencies`` will be used as override. If
             ``None``, tendencies fall back to ``statistic`` (when provided) or to
             the forward dataset otherwise.
@@ -65,7 +69,7 @@ class Statistics(Forwards):
         self._statistic_tendencies = self._open_compatible(dataset, statistic_tendencies)
 
     @staticmethod
-    def _open_compatible(dataset: Dataset, source: Any) -> Any:
+    def _open_compatible(dataset: Dataset, source: DatasetSource | None) -> Dataset | None:
         """Open ``source`` and check that its variables match ``dataset``."""
         if source is None:
             return None
