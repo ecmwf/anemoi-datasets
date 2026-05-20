@@ -204,7 +204,7 @@ def test_create_bufr_to_dataframe_minimal_config():
     _ = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
     )
 
 
@@ -213,8 +213,17 @@ def test_create_bufr_to_dataframe_invalid_per_datum_format():
         BUFRToDataFrame(
             latitude="lat",
             longitude="lon",
-            per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+            per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
             per_datum_format="bad_value",  # should be "wide" or "long"
+        )
+
+
+def test_per_report_rejects_reserved_output_names():
+    with pytest.raises(ValueError, match="reserved coordinate column names"):
+        BUFRToDataFrame(
+            latitude="lat",
+            longitude="lon",
+            per_report={"latitude": "someOtherLatKey"},
         )
 
 
@@ -229,7 +238,7 @@ def test_per_report_basic():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
     )
 
     df = converter.read_msg_to_df(msg)
@@ -256,7 +265,7 @@ def test_per_report_with_datetime_prefix():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
         datetime_position_prefix="pre_",
     )
 
@@ -302,7 +311,7 @@ def test_header_preselect_keeps_matching():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
         preselect_msg_header={"dataCategory": ["==", 2]},
     )
 
@@ -384,7 +393,7 @@ def test_wide_format():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
         per_datum={"airTemperature": {"temp": "0:2"}},
         per_datum_format="wide",
     )
@@ -440,7 +449,7 @@ def test_long_format():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
         per_datum={"pressure": {"name": "pressure", "start_index": 0}},
         per_datum_format="long",
     )
@@ -473,7 +482,7 @@ def test_long_format_start_index():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
         per_datum={"pressure": {"name": "pressure", "start_index": 1}},
         per_datum_format="long",
     )
@@ -504,7 +513,7 @@ def test_multiple_messages_combined_and_sorted():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
     )
 
     df = converter.read_bufr_to_df(reader)
@@ -542,7 +551,7 @@ def test_subset_of_messages():
     converter = BUFRToDataFrame(
         latitude="lat",
         longitude="lon",
-        per_report={"#1#brightnessTemperature": "obsvalue_rawbt_1"},
+        per_report={"obsvalue_rawbt_1": "#1#brightnessTemperature"},
     )
 
     df = converter.read_bufr_to_df(reader, msg_idxs=[1, 3])

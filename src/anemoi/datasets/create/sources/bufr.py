@@ -83,8 +83,9 @@ class BUFRSource(Source):
             BUFR key to use for the canonical ``longitude`` output column.
             Defaults to ``"longitude"``.
         per_report : dict
-            Mapping of BUFR key names to output column names for values that
-            occur once per observation report (subset).
+            Mapping of output column names to BUFR key names for values that
+            occur once per observation report (subset). ``latitude`` and
+            ``longitude`` must not be used as keys here.
         per_datum : dict, optional
             Variables with multiple values per report. Structure depends on
             ``per_datum_format``:
@@ -139,10 +140,10 @@ class BUFRSource(Source):
               latitude: latitude
               longitude: longitude
               per_report:
-                bearingOrAzimuth: azimuth
-                satelliteZenithAngle: zenith
-                "#1#brightnessTemperature": obsvalue_rawbt_1
-                "#2#brightnessTemperature": obsvalue_rawbt_2
+                azimuth: bearingOrAzimuth
+                zenith: satelliteZenithAngle
+                obsvalue_rawbt_1: "#1#brightnessTemperature"
+                obsvalue_rawbt_2: "#2#brightnessTemperature"
 
     Wide format – extracting sliced data as separate columns:
 
@@ -162,7 +163,7 @@ class BUFRSource(Source):
               latitude: latitude
               longitude: longitude
               per_report:
-                satelliteZenithAngle: zenith
+                zenith: satelliteZenithAngle
               per_datum:
                 nonNormalizedPrincipalComponentScore:
                   obsvalue_pc_lw: "0:20:1"
@@ -187,8 +188,8 @@ class BUFRSource(Source):
               latitude: latitude
               longitude: longitude
               per_report:
-                satelliteIdentifier: satellite_id
-                earthLocalRadiusOfCurvature: radcurv
+                satellite_id: satelliteIdentifier
+                radcurv: earthLocalRadiusOfCurvature
               per_datum_format: "long"
               per_datum:
                 latitude:

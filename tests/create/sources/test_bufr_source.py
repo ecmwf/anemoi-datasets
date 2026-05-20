@@ -28,7 +28,7 @@ def test_bufr_schema_accepts_mars_embedded_source():
                     "latitude": "latitude",
                     "longitude": "longitude",
                     "per_report": {
-                        "bearingOrAzimuth": "azimuth",
+                        "azimuth": "bearingOrAzimuth",
                     },
                 },
             }
@@ -47,7 +47,7 @@ def test_bufr_schema_rejects_non_mars_embedded_source():
                     "latitude": "latitude",
                     "longitude": "longitude",
                     "per_report": {
-                        "bearingOrAzimuth": "azimuth",
+                        "azimuth": "bearingOrAzimuth",
                     },
                 },
             }
@@ -75,7 +75,7 @@ def test_bufr_source_mars_config():
                 "latitude": "latitude",
                 "longitude": "longitude",
                 "per_report": {
-                    "bearingOrAzimuth": "azimuth",
+                    "azimuth": "bearingOrAzimuth",
                 },
             },
         }
@@ -96,7 +96,7 @@ def test_bufr_source_rejects_coordinate_names_in_per_report():
                 "latitude": "lat",
                 "longitude": "lon",
                 "per_report": {
-                    "someLatitudeCopy": "latitude",
+                    "latitude": "someOtherLatKey",
                 },
             },
         }
