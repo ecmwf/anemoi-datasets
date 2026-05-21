@@ -219,7 +219,7 @@ class BUFRToDataFrame:
         per_datum: dict = None,
         per_datum_format: Literal["long", "wide"] = "wide",
     ):
-        reserved = {k for k in per_report if k in ("datetime", "latitude", "longitude")}
+        reserved = {k for k in per_report if k in ("date", "latitude", "longitude")}
         if reserved:
             raise ValueError(
                 f"'per_report' must not use reserved coordinate column names {sorted(reserved)} as keys. "
@@ -322,7 +322,7 @@ class BUFRToDataFrame:
             for out_col, bufr_key in self.per_report.items()
         }
 
-        per_report_data["datetime"] = self.extract_datetimes(message, nreports)
+        per_report_data["date"] = self.extract_datetimes(message, nreports)
         df = pd.DataFrame(per_report_data)
         return df
 
@@ -399,7 +399,7 @@ class BUFRToDataFrame:
             raise
 
         if len(df) > 0 and sort:
-            df = df.sort_values(by=["datetime"]).reset_index(drop=True)
+            df = df.sort_values(by=["date"]).reset_index(drop=True)
         return df
 
 
@@ -443,7 +443,7 @@ def bufr_to_dataframe_parallel(bufr_reader: BUFRReader, bufr_to_df: BUFRToDataFr
 
     df = pd.concat(all_lst)
     if len(df) > 0:
-        df = df.sort_values(by=["datetime"]).reset_index(drop=True)
+        df = df.sort_values(by=["date"]).reset_index(drop=True)
 
     log.info(f"Number of rows in the dataframe {len(df)}")
     return df

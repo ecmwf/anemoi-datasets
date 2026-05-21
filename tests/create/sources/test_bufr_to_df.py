@@ -247,7 +247,7 @@ def test_per_report_basic():
             "latitude": np.array([10.0, 20.0, 30.0], dtype=np.float32),
             "longitude": np.array([100.0, 110.0, 120.0], dtype=np.float32),
             "obsvalue_rawbt_1": np.array([250.0, 260.0, 270.0], dtype=np.float32),
-            "datetime": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * 3),
+            "date": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * 3),
         }
     )
     pd.testing.assert_frame_equal(df, expected)
@@ -275,7 +275,7 @@ def test_per_report_with_datetime_prefix():
             "latitude": np.array([1.0, 2.0], dtype=np.float32),
             "longitude": np.array([3.0, 4.0], dtype=np.float32),
             "obsvalue_rawbt_1": np.array([255.0, 265.0], dtype=np.float32),
-            "datetime": pd.array([pd.Timestamp("2020-01-05T06:30:00")] * 2),
+            "date": pd.array([pd.Timestamp("2020-01-05T06:30:00")] * 2),
         }
     )
     pd.testing.assert_frame_equal(df, expected)
@@ -321,7 +321,7 @@ def test_header_preselect_keeps_matching():
             "latitude": np.array([5.0], dtype=np.float32),
             "longitude": np.array([50.0], dtype=np.float32),
             "obsvalue_rawbt_1": np.array([280.0], dtype=np.float32),
-            "datetime": pd.array([pd.Timestamp("2023-06-15T12:00:00")]),
+            "date": pd.array([pd.Timestamp("2023-06-15T12:00:00")]),
         }
     )
     pd.testing.assert_frame_equal(df, expected)
@@ -404,7 +404,7 @@ def test_wide_format():
             "latitude": np.array([10.0, 20.0], dtype=np.float64),
             "longitude": np.array([100.0, 110.0], dtype=np.float64),
             "obsvalue_rawbt_1": np.array([300.0, 310.0], dtype=np.float64),
-            "datetime": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * 2),
+            "date": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * 2),
             "temp_1": np.array([0.0, 3.0], dtype=np.float32),
             "temp_2": np.array([1.0, 4.0], dtype=np.float32),
         }
@@ -460,7 +460,7 @@ def test_long_format():
             "latitude": np.array([10.0, 10.0, 10.0, 20.0, 20.0, 20.0], dtype=np.float32),
             "longitude": np.array([100.0, 100.0, 100.0, 110.0, 110.0, 110.0], dtype=np.float32),
             "obsvalue_rawbt_1": np.array([290.0, 290.0, 290.0, 295.0, 295.0, 295.0], dtype=np.float32),
-            "datetime": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * (nreports * ndatum)),
+            "date": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * (nreports * ndatum)),
             "pressure": np.array(pressure_values, dtype=np.float32),
         }
     )
@@ -490,7 +490,7 @@ def test_long_format_start_index():
     df = converter.read_msg_to_df(msg)
     expected_ndatum = ndatum - 1  # first level skipped
     assert len(df) == nreports * expected_ndatum
-    assert list(df.columns) == ["latitude", "longitude", "obsvalue_rawbt_1", "datetime", "pressure"]
+    assert list(df.columns) == ["latitude", "longitude", "obsvalue_rawbt_1", "date", "pressure"]
 
 
 def test_multiple_messages_combined_and_sorted():
@@ -522,7 +522,7 @@ def test_multiple_messages_combined_and_sorted():
             "latitude": np.array([10.0, 20.0, 30.0, 40.0], dtype=np.float32),
             "longitude": np.array([100.0, 110.0, 120.0, 130.0], dtype=np.float32),
             "obsvalue_rawbt_1": np.array([240.0, 245.0, 250.0, 255.0], dtype=np.float32),
-            "datetime": pd.array(
+            "date": pd.array(
                 [
                     pd.Timestamp("2023-06-15T12:00:00"),
                     pd.Timestamp("2023-06-15T12:00:00"),
@@ -533,7 +533,7 @@ def test_multiple_messages_combined_and_sorted():
         }
     )
     pd.testing.assert_frame_equal(df, expected)
-    assert df["datetime"].is_monotonic_increasing
+    assert df["date"].is_monotonic_increasing
 
 
 def test_subset_of_messages():
