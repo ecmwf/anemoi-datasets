@@ -3,7 +3,6 @@ import datetime
 import pytest
 from pydantic import ValidationError
 
-from anemoi.datasets.create.recipe import Recipe
 from anemoi.datasets.create.sources import create_source
 from anemoi.datasets.create.sources.bufr import BUFRSource
 
@@ -34,6 +33,8 @@ def test_bufr_schema_accepts_mars_embedded_source():
             }
         }
     )
+    from anemoi.datasets.create.recipe import Recipe
+
     parsed = Recipe(**recipe)
     assert parsed.input is not None
 
@@ -55,6 +56,8 @@ def test_bufr_schema_rejects_non_mars_embedded_source():
     )
 
     with pytest.raises(ValidationError):
+        from anemoi.datasets.create.recipe import Recipe
+
         Recipe(**recipe)
 
 
