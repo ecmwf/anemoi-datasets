@@ -222,21 +222,17 @@ class BUFRSource(Source):
             raise ValueError(f"Invalid source name: {name}, must be 'mars'")
         return create_source(self.context, {name: config})
 
-    def execute(self, dates: list) -> pd.DataFrame:
-        df_list = []
-        for start_dt, end_dt in dates:
-            ekd_ds = self.source.execute([start_dt, end_dt])
-            if ekd_ds is None:
-                continue
-            bufr_reader = BUFRReader(ekd_ds.path)
-            df = bufr_to_dataframe_parallel(bufr_reader, self.bufr_to_df, self.num_processes)
-            LOG.debug(f"Extracted {len(df)} BUFR rows for date range {start_dt} - {end_dt}")
-            df_list.append(df)
-
-        if not df_list:
-            LOG.debug(f"No BUFR records were extracted for {len(dates)} date range(s)")
+    def execute(self, dates) -> pd.DataFrame:
+        ekd_ds = self.source.execute(dates)
+        if ekd_ds is None:
+            LOG.debug(f"No BUFR data returned for date range {dates.start_range} - {dates.end_range}")
             return pd.DataFrame()
 
-        df = pd.concat(df_list, ignore_index=True)
-        LOG.debug(f"Combined BUFR dataframe contains {len(df)} rows")
+        bufr_reader = BUFRReader(ekd_ds.path)
+        df = bufr_to_dataframe_parallel(bufr_reader, self.bufr_to_df, self.num_processes)
+        LOG.debug(f"Extracted {len(df)} BUFR rows for date range {dates.start_range} - {dates.end_range}")
+
+        if len(df) == 0:
+            return pd.DataFrame()
+
         return df
