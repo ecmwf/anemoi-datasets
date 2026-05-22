@@ -54,6 +54,12 @@ def test_create_test_recipe_includes_last_dates(recipe_path: Path, tmp_path: Pat
 
     data = yaml.safe_load(output_path.read_text())
 
+    assert data["description"].startswith(
+        "This is a test version of the following recipe, created using "
+        "anemoi-datasets create-test-recipe "
+        "--dates --last-dates --grid --level --n-dates 2 --n-levels 2:"
+    )
+
     assert _as_timestamp(data["dates"]["start"]) == "2020-12-30 00:00:00"
     assert _as_timestamp(data["dates"]["end"]) == "2021-01-03 12:00:00"
     assert data["dates"]["frequency"] == "12h"

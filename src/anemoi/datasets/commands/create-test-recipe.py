@@ -116,6 +116,32 @@ def update_name(data: dict, input_path: Path, suffix: str = "-test") -> None:
     data["name"] = original_name + suffix
 
 
+def update_description(data: dict, options: str) -> None:
+    prefix = (
+        "This is a test version of the following recipe, "
+        f"created using anemoi-datasets create-test-recipe {options}:"
+    )
+    description = data.get("description", "")
+    description = str(description).strip()
+
+    if description:
+        data["description"] = f"{prefix}\n\n{description}"
+    else:
+        data["description"] = prefix
+
+
+def format_options(*, dates: bool, last_dates: bool, grid: bool, level: bool, n_dates: int, n_levels: int) -> str:
+    parts = [
+        "--dates" if dates else "--no-dates",
+        "--last-dates" if last_dates else "--no-last-dates",
+        "--grid" if grid else "--no-grid",
+        "--level" if level else "--no-level",
+        f"--n-dates {n_dates}",
+        f"--n-levels {n_levels}",
+    ]
+    return " ".join(parts)
+
+
 def _iter_dates(start: datetime, end: datetime, frequency: timedelta) -> list[datetime]:
     dates = []
     date = start
@@ -268,6 +294,7 @@ def create_test_recipe(
     level: bool = True,
     n_dates: int = 4,
     n_levels: int = 2,
+    command_options: str | None = None,
 ) -> Path:
     input_path = Path(input_path)
     if not dates and last_dates:
@@ -285,7 +312,18 @@ def create_test_recipe(
     with input_path.open() as f:
         data = yaml.load(f)
 
+    if command_options is None:
+        command_options = format_options(
+            dates=dates,
+            last_dates=last_dates,
+            grid=grid,
+            level=level,
+            n_dates=n_dates,
+            n_levels=n_levels,
+        )
+
     update_name(data, input_path)
+    update_description(data, command_options)
 
     walk(
         data,
