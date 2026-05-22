@@ -11,6 +11,7 @@ import datetime
 
 import numpy as np
 import pytest
+
 from anemoi.datasets import open_dataset
 
 
@@ -375,6 +376,38 @@ def test_dataset_shape_and_descriptors() -> None:
 def test_dataset_getitem_constant() -> None:
     ds = _dataset(variables=["x"], values={"x": {"mode": "constant", "value": 5.0}})
     np.testing.assert_array_equal(ds[0], np.full((1, 1, 9), 5.0, dtype=np.float32))
+
+
+def test_dataset_getitem_rejects_out_of_bounds_index() -> None:
+    # A real GriddedZarr raises on an out-of-range index; the synthetic dataset
+    # must not silently fabricate a nonexistent timestep.
+    ds = _dataset()  # 5 dates
+    with pytest.raises(IndexError):
+        ds[99]
+    with pytest.raises(IndexError):
+        ds[-99]
+    with pytest.raises(IndexError):
+        ds[[0, 99]]
+
+
+def test_dataset_getitem_negative_index_wraps() -> None:
+    ds = _dataset(variables=["x"], values={"x": {"mode": "index"}})  # 5 dates
+    np.testing.assert_array_equal(ds[-1], ds[len(ds) - 1])
+    np.testing.assert_array_equal(ds[-5], ds[0])
+
+
+def test_dataset_getitem_boolean_mask_selects_true_positions() -> None:
+    # A boolean mask must select the True positions, not be cast to integers.
+    ds = _dataset(variables=["x"], values={"x": {"mode": "index"}})  # 5 dates
+    mask = np.array([True, False, True, False, True])
+    np.testing.assert_array_equal(ds[mask], ds[[0, 2, 4]])
+
+
+def test_dataset_getitem_numpy_array_on_variable_axis() -> None:
+    # A numpy fancy index on a non-date axis must not crash index expansion.
+    ds = _dataset(variables=["a", "b", "c"])  # shape (5, 3, 1, 9)
+    selected = ds[:, np.array([0, 2])]
+    assert selected.shape == (5, 2, 1, 9)
 
 
 def test_dataset_statistics_and_constant_fields() -> None:

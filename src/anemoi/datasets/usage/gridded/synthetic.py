@@ -101,7 +101,8 @@ class ConstantValue(ValueGenerator):
 
 class RandomValue(ValueGenerator):
     """Gaussian noise. Each date is seeded by ``(seed, var_index, date_index)``, so
-    any date is reproducible independently of how it is sliced."""
+    any date is reproducible independently of how it is sliced.
+    """
 
     is_constant = False
 
@@ -421,10 +422,13 @@ _STAT_KEYS = ("mean", "stdev", "maximum", "minimum")
 
 def _expand_index(index: tuple[Any, ...], ndim: int) -> tuple[Any, ...]:
     """Expand a single ``Ellipsis`` and right-pad with full slices to ``ndim`` axes."""
-    if index.count(Ellipsis) > 1:
+    # Identity checks, not ``in`` / ``count``: an element may be a numpy array,
+    # for which ``== Ellipsis`` is an ambiguous elementwise comparison.
+    ellipsis_at = [i for i, x in enumerate(index) if x is Ellipsis]
+    if len(ellipsis_at) > 1:
         raise IndexError("Only one Ellipsis is allowed")
-    if Ellipsis in index:
-        i = index.index(Ellipsis)
+    if ellipsis_at:
+        i = ellipsis_at[0]
         fill = ndim - (len(index) - 1)
         index = index[:i] + (slice(None),) * fill + index[i + 1 :]
     return index + (slice(None),) * (ndim - len(index))
@@ -446,11 +450,6 @@ class _SyntheticArray:
         self.ndim = 4
         self.chunks: Shape = (1, self.shape[1], self.shape[2], self.shape[3])
 
-    def _resolve_dates(self, indices: Any) -> NDArray[Any]:
-        """Resolve a date-axis indexer to a non-negative integer index array."""
-        dates = np.asarray(indices, dtype=int)
-        return np.where(dates < 0, dates + self.shape[0], dates)
-
     def _generate(self, date_indices: NDArray[Any]) -> NDArray[Any]:
         """Synthesise ``(len(date_indices), variables, ensemble, gridpoints)``."""
         c = self._config
@@ -468,22 +467,17 @@ class _SyntheticArray:
         return out
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
-        # A bare list / array indexes the date axis: generate exactly those dates.
-        if isinstance(index, (list, np.ndarray)):
-            return self._generate(self._resolve_dates(index))
-
         index = _expand_index(index if isinstance(index, tuple) else (index,), self.ndim)
         axis0, rest = index[0], index[1:]
 
-        if isinstance(axis0, slice):
-            block = self._generate(np.arange(*axis0.indices(self.shape[0])))
-            return block[(slice(None), *rest)]
-        if isinstance(axis0, (int, np.integer)):
-            block = self._generate(self._resolve_dates([axis0]))
-            return block[(0, *rest)]
-        # list / tuple / array on the date axis
-        block = self._generate(self._resolve_dates(axis0))
-        return block[(slice(None), *rest)]
+        # Delegate date-axis resolution to numpy: indexing ``arange(n_dates)``
+        # reproduces numpy's bounds-checking, negative wrapping, and fancy /
+        # boolean indexing -- so an out-of-range index raises ``IndexError``
+        # instead of silently fabricating a nonexistent timestep.
+        date_indices = np.arange(self.shape[0])[axis0]
+        scalar = date_indices.ndim == 0
+        block = self._generate(np.atleast_1d(date_indices))
+        return block[(0, *rest)] if scalar else block[(slice(None), *rest)]
 
 
 class _SyntheticStore:
