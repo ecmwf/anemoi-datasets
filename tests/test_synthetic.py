@@ -316,3 +316,122 @@ def test_parse_config_rejects_index_mode_with_too_narrow_dtype() -> None:
                 dtype="float32",
             )
         )
+
+
+def _dataset(**overrides):
+    from anemoi.datasets.usage.gridded.synthetic import SyntheticGriddedDataset
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    return SyntheticGriddedDataset(parse_synthetic_config(_minimal_raw(**overrides)))
+
+
+def test_dataset_is_a_gridded_zarr() -> None:
+    # The synthetic dataset inherits the whole Dataset contract from GriddedZarr
+    # rather than re-implementing it; this guards that inheritance.
+    from anemoi.datasets.usage.gridded.store import GriddedZarr
+
+    assert isinstance(_dataset(), GriddedZarr)
+
+
+def test_synthetic_array_generates_only_requested_dates(monkeypatch) -> None:
+    # Opening a dataset must materialise nothing, and indexing must generate
+    # only the dates asked for -- never the whole (possibly enormous) range.
+    from anemoi.datasets.usage.gridded import synthetic
+
+    calls = []
+    real_generate = synthetic._SyntheticArray._generate
+
+    def spy(self, date_indices):
+        calls.append(np.asarray(date_indices).tolist())
+        return real_generate(self, date_indices)
+
+    monkeypatch.setattr(synthetic._SyntheticArray, "_generate", spy)
+
+    # A 30-year, 6-hourly range: materialising it would be billions of values.
+    ds = _dataset(start="2000-01-01", end="2030-01-01", frequency="6h")
+    assert len(ds) > 40_000
+    assert calls == []  # opening generated nothing
+
+    ds[7]
+    assert calls == [[7]]  # one timestep only
+
+    ds[10:13]
+    assert calls[-1] == [10, 11, 12]
+
+
+def test_dataset_shape_and_descriptors() -> None:
+    ds = _dataset(variables=["a", "b", "c"])
+    assert ds.shape == (5, 3, 1, 9)
+    assert len(ds) == 5
+    assert ds.variables == ["a", "b", "c"]
+    assert ds.name_to_index == {"a": 0, "b": 1, "c": 2}
+    assert ds.field_shape == (3, 3)
+    assert ds.latitudes.shape == (9,)
+    assert ds.missing == set()
+    assert ds.dtype == np.dtype("float32")
+
+
+def test_dataset_getitem_constant() -> None:
+    ds = _dataset(variables=["x"], values={"x": {"mode": "constant", "value": 5.0}})
+    np.testing.assert_array_equal(ds[0], np.full((1, 1, 9), 5.0, dtype=np.float32))
+
+
+def test_dataset_statistics_and_constant_fields() -> None:
+    ds = _dataset(
+        variables=["k", "r"],
+        values={
+            "k": {"mode": "constant", "value": 7.0},
+            "r": {"mode": "random", "mean": 0.0, "std": 1.0},
+        },
+    )
+    np.testing.assert_array_equal(ds.statistics["mean"][0], 7.0)
+    np.testing.assert_array_equal(ds.statistics["stdev"][0], 0.0)
+    assert ds.constant_fields == ["k"]
+
+
+def test_dataset_tendency_statistics_for_constant_is_zero() -> None:
+    ds = _dataset(variables=["k"], values={"k": {"mode": "constant", "value": 7.0}})
+    tend = ds.statistics_tendencies()
+    np.testing.assert_array_equal(tend["mean"], [0.0])
+    np.testing.assert_array_equal(tend["stdev"], [0.0])
+
+
+def test_dataset_usage_factory_load_resolves() -> None:
+    # A synthetic dataset is a genuine GriddedZarr, so it resolves usage
+    # factories like any other dataset.
+    ds = _dataset()
+    assert ds.usage_factory_load("Subset").__name__ == "Subset"
+
+
+def test_dataset_tendency_statistics_missing_delta_raises() -> None:
+    # Only the dataset-frequency tendency is precomputed; like a real dataset,
+    # requesting an unavailable delta raises KeyError.
+    ds = _dataset()
+    with pytest.raises(KeyError):
+        ds.statistics_tendencies(datetime.timedelta(days=30))
+
+
+def test_dataset_computed_constant_fields_single_date() -> None:
+    # A single-date dataset cannot produce tendencies; the inherited
+    # computed_constant_fields() must fall back to sample-based detection
+    # rather than raising.
+    ds = _dataset(start="2020-01-01", end="2020-01-01")
+    assert len(ds) == 1
+    assert ds.computed_constant_fields() == ["a", "b"]
+
+
+def test_dataset_metadata_roundtrip() -> None:
+    # metadata() serializes via json.dumps/json.loads internally; this checks
+    # the synthetic dataset round-trips into a checkpoint-style metadata blob.
+    meta = _dataset(variables=["a", "b"]).metadata()
+    assert meta["variables"] == ["a", "b"]
+    assert meta["specific"]["synthetic"] is True
+    assert meta["shape"][1] == 2
+
+
+def test_dataset_metadata_specific() -> None:
+    meta = _dataset(variables=["a", "b"]).metadata_specific()
+    assert meta["synthetic"] is True
+    # the base-class implementation populates these
+    assert "action" in meta
+    assert meta["variables"] == ["a", "b"]

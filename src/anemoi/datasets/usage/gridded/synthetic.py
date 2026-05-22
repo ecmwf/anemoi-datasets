@@ -24,10 +24,14 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.gridded.store import GriddedZarr
 
 LOG = logging.getLogger(__name__)
 
@@ -407,3 +411,177 @@ def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
         resolution=_resolve_resolution(raw),
         seed=seed,
     )
+
+
+# --------------------------------------------------------------------------
+# Lazy data
+# --------------------------------------------------------------------------
+_STAT_KEYS = ("mean", "stdev", "maximum", "minimum")
+
+
+def _expand_index(index: tuple[Any, ...], ndim: int) -> tuple[Any, ...]:
+    """Expand a single ``Ellipsis`` and right-pad with full slices to ``ndim`` axes."""
+    if index.count(Ellipsis) > 1:
+        raise IndexError("Only one Ellipsis is allowed")
+    if Ellipsis in index:
+        i = index.index(Ellipsis)
+        fill = ndim - (len(index) - 1)
+        index = index[:i] + (slice(None),) * fill + index[i + 1 :]
+    return index + (slice(None),) * (ndim - len(index))
+
+
+class _SyntheticArray:
+    """A lazy ``(dates, variables, ensemble, gridpoints)`` array.
+
+    Values are synthesised when indexed, so only the dates actually requested are
+    ever materialised -- the full array, which may be enormous for a long date
+    range, is never built.
+    """
+
+    def __init__(self, config: SyntheticConfig) -> None:
+        self._config = config
+        n_grid = int(config.latitudes.size)
+        self.shape: Shape = (len(config.dates), len(config.variables), config.n_ensemble, n_grid)
+        self.dtype = config.dtype
+        self.ndim = 4
+        self.chunks: Shape = (1, self.shape[1], self.shape[2], self.shape[3])
+
+    def _resolve_dates(self, indices: Any) -> NDArray[Any]:
+        """Resolve a date-axis indexer to a non-negative integer index array."""
+        dates = np.asarray(indices, dtype=int)
+        return np.where(dates < 0, dates + self.shape[0], dates)
+
+    def _generate(self, date_indices: NDArray[Any]) -> NDArray[Any]:
+        """Synthesise ``(len(date_indices), variables, ensemble, gridpoints)``."""
+        c = self._config
+        _, n_vars, n_ensemble, n_grid = self.shape
+        out = np.empty((len(date_indices), n_vars, n_ensemble, n_grid), dtype=c.dtype)
+        for v, generator in enumerate(c.generators):
+            out[:, v] = generator.generate(
+                date_indices=date_indices,
+                n_ensemble=n_ensemble,
+                n_grid=n_grid,
+                n_vars=n_vars,
+                var_index=v,
+                seed=c.seed,
+            )
+        return out
+
+    def __getitem__(self, index: FullIndex) -> NDArray[Any]:
+        # A bare list / array indexes the date axis: generate exactly those dates.
+        if isinstance(index, (list, np.ndarray)):
+            return self._generate(self._resolve_dates(index))
+
+        index = _expand_index(index if isinstance(index, tuple) else (index,), self.ndim)
+        axis0, rest = index[0], index[1:]
+
+        if isinstance(axis0, slice):
+            block = self._generate(np.arange(*axis0.indices(self.shape[0])))
+            return block[(slice(None), *rest)]
+        if isinstance(axis0, (int, np.integer)):
+            block = self._generate(self._resolve_dates([axis0]))
+            return block[(0, *rest)]
+        # list / tuple / array on the date axis
+        block = self._generate(self._resolve_dates(axis0))
+        return block[(slice(None), *rest)]
+
+
+class _SyntheticStore:
+    """A minimal lazy stand-in for the zarr group :class:`GriddedZarr` reads.
+
+    It exposes exactly the surface :class:`GriddedZarr` consumes: item access for
+    the data and the (small) coordinate/statistics arrays, plus an ``attrs`` dict.
+    """
+
+    def __init__(self, arrays: dict[str, Any], attrs: dict[str, Any]) -> None:
+        self._arrays = arrays
+        self.attrs = attrs
+
+    def __getitem__(self, key: str) -> Any:
+        return self._arrays[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._arrays
+
+
+def _statistics_arrays(config: SyntheticConfig, method: str) -> dict[str, NDArray[Any]]:
+    """Collect the per-variable statistics returned by ``method`` on each generator."""
+    kwargs = dict(
+        n_dates=len(config.dates),
+        n_ensemble=config.n_ensemble,
+        n_grid=int(config.latitudes.size),
+        n_vars=len(config.variables),
+        seed=config.seed,
+    )
+    per_variable = [getattr(g, method)(var_index=v, **kwargs) for v, g in enumerate(config.generators)]
+    return {key: np.array([s[key] for s in per_variable], dtype=np.float64) for key in _STAT_KEYS}
+
+
+def _build_synthetic_store(config: SyntheticConfig) -> _SyntheticStore:
+    """Assemble the lazy store backing a :class:`SyntheticGriddedDataset`."""
+    arrays: dict[str, Any] = {
+        "data": _SyntheticArray(config),
+        "dates": config.dates,
+        "latitudes": config.latitudes,
+        "longitudes": config.longitudes,
+    }
+    arrays.update(_statistics_arrays(config, "statistics"))
+
+    # Tendency statistics need at least two dates; otherwise the keys stay absent
+    # and statistics_tendencies() raises KeyError, as it would for a real dataset.
+    if len(config.dates) >= 2:
+        delta = frequency_to_string(config.frequency)
+        for key, values in _statistics_arrays(config, "tendency_statistics").items():
+            arrays[f"statistics_tendencies_{delta}_{key}"] = values
+
+    attrs = {
+        "layout": "gridded",
+        "resolution": config.resolution,
+        "frequency": frequency_to_string(config.frequency),
+        "variables": list(config.variables),
+        "variables_metadata": {v: {} for v in config.variables},
+        "field_shape": [int(x) for x in config.field_shape],
+        # Suppresses GriddedZarr's "no constant_fields" warning; it recomputes the value regardless.
+        "constant_fields": [v for v, g in zip(config.variables, config.generators) if g.is_constant],
+        "synthetic": True,
+    }
+    return _SyntheticStore(arrays, attrs)
+
+
+# --------------------------------------------------------------------------
+# The dataset
+# --------------------------------------------------------------------------
+class SyntheticGriddedDataset(GriddedZarr):
+    """An in-memory synthetic gridded dataset built from a :class:`SyntheticConfig`.
+
+    It subclasses :class:`GriddedZarr` over a lazy store, so the whole dataset
+    contract is inherited from the implementation that backs real datasets; only
+    synthetic-aware presentation (repr, tree, metadata marker) is overridden.
+    Nothing is materialised until the data is indexed.
+    """
+
+    def __init__(self, config: SyntheticConfig) -> None:
+        self._config = config
+        super().__init__(_build_synthetic_store(config), path="synthetic")
+
+    def __repr__(self) -> str:
+        c = self._config
+        return (
+            f"SyntheticGriddedDataset(variables={len(c.variables)}, "
+            f"dates={len(c.dates)}, gridpoints={int(c.latitudes.size)})"
+        )
+
+    def tree(self) -> Node:
+        c = self._config
+        return Node(
+            self,
+            [],
+            synthetic=dict(
+                variables=len(c.variables),
+                dates=len(c.dates),
+                gridpoints=int(c.latitudes.size),
+            ),
+        )
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        return {**super().metadata_specific(**kwargs), "synthetic": True}
