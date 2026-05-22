@@ -481,6 +481,20 @@ def test_dataset_computed_constant_fields_single_date() -> None:
     assert ds.computed_constant_fields() == ["a", "b"]
 
 
+def test_dataset_constant_fields_single_date_is_analytic() -> None:
+    # With one date the inherited sample-based detection cannot tell a constant
+    # field from a varying one and marks every field constant; the synthetic
+    # dataset must instead report the answer it knows analytically.
+    ds = _dataset(
+        start="2020-01-01",
+        end="2020-01-01",
+        variables=["k", "r"],
+        values={"k": {"mode": "constant", "value": 7.0}, "r": {"mode": "random"}},
+    )
+    assert len(ds) == 1
+    assert ds.constant_fields == ["k"]
+
+
 def test_dataset_metadata_roundtrip() -> None:
     # metadata() serializes via json.dumps/json.loads internally; this checks
     # the synthetic dataset round-trips into a checkpoint-style metadata blob.

@@ -573,8 +573,9 @@ class SyntheticGriddedDataset(GriddedZarr):
 
     It subclasses :class:`GriddedZarr` over a lazy store, so the whole dataset
     contract is inherited from the implementation that backs real datasets; only
-    synthetic-aware presentation (repr, tree, metadata marker) is overridden.
-    Nothing is materialised until the data is indexed.
+    synthetic-aware presentation (repr, tree, metadata marker) and the analytic
+    ``constant_fields`` are overridden. Nothing is materialised until the data is
+    indexed.
     """
 
     def __init__(self, config: SyntheticConfig) -> None:
@@ -599,6 +600,13 @@ class SyntheticGriddedDataset(GriddedZarr):
                 gridpoints=int(c.latitudes.size),
             ),
         )
+
+    @property
+    def constant_fields(self) -> list[str]:
+        # GriddedZarr.constant_fields always recomputes the value from the data,
+        # which mislabels every field as constant when there is only one date.
+        # The synthetic store already records the answer known analytically.
+        return list(self.store.attrs["constant_fields"])
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         return {**super().metadata_specific(**kwargs), "synthetic": True}
