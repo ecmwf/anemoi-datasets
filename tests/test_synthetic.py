@@ -114,6 +114,18 @@ def test_resolve_bbox_grid() -> None:
     assert (lat[10], lon[10]) == (10.0, 10.0)  # NE corner: lat/lon paired per gridpoint
 
 
+def test_resolve_bbox_grid_coordinates_are_exact() -> None:
+    # A float resolution must not leave floating-point fuzz on the grid edges.
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    lat, lon, field_shape = resolve_grid({"bbox": [10, 0, 0, 10], "resolution": 0.1})
+    assert field_shape == (101, 101)
+    assert lat[0] == 10.0
+    assert lat[-1] == 0.0
+    assert lon[0] == 0.0
+    assert lon[-1] == 10.0
+
+
 def test_resolve_bbox_requires_resolution() -> None:
     from anemoi.datasets.usage.gridded.synthetic import resolve_grid
 

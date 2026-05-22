@@ -210,8 +210,12 @@ def _resolve_bbox(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Sha
         dlat = dlon = float(res)
     if dlat <= 0 or dlon <= 0:
         raise ValueError("synthetic 'bbox' resolution must be positive")
-    lats_1d = np.arange(north, south - dlat / 2.0, -dlat)
-    lons_1d = np.arange(west, east + dlon / 2.0, dlon)
+    # ``linspace`` with a computed point count pins both endpoints exactly; a
+    # float-step ``arange`` would leave rounding fuzz on the grid edges.
+    n_lat = int(round((north - south) / dlat)) + 1
+    n_lon = int(round((east - west) / dlon)) + 1
+    lats_1d = np.linspace(north, south, n_lat)
+    lons_1d = np.linspace(west, east, n_lon)
     lon_grid, lat_grid = np.meshgrid(lons_1d, lats_1d)
     field_shape = lat_grid.shape  # (n_lat, n_lon)
     return lat_grid.reshape(-1), lon_grid.reshape(-1), field_shape
