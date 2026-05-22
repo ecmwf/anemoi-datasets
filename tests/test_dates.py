@@ -148,5 +148,18 @@ def test_default_statistics_dates_80_percent(as_numpy: bool) -> None:
     assert default_end((2000, 1, 1), (2002, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(2002, 5, 19, 14)
 
 
+@pytest.mark.parametrize("as_numpy", [True, False])
+def test_default_statistics_dates_test_dataset(as_numpy: bool) -> None:
+    """Test default_statistics_dates for very small test datasets."""
+    dates = [datetime.datetime(y, 1, 1, 0) for y in [2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014]]
+    if as_numpy:
+        dates = [np.datetime64(d) for d in dates]
+
+    start, end = Statistics.default_statistics_dates(dates)
+
+    assert start == datetime.datetime(2000, 1, 1, 0)
+    assert end == datetime.datetime(2010, 1, 1, 0)
+
+
 if __name__ == "__main__":
     test_default_statistics_dates(2000, as_numpy=True)
