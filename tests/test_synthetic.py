@@ -11,6 +11,7 @@ import datetime
 
 import numpy as np
 import pytest
+from anemoi.datasets import open_dataset
 
 
 def test_constant_generator() -> None:
@@ -435,3 +436,80 @@ def test_dataset_metadata_specific() -> None:
     # the base-class implementation populates these
     assert "action" in meta
     assert meta["variables"] == ["a", "b"]
+
+
+def test_open_dataset_synthetic_bbox_end_to_end() -> None:
+    ds = open_dataset(
+        synthetic={
+            "grid": {"bbox": [10, 0, 0, 10], "resolution": 1.0},
+            "variables": ["a", "b"],
+            "start": "2020-01-01",
+            "end": "2020-01-02",
+            "frequency": "6h",
+            "values": {"default": {"mode": "constant", "value": 5.0}},
+        }
+    )
+    assert ds.shape == (5, 2, 1, 121)
+    assert ds.field_shape == (11, 11)
+    np.testing.assert_array_equal(ds[0], np.full((2, 1, 121), 5.0, dtype=np.float32))
+
+
+def test_open_dataset_synthetic_random_is_reproducible() -> None:
+    spec = dict(
+        grid={"bbox": [4, 0, 0, 4], "resolution": 2.0},
+        variables=3,
+        start="2020-01-01",
+        end="2020-01-01",
+        frequency="6h",
+        values={"default": {"mode": "random", "mean": 0.0, "std": 1.0}},
+        seed=42,
+    )
+    first = open_dataset(synthetic=dict(spec))
+    second = open_dataset(synthetic=dict(spec))
+    np.testing.assert_array_equal(first[:], second[:])
+
+
+def test_open_dataset_synthetic_index_roundtrip() -> None:
+    ds = open_dataset(
+        synthetic={
+            "grid": {"bbox": [2, 0, 0, 2], "resolution": 2.0},  # 2x2 = 4 gridpoints
+            "variables": 2,
+            "start": "2020-01-01",
+            "end": "2020-01-02",
+            "frequency": "1d",
+            "values": {"default": {"mode": "index"}},
+        }
+    )
+    n_vars, n_ens, n_grid = 2, 1, 4
+    for d in range(2):
+        for v in range(2):
+            for g in range(4):
+                expected = ((d * n_vars + v) * n_ens + 0) * n_grid + g
+                assert ds[d, v, 0, g] == expected
+
+
+def test_open_dataset_synthetic_rejects_extra_keywords() -> None:
+    with pytest.raises(ValueError, match="does not support extra keywords"):
+        open_dataset(
+            synthetic={
+                "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+                "variables": ["a", "b"],
+                "start": "2020-01-01",
+                "end": "2020-01-02",
+                "frequency": "1d",
+            },
+            select=["a"],
+        )
+
+
+def test_open_dataset_synthetic_rejects_unknown_grid_key() -> None:
+    with pytest.raises(ValueError, match="exactly one of"):
+        open_dataset(
+            synthetic={
+                "grid": {"hexagon": 1},
+                "variables": 1,
+                "start": "2020-01-01",
+                "end": "2020-01-01",
+                "frequency": "6h",
+            }
+        )

@@ -555,6 +555,12 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
         assert not sets, sets
         return complement_factory(args, kwargs).mutate()
 
+    if "synthetic" in kwargs:
+        from anemoi.datasets.usage.gridded.synthetic import synthetic_factory
+
+        assert not sets, sets
+        return synthetic_factory(args, kwargs).mutate()
+
     for name in ("datasets", "dataset"):
         if name in kwargs:
             datasets = kwargs.pop(name)

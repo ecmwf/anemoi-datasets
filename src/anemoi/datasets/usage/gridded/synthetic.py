@@ -585,3 +585,22 @@ class SyntheticGriddedDataset(GriddedZarr):
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         return {**super().metadata_specific(**kwargs), "synthetic": True}
+
+
+# --------------------------------------------------------------------------
+# Factory
+# --------------------------------------------------------------------------
+def synthetic_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> SyntheticGriddedDataset:
+    """Build a :class:`SyntheticGriddedDataset` from ``open_dataset(synthetic=...)``.
+
+    The synthetic dataset is fully described by the ``synthetic`` dict; it does not
+    compose with other ``open_dataset`` keywords.
+    """
+    assert len(args) == 0, args
+    config = parse_synthetic_config(kwargs.pop("synthetic"))
+    if kwargs:
+        raise ValueError(
+            f"open_dataset(synthetic=...) does not support extra keywords {sorted(kwargs)}; "
+            "configure the dataset entirely inside the 'synthetic' dict"
+        )
+    return SyntheticGriddedDataset(config)
