@@ -24,6 +24,7 @@ from pydantic import BeforeValidator
 from pydantic import Discriminator
 from pydantic import Field
 from pydantic import Tag
+from pydantic import model_validator
 
 LOG = logging.getLogger(__name__)
 
@@ -96,10 +97,33 @@ class DatesProvider(BaseModel):
 
 
 class StartEndDates(DatesProvider):
+
+    class MissingRange(BaseModel):
+        start: datetime.datetime
+        end: datetime.datetime
+        frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] | None = None
+
     start: datetime.datetime
     end: datetime.datetime
     frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
-    missing: list[datetime.datetime] = Field(default_factory=list)
+    missing: list[datetime.datetime | str | MissingRange] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _expand_missing_ranges(self) -> "StartEndDates":
+        expanded = []
+        for item in self.missing:
+            if isinstance(item, self.MissingRange):
+                current = item.start
+                step = item.frequency or self.frequency
+                while current <= item.end:
+                    expanded.append(current)
+                    current += step
+            else:
+                expanded.append(as_datetime(item))
+
+        # Keep deterministic ordering for comparisons and filtering.
+        self.missing = sorted(set(expanded))
+        return self
 
     @cached_property
     def values(self) -> list[datetime.datetime]:
