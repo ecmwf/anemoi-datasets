@@ -16,12 +16,15 @@ prototyping anemoi training/inference pipelines without a Zarr store on disk.
 
 from __future__ import annotations
 
+import datetime
 import logging
 from abc import ABC
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.usage.dataset import Shape
@@ -263,3 +266,144 @@ def resolve_grid(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shap
             f"synthetic 'grid' must contain exactly one of {sorted(_GRID_RESOLVERS)}; got keys {sorted(grid)}"
         )
     return _GRID_RESOLVERS[type_keys[0]](grid)
+
+
+# --------------------------------------------------------------------------
+# Config parsing
+# --------------------------------------------------------------------------
+_KNOWN_KEYS = {"grid", "variables", "start", "end", "frequency", "values", "ensemble", "seed", "dtype", "resolution"}
+_REQUIRED_KEYS = ("grid", "variables", "start", "end", "frequency")
+_DEFAULT_VALUE_SPEC = {"mode": "random", "mean": 0.0, "std": 1.0}
+
+
+@dataclass
+class SyntheticConfig:
+    """A fully resolved, validated synthetic-dataset configuration."""
+
+    latitudes: NDArray[Any]
+    longitudes: NDArray[Any]
+    field_shape: Shape
+    variables: list[str]
+    dates: NDArray[np.datetime64]
+    frequency: datetime.timedelta
+    n_ensemble: int
+    generators: list[ValueGenerator]  # aligned with ``variables``
+    dtype: np.dtype
+    resolution: str
+    seed: int
+
+
+def _build_variables(spec: Any) -> list[str]:
+    if isinstance(spec, bool):  # bool is a subclass of int — reject explicitly
+        raise ValueError("synthetic 'variables' must be a list of names or a positive integer")
+    if isinstance(spec, int):
+        if spec <= 0:
+            raise ValueError("synthetic 'variables' count must be a positive integer")
+        width = max(2, len(str(spec - 1)))
+        return [f"var_{i:0{width}d}" for i in range(spec)]
+    if isinstance(spec, (list, tuple)):
+        names = [str(v) for v in spec]
+        if not names:
+            raise ValueError("synthetic 'variables' list must be non-empty")
+        if len(set(names)) != len(names):
+            raise ValueError("synthetic 'variables' list contains duplicate names")
+        return names
+    raise ValueError("synthetic 'variables' must be a list of names or a positive integer")
+
+
+def _build_dates(start: Any, end: Any, frequency: Any) -> tuple[NDArray[np.datetime64], datetime.timedelta]:
+    freq = frequency_to_timedelta(frequency)
+    step = np.timedelta64(freq)
+    start = np.datetime64(start)
+    end = np.datetime64(end)
+    if end < start:
+        raise ValueError("synthetic 'end' must not be before 'start'")
+    n_steps = int((end - start) / step) + 1
+    dates = (start + np.arange(n_steps) * step).astype("datetime64[s]")
+    return dates, freq
+
+
+def _resolve_resolution(raw: dict[str, Any]) -> str:
+    if "resolution" in raw:
+        return str(raw["resolution"])
+    grid = raw["grid"]
+    if "bbox" in grid and "resolution" in grid:
+        return str(grid["resolution"])
+    if "named" in grid:
+        return str(grid["named"])
+    return "unknown"
+
+
+def _check_index_dtype(
+    generators: list[ValueGenerator],
+    dtype: np.dtype,
+    n_dates: int,
+    n_vars: int,
+    n_ensemble: int,
+    n_grid: int,
+) -> None:
+    """Reject an ``index`` value mode whose encoded positions overflow ``dtype``.
+
+    :class:`IndexEncodedValue` encodes each cell's raveled position; that integer must
+    be exactly representable in ``dtype`` or the no-shuffle guarantee silently breaks.
+    """
+    if not any(isinstance(g, IndexEncodedValue) for g in generators):
+        return
+    max_value = n_dates * n_vars * n_ensemble * n_grid - 1
+    if np.issubdtype(dtype, np.floating):
+        limit = 2 ** (np.finfo(dtype).nmant + 1)
+    elif np.issubdtype(dtype, np.integer):
+        limit = int(np.iinfo(dtype).max)
+    else:
+        return
+    if max_value > limit:
+        raise ValueError(
+            f"synthetic 'index' value mode encodes positions up to {max_value}, which dtype "
+            f"'{dtype}' cannot represent exactly; use a wider dtype such as float64"
+        )
+
+
+def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
+    """Parse and validate the ``synthetic={...}`` argument into a :class:`SyntheticConfig`."""
+    if not isinstance(raw, dict):
+        raise ValueError("the 'synthetic' argument must be a dict")
+
+    unknown = set(raw) - _KNOWN_KEYS
+    if unknown:
+        raise ValueError(f"unknown synthetic keys: {sorted(unknown)}; expected keys are {sorted(_KNOWN_KEYS)}")
+    for key in _REQUIRED_KEYS:
+        if key not in raw:
+            raise ValueError(f"synthetic config is missing required key {key!r}")
+
+    latitudes, longitudes, field_shape = resolve_grid(raw["grid"])
+    variables = _build_variables(raw["variables"])
+    dates, frequency = _build_dates(raw["start"], raw["end"], raw["frequency"])
+
+    n_ensemble = int(raw.get("ensemble", 1))
+    if n_ensemble < 1:
+        raise ValueError("synthetic 'ensemble' must be a positive integer")
+    seed = int(raw.get("seed", 0))
+    dtype = np.dtype(raw.get("dtype", "float32"))
+
+    values = raw.get("values")
+    if values is None:
+        values = {}
+    elif not isinstance(values, dict):
+        raise ValueError("synthetic 'values' must be a dict")
+    default_spec = values.get("default", _DEFAULT_VALUE_SPEC)
+    generators = [build_value_generator(values.get(name, default_spec)) for name in variables]
+    _check_index_dtype(generators, dtype, len(dates), len(variables), n_ensemble, int(latitudes.size))
+
+    return SyntheticConfig(
+        latitudes=latitudes,
+        longitudes=longitudes,
+        field_shape=field_shape,
+        variables=variables,
+        dates=dates,
+        frequency=frequency,
+        n_ensemble=n_ensemble,
+        generators=generators,
+        dtype=dtype,
+        resolution=_resolve_resolution(raw),
+        seed=seed,
+    )

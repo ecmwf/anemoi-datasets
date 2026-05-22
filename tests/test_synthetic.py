@@ -7,6 +7,8 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
+
 import numpy as np
 import pytest
 
@@ -186,3 +188,131 @@ def test_resolve_icon_requires_path() -> None:
 
     with pytest.raises(ValueError, match="requires a 'path'"):
         resolve_grid({"icon": {}})
+
+
+def _minimal_raw(**overrides):
+    raw = {
+        "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+        "variables": ["a", "b"],
+        "start": "2020-01-01",
+        "end": "2020-01-02",
+        "frequency": "6h",
+    }
+    raw.update(overrides)
+    return raw
+
+
+def test_parse_config_basic() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw())
+    assert cfg.variables == ["a", "b"]
+    assert len(cfg.dates) == 5  # 00, 06, 12, 18, 00
+    assert cfg.frequency == datetime.timedelta(hours=6)
+    assert cfg.n_ensemble == 1
+    assert cfg.latitudes.size == 9  # 3x3 grid
+    assert len(cfg.generators) == 2
+
+
+def test_parse_config_variable_count_autonames() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(variables=12))
+    assert cfg.variables[0] == "var_00"
+    assert cfg.variables[-1] == "var_11"
+
+
+def test_parse_config_rejects_unknown_key() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="unknown synthetic keys"):
+        parse_synthetic_config(_minimal_raw(colour="blue"))
+
+
+def test_parse_config_rejects_missing_required_key() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    raw = _minimal_raw()
+    del raw["frequency"]
+    with pytest.raises(ValueError, match="missing required key 'frequency'"):
+        parse_synthetic_config(raw)
+
+
+def test_parse_config_rejects_end_before_start() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="must not be before"):
+        parse_synthetic_config(_minimal_raw(start="2020-01-05", end="2020-01-01"))
+
+
+def test_parse_config_per_variable_values() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(
+        _minimal_raw(
+            values={
+                "default": {"mode": "random", "mean": 0.0, "std": 1.0},
+                "a": {"mode": "constant", "value": 9.0},
+            }
+        )
+    )
+    assert isinstance(cfg.generators[0], ConstantValue)  # "a"
+    assert isinstance(cfg.generators[1], RandomValue)  # "b" -> default
+
+
+def test_parse_config_single_date_when_start_equals_end() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(start="2020-01-01", end="2020-01-01"))
+    assert len(cfg.dates) == 1
+
+
+def test_parse_config_does_not_overshoot_unaligned_end() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    # 00:00 -> 07:00 at 6h: dates are 00:00 and 06:00, never past 07:00
+    cfg = parse_synthetic_config(_minimal_raw(start="2020-01-01T00:00", end="2020-01-01T07:00"))
+    assert len(cfg.dates) == 2
+    assert cfg.dates[-1] == np.datetime64("2020-01-01T06:00:00")
+
+
+def test_parse_config_dtype_seed_ensemble_overrides() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(dtype="float64", seed=123, ensemble=4))
+    assert cfg.dtype == np.dtype("float64")
+    assert cfg.seed == 123
+    assert cfg.n_ensemble == 4
+
+
+def test_parse_config_rejects_non_positive_ensemble() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="ensemble' must be a positive integer"):
+        parse_synthetic_config(_minimal_raw(ensemble=0))
+
+
+def test_parse_config_rejects_non_dict_values() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="'values' must be a dict"):
+        parse_synthetic_config(_minimal_raw(values=[]))
+
+
+def test_parse_config_rejects_index_mode_with_too_narrow_dtype() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    # ~877k hourly dates x 3 vars x 9 gridpoints overflows float32's exact-integer range.
+    with pytest.raises(ValueError, match="'index' value mode"):
+        parse_synthetic_config(
+            _minimal_raw(
+                start="2000-01-01",
+                end="2100-01-01",
+                frequency="1h",
+                variables=3,
+                values={"default": {"mode": "index"}},
+                dtype="float32",
+            )
+        )
