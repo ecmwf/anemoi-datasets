@@ -96,3 +96,93 @@ def test_build_value_generator_constant_requires_value() -> None:
 
     with pytest.raises(ValueError, match="requires a 'value'"):
         build_value_generator({"mode": "constant"})
+
+
+def test_resolve_bbox_grid() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    lat, lon, field_shape = resolve_grid({"bbox": [10, 0, 0, 10], "resolution": 1.0})
+    assert field_shape == (11, 11)
+    assert lat.shape == (121,)
+    assert lon.shape == (121,)
+    assert lat[0] == 10.0 and lat[-1] == 0.0
+    assert lon[0] == 0.0 and lon[-1] == 10.0
+    assert (lat[10], lon[10]) == (10.0, 10.0)  # NE corner: lat/lon paired per gridpoint
+
+
+def test_resolve_bbox_requires_resolution() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    with pytest.raises(ValueError, match="requires a 'resolution'"):
+        resolve_grid({"bbox": [10, 0, 0, 10]})
+
+
+def test_resolve_bbox_rejects_inverted_bounds() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    with pytest.raises(ValueError, match="south must be <= north"):
+        resolve_grid({"bbox": [0, 0, 10, 10], "resolution": 1.0})
+    with pytest.raises(ValueError, match="east must be >= west"):
+        resolve_grid({"bbox": [10, 10, 0, 0], "resolution": 1.0})
+
+
+def test_latlon_from_npz_accepts_aliases_and_rejects_missing() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import _latlon_from_npz
+
+    lat, lon = _latlon_from_npz({"Lat": [1.0, 2.0], "LON": [3.0, 4.0]})
+    np.testing.assert_array_equal(lat, [1.0, 2.0])
+    np.testing.assert_array_equal(lon, [3.0, 4.0])
+
+    with pytest.raises(ValueError, match="no recognised"):
+        _latlon_from_npz({"x": [1.0], "y": [2.0]})
+
+
+def test_resolve_unstructured_from_arrays() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    lat, lon, field_shape = resolve_grid(
+        {"unstructured": {"latitudes": [1.0, 2.0, 3.0], "longitudes": [4.0, 5.0, 6.0]}}
+    )
+    assert field_shape == (3,)
+    np.testing.assert_array_equal(lat, [1.0, 2.0, 3.0])
+    np.testing.assert_array_equal(lon, [4.0, 5.0, 6.0])
+
+
+def test_resolve_grid_rejects_unknown_type() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    with pytest.raises(ValueError, match="exactly one of"):
+        resolve_grid({"hexagon": 1})
+
+
+def test_resolve_named_grid(monkeypatch) -> None:
+    from anemoi.datasets.usage.gridded import synthetic
+
+    fake = {"latitudes": np.array([1.0, 2.0]), "longitudes": np.array([3.0, 4.0])}
+    monkeypatch.setattr("anemoi.transform.grids.named.lookup", lambda name: fake)
+    lat, lon, field_shape = synthetic.resolve_grid({"named": "o96"})
+    assert field_shape == (2,)
+    np.testing.assert_array_equal(lat, [1.0, 2.0])
+
+
+def test_resolve_icon_grid(monkeypatch) -> None:
+    from anemoi.datasets.usage.gridded import synthetic
+
+    class FakeIconGrid:
+        def __init__(self, path, refinement_level_c=None):
+            self.path = path
+
+        def latlon(self):
+            return np.array([5.0, 6.0]), np.array([7.0, 8.0])
+
+    monkeypatch.setattr("anemoi.transform.grids.icon.IconGrid", FakeIconGrid)
+    lat, lon, field_shape = synthetic.resolve_grid({"icon": {"path": "/fake/grid.nc"}})
+    assert field_shape == (2,)
+    np.testing.assert_array_equal(lon, [7.0, 8.0])
+
+
+def test_resolve_icon_requires_path() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+
+    with pytest.raises(ValueError, match="requires a 'path'"):
+        resolve_grid({"icon": {}})

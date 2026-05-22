@@ -24,6 +24,8 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from anemoi.datasets.usage.dataset import Shape
+
 LOG = logging.getLogger(__name__)
 
 
@@ -166,3 +168,98 @@ def build_value_generator(spec: dict[str, Any]) -> ValueGenerator:
     if mode == "index":
         return IndexEncodedValue()
     raise ValueError(f"Unknown synthetic value mode {mode!r}; expected 'constant', 'random' or 'index'")
+
+
+# --------------------------------------------------------------------------
+# Grid resolvers
+# --------------------------------------------------------------------------
+def _latlon_from_npz(data: Any) -> tuple[NDArray[Any], NDArray[Any]]:
+    """Extract latitude/longitude arrays from an ``.npz``-like mapping."""
+    names = data.files if hasattr(data, "files") else list(data)
+    keys = {k.lower(): k for k in names}
+    lat_key = next((keys[k] for k in ("latitudes", "latitude", "lat") if k in keys), None)
+    lon_key = next((keys[k] for k in ("longitudes", "longitude", "lon") if k in keys), None)
+    if lat_key is None or lon_key is None:
+        raise ValueError(f"grid data has no recognised latitude/longitude arrays: {list(keys.values())}")
+    return np.asarray(data[lat_key], dtype=float), np.asarray(data[lon_key], dtype=float)
+
+
+def _resolve_bbox(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    bbox = grid["bbox"]
+    if len(bbox) != 4:
+        raise ValueError("synthetic 'bbox' grid must be [north, west, south, east]")
+    if "resolution" not in grid:
+        raise ValueError("synthetic 'bbox' grid requires a 'resolution'")
+    north, west, south, east = (float(x) for x in bbox)
+    if south > north:
+        raise ValueError("synthetic 'bbox' grid: south must be <= north")
+    if east < west:
+        raise ValueError("synthetic 'bbox' grid: east must be >= west (antimeridian wrapping is not supported)")
+    res = grid["resolution"]
+    if isinstance(res, (list, tuple)):
+        dlat, dlon = float(res[0]), float(res[1])
+    else:
+        dlat = dlon = float(res)
+    if dlat <= 0 or dlon <= 0:
+        raise ValueError("synthetic 'bbox' resolution must be positive")
+    lats_1d = np.arange(north, south - dlat / 2.0, -dlat)
+    lons_1d = np.arange(west, east + dlon / 2.0, dlon)
+    lon_grid, lat_grid = np.meshgrid(lons_1d, lats_1d)
+    field_shape = lat_grid.shape  # (n_lat, n_lon)
+    return lat_grid.reshape(-1), lon_grid.reshape(-1), field_shape
+
+
+def _resolve_named(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    from anemoi.transform.grids.named import lookup
+
+    data = lookup(grid["named"])
+    lat, lon = _latlon_from_npz(data)
+    lat, lon = lat.reshape(-1), lon.reshape(-1)
+    return lat, lon, (lat.size,)
+
+
+def _resolve_icon(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    from anemoi.transform.grids.icon import IconGrid
+
+    spec = grid["icon"]
+    if isinstance(spec, str):
+        spec = {"path": spec}
+    if "path" not in spec:
+        raise ValueError("synthetic 'icon' grid requires a 'path'")
+    icon_grid = IconGrid(spec["path"], spec.get("refinement_level_c"))
+    lat, lon = icon_grid.latlon()
+    lat = np.asarray(lat, dtype=float).reshape(-1)
+    lon = np.asarray(lon, dtype=float).reshape(-1)
+    return lat, lon, (lat.size,)
+
+
+def _resolve_unstructured(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    spec = grid["unstructured"]
+    if isinstance(spec, str):
+        lat, lon = _latlon_from_npz(np.load(spec))
+    else:
+        lat, lon = _latlon_from_npz(spec)
+    lat, lon = lat.reshape(-1), lon.reshape(-1)
+    if lat.shape != lon.shape:
+        raise ValueError("synthetic 'unstructured' grid: latitudes and longitudes must have the same length")
+    return lat, lon, (lat.size,)
+
+
+_GRID_RESOLVERS = {
+    "bbox": _resolve_bbox,
+    "named": _resolve_named,
+    "icon": _resolve_icon,
+    "unstructured": _resolve_unstructured,
+}
+
+
+def resolve_grid(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    """Resolve a ``grid`` spec to flat ``(latitudes, longitudes, field_shape)``."""
+    if not isinstance(grid, dict):
+        raise ValueError("synthetic 'grid' must be a dict")
+    type_keys = [k for k in _GRID_RESOLVERS if k in grid]
+    if len(type_keys) != 1:
+        raise ValueError(
+            f"synthetic 'grid' must contain exactly one of {sorted(_GRID_RESOLVERS)}; got keys {sorted(grid)}"
+        )
+    return _GRID_RESOLVERS[type_keys[0]](grid)
