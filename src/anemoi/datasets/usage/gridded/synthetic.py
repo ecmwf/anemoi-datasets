@@ -368,6 +368,28 @@ def _check_index_dtype(
         )
 
 
+def _check_value_dtype(generators: list[ValueGenerator], dtype: np.dtype) -> None:
+    """Reject an integer ``dtype`` for value modes that produce non-integer data.
+
+    A ``random`` draw is continuous and a ``constant`` may be fractional; storing
+    either in an integer array would silently truncate the values, leaving the
+    analytic statistics disagreeing with the data actually returned.
+    """
+    if not np.issubdtype(dtype, np.integer):
+        return
+    for g in generators:
+        if isinstance(g, RandomValue):
+            raise ValueError(
+                f"synthetic 'random' value mode produces non-integer values that integer "
+                f"dtype '{dtype}' would truncate; use a floating-point dtype"
+            )
+        if isinstance(g, ConstantValue) and g.value != int(g.value):
+            raise ValueError(
+                f"synthetic 'constant' value {g.value} is not an integer and would be "
+                f"truncated by integer dtype '{dtype}'; use a floating-point dtype"
+            )
+
+
 def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
     """Parse and validate the ``synthetic={...}`` argument into a :class:`SyntheticConfig`."""
     if not isinstance(raw, dict):
@@ -398,6 +420,7 @@ def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
     default_spec = values.get("default", _DEFAULT_VALUE_SPEC)
     generators = [build_value_generator(values.get(name, default_spec)) for name in variables]
     _check_index_dtype(generators, dtype, len(dates), len(variables), n_ensemble, int(latitudes.size))
+    _check_value_dtype(generators, dtype)
 
     return SyntheticConfig(
         latitudes=latitudes,

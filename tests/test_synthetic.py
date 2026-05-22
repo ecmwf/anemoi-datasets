@@ -320,6 +320,33 @@ def test_parse_config_rejects_index_mode_with_too_narrow_dtype() -> None:
         )
 
 
+def test_parse_config_rejects_integer_dtype_with_random_mode() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    # A continuous Gaussian truncated to integers no longer matches its statistics.
+    with pytest.raises(ValueError, match="'random' value mode"):
+        parse_synthetic_config(_minimal_raw(dtype="int32", values={"default": {"mode": "random"}}))
+
+
+def test_parse_config_rejects_integer_dtype_with_fractional_constant() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="is not an integer"):
+        parse_synthetic_config(_minimal_raw(dtype="int32", values={"default": {"mode": "constant", "value": 3.5}}))
+
+
+def test_parse_config_allows_integer_dtype_with_integral_values() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(
+        _minimal_raw(
+            dtype="int64",
+            values={"default": {"mode": "index"}, "a": {"mode": "constant", "value": 7}},
+        )
+    )
+    assert cfg.dtype == np.dtype("int64")
+
+
 def _dataset(**overrides):
     from anemoi.datasets.usage.gridded.synthetic import SyntheticGriddedDataset
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
