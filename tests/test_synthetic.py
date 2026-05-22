@@ -610,16 +610,43 @@ def test_open_dataset_synthetic_index_roundtrip() -> None:
                 assert ds[d, v, 0, g] == expected
 
 
-def test_open_dataset_synthetic_rejects_extra_keywords() -> None:
-    with pytest.raises(ValueError, match="does not support extra keywords"):
-        open_dataset(
-            synthetic={
-                "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
-                "variables": ["a", "b"],
-                "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
-            },
-            select=["a"],
-        )
+def test_open_dataset_synthetic_composes_with_select() -> None:
+    # synthetic= is a drop-in for dataset=: open_dataset transform keywords
+    # still apply to the result.
+    ds = open_dataset(
+        synthetic={
+            "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+            "variables": ["a", "b", "c"],
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
+        },
+        select=["a", "c"],
+    )
+    assert ds.variables == ["a", "c"]
+    assert ds.shape[1] == 2
+
+
+def test_open_dataset_synthetic_composes_with_date_subsetting() -> None:
+    spec = {
+        "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+        "variables": 2,
+        "dates": {"start": "2020-01-01", "end": "2020-01-05", "frequency": "1d"},
+    }
+    assert len(open_dataset(synthetic=dict(spec))) == 5
+    subset = open_dataset(synthetic=dict(spec), start="2020-01-02", end="2020-01-04")
+    assert len(subset) == 3
+
+
+def test_open_dataset_synthetic_composes_with_rename() -> None:
+    ds = open_dataset(
+        synthetic={
+            "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+            "variables": ["a", "b"],
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
+        },
+        rename={"a": "temperature"},
+    )
+    assert "temperature" in ds.variables
+    assert "a" not in ds.variables
 
 
 def test_open_dataset_synthetic_rejects_unknown_grid_key() -> None:

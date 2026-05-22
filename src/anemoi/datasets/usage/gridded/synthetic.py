@@ -631,16 +631,12 @@ class SyntheticGriddedDataset(GriddedZarr):
 # Factory
 # --------------------------------------------------------------------------
 def synthetic_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> SyntheticGriddedDataset:
-    """Build a :class:`SyntheticGriddedDataset` from ``open_dataset(synthetic=...)``.
+    """Build a :class:`SyntheticGriddedDataset` from the ``synthetic`` argument.
 
-    The synthetic dataset is fully described by the ``synthetic`` dict; it does not
-    compose with other ``open_dataset`` keywords.
+    Only the ``synthetic`` keyword is consumed here; any remaining transform
+    keywords (``select``, ``start``, ``rename``, ...) are left in ``kwargs`` for
+    the caller to apply via :meth:`Dataset._subset`, exactly as for ``dataset=``.
     """
     assert len(args) == 0, args
     config = parse_synthetic_config(kwargs.pop("synthetic"))
-    if kwargs:
-        raise ValueError(
-            f"open_dataset(synthetic=...) does not support extra keywords {sorted(kwargs)}; "
-            "configure the dataset entirely inside the 'synthetic' dict"
-        )
     return SyntheticGriddedDataset(config)

@@ -24,9 +24,10 @@ pipelines. Open one by passing a ``synthetic`` dictionary to ``open_dataset``:
       }
    )
 
-The synthetic dataset is fully described by the ``synthetic`` dictionary and does not
-combine with other ``open_dataset`` keywords --- express the full extent inside
-the dictionary. It accepts the following keys.
+The dataset itself is described entirely by the ``synthetic`` dictionary, which
+accepts the following keys. ``synthetic`` is a drop-in replacement for ``dataset``:
+the usual transform keywords (``select``, ``start``, ``end``, ``rename``, ...) may
+be passed alongside it and apply to the result, just as for any other dataset.
 
 ``grid`` (required)
    The spatial extent. Exactly one of:

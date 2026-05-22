@@ -559,7 +559,9 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
         from anemoi.datasets.usage.gridded.synthetic import synthetic_factory
 
         assert not sets, sets
-        return synthetic_factory(args, kwargs).mutate()
+        # synthetic_factory consumes only 'synthetic'; any remaining transform
+        # keywords are applied through _subset, as for a normal dataset=.
+        return synthetic_factory(args, kwargs).mutate()._subset(**kwargs)
 
     for name in ("datasets", "dataset"):
         if name in kwargs:
