@@ -16,9 +16,7 @@ pipelines. Open one by passing a ``synthetic`` dictionary to ``open_dataset``:
       synthetic={
          "grid": {"bbox": [60, -10, 30, 20], "resolution": 0.25},
          "variables": ["2t", "msl", "z_500"],
-         "start": "2020-01-01",
-         "end": "2020-01-31",
-         "frequency": "6h",
+         "dates": {"start": "2020-01-01", "end": "2020-01-31", "frequency": "6h"},
          "values": {
             "default": {"mode": "random", "mean": 0.0, "std": 1.0},
             "2t": {"mode": "constant", "value": 273.15},
@@ -46,9 +44,11 @@ the dictionary. It accepts the following keys.
    Either an explicit list of names, or an integer ``N`` to auto-generate
    ``var_00 ... var_{N-1}``.
 
-``start``, ``end``, ``frequency`` (required)
-   The temporal extent. ``start`` and ``end`` are ISO date/datetime strings;
-   ``frequency`` is an anemoi frequency string such as ``"6h"`` or ``"1d"``.
+``dates`` (required)
+   The temporal extent, as a dict of ``start``, ``end`` and ``frequency`` ---
+   mirroring the ``dates`` block of a dataset-building recipe. ``start`` and
+   ``end`` are ISO date/datetime strings; ``frequency`` is an anemoi frequency
+   string such as ``"6h"`` or ``"1d"``.
 
 ``values`` (optional)
    Per-variable value specs. The ``default`` entry covers any variable not named

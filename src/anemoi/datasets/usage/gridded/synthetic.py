@@ -280,8 +280,9 @@ def resolve_grid(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shap
 # --------------------------------------------------------------------------
 # Config parsing
 # --------------------------------------------------------------------------
-_KNOWN_KEYS = {"grid", "variables", "start", "end", "frequency", "values", "ensemble", "seed", "dtype", "resolution"}
-_REQUIRED_KEYS = ("grid", "variables", "start", "end", "frequency")
+_KNOWN_KEYS = {"grid", "variables", "dates", "values", "ensemble", "seed", "dtype", "resolution"}
+_REQUIRED_KEYS = ("grid", "variables", "dates")
+_DATE_KEYS = ("start", "end", "frequency")
 _DEFAULT_VALUE_SPEC = {"mode": "random", "mean": 0.0, "std": 1.0}
 
 
@@ -408,7 +409,17 @@ def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
 
     latitudes, longitudes, field_shape = resolve_grid(raw["grid"])
     variables = _build_variables(raw["variables"])
-    dates, frequency = _build_dates(raw["start"], raw["end"], raw["frequency"])
+
+    date_spec = raw["dates"]
+    if not isinstance(date_spec, dict):
+        raise ValueError("synthetic 'dates' must be a dict with 'start', 'end' and 'frequency'")
+    unknown_dates = set(date_spec) - set(_DATE_KEYS)
+    if unknown_dates:
+        raise ValueError(f"unknown synthetic 'dates' keys: {sorted(unknown_dates)}; expected {sorted(_DATE_KEYS)}")
+    for key in _DATE_KEYS:
+        if key not in date_spec:
+            raise ValueError(f"synthetic 'dates' is missing required key {key!r}")
+    dates, frequency = _build_dates(date_spec["start"], date_spec["end"], date_spec["frequency"])
 
     n_ensemble = int(raw.get("ensemble", 1))
     if n_ensemble < 1:

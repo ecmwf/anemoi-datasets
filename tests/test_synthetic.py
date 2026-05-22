@@ -205,12 +205,16 @@ def test_resolve_icon_requires_path() -> None:
 
 
 def _minimal_raw(**overrides):
+    # start/end/frequency may be passed flat for convenience; they are assembled
+    # into the nested 'dates' block the config actually expects.
+    dates = {"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h"}
+    for key in ("start", "end", "frequency"):
+        if key in overrides:
+            dates[key] = overrides.pop(key)
     raw = {
         "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
         "variables": ["a", "b"],
-        "start": "2020-01-01",
-        "end": "2020-01-02",
-        "frequency": "6h",
+        "dates": dates,
     }
     raw.update(overrides)
     return raw
@@ -247,9 +251,47 @@ def test_parse_config_rejects_missing_required_key() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
     raw = _minimal_raw()
-    del raw["frequency"]
-    with pytest.raises(ValueError, match="missing required key 'frequency'"):
+    del raw["dates"]
+    with pytest.raises(ValueError, match="missing required key 'dates'"):
         parse_synthetic_config(raw)
+
+
+def test_parse_config_dates_block() -> None:
+    # start/end/frequency live under a 'dates' block, mirroring the recipe API.
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(
+        {
+            "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+            "variables": ["a", "b"],
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h"},
+        }
+    )
+    assert len(cfg.dates) == 5
+    assert cfg.frequency == datetime.timedelta(hours=6)
+
+
+def test_parse_config_rejects_non_dict_dates() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="'dates' must be a dict"):
+        parse_synthetic_config(_minimal_raw(dates="2020-01-01"))
+
+
+def test_parse_config_rejects_dates_missing_subkey() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="'dates' is missing required key 'frequency'"):
+        parse_synthetic_config(_minimal_raw(dates={"start": "2020-01-01", "end": "2020-01-02"}))
+
+
+def test_parse_config_rejects_unknown_dates_subkey() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="unknown synthetic 'dates' keys"):
+        parse_synthetic_config(
+            _minimal_raw(dates={"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h", "group_by": "monthly"})
+        )
 
 
 def test_parse_config_rejects_end_before_start() -> None:
@@ -529,9 +571,7 @@ def test_open_dataset_synthetic_bbox_end_to_end() -> None:
         synthetic={
             "grid": {"bbox": [10, 0, 0, 10], "resolution": 1.0},
             "variables": ["a", "b"],
-            "start": "2020-01-01",
-            "end": "2020-01-02",
-            "frequency": "6h",
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h"},
             "values": {"default": {"mode": "constant", "value": 5.0}},
         }
     )
@@ -544,9 +584,7 @@ def test_open_dataset_synthetic_random_is_reproducible() -> None:
     spec = dict(
         grid={"bbox": [4, 0, 0, 4], "resolution": 2.0},
         variables=3,
-        start="2020-01-01",
-        end="2020-01-01",
-        frequency="6h",
+        dates={"start": "2020-01-01", "end": "2020-01-01", "frequency": "6h"},
         values={"default": {"mode": "random", "mean": 0.0, "std": 1.0}},
         seed=42,
     )
@@ -560,9 +598,7 @@ def test_open_dataset_synthetic_index_roundtrip() -> None:
         synthetic={
             "grid": {"bbox": [2, 0, 0, 2], "resolution": 2.0},  # 2x2 = 4 gridpoints
             "variables": 2,
-            "start": "2020-01-01",
-            "end": "2020-01-02",
-            "frequency": "1d",
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
             "values": {"default": {"mode": "index"}},
         }
     )
@@ -580,9 +616,7 @@ def test_open_dataset_synthetic_rejects_extra_keywords() -> None:
             synthetic={
                 "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
                 "variables": ["a", "b"],
-                "start": "2020-01-01",
-                "end": "2020-01-02",
-                "frequency": "1d",
+                "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
             },
             select=["a"],
         )
@@ -594,8 +628,6 @@ def test_open_dataset_synthetic_rejects_unknown_grid_key() -> None:
             synthetic={
                 "grid": {"hexagon": 1},
                 "variables": 1,
-                "start": "2020-01-01",
-                "end": "2020-01-01",
-                "frequency": "6h",
+                "dates": {"start": "2020-01-01", "end": "2020-01-01", "frequency": "6h"},
             }
         )
