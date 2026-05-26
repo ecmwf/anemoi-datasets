@@ -225,6 +225,36 @@ def create_zarr(
         compressor=None,
     )
 
+    # Statistics tendencies: simple finite differences along the time axis for the
+    # configured frequency, stored under the `statistics_tendencies_<delta>_<k>` keys
+    # expected by the store. Real anemoi zarr stores per-variable scalars (shape
+    # `(V,)`), so we reduce over the (time, ensemble, grid) axes to match.
+    delta = frequency_to_string(frequency)
+    if data.shape[0] >= 2:
+        tendencies = np.diff(data, axis=0)
+    else:
+        tendencies = data
+    root.create_array(
+        f"statistics_tendencies_{delta}_mean",
+        data=np.mean(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+    root.create_array(
+        f"statistics_tendencies_{delta}_stdev",
+        data=np.std(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+    root.create_array(
+        f"statistics_tendencies_{delta}_maximum",
+        data=np.max(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+    root.create_array(
+        f"statistics_tendencies_{delta}_minimum",
+        data=np.min(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+
     root.attrs["field_shape"] = field_shape
     assert len(field_shape) == 2
     assert data.shape[-1] == field_shape[0] * field_shape[1]
@@ -1363,9 +1393,11 @@ def test_grids() -> None:
 @mockup_open_zarr
 def test_statistics() -> None:
     """Test datasets with statistics."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    ref_name = "test-2000-2010-6h-o96-abcd"
     test = DatasetTester(
-        "test-2021-2021-6h-o96-abcd",
-        statistics="test-2000-2010-6h-o96-abcd",
+        base_name,
+        statistics=ref_name,
     )
     test.run(
         expected_class=Statistics,
@@ -1376,9 +1408,66 @@ def test_statistics() -> None:
         expected_shape=(365 * 4, 4, 1, VALUES),
         expected_variables="abcd",
         expected_name_to_index="abcd",
-        statistics_reference_dataset="test-2000-2010-6h-o96-abcd",
+        statistics_reference_dataset=ref_name,
         statistics_reference_variables="abcd",
     )
+
+    # The `statistics` kwarg should override both statistics and tendencies
+    # from the reference dataset.
+    ref = open_dataset(ref_name)
+    ref_tend = ref.statistics_tendencies()
+    ds_tend = test.ds.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (test.ds.statistics[k] == ref.statistics[k]).all()
+        assert (ds_tend[k] == ref_tend[k]).all()
+
+
+@mockup_open_zarr
+def test_only_tendencies() -> None:
+    """Test overriding only ``statistics_tendencies`` via the ``statistics_tendencies`` kwarg."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    ref_name = "test-2000-2010-6h-o96-abcd"
+
+    base = open_dataset(base_name)
+    ref = open_dataset(ref_name)
+
+    ds = open_dataset(base_name, statistics_tendencies=ref_name)
+
+    # Goes through the Statistics wrapper.
+    assert isinstance(ds, Statistics)
+
+    # `statistics` must come from the base (forward) dataset, not from the override.
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds.statistics[k] == base.statistics[k]).all()
+
+    # `statistics_tendencies` must come from the override dataset.
+    ref_tend = ref.statistics_tendencies()
+    ds_tend = ds.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds_tend[k] == ref_tend[k]).all()
+
+
+@mockup_open_zarr
+def test_statistics_and_tendencies_from_two_datasets() -> None:
+    """Test overriding ``statistics`` and ``statistics_tendencies`` from two different datasets in a single call."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    stats_name = "test-2000-2010-6h-o96-abcd"
+    tend_name = "test-2010-2020-6h-o96-abcd"
+
+    stats_ref = open_dataset(stats_name)
+    tend_ref = open_dataset(tend_name)
+
+    ds = open_dataset(base_name, statistics=stats_name, statistics_tendencies=tend_name)
+
+    assert isinstance(ds, Statistics)
+
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds.statistics[k] == stats_ref.statistics[k]).all()
+
+    ds_tend = ds.statistics_tendencies()
+    tend = tend_ref.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds_tend[k] == tend[k]).all()
 
 
 @mockup_open_zarr
