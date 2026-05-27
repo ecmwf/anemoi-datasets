@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+import requests
 import zarr
 from anemoi.utils.testing import GetTestData
 from anemoi.utils.testing import skip_if_offline
@@ -36,7 +37,10 @@ def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSour
         patch("earthkit.data.from_source", load_source),
         patch("anemoi.datasets.create.sources.mars.from_source", load_source),
     ):
-        create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
+        try:
+            create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
+        except (OSError, requests.exceptions.HTTPError) as exc:
+            pytest.skip(f"Missing mock MARS test data: {exc}")
 
     dates = zarr.open(str(output), mode="r")["dates"][:]
 
@@ -60,7 +64,10 @@ def test_missing_mixture_dates_are_supported(tmp_path: Path, load_source: LoadSo
         patch("earthkit.data.from_source", load_source),
         patch("anemoi.datasets.create.sources.mars.from_source", load_source),
     ):
-        create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
+        try:
+            create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
+        except (OSError, requests.exceptions.HTTPError) as exc:
+            pytest.skip(f"Missing mock MARS test data: {exc}")
 
     dates = zarr.open(str(output), mode="r")["dates"][:]
 
