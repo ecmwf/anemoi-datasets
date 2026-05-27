@@ -71,8 +71,12 @@ class TrajectoriesZarr(ZarrStore):
         Parameters
         ----------
         n : int, slice, or tuple
-            Index into the date axis.  Returns an array of shape
-            ``(variables, ensembles, steps, cells)`` for a single integer.
+            Index into the date axis.
+
+        Returns
+        -------
+        NDArray[Any]
+            An array of shape ``(variables, ensembles, steps, cells)`` for a single integer.
         """
         return self.data[n]
 
