@@ -81,7 +81,7 @@ class Rename(Command):
         # Track the chain of previous UUIDs (for provenance only).
         previous_uuids = dataset.get_metadata("previous_uuids", [])
         if old_uuid is not None:
-            previous_uuids = previous_uuids + [old_uuid]
+            previous_uuids.append(old_uuid)
 
         dataset.update_metadata(uuid=new_uuid, previous_uuids=previous_uuids)
 
