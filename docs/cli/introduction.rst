@@ -23,6 +23,7 @@ The commands are:
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
 - :ref:`Schema Command <schema_command>`
+- :ref:`Rename Command <rename_command>`
 
 
 
@@ -42,3 +43,4 @@ The commands are:
    cli/compare-lam
    cli/validate
    cli/schema
+   cli/rename
