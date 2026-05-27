@@ -64,7 +64,7 @@ class Rename(Command):
 
         new_name = os.path.splitext(os.path.basename(target))[0]
 
-        # --- 1 & 2: update metadata in place on the source store ---
+        # --- update metadata in place on the source store ---
         dataset = Dataset(source, update=True)
 
         new_uuid = str(uuid.uuid4())
@@ -87,7 +87,7 @@ class Rename(Command):
 
         LOG.info(f"Renamed '{source}' -> '{target}': uuid {old_uuid} -> {new_uuid}, recipe name -> '{new_name}'")
 
-        # --- 3: move the store ---
+        # --- move the store ---
         # Drop the Dataset reference so no file handles/locks are held during the move.
         del dataset
         shutil.move(source, target)
