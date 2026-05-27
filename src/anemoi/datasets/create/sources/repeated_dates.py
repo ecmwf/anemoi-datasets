@@ -33,10 +33,21 @@ class RepeatedDatesSource(Source):
         self.mapper = DateMapper.from_mode(mode, source, kwargs)
         self.source = source
 
-    def execute_valid_dates(self, group_of_dates):
+    def execute(self, argument):
+        from anemoi.datasets.dates.groups import GroupOfDates
+
+        if isinstance(argument, GroupOfDates):
+            return self._execute_group(argument)
+        return super().execute(argument)
+
+    def execute_valid_dates(self, argument):
+        raise NotImplementedError(
+            "RepeatedDatesSource requires a GroupOfDates (with .provider), not a bare ValidDates."
+        )
+
+    def _execute_group(self, group_of_dates):
         result = []
         for one_date_group, many_dates_group in self.mapper.transform(self.context, group_of_dates):
-            print(f"one_date_group: {one_date_group}, many_dates_group: {many_dates_group}")
             source_results = self.source(self.context, one_date_group)
             for field in source_results:
                 for date in many_dates_group:
