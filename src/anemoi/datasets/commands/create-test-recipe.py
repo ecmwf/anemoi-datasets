@@ -18,6 +18,8 @@ from typing import Any
 from typing import Iterable
 
 import ruamel.yaml
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 from ruamel.yaml.constructor import RoundTripConstructor
 
 from . import Command
@@ -55,37 +57,14 @@ def warn(msg: str) -> None:
 
 
 def parse_frequency(freq_str: str) -> timedelta:
-    freq_str = str(freq_str).strip()
-    m = re.fullmatch(r"(\d+)([hHdDmM])?", freq_str)
-    if not m:
-        raise ValueError(f"Cannot parse frequency: {freq_str!r}")
-    value = int(m.group(1))
-    unit = (m.group(2) or "h").lower()
-    if unit == "h":
-        return timedelta(hours=value)
-    if unit == "d":
-        return timedelta(days=value)
-    if unit == "m":
-        return timedelta(minutes=value)
-    raise ValueError(f"Unknown frequency unit: {unit!r}")
+    return frequency_to_timedelta(str(freq_str).strip())
 
 
 def parse_date(date_str: str) -> datetime:
     date_str = str(date_str).strip()
     # Strip timezone suffix (+00:00, Z, etc.) - we ignore tz for date arithmetic.
     date_str_no_tz = re.sub(r"([+-]\d{2}:\d{2}|Z)$", "", date_str)
-    for fmt in (
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%dT%H:%M",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M",
-        "%Y-%m-%d",
-    ):
-        try:
-            return datetime.strptime(date_str_no_tz, fmt)
-        except ValueError:
-            continue
-    raise ValueError(f"Cannot parse date: {date_str!r}")
+    return as_datetime(date_str_no_tz)
 
 
 def format_date(dt: datetime, original_str: str) -> str:
