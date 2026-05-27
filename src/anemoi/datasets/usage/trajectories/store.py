@@ -52,7 +52,8 @@ class TrajectoriesZarr(ZarrStore):
 
     def mutate(self) -> Dataset:
         """Wrap with :class:`TrajectoriesZarrWithMissingDates` if the store
-        records any missing base dates; return ``self`` otherwise."""
+        records any missing base dates; return ``self`` otherwise.
+        """
         if len(self.store.attrs.get("missing_dates", [])):
             LOG.warning(f"Dataset {self} has missing base dates")
             return TrajectoriesZarrWithMissingDates(self.store, self.path)

@@ -24,10 +24,8 @@ import datetime
 
 import numpy as np
 import pytest
-
 from test_trajectories import make_trajectories_zarr
 from test_trajectories import open_trajectories_zarr
-
 
 # ---------------------------------------------------------------------------
 # Build side: TrajectoryFilter
@@ -149,6 +147,7 @@ class TestDatesAliases:
                 frequency="1d",
                 date="2024-??-01",
             )
+
 
 # ---------------------------------------------------------------------------
 # Build side: TrajectoryGroups with missing
