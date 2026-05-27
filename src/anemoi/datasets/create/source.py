@@ -7,9 +7,17 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+from typing import TYPE_CHECKING
+
 import earthkit.data as ekd
 
 from anemoi.datasets.create.types import DateList
+
+if TYPE_CHECKING:
+    from anemoi.datasets.create.arguments import ForecastDates
+    from anemoi.datasets.create.arguments import ForecastIntervals
+    from anemoi.datasets.create.arguments import Intervals
+    from anemoi.datasets.create.arguments import ValidDates
 
 
 class Source:

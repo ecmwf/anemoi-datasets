@@ -104,6 +104,11 @@ class FromTrajectoriesSource(Source):
         ----------
         basetime : datetime.datetime
             The forecast base time to test.
+
+        Returns
+        -------
+        bool
+            ``True`` if *basetime* matches the ``bases`` pattern.
         """
         if self.bases_pattern is None:
             return True
@@ -120,6 +125,11 @@ class FromTrajectoriesSource(Source):
         ----------
         valid_time : datetime.datetime
             The validity time to resolve.
+
+        Returns
+        -------
+        datetime.datetime
+            The first candidate basetime satisfying the filters.
         """
         for step in self.steps_hours:
             candidate = valid_time - datetime.timedelta(hours=step)
@@ -151,6 +161,11 @@ class FromTrajectoriesSource(Source):
         dates : Any
             Validity-time argument from the pipeline (``ValidDates`` or
             ``GroupOfDates``-like).
+
+        Returns
+        -------
+        Any
+            The data produced by the inner source.
         """
         forecast_dates = self._as_forecast_dates(dates)
         LOG.debug(

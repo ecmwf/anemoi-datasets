@@ -69,6 +69,11 @@ class Covering(ABC):
         basetime
             Optional externally-imposed model-run time. ``AutoCovering``
             ignores it; ``ForecastCovering`` requires it.
+
+        Returns
+        -------
+        Iterable[SignedInterval]
+            The signed intervals covering ``[start, end]``.
         """
 
 
@@ -224,6 +229,11 @@ def covering_factory(
         Source backend name (for ``"auto"`` discovery).
     source
         Source-specific config (for ``"auto"`` discovery).
+
+    Returns
+    -------
+    Covering
+        The covering strategy built from ``config``.
     """
     _DISCRIMINATORS = ("auto", "cycle")
 

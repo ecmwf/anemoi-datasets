@@ -108,6 +108,11 @@ class TrajectoriesZarr(ZarrStore):
         ----------
         index : int
             Position along the base-date axis.
+
+        Returns
+        -------
+        np.datetime64
+            The base date at ``index``.
         """
         return self.base_dates[index]
 

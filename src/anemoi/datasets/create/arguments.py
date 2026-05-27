@@ -83,6 +83,11 @@ class ValidDates(Argument):
         ----------
         period : datetime.timedelta
             The accumulation window length.
+
+        Returns
+        -------
+        Intervals
+            The promoted argument with single-interval coverage.
         """
         from anemoi.datasets.create.intervals import SignedInterval
 
@@ -96,6 +101,11 @@ class ValidDates(Argument):
         basetime_of : Callable[[datetime], datetime]
             Pure function mapping a validity time to its base time
             (e.g. rounding to the nearest 00/12 UTC run).
+
+        Returns
+        -------
+        ForecastDates
+            The instants paired with their model-run times.
         """
         return ForecastDates([(t, basetime_of(t)) for t in self.dates])
 
@@ -144,6 +154,11 @@ class ForecastDates(Argument):
         ----------
         period : datetime.timedelta
             The accumulation window length.
+
+        Returns
+        -------
+        ForecastIntervals
+            The forecast windows carrying the requested period.
         """
         return ForecastIntervals([(vd, bt, period) for vd, bt in self.items])
 
@@ -237,6 +252,11 @@ class Intervals(ValidDates):
         ----------
         basetime_of : Callable[[datetime], datetime]
             Pure function mapping a validity time to its base time.
+
+        Returns
+        -------
+        ForecastIntervals
+            Not returned; this conversion is unsupported and always raises.
         """
         raise NotImplementedError(
             "with_basetime on archive-resolved Intervals is not supported. "

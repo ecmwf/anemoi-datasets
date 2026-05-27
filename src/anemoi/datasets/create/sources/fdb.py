@@ -110,6 +110,11 @@ class FdbSource(Source):
         ----------
         requests : list
             Raw request dicts built by an execute overload.
+
+        Returns
+        -------
+        ekd.FieldList
+            The retrieved, post-processed fields.
         """
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
         # defined request already and an empty dates list

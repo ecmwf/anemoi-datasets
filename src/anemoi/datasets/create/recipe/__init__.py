@@ -9,6 +9,7 @@
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import BaseModel
@@ -25,6 +26,10 @@ from .output import GriddedOutput
 from .output import Output
 from .output import TrajectoriesOutput
 from .statistics import Statistics
+
+if TYPE_CHECKING:
+    from anemoi.datasets.dates.groups import Groups
+    from anemoi.datasets.dates.groups import TrajectoryGroups
 
 LOG = logging.getLogger(__name__)
 
@@ -153,7 +158,7 @@ class Recipe(BaseModel):
                 result.pop(key, None)
         return result
 
-    def make_groups(self):
+    def make_groups(self) -> "Groups | TrajectoryGroups":
         """Build the appropriate Groups object for this recipe.
 
         Returns

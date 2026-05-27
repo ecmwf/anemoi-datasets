@@ -66,7 +66,7 @@ def write_accumulated_forecast_field(
     valid_date: datetime.datetime,
     period: datetime.timedelta,
     output,
-) -> Any:
+) -> None:
     """Write an accumulated forecast field stamped with the basetime.
 
     Unlike :func:`write_accumulated_field_with_valid_time`, the output

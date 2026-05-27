@@ -160,7 +160,7 @@ class AccumulateSource(Source):
             LOG.debug("  %s", f)
         return ds
 
-    def _accumulate_fields(self, source_object, intervals, targets, coverages):
+    def _accumulate_fields(self, source_object, intervals, targets, coverages) -> tuple:
         """Process fields from source and fill accumulators.
 
         Parameters
@@ -174,6 +174,11 @@ class AccumulateSource(Source):
             *basetime* is ``None``.
         coverages
             Dict mapping each target tuple to its list of covering intervals.
+
+        Returns
+        -------
+        tuple
+            ``(accumulators, output, tmp)``.
         """
         # need a temporary file to store the accumulated fields for now, because earthkit-data
         # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)

@@ -193,6 +193,11 @@ class RequestFilter:
         ----------
         request :
             A MARS request template.
+
+        Returns
+        -------
+        tuple
+            ``(filter, cleaned_request)``.
         """
         for legacy in ("user_date", "user_time"):
             if legacy in request:
@@ -271,6 +276,11 @@ def _expand_mars_request(
     valid_date :
         The validity datetime for which data is requested.  The MARS base
         date/time is derived from this by subtracting the step.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        The concrete per-step request dicts.
     """
     filter_, cleaned = RequestFilter.extract(request)
 
@@ -508,6 +518,13 @@ def execute_mars_request(
         single request.
     use_cdsapi_dataset :
         If set, use the CDS API with this dataset name instead of MARS.
+    kwargs :
+        Used as the single request when ``requests`` is empty.
+
+    Returns
+    -------
+    Any
+        The retrieved data.
     """
     if not requests:
         requests = [kwargs]
