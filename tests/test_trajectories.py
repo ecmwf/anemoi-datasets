@@ -233,7 +233,7 @@ class TestSteps:
     def _make_steps(self, start="6h", end="24h", frequency="6h"):
         from anemoi.datasets.create.trajectories.context import Steps
 
-        return Steps({"start": start, "end": end, "frequency": frequency})
+        return Steps(start=start, end=end, frequency=frequency)
 
     def test_length(self):
         s = self._make_steps()
