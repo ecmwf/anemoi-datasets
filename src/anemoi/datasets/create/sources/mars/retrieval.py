@@ -346,6 +346,28 @@ def _validate_params(requests: tuple) -> None:
                 )
 
 
+def _validate_keys(requests: tuple) -> None:
+    """Raise a clear ValueError for any key not in ``MARS_KEYS``.
+
+    Runs on the raw request templates *before* factorisation, so that unknown
+    keys -- including dict-valued ones, which would otherwise crash request
+    factorisation with an opaque ``unhashable type: 'dict'`` error -- fail with
+    a helpful "did you mean" message instead.
+    """
+    for r in requests:
+        if not isinstance(r, dict):
+            continue
+        # Grouping wrapper ({"requests": [...]}): validate the nested requests.
+        if "requests" in r:
+            _validate_keys(r["requests"])
+            continue
+        for k, v in r.items():
+            if k not in MARS_KEYS:
+                raise ValueError(
+                    f"⚠️ Unknown key {k}={v} in MARS request. Did you mean '{did_you_mean(k, MARS_KEYS)}' ?"
+                )
+
+
 def _fire_requests(context: Any, requests: list, use_cdsapi_dataset: str | None) -> Any:
     """Send a list of ready-to-fire request dicts to MARS or CDS."""
     ds = from_source("empty")
@@ -458,6 +480,7 @@ def fire_prebuilt_requests(
     intervals, hindcasts).
     """
     _validate_params(requests)
+    _validate_keys(requests)
     compressed = compress_prebuilt_requests(requests)
     context.trace("\u2705", f"Will run {len(compressed)} prebuilt requests")
     for r in compressed:
@@ -490,6 +513,7 @@ def execute_mars_request(
         requests = [kwargs]
 
     _validate_params(requests)
+    _validate_keys(requests)
 
     requests = list(factorise_requests(dates, *requests))
 
