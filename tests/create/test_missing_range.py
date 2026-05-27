@@ -19,7 +19,6 @@ from anemoi.utils.testing import skip_if_offline
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
 
-
 HERE = Path(__file__).parent
 
 
@@ -45,5 +44,26 @@ def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSour
         np.datetime64("2020-12-30T00:00:00"),
         np.datetime64("2020-12-30T12:00:00"),
         np.datetime64("2021-01-03T00:00:00"),
+        np.datetime64("2021-01-03T12:00:00"),
+    ]
+
+
+@skip_if_offline
+def test_missing_mixture_dates_are_supported(tmp_path: Path, load_source: LoadSource) -> None:
+    recipe = HERE / "missing-mixture.yaml"
+    output = tmp_path / "missing-mixture.zarr"
+
+    with (
+        patch("earthkit.data.from_source", load_source),
+        patch("anemoi.datasets.create.sources.mars.from_source", load_source),
+    ):
+        create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
+
+    dates = zarr.open(str(output), mode="r")["dates"][:]
+
+    assert dates.tolist() == [
+        np.datetime64("2020-12-30T00:00:00"),
+        np.datetime64("2020-12-31T12:00:00"),
+        np.datetime64("2021-01-01T12:00:00"),
         np.datetime64("2021-01-03T12:00:00"),
     ]

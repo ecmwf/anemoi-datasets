@@ -19,7 +19,6 @@ from anemoi.datasets import __version__
 from anemoi.datasets.commands import COMMANDS
 from anemoi.datasets.create.recipe import Recipe
 
-
 HERE = Path(__file__).parent / "create"
 
 

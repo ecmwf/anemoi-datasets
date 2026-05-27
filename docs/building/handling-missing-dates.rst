@@ -24,6 +24,14 @@ Example with missing date ranges:
 .. literalinclude:: ../yaml/missing_dates_range.yaml
    :language: yaml
 
+You can also mix individual missing dates and missing ranges in the same
+``missing`` list.
+
+Example with mixed missing dates and ranges:
+
+.. literalinclude:: ../yaml/missing_dates_mixture.yaml
+   :language: yaml
+
 *Anemoi* will ignore the missing dates when computing the
 :ref:`statistics <gathering_statistics>`.
 
