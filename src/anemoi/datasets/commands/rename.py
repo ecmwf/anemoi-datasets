@@ -78,7 +78,12 @@ class Rename(Command):
             recipe = self._rename_in_recipe(recipe, new_name)
             dataset.update_metadata({key: recipe})
 
-        dataset.update_metadata(uuid=new_uuid)
+        # Track the chain of previous UUIDs (for provenance only).
+        previous_uuids = dataset.get_metadata("previous_uuids", [])
+        if old_uuid is not None:
+            previous_uuids = previous_uuids + [old_uuid]
+
+        dataset.update_metadata(uuid=new_uuid, previous_uuids=previous_uuids)
 
         LOG.info(f"Renamed '{source}' -> '{target}': uuid {old_uuid} -> {new_uuid}, recipe name -> '{new_name}'")
 
