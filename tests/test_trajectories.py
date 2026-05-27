@@ -450,9 +450,6 @@ class TestOpenDatasetStepSelection:
 
     def _open(self, **kwargs):
         from anemoi.datasets import open_dataset
-        from anemoi.datasets.usage.trajectories.store import TrajectoriesZarr
-
-        base_ds = TrajectoriesZarr(self.group, path="test.zarr")
 
         # Patch zarr.open so open_dataset finds our in-memory group
         with patch("zarr.open", return_value=self.group):
