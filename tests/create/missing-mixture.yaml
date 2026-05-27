@@ -29,5 +29,3 @@ input:
 
 statistics:
   end: 2021-01-03 12:00:00
-
-skip_test: true
