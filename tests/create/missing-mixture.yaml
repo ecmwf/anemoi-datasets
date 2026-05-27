@@ -28,6 +28,4 @@ input:
       - cos_latitude
 
 statistics:
-  end: 2021-01-02 12:00:00
-
-skip_test: true
+  end: 2021-01-03 12:00:00
