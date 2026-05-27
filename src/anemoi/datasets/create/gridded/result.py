@@ -25,6 +25,7 @@ from earthkit.data.core.order import build_remapping
 from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
+QUIET = set()
 
 
 # Synthetic variable names with known metadata flags.
@@ -45,7 +46,7 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 }
 
 
-def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
+def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
     Parameters
@@ -54,6 +55,9 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
         The variables to retrieve metadata for.
     cube : Any
         The data cube.
+    units_seen : dict
+        Mapping of variable name to its first-seen units, used to enforce that
+        all fields of a given variable share the same units.
 
     Returns
     -------
@@ -222,6 +226,21 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any) -> dict[str, Any]:
             other[current_variable]["process"] = process
             other[current_variable]["period"] = (startStep, endStep)
 
+        units = f.metadata("units", default=None)
+        if current_variable in units_seen:
+            if units_seen[current_variable] != units:
+                raise ValueError(
+                    f"Variable {current_variable} has multiple units: {units_seen[current_variable]} and {units}"
+                )
+        else:
+            units_seen[current_variable] = units
+
+        if units is None and current_variable not in QUIET:
+            LOG.warning(f"Cannot establish units for variable '{current_variable}'.")
+            QUIET.add(current_variable)
+
+        other[current_variable]["units"] = units
+
         for k in md.copy().keys():
             if k.startswith("_"):
                 md.pop(k)
@@ -334,6 +353,8 @@ class GriddedResult(Result):
         ), f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
         self._origins = []
+        # Used to check if units are consistent across fields for the same variable
+        self._past_units = {}
 
     @property
     def data_request(self) -> dict[str, Any]:
@@ -378,7 +399,7 @@ class GriddedResult(Result):
 
             if isinstance(ds, pd.DataFrame):
                 raise ValueError(
-                    "Did you forget meant to build a tabular dataset? Did you forget to specify 'format: tabular' in your recipe?"
+                    "Did you meant to build a tabular dataset? Did you forget to specify 'layout: tabular' in your recipe?"
                 )
             raise
         except ValueError:
@@ -643,7 +664,14 @@ class GriddedResult(Result):
     @property
     def variables_metadata(self) -> dict[str, Any]:
         """Retrieve the metadata for the variables."""
-        return _fields_metatata(self.variables, self._cube)
+        return _fields_metatata(self.variables, self._cube, self._past_units)
+
+    @property
+    def typed_variables(self) -> dict[str, Any]:
+        """Retrieve the typed metadata for the variables."""
+        from anemoi.transform.variables import Variable
+
+        return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
 
     @property
     def ensembles(self) -> Any:

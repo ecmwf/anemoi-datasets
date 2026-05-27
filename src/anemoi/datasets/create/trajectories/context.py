@@ -10,34 +10,15 @@
 import logging
 from typing import Any
 
-import numpy as np
 from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.context import Context
+from anemoi.datasets.create.recipe.dates import Steps  # noqa: F401  (re-exported for back-compat)
 from anemoi.datasets.create.trajectories.result import TrajectoryGriddedResult
 
 LOG = logging.getLogger(__name__)
-
-
-class Steps:
-    def __init__(self, steps: dict):
-        start = frequency_to_timedelta(steps["start"])
-        end = frequency_to_timedelta(steps["end"])
-        frequency = frequency_to_timedelta(steps["frequency"])
-        self.steps = np.arange(start, end + frequency, frequency)
-
-    def __len__(self):
-        return len(self.steps)
-
-    def __iter__(self):
-        return iter(self.steps)
-
-    def __array__(self, dtype=None, copy=None):
-        arr = self.steps if dtype is None else self.steps.astype(dtype)
-        return arr.copy() if copy else arr
 
 
 class TrajectoryGriddedContext(Context):
@@ -58,7 +39,7 @@ class TrajectoryGriddedContext(Context):
 
     def __init__(self, recipe: Any) -> None:
         super().__init__(recipe)
-        self.steps = Steps(self.recipe.steps)
+        self.steps = self.recipe.steps
         # Inject a composite remapping key so that the trajectory axis
         # ``(date, time, step)`` collapses into a single axis in the cube.
         # Without this, ``ds.cube(['date', 'time', 'step', ...])`` would

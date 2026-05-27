@@ -41,16 +41,19 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.27",
+  "anemoi-transform>=0.4",
   "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",           # Until we move to zarr3
+  "numcodecs<0.16",        # Until we move to zarr3
   "numpy",
+  "pint",
   "pydantic",
+  "pyodc>=1.6",
   "pyyaml",
+  "rich",
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",

@@ -17,9 +17,10 @@ from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.dates import DatesProvider
-from anemoi.datasets.dates import TrajectoryDates
-from anemoi.datasets.dates import as_datetime
+from anemoi.utils.dates import as_datetime
+
+from anemoi.datasets.create.recipe.dates import DatesProvider
+from anemoi.datasets.create.recipe.dates import TrajectoryDates
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
@@ -50,12 +51,6 @@ class GroupOfDates:
         self.dates = [d if isinstance(d, tuple) else as_datetime(d) for d in dates]
         self.provider = provider
         self.partial_ok = partial_ok
-
-    @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
-        """Used in pytest"""
-        dates = DatesProvider.from_config(config)
-        return cls(dates.values, dates)
 
     def __len__(self) -> int:
         """Return the number of dates in the group.
@@ -135,17 +130,16 @@ class Groups:
         2
     """
 
-    def __init__(self, group_by: Any, **kwargs: Any) -> None:
-        """Initialize the class with the provided keyword arguments.
+    def __init__(self, dates: DatesProvider, group_by: Any) -> None:
+        """Initialize the Groups collection.
 
-        Parameters
-        ----------
-            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
-                - group_by: Configuration for the Grouper.
-                - Other keys for DatesProvider configuration.
+        Args:
+            dates (DatesProvider): The dates provider.
+            group_by (Any): Configuration for the Grouper (e.g., "daily", "monthly", int, etc.).
+
+        The groups are created by grouping the provided dates according to the group_by parameter.
         """
-
-        self._dates = DatesProvider.from_config(**kwargs)
+        self._dates = dates
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 
@@ -281,6 +275,7 @@ class Grouper(ABC):
             "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
+
         return GrouperByKey(key)
 
     @abstractmethod
@@ -399,21 +394,18 @@ class TrajectoryGroups(Groups):
 
     Parameters
     ----------
-    steps : dict
-        ``recipe.steps`` mapping (``start``, ``end``, ``frequency``) describing
-        the list of forecast steps.
+    steps : Steps
+        Forecast lead times (``start``, ``end``, ``frequency``) describing the
+        list of steps.
     group_by : Any
         Grouping configuration forwarded to :meth:`Grouper.from_config`.
-    base_dates : Any
-        Configuration forwarded to :class:`TrajectoryDates` to build the
-        underlying basetimes provider (``start``, ``end``, ``frequency``,
-        ``missing``, …).
-    **kwargs : Any
-        Additional keyword arguments forwarded to :class:`TrajectoryDates`.
+    base_dates : BaseDates
+        The basetimes provider (``start``, ``end``, ``frequency``,
+        ``missing``, …) used to build the ``(basetime, step)`` pairs.
     """
 
-    def __init__(self, steps: Any, group_by: Any, base_dates: Any, **kwargs: Any) -> None:
-        self._dates = TrajectoryDates(steps=steps, **base_dates, **kwargs)
+    def __init__(self, steps: Any, group_by: Any, base_dates: Any) -> None:
+        self._dates = TrajectoryDates(base_dates=base_dates, steps=steps)
         self._grouper = Grouper.from_config(group_by)
         self._filter = TrajectoryFilter(self._dates.missing)
 

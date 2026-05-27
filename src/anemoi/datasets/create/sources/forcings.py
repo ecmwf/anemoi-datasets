@@ -10,14 +10,37 @@
 from typing import Any
 
 from anemoi.transform.fields import new_field_with_metadata
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data import from_source
-from earthkit.data.indexing.fieldlist import SimpleFieldList
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry
+
+# This table is not complete and needs updating
+
+UNITS = dict(
+    cos_julian_day="dimensionless",
+    cos_latitude="dimensionless",
+    cos_local_time="dimensionless",
+    cos_longitude="dimensionless",
+    sin_julian_day="dimensionless",
+    sin_latitude="dimensionless",
+    sin_local_time="dimensionless",
+    sin_longitude="dimensionless",
+    cos_solar_zenith_angle="dimensionless",
+    insolation="dimensionless",  # An alias for the one above
+)
+
+
+def _units_for(field: Any) -> str:
+    """Return the units of a forcing field, falling back to the ``UNITS`` table."""
+    units = field.metadata("units", default=None)
+    if units is None:
+        units = UNITS[field.metadata("param")]
+    return units
 
 
 @source_registry.register("forcings")
@@ -30,7 +53,9 @@ class ForcingsSource(Source):
 
     def execute_valid_dates(self, dates: ValidDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
-        return from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
+        fields = from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
+        result = [new_field_with_metadata(f, units=_units_for(f)) for f in fields]
+        return new_fieldlist_from_list(result)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
@@ -54,6 +79,6 @@ class ForcingsSource(Source):
                 step=step_hours,
             )
             for f in fields_by_vdt.get(vt.isoformat(), []):
-                result.append(new_field_with_metadata(f, **meta))
+                result.append(new_field_with_metadata(f, units=_units_for(f), **meta))
 
-        return SimpleFieldList(result)
+        return new_fieldlist_from_list(result)

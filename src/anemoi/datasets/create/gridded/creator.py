@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.transform.variables import Variable
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -179,6 +180,12 @@ class GriddedCreator(Creator):
         with WriteBehindBuffer(dataset.data) as array:
             LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
             self._load_cube(cube, array, indexes)
+
+        # The units have been set during the first load, so we can check for consistency here
+        old = dataset.typed_variables
+        new = result.typed_variables
+
+        Variable.check_compatibility(old, new)
 
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path

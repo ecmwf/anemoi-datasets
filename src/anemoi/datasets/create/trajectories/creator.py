@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 
 from anemoi.datasets.buffering import WriteBehindBuffer
-from anemoi.datasets.dates import TrajectoryDates
+from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
@@ -78,7 +78,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
         """Collect metadata for the trajectories dataset."""
         super().collect_metadata(metadata)
         metadata["layout"] = "trajectories"
-        metadata["steps"] = self.recipe.steps
+        metadata["steps"] = self.recipe.steps.model_dump(mode="json")
         # Variables live on axis 1 (same as gridded); ensembles on axis 2; steps on axis -2.
         metadata["ensemble_dimension"] = 2
         metadata["step_dimension"] = -2
