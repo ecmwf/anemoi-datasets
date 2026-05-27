@@ -90,7 +90,7 @@ class Rename(Command):
         # --- move the store ---
         # Drop the Dataset reference so no file handles/locks are held during the move.
         del dataset
-        shutil.move(source, target)
+        os.rename(source, target)
 
         # Best-effort cleanup of the stale source lock file.
         source_lock = source + ".lock"
