@@ -933,8 +933,7 @@ class Dataset(ABC, Sized):
         import numpy as np
 
         # Otherwise, we need to compute them
-        dates = self.dates
-        indices = set(range(len(dates)))
+        indices = set(range(len(self)))
         indices -= self.missing
 
         sample_count = min(4, len(indices))

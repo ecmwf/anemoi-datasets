@@ -116,16 +116,6 @@ class TrajectoriesZarr(ZarrStore):
         """
         return self.base_dates[index]
 
-    @cached_property
-    def dates(self) -> NDArray[np.datetime64]:
-        """Alias for :attr:`base_dates`.
-
-        Kept for compatibility with the shared :class:`Dataset` machinery
-        (``_dates_to_indices``, start/end/frequency subsetting).  The
-        canonical attribute for trajectories is :attr:`base_dates`.
-        """
-        return self.base_dates
-
     @property
     def base_start_date(self) -> np.datetime64:
         """Return the first base date."""
