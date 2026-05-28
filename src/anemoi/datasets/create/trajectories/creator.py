@@ -7,18 +7,26 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
+import glob
 import logging
+import os
 from functools import cached_property
 from typing import Any
 
 import numpy as np
+import tqdm
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
+from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
 
 LOG = logging.getLogger(__name__)
@@ -241,3 +249,84 @@ class TrajectoryGriddedCreator(GriddedCreator):
             n_steps = len(set(vt - bt for vt, bt in g)) if len(g) > 0 else 0
             shapes.append((n_base_dates, n_steps))
         return shapes
+
+    def _tendencies_to_compute(self, dataset: Dataset) -> dict[str, int]:
+        """Return ``{name: step_delta}`` for the tendencies to compute.
+
+        The reference frequency is the **step spacing** of the trajectory,
+        not the base-date frequency, because tendencies are computed along
+        the step axis within a single trajectory.  Deltas that are not whole
+        multiples of the step spacing are skipped with a warning, mirroring
+        the gridded behaviour.
+        """
+        additions = self.recipe.build.additions
+        if not additions:
+            return {}
+
+        tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is True:
+            tendencies_list = [1, 3, 6, 12, 24]
+        elif tendencies_config is False or tendencies_config is None:
+            return {}
+        else:
+            tendencies_list = list(tendencies_config)
+
+        steps = dataset.steps
+        if len(steps) < 2:
+            LOG.warning("Trajectory has fewer than 2 steps; cannot compute tendencies.")
+            return {}
+
+        step_diffs = np.diff(steps)
+        if not np.all(step_diffs == step_diffs[0]):
+            LOG.warning("Trajectory steps are not uniformly spaced; skipping tendency statistics.")
+            return {}
+
+        step_spacing_seconds = int(step_diffs[0].astype("timedelta64[s]").astype("int64"))
+        step_spacing_td = datetime.timedelta(seconds=step_spacing_seconds)
+
+        tendencies: dict[str, int] = {}
+        for delta in tendencies_list:
+            td = frequency_to_timedelta(delta)
+            ratio = td / step_spacing_td
+            if int(ratio) == ratio:
+                tendencies[frequency_to_string(td)] = int(ratio)
+            else:
+                LOG.warning(
+                    f"Tendency delta {delta} is not a multiple of trajectory step spacing "
+                    f"{frequency_to_string(step_spacing_td)}, skipping."
+                )
+
+        return tendencies
+
+    def _compute_partial_statistics(self, dataset: Dataset, start, end) -> TrajectoryStatisticsCollector:
+        base_dates = dataset.base_dates
+        steps = dataset.steps
+
+        collector = TrajectoryStatisticsCollector(
+            variables_names=self.variables_names,
+            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            tendencies=self._tendencies_to_compute(dataset),
+        )
+
+        data = ReadAheadBuffer(dataset.data, start=start)
+        chunk_size = data.chunks[0]
+
+        for i in tqdm.tqdm(range(start, end, chunk_size)):
+            j = min(i + chunk_size, data.shape[0])
+            chunk = data[i:j]
+            collector.collect(chunk, base_dates[i:j])
+
+        return collector
+
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        if os.path.exists(self.work_dir):
+            precomputed = list(glob.glob(os.path.join(self.work_dir, "statistics_*.pkl")))
+            if precomputed:
+                LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
+                collector = TrajectoryStatisticsCollector.load_precomputed(dataset, precomputed)
+                collector.add_to_dataset(dataset)
+                return
+
+        LOG.info("Computing statistics for the full trajectory dataset")
+        collector = self._compute_partial_statistics(dataset, 0, dataset.data.shape[0])
+        collector.add_to_dataset(dataset)
