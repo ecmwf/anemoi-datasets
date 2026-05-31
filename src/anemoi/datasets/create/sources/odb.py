@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import os
 import subprocess
 import tempfile
 from datetime import datetime
@@ -20,6 +21,7 @@ import pandas
 
 from ..source import Source
 from . import source_registry
+from .patterns import iterate_patterns
 
 LOG = logging.getLogger(__name__)
 
@@ -122,19 +124,26 @@ class OdbSource(Source):
         start = np.datetime_as_string(dates.start_range)
         end = np.datetime_as_string(dates.end_range)
 
-        df = odb2df(
-            start=start,
-            end=end,
-            path_str=self.path,
-            select=self.select,
-            where=self.where,
-            flavour=self.flavour,
-            pivot_columns=self.pivot_columns,
-            pivot_values=self.pivot_values,
-        )
-        LOG.info(f"ODB source read {len(df)} rows from {self.path}")
-        LOG.info(df)
-        return df
+        df_list = []
+        for expanded_path, date in iterate_patterns(self.path, dates):
+            LOG.info(f"Working on {expanded_path} {date}")
+            df = odb2df(
+                start=start,
+                end=end,
+                path_str=expanded_path,
+                select=self.select,
+                where=self.where,
+                flavour=self.flavour,
+                pivot_columns=self.pivot_columns,
+                pivot_values=self.pivot_values,
+            )
+            if df is not None:
+                df_list.append(df)
+                LOG.info(f"ODB source read {len(df)} rows from {expanded_path}")
+        if len(df_list) > 0:
+            return pandas.concat(df_list, ignore_index=True)
+        else:
+            return None
 
 
 def odb2df(
@@ -225,6 +234,9 @@ def odb2df(
             output_odb_path=intermediate_odb_path.name,
             sql_query_string=sql,
         )
+        if os.path.getsize(intermediate_odb_path.name) == 0:
+            LOG.info(f"SQL query returned no results for ODB file at {path} with query: {sql}")
+            return None
         df = odc.read_odb(intermediate_odb_path.name, single=True, aggregated=True)
         LOG.info(f"Intermediate ODB file created at: {intermediate_odb_path.name}")
 
