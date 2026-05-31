@@ -98,13 +98,14 @@ class DatesProvider(BaseModel):
 class StartEndDates(DatesProvider):
     start: datetime.datetime
     end: datetime.datetime
+    offset: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = datetime.timedelta(hours=0)
     frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
     missing: list[datetime.datetime] = Field(default_factory=list)
 
     @cached_property
     def values(self) -> list[datetime.datetime]:
         dates = []
-        date = self.start
+        date = self.start + self.offset
         while date <= self.end:
             if date not in self.missing:
                 dates.append(date)
@@ -113,11 +114,11 @@ class StartEndDates(DatesProvider):
 
     def start_range(self, dates) -> datetime.datetime:
         """Used for tabular datasets grouping."""
-        return dates[0]
+        return dates[0] - self.offset
 
     def end_range(self, dates) -> datetime.datetime:
         """Used for tabular datasets grouping."""
-        return dates[-1] + self.frequency
+        return dates[-1] - self.offset + self.frequency
 
 
 class ValuesDates(DatesProvider):
