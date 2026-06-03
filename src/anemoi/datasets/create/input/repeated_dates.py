@@ -239,10 +239,24 @@ class DateMapperConstant(DateMapper):
         source : Any
             The data source.
         date : Optional[Any]
-            The constant date to map to.
+            The constant date to map to.  If ``None``, the inner source is
+            invoked with an empty ``GroupOfDates`` (the source is expected
+            to produce dateless fields that can be broadcast).  If provided,
+            the value must be parseable as a datetime; a ``ValueError`` is
+            raised eagerly otherwise so the problem surfaces at config-parse
+            time rather than at fetch time.
         """
         self.source: Any = source
-        self.date: Any | None = date
+        if date is None:
+            self.date: Any | None = None
+        else:
+            try:
+                self.date = as_datetime(date)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"repeated_dates mode=constant: 'date' must be a valid "
+                    f"datetime, got {date!r} ({type(date).__name__})"
+                ) from exc
 
     def transform(self, context, group_of_dates: Any) -> tuple[Any, Any]:
         """Transform the group of dates to a constant date.

@@ -23,6 +23,84 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
 
+_WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
+
+
+def _parse_date_wildcard(pattern: str) -> dict[str, int]:
+    """Parse a wildcard pattern like ``????-??-01`` or ``????-06-??``.
+
+    Returns the subset of ``{"day_of_month", "calendar_months"}`` that is
+    fixed by the pattern.  The year position must be ``????`` — use
+    ``start``/``end`` to bound the year range.
+    """
+    parts = pattern.split("-")
+    if [len(p) for p in parts] != [4, 2, 2]:
+        raise ValueError(f"Date pattern must look like 'YYYY-MM-DD' with optional '?' wildcards, got {pattern!r}")
+    year, month, day = parts
+    if year != "????":
+        raise ValueError(f"Date pattern must use '????' for the year, got {pattern!r}")
+
+    result: dict[str, int] = {}
+    if month != "??":
+        result["calendar_months"] = int(month)
+    if day != "??":
+        result["day_of_month"] = int(day)
+    if not result:
+        raise ValueError(f"Date pattern {pattern!r} is all wildcards; remove it.")
+    return result
+
+
+def _normalise_dates_aliases(options: dict[str, Any]) -> None:
+    """Translate user-friendly recipe aliases in place.
+
+    - ``weekday`` → ``day_of_week`` (lower-cased, with typo detection)
+    - ``date`` wildcard pattern(s) → ``day_of_month`` and/or
+      ``calendar_months``.
+
+    Raises if an alias collides with the underlying key.
+    """
+
+    if "weekday" in options:
+        if "day_of_week" in options:
+            raise ValueError("Cannot specify both 'weekday' and 'day_of_week'")
+        options["day_of_week"] = options.pop("weekday")
+
+    if "date" in options:
+        raw = options.pop("date")
+        patterns = [raw] if isinstance(raw, (str, int)) else list(raw)
+        days: list[int] = []
+        months: list[int] = []
+        for p in patterns:
+            if isinstance(p, int):
+                days.append(p)
+                continue
+            parsed = _parse_date_wildcard(p)
+            if "day_of_month" in parsed:
+                days.append(parsed["day_of_month"])
+            if "calendar_months" in parsed:
+                months.append(parsed["calendar_months"])
+        for key, values in (("day_of_month", days), ("calendar_months", months)):
+            if values:
+                if key in options:
+                    raise ValueError(f"Cannot specify both 'date' and {key!r}")
+                options[key] = values
+
+    if "day_of_week" in options:
+        dow = options["day_of_week"]
+        dow = [dow] if isinstance(dow, (str, int)) else list(dow)
+        # Lower-case names eagerly so DateTimes' KeyError on typos turns
+        # into a friendly ValueError here.
+        normalised: list[str | int] = []
+        for d in dow:
+            if isinstance(d, str):
+                name = d.lower()
+                if name not in _WEEKDAYS:
+                    raise ValueError(f"Unknown weekday {d!r}; expected one of {sorted(_WEEKDAYS)}.")
+                normalised.append(name)
+            else:
+                normalised.append(d)
+        options["day_of_week"] = normalised
+
 
 def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
@@ -130,6 +208,7 @@ class DatesProvider:
         if "values" in options:
             return ValuesDates(**options)
 
+        _normalise_dates_aliases(options)
         return StartEndDates(**options)
 
     def __iter__(self) -> Iterator[datetime.datetime]:

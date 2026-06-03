@@ -16,12 +16,15 @@ The tool can provide help with the ``--help`` options:
 The commands are:
 
 - :ref:`Create Command <create_command>`
+- :ref:`Create Test Recipe Command <create_test_recipe_command>`
 - :ref:`Copy Command <copy_command>`
 - :ref:`Inspect Command <Inspect_command>`
 - :ref:`Compare Command <compare_command>`
 - :ref:`Scan Command <scan_command>`
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
+- :ref:`Schema Command <schema_command>`
+- :ref:`Rename Command <rename_command>`
 
 
 
@@ -32,6 +35,7 @@ The commands are:
    :caption: CLI
 
    cli/create
+    cli/create-test-recipe
    cli/inspect
    cli/grib-index
    cli/compare
@@ -40,3 +44,5 @@ The commands are:
    cli/patch
    cli/compare-lam
    cli/validate
+   cli/schema
+   cli/rename

@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.37](https://github.com/ecmwf/anemoi-datasets/compare/0.5.36...0.5.37) (2026-05-27)
+
+
+### Features
+
+* Add BUFR source ([#635](https://github.com/ecmwf/anemoi-datasets/issues/635)) ([07cbdd2](https://github.com/ecmwf/anemoi-datasets/commit/07cbdd2702b085f486b3931756663fa76f0277b2))
+* Add units to datasets ([#577](https://github.com/ecmwf/anemoi-datasets/issues/577)) ([2545ad9](https://github.com/ecmwf/anemoi-datasets/commit/2545ad951e1d3ffbc525efd5e2ff6ab3baf4dc85))
+* Datasets tendencies overwrite ([#633](https://github.com/ecmwf/anemoi-datasets/issues/633)) ([460bee4](https://github.com/ecmwf/anemoi-datasets/commit/460bee4516272efc680bbb4056909da5b5ae4fcb))
+* Export json schema ([#630](https://github.com/ecmwf/anemoi-datasets/issues/630)) ([f40ad9f](https://github.com/ecmwf/anemoi-datasets/commit/f40ad9f29a829a24e364a4f79cf3c7dc01d404b0))
+* Fetch multiple chunks in parallel when reading from s3 ([#617](https://github.com/ecmwf/anemoi-datasets/issues/617)) ([88e8c08](https://github.com/ecmwf/anemoi-datasets/commit/88e8c084c05e0042cb6c67250a81005e9a1c9c6d))
+* Keep compatibility with zarr 3 ([#623](https://github.com/ecmwf/anemoi-datasets/issues/623)) ([7597d85](https://github.com/ecmwf/anemoi-datasets/commit/7597d85ec759aa8c21f87a30e706e767b7800697))
+* Pydantic recipes ([#575](https://github.com/ecmwf/anemoi-datasets/issues/575)) ([0ded992](https://github.com/ecmwf/anemoi-datasets/commit/0ded992f6e23a62703ebbc6c194d4ea82a6c29b7))
+
+
+### Bug Fixes
+
+* Allow ODB source to work with multiple input files ([#634](https://github.com/ecmwf/anemoi-datasets/issues/634)) ([fbe30e2](https://github.com/ecmwf/anemoi-datasets/commit/fbe30e28bf2b409c0eb0b1a6261bc1346dbbd4a9))
+
 ## [0.5.36](https://github.com/ecmwf/anemoi-datasets/compare/0.5.35...0.5.36) (2026-04-22)
 
 

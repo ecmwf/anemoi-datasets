@@ -341,16 +341,21 @@ RESCALE_TEST_CASES = [
 
 @skip_if_offline
 @zarr_tests
-@pytest.mark.parametrize("dataset,rescale,cfunits", RESCALE_TEST_CASES)
-def test_class_gridded_rescale(dataset, rescale, cfunits):
-    if cfunits == "cfunits":
-        try:
-            import cfunits  # noqa: F401
-        except FileNotFoundError:
-            # cfunits requires the library udunits2 to be installed
-            pytest.skip("udunits2 library not installed")
+def test_class_gridded_rescale_1():
+    ds = open_dataset(
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        rescale={"2t": (1.0, -273.15)},
+    )
+    _test_dataset(ds)
 
-    ds = open_dataset(dataset, rescale=rescale)
+
+@skip_if_offline
+@zarr_tests
+def test_class_gridded_rescale_2():
+    ds = open_dataset(
+        "aifs-ea-an-oper-0001-mars-20p0-2017-2017-6h-v1",
+        rescale={"2t": ("K", "degC")},
+    )
     _test_dataset(ds)
 
 

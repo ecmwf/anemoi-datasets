@@ -41,15 +41,18 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.27",
+  "anemoi-transform>=0.4",
   "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
   "numpy",
+  "pint",
   "pydantic",
+  "pyodc>=1.6",
   "pyyaml",
+  "rich",
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
@@ -129,7 +132,7 @@ exclude = [
 [tool.pytest]
 ini_options.testpaths = "tests"
 ini_options.addopts = [
-  "--numprocesses=auto",
+  "--processes=auto",
   "--maxprocesses=16",
   "--strict-config",
 ]

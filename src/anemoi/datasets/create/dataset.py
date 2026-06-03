@@ -166,10 +166,11 @@ class Dataset:
     ##################################
 
     def group_to_range(self, group: int) -> tuple[int, int]:
-        """Convert group indices to slice in the data array."""
+        """Convert group indices to slice in the data array's first axis."""
 
         with self.synchronizer:
-            lengths = self.store["_build"]["lengths"][:]
+            shapes = self.store["_build"]["shapes"][:]
+            lengths = shapes[:, 0]
             start = sum(lengths[:group])
             end = start + lengths[group]
             return (start, end)
@@ -184,16 +185,16 @@ class Dataset:
             self.store.attrs[name] = gather_provenance_info()
 
     # For statistics about
-    def initalise_groups_lengths(self, lengths: list[int]) -> None:
-        """Initialize the progress tracking datasets."""
+    def initialise_group_shapes(self, shapes: list[tuple[int, ...]]) -> None:
+        """Initialise the per-group shape tracking array."""
 
         self.add_array(
-            name="_build/lengths",
-            data=np.array(lengths, dtype=np.int64),
-            dimensions=("group",),
+            name="_build/shapes",
+            data=np.array(shapes, dtype=np.int64),
+            dimensions=("group", "dim"),
         )
 
-    def initalise_done_flags(self, groups: int) -> None:
+    def initialise_done_flags(self, groups: int) -> None:
         """Initialize the progress tracking datasets."""
 
         self.add_array(
@@ -217,7 +218,25 @@ class Dataset:
 
     @cached_property
     def dates(self):
-        return self.store["dates"][:]
+        # For gridded/tabular the array is called ``dates``.  Trajectories
+        # datasets store the forecast initialisation times under
+        # ``base_dates`` — fall back to that so shared statistics / loading
+        # code keeps working without a special-case.
+        if "dates" in self.store:
+            return self.store["dates"][:]
+        return self.store["base_dates"][:]
+
+    @cached_property
+    def base_dates(self):
+        """Return the base-date (forecast initialisation time) array for
+        trajectories datasets.
+        """
+        return self.store["base_dates"][:]
+
+    @cached_property
+    def steps(self):
+        """Return the forecast steps array for trajectories datasets."""
+        return self.store["steps"][:]
 
     @property
     def data(self):
@@ -231,3 +250,15 @@ class Dataset:
 
     def touch(self) -> None:
         self.update_metadata(latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None))
+
+    @property
+    def variables_metadata(self) -> dict[str, Any]:
+        """Get the metadata for each variable in the dataset."""
+        return self.store.attrs["variables_metadata"]
+
+    @cached_property
+    def typed_variables(self) -> dict[str, Any]:
+        from anemoi.transform.variables import Variable
+
+        """Get the metadata for each variable in the dataset."""
+        return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
