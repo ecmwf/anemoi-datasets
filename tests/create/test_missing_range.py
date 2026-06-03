@@ -34,7 +34,7 @@ def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSour
 
     with (
         patch("earthkit.data.from_source", load_source),
-        patch("anemoi.datasets.create.sources.mars.from_source", load_source),
+        patch("anemoi.datasets.create.sources.mars.retrieval.from_source", load_source),
     ):
         create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
 
@@ -59,7 +59,7 @@ def test_missing_mixture_dates_are_supported(tmp_path: Path, load_source: LoadSo
 
     with (
         patch("earthkit.data.from_source", load_source),
-        patch("anemoi.datasets.create.sources.mars.from_source", load_source),
+        patch("anemoi.datasets.create.sources.mars.retrieval.from_source", load_source),
     ):
         create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
 
