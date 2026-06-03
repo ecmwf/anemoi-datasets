@@ -314,7 +314,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
         chunk_size = data.chunks[0]
 
         for i in tqdm.tqdm(range(start, end, chunk_size)):
-            j = min(i + chunk_size, data.shape[0])
+            j = min(i + chunk_size, end)
             chunk = data[i:j]
             collector.collect(chunk, base_dates[i:j])
 
