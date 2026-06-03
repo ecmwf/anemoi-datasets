@@ -132,7 +132,7 @@ exclude = [
 [tool.pytest]
 ini_options.testpaths = "tests"
 ini_options.addopts = [
-  "--processes=auto",
+  "--numprocesses=auto",
   "--maxprocesses=16",
   "--strict-config",
 ]
