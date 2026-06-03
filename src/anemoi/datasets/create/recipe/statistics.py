@@ -53,6 +53,14 @@ class Statistics(BaseModel):
         last = to_datetime(last)
 
         n_years = round((last - first).total_seconds() / (365.25 * 24 * 60 * 60))
+        n_dates = len(dates)
+
+        if n_dates < 10:
+            # For test datasets.
+            k = max(1, int(n_dates * 0.8))
+            end = dates[k - 1]
+            LOG.info(f"Number of datetimes {n_dates} < 10, leaving out 20%. {end=}")
+            return dates[0], end
 
         if n_years < 10:
             # leave out 20% of the data
