@@ -16,11 +16,22 @@ To ensure consistency, a dataset name should follow the following rules:
       other special characters (``@``, ``#``, ``*``, etc.).
 
 Additionally, a dataset name is built from different parts joined with
-``-`` as follows (each part can contain additional ``-``):
+``-`` as follows (each part can contain additional ``-``).  The exact
+form depends on the dataset's layout:
+
+It is suggested to suffix ``-observations`` to the name of datasets that contain observations,
+whether they are gridded or tabular.
 
 .. code::
 
+   # Gridded layout (single date frequency)
    purpose-content-source-resolution-start-year-end-year-frequency-version[-extra-str]
+
+   # Trajectory layout (two frequencies: between base dates and between forecast steps)
+   purpose-content-source-resolution-start-year-end-year-date-frequency-step-frequency-version[-extra-str]
+
+   # Tabular layout (no frequency; resolution is optional)
+   purpose-content-source[-resolution]-start-year-end-year-version[-extra-str]
 
 .. note::
 
@@ -61,7 +72,13 @@ The tables below provide more details and some examples.
       -  mars (when data is from MARS), could be *opendap* or other.
 
    -  -  **resolution**
-      -  o96 (could be : n320, 0p2 for 0.2 degree)
+
+      -  o96 (could be : n320, 0p2 for 0.2 degree, 1km, 2km).  The
+         resolution token must start with a digit (``0``-``9``), ``o``
+         or ``n``.  It is **mandatory** for gridded and trajectory
+         layouts and **optional** for tabular layouts (since station
+         observation datasets often have no meaningful spatial
+         resolution).
 
    -  -  **start-year**
       -  1979 if the first validity time is in 1979.
@@ -74,7 +91,21 @@ The tables below provide more details and some examples.
          aifs-od-an-oper-0001-mars-o96-2020-2020-6h-v5
 
    -  -  **frequency**
-      -  1h (could be : 6h, 10m for 10 minutes)
+
+      -  1h (could be : 6h, 10m for 10 minutes).  The frequency token
+         is **mandatory** for gridded layouts and **absent** for
+         tabular layouts.
+
+   -  -  **date-frequency**, **step-frequency**
+
+      -  Trajectory datasets carry **two** frequencies, in this order:
+         the *date frequency* is the interval between consecutive base
+         dates (forecast initialisation times) and the *step frequency*
+         is the interval between consecutive forecast steps within one
+         trajectory.  For example
+         ``aifs-od-fc-oper-0001-mars-o96-2016-2025-18h-1h-v3`` describes
+         a trajectory dataset with one forecast every 18 h and hourly
+         steps within each forecast.
 
    -  -  **version**
 
@@ -90,7 +121,7 @@ The tables below provide more details and some examples.
          This extra string can contain additional `-`. It provides
          additional information about the content of the dataset.
 
-.. list-table:: Examples
+.. list-table:: Examples — gridded
    :widths: 100
 
    -  -  aifs-od-an-oper-0001-mars-o96-1979-2022-1h-v5
@@ -98,6 +129,18 @@ The tables below provide more details and some examples.
    -  -  aifs-ea-an-enda-0001-mars-o96-1979-2022-6h-v6-recentered-on-oper
    -  -  aifs-ea-an-oper-0001-mars-n320-1979-2022-6h-v4
    -  -  inca-an-oper-0001-gridefix-1km-2023-2024-10m-v1
+
+.. list-table:: Examples — trajectories
+   :widths: 100
+
+   -  -  aifs-od-fc-oper-0001-mars-o96-2016-2025-18h-1h-v3
+
+.. list-table:: Examples — tabular
+   :widths: 100
+
+   -  -  dop-ea-ofb-0001-1979-2023-v2-combined-aircraft-observations
+   -  -  dop-ea-ofb-0001-2km-1979-2023-v2-combined-aircraft-observations
+   -  -  aifs-ea-ofb-0001-1979-2023-v2-combined-aircraft-observations
 
 `Anemoi Naming Conventions
 <https://anemoi-registry.readthedocs.io/en/latest/naming-conventions.html>`_

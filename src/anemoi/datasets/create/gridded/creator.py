@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -198,7 +198,12 @@ class GriddedCreator(Creator):
         frequency = self.groups.provider.frequency
 
         for message in check_dataset_name(
-            name, resolution=self.minimal_input.resolution, start_date=dates[0], end_date=dates[-1], frequency=frequency
+            name,
+            resolution=self.minimal_input.resolution,
+            start_date=dates[0],
+            end_date=dates[-1],
+            frequency=frequency,
+            layout="gridded",
         ):
             LOG.warning("Dataset name warning: %s", message)
 

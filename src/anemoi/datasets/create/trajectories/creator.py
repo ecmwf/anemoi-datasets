@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -61,7 +61,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
             resolution=self.minimal_input.resolution,
             start_date=base_dates[0],
             end_date=base_dates[-1],
-            frequency=provider.frequency,
+            frequency=provider.frequency,  # base-date frequency
+            step_frequency=provider.steps.frequency,  # forecast-step frequency
+            layout="trajectories",
         ):
             LOG.warning("Dataset name warning: %s", message)
 
