@@ -78,7 +78,7 @@ The tables below provide more details and some examples.
          or ``n``.  It is **mandatory** for gridded and trajectory
          layouts and **optional** for tabular layouts (since station
          observation datasets often have no meaningful spatial
-         resolution).
+         resolution). Using ``p`` for decimal points in the resolution is recommended.
 
    -  -  **start-year**
       -  1979 if the first validity time is in 1979.
@@ -103,9 +103,10 @@ The tables below provide more details and some examples.
          dates (forecast initialisation times) and the *step frequency*
          is the interval between consecutive forecast steps within one
          trajectory.  For example
-         ``aifs-od-fc-oper-0001-mars-o96-2016-2025-18h-1h-v3`` describes
-         a trajectory dataset with one forecast every 18 h and hourly
-         steps within each forecast.
+         ``aifs-od-fc-oper-0001-mars-o96-2016-2025-12h-1h-v3-long-forecast`` describes
+         a trajectory dataset with one forecast every 12 h and hourly
+         steps within each forecast. The first step and the last step
+         are not written in the name.
 
    -  -  **version**
 
@@ -125,20 +126,22 @@ The tables below provide more details and some examples.
    :widths: 100
 
    -  -  aifs-od-an-oper-0001-mars-o96-1979-2022-1h-v5
-   -  -  aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v6
+   -  -  aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v6-with-new-ocean-variables
    -  -  aifs-ea-an-enda-0001-mars-o96-1979-2022-6h-v6-recentered-on-oper
+   -  -  aifs-ea-ofb-0001-o96-1979-2023-v2-reprojected-gridded-observations
    -  -  aifs-ea-an-oper-0001-mars-n320-1979-2022-6h-v4
-   -  -  inca-an-oper-0001-gridefix-1km-2023-2024-10m-v1
+   -  -  aemet-an-harm-2p5km-2016-2021-6h-v0-canarias
 
 .. list-table:: Examples — trajectories
    :widths: 100
 
-   -  -  aifs-od-fc-oper-0001-mars-o96-2016-2025-18h-1h-v3
+   -  -  aifs-od-fc-oper-0001-mars-o96-2016-2025-12h-1h-v3
 
 .. list-table:: Examples — tabular
    :widths: 100
 
    -  -  dop-ea-ofb-0001-1979-2023-v2-combined-aircraft-observations
+   -  -  dop-ea-ofb-0001-o96-1979-2023-v2-combined-aircraft-observations
    -  -  dop-ea-ofb-0001-2km-1979-2023-v2-combined-aircraft-observations
    -  -  aifs-ea-ofb-0001-1979-2023-v2-combined-aircraft-observations
 
