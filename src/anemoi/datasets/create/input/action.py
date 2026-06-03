@@ -12,7 +12,9 @@ from abc import ABC
 from abc import abstractmethod
 from functools import cache
 
+from anemoi.datasets.create.recipe.dates import BaseDates
 from anemoi.datasets.create.recipe.dates import StartEndDates
+from anemoi.datasets.create.recipe.dates import Steps
 
 LOG = logging.getLogger(__name__)
 
@@ -70,6 +72,8 @@ class Concat(Action):
 
     """
 
+    FILTER_KEYS = ("dates", "base_dates", "steps")
+
     def __init__(self, config, *path):
         super().__init__(config, *path, "concat")
 
@@ -79,10 +83,22 @@ class Concat(Action):
 
         for i, item in enumerate(config):
 
-            dates = item["dates"]
-            filtering_dates = StartEndDates(**dates)
-            action = action_factory({k: v for k, v in item.items() if k != "dates"}, *self.path, str(i))
-            self.choices.append((filtering_dates, action))
+            filters = {}
+            for key in self.FILTER_KEYS:
+                if key in item:
+                    if key == "dates":
+                        filters[key] = StartEndDates(**item[key])
+                    elif key == "base_dates":
+                        filters[key] = BaseDates(**item[key])
+                    elif key == "steps":
+                        filters[key] = Steps(**item[key])
+
+            if not filters:
+                raise ValueError(f"Concat entry must have at least one of {self.FILTER_KEYS}.")
+
+            action_config = {k: v for k, v in item.items() if k not in self.FILTER_KEYS}
+            action = action_factory(action_config, *self.path, str(i))
+            self.choices.append((filters, action))
 
     def __repr__(self):
         return f"Concat({self.choices})"
@@ -91,8 +107,8 @@ class Concat(Action):
 
         results = []
 
-        for filtering_dates, action in self.choices:
-            dates = context.matching_dates(filtering_dates, argument)
+        for filters, action in self.choices:
+            dates = context.matching_dates(filters, argument)
             if len(dates) == 0:
                 continue
             results.append(action(context, dates))
@@ -103,7 +119,7 @@ class Concat(Action):
 
     def dump(self, dumper):
         return dumper.concat(
-            {filtering_dates.dump(dumper): action.dump(dumper) for filtering_dates, action in self.choices}
+            {list(filters.values())[0].dump(dumper): action.dump(dumper) for filters, action in self.choices}
         )
 
 

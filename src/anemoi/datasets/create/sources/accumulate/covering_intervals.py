@@ -7,6 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+# This module implements an algorithm to cover a target time interval with a sequence of signed intervals
+# (which can be positive or negative in length)
+# It is general purpose but is mainly designed to support accumulation over variable periods,
+# e.g. to cover a 6h accumulation with available intervals of +/-3h,
+
 import itertools
 import logging
 from collections.abc import Callable
@@ -17,106 +22,9 @@ from datetime import timedelta
 from heapq import heappop
 from heapq import heappush
 
+from anemoi.datasets.create.intervals import SignedInterval
+
 LOG = logging.getLogger(__name__)
-
-# This module implements an algorithm to cover a target time interval with a sequence of signed intervals
-# (which can be positive or negative in length)
-# It is general purpose but is mainly designed to support accumulation over variable periods,
-# e.g. to cover a 6h accumulation with available intervals of +/-3h,
-
-
-class SignedInterval:
-    def __init__(self, start: datetime, end: datetime, base: datetime | None = None):
-        self.start = start
-        self.end = end
-        self.base = base
-
-    @property
-    def length(self) -> float:
-        """Length in seconds (can be negative)."""
-        return (self.end - self.start).total_seconds()
-
-    @property
-    def sign(self) -> int:
-        return 1 if self.length >= 0 else -1
-
-    @property
-    def min(self):
-        return min(self.start, self.end)
-
-    @property
-    def max(self):
-        return max(self.start, self.end)
-
-    def __neg__(self):
-        return SignedInterval(start=self.end, end=self.start, base=self.base)
-
-    def __eq__(self, other):
-        if not isinstance(other, SignedInterval):
-            return NotImplemented
-        if self.start != other.start or self.end != other.end:
-            return False
-        if self.base != other.base:
-            return False
-        return True
-
-    def __hash__(self):
-        return hash((self.start, self.end, self.base))
-
-    def __rich__(self):
-        return self.__repr__(colored=True)
-
-    def __repr__(self, colored: bool = False):
-        try:
-            # use frequency_to_string only if available
-            # as this class should not depends on anemoi.utils
-            from anemoi.utils.dates import frequency_to_string
-        except ImportError:
-
-            def frequency_to_string(delta):
-                return str(delta)
-
-        start = self.start.strftime("%Y%m%d.%H%M")
-        end = self.end.strftime("%Y%m%d.%H%M")
-        if start[:9] == end[:9]:
-            end = " " * 9 + end[9:]
-
-        if self.base is not None:
-            base = self.base.strftime("%Y%m%d.%H%M")
-            if self.sign > 0:
-                steps = [
-                    int((self.start - self.base).total_seconds() / 3600),
-                    int((self.end - self.base).total_seconds() / 3600),
-                ]
-            else:
-                steps = [
-                    -int((self.end - self.base).total_seconds() / 3600),
-                    int((self.start - self.base).total_seconds() / 3600),
-                ]
-            base_str = f", base={base}, [{steps[0]}-{steps[1]}]"
-        else:
-            base_str = ""
-
-        if self.start < self.end:
-            period = f"+{frequency_to_string(self.end - self.start)}"
-        elif self.start == self.end:
-            period = "0s"
-        else:
-            period = f"-{frequency_to_string(self.start - self.end)}"
-        period = period.ljust(4)
-
-        if colored:
-            # using rich colors
-            start = f"[blue]{start}[/blue]"
-            end = f"[blue]{end}[/blue]"
-            if self.start < self.end:
-                period = f"[green]{period}[/green]"
-            elif self.start == self.end:
-                period = f"[yellow]{period}[/yellow]"
-            else:
-                period = f"[red]{period}[/red]"
-
-        return f"SignedInterval({start}{period}->{end}{base_str} )"
 
 
 @dataclass(order=True)

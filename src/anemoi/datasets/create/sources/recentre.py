@@ -14,7 +14,7 @@ from anemoi.datasets.compute.recentre import recentre as _recentre
 
 from . import source_registry
 from .legacy import LegacySource
-from .mars import mars
+from .mars.retrieval import execute_mars_request
 
 
 def to_list(x: list | tuple | str) -> list:
@@ -102,7 +102,7 @@ def load_if_needed(context: Any, dates: Any, dict_or_dataset: dict | Any) -> Any
     """
     if isinstance(dict_or_dataset, dict):
         dict_or_dataset = normalise_request(dict_or_dataset)
-        dict_or_dataset = mars(context, dates, dict_or_dataset)
+        dict_or_dataset = execute_mars_request(context, dates, dict_or_dataset)
     return dict_or_dataset
 
 

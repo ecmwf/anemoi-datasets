@@ -69,3 +69,44 @@ dates.
 .. code:: python
 
    ds = open_dataset(dataset, interpolate_frequency="10m")
+
+.. _subsetting-trajectories:
+
+**************************
+ Trajectories-only options
+**************************
+
+For :ref:`trajectory datasets <layouts-trajectories>`, ``open_dataset``
+accepts a few extra keyword arguments to subset the step axis and the
+base-date axis independently of the ``start`` / ``end`` / ``frequency``
+options (which continue to work with envelope semantics: a base date is
+kept iff ``[base + step_start, base + step_end] ⊂ [start, end]``).
+
+Step axis
+=========
+
+.. code:: python
+
+   # Select a single forecast step; returns a 4-D view
+   # (base_dates, variables, ensembles, cells) — shape-compatible
+   # with a gridded dataset at that lead time.
+   ds_t6 = open_dataset("traj.zarr", step=6)
+
+   # Select a list of steps; keeps the 5-D shape, narrows the step axis.
+   ds_subset = open_dataset("traj.zarr", steps=[6, 12, 18])
+
+   # Step range form (all three are optional).
+   ds_range = open_dataset("traj.zarr",
+                           step_start=6, step_end=24, step_frequency="6h")
+
+Base-date axis
+==============
+
+``base_start`` and ``base_end`` filter the base-date axis directly,
+without the envelope logic used by ``start`` / ``end``:
+
+.. code:: python
+
+   ds_jan = open_dataset("traj.zarr",
+                         base_start="2021-01-01",
+                         base_end="2021-01-31")
