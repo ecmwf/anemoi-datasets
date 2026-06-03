@@ -1,0 +1,8 @@
+dataset:
+  name: sample
+licence: CC-BY-4.0
+input:
+  mars:
+    class: od
+    expver: 1
+    stream: enfox
