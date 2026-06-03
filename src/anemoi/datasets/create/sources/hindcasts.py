@@ -12,7 +12,7 @@ from typing import Any
 
 from earthkit.data.core.fieldlist import MultiFieldList
 
-from anemoi.datasets.create.sources.mars import mars
+from anemoi.datasets.create.sources.mars.retrieval import fire_prebuilt_requests
 
 from . import source_registry
 from .legacy import LegacySource
@@ -76,19 +76,14 @@ class HindcastsSource(LegacySource):
         for d in dates:
             r = request.copy()
             hindcast = provider.mapping[d]
-            r["hdate"] = hindcast.hdate.strftime("%Y-%m-%d")
-            r["date"] = hindcast.refdate.strftime("%Y-%m-%d")
-            r["time"] = hindcast.refdate.strftime("%H")
+            r["hdate"] = hindcast.hdate.strftime("%Y%m%d")
+            r["date"] = hindcast.refdate.strftime("%Y%m%d")
+            r["time"] = hindcast.refdate.strftime("%H%M")
             r["step"] = hindcast.step
             requests.append(r)
 
         if len(requests) == 0:
             return MultiFieldList([])
 
-        return mars(
-            context,
-            dates,
-            *requests,
-            date_key="hdate",
-            request_already_using_valid_datetime=True,
-        )
+        context.trace("H️", f"Will run {len(requests)} hindcast requests")
+        return fire_prebuilt_requests(context, requests)

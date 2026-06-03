@@ -40,6 +40,7 @@ class TabularCreator(Creator):
         pass
 
     def collect_metadata(self, metadata: dict) -> None:
+        super().collect_metadata(metadata)
         # See if that can be combined with `gridded`
 
         variables = self.minimal_input.variables
