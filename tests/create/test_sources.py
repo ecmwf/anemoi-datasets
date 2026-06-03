@@ -643,15 +643,17 @@ def test_odb(get_test_data: callable) -> None:
 @skip_if_offline
 def test_bufr(get_test_data: callable) -> None:
 
+    from anemoi.datasets.create.recipe.dates import StartEndDates
     from anemoi.datasets.create.sources import create_source
     from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.bufr")
 
     source = create_source(context=None, config={"bufr": {"path": data}})
-    dates = GroupOfDates.from_config(
+    provider = StartEndDates(
         start="2020-01-01T00:00:00",
-        end="2020-01-02:23:59:59",
+        end="2020-01-02T23:59:59",
     )
+    dates = GroupOfDates(provider.values, provider)
 
     source.execute(dates)
