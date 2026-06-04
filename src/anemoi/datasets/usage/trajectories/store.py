@@ -41,13 +41,13 @@ class TrajectoriesZarr(ZarrStore):
 
     Parameters
     ----------
-    group : zarr.hierarchy.Group
+    group : zarr.Group
         The opened zarr group.
     path : str, optional
         Human-readable path label for repr and error messages.
     """
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
     def mutate(self) -> Dataset:
@@ -103,7 +103,7 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def base_dates(self) -> NDArray[np.datetime64]:
         """Return the base dates (forecast initialisation times) of the dataset."""
-        return self.store.base_dates[:]
+        return self.store["base_dates"][:]
 
     def base_date(self, index: int) -> np.datetime64:
         """Return the base date at ``index``.
@@ -147,7 +147,7 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def steps(self) -> NDArray[np.timedelta64]:
         """Return the forecast step values stored in the dataset."""
-        return self.store.steps[:]
+        return self.store["steps"][:]
 
     @property
     def step_start(self) -> datetime.timedelta:
@@ -187,19 +187,19 @@ class TrajectoriesZarr(ZarrStore):
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the grid."""
         try:
-            return self.store.latitudes[:]
-        except AttributeError:
+            return self.store["latitudes"][:]
+        except KeyError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.store.latitude[:]
+            return self.store["latitude"][:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the grid."""
         try:
-            return self.store.longitudes[:]
-        except AttributeError:
+            return self.store["longitudes"][:]
+        except KeyError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.store.longitude[:]
+            return self.store["longitude"][:]
 
     # ------------------------------------------------------------------
     # Shape and type
@@ -213,12 +213,12 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.store.data.dtype
+        return self.data.dtype
 
     @cached_property
     def chunks(self):
         """Return the chunk sizes of the data array."""
-        return self.store.data.chunks
+        return self.data.chunks
 
     @property
     def field_shape(self) -> tuple:
@@ -400,7 +400,7 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     :class:`TrajectoriesZarr`.
     """
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
         missing = self.store.attrs.get("missing_dates", [])
@@ -434,6 +434,29 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
         if hit is not None:
             self._report_missing(hit)
         return self.data[n]
+
+    def collect_read_parts(self, n):
+        if isinstance(n, int):
+            if n in self._missing:
+                self._report_missing(n)
+        elif isinstance(n, slice):
+            common = set(range(*n.indices(len(self)))) & self._missing
+            if common:
+                self._report_missing(next(iter(common)))
+        elif isinstance(n, tuple):
+            first = n[0]
+            if isinstance(first, int):
+                if first in self._missing:
+                    self._report_missing(first)
+            elif isinstance(first, slice):
+                common = set(range(*first.indices(len(self)))) & self._missing
+                if common:
+                    self._report_missing(next(iter(common)))
+            elif isinstance(first, (list, tuple)):
+                common = set(first) & self._missing
+                if common:
+                    self._report_missing(next(iter(common)))
+        return super().collect_read_parts(n)
 
     def _report_missing(self, n: int) -> None:
         from anemoi.datasets import MissingDateError

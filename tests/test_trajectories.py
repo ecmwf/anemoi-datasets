@@ -82,11 +82,11 @@ def make_trajectories_zarr(
     rng = np.random.default_rng(0)
     data = rng.random((n_dates, n_vars, 1, n_steps, n_cells)).astype("float32")
 
-    root.create_dataset("data", data=data, chunks=data.shape, compressor=None)
-    root.create_dataset("base_dates", data=dates, compressor=None)
-    root.create_dataset("steps", data=steps, compressor=None)
-    root.create_dataset("latitudes", data=np.linspace(-90, 90, n_cells), compressor=None)
-    root.create_dataset("longitudes", data=np.linspace(0, 360, n_cells), compressor=None)
+    root.create_array("data", data=data, chunks=data.shape, compressor=None)
+    root.create_array("base_dates", data=dates, compressor=None)
+    root.create_array("steps", data=steps, compressor=None)
+    root.create_array("latitudes", data=np.linspace(-90, 90, n_cells), compressor=None)
+    root.create_array("longitudes", data=np.linspace(0, 360, n_cells), compressor=None)
 
     root.attrs["layout"] = "trajectories"
     root.attrs["frequency"] = f"{frequency_h}h"

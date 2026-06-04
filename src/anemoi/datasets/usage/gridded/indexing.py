@@ -30,7 +30,7 @@ def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[i
     Returns:
     Tuple[TupleIndex, Tuple[int, ...]]: A tuple containing the modified index and the changes.
     """
-    result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
+    result = tuple(slice(i % shape[j], i % shape[j] + 1) if isinstance(i, int) else i for j, i in enumerate(t))
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
     result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
 
