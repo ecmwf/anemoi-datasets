@@ -227,6 +227,23 @@ class ZarrStore(Dataset):
 
     ####################################################
 
+    def collect_read_parts(self, n):
+        from anemoi.datasets.usage.gridded.indexing import index_to_slices
+        from anemoi.datasets.usage.read_parts import ReadPart
+
+        slices, squeeze = index_to_slices(n, self.data.shape)
+        return [ReadPart.from_raw_slices(self.path, self.data, slices, squeeze)]
+
+    def read_from_cache(self, n, cache):
+        from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+        from anemoi.datasets.usage.gridded.indexing import index_to_slices
+        from anemoi.datasets.usage.read_parts import ReadPart
+
+        slices, squeeze = index_to_slices(n, self.data.shape)
+        part = ReadPart.from_raw_slices(self.path, self.data, slices, squeeze)
+        data = cache[part]
+        return apply_index_to_slices_changes(data, squeeze)
+
     def __len__(self) -> int:
         """Return the length of the dataset."""
         return self.data.shape[0]

@@ -182,6 +182,63 @@ class Subset(Forwards):
         n = self.indices[n]
         return self.dataset[n]
 
+    def collect_read_parts(self, n: FullIndex) -> list:
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            inner_indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
+            inner = make_slice_or_index_from_list_or_tuple(inner_indices)
+            if isinstance(inner, list):
+                # Non-contiguous — collect per element using slices (not ints) so
+                # the date dimension is preserved through the chain.
+                parts = []
+                for idx in inner:
+                    index2, _ = update_tuple(index, 0, slice(idx, idx + 1))
+                    parts.extend(self.dataset.collect_read_parts(index2))
+                return parts
+            index, _ = update_tuple(index, 0, inner)
+            return self.dataset.collect_read_parts(index)
+
+        if isinstance(n, slice):
+            inner_indices = [self.indices[i] for i in range(*n.indices(self._len))]
+            inner = make_slice_or_index_from_list_or_tuple(inner_indices)
+            if isinstance(inner, list):
+                parts = []
+                for idx in inner:
+                    parts.extend(self.dataset.collect_read_parts(idx))
+                return parts
+            return self.dataset.collect_read_parts(inner)
+
+        assert n >= 0, n
+        return self.dataset.collect_read_parts(self.indices[n])
+
+    def read_from_cache(self, n: FullIndex, cache) -> NDArray[Any]:
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            inner_indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
+            inner = make_slice_or_index_from_list_or_tuple(inner_indices)
+            if isinstance(inner, list):
+                # Use slice(idx, idx+1) to preserve the date dimension through the chain;
+                # expand_list_indexing would do the same in the legacy path.
+                results = []
+                for idx in inner:
+                    index2, _ = update_tuple(index, 0, slice(idx, idx + 1))
+                    results.append(self.dataset.read_from_cache(index2, cache))
+                result = np.concatenate(results, axis=0)
+                return apply_index_to_slices_changes(result, changes)
+            index, _ = update_tuple(index, 0, inner)
+            result = self.dataset.read_from_cache(index, cache)
+            return apply_index_to_slices_changes(result, changes)
+
+        if isinstance(n, slice):
+            inner_indices = [self.indices[i] for i in range(*n.indices(self._len))]
+            inner = make_slice_or_index_from_list_or_tuple(inner_indices)
+            if isinstance(inner, slice):
+                return self.dataset.read_from_cache(inner, cache)
+            return np.stack([self.dataset.read_from_cache(i, cache) for i in inner])
+
+        assert n >= 0, n
+        return self.dataset.read_from_cache(self.indices[n], cache)
+
     def get_aux(self, n: FullIndex) -> NDArray[Any]:
         assert n >= 0, n
         n = self.indices[n]

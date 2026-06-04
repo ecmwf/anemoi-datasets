@@ -1083,6 +1083,29 @@ class Dataset(ABC, Sized):
             The length of the dataset.
         """
 
+    def collect_read_parts(self, n: FullIndex) -> list:
+        """Phase 1 of two-step read: collect all zarr reads without executing.
+
+        Walk the wrapper tree and return a list of :class:`~anemoi.datasets.usage.read_parts.ReadPart`
+        objects describing every zarr read that ``self[n]`` would perform.
+        No I/O is performed.
+
+        Subclasses that transform the index (Select, Subset, Concat, Cutout, …)
+        must override this method.  See ``docs/adr/adr-3-two-step-read.md``.
+        """
+        raise NotImplementedError(f"{type(self).__name__}.collect_read_parts")
+
+    def read_from_cache(self, n: FullIndex, cache: Any) -> NDArray[Any]:
+        """Phase 3 of two-step read: reconstruct result from pre-fetched cache.
+
+        Mirror of ``__getitem__`` but reads leaf data from *cache* (a
+        :class:`~anemoi.datasets.usage.read_parts.ReadCache`) instead of zarr.
+
+        Subclasses that override ``__getitem__`` must also override this method.
+        See ``docs/adr/adr-3-two-step-read.md``.
+        """
+        raise NotImplementedError(f"{type(self).__name__}.read_from_cache")
+
     @property
     @abstractmethod
     def variables(self) -> list[str]:

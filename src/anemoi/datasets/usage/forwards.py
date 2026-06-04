@@ -70,6 +70,12 @@ class Forwards(Dataset):
         """
         return self.forward[n]
 
+    def collect_read_parts(self, n: FullIndex) -> list:
+        return self.forward.collect_read_parts(n)
+
+    def read_from_cache(self, n: FullIndex, cache) -> NDArray[Any]:
+        return self.forward.read_from_cache(n, cache)
+
     @property
     def name(self) -> str | None:
         """Returns the name of the forward dataset."""
