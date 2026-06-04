@@ -122,6 +122,57 @@ class Concat(Combined):
 
         return np.concatenate(result)
 
+    def collect_read_parts(self, n):
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(index[0], lengths)
+            parts = []
+            for d, s in zip(self.datasets, slices):
+                if s is not None:
+                    parts.extend(d.collect_read_parts(update_tuple(index, 0, s)[0]))
+            return parts
+
+        if isinstance(n, slice):
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(n, lengths)
+            parts = []
+            for d, s in zip(self.datasets, slices):
+                if s is not None:
+                    parts.extend(d.collect_read_parts(s))
+            return parts
+
+        k = n
+        for d in self.datasets:
+            if k < d._len:
+                return d.collect_read_parts(k)
+            k -= d._len
+        raise IndexError(n)
+
+    def read_from_cache(self, n, cache):
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(index[0], lengths)
+            result = [d.read_from_cache(update_tuple(index, 0, s)[0], cache)
+                      for d, s in zip(self.datasets, slices) if s is not None]
+            result = np.concatenate(result, axis=0)
+            return apply_index_to_slices_changes(result, changes)
+
+        if isinstance(n, slice):
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(n, lengths)
+            result = [d.read_from_cache(s, cache)
+                      for d, s in zip(self.datasets, slices) if s is not None]
+            return np.concatenate(result)
+
+        k = n
+        for d in self.datasets:
+            if k < d._len:
+                return d.read_from_cache(k, cache)
+            k -= d._len
+        raise IndexError(n)
+
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Check the compatibility of two datasets for concatenation.
 
@@ -180,6 +231,9 @@ class Concat(Combined):
             A Node object representing the concatenated datasets.
         """
         return Node(self, [d.tree() for d in self.datasets])
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        return {}
 
 
 class GridsBase(GivenAxis):
@@ -491,6 +545,26 @@ class Cutout(GridsBase):
         # Concatenate LAM data with global data, apply the grid slicing
         result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
 
+        return apply_index_to_slices_changes(result, changes)
+
+    def collect_read_parts(self, index):
+        if isinstance(index, (int, slice)):
+            index = (index, slice(None), slice(None), slice(None))
+        index, _ = index_to_slices(index, self.shape)
+        parts = []
+        for lam in self.lams:
+            parts.extend(lam.collect_read_parts(index[:3]))
+        parts.extend(self.globe.collect_read_parts(index[:3]))
+        return parts
+
+    def read_from_cache(self, index, cache):
+        if isinstance(index, (int, slice)):
+            index = (index, slice(None), slice(None), slice(None))
+        index, changes = index_to_slices(index, self.shape)
+        lam_data = [lam.read_from_cache(index[:3], cache) for lam in self.lams]
+        globe_data_sliced = self.globe.read_from_cache(index[:3], cache)
+        globe_data = globe_data_sliced[..., self.global_mask]
+        result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:

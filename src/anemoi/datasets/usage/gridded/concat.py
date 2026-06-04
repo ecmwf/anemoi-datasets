@@ -119,6 +119,57 @@ class ConcatMixin:
 
         return np.concatenate(result)
 
+    def collect_read_parts(self, n):
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(index[0], lengths)
+            parts = []
+            for d, s in zip(self.datasets, slices):
+                if s is not None:
+                    parts.extend(d.collect_read_parts(update_tuple(index, 0, s)[0]))
+            return parts
+
+        if isinstance(n, slice):
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(n, lengths)
+            parts = []
+            for d, s in zip(self.datasets, slices):
+                if s is not None:
+                    parts.extend(d.collect_read_parts(s))
+            return parts
+
+        k = n
+        for d in self.datasets:
+            if k < d._len:
+                return d.collect_read_parts(k)
+            k -= d._len
+        raise IndexError(n)
+
+    def read_from_cache(self, n, cache):
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(index[0], lengths)
+            result = [d.read_from_cache(update_tuple(index, 0, s)[0], cache)
+                      for d, s in zip(self.datasets, slices) if s is not None]
+            result = np.concatenate(result, axis=0)
+            return apply_index_to_slices_changes(result, changes)
+
+        if isinstance(n, slice):
+            lengths = [d.shape[0] for d in self.datasets]
+            slices = length_to_slices(n, lengths)
+            result = [d.read_from_cache(s, cache)
+                      for d, s in zip(self.datasets, slices) if s is not None]
+            return np.concatenate(result)
+
+        k = n
+        for d in self.datasets:
+            if k < d._len:
+                return d.read_from_cache(k, cache)
+            k -= d._len
+        raise IndexError(n)
+
     @cached_property
     def missing(self) -> set[int]:
         """Returns the set of missing indices in the concatenated datasets."""

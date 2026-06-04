@@ -101,7 +101,7 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency.astype(object)
+        self._frequency = frequency.astype(object) if hasattr(frequency, "astype") else frequency
 
     def __len__(self) -> int:
         """Get the number of dates in the merged dataset.
@@ -198,6 +198,9 @@ class Merge(Combined):
         """
         return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
 
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        return {}
+
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Get the item at the specified index.
@@ -259,6 +262,44 @@ class Merge(Combined):
             Retrieved items.
         """
         return np.stack([self[i] for i in range(*s.indices(self._len))])
+
+    def collect_read_parts(self, n):
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            previous = index[0]  # date slice in Merge space
+            parts = []
+            for i in range(*previous.indices(self._len)):
+                parts.extend(self.collect_read_parts(i))
+            return parts
+
+        if isinstance(n, slice):
+            parts = []
+            for i in range(*n.indices(self._len)):
+                parts.extend(self.collect_read_parts(i))
+            return parts
+
+        dataset, row = self._indices[n]
+        if dataset == self._missing_index:
+            return []  # missing date — no zarr read
+        return self.datasets[dataset].collect_read_parts(int(row))
+
+    def read_from_cache(self, n, cache):
+        from anemoi.datasets import MissingDateError
+
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            index, previous = update_tuple(index, 0, slice(None))
+            result = np.stack([self.read_from_cache(i, cache)
+                               for i in range(*previous.indices(self._len))])
+            return apply_index_to_slices_changes(result[index], changes)
+
+        if isinstance(n, slice):
+            return np.stack([self.read_from_cache(i, cache) for i in range(*n.indices(self._len))])
+
+        dataset, row = self._indices[n]
+        if dataset == self._missing_index:
+            raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
+        return self.datasets[dataset].read_from_cache(int(row), cache)
 
 
 def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:

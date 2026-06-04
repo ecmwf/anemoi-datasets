@@ -148,6 +148,40 @@ class Join(Combined):
 
         return np.concatenate([d[n] for d in self.datasets])
 
+    def collect_read_parts(self, n):
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            # Expand var axis to all vars per dataset; Join filters after concatenation
+            index, _ = update_tuple(index, 1, slice(None))
+            parts = []
+            for d in self.datasets:
+                parts.extend(d.collect_read_parts(index))
+            return parts
+
+        if isinstance(n, slice):
+            parts = []
+            for i in range(*n.indices(self._len)):
+                parts.extend(self.collect_read_parts(i))
+            return parts
+
+        parts = []
+        for d in self.datasets:
+            parts.extend(d.collect_read_parts(n))
+        return parts
+
+    def read_from_cache(self, n, cache):
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            index, previous = update_tuple(index, 1, slice(None))
+            result = [d.read_from_cache(index, cache) for d in self.datasets]
+            result = np.concatenate(result, axis=1)
+            return apply_index_to_slices_changes(result[:, previous], changes)
+
+        if isinstance(n, slice):
+            return np.stack([self.read_from_cache(i, cache) for i in range(*n.indices(self._len))])
+
+        return np.concatenate([d.read_from_cache(n, cache) for d in self.datasets])
+
     @cached_property
     def shape(self) -> Shape:
         """Get the shape of the joined dataset."""
