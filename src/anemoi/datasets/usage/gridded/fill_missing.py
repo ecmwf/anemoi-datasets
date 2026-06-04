@@ -84,6 +84,9 @@ class MissingDatesFill(Forwards):
         """Get the set of missing dates."""
         return set()
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("MissingDatesFill.collect_read_parts: fills from adjacent dates, not supported yet")
+
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Get the data for the given index.

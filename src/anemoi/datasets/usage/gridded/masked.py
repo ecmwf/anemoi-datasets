@@ -120,6 +120,24 @@ class Masked(Forwards):
         result = apply_index_to_slices_changes(result, changes)
         return result
 
+    def collect_read_parts(self, n):
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            index, _ = update_tuple(index, self.axis, slice(None))
+            return self.forward.collect_read_parts(index)
+        return self.forward.collect_read_parts(n)
+
+    def read_from_cache(self, n, cache):
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            index, previous = update_tuple(index, self.axis, slice(None))
+            result = self.forward.read_from_cache(index, cache)
+            result = result[..., self.mask]
+            result = result[..., previous]
+            return apply_index_to_slices_changes(result, changes)
+        result = self.forward.read_from_cache(n, cache)
+        return result[..., self.mask]
+
     def collect_supporting_arrays(self, collected: list[tuple], *path: Any) -> None:
         """Collect supporting arrays.
 

@@ -306,6 +306,29 @@ class ZarrWithMissingDates(GriddedZarr):
         """Mutate the dataset."""
         return self
 
+    def collect_read_parts(self, n):
+        if isinstance(n, int):
+            if n in self.missing:
+                self._report_missing(n)
+        elif isinstance(n, slice):
+            common = set(range(*n.indices(len(self)))) & self.missing
+            if common:
+                self._report_missing(list(common)[0])
+        elif isinstance(n, tuple):
+            first = n[0]
+            if isinstance(first, int):
+                if first in self.missing:
+                    self._report_missing(first)
+            elif isinstance(first, slice):
+                common = set(range(*first.indices(len(self)))) & self.missing
+                if common:
+                    self._report_missing(list(common)[0])
+            elif isinstance(first, (list, tuple)):
+                common = set(first) & self.missing
+                if common:
+                    self._report_missing(list(common)[0])
+        return super().collect_read_parts(n)
+
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:

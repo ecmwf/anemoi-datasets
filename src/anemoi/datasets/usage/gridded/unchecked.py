@@ -230,6 +230,9 @@ class Chain(ConcatMixin, Unchecked):
         """
         return sum(len(d) for d in self.datasets)
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("Chain.collect_read_parts: returns tuple of arrays per dataset, not supported yet")
+
     def __getitem__(self, n: FullIndex) -> tuple:
         """Get an item from the dataset.
 

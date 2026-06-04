@@ -23,6 +23,9 @@ LOG = logging.getLogger(__name__)
 class Select(SelectBase):
     """Class to select a subset of variables from a dataset."""
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("tabular.Select.collect_read_parts: variable selection on tabular data not supported yet")
+
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Get an item from the dataset.
 

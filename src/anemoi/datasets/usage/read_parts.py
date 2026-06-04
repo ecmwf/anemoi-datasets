@@ -20,7 +20,7 @@ Instead of ``ds[n]`` calling zarr immediately through the wrapper chain,
      :class:`ReadPart` objects (no I/O).
   2. :func:`factorize` — merges parts that share the same zarr array and
      non-date dimensions into a single bounding-box read.
-  3. :func:`execute_parts` — sequential zarr reads (parallelism: Phase 5).
+  3. :func:`execute_parts` — parallel zarr reads (``ThreadPoolExecutor``, default 2 threads).
   4. ``ds.read_from_cache(n, cache)`` — reassembles the result from cached
      arrays, applying all wrapper transformations.
 
@@ -34,6 +34,7 @@ or by setting ``logging.DEBUG`` on the ``anemoi.datasets.read_parts`` logger.
 import logging
 import os
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -47,6 +48,8 @@ if TYPE_CHECKING:
 LOG = logging.getLogger("anemoi.datasets.read_parts")
 
 READ_PARTS_DEBUG = os.environ.get("ANEMOI_DATASETS_READ_PARTS_DEBUG", "").lower() in ("1", "true", "yes")
+READ_PARTS_ENABLED = os.environ.get("ANEMOI_DATASETS_READ_PARTS", "").lower() in ("1", "true", "yes")
+READ_PARTS_THREADS = int(os.environ.get("ANEMOI_DATASETS_READ_PARTS_THREADS", "2"))
 
 # Normalised slice stored as (start, stop, step) — all concrete ints, no None.
 NormSlice = tuple[int, int, int]
@@ -213,25 +216,38 @@ def factorize(
     return merged_parts, mapping
 
 
-def execute_parts(parts: list[ReadPart]) -> dict[ReadPart, NDArray]:
-    """Execute all reads sequentially and return a cache of results.
+def execute_parts(
+    parts: list[ReadPart],
+    num_threads: int = READ_PARTS_THREADS,
+) -> dict[ReadPart, NDArray]:
+    """Execute all reads in parallel and return a cache of results.
 
     Parameters
     ----------
     parts : list[ReadPart]
         Factorized parts from :func:`factorize` (no duplicates).
+    num_threads : int
+        Thread pool size.  Default comes from ``ANEMOI_DATASETS_READ_PARTS_THREADS``
+        (default 2).  Set to 1 to force sequential execution.
 
     Returns
     -------
     dict
         Maps each part to the numpy array returned by the zarr read.
     """
-    cache: dict[ReadPart, NDArray] = {}
-    for part in parts:
+    if not parts:
+        return {}
+
+    def _read(part: ReadPart) -> NDArray:
         if READ_PARTS_DEBUG:
             LOG.debug("execute: %s  slices=%s", part.path, part.slices)
-        cache[part] = part.execute()
-    return cache
+        return part.execute()
+
+    if num_threads <= 1 or len(parts) == 1:
+        return {part: _read(part) for part in parts}
+
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        return dict(zip(parts, executor.map(_read, parts)))
 
 
 def two_step_read(dataset: "Dataset", index: "FullIndex") -> NDArray:
@@ -253,7 +269,12 @@ def two_step_read(dataset: "Dataset", index: "FullIndex") -> NDArray:
     NDArray
         Same result as ``dataset[index]`` via the legacy path.
     """
-    parts = dataset.collect_read_parts(index)
+    try:
+        parts = dataset.collect_read_parts(index)
+    except AttributeError as exc:
+        # Fancy indices (e.g. tuple-of-tuples) hit _tuple_with_slices before the
+        # per-class guard can convert them; surface as NotImplementedError for gate.
+        raise NotImplementedError(f"collect_read_parts: unsupported index — {exc}") from exc
 
     if READ_PARTS_DEBUG:
         LOG.debug(

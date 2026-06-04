@@ -231,7 +231,16 @@ class ZarrStore(Dataset):
         from anemoi.datasets.usage.gridded.indexing import index_to_slices
         from anemoi.datasets.usage.read_parts import ReadPart
 
-        slices, squeeze = index_to_slices(n, self.data.shape)
+        # Validate integer bounds so iteration terminates with IndexError (matching zarr).
+        if isinstance(n, int):
+            n_rows = self.data.shape[0]
+            if n < -n_rows or n >= n_rows:
+                raise IndexError(f"index {n} is out of bounds for axis 0 with size {n_rows}")
+        try:
+            slices, squeeze = index_to_slices(n, self.data.shape)
+        except (ValueError, TypeError, AttributeError) as exc:
+            # List/array indices not supported in two-step path; fall back to legacy.
+            raise NotImplementedError(f"ZarrStore.collect_read_parts: unsupported index type — {exc}") from exc
         return [ReadPart.from_raw_slices(self.path, self.data, slices, squeeze)]
 
     def read_from_cache(self, n, cache):

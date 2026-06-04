@@ -90,6 +90,24 @@ class Dataset(ABC, Sized):
     arguments: dict[str, Any] = {}
     _name: str | None = None
 
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if "__getitem__" in cls.__dict__:
+            import functools
+
+            _orig = cls.__dict__["__getitem__"]
+
+            @functools.wraps(_orig)
+            def _gated(self: "Dataset", n: "FullIndex", _f: Any = _orig) -> Any:
+                from anemoi.datasets.usage.read_parts import two_step_read
+
+                try:
+                    return two_step_read(self, n)
+                except NotImplementedError:
+                    return _f(self, n)
+
+            cls.__getitem__ = _gated
+
     def mutate(self) -> "Dataset":
         """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed.
 

@@ -157,5 +157,8 @@ class RollingAverage(Forwards):
         result = {x for x in result if x < self._len}
         return result
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("RollingAverage.collect_read_parts: reads a window of dates, not supported yet")
+
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {}

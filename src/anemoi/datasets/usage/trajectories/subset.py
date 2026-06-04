@@ -90,6 +90,9 @@ class StepSubset(Forwards):
             return diffs[0].astype("timedelta64[s]").astype(datetime.timedelta)
         return None
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("StepSubset.collect_read_parts: step subsetting not supported yet")
+
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Return data for the given date index, sliced to the selected steps."""
         # Step axis is at position -2 (just before cells).
@@ -132,6 +135,9 @@ class SingleStepView(Forwards):
         """Return the 4-D shape ``(dates, variables, ensembles, cells)``."""
         s = self.forward.shape
         return s[:-2] + (s[-1],)
+
+    def collect_read_parts(self, n):
+        raise NotImplementedError("SingleStepView.collect_read_parts: step axis drop not supported yet")
 
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Return data for the given date index with the step axis removed."""
@@ -179,6 +185,9 @@ class Subset(Forwards):
 
     def mutate(self) -> Dataset:
         return self.forward.swap_with_parent(parent=self)
+
+    def collect_read_parts(self, n):
+        raise NotImplementedError("trajectories.Subset.collect_read_parts: index remapping not supported yet")
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:

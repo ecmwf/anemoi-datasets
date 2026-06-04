@@ -201,6 +201,9 @@ class InterpolateFrequency(Forwards):
         result = {x for x in result if x < self._len}
         return result
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("InterpolateFrequency.collect_read_parts: interpolates across dates, not supported yet")
+
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the InterpolateFrequency subclass.
 
@@ -272,6 +275,9 @@ class InterpolateNearest(Forwards):
             target_data[:, i, ...] = source_data[:, i][..., self.var_mask[v][self.ngp_var[v]]]
         result = target_data[(slice(None),) + index[1:]]
         return apply_index_to_slices_changes(result, changes)
+
+    def collect_read_parts(self, n):
+        raise NotImplementedError("InterpolateNearest.collect_read_parts: spatial interpolation not supported yet")
 
     def __getitem__(self, index: int | slice | tuple[int | slice, ...]) -> NDArray[Any]:
         if isinstance(index, (int, slice)):

@@ -93,6 +93,26 @@ class Number(Forwards):
         result = result[:, :, self.mask, :]
         return apply_index_to_slices_changes(result, changes)
 
+    def collect_read_parts(self, n):
+        if isinstance(n, tuple):
+            index, _ = index_to_slices(n, self.shape)
+            index, _ = update_tuple(index, 2, slice(None))  # expand ensemble axis
+            return self.forward.collect_read_parts(index)
+        return self.forward.collect_read_parts(n)
+
+    def read_from_cache(self, n, cache):
+        if isinstance(n, tuple):
+            index, changes = index_to_slices(n, self.shape)
+            index, previous = update_tuple(index, 2, slice(None))
+            result = self.forward.read_from_cache(index, cache)
+            result = result[:, :, self.mask, :]
+            result = result[:, :, previous, :]
+            return apply_index_to_slices_changes(result, changes)
+        result = self.forward.read_from_cache(n, cache)
+        if isinstance(n, slice):
+            return result[:, :, self.mask, :]
+        return result[:, self.mask, :]  # int: shape is (vars, ens, grid)
+
     def tree(self) -> Node:
         """Generates a hierarchical tree structure for the dataset.
 

@@ -84,6 +84,29 @@ class MissingDates(Forwards):
         """Returns the set of missing indices."""
         return self._missing.union(self.forward.missing)
 
+    def collect_read_parts(self, n):
+        if isinstance(n, int):
+            if n in self.missing:
+                self._report_missing(n)
+        elif isinstance(n, slice):
+            common = set(range(*n.indices(len(self)))) & self.missing
+            if common:
+                self._report_missing(list(common)[0])
+        elif isinstance(n, tuple):
+            first = n[0]
+            if isinstance(first, int):
+                if first in self.missing:
+                    self._report_missing(first)
+            elif isinstance(first, slice):
+                common = set(range(*first.indices(len(self)))) & self.missing
+                if common:
+                    self._report_missing(list(common)[0])
+            elif isinstance(first, (list, tuple)):
+                common = set(first) & self.missing
+                if common:
+                    self._report_missing(list(common)[0])
+        return self.forward.collect_read_parts(n)
+
     @debug_indexing
     @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
@@ -296,6 +319,9 @@ class SkipMissingDates(Forwards):
         result = [_ for _ in zip(*values)]
         return tuple(np.stack(_) for _ in result)
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("SkipMissingDates.collect_read_parts: complex date-skipping semantics not supported yet")
+
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> tuple[NDArray[Any], ...]:
         """Retrieves the item at the given index.
@@ -418,6 +444,12 @@ class MissingDataset(Forwards):
         Returns:
             NDArray[Any]: The data at the specified index.
         """
+        raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
+
+    def collect_read_parts(self, n):
+        return []  # no zarr reads for synthetic missing-date placeholders
+
+    def read_from_cache(self, n, cache):
         raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
     def tree(self) -> Node:

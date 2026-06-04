@@ -52,6 +52,9 @@ class TabularZarr(ZarrStore):
 
         return super()._subset(**kwargs)
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("TabularZarr.collect_read_parts: reads via WindowView, not supported yet")
+
     def __getitem__(self, n):
         return self._window_view[n]
 

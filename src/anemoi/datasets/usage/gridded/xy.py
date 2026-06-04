@@ -93,6 +93,9 @@ class ZipBase(Combined):
         """
         return min(len(d) for d in self.datasets)
 
+    def collect_read_parts(self, n):
+        raise NotImplementedError("ZipBase.collect_read_parts: returns tuple of arrays, not supported yet")
+
     def __getitem__(self, n: FullIndex) -> tuple[Any, ...]:
         """Get the item at the specified index from all datasets.
 
