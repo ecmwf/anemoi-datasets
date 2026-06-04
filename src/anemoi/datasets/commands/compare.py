@@ -259,10 +259,14 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         # references created before this change keep matching.
         "metadata.order_by",
         "metadata.recipe.output.order_by",
+        # ``recipe_expanded`` is derived metadata (a copy/expansion of ``recipe``);
+        # ignore it so datasets built before it existed keep matching.
+        "metadata.recipe_expanded",
     ]
 
     IGNORE_MISSINGS = [
         "metadata.history",
+        "metadata.recipe_expanded",
         "metadata.recipe.dates.group_by",
         "metadata.recipe.output.statistics",
         "metadata.recipe.output.flatten_grid",

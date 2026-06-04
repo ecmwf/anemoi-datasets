@@ -598,8 +598,8 @@ class Version:
             from anemoi.datasets.create.recipe import Recipe
 
             rebuilt = Recipe(**z.attrs["recipe"]).model_dump(mode="json")
-        except Exception:
-            # Cannot revalidate (e.g. sanitised paths) -- skip silently.
+        except Exception as e:
+            LOG.warning("Could not expand 'recipe' to check it against 'recipe_expanded': %s", e)
             return
 
         drift = sorted(_recipe_drift_keys(rebuilt, z.attrs["recipe_expanded"]))

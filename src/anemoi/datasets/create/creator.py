@@ -287,7 +287,16 @@ class Creator(ABC):
     ######################################################
 
     def task_patch(self) -> None:
-        pass
+        # Backfill ``recipe_expanded`` for datasets built before it existed.
+        # The old ``recipe`` attribute already holds the full (non-slimmed) recipe,
+        # so we copy it across verbatim rather than rebuilding it.
+        dataset = Dataset(self.path, update=True)
+        if dataset.get_metadata("recipe_expanded") is None and dataset.get_metadata("recipe") is not None:
+            dataset.update_metadata(recipe_expanded=dataset.get_metadata("recipe"))
+            dataset.touch()
+            LOG.info("Backfilled 'recipe_expanded' from 'recipe'.")
+        else:
+            LOG.info("Nothing to patch: 'recipe_expanded' already present or no 'recipe'.")
 
     def task_size(self) -> None:
         dataset = Dataset(self.path, update=True)
