@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import json
 import logging
 import os
 import shutil
@@ -182,13 +181,24 @@ class Creator(ABC):
         # This entry will be deleted when the dataset is finalised
         # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
 
-        model_dump = self.recipe.model_dump_json()
-        metadata["_recipe"] = model_dump
+        metadata["_recipe"] = self.recipe.model_dump_json()
 
-        # Store a sanitised (no path, no urls,...) version of the recipe for the catalogue
-        # This one will be kept in the finalised dataset metadata
+        # Store a sanitised (no path, no urls,...) full version of the recipe, kept in the
+        # finalised dataset metadata for reproducibility. Unlike the catalogue ``recipe``
+        # below, this keeps fields that are equal to their schema default.
 
-        model_dump = json.loads(model_dump)
+        full_dump = self.recipe.model_dump(mode="json")
+        full_dump = self.recipe.strip_unknown_keys(full_dump)
+        if self.recipe.output.sanitise:
+            metadata["recipe_expanded"] = sanitise(full_dump)
+        else:
+            metadata["recipe_expanded"] = full_dump
+
+        # Store a sanitised, slimmed-down version of the recipe for the catalogue.
+        # ``exclude_defaults`` drops every field equal to its schema default so the
+        # catalogue only shows what the user actually set.
+
+        model_dump = self.recipe.model_dump(mode="json", exclude_defaults=True)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
         if self.recipe.output.sanitise:
             recipe = sanitise(model_dump)
