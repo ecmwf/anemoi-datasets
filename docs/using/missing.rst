@@ -133,3 +133,17 @@ option is for debugging purposes only.
    ds = open_dataset(
        dataset, set_missing_dates=["2010-01-01T12:00:00", "2010-02-01T12:00:00"]
    )
+
+***************************************
+ Missing dates on trajectory datasets
+***************************************
+
+The same ``set_missing_dates`` / ``skip_missing_dates`` /
+``fill_missing_dates`` keywords work on a trajectory dataset (built via
+``layout: trajectories``).  Missingness is along the **base-date axis**
+only — a trajectory is either fully present at a given base date or fully
+missing.  Per-step gaps are not modelled.
+
+Both ``fill_missing_dates="closest"`` and ``fill_missing_dates="interpolate"``
+operate along the base-date axis: the closest / two flanking base dates
+are used to fill the missing one, leaving the step axis untouched.

@@ -89,7 +89,7 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
 
     with (
         patch("earthkit.data.from_source", load_source),
-        patch("anemoi.datasets.create.sources.mars.from_source", load_source),
+        patch("anemoi.datasets.create.sources.mars.retrieval.from_source", load_source),
     ):
         from anemoi.datasets.create.creator import VERSION
 
