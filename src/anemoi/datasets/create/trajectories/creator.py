@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.transform.variables import Variable
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
@@ -179,8 +180,28 @@ class TrajectoryGriddedCreator(GriddedCreator):
         ), "provider.factorise() base_dates do not match dataset.base_dates"
         assert np.array_equal(steps_from_provider, all_steps), "provider.factorise() steps do not match dataset.steps"
 
+        # Coverage guard (mirrors the gridded creator's ``check_shape``): the
+        # cube's leading axis is ``traj_point`` -- one entry per unique
+        # ``(basetime, step)`` pair actually present in the retrieved fields. If
+        # a whole basetime/step is missing across all variables (e.g. a MARS
+        # gap), the cube is smaller than the group and those slots would stay
+        # NaN. Fail loudly instead.
+        expected_traj_points = len(list(result.group_of_dates))
+        got_traj_points = cube.extended_user_shape[0]
+        if got_traj_points != expected_traj_points:
+            raise ValueError(
+                f"Trajectories: cube has {got_traj_points} (basetime, step) points, "
+                f"expected {expected_traj_points} for this group -- some fields are missing."
+            )
+
         variables = list(dataset.get_metadata("variables"))
         var_to_idx = {v: i for i, v in enumerate(variables)}
+
+        # Use the same remapping (``build.variable_naming``) that named the
+        # variables at init time, so e.g. wave spectra are recovered as
+        # ``{param}_{directionNumber}_{frequencyNumber}`` rather than bare
+        # ``param``/``param_levelist``.
+        remapping = result.context.remapping
 
         LOG.info(
             "Loading trajectory cube: cube shape=%s, variables=%d, steps=%d",
@@ -219,10 +240,11 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 )
                 step_td = datetime.timedelta(hours=int(field.metadata("step")))
 
-                # Recover variable name via remapping (param_level = param_levelist)
-                param = field.metadata("param")
-                levelist = field.metadata("levelist", default=None)
-                var_name = f"{param}_{levelist}" if levelist is not None else str(param)
+                # Recover variable name via the build.variable_naming remapping
+                # (param_level pattern), matching the names declared at init.
+                var_name = remapping(field.metadata)("param_level", default=None)
+                if var_name is None:
+                    var_name = str(field.metadata("param"))
 
                 number = field.metadata("number", default=0) or 0
                 ens_idx = int(number) if int(number) > 0 else 0
@@ -235,6 +257,16 @@ class TrajectoryGriddedCreator(GriddedCreator):
                     raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
 
                 array[(date_idx, var_idx, ens_idx, step_idx)] = data
+
+        # Detect silently-missing data. A source that returns no fields for this
+        # group (e.g. a corrupt earthkit cache, a MARS gap, or an over-narrow
+        # filter) drops its variables from the cube, leaving NaN holes in the
+        # dataset. The gridded creator guards against this via
+        # ``Variable.check_compatibility``; mirror it here so trajectories fail
+        # loudly instead of writing a corrupt dataset. ``result.typed_variables``
+        # is derived from the actually-retrieved fields, ``dataset.typed_variables``
+        # from the variables declared at init.
+        Variable.check_compatibility(dataset.typed_variables, result.typed_variables)
 
     def context(self):
         return TrajectoryGriddedContext(self.recipe)
