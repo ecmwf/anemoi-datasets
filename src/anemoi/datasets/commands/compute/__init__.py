@@ -322,7 +322,9 @@ def _args_sha(parsed: "_Parsed") -> str:
     return hashlib.sha1(blob).hexdigest()[:16]
 
 
-def _compare_block(title: str, variables: list[str], recomputed: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+def _compare_block(
+    title: str, variables: list[str], recomputed: dict[str, Any], stored: dict[str, Any]
+) -> dict[str, Any]:
     """Print and return a per-variable comparison between recomputed and stored stats.
 
     Parameters
@@ -478,7 +480,9 @@ class Compute(Command):
                 json.dump(_jsonable(document), f, indent=2)
             LOG.info("Results written to %s", parsed.output)
 
-    def _compare(self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]) -> None:
+    def _compare(
+        self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]
+    ) -> None:
         """Compare recomputed statistics with the dataset's stored statistics.
 
         Parameters
