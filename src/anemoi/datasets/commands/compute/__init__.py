@@ -21,8 +21,12 @@ Usage
     anemoi-datasets compute <dataset> [key=value ...] \\
         [--statistics] [--statistics-tendencies 6h] \\
         [--statistics-residual <dataset-2> [key=value ...]] \\
-        [--chunk-size N] [--compare] [--output FILE.json] \\
+        [--chunk-size N] [--compare] [--output FILE.json] [--overwrite] \\
         [--checkpoint PATH] [--resume] [--parallel N]
+
+Results are always written to a JSON file. Without ``--output`` the default is
+``<dataset-name>.statistics.json`` in the current directory. The command fails if
+the output file already exists unless ``--overwrite`` is given.
 
 ``<dataset>`` is either a name/path followed by ``key=value`` ``open_dataset``
 options (e.g. ``start=2020-01-01 end=2020-12-31``), or a single JSON literal that
@@ -143,6 +147,7 @@ class _Parsed:
         self.allow_nans = True  # NaNs are ignored per-variable by default
         self.compare = False
         self.output: str | None = None
+        self.overwrite = False
         self.checkpoint: str | None = None
         self.resume = False
         self.parallel = 0
@@ -160,6 +165,19 @@ def _short(obj: Any) -> str:
         obj = obj.get("dataset", obj)
     text = obj if isinstance(obj, str) else str(obj)
     return text if len(text) <= 60 else text[:57] + "..."
+
+
+def _default_output(parsed: "_Parsed") -> str:
+    """Derive the default output path ``<dataset-name>.statistics.json``.
+
+    The name is the basename of the (first) dataset with any ``.zarr``/``.zip``
+    extension stripped; for a JSON config the short label is used instead.
+    """
+    name = os.path.basename(parsed.label.rstrip("/")) or parsed.label
+    for ext in (".zarr", ".zip"):
+        if name.endswith(ext):
+            name = name[: -len(ext)]
+    return f"{name}.statistics.json"
 
 
 def _parse(tokens: list[str]) -> _Parsed:
@@ -241,6 +259,9 @@ def _parse(tokens: list[str]) -> _Parsed:
             if i >= len(tokens):
                 raise ValueError("--output requires a path")
             parsed.output = tokens[i]
+            i += 1
+        elif tok == "--overwrite":
+            parsed.overwrite = True
             i += 1
         elif tok == "--checkpoint":
             i += 1
@@ -410,10 +431,11 @@ class Compute(Command):
                 "<dataset> [key=value ...] [--statistics] [--statistics-tendencies 6h] "
                 "[--statistics-residual <dataset-2> [key=value ...]] [--chunk-size N] "
                 "[--sample-dates FRACTION] "
-                "[--compare] [--output FILE.json] [--checkpoint PATH] [--resume] [--parallel N]. "
+                "[--compare] [--output FILE.json] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]. "
                 "<dataset> may be a name/path with key=value open_dataset options, or a single "
                 "JSON literal that is a complete open_dataset config (compute options stay as flags). "
-                "NaNs are ignored by default."
+                "Results are written to <dataset-name>.statistics.json by default (use --output to change, "
+                "--overwrite to replace an existing file). NaNs are ignored by default."
             ),
         )
 
@@ -426,6 +448,12 @@ class Compute(Command):
             The command-line arguments.
         """
         parsed = _parse(list(args.rest))
+
+        # Resolve the output path and fail fast (before any computation) if it
+        # already exists and --overwrite was not given.
+        output = parsed.output or _default_output(parsed)
+        if os.path.exists(output) and not parsed.overwrite:
+            raise ValueError(f"Output file already exists: {output} (use --overwrite to replace it)")
 
         sha = _args_sha(parsed)
         checkpoint = parsed.checkpoint or os.path.join(os.getcwd(), f"compute-checkpoint-{sha}.pkl")
@@ -485,10 +513,9 @@ class Compute(Command):
         if parsed.compare:
             self._compare(parsed, variables, results, document)
 
-        if parsed.output:
-            with open(parsed.output, "w") as f:
-                json.dump(_jsonable(document), f, indent=2)
-            LOG.info("Results written to %s", parsed.output)
+        with open(output, "w") as f:
+            json.dump(_jsonable(document), f, indent=2)
+        LOG.info("Results written to %s", output)
 
     def _compare(self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]) -> None:
         """Compare recomputed statistics with the dataset's stored statistics.

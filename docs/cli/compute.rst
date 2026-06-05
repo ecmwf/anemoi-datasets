@@ -29,7 +29,7 @@ Synopsis
         [--statistics] [--statistics-tendencies 6h] \
         [--statistics-residual <dataset-2>] \
         [--chunk-size N] [--sample-dates FRACTION] [--compare] \
-        [--output FILE.json] [--checkpoint PATH] [--resume] [--parallel N]
+        [--output FILE.json] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]
 
 While the command runs it shows a progress bar and, in an interactive terminal,
 refreshes a statistics table (the same columns as ``inspect``) for all variables
@@ -98,8 +98,13 @@ Options
     absolute and relative differences. Not applicable to ``--statistics-residual``.
 
 ``--output FILE.json``
-    Write the results (and any ``--compare`` differences) to a JSON file instead
-    of only printing the tables. NaNs are written as ``null``.
+    Write the results (and any ``--compare`` differences) to this JSON file. NaNs
+    are written as ``null``. Results are always written: without ``--output`` the
+    default path is ``<dataset-name>.statistics.json`` in the current directory.
+
+``--overwrite``
+    Replace the output file if it already exists. Without it the command fails
+    immediately (before computing anything) when the output file is present.
 
 ``--parallel N``
     Compute using ``N`` worker processes. The time range is split into segments

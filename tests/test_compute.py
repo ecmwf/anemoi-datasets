@@ -25,6 +25,7 @@ from test_data import mockup_open_zarr
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.compute import Compute
+from anemoi.datasets.commands.compute import _default_output
 from anemoi.datasets.commands.compute import _parse
 from anemoi.datasets.commands.compute.engine import Collectors
 from anemoi.datasets.commands.compute.engine import Task
@@ -293,6 +294,29 @@ def test_command_writes_json(tmp_path, monkeypatch) -> None:
     assert doc["dataset"] == DS0
     assert doc["statistics"] is not None
     assert len(doc["statistics"]["mean"]) == len(open_dataset(DS0).variables)
+
+
+def test_default_output_name() -> None:
+    assert _default_output(_parse(["/data/foo.zarr", "--statistics"])) == "foo.statistics.json"
+    assert _default_output(_parse(["bar", "--statistics"])) == "bar.statistics.json"
+
+
+@mockup_open_zarr
+def test_default_output_and_overwrite(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    default = tmp_path / f"{DS0}.statistics.json"
+
+    Compute().run(argparse.Namespace(rest=[DS0, "--statistics"]))
+    assert default.exists()
+    assert json.loads(default.read_text())["dataset"] == DS0
+
+    # Re-running without --overwrite must fail before recomputing.
+    with pytest.raises(ValueError, match="already exists"):
+        Compute().run(argparse.Namespace(rest=[DS0, "--statistics"]))
+
+    # --overwrite replaces it.
+    Compute().run(argparse.Namespace(rest=[DS0, "--statistics", "--overwrite"]))
+    assert default.exists()
 
 
 @mockup_open_zarr
