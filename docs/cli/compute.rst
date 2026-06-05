@@ -32,8 +32,11 @@ Synopsis
         [--output FILE.json] [--checkpoint PATH] [--resume] [--parallel N]
 
 While the command runs it shows a progress bar and, in an interactive terminal,
-periodically refreshes a small statistics table (the same columns as ``inspect``)
-for ten randomly-chosen variables, so the running values can be eyeballed.
+refreshes a statistics table (the same columns as ``inspect``) for all variables
+every ten seconds, so the running values can be eyeballed. Each numeric cell also
+shows the signed relative change since the previous refresh, e.g. ``0.707 (+0.14%)``;
+when the baseline is zero or the change exceeds +/-100% it falls back to the
+absolute delta, e.g. ``0.707 (+0.001)``.
 
 The dataset
 ~~~~~~~~~~~

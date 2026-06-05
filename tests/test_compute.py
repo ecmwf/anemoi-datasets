@@ -258,10 +258,19 @@ def test_live_render_does_not_raise(capsys) -> None:
     ds = open_dataset(DS0)
     col = Collectors(list(ds.variables), True, None, True)
     col.update(np.asarray(ds[0:4], dtype=np.float64))
-    _render_live(col, list(ds.variables), [0, 1, 2])
+
+    # First refresh: no previous snapshot, so no deltas.
+    prev = _render_live(col, list(ds.variables), [0, 1, 2], None)
     out = capsys.readouterr().out
     assert "Statistics" in out
     assert ds.variables[0] in out
+    assert prev is not None
+
+    # Second refresh: deltas are shown as signed values in parentheses.
+    col.update(np.asarray(ds[4:8], dtype=np.float64))
+    _render_live(col, list(ds.variables), [0, 1, 2], prev)
+    out = capsys.readouterr().out
+    assert "(" in out and (")" in out)
 
 
 @mockup_open_zarr

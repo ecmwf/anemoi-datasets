@@ -40,8 +40,7 @@ LOG = logging.getLogger(__name__)
 
 CHECKPOINT_VERSION = 2
 CHECKPOINT_INTERVAL = 60.0  # seconds
-LIVE_INTERVAL = 2.0  # seconds between live-table refreshes
-LIVE_VARIABLES = 10  # number of variables shown in the live table
+LIVE_INTERVAL = 10.0  # seconds between live-table refreshes
 
 
 @dataclass
@@ -174,11 +173,15 @@ def _blocks(n: int, chunk_size: int, indices: NDArray[np.int64] | None) -> list[
     return [list(indices[i : i + chunk_size]) for i in range(0, len(indices), chunk_size)]
 
 
-def _render_live(collectors: "Collectors", variables: list[str], idxs: list[int]) -> None:
-    """Print a snapshot of the current statistics for a few variables.
+def _render_live(
+    collectors: "Collectors", variables: list[str], idxs: list[int], prev: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """Print a snapshot of the current statistics for the given variables.
 
     Mirrors the ``inspect`` command's statistics table (Index/Variable/Min/Max/
-    Mean/Stdev). Written via :func:`tqdm.write` so the progress bar is preserved.
+    Mean/Stdev). Each numeric cell also shows the signed change since the previous
+    refresh, e.g. ``0.707 (+0.001)``. Written via :func:`tqdm.write` so the
+    progress bar is preserved.
 
     Parameters
     ----------
@@ -188,38 +191,62 @@ def _render_live(collectors: "Collectors", variables: list[str], idxs: list[int]
         All variable names.
     idxs : list of int
         Indices of the variables to display.
+    prev : dict or None
+        The statistics returned by the previous call, used to compute the deltas
+        (``None`` on the first refresh).
+
+    Returns
+    -------
+    dict or None
+        The current statistics, to be passed back as ``prev`` next time.
     """
     acc = collectors.stats if collectors.stats is not None else collectors.tend
     if acc is None:
-        return
+        return prev
     stats = acc.statistics()
 
     import io
+    import math
 
     import tqdm
     from rich.console import Console
     from rich.table import Table
 
-    table = Table(title="Statistics (live, sampled variables)")
+    table = Table(title="Statistics (live)")
     for col in ("Index", "Variable", "Min", "Max", "Mean", "Stdev"):
         table.add_column(col, justify="left" if col == "Variable" else "right")
 
     def _f(x: Any) -> str:
         return f"{float(x):.3g}"
 
+    def _cell(key: str, i: int) -> str:
+        v = float(stats[key][i])
+        if prev is None:
+            return _f(v)
+        p = float(prev[key][i])
+        d = v - p
+        # Prefer a relative change, but fall back to the absolute delta when the
+        # baseline is zero/non-finite (avoids division by zero) or when the change
+        # exceeds +/-100% (percentages become meaningless / hard to read).
+        pct = d / p * 100.0 if p != 0 else float("nan")
+        if not math.isfinite(pct) or abs(pct) > 100.0:
+            return f"{_f(v)} ({d:+.3g})"
+        return f"{_f(v)} ({pct:+.3g}%)"
+
     for i in idxs:
         table.add_row(
             str(i),
             variables[i],
-            _f(stats["minimum"][i]),
-            _f(stats["maximum"][i]),
-            _f(stats["mean"][i]),
-            _f(stats["stdev"][i]),
+            _cell("minimum", i),
+            _cell("maximum", i),
+            _cell("mean", i),
+            _cell("stdev", i),
         )
 
     buffer = io.StringIO()
-    Console(file=buffer, width=100).print(table)
+    Console(file=buffer, width=120).print(table)
     tqdm.tqdm.write(buffer.getvalue())
+    return stats
 
 
 def _open(open_args: list[Any], open_kwargs: dict[str, Any]) -> Any:
@@ -276,8 +303,8 @@ def _run_sequential(
     """Run the computation in-process with a time-based checkpoint and live table.
 
     Iterates over deterministic blocks (contiguous slices, or lists of sampled
-    indices). When ``task.live`` is set, a small statistics table for a handful of
-    randomly-chosen variables is refreshed every :data:`LIVE_INTERVAL` seconds.
+    indices). When ``task.live`` is set, a statistics table for all variables is
+    refreshed every :data:`LIVE_INTERVAL` seconds.
     """
     import tqdm
 
@@ -297,22 +324,19 @@ def _run_sequential(
     if collectors is None:
         collectors = Collectors(variables, task.do_statistics, tendency_steps, task.allow_nans)
 
-    # Pick the variables shown in the live table (deterministic).
-    live_idxs: list[int] = []
-    if task.live and variables:
-        rng = np.random.default_rng(_seed_from_sha(task.args_sha))
-        k = min(LIVE_VARIABLES, len(variables))
-        live_idxs = sorted(rng.choice(len(variables), size=k, replace=False).tolist())
+    # The live table shows every variable.
+    live_idxs: list[int] = list(range(len(variables))) if task.live else []
 
     last_ckpt = time.time()
     last_live = time.time()
+    prev_live: dict[str, Any] | None = None
     bar = tqdm.tqdm(range(next_block, total), desc="compute", initial=next_block, total=total)
     for b in bar:
         collectors.update(_read_block(ds_a, ds_b, blocks[b]))
 
         now = time.time()
         if task.live and live_idxs and now - last_live > LIVE_INTERVAL:
-            _render_live(collectors, variables, live_idxs)
+            prev_live = _render_live(collectors, variables, live_idxs, prev_live)
             last_live = now
 
         if task.checkpoint_path and now - last_ckpt > CHECKPOINT_INTERVAL:
