@@ -66,6 +66,11 @@ def _coerce(value: str) -> Any:
     ----------
     value : str
         The raw value from the command line.
+
+    Returns
+    -------
+    Any
+        The coerced value.
     """
     low = value.lower()
     if low in ("true", "false"):
@@ -99,6 +104,11 @@ def _parse_dataset_segment(tokens: list[str]) -> tuple[list[Any], dict[str, Any]
     ----------
     tokens : list of str
         The tokens describing one dataset.
+
+    Returns
+    -------
+    tuple of (list, dict, str)
+        The ``open_dataset`` positional args, keyword args and a short label.
     """
     if not tokens:
         raise ValueError("Missing dataset name")
@@ -194,6 +204,11 @@ def _parse(tokens: list[str]) -> _Parsed:
     ----------
     tokens : list of str
         The raw remainder tokens following ``compute`` on the command line.
+
+    Returns
+    -------
+    _Parsed
+        The parsed command line.
     """
     parsed = _Parsed()
 
@@ -335,6 +350,11 @@ def _args_sha(parsed: "_Parsed") -> str:
     ----------
     parsed : _Parsed
         The parsed command line.
+
+    Returns
+    -------
+    str
+        A 16-character hexadecimal digest.
     """
     canonical = {
         "open_args": parsed.open_args,
@@ -352,7 +372,9 @@ def _args_sha(parsed: "_Parsed") -> str:
     return hashlib.sha1(blob).hexdigest()[:16]
 
 
-def _compare_block(title: str, variables: list[str], recomputed: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+def _compare_block(
+    title: str, variables: list[str], recomputed: dict[str, Any], stored: dict[str, Any]
+) -> dict[str, Any]:
     """Print and return a per-variable comparison between recomputed and stored stats.
 
     Parameters
@@ -517,7 +539,9 @@ class Compute(Command):
             json.dump(_jsonable(document), f, indent=2)
         LOG.info("Results written to %s", output)
 
-    def _compare(self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]) -> None:
+    def _compare(
+        self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]
+    ) -> None:
         """Compare recomputed statistics with the dataset's stored statistics.
 
         Parameters

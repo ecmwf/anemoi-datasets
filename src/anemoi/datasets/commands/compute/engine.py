@@ -166,6 +166,11 @@ def _blocks(n: int, chunk_size: int, indices: NDArray[np.int64] | None) -> list[
         Number of time steps per block.
     indices : ndarray or None
         Sampled indices, or ``None`` for the full contiguous range.
+
+    Returns
+    -------
+    list
+        The read blocks (``slice`` objects, or lists of integer indices).
     """
     chunk_size = max(1, int(chunk_size))
     if indices is None:
@@ -497,7 +502,9 @@ def run(task: Task) -> tuple[list[str], dict[str, Any]]:
     indices = None
     if task.sample_dates is not None:
         if tendency_steps is not None:
-            raise ValueError("--sample-dates cannot be combined with --statistics-tendencies (tendencies need adjacent dates)")
+            raise ValueError(
+                "--sample-dates cannot be combined with --statistics-tendencies (tendencies need adjacent dates)"
+            )
         if task.parallel and task.parallel > 1:
             raise ValueError("--sample-dates is not supported with --parallel; run sequentially")
         indices = _sample_indices(len(ds_a), task.sample_dates, _seed_from_sha(task.args_sha))

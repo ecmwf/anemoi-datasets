@@ -46,6 +46,11 @@ def parse_delta(value: Any) -> datetime.timedelta:
     ----------
     value : timedelta, int or str
         The delta to parse.
+
+    Returns
+    -------
+    datetime.timedelta
+        The parsed delta.
     """
     if isinstance(value, datetime.timedelta):
         return value
@@ -135,6 +140,11 @@ class TendencyAccumulator:
         ----------
         other : TendencyAccumulator
             The accumulator to merge with; must share variables and ``delta``.
+
+        Returns
+        -------
+        TendencyAccumulator
+            A new merged accumulator.
         """
         if self.delta != other.delta:
             raise ValueError("Cannot merge tendency accumulators with different deltas")
