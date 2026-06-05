@@ -1,4 +1,4 @@
-# (C) Copyright 2025- Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -71,12 +71,15 @@ class Accumulator:
 
         data = np.asarray(data, dtype=np.float64)
         assert data.shape[1] == len(self.variables), (
-            f"Array variable axis {data.shape[1]} does not match " f"variables count {len(self.variables)}"
+            f"Array variable axis {data.shape[1]} does not match "
+            f"variables count {len(self.variables)}"
         )
 
         if not self.allow_nans and np.isnan(data).any():
             bad = [self.variables[c] for c in range(data.shape[1]) if np.isnan(np.moveaxis(data, 1, 0)[c]).any()]
-            raise ValueError(f"NaN values found for variable(s) {bad}; enable allow_nans to ignore them.")
+            raise ValueError(
+                f"NaN values found for variable(s) {bad}; enable allow_nans to ignore them."
+            )
 
         # Move the variable axis to the front, then flatten the sample axes.
         moved = np.moveaxis(data, 1, 0).reshape(len(self.variables), -1)
@@ -221,6 +224,8 @@ def compute_statistics(
         One past the last time index to include (defaults to ``len(dataset)``).
     chunk_size : int, optional
         Number of time steps read per chunk.
+    allow_nans : bool, optional
+        Whether to ignore NaNs per-variable.
 
     Returns
     -------

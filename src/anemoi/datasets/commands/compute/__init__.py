@@ -1,4 +1,4 @@
-# (C) Copyright 2025- Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -39,6 +39,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 from typing import Any
 
 import numpy as np
@@ -145,6 +146,7 @@ class _Parsed:
         self.checkpoint: str | None = None
         self.resume = False
         self.parallel = 0
+        self.sample_dates: float | None = None
 
     def finalise(self) -> None:
         """Apply default actions once parsing is complete."""
@@ -252,6 +254,12 @@ def _parse(tokens: list[str]) -> _Parsed:
                 raise ValueError("--parallel requires a number of workers")
             parsed.parallel = int(tokens[i])
             i += 1
+        elif tok in ("--sample-dates", "--sample_dates"):
+            i += 1
+            if i >= len(tokens):
+                raise ValueError("--sample-dates requires a fraction (e.g. 0.1)")
+            parsed.sample_dates = float(tokens[i])
+            i += 1
         elif tok.startswith("--"):
             raise ValueError(f"Unknown option '{tok}'")
         elif "=" in tok:
@@ -317,14 +325,13 @@ def _args_sha(parsed: "_Parsed") -> str:
         "has_residual": parsed.has_residual,
         "residual_open_args": parsed.residual_open_args,
         "residual_open_kwargs": parsed.residual_open_kwargs,
+        "sample_dates": parsed.sample_dates,
     }
     blob = json.dumps(canonical, sort_keys=True, default=str).encode()
     return hashlib.sha1(blob).hexdigest()[:16]
 
 
-def _compare_block(
-    title: str, variables: list[str], recomputed: dict[str, Any], stored: dict[str, Any]
-) -> dict[str, Any]:
+def _compare_block(title: str, variables: list[str], recomputed: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
     """Print and return a per-variable comparison between recomputed and stored stats.
 
     Parameters
@@ -402,6 +409,7 @@ class Compute(Command):
             help=(
                 "<dataset> [key=value ...] [--statistics] [--statistics-tendencies 6h] "
                 "[--statistics-residual <dataset-2> [key=value ...]] [--chunk-size N] "
+                "[--sample-dates FRACTION] "
                 "[--compare] [--output FILE.json] [--checkpoint PATH] [--resume] [--parallel N]. "
                 "<dataset> may be a name/path with key=value open_dataset options, or a single "
                 "JSON literal that is a complete open_dataset config (compute options stay as flags). "
@@ -438,6 +446,8 @@ class Compute(Command):
             checkpoint_path=checkpoint,
             resume=parsed.resume,
             args_sha=sha,
+            sample_dates=parsed.sample_dates,
+            live=sys.stdout.isatty(),
         )
 
         variables, results = run_engine(task)
@@ -480,9 +490,7 @@ class Compute(Command):
                 json.dump(_jsonable(document), f, indent=2)
             LOG.info("Results written to %s", parsed.output)
 
-    def _compare(
-        self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]
-    ) -> None:
+    def _compare(self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]) -> None:
         """Compare recomputed statistics with the dataset's stored statistics.
 
         Parameters

@@ -1,4 +1,4 @@
-# (C) Copyright 2025- Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -190,6 +190,8 @@ def compute_tendency_statistics(
         One past the last time index to include.
     chunk_size : int, optional
         Number of time steps read per chunk.
+    allow_nans : bool, optional
+        Whether to ignore NaNs per-variable.
 
     Returns
     -------

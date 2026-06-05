@@ -1,4 +1,4 @@
-# (C) Copyright 2025- Anemoi contributors.
+# (C) Copyright 2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -38,8 +38,10 @@ from .statistics_tendencies import delta_to_steps
 
 LOG = logging.getLogger(__name__)
 
-CHECKPOINT_VERSION = 1
+CHECKPOINT_VERSION = 2
 CHECKPOINT_INTERVAL = 60.0  # seconds
+LIVE_INTERVAL = 2.0  # seconds between live-table refreshes
+LIVE_VARIABLES = 10  # number of variables shown in the live table
 
 
 @dataclass
@@ -65,6 +67,8 @@ class Task:
     checkpoint_path: str | None = None
     resume: bool = False
     args_sha: str = ""
+    sample_dates: float | None = None
+    live: bool = False
 
 
 class Collectors:
@@ -125,6 +129,99 @@ def _read(ds_a: Any, ds_b: Any, lo: int, hi: int) -> NDArray[np.float64]:
     return a - np.asarray(ds_b[lo:hi], dtype=np.float64)
 
 
+def _read_block(ds_a: Any, ds_b: Any, block: Any) -> NDArray[np.float64]:
+    """Read a block (a ``slice`` or a list of indices), subtracting B for residuals."""
+    a = np.asarray(ds_a[block], dtype=np.float64)
+    if ds_b is None:
+        return a
+    return a - np.asarray(ds_b[block], dtype=np.float64)
+
+
+def _seed_from_sha(args_sha: str) -> int:
+    """Derive a deterministic integer seed from the arguments hash (or any string)."""
+    import zlib
+
+    return zlib.crc32((args_sha or "").encode())
+
+
+def _sample_indices(n: int, fraction: float, seed: int) -> NDArray[np.int64]:
+    """Return a sorted random sample of ``round(n * fraction)`` time indices."""
+    if not 0 < fraction <= 1:
+        raise ValueError(f"--sample-dates fraction must be in (0, 1], got {fraction}")
+    k = max(1, round(n * fraction))
+    rng = np.random.default_rng(seed)
+    return np.sort(rng.choice(n, size=k, replace=False))
+
+
+def _blocks(n: int, chunk_size: int, indices: NDArray[np.int64] | None) -> list[Any]:
+    """Build the deterministic list of read blocks.
+
+    Each block is a ``slice`` (contiguous, full mode) or a list of integer indices
+    (subsampled mode). The list is deterministic so a resumed run reproduces it.
+
+    Parameters
+    ----------
+    n : int
+        Dataset length.
+    chunk_size : int
+        Number of time steps per block.
+    indices : ndarray or None
+        Sampled indices, or ``None`` for the full contiguous range.
+    """
+    chunk_size = max(1, int(chunk_size))
+    if indices is None:
+        return [slice(lo, min(lo + chunk_size, n)) for lo in range(0, n, chunk_size)]
+    return [list(indices[i : i + chunk_size]) for i in range(0, len(indices), chunk_size)]
+
+
+def _render_live(collectors: "Collectors", variables: list[str], idxs: list[int]) -> None:
+    """Print a snapshot of the current statistics for a few variables.
+
+    Mirrors the ``inspect`` command's statistics table (Index/Variable/Min/Max/
+    Mean/Stdev). Written via :func:`tqdm.write` so the progress bar is preserved.
+
+    Parameters
+    ----------
+    collectors : Collectors
+        The running accumulators.
+    variables : list of str
+        All variable names.
+    idxs : list of int
+        Indices of the variables to display.
+    """
+    acc = collectors.stats if collectors.stats is not None else collectors.tend
+    if acc is None:
+        return
+    stats = acc.statistics()
+
+    import io
+
+    import tqdm
+    from rich.console import Console
+    from rich.table import Table
+
+    table = Table(title="Statistics (live, sampled variables)")
+    for col in ("Index", "Variable", "Min", "Max", "Mean", "Stdev"):
+        table.add_column(col, justify="left" if col == "Variable" else "right")
+
+    def _f(x: Any) -> str:
+        return f"{float(x):.3g}"
+
+    for i in idxs:
+        table.add_row(
+            str(i),
+            variables[i],
+            _f(stats["minimum"][i]),
+            _f(stats["maximum"][i]),
+            _f(stats["mean"][i]),
+            _f(stats["stdev"][i]),
+        )
+
+    buffer = io.StringIO()
+    Console(file=buffer, width=100).print(table)
+    tqdm.tqdm.write(buffer.getvalue())
+
+
 def _open(open_args: list[Any], open_kwargs: dict[str, Any]) -> Any:
     """Open a dataset from a picklable spec."""
     from anemoi.datasets import open_dataset
@@ -168,28 +265,57 @@ def _load_checkpoint(path: str, args_sha: str) -> dict[str, Any] | None:
 # --------------------------------------------------------------------------- #
 
 
-def _run_sequential(task: Task, ds_a: Any, ds_b: Any, variables: list[str], tendency_steps: int | None) -> Collectors:
-    """Run the computation in-process with a time-based checkpoint."""
+def _run_sequential(
+    task: Task,
+    ds_a: Any,
+    ds_b: Any,
+    variables: list[str],
+    tendency_steps: int | None,
+    indices: NDArray[np.int64] | None,
+) -> Collectors:
+    """Run the computation in-process with a time-based checkpoint and live table.
+
+    Iterates over deterministic blocks (contiguous slices, or lists of sampled
+    indices). When ``task.live`` is set, a small statistics table for a handful of
+    randomly-chosen variables is refreshed every :data:`LIVE_INTERVAL` seconds.
+    """
     import tqdm
 
     n = len(ds_a)
+    blocks = _blocks(n, task.chunk_size, indices)
+    total = len(blocks)
+
     collectors: Collectors | None = None
-    next_lo = 0
+    next_block = 0
 
     payload = _load_checkpoint(task.checkpoint_path, task.args_sha) if task.resume else None
     if payload is not None and payload.get("mode") == "sequential":
         collectors = payload["collectors"]
-        next_lo = payload["next_lo"]
-        LOG.info("Resuming sequential computation from index %d/%d", next_lo, n)
+        next_block = payload["next_block"]
+        LOG.info("Resuming sequential computation from block %d/%d", next_block, total)
 
     if collectors is None:
         collectors = Collectors(variables, task.do_statistics, tendency_steps, task.allow_nans)
 
-    chunks = list(iter_chunks(n, next_lo, None, task.chunk_size))
+    # Pick the variables shown in the live table (deterministic).
+    live_idxs: list[int] = []
+    if task.live and variables:
+        rng = np.random.default_rng(_seed_from_sha(task.args_sha))
+        k = min(LIVE_VARIABLES, len(variables))
+        live_idxs = sorted(rng.choice(len(variables), size=k, replace=False).tolist())
+
     last_ckpt = time.time()
-    for lo, hi in tqdm.tqdm(chunks, desc="compute"):
-        collectors.update(_read(ds_a, ds_b, lo, hi))
-        if task.checkpoint_path and time.time() - last_ckpt > CHECKPOINT_INTERVAL:
+    last_live = time.time()
+    bar = tqdm.tqdm(range(next_block, total), desc="compute", initial=next_block, total=total)
+    for b in bar:
+        collectors.update(_read_block(ds_a, ds_b, blocks[b]))
+
+        now = time.time()
+        if task.live and live_idxs and now - last_live > LIVE_INTERVAL:
+            _render_live(collectors, variables, live_idxs)
+            last_live = now
+
+        if task.checkpoint_path and now - last_ckpt > CHECKPOINT_INTERVAL:
             _save_checkpoint(
                 task.checkpoint_path,
                 {
@@ -197,11 +323,11 @@ def _run_sequential(task: Task, ds_a: Any, ds_b: Any, variables: list[str], tend
                     "args_sha": task.args_sha,
                     "mode": "sequential",
                     "collectors": collectors,
-                    "next_lo": hi,
-                    "progress": f"{hi}/{n}",
+                    "next_block": b + 1,
+                    "progress": f"{b + 1}/{total} blocks",
                 },
             )
-            last_ckpt = time.time()
+            last_ckpt = now
 
     return collectors
 
@@ -343,10 +469,20 @@ def run(task: Task) -> tuple[list[str], dict[str, Any]]:
         ds_b = _open(task.residual_open_args, task.residual_open_kwargs)
         _check_compatible(ds_a, ds_b)
 
+    # Date subsampling: only valid for plain/residual statistics in sequential mode.
+    indices = None
+    if task.sample_dates is not None:
+        if tendency_steps is not None:
+            raise ValueError("--sample-dates cannot be combined with --statistics-tendencies (tendencies need adjacent dates)")
+        if task.parallel and task.parallel > 1:
+            raise ValueError("--sample-dates is not supported with --parallel; run sequentially")
+        indices = _sample_indices(len(ds_a), task.sample_dates, _seed_from_sha(task.args_sha))
+        LOG.info("Subsampling %d/%d dates (%.1f%%)", len(indices), len(ds_a), 100 * task.sample_dates)
+
     if task.parallel and task.parallel > 1:
         collectors = _run_parallel(task, ds_a, variables, tendency_steps)
     else:
-        collectors = _run_sequential(task, ds_a, ds_b, variables, tendency_steps)
+        collectors = _run_sequential(task, ds_a, ds_b, variables, tendency_steps, indices)
 
     results = collectors.results()
 

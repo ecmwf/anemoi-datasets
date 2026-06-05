@@ -5,9 +5,9 @@ Compute Command
 
 The ``compute`` command recomputes statistics, statistics of temporal
 *tendencies*, or statistics of the *residual* between two datasets, **on the
-fly** from an opened dataset. It is deliberately standalone: it does not reuse
-the creation-time statistics code, and it runs as a single, simple chunked loop
-with optional parallelism. All accumulation is done in ``float64`` using a
+fly** from an opened dataset. It is deliberately standalone (it does not reuse the
+creation-time statistics code) and runs as a single, simple chunked loop with
+optional parallelism. All accumulation is done in ``float64`` using a
 numerically-stable (parallel/Welford) algorithm, so precision is preserved even
 over very large datasets.
 
@@ -28,8 +28,12 @@ Synopsis
     anemoi-datasets compute <dataset> \
         [--statistics] [--statistics-tendencies 6h] \
         [--statistics-residual <dataset-2>] \
-        [--chunk-size N] [--compare] \
+        [--chunk-size N] [--sample-dates FRACTION] [--compare] \
         [--output FILE.json] [--checkpoint PATH] [--resume] [--parallel N]
+
+While the command runs it shows a progress bar and, in an interactive terminal,
+periodically refreshes a small statistics table (the same columns as ``inspect``)
+for ten randomly-chosen variables, so the running values can be eyeballed.
 
 The dataset
 ~~~~~~~~~~~
@@ -79,6 +83,12 @@ Options
 ``--chunk-size N``
     Number of time steps read per chunk (default: 1).
 
+``--sample-dates FRACTION``
+    Compute over only a random fraction of the dates (e.g. ``0.1`` for 10%). The
+    sample is deterministic (seeded from the arguments) so a resumed run is
+    consistent. Not compatible with ``--statistics-tendencies`` (tendencies need
+    adjacent dates) nor with ``--parallel``.
+
 ``--compare``
     Compare the recomputed statistics (and tendencies) against the dataset's
     stored ``statistics`` / ``statistics_tendencies(delta)`` and print the
@@ -91,8 +101,8 @@ Options
 ``--parallel N``
     Compute using ``N`` worker processes. The time range is split into segments
     computed independently and merged. Tendency segments are seeded with the
-    ``delta`` rows preceding their start, so boundary tendencies remain exact;
-    the parallel result is identical to the sequential one.
+    ``delta`` rows before their start, so boundary tendencies remain exact; the
+    parallel result is identical to the sequential one.
 
 ``--checkpoint PATH``
     Path of the checkpoint file. Defaults to
@@ -120,6 +130,12 @@ Compute 6-hour tendency statistics in parallel and save to JSON:
 .. code-block:: bash
 
     anemoi-datasets compute my-dataset --statistics-tendencies 6h --parallel 8 --output tend.json
+
+Estimate statistics quickly from 10% of the dates:
+
+.. code-block:: bash
+
+    anemoi-datasets compute my-dataset --statistics --sample-dates 0.1
 
 Validate a dataset's stored statistics:
 
@@ -153,7 +169,7 @@ Notes
 - The computation reads the dataset *as opened*, so any ``open_dataset`` option
   (selection, sub-area, rescaling, ...) is reflected in the recomputed statistics.
 - ``--compare`` reads the dataset's stored statistics for the *full* opened
-  dataset; if you restrict the period with ``start``/``end`` the recomputed
-  values will legitimately differ from the stored ones.
+  dataset; if you restrict the period with ``start``/``end`` (or ``--sample-dates``)
+  the recomputed values will legitimately differ from the stored ones.
 - Trajectory datasets expose two frequencies and therefore support statistics
   but not ``--statistics-tendencies``.
