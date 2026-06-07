@@ -320,7 +320,7 @@ class SkipMissingDates(Forwards):
         return tuple(np.stack(_) for _ in result)
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("SkipMissingDates.collect_read_parts: complex date-skipping semantics not supported yet")
+        return None  # two-step read not supported here -> eager
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> tuple[NDArray[Any], ...]:
@@ -449,7 +449,7 @@ class MissingDataset(Forwards):
     def collect_read_parts(self, n):
         return []  # no zarr reads for synthetic missing-date placeholders
 
-    def read_from_cache(self, n, cache):
+    def read_from_buffer(self, n, buffer):
         raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
     def tree(self) -> Node:

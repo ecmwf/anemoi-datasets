@@ -7,14 +7,17 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-"""Phase 5 tests: parallel execute_parts via ThreadPoolExecutor.
+"""Phase 5 tests: execute_parts (sequential).
+
+execute_parts reads factorized parts one after another (cross-part threading was
+removed — it is GIL-bound on decompress and slower for the few-large-chunks case;
+within-array S3 fetch is already parallel in zarr/anemoi getitems).
 
 Verifies that:
-- parallel execution (num_threads>1) returns same results as sequential (num_threads=1)
 - empty parts list returns {}
-- single part skips thread pool (still correct)
-- num_threads env var is respected
-- thread count is configurable per-call
+- each factorized part's cached array matches a direct read of that part
+- multi-source reads (Join / Concat) populate the buffer correctly
+- two_step_read end-to-end matches ds[n]
 """
 
 import datetime
@@ -81,53 +84,33 @@ def test_execute_parts_empty():
     assert execute_parts([]) == {}
 
 
-def test_execute_parts_single_part_sequential_path():
-    """Single part must skip the thread pool and still return correct result."""
+def test_execute_parts_each_part_matches_direct_read():
+    """Each cached array equals a direct read of that part."""
     store = _make_store()
     parts = store.collect_read_parts(0)
-    assert len(parts) >= 1
-    factorized, mapping = factorize(parts)
-    result_seq = execute_parts(factorized, num_threads=1)
-    result_par = execute_parts(factorized, num_threads=4)
+    factorized, _ = factorize(parts)
+    buffer = execute_parts(factorized)
+    assert set(buffer) == set(factorized)
     for part in factorized:
-        np.testing.assert_array_equal(result_seq[part], result_par[part])
+        np.testing.assert_array_equal(buffer[part], part.execute())
 
 
 # ---------------------------------------------------------------------------
-# Parallel == sequential for single store
+# execute_parts populates the buffer correctly for single + multi-source reads
 # ---------------------------------------------------------------------------
 
 
-def test_parallel_matches_sequential_int():
+def test_execute_parts_single_store():
     store = _make_store()
-    for n in [0, 3, 7]:
-        seq = two_step_read.__wrapped__(store, n) if hasattr(two_step_read, "__wrapped__") else None
-        parts = store.collect_read_parts(n)
-        factorized, mapping = factorize(parts)
-        raw_seq = execute_parts(factorized, num_threads=1)
-        raw_par = execute_parts(factorized, num_threads=4)
+    for n in [0, 3, 7, slice(0, 4), slice(2, 8)]:
+        factorized, _ = factorize(store.collect_read_parts(n))
+        buffer = execute_parts(factorized)
         for part in factorized:
-            np.testing.assert_array_equal(raw_seq[part], raw_par[part], err_msg=f"n={n}")
+            np.testing.assert_array_equal(buffer[part], part.execute(), err_msg=f"n={n}")
 
 
-def test_parallel_matches_sequential_slice():
-    store = _make_store()
-    for n in [slice(0, 4), slice(2, 8)]:
-        parts = store.collect_read_parts(n)
-        factorized, mapping = factorize(parts)
-        raw_seq = execute_parts(factorized, num_threads=1)
-        raw_par = execute_parts(factorized, num_threads=4)
-        for part in factorized:
-            np.testing.assert_array_equal(raw_seq[part], raw_par[part], err_msg=f"n={n}")
-
-
-# ---------------------------------------------------------------------------
-# Parallel == sequential for multi-source (Join produces 2 parts)
-# ---------------------------------------------------------------------------
-
-
-def test_parallel_join_matches_sequential():
-    """Join produces one ReadPart per child store — parallel vs sequential must match."""
+def test_execute_parts_join():
+    """Join produces one ReadPart per child store; all must be read."""
     from unittest.mock import patch
     with patch("anemoi.datasets.usage.forwards.Combined.check_variables_compatibility", return_value=None):
         d1 = _make_store("j1.zarr", n_vars=2, vars="ab", seed=0)
@@ -135,58 +118,45 @@ def test_parallel_join_matches_sequential():
         ds = Join([d1, d2])
 
     for n in [0, slice(0, 4)]:
-        parts = ds.collect_read_parts(n)
-        factorized, mapping = factorize(parts)
+        factorized, _ = factorize(ds.collect_read_parts(n))
         assert len(factorized) >= 2, "Join should produce at least 2 parts"
-        raw_seq = execute_parts(factorized, num_threads=1)
-        raw_par = execute_parts(factorized, num_threads=4)
+        buffer = execute_parts(factorized)
         for part in factorized:
-            np.testing.assert_array_equal(raw_seq[part], raw_par[part])
+            np.testing.assert_array_equal(buffer[part], part.execute())
 
 
-def test_parallel_concat_matches_sequential():
-    """GriddedConcat spanning boundary produces 2 parts."""
+def test_execute_parts_concat_boundary():
+    """GriddedConcat spanning a boundary produces 2 parts."""
     from unittest.mock import patch
     with patch("anemoi.datasets.usage.forwards.Combined.check_variables_compatibility", return_value=None):
         d1 = _make_store("c1.zarr", n_dates=4, seed=0, start_date=datetime.datetime(2021, 1, 1))
         d2 = _make_store("c2.zarr", n_dates=4, seed=1, start_date=datetime.datetime(2021, 1, 2))
         ds = GriddedConcat([d1, d2])
 
-    n = slice(2, 6)  # spans boundary
-    parts = ds.collect_read_parts(n)
-    factorized, mapping = factorize(parts)
+    factorized, _ = factorize(ds.collect_read_parts(slice(2, 6)))  # spans boundary
     assert len(factorized) == 2, "cross-boundary slice should produce 2 factorized parts"
-    raw_seq = execute_parts(factorized, num_threads=1)
-    raw_par = execute_parts(factorized, num_threads=4)
+    buffer = execute_parts(factorized)
     for part in factorized:
-        np.testing.assert_array_equal(raw_seq[part], raw_par[part])
+        np.testing.assert_array_equal(buffer[part], part.execute())
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: two_step_read results unchanged with parallel execution
+# End-to-end: two_step_read matches ds[n]
 # ---------------------------------------------------------------------------
 
 
-def test_end_to_end_parallel_equals_direct():
-    """two_step_read with parallel execute_parts gives same result as ds[n]."""
-    from unittest.mock import patch
-    import anemoi.datasets.usage.read_parts as rp
-
+def test_end_to_end_equals_direct():
     store = _make_store()
     for n in [0, slice(0, 4), (slice(0, 4), slice(None), slice(None), slice(None))]:
-        expected = store[n]
-        # Temporarily override READ_PARTS_THREADS to 4
-        orig = rp.READ_PARTS_THREADS
-        rp.READ_PARTS_THREADS = 4
-        try:
-            actual = two_step_read(store, n)
-        finally:
-            rp.READ_PARTS_THREADS = orig
-        np.testing.assert_array_equal(actual, expected, err_msg=f"n={n}")
+        np.testing.assert_array_equal(two_step_read(store, n), store[n], err_msg=f"n={n}")
 
 
-def test_default_thread_count_is_2():
-    import anemoi.datasets.usage.read_parts as rp
-    assert rp.READ_PARTS_THREADS == int(
-        __import__("os").environ.get("ANEMOI_DATASETS_READ_PARTS_THREADS", "2")
-    )
+def test_execute_parts_takes_no_thread_argument():
+    # The cross-part thread pool was removed; execute_parts is sequential and
+    # takes only the parts list.
+    import inspect
+
+    from anemoi.datasets.usage import read_parts as rp
+
+    assert list(inspect.signature(execute_parts).parameters) == ["parts"]
+    assert not hasattr(rp, "READ_PARTS_THREADS")

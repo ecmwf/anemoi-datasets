@@ -11,6 +11,7 @@
 import logging
 from typing import Any
 
+import numpy as np
 from numpy.typing import NDArray
 
 from anemoi.datasets.usage.dataset import FullIndex
@@ -19,6 +20,7 @@ from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import split_grid_index
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 from ..common.select import SelectBase
@@ -77,23 +79,32 @@ class Select(SelectBase):
 
     def collect_read_parts(self, n: FullIndex) -> list:
         if isinstance(n, tuple):
+            # A grid-axis index array (grid-subset pushdown) is on the last axis,
+            # which Select does not touch — peel it off, expand the var axis, then
+            # reattach it before delegating so it reaches the leaf.
+            n, grid = split_grid_index(n, self.shape)
             index, _ = index_to_slices(n, self.shape)
-            # Expand variable axis to all vars — Select filters in read_from_cache
+            # Expand variable axis to all vars — Select filters in read_from_buffer
             index, _ = update_tuple(index, 1, slice(None))
+            if grid is not None:
+                index, _ = update_tuple(index, len(self.shape) - 1, np.asarray(grid))
             return self.dataset.collect_read_parts(index)
         # int or slice: inner dataset returns all vars anyway
         return self.dataset.collect_read_parts(n)
 
-    def read_from_cache(self, n: FullIndex, cache) -> NDArray[Any]:
+    def read_from_buffer(self, n: FullIndex, buffer) -> NDArray[Any]:
         if isinstance(n, tuple):
+            n, grid = split_grid_index(n, self.shape)
             index, changes = index_to_slices(n, self.shape)
             index, previous = update_tuple(index, 1, slice(None))
-            result = self.dataset.read_from_cache(index, cache)
+            if grid is not None:
+                index, _ = update_tuple(index, len(self.shape) - 1, np.asarray(grid))
+            result = self.dataset.read_from_buffer(index, buffer)
             result = result[:, self.indices]
             result = result[:, previous]
             return apply_index_to_slices_changes(result, changes)
 
-        row = self.dataset.read_from_cache(n, cache)
+        row = self.dataset.read_from_buffer(n, buffer)
         if isinstance(n, slice):
             return row[:, self.indices]
         return row[self.indices]

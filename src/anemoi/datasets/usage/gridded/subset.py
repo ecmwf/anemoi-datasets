@@ -31,6 +31,7 @@ from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import make_slice_or_index_from_list_or_tuple
+from anemoi.datasets.usage.gridded.indexing import split_grid_index
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
@@ -184,60 +185,75 @@ class Subset(Forwards):
 
     def collect_read_parts(self, n: FullIndex) -> list:
         if isinstance(n, tuple):
+            # Grid-axis index array (pushdown) is on the last axis, which Subset
+            # does not touch (it only remaps dates) — peel off, remap dates, reattach.
+            n, grid = split_grid_index(n, self.shape)
+            last = len(self.shape) - 1
             index, _ = index_to_slices(n, self.shape)
             inner_indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
             inner = make_slice_or_index_from_list_or_tuple(inner_indices)
             if isinstance(inner, list):
                 # Non-contiguous — collect per element using slices (not ints) so
                 # the date dimension is preserved through the chain.
-                parts = []
-                for idx in inner:
+                from anemoi.datasets.usage.read_parts import gather_parts
+
+                def _sub(idx):
                     index2, _ = update_tuple(index, 0, slice(idx, idx + 1))
-                    parts.extend(self.dataset.collect_read_parts(index2))
-                return parts
+                    if grid is not None:
+                        index2, _ = update_tuple(index2, last, np.asarray(grid))
+                    return self.dataset.collect_read_parts(index2)
+
+                return gather_parts(_sub(idx) for idx in inner)
             index, _ = update_tuple(index, 0, inner)
+            if grid is not None:
+                index, _ = update_tuple(index, last, np.asarray(grid))
             return self.dataset.collect_read_parts(index)
 
         if isinstance(n, slice):
             inner_indices = [self.indices[i] for i in range(*n.indices(self._len))]
             inner = make_slice_or_index_from_list_or_tuple(inner_indices)
             if isinstance(inner, list):
-                parts = []
-                for idx in inner:
-                    parts.extend(self.dataset.collect_read_parts(idx))
-                return parts
+                from anemoi.datasets.usage.read_parts import gather_parts
+
+                return gather_parts(self.dataset.collect_read_parts(idx) for idx in inner)
             return self.dataset.collect_read_parts(inner)
 
         assert n >= 0, n
         return self.dataset.collect_read_parts(self.indices[n])
 
-    def read_from_cache(self, n: FullIndex, cache) -> NDArray[Any]:
+    def read_from_buffer(self, n: FullIndex, buffer) -> NDArray[Any]:
         if isinstance(n, tuple):
+            n, grid = split_grid_index(n, self.shape)
+            last = len(self.shape) - 1
             index, changes = index_to_slices(n, self.shape)
             inner_indices = [self.indices[i] for i in range(*index[0].indices(self._len))]
             inner = make_slice_or_index_from_list_or_tuple(inner_indices)
             if isinstance(inner, list):
                 # Use slice(idx, idx+1) to preserve the date dimension through the chain;
-                # expand_list_indexing would do the same in the legacy path.
+                # expand_list_indexing would do the same in the eager path.
                 results = []
                 for idx in inner:
                     index2, _ = update_tuple(index, 0, slice(idx, idx + 1))
-                    results.append(self.dataset.read_from_cache(index2, cache))
+                    if grid is not None:
+                        index2, _ = update_tuple(index2, last, np.asarray(grid))
+                    results.append(self.dataset.read_from_buffer(index2, buffer))
                 result = np.concatenate(results, axis=0)
                 return apply_index_to_slices_changes(result, changes)
             index, _ = update_tuple(index, 0, inner)
-            result = self.dataset.read_from_cache(index, cache)
+            if grid is not None:
+                index, _ = update_tuple(index, last, np.asarray(grid))
+            result = self.dataset.read_from_buffer(index, buffer)
             return apply_index_to_slices_changes(result, changes)
 
         if isinstance(n, slice):
             inner_indices = [self.indices[i] for i in range(*n.indices(self._len))]
             inner = make_slice_or_index_from_list_or_tuple(inner_indices)
             if isinstance(inner, slice):
-                return self.dataset.read_from_cache(inner, cache)
-            return np.stack([self.dataset.read_from_cache(i, cache) for i in inner])
+                return self.dataset.read_from_buffer(inner, buffer)
+            return np.stack([self.dataset.read_from_buffer(i, buffer) for i in inner])
 
         assert n >= 0, n
-        return self.dataset.read_from_cache(self.indices[n], cache)
+        return self.dataset.read_from_buffer(self.indices[n], buffer)
 
     def get_aux(self, n: FullIndex) -> NDArray[Any]:
         assert n >= 0, n

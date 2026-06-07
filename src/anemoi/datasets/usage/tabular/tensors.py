@@ -48,7 +48,7 @@ class Tensors(Forwards):
             raise ValueError(f"Unsupported tensor type: {tensors}, supported types are: {list(TENSORS.keys())}")
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("Tensors.collect_read_parts: wraps result as tensors, not supported yet")
+        return None  # two-step read not supported here -> eager
 
     def __getitem__(self, n):
         return self.to_tensor(super().__getitem__(n))

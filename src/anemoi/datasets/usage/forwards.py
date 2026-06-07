@@ -73,8 +73,8 @@ class Forwards(Dataset):
     def collect_read_parts(self, n: FullIndex) -> list:
         return self.forward.collect_read_parts(n)
 
-    def read_from_cache(self, n: FullIndex, cache) -> NDArray[Any]:
-        return self.forward.read_from_cache(n, cache)
+    def read_from_buffer(self, n: FullIndex, buffer) -> NDArray[Any]:
+        return self.forward.read_from_buffer(n, buffer)
 
     @property
     def name(self) -> str | None:
@@ -97,6 +97,11 @@ class Forwards(Dataset):
     def field_shape(self) -> Shape:
         """Returns the field shape of the forward dataset."""
         return self.forward.field_shape
+
+    @property
+    def chunks(self) -> Any:
+        """Returns the zarr chunking of the forward dataset."""
+        return self.forward.chunks
 
     @property
     def frequency(self) -> datetime.timedelta:
@@ -765,42 +770,38 @@ class GivenAxis(Combined):
         return result
 
     def collect_read_parts(self, n):
+        from anemoi.datasets.usage.read_parts import gather_parts
+
         if isinstance(n, tuple):
             index, _ = index_to_slices(n, self.shape)
             lengths = [d.shape[self.axis] for d in self.datasets]
             slices = length_to_slices(index[self.axis], lengths)
-            parts = []
-            for d, s in zip(self.datasets, slices):
-                if s is not None:
-                    parts.extend(d.collect_read_parts(update_tuple(index, self.axis, s)[0]))
-            return parts
+            return gather_parts(
+                d.collect_read_parts(update_tuple(index, self.axis, s)[0])
+                for d, s in zip(self.datasets, slices)
+                if s is not None
+            )
 
         if isinstance(n, slice):
-            parts = []
-            for i in range(*n.indices(self._len)):
-                parts.extend(self.collect_read_parts(i))
-            return parts
+            return gather_parts(self.collect_read_parts(i) for i in range(*n.indices(self._len)))
 
         # int: all datasets contribute along self.axis
-        parts = []
-        for d in self.datasets:
-            parts.extend(d.collect_read_parts(n))
-        return parts
+        return gather_parts(d.collect_read_parts(n) for d in self.datasets)
 
-    def read_from_cache(self, n, cache):
+    def read_from_buffer(self, n, buffer):
         if isinstance(n, tuple):
             index, changes = index_to_slices(n, self.shape)
             lengths = [d.shape[self.axis] for d in self.datasets]
             slices = length_to_slices(index[self.axis], lengths)
-            result = [d.read_from_cache(update_tuple(index, self.axis, s)[0], cache)
+            result = [d.read_from_buffer(update_tuple(index, self.axis, s)[0], buffer)
                       for d, s in zip(self.datasets, slices) if s is not None]
             result = np.concatenate(result, axis=self.axis)
             return apply_index_to_slices_changes(result, changes)
 
         if isinstance(n, slice):
-            return np.stack([self.read_from_cache(i, cache) for i in range(*n.indices(self._len))])
+            return np.stack([self.read_from_buffer(i, buffer) for i in range(*n.indices(self._len))])
 
-        return np.concatenate([d.read_from_cache(n, cache) for d in self.datasets], axis=self.axis - 1)
+        return np.concatenate([d.read_from_buffer(n, buffer) for d in self.datasets], axis=self.axis - 1)
 
     def project(self, projection):
         result = []

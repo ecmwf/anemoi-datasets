@@ -85,7 +85,7 @@ class MissingDatesFill(Forwards):
         return set()
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("MissingDatesFill.collect_read_parts: fills from adjacent dates, not supported yet")
+        return None  # two-step read not supported here -> eager
 
     @debug_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:

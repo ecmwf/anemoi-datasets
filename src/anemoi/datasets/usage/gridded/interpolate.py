@@ -202,7 +202,7 @@ class InterpolateFrequency(Forwards):
         return result
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("InterpolateFrequency.collect_read_parts: interpolates across dates, not supported yet")
+        return None  # two-step read not supported here -> eager
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the InterpolateFrequency subclass.
@@ -277,7 +277,7 @@ class InterpolateNearest(Forwards):
         return apply_index_to_slices_changes(result, changes)
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("InterpolateNearest.collect_read_parts: spatial interpolation not supported yet")
+        return None  # two-step read not supported here -> eager
 
     def __getitem__(self, index: int | slice | tuple[int | slice, ...]) -> NDArray[Any]:
         if isinstance(index, (int, slice)):

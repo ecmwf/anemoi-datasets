@@ -11,7 +11,7 @@
 date / time used by the MARS source.
 
 The public YAML surface is the wildcard shorthand on ``date`` / ``time``.
-The legacy ``user_date`` / ``user_time`` keys are explicitly rejected.
+The eager ``user_date`` / ``user_time`` keys are explicitly rejected.
 """
 
 import pytest
@@ -80,7 +80,7 @@ class TestRequestFilterWildcard:
         assert not f.keep("20200102", "0000")
 
 
-class TestLegacyKeysRejected:
+class TestEagerKeysRejected:
 
     def test_user_date_rejected(self) -> None:
         with pytest.raises(ValueError, match="user_date"):

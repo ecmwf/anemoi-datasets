@@ -12,8 +12,8 @@
 Covers:
   B1 — ZarrWithMissingDates: missing-date check preserved via two_step_read path
   B2 — MissingDates: missing-date check preserved via two_step_read path
-  E6 — List/array indices in tuples fall back gracefully to legacy __getitem__
-  C-fallbacks — Classes that raise NotImplementedError fall back correctly
+  E6 — List/array indices in tuples fall back gracefully to eager __getitem__
+  C-fallbacks — Unsupported wrappers return None (gate falls back)
 """
 
 import datetime
@@ -171,7 +171,7 @@ class TestMissingDatesWrapper:
 
 
 def test_list_index_in_tuple_falls_back_correctly():
-    """Tuple with list element at axis 0 should fall back to legacy expand_list_indexing."""
+    """Tuple with list element at axis 0 should fall back to eager expand_list_indexing."""
     store = _make_store()
     # This is the expand_list_indexing pattern: tuple index with a list at one position
     n = ([0, 1, 2], slice(None), slice(None), slice(None))
@@ -181,91 +181,129 @@ def test_list_index_in_tuple_falls_back_correctly():
 
 
 # ---------------------------------------------------------------------------
-# C-fallbacks — All NotImplementedError wrappers fall back correctly
+# C-fallbacks — unsupported wrappers return None (→ gate falls back to eager)
 # ---------------------------------------------------------------------------
 
 
-def test_tabular_zarr_fallback():
-    """TabularZarr raises NotImplementedError → gate falls back."""
+def test_tabular_zarr_returns_none():
+    """TabularZarr.collect_read_parts returns None → gate falls back."""
     from anemoi.datasets.usage.tabular.store import TabularZarr
-    from anemoi.datasets.windows.view import WindowView
-
-    # TabularZarr is complex to construct; just verify collect_read_parts raises
-    class _MockTabular(TabularZarr.__bases__[0]):  # ZarrStore
-        pass
-
-    store = _make_store()
-    # Verify the method exists and raises
-    assert hasattr(TabularZarr, "collect_read_parts")
-    with pytest.raises(NotImplementedError, match="TabularZarr"):
-        TabularZarr.collect_read_parts(None, 0)
+    assert TabularZarr.collect_read_parts(None, 0) is None
 
 
-def test_tensors_raises_not_implemented():
-    """Tensors.collect_read_parts raises NotImplementedError."""
+def test_tensors_returns_none():
     from anemoi.datasets.usage.tabular.tensors import Tensors
-    with pytest.raises(NotImplementedError, match="Tensors"):
-        Tensors.collect_read_parts(None, 0)
+    assert Tensors.collect_read_parts(None, 0) is None
 
 
-def test_interpolate_nearest_raises_not_implemented():
-    """InterpolateNearest.collect_read_parts raises NotImplementedError."""
+def test_interpolate_nearest_returns_none():
     from anemoi.datasets.usage.gridded.interpolate import InterpolateNearest
-    with pytest.raises(NotImplementedError, match="InterpolateNearest"):
-        InterpolateNearest.collect_read_parts(None, 0)
+    assert InterpolateNearest.collect_read_parts(None, 0) is None
 
 
-def test_step_subset_raises_not_implemented():
-    """StepSubset.collect_read_parts raises NotImplementedError."""
+def test_step_subset_returns_none():
     from anemoi.datasets.usage.trajectories.subset import StepSubset
-    with pytest.raises(NotImplementedError, match="StepSubset"):
-        StepSubset.collect_read_parts(None, 0)
+    assert StepSubset.collect_read_parts(None, 0) is None
 
 
-def test_single_step_view_raises_not_implemented():
-    """SingleStepView.collect_read_parts raises NotImplementedError."""
+def test_single_step_view_returns_none():
     from anemoi.datasets.usage.trajectories.subset import SingleStepView
-    with pytest.raises(NotImplementedError, match="SingleStepView"):
-        SingleStepView.collect_read_parts(None, 0)
+    assert SingleStepView.collect_read_parts(None, 0) is None
 
 
-def test_trajectories_subset_raises_not_implemented():
-    """trajectories.Subset.collect_read_parts raises NotImplementedError."""
+def test_trajectories_subset_returns_none():
     from anemoi.datasets.usage.trajectories.subset import Subset as TrajSubset
-    with pytest.raises(NotImplementedError, match="trajectories.Subset"):
-        TrajSubset.collect_read_parts(None, 0)
+    assert TrajSubset.collect_read_parts(None, 0) is None
 
 
-def test_zipbase_raises_not_implemented():
-    """ZipBase.collect_read_parts raises NotImplementedError."""
+def test_zipbase_returns_none():
     from anemoi.datasets.usage.gridded.xy import ZipBase
-    with pytest.raises(NotImplementedError, match="ZipBase"):
-        ZipBase.collect_read_parts(None, 0)
+    assert ZipBase.collect_read_parts(None, 0) is None
 
 
-def test_chain_raises_not_implemented():
-    """Chain.collect_read_parts raises NotImplementedError."""
+def test_chain_returns_none():
     from anemoi.datasets.usage.gridded.unchecked import Chain
-    with pytest.raises(NotImplementedError, match="Chain"):
-        Chain.collect_read_parts(None, 0)
+    assert Chain.collect_read_parts(None, 0) is None
 
 
-def test_complement_raises_not_implemented():
-    """Complement.collect_read_parts raises NotImplementedError."""
+def test_complement_returns_none():
     from anemoi.datasets.usage.gridded.complement import Complement
-    with pytest.raises(NotImplementedError, match="Complement"):
-        Complement.collect_read_parts(None, 0)
+    assert Complement.collect_read_parts(None, 0) is None
 
 
-def test_skip_missing_raises_not_implemented():
-    """SkipMissingDates.collect_read_parts raises NotImplementedError."""
+def test_skip_missing_returns_none():
     from anemoi.datasets.usage.gridded.missing import SkipMissingDates
-    with pytest.raises(NotImplementedError, match="SkipMissingDates"):
-        SkipMissingDates.collect_read_parts(None, 0)
+    assert SkipMissingDates.collect_read_parts(None, 0) is None
 
 
-def test_tabular_select_raises_not_implemented():
-    """tabular.Select.collect_read_parts raises NotImplementedError."""
+def test_tabular_select_returns_none():
     from anemoi.datasets.usage.tabular.select import Select as TabSelect
-    with pytest.raises(NotImplementedError, match="tabular.Select"):
-        TabSelect.collect_read_parts(None, 0)
+    assert TabSelect.collect_read_parts(None, 0) is None
+
+
+# ---------------------------------------------------------------------------
+# Bounds + fancy-index fallback (no silent wrap, no exception-as-control-flow)
+# ---------------------------------------------------------------------------
+
+
+def test_out_of_bounds_int_date_raises_both_paths():
+    """ds[(n_dates, ...)] must raise (not silently return date 0) under two-step."""
+    import anemoi.datasets.usage.read_parts as rp
+
+    ds = _make_store()  # N_DATES dates
+    oob = (N_DATES, slice(None), slice(None), slice(None))
+    for enabled in (False, True):
+        rp.READ_PARTS_ENABLED = enabled
+        try:
+            with pytest.raises(IndexError):
+                ds[oob]
+        finally:
+            rp.READ_PARTS_ENABLED = True
+
+
+def test_fancy_var_list_falls_back_byte_identical():
+    """A list index on the (non-grid) variable axis falls back to eager via None."""
+    import anemoi.datasets.usage.read_parts as rp
+
+    ds = _make_store()
+    n = (slice(0, 2), [0, 2], slice(None), slice(None))
+    rp.READ_PARTS_ENABLED = False
+    expected = ds[n]
+    rp.READ_PARTS_ENABLED = True
+    np.testing.assert_array_equal(ds[n], expected)
+
+
+def test_unsupported_wrapper_returns_none_not_raises():
+    """Unsupported wrappers signal fallback by returning None, not by raising."""
+    from anemoi.datasets.usage.gridded.rolling_average import RollingAverage
+
+    ds = RollingAverage(_make_store(n_dates=10), window=(-1, 1, "freq"))
+    assert ds.collect_read_parts(0) is None  # no exception
+
+
+def test_eager_only_wrapper_produces_transformed_data_via_fallback():
+    """A3 guard: a eager-only wrapper must still produce its *transformed* result
+    through the fallback path — pins that its eager ``__getitem__`` is exercised
+    and is NOT removed (the eager path is permanent; see adr-3 "Why the eager
+    `__getitem__` path is permanent").  If ``RollingAverage.__getitem__`` were
+    deleted, it would inherit a pass-through and the rolling mean would vanish.
+    """
+    import anemoi.datasets.usage.read_parts as rp
+
+    store = _make_store(n_dates=10)
+    ds = RollingAverage = __import__(
+        "anemoi.datasets.usage.gridded.rolling_average", fromlist=["RollingAverage"]
+    ).RollingAverage(store, window=(-1, 1, "freq"))
+
+    i = 5
+    # two-step falls back to eager → identical
+    rp.READ_PARTS_ENABLED = False
+    eager = ds[i]
+    rp.READ_PARTS_ENABLED = True
+    np.testing.assert_array_equal(ds[i], eager)
+
+    # and the wrapper actually transforms (rolling mean ≠ the raw centre row) —
+    # proves the eager __getitem__ did real work, not a pass-through.  If
+    # RollingAverage.__getitem__ were deleted, it would inherit a pass-through and
+    # this would equal store[i].
+    assert not np.array_equal(eager, store[i])

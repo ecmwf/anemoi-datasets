@@ -167,7 +167,7 @@ class Complement(Combined):
         return Node(self, [d.tree() for d in (self._target, self._source)])
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("Complement.collect_read_parts: multi-source complement not supported yet")
+        return None  # two-step read not supported here -> eager
 
     def __getitem__(self, index: FullIndex) -> NDArray[Any]:
         """Gets the data at the specified index.

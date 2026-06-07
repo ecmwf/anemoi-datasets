@@ -21,14 +21,14 @@ def test_discriminator_auto():
     assert isinstance(sel, AutoCovering)
 
 
-def test_legacy_list_treated_as_auto():
-    """A bare list (legacy availability:) is treated as the auto value."""
+def test_eager_list_treated_as_auto():
+    """A bare list (eager availability:) is treated as the auto value."""
     sel = covering_factory([(0, "0-6/0-12"), (12, "0-6/0-12")])
     assert isinstance(sel, AutoCovering)
 
 
-def test_legacy_mars_dict_treated_as_auto():
-    """A bare mars dict (legacy availability:) is treated as the auto value."""
+def test_eager_mars_dict_treated_as_auto():
+    """A bare mars dict (eager availability:) is treated as the auto value."""
     sel = covering_factory({"mars": {"class": "ea", "stream": "oper"}})
     assert isinstance(sel, AutoCovering)
 

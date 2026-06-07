@@ -203,15 +203,15 @@ class Rescale(Forwards):
             return self.forward.collect_read_parts(index)
         return self.forward.collect_read_parts(n)
 
-    def read_from_cache(self, n, cache):
+    def read_from_buffer(self, n, buffer):
         if isinstance(n, tuple):
             index, changes = index_to_slices(n, self.shape)
             index, previous = update_tuple(index, 1, slice(None))
-            result = self.forward.read_from_cache(index, cache)
+            result = self.forward.read_from_buffer(index, buffer)
             result = result * self._a + self._b
             result = result[:, previous]
             return apply_index_to_slices_changes(result, changes)
-        result = self.forward.read_from_cache(n, cache)
+        result = self.forward.read_from_buffer(n, buffer)
         if isinstance(n, slice):
             return result * self._a + self._b
         return result * self._a[0] + self._b[0]

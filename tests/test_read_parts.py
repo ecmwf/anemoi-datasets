@@ -22,7 +22,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.datasets.usage.gridded.select import Select
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 from anemoi.datasets.usage.gridded.subset import Subset
-from anemoi.datasets.usage.read_parts import ReadCache
+from anemoi.datasets.usage.read_parts import ReadBuffer
 from anemoi.datasets.usage.read_parts import ReadPart
 from anemoi.datasets.usage.read_parts import execute_parts
 from anemoi.datasets.usage.read_parts import factorize
@@ -180,20 +180,20 @@ def test_factorize_no_merge_different_arrays():
 
 
 # ---------------------------------------------------------------------------
-# ReadCache
+# ReadBuffer
 # ---------------------------------------------------------------------------
 
 
-def test_read_cache_direct_lookup():
+def test_read_buffer_direct_lookup():
     arr = np.arange(30).reshape(5, 6)
     p = ReadPart("t", arr, ((0, 5, 1), (0, 6, 1)), ())
     raw = {p: arr}
-    cache = ReadCache(raw=raw, mapping={})  # identity mapping (no merging)
-    result = cache[p]
+    buffer = ReadBuffer(raw=raw, mapping={})  # identity mapping (no merging)
+    result = buffer[p]
     np.testing.assert_array_equal(result, arr)
 
 
-def test_read_cache_merged_offset():
+def test_read_buffer_merged_offset():
     arr = np.arange(60).reshape(10, 6)
     rest = ((0, 6, 1),)
 
@@ -202,11 +202,27 @@ def test_read_cache_merged_offset():
     p_merged = ReadPart("t", arr, ((0, 7, 1),) + rest, ())
 
     raw = {p_merged: arr[0:7]}
-    mapping = {p0: (p_merged, 0), p1: (p_merged, 3)}
-    cache = ReadCache(raw=raw, mapping=mapping)
+    mapping = {p0: (p_merged, 0, None), p1: (p_merged, 3, None)}
+    buffer = ReadBuffer(raw=raw, mapping=mapping)
 
-    np.testing.assert_array_equal(cache[p0], arr[0:3])
-    np.testing.assert_array_equal(cache[p1], arr[3:7])
+    np.testing.assert_array_equal(buffer[p0], arr[0:3])
+    np.testing.assert_array_equal(buffer[p1], arr[3:7])
+
+
+def test_read_buffer_grid_cols():
+    # Merged read holds the union of grid columns; grid_cols selects each part's.
+    arr = np.arange(40).reshape(4, 10)
+    p_a = ReadPart("t", arr, ((0, 4, 1), (0, 10, 1)), (), grid_index=(1, 3, 5))
+    p_b = ReadPart("t", arr, ((0, 4, 1), (0, 10, 1)), (), grid_index=(3, 7))
+    union = (1, 3, 5, 7)
+    p_merged = ReadPart("t", arr, ((0, 4, 1), (0, 10, 1)), (), grid_index=union)
+
+    raw = {p_merged: arr[:, union]}  # shape (4, 4)
+    mapping = {p_a: (p_merged, 0, [0, 1, 2]), p_b: (p_merged, 0, [1, 3])}
+    buffer = ReadBuffer(raw=raw, mapping=mapping)
+
+    np.testing.assert_array_equal(buffer[p_a], arr[:, [1, 3, 5]])
+    np.testing.assert_array_equal(buffer[p_b], arr[:, [3, 7]])
 
 
 # ---------------------------------------------------------------------------
@@ -243,15 +259,15 @@ def test_zarr_store_collect_tuple():
     assert p.slices[1] == (1, 3, 1)
 
 
-def test_zarr_store_read_from_cache_matches_getitem():
+def test_zarr_store_read_from_buffer_matches_getitem():
     ds = _make_store()
     for n in [0, 3, slice(2, 5), (slice(1, 4), slice(0, 2), slice(None), slice(None))]:
         parts = ds.collect_read_parts(n)
         factorized, part_map = factorize(parts)
         raw = execute_parts(factorized)
-        cache = ReadCache(raw=raw, mapping=part_map)
+        buffer = ReadBuffer(raw=raw, mapping=part_map)
 
-        result_new = ds.read_from_cache(n, cache)
+        result_new = ds.read_from_buffer(n, buffer)
         result_old = ds[n]
         np.testing.assert_array_equal(result_new, result_old, err_msg=f"mismatch for index {n!r}")
 
@@ -292,15 +308,15 @@ def test_select_collect_tuple_expands_vars():
     assert parts[0].slices[1] == (0, N_VARS, 1), "inner read must request all vars"
 
 
-def test_select_read_from_cache_matches_getitem():
+def test_select_read_from_buffer_matches_getitem():
     sel = _make_select(var_indices=[0, 2])
     for n in [0, slice(2, 5), (slice(0, 4), slice(0, 2), slice(None), slice(None))]:
         parts = sel.collect_read_parts(n)
         factorized, part_map = factorize(parts)
         raw = execute_parts(factorized)
-        cache = ReadCache(raw=raw, mapping=part_map)
+        buffer = ReadBuffer(raw=raw, mapping=part_map)
 
-        result_new = sel.read_from_cache(n, cache)
+        result_new = sel.read_from_buffer(n, buffer)
         result_old = sel[n]
         np.testing.assert_array_equal(result_new, result_old, err_msg=f"Select mismatch for {n!r}")
 
@@ -348,15 +364,15 @@ def test_subset_collect_non_contiguous_multi_parts():
     assert len(parts) == 3
 
 
-def test_subset_read_from_cache_matches_getitem():
+def test_subset_read_from_buffer_matches_getitem():
     sub = _make_subset(indices=[0, 2, 4, 6, 8])
     for n in [0, 2, slice(1, 4), (slice(0, 3), slice(None), slice(None), slice(None))]:
         parts = sub.collect_read_parts(n)
         factorized, part_map = factorize(parts)
         raw = execute_parts(factorized)
-        cache = ReadCache(raw=raw, mapping=part_map)
+        buffer = ReadBuffer(raw=raw, mapping=part_map)
 
-        result_new = sub.read_from_cache(n, cache)
+        result_new = sub.read_from_buffer(n, buffer)
         result_old = sub[n]
         np.testing.assert_array_equal(result_new, result_old, err_msg=f"Subset mismatch for {n!r}")
 
@@ -431,10 +447,10 @@ def test_batch_factorized_to_single_read():
     assert mp.slices[0] == (3, 6, 1), f"merged date range should be (3,6,1), got {mp.slices[0]}"
 
     raw = execute_parts(merged)
-    cache = ReadCache(raw=raw, mapping=mapping)
+    buffer = ReadBuffer(raw=raw, mapping=mapping)
 
     for i, outer_i in enumerate(range(3, 6)):
-        result = ds.read_from_cache(outer_i, cache)
+        result = ds.read_from_buffer(outer_i, buffer)
         expected = ds[outer_i]
         np.testing.assert_array_equal(result, expected, err_msg=f"batch mismatch at i={outer_i}")
 
@@ -454,10 +470,10 @@ def test_non_adjacent_batch_not_over_merged():
     assert mp.slices[0] == (0, 10, 1), f"expected (0,10,1) bounding box, got {mp.slices[0]}"
 
     raw = execute_parts(merged)
-    cache = ReadCache(raw=raw, mapping=mapping)
+    buffer = ReadBuffer(raw=raw, mapping=mapping)
 
     for i in [0, 5, 9]:
-        result = ds.read_from_cache(i, cache)
+        result = ds.read_from_buffer(i, buffer)
         expected = ds[i]
         np.testing.assert_array_equal(result, expected, err_msg=f"non-adj batch mismatch at i={i}")
 

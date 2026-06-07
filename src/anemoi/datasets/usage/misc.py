@@ -549,6 +549,12 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
         assert not sets, sets
         return cutout_factory(args, kwargs).mutate()
 
+    if "multi" in kwargs:
+        from anemoi.datasets.usage.gridded.multi import multi_factory
+
+        assert not sets, sets
+        return multi_factory(args, kwargs).mutate()
+
     if "complement" in kwargs:
         from anemoi.datasets.usage.gridded.complement import complement_factory
 

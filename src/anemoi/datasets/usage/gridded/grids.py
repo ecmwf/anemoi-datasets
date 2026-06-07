@@ -123,24 +123,24 @@ class Concat(Combined):
         return np.concatenate(result)
 
     def collect_read_parts(self, n):
+        from anemoi.datasets.usage.read_parts import gather_parts
+
         if isinstance(n, tuple):
             index, _ = index_to_slices(n, self.shape)
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(index[0], lengths)
-            parts = []
-            for d, s in zip(self.datasets, slices):
-                if s is not None:
-                    parts.extend(d.collect_read_parts(update_tuple(index, 0, s)[0]))
-            return parts
+            return gather_parts(
+                d.collect_read_parts(update_tuple(index, 0, s)[0])
+                for d, s in zip(self.datasets, slices)
+                if s is not None
+            )
 
         if isinstance(n, slice):
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(n, lengths)
-            parts = []
-            for d, s in zip(self.datasets, slices):
-                if s is not None:
-                    parts.extend(d.collect_read_parts(s))
-            return parts
+            return gather_parts(
+                d.collect_read_parts(s) for d, s in zip(self.datasets, slices) if s is not None
+            )
 
         k = n
         for d in self.datasets:
@@ -149,12 +149,12 @@ class Concat(Combined):
             k -= d._len
         raise IndexError(n)
 
-    def read_from_cache(self, n, cache):
+    def read_from_buffer(self, n, buffer):
         if isinstance(n, tuple):
             index, changes = index_to_slices(n, self.shape)
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(index[0], lengths)
-            result = [d.read_from_cache(update_tuple(index, 0, s)[0], cache)
+            result = [d.read_from_buffer(update_tuple(index, 0, s)[0], buffer)
                       for d, s in zip(self.datasets, slices) if s is not None]
             result = np.concatenate(result, axis=0)
             return apply_index_to_slices_changes(result, changes)
@@ -162,14 +162,14 @@ class Concat(Combined):
         if isinstance(n, slice):
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(n, lengths)
-            result = [d.read_from_cache(s, cache)
+            result = [d.read_from_buffer(s, buffer)
                       for d, s in zip(self.datasets, slices) if s is not None]
             return np.concatenate(result)
 
         k = n
         for d in self.datasets:
             if k < d._len:
-                return d.read_from_cache(k, cache)
+                return d.read_from_buffer(k, buffer)
             k -= d._len
         raise IndexError(n)
 
@@ -547,22 +547,143 @@ class Cutout(GridsBase):
 
         return apply_index_to_slices_changes(result, changes)
 
+    @cached_property
+    def _pushdown_plan(self) -> tuple[list[tuple[Any, NDArray[Any], int, int]], int]:
+        """Map output grid positions to (dataset, original-grid-indices) segments.
+
+        Mirrors :meth:`_get_tuple`'s concatenation: the **full** grid of each LAM
+        in order, then the globe's ``global_mask``-selected points.  Each entry is
+        ``(dataset, where, out_start, out_stop)`` where ``where`` are the original
+        grid indices of that segment's points and ``[out_start, out_stop)`` is its
+        span in the output grid axis.  Also returns the total output grid length.
+        """
+        segments: list[tuple[Any, NDArray[Any], int, int]] = []
+        offset = 0
+        for lam in self.lams:
+            n = lam.shape[-1]
+            segments.append((lam, np.arange(n), offset, offset + n))
+            offset += n
+        where_globe = np.nonzero(self.global_mask)[0]
+        segments.append((self.globe, where_globe, offset, offset + len(where_globe)))
+        return segments, offset + len(where_globe)
+
+    def _is_full_grid_slice(self, grid_slice: slice) -> bool:
+        """Whether *grid_slice* selects every output grid point with step 1."""
+        start, stop, step = grid_slice.indices(self.shape[-1])
+        return start == 0 and stop == self.shape[-1] and step == 1
+
+    @cached_property
+    def _pushdown_supported(self) -> bool:
+        """Whether every constituent can serve a grid-axis index array.
+
+        Pushdown asks each constituent for an index array on the grid axis.  Plain
+        leaf stores handle this, but index-transforming wrappers (``Select`` from a
+        ``select=``, ``Subset`` from ``start``/``end``, …) currently route through
+        ``index_to_slices`` and reject a grid array.  Probe once (``collect_read_parts``
+        does no I/O); if any constituent can't take it, pushdown is disabled and the
+        cutout uses the eager full read — correct, just not optimised.
+        """
+        probe = (slice(0, 1), slice(None), slice(None), np.asarray([0]))
+        for dataset in [*self.lams, self.globe]:
+            try:
+                if dataset.collect_read_parts(probe) is None:
+                    return False  # wrapper signalled unsupported
+            except Exception:  # noqa: BLE001 — any failure ⇒ treat as unsupported
+                return False
+        return True
+
+    @cached_property
+    def _grid_is_chunked(self) -> bool:
+        """Whether any constituent splits its grid (last) axis into >1 chunk.
+
+        When the grid is one chunk per field (the anemoi default), reading any
+        point of a store decompresses its whole field — pushdown only saves by
+        skipping whole *stores*.  When the grid is chunked, ``oindex`` fetches
+        only the touched chunks, so pushdown saves *within* a store too — worth
+        doing even when the shard touches every store.  Conservative: if a
+        constituent doesn't expose ``chunks``, treat as not chunked.
+        """
+        for dataset in [*self.lams, self.globe]:
+            try:
+                if dataset.chunks[-1] < dataset.shape[-1]:
+                    return True
+            except (AttributeError, IndexError, TypeError):
+                continue
+        return False
+
+    def _grid_pushdown(self, norm_index: TupleIndex, grid_slice: slice) -> list[tuple[Any, TupleIndex]] | None:
+        """Plan grid-subset pushdown, or ``None`` to fall back to the full read.
+
+        Returns a list of ``(dataset, sub_index)`` where ``sub_index`` carries an
+        index array on the grid axis selecting only the points that *dataset*
+        contributes to the requested output range — so only those points are read.
+        """
+        if not self._pushdown_supported:
+            return None
+
+        segments, total = self._pushdown_plan
+        # Only when the segment layout agrees with ``shape`` (it does for a single
+        # LAM / non-overlapping LAMs); otherwise eager semantics are ambiguous.
+        if total != self.shape[-1]:
+            return None
+
+        start, stop, step = grid_slice.indices(self.shape[-1])
+        if step < 1:
+            return None  # only ascending output ranges keep concatenation order
+
+        out_positions = np.arange(start, stop, step)
+        if len(out_positions) == 0:
+            return None
+
+        plan: list[tuple[Any, TupleIndex]] = []
+        for dataset, where, out_start, out_stop in segments:
+            sel = out_positions[(out_positions >= out_start) & (out_positions < out_stop)]
+            if len(sel) == 0:
+                continue
+            grid_idx = where[sel - out_start]
+            sub_index = tuple(norm_index[:3]) + (np.asarray(grid_idx),)
+            plan.append((dataset, sub_index))
+
+        # Store-skip guard — only when the grid is one chunk per field.
+        # There, reading any point of a store decompresses its whole field, so a
+        # shard touching every store gains nothing and the orthogonal-index gather
+        # is slower than eager's contiguous slice → fall back.  When the grid IS
+        # chunked, oindex reads only the touched chunks (a within-store saving), so
+        # push down even when every store is touched.
+        if not self._grid_is_chunked and len(plan) >= len(segments):
+            return None
+        return plan
+
     def collect_read_parts(self, index):
+        from anemoi.datasets.usage.read_parts import gather_parts
+
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         index, _ = index_to_slices(index, self.shape)
-        parts = []
-        for lam in self.lams:
-            parts.extend(lam.collect_read_parts(index[:3]))
-        parts.extend(self.globe.collect_read_parts(index[:3]))
-        return parts
 
-    def read_from_cache(self, index, cache):
+        if not self._is_full_grid_slice(index[3]):
+            plan = self._grid_pushdown(index, index[3])
+            if plan is not None:
+                return gather_parts(dataset.collect_read_parts(sub_index) for dataset, sub_index in plan)
+
+        return gather_parts(
+            lam.collect_read_parts(index[:3]) for lam in [*self.lams, self.globe]
+        )
+
+    def read_from_buffer(self, index, buffer):
         if isinstance(index, (int, slice)):
             index = (index, slice(None), slice(None), slice(None))
         index, changes = index_to_slices(index, self.shape)
-        lam_data = [lam.read_from_cache(index[:3], cache) for lam in self.lams]
-        globe_data_sliced = self.globe.read_from_cache(index[:3], cache)
+
+        if not self._is_full_grid_slice(index[3]):
+            plan = self._grid_pushdown(index, index[3])
+            if plan is not None:
+                pieces = [dataset.read_from_buffer(sub_index, buffer) for dataset, sub_index in plan]
+                result = np.concatenate(pieces, axis=self.axis)
+                return apply_index_to_slices_changes(result, changes)
+
+        lam_data = [lam.read_from_buffer(index[:3], buffer) for lam in self.lams]
+        globe_data_sliced = self.globe.read_from_buffer(index[:3], buffer)
         globe_data = globe_data_sliced[..., self.global_mask]
         result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
         return apply_index_to_slices_changes(result, changes)

@@ -99,12 +99,20 @@ class Dataset(ABC, Sized):
 
             @functools.wraps(_orig)
             def _gated(self: "Dataset", n: "FullIndex", _f: Any = _orig) -> Any:
-                from anemoi.datasets.usage.read_parts import two_step_read
+                from anemoi.datasets.usage import read_parts as _rp
 
-                try:
-                    return two_step_read(self, n)
-                except NotImplementedError:
+                # Kill-switch: ANEMOI_DATASETS_READ_PARTS=0 forces the eager path.
+                # Read the module attribute each call so it can be toggled/patched
+                # at runtime (used by tests and for debugging).
+                if not _rp.READ_PARTS_ENABLED:
                     return _f(self, n)
+
+                # two_step_read returns None to request fallback (a normal outcome,
+                # not an error) — use the eager reader then.
+                result = _rp.two_step_read(self, n)
+                if result is None:
+                    return _f(self, n)
+                return result
 
             cls.__getitem__ = _gated
 
@@ -1101,28 +1109,32 @@ class Dataset(ABC, Sized):
             The length of the dataset.
         """
 
-    def collect_read_parts(self, n: FullIndex) -> list:
+    def collect_read_parts(self, n: FullIndex) -> "list | None":
         """Phase 1 of two-step read: collect all zarr reads without executing.
 
         Walk the wrapper tree and return a list of :class:`~anemoi.datasets.usage.read_parts.ReadPart`
-        objects describing every zarr read that ``self[n]`` would perform.
-        No I/O is performed.
+        objects describing every zarr read that ``self[n]`` would perform (no I/O),
+        or **return ``None``** to signal that this wrapper does not support the
+        two-step fast path for this index — the caller then uses the eager reader.
+        Returning ``None`` is a normal, expected outcome, not an error.
 
-        Subclasses that transform the index (Select, Subset, Concat, Cutout, …)
-        must override this method.  See ``docs/adr/adr-3-two-step-read.md``.
+        The base implementation returns ``None`` (unsupported); subclasses that
+        transform the index (Select, Subset, Concat, Cutout, …) override it.
+        A wrapper that delegates must propagate a child's ``None`` as its own.
+        See ``docs/adr/adr-3-two-step-read.md``.
         """
-        raise NotImplementedError(f"{type(self).__name__}.collect_read_parts")
+        return None
 
-    def read_from_cache(self, n: FullIndex, cache: Any) -> NDArray[Any]:
-        """Phase 3 of two-step read: reconstruct result from pre-fetched cache.
+    def read_from_buffer(self, n: FullIndex, buffer: Any) -> NDArray[Any]:
+        """Phase 3 of two-step read: reconstruct result from the pre-fetched buffer.
 
-        Mirror of ``__getitem__`` but reads leaf data from *cache* (a
-        :class:`~anemoi.datasets.usage.read_parts.ReadCache`) instead of zarr.
+        Mirror of ``__getitem__`` but reads leaf data from *buffer* (a
+        :class:`~anemoi.datasets.usage.read_parts.ReadBuffer`) instead of zarr.
 
         Subclasses that override ``__getitem__`` must also override this method.
         See ``docs/adr/adr-3-two-step-read.md``.
         """
-        raise NotImplementedError(f"{type(self).__name__}.read_from_cache")
+        raise NotImplementedError(f"{type(self).__name__}.read_from_buffer")
 
     @property
     @abstractmethod

@@ -238,6 +238,63 @@ def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., N
     return wrapper
 
 
+def check_int_bounds(n: Any, shape: Shape) -> None:
+    """Raise ``IndexError`` for out-of-range integer indices (bare or in a tuple).
+
+    :func:`index_to_slices` normalises ints with ``i % size``, which silently
+    *wraps* out-of-range values (e.g. ``ds[n_dates]`` → date 0).  Call this first
+    so the two-step path matches zarr/eager and raises instead of returning the
+    wrong data.
+
+    Parameters
+    ----------
+    n : Any
+        The index (int or tuple).
+    shape : Shape
+        The dataset shape.
+    """
+    elements = enumerate(n) if isinstance(n, tuple) else ([(0, n)] if isinstance(n, int) else [])
+    for axis, i in elements:
+        if isinstance(i, int):
+            size = shape[axis]
+            if not -size <= i < size:
+                raise IndexError(f"index {i} is out of bounds for axis {axis} with size {size}")
+
+
+def split_grid_index(n: Any, shape: Shape) -> tuple[Any, tuple[int, ...] | None]:
+    """Split an integer index array on the last (grid) axis out of a tuple index.
+
+    Returns ``(index_with_full_last_axis, grid_index)`` when ``n`` is a full-rank
+    tuple whose last element is an integer list/array, otherwise ``(n, None)``.
+    Lets the two-step read carry a grid-point selection through index-transforming
+    wrappers and down into one orthogonal zarr read, instead of choking on the
+    array in :func:`index_to_slices`.
+
+    Parameters
+    ----------
+    n : Any
+        The index.
+    shape : Shape
+        The shape of the dataset.
+    """
+    if not isinstance(n, tuple) or len(n) != len(shape):
+        return n, None
+
+    last = n[-1]
+    if isinstance(last, np.ndarray):
+        if last.dtype == bool:
+            return n, None
+        grid = tuple(int(x) for x in last.tolist())
+    elif isinstance(last, (list, tuple)):
+        if any(isinstance(x, bool) for x in last):
+            return n, None
+        grid = tuple(int(x) for x in last)
+    else:
+        return n, None
+
+    return n[:-1] + (slice(None),), grid
+
+
 def make_slice_or_index_from_list_or_tuple(indices: list[int]) -> list[int] | slice:
     """Convert a list or tuple of indices to a slice or an index, if possible.
 

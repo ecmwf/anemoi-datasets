@@ -10,7 +10,7 @@
 """Phase 3 tests: env-var gate wires two_step_read into ds[n].
 
 When ANEMOI_DATASETS_READ_PARTS=1, ds[n] must return the same result as the
-legacy path (env var off).  Tests here use monkeypatch to set READ_PARTS_ENABLED
+eager path (env var off).  Tests here use monkeypatch to set READ_PARTS_ENABLED
 at runtime and compare old vs new paths on every supported wrapper class.
 """
 
@@ -313,20 +313,17 @@ def test_gate_calls_two_step_read():
     assert called == [3], f"expected two_step_read called once with 3, got {called}"
 
 
-def test_gate_falls_back_on_not_implemented():
-    """Verify the gate falls back to legacy __getitem__ when two_step_read raises NotImplementedError."""
-    import anemoi.datasets.usage.read_parts as rp_module
-
+def test_gate_falls_back_when_collect_returns_none():
+    """Gate falls back to eager __getitem__ when collect_read_parts returns None."""
     ds = _make_store()
-    fallback_result = None
     original_collect = ds.collect_read_parts
 
-    def _raise(*args, **kwargs):
-        raise NotImplementedError("simulated unimplemented")
+    def _unsupported(*args, **kwargs):
+        return None
 
-    ds.collect_read_parts = _raise
+    ds.collect_read_parts = _unsupported
     try:
-        # Should fall back to legacy __getitem__ without error
+        # Should fall back to eager __getitem__ without error
         result = ds[3]
         assert result is not None
     finally:

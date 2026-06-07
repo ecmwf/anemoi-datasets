@@ -158,7 +158,7 @@ class RollingAverage(Forwards):
         return result
 
     def collect_read_parts(self, n):
-        raise NotImplementedError("RollingAverage.collect_read_parts: reads a window of dates, not supported yet")
+        return None  # two-step read not supported here -> eager
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {}

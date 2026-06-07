@@ -120,24 +120,24 @@ class ConcatMixin:
         return np.concatenate(result)
 
     def collect_read_parts(self, n):
+        from anemoi.datasets.usage.read_parts import gather_parts
+
         if isinstance(n, tuple):
             index, _ = index_to_slices(n, self.shape)
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(index[0], lengths)
-            parts = []
-            for d, s in zip(self.datasets, slices):
-                if s is not None:
-                    parts.extend(d.collect_read_parts(update_tuple(index, 0, s)[0]))
-            return parts
+            return gather_parts(
+                d.collect_read_parts(update_tuple(index, 0, s)[0])
+                for d, s in zip(self.datasets, slices)
+                if s is not None
+            )
 
         if isinstance(n, slice):
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(n, lengths)
-            parts = []
-            for d, s in zip(self.datasets, slices):
-                if s is not None:
-                    parts.extend(d.collect_read_parts(s))
-            return parts
+            return gather_parts(
+                d.collect_read_parts(s) for d, s in zip(self.datasets, slices) if s is not None
+            )
 
         k = n
         for d in self.datasets:
@@ -146,12 +146,12 @@ class ConcatMixin:
             k -= d._len
         raise IndexError(n)
 
-    def read_from_cache(self, n, cache):
+    def read_from_buffer(self, n, buffer):
         if isinstance(n, tuple):
             index, changes = index_to_slices(n, self.shape)
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(index[0], lengths)
-            result = [d.read_from_cache(update_tuple(index, 0, s)[0], cache)
+            result = [d.read_from_buffer(update_tuple(index, 0, s)[0], buffer)
                       for d, s in zip(self.datasets, slices) if s is not None]
             result = np.concatenate(result, axis=0)
             return apply_index_to_slices_changes(result, changes)
@@ -159,14 +159,14 @@ class ConcatMixin:
         if isinstance(n, slice):
             lengths = [d.shape[0] for d in self.datasets]
             slices = length_to_slices(n, lengths)
-            result = [d.read_from_cache(s, cache)
+            result = [d.read_from_buffer(s, buffer)
                       for d, s in zip(self.datasets, slices) if s is not None]
             return np.concatenate(result)
 
         k = n
         for d in self.datasets:
             if k < d._len:
-                return d.read_from_cache(k, cache)
+                return d.read_from_buffer(k, buffer)
             k -= d._len
         raise IndexError(n)
 

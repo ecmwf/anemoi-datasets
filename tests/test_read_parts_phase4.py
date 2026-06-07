@@ -11,9 +11,9 @@
 
 Phase 4 changes:
 - Gate is unconditional: ds[n] always tries two_step_read first
-- NotImplementedError → fall back to legacy __getitem__
-- Rescale, Masked, Ensemble (Number) now have collect_read_parts + read_from_cache
-- RollingAverage, FillMissing, InterpolateFrequency raise NotImplementedError → fallback
+- collect_read_parts returns None → fall back to eager __getitem__
+- Rescale, Masked, Ensemble (Number) now have collect_read_parts + read_from_buffer
+- RollingAverage, FillMissing, InterpolateFrequency return None → fallback
 """
 
 import datetime
@@ -82,15 +82,15 @@ def test_gate_always_on():
         np.testing.assert_array_equal(ds[n], two_step_read(ds, n))
 
 
-def test_gate_fallback_on_not_implemented():
-    """Gate falls back to legacy __getitem__ when collect_read_parts raises NotImplementedError."""
+def test_gate_fallback_when_collect_returns_none():
+    """Gate falls back to eager __getitem__ when collect_read_parts returns None."""
     ds = _make_store()
     original = ds.collect_read_parts
 
-    def _raise(n):
-        raise NotImplementedError("test fallback")
+    def _unsupported(n):
+        return None
 
-    ds.collect_read_parts = _raise
+    ds.collect_read_parts = _unsupported
     try:
         result = ds[3]
         assert result is not None
@@ -230,29 +230,29 @@ class TestEnsemble:
 
 
 def test_rolling_average_falls_back():
-    """RollingAverage raises NotImplementedError → gate falls back to legacy."""
+    """RollingAverage returns None from collect_read_parts → gate falls back to eager."""
     from anemoi.datasets.usage.gridded.rolling_average import RollingAverage
     store = _make_store(n_dates=10)
     ds = RollingAverage(store, window=(-1, 1, "freq"))
-    # Should not raise — fallback to legacy __getitem__
+    # Should not raise — fallback to eager __getitem__
     result = ds[2]
     assert result is not None
     assert result.shape == (N_VARS, N_ENS, N_GRID)
 
 
 def test_fill_missing_falls_back():
-    """MissingDatesFill raises NotImplementedError → gate falls back to legacy."""
+    """MissingDatesFill returns None from collect_read_parts → gate falls back to eager."""
     from anemoi.datasets.usage.gridded.fill_missing import MissingDatesClosest
     store = _make_store(n_dates=10)
     # Mark index 3 as missing
     ds = MissingDatesClosest(store, closest="previous")
-    # Access a non-missing date — should fall back to legacy without error
+    # Access a non-missing date — should fall back to eager without error
     result = ds[0]
     assert result is not None
 
 
 def test_interpolate_falls_back():
-    """InterpolateFrequency raises NotImplementedError → gate falls back to legacy."""
+    """InterpolateFrequency returns None from collect_read_parts → gate falls back to eager."""
     from anemoi.datasets.usage.gridded.interpolate import InterpolateFrequency
     store = _make_store(n_dates=8)
     ds = InterpolateFrequency(store, frequency=datetime.timedelta(hours=3))

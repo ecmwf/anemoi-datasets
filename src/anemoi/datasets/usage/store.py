@@ -8,6 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 
+import contextlib
+import contextvars
 import datetime
 import logging
 import os
@@ -35,6 +37,36 @@ from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.misc import load_config
 
 LOG = logging.getLogger(__name__)
+
+
+# When set (inside :func:`shared_zarr_opens`), :meth:`ZarrStore.from_name_or_path`
+# returns the *same* ``ZarrStore`` object for repeated opens of the same name.
+# This is what lets the two-step read factorize a store shared by several
+# members of a ``multi=`` container into a single physical read (factorization
+# groups parts by ``id(ReadPart.data)`` — see ``usage/read_parts.py``).
+_SHARED_OPEN_CACHE: contextvars.ContextVar[dict[str, "ZarrStore"] | None] = contextvars.ContextVar(
+    "anemoi_shared_zarr_opens", default=None
+)
+
+
+@contextlib.contextmanager
+def shared_zarr_opens() -> Any:
+    """Share identical zarr opens within the ``with`` block.
+
+    While active, every :meth:`ZarrStore.from_name_or_path` call for the same
+    ``name`` resolves to a single, shared :class:`ZarrStore` instance, so the
+    underlying ``zarr.Array`` (``store.data``) is one object.  The two-step read
+    can then merge reads of that store coming from different datasets (for
+    example the common global store of several cutouts) into one physical read.
+
+    The cache lives only for the duration of the block and is keyed by the exact
+    ``name`` string passed to :meth:`ZarrStore.from_name_or_path`.
+    """
+    token = _SHARED_OPEN_CACHE.set({})
+    try:
+        yield
+    finally:
+        _SHARED_OPEN_CACHE.reset(token)
 
 
 def name_to_zarr_store(path_or_url: str) -> Any:
@@ -222,35 +254,51 @@ class ZarrStore(Dataset):
 
     @classmethod
     def from_name_or_path(cls, name: str) -> "ZarrStore":
+        cache = _SHARED_OPEN_CACHE.get()
+        if cache is not None and name in cache:
+            return cache[name]
+
         store, path = open_zarr_store(name, return_path=True)
-        return cls.from_group(store, path=path)
+        result = cls.from_group(store, path=path)
+
+        if cache is not None:
+            cache[name] = result
+
+        return result
 
     ####################################################
 
     def collect_read_parts(self, n):
+        from anemoi.datasets.usage.gridded.indexing import check_int_bounds
         from anemoi.datasets.usage.gridded.indexing import index_to_slices
+        from anemoi.datasets.usage.gridded.indexing import split_grid_index
         from anemoi.datasets.usage.read_parts import ReadPart
 
-        # Validate integer bounds so iteration terminates with IndexError (matching zarr).
-        if isinstance(n, int):
-            n_rows = self.data.shape[0]
-            if n < -n_rows or n >= n_rows:
-                raise IndexError(f"index {n} is out of bounds for axis 0 with size {n_rows}")
+        n, grid_index = split_grid_index(n, self.data.shape)
+
+        # Validate integer bounds — zarr/eager raise for out-of-range ints, but
+        # index_to_slices silently modulo-wraps them.  Check before normalising so
+        # e.g. ds[n_dates, ...] raises instead of returning date 0.
+        check_int_bounds(n, self.data.shape)
+
         try:
             slices, squeeze = index_to_slices(n, self.data.shape)
-        except (ValueError, TypeError, AttributeError) as exc:
-            # List/array indices not supported in two-step path; fall back to legacy.
-            raise NotImplementedError(f"ZarrStore.collect_read_parts: unsupported index type — {exc}") from exc
-        return [ReadPart.from_raw_slices(self.path, self.data, slices, squeeze)]
+        except (ValueError, TypeError, AttributeError):
+            # Index not expressible as rectangular slices (list/array on a
+            # non-grid axis) → signal "use eager" with None, not an exception.
+            return None
+        return [ReadPart.from_raw_slices(self.path, self.data, slices, squeeze, grid_index=grid_index)]
 
-    def read_from_cache(self, n, cache):
+    def read_from_buffer(self, n, buffer):
         from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
         from anemoi.datasets.usage.gridded.indexing import index_to_slices
+        from anemoi.datasets.usage.gridded.indexing import split_grid_index
         from anemoi.datasets.usage.read_parts import ReadPart
 
+        n, grid_index = split_grid_index(n, self.data.shape)
         slices, squeeze = index_to_slices(n, self.data.shape)
-        part = ReadPart.from_raw_slices(self.path, self.data, slices, squeeze)
-        data = cache[part]
+        part = ReadPart.from_raw_slices(self.path, self.data, slices, squeeze, grid_index=grid_index)
+        data = buffer[part]
         return apply_index_to_slices_changes(data, squeeze)
 
     def __len__(self) -> int:
