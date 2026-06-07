@@ -190,9 +190,29 @@ def migrate_group_by(config: dict) -> dict:
     return config
 
 
+def _fix_accumulate_availability(config) -> None:
+    """Rewrite legacy ``availability:`` to ``covering: { auto: <value> }`` inside accumulate blocks.
+
+    Walks the recipe and looks for any ``accumulate:`` block that still
+    uses the deprecated ``availability:`` key. Replaces it in-place with
+    the discriminator form. Leaves blocks that already use
+    ``covering:`` untouched.
+    """
+    if isinstance(config, dict):
+        for k, v in config.items():
+            if k == "accumulate" and isinstance(v, dict) and "availability" in v and "covering" not in v:
+                v["covering"] = {"auto": v.pop("availability")}
+            else:
+                _fix_accumulate_availability(v)
+    elif isinstance(config, list):
+        for item in config:
+            _fix_accumulate_availability(item)
+
+
 def migrate(config: dict) -> dict:
     config = fix_datetimes(config)
     config = migrate_accumulations(config)
+    _fix_accumulate_availability(config)
     config = migrate_allow_nans(config)
     config = migrate_group_by(config)
     config = remove_useless_common_block(config)

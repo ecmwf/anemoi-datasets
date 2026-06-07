@@ -16,8 +16,9 @@ from collections.abc import Iterable
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
+from anemoi.datasets.create.intervals import SignedInterval
+
+from .covering_intervals import covering_intervals
 
 LOG = logging.getLogger(__name__)
 
@@ -301,7 +302,16 @@ def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | N
                 (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
                 (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
             ]
-
+        case ("e6", "oper", _):
+            return [
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+            ]
+        case ("e6", "enda", _):
+            return [
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+            ]
         case ("od", "oper", _):
             # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
             steps = [f"{0}-{i}" for i in range(1, 91)]

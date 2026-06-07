@@ -98,6 +98,59 @@ class Forwards(Dataset):
         return self.forward.frequency
 
     @property
+    def start_date(self):
+        """Returns the start date of the forward dataset."""
+        return self.forward.start_date
+
+    @property
+    def end_date(self):
+        """Returns the end date of the forward dataset."""
+        return self.forward.end_date
+
+    # Trajectory-specific properties — forwarded so that wrappers
+    # (StepSubset, SingleStepView, Subset, etc.) work transparently.
+
+    @property
+    def base_dates(self):
+        """Returns the base dates of the forward dataset."""
+        return self.forward.base_dates
+
+    @property
+    def base_start_date(self):
+        """Returns the first base date of the forward dataset."""
+        return self.forward.base_start_date
+
+    @property
+    def base_end_date(self):
+        """Returns the last base date of the forward dataset."""
+        return self.forward.base_end_date
+
+    @property
+    def base_frequency(self):
+        """Returns the base-date frequency of the forward dataset."""
+        return self.forward.base_frequency
+
+    @property
+    def steps(self):
+        """Returns the steps of the forward dataset."""
+        return self.forward.steps
+
+    @property
+    def step_start(self):
+        """Returns the first step of the forward dataset."""
+        return self.forward.step_start
+
+    @property
+    def step_end(self):
+        """Returns the last step of the forward dataset."""
+        return self.forward.step_end
+
+    @property
+    def step_frequency(self):
+        """Returns the step frequency of the forward dataset."""
+        return self.forward.step_frequency
+
+    @property
     def latitudes(self) -> NDArray[Any]:
         """Returns the latitudes of the forward dataset."""
         return self.forward.latitudes
@@ -416,6 +469,25 @@ class Combined(Forwards):
                 f"{self.__class__.__name__}: Incompatible variables: {d1.variables} and {d2.variables} ({d1} {d2})"
             )
 
+    def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
+        """Checks if the variables of two datasets are compatible (e.g. same units)
+
+        Parameters
+        ----------
+        d1 : Any
+            First dataset.
+        d2 : Any
+            Second dataset.
+
+        Raises
+        ------
+        ValueError
+            If the variables are not compatible.
+        """
+        from anemoi.transform.variables import Variable
+
+        Variable.check_compatibility(d1.typed_variables, d2.typed_variables)
+
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.
 
@@ -483,6 +555,7 @@ class Combined(Forwards):
         self.check_same_grid(d1, d2)
         self.check_same_lengths(d1, d2)
         self.check_same_variables(d1, d2)
+        self.check_variables_compatibility(d1, d2)
         self.check_same_dates(d1, d2)
 
     def provenance(self) -> list[Any]:

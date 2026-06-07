@@ -17,8 +17,10 @@ from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.dates import DatesProvider
-from anemoi.datasets.dates import as_datetime
+from anemoi.utils.dates import as_datetime
+
+from anemoi.datasets.create.recipe.dates import DatesProvider
+from anemoi.datasets.create.recipe.dates import TrajectoryDates
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
@@ -44,15 +46,11 @@ class GroupOfDates:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
-        self.dates = [as_datetime(_) for _ in dates]
+        # Trajectory providers yield ``(basetime, step)`` pairs; they are
+        # opaque to ``GroupOfDates`` and stored as-is.
+        self.dates = [d if isinstance(d, tuple) else as_datetime(d) for d in dates]
         self.provider = provider
         self.partial_ok = partial_ok
-
-    @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "GroupOfDates":
-        """Used in pytest"""
-        dates = DatesProvider.from_config(config)
-        return cls(dates.values, dates)
 
     def __len__(self) -> int:
         """Return the number of dates in the group.
@@ -132,17 +130,16 @@ class Groups:
         2
     """
 
-    def __init__(self, group_by: Any, **kwargs: Any) -> None:
-        """Initialize the class with the provided keyword arguments.
+    def __init__(self, dates: DatesProvider, group_by: Any) -> None:
+        """Initialize the Groups collection.
 
-        Parameters
-        ----------
-            **kwargs : Any : Arbitrary keyword arguments. Expected keys include:
-                - group_by: Configuration for the Grouper.
-                - Other keys for DatesProvider configuration.
+        Args:
+            dates (DatesProvider): The dates provider.
+            group_by (Any): Configuration for the Grouper (e.g., "daily", "monthly", int, etc.).
+
+        The groups are created by grouping the provided dates according to the group_by parameter.
         """
-
-        self._dates = DatesProvider.from_config(**kwargs)
+        self._dates = dates
         self._grouper = Grouper.from_config(group_by)
         self._filter = Filter(self._dates.missing)
 
@@ -242,6 +239,19 @@ class Filter:
         return [d for d in dates if d not in self.missing]
 
 
+class TrajectoryFilter(Filter):
+    """Filter out ``(basetime, step)`` pairs whose basetime is missing.
+
+    Used by :class:`TrajectoryGroups` because the items yielded by the grouper
+    are pairs, not plain datetimes.  The plain :class:`Filter` would compare a
+    pair to a set of datetimes and find no match — silently leaving missing
+    base dates in the iteration.
+    """
+
+    def __call__(self, pairs):
+        return [(bt, st) for (bt, st) in pairs if bt not in self.missing]
+
+
 class Grouper(ABC):
     """Abstract base class for grouping dates."""
 
@@ -265,6 +275,7 @@ class Grouper(ABC):
             "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
         }[group_by]
+
         return GrouperByKey(key)
 
     @abstractmethod
@@ -326,6 +337,13 @@ class GrouperByKey(Grouper):
     def __init__(self, key: Callable[[datetime.datetime], Any]) -> None:
         self.key = key
 
+    def _key(self, d: Any) -> Any:
+        # Trajectory providers yield ``(basetime, step)`` pairs; apply the key
+        # to the basetime so monthly/daily/yearly grouping still makes sense.
+        if isinstance(d, tuple):
+            return self.key(d[0])
+        return self.key(d)
+
     def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         """Group dates based on the provided key.
 
@@ -335,7 +353,7 @@ class GrouperByKey(Grouper):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
-        for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
+        for _, g in itertools.groupby(sorted(dates, key=self._key), key=self._key):
             yield GroupOfDates(list(g), dates)
 
 
@@ -364,3 +382,62 @@ class GrouperByFixedSize(Grouper):
 
         if batch:
             yield GroupOfDates(batch, dates)
+
+
+class TrajectoryGroups(Groups):
+    """Groups whose provider is a :class:`TrajectoryDates`.
+
+    Values iterated by the provider are ``(basetime, step)`` pairs rather than
+    plain datetimes, so ``first_date`` / ``last_date`` are sourced from
+    :meth:`TrajectoryDates.factorise` (basetimes only) to keep metadata
+    meaningful.
+
+    Parameters
+    ----------
+    steps : Steps
+        Forecast lead times (``start``, ``end``, ``frequency``) describing the
+        list of steps.
+    group_by : Any
+        Grouping configuration forwarded to :meth:`Grouper.from_config`.
+    base_dates : BaseDates
+        The basetimes provider (``start``, ``end``, ``frequency``,
+        ``missing``, …) used to build the ``(basetime, step)`` pairs.
+    """
+
+    def __init__(self, steps: Any, group_by: Any, base_dates: Any) -> None:
+        self._dates = TrajectoryDates(base_dates=base_dates, steps=steps)
+        self._grouper = Grouper.from_config(group_by)
+        self._filter = TrajectoryFilter(self._dates.missing)
+
+    def __iter__(self):
+        import numpy as np
+
+        from anemoi.datasets.create.arguments import ForecastDates
+
+        for go in self._grouper(self._dates):
+            pairs = self._filter(go.dates)
+            if not pairs:
+                continue
+            items = []
+            for basetime, step_td in pairs:
+                step_seconds = int(step_td / np.timedelta64(1, "s"))
+                step = datetime.timedelta(seconds=step_seconds)
+                items.append((basetime + step, basetime))
+            yield ForecastDates(items)
+
+    def one_date(self):
+        """Return a single-item ForecastDates for minimal input probing."""
+        go = next(iter(self))
+        from anemoi.datasets.create.arguments import ForecastDates
+
+        return ForecastDates([go.items[0]])
+
+    def first_date(self) -> datetime.datetime:
+        basetimes, steps = self._dates.factorise()
+        step_start = steps[0].astype("timedelta64[s]").astype(datetime.timedelta)
+        return min(basetimes) + step_start
+
+    def last_date(self) -> datetime.datetime:
+        basetimes, steps = self._dates.factorise()
+        step_end = steps[-1].astype("timedelta64[s]").astype(datetime.timedelta)
+        return max(basetimes) + step_end

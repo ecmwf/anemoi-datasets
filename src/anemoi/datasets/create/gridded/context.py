@@ -15,22 +15,30 @@ from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
-from anemoi.datasets.create.gridded.result import GriddedResult
+from anemoi.datasets.create.gridded.result import SimpleGriddedResult
 from anemoi.datasets.create.input.context import Context
 from anemoi.datasets.dates.groups import GroupOfDates
 
 LOG = logging.getLogger(__name__)
 
 
-class GriddedContext(Context):
+class SimpleGriddedContext(Context):
     """Context for building gridded output data.
 
     This class extends the base Context to provide additional logic and configuration
     for gridded datasets, including remapping, grid flattening, and origin tracking.
     """
 
+    # Fixed cube ordering for gridded datasets. Not user-configurable: the
+    # last two keys are assumed to be ``(variables, ensembles)`` by
+    # ``BaseResult.build_coords``, and the first key is the time axis --
+    # varying any of this breaks the coord construction. The deprecated
+    # ``output.order_by`` recipe field is validated against this value in
+    # ``Recipe.__init__``.
+    order_by: list[str] = ["valid_datetime", "param_level", "number"]
+
     def __init__(self, recipe: Any) -> None:
-        """Initialise a GriddedContext instance.
+        """Initialise a SimpleGriddedContext instance.
 
         Parameters
         ----------
@@ -40,12 +48,10 @@ class GriddedContext(Context):
 
         super().__init__(recipe)
 
-        self.order_by = recipe.output.order_by
-        self.flatten_grid = recipe.output.flatten_grid
         self.remapping = build_remapping(recipe.build.remapping)
 
-    def create_result(self, argument: Any, data: Any) -> GriddedResult:
-        """Create a GriddedResult object for the given argument and data.
+    def create_result(self, argument: Any, data: Any) -> SimpleGriddedResult:
+        """Create a SimpleGriddedResult object for the given argument and data.
 
         Parameters
         ----------
@@ -56,18 +62,19 @@ class GriddedContext(Context):
 
         Returns
         -------
-        GriddedResult
-            The created GriddedResult instance.
+        SimpleGriddedResult
+            The created SimpleGriddedResult instance.
         """
-        return GriddedResult(self, argument, data)
+        return SimpleGriddedResult(self, argument, data)
 
-    def matching_dates(self, filtering_dates: Any, group_of_dates: Any) -> GroupOfDates:
-        """Find dates that match between filtering_dates and group_of_dates.
+    def matching_dates(self, filters: dict, group_of_dates: Any) -> GroupOfDates:
+        """Find dates that match between filters and group_of_dates.
 
         Parameters
         ----------
-        filtering_dates : Any
-            The dates to filter by.
+        filters : dict
+            A dict mapping filter keys to DatesProvider objects.
+            Gridded layouts only support ``'dates'``.
         group_of_dates : Any
             The group of dates to compare against.
 
@@ -76,7 +83,11 @@ class GriddedContext(Context):
         GroupOfDates
             A GroupOfDates object containing the intersection of the two sets.
         """
+        unsupported = set(filters) - {"dates"}
+        if unsupported:
+            raise ValueError(f"Gridded layout does not support filtering by {unsupported}. " "Use 'dates' instead.")
 
+        filtering_dates = filters["dates"]
         return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
 
     def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:

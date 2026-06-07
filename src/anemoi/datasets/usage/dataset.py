@@ -228,13 +228,14 @@ class Dataset(ABC, Sized):
             rescale = kwargs.pop("rescale")
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
-        if "statistics" in kwargs:
+        if "statistics" in kwargs or "statistics_tendencies" in kwargs:
 
             Statistics = self.usage_factory_load("Statistics")
 
-            statistics = kwargs.pop("statistics")
+            statistics = kwargs.pop("statistics", None)
+            statistics_tendencies = kwargs.pop("statistics_tendencies", None)
 
-            return Statistics(self, statistics)._subset(**kwargs).mutate()
+            return Statistics(self, statistics, statistic_tendencies=statistics_tendencies)._subset(**kwargs).mutate()
 
         if "mask" in kwargs:
             Masking = self.usage_factory_load("Masking")
@@ -323,6 +324,45 @@ class Dataset(ABC, Sized):
 
             return Tensors(self, tensors)._subset(**kwargs).mutate()
 
+        if "step" in kwargs:
+            SingleStepView = self.usage_factory_load("SingleStepView")
+
+            step = kwargs.pop("step")
+            kwargs.pop("steps", None)
+            return SingleStepView(self, self._step_to_index(step))._subset(**kwargs).mutate()
+
+        if "steps" in kwargs:
+            StepSubset = self.usage_factory_load("StepSubset")
+
+            steps = kwargs.pop("steps")
+            return StepSubset(self, self._steps_to_indices(steps))._subset(**kwargs).mutate()
+
+        # Trajectory-specific: step range selection
+        if "step_start" in kwargs or "step_end" in kwargs or "step_frequency" in kwargs:
+            StepSubset = self.usage_factory_load("StepSubset")
+
+            step_start = kwargs.pop("step_start", None)
+            step_end = kwargs.pop("step_end", None)
+            step_frequency = kwargs.pop("step_frequency", None)
+            indices = self._step_range_to_indices(step_start, step_end, step_frequency)
+            return StepSubset(self, indices)._subset(**kwargs).mutate()
+
+        # Trajectory-specific: explicit base-date filtering (no envelope logic)
+        if "base_start" in kwargs or "base_end" in kwargs:
+            Subset = self.usage_factory_load("Subset")
+
+            base_start = kwargs.pop("base_start", None)
+            base_end = kwargs.pop("base_end", None)
+            indices = self._base_dates_to_indices(base_start, base_end)
+            return Subset(self, indices, dict(base_start=base_start, base_end=base_end))._subset(**kwargs).mutate()
+
+        if "base_frequency" in kwargs:
+            Subset = self.usage_factory_load("Subset")
+
+            base_frequency = kwargs.pop("base_frequency")
+            indices = self._base_frequency_to_indices(base_frequency)
+            return Subset(self, indices, dict(base_frequency=base_frequency))._subset(**kwargs).mutate()
+
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
@@ -389,6 +429,98 @@ class Dataset(ABC, Sized):
         end = self.dates[-1] if end is None else as_last_date(end, self.dates)
 
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
+
+    def _step_to_index(self, step: int | str) -> int:
+        """Convert a step value (in hours) to a step-axis index.
+
+        Parameters
+        ----------
+        step : int or str
+            The forecast step in hours.
+
+        Returns
+        -------
+        int
+            Index into the step axis.
+        """
+        target = datetime.timedelta(hours=int(step))
+        steps = self.steps
+        for i, s in enumerate(steps):
+            if s.astype("timedelta64[s]").astype(datetime.timedelta) == target:
+                return i
+        raise ValueError(f"step={step}h not found in dataset steps: {steps}")
+
+    def _steps_to_indices(self, steps: int | str | list) -> list[int]:
+        """Convert a collection of step values (in hours) to step-axis indices.
+
+        Parameters
+        ----------
+        steps : int, str, or list
+            Step values in hours.  A single value is treated as a 1-element list.
+
+        Returns
+        -------
+        list of int
+            Indices into the step axis.
+        """
+        if not isinstance(steps, (list, tuple)):
+            steps = [steps]
+        return [self._step_to_index(s) for s in steps]
+
+    def _step_range_to_indices(
+        self,
+        step_start: int | str | None,
+        step_end: int | str | None,
+        step_frequency: int | str | None,
+    ) -> list[int]:
+        """Convert step_start/step_end/step_frequency to step-axis indices."""
+        steps = self.steps
+        td = [s.astype("timedelta64[s]").astype(datetime.timedelta) for s in steps]
+
+        lo = datetime.timedelta(hours=int(step_start)) if step_start is not None else td[0]
+        hi = datetime.timedelta(hours=int(step_end)) if step_end is not None else td[-1]
+        freq = datetime.timedelta(hours=int(step_frequency)) if step_frequency is not None else None
+
+        indices = [i for i, s in enumerate(td) if lo <= s <= hi]
+
+        if freq is not None and len(indices) > 1:
+            # Subsample: keep every freq-th step starting from the first
+            base = td[indices[0]]
+            indices = [i for i in indices if (td[i] - base) % freq == datetime.timedelta(0)]
+
+        if not indices:
+            raise ValueError(f"No steps found in range [{lo}, {hi}] with frequency {freq}. " f"Available steps: {td}")
+        return indices
+
+    def _base_dates_to_indices(
+        self,
+        base_start: None | str | datetime.datetime,
+        base_end: None | str | datetime.datetime,
+    ) -> list[int]:
+        """Convert base_start/base_end to base-date indices (direct, no envelope logic)."""
+        from anemoi.datasets.usage.misc import as_first_date
+        from anemoi.datasets.usage.misc import as_last_date
+
+        base_dates = self.base_dates
+
+        lo = base_dates[0] if base_start is None else as_first_date(base_start, base_dates)
+        hi = base_dates[-1] if base_end is None else as_last_date(base_end, base_dates)
+
+        return [i for i, d in enumerate(base_dates) if lo <= d <= hi]
+
+    def _base_frequency_to_indices(self, frequency: str) -> list[int]:
+        """Convert a base_frequency string to base-date indices."""
+        from anemoi.utils.dates import frequency_to_seconds
+
+        requested = frequency_to_seconds(frequency)
+        dataset = frequency_to_seconds(self.base_frequency)
+
+        if requested % dataset != 0:
+            raise ValueError(
+                f"Requested base_frequency {frequency} is not a multiple of the dataset base_frequency {self.base_frequency}."
+            )
+        step = requested // dataset
+        return list(range(0, len(self), step))
 
     def _select_to_columns(self, vars: str | list[str] | tuple[str] | set) -> list[int]:
         """Convert variable names to a list of column indices.
@@ -751,8 +883,11 @@ class Dataset(ABC, Sized):
         common = Dataset.__dict__.keys() & self.__class__.__dict__.keys()
         overriden = [m for m in common if Dataset.__dict__[m] is not self.__class__.__dict__[m]]
 
+        # Methods intentionally exposed as subclass hooks.
+        allowed_overrides = {"_abc_impl", "_dates_to_indices", "_frequency_to_indices"}
+
         for n in overriden:
-            if n.startswith("_") and not n.startswith("__") and n not in ("_abc_impl",):
+            if n.startswith("_") and not n.startswith("__") and n not in allowed_overrides:
                 warnings.warn(f"Private method {n} is overriden in {self.__class__.__name__}")
 
     def _repr_html_(self) -> str:
@@ -798,8 +933,7 @@ class Dataset(ABC, Sized):
         import numpy as np
 
         # Otherwise, we need to compute them
-        dates = self.dates
-        indices = set(range(len(dates)))
+        indices = set(range(len(self)))
         indices -= self.missing
 
         sample_count = min(4, len(indices))
