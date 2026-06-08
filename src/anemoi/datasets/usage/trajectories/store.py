@@ -422,12 +422,12 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Same as :meth:`TrajectoriesZarr.__getitem__` but raises on missing dates."""
         first = n[0] if isinstance(n, tuple) else n
-        if isinstance(first, int):
-            hit = first if first in self._missing else None
+        if isinstance(first, (int, np.integer)):
+            hit = int(first) if int(first) in self._missing else None
         elif isinstance(first, slice):
             hit = next(iter(set(range(*first.indices(len(self)))) & self._missing), None)
-        elif isinstance(first, (list, tuple)):
-            hit = next(iter(set(first) & self._missing), None)
+        elif isinstance(first, (list, tuple, np.ndarray)):
+            hit = next(iter({int(i) for i in first} & self._missing), None)
         else:
             raise TypeError(f"Unsupported index {n!r} ({type(first).__name__})")
 
