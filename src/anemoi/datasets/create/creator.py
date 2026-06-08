@@ -189,8 +189,7 @@ class Creator(ABC):
         # This one will be kept in the finalised dataset metadata
 
         model_dump = json.loads(model_dump)
-        model_dump = self.recipe.only_non_defaults(model_dump)
-        # model_dump = self.recipe.strip_unknown_keys(model_dump)
+        model_dump = self.recipe.strip_unknown_keys(model_dump)
         if self.recipe.output.sanitise:
             recipe = sanitise(model_dump)
         else:
