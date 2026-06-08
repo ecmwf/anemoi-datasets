@@ -128,10 +128,11 @@ class StartEndDates(DatesProvider):
 
     @cached_property
     def values(self) -> list[datetime.datetime]:
+        missing_set = set(self.missing)
         dates = []
         date = self.start
         while date <= self.end:
-            if date not in self.missing:
+            if date not in missing_set:
                 dates.append(date)
             date += self.frequency
         return dates
