@@ -127,6 +127,7 @@ class Statistics(BaseModel):
         """
         base_dates = np.asarray(base_dates)
         steps = np.asarray(steps)
+        assert np.all(np.diff(steps) >= 0), f"steps must be sorted ascending, got {steps}"
         valid_times = np.unique((base_dates[:, None] + steps[None, :]).ravel())
 
         start, end = self.statistics_dates(list(valid_times))
@@ -181,6 +182,7 @@ class TrajectoryStatisticsFilter:
     """
 
     def __init__(self, statistics_start_date, statistics_end_date, step_start, step_end):
+        assert step_start <= step_end, f"step_start must be <= step_end, got {step_start} > {step_end}"
         self.statistics_start_date = statistics_start_date
         self.statistics_end_date = statistics_end_date
         self.step_start = step_start
