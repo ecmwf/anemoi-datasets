@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -264,6 +265,28 @@ class TrajectoriesZarr(ZarrStore):
     def resolution(self) -> str | None:
         """Return the grid resolution string."""
         return self.store.attrs.get("resolution")
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Return trajectory-specific metadata.
+
+        Overrides :meth:`Dataset.metadata_specific` to avoid calling
+        ``self.frequency``, which raises for trajectory datasets because
+        they have two frequencies (``base_frequency`` and ``step_frequency``).
+        """
+        action = self.__class__.__name__.lower()
+        step_freq = self.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(step_freq) if step_freq is not None else None,
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            **kwargs,
+        )
 
     def dataset_metadata(self) -> dict[str, Any]:
         """Return dataset metadata using trajectory-compatible properties."""
