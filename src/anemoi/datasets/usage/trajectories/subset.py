@@ -111,7 +111,7 @@ class StepSubset(Forwards):
             variables=self.variables,
             shape=self.shape,
             base_frequency=frequency_to_string(self.base_frequency),
-            step_frequency=frequency_to_string(step_freq) if step_freq is not None else None,
+            step_frequency=frequency_to_string(step_freq),
             start_date=str(self.start_date),
             end_date=str(self.end_date),
             base_start_date=str(self.base_start_date),
