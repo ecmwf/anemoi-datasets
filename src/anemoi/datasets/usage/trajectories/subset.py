@@ -17,6 +17,7 @@ from typing import Any
 from typing import Union
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -101,6 +102,42 @@ class StepSubset(Forwards):
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"step_indices": self.step_indices}
 
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        action = self.__class__.__name__.lower()
+        step_freq = self.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(step_freq) if step_freq is not None else None,
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            forward=self.forward.metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
+            **kwargs,
+        )
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        return dict(
+            specific=self.metadata_specific(),
+            base_frequency=self.base_frequency,
+            step_frequency=self.step_frequency,
+            variables=self.variables,
+            variables_metadata=self.variables_metadata,
+            shape=self.shape,
+            dtype=str(self.dtype),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            name=self.name,
+        )
+
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
 
@@ -141,6 +178,38 @@ class SingleStepView(Forwards):
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"step_index": self.step_index}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        action = self.__class__.__name__.lower()
+        step_freq = self.forward.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.forward.base_frequency),
+            step_frequency=frequency_to_string(step_freq) if step_freq is not None else None,
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            forward=self.forward.metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
+            **kwargs,
+        )
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        return dict(
+            specific=self.metadata_specific(),
+            base_frequency=self.forward.base_frequency,
+            step_frequency=self.forward.step_frequency,
+            variables=self.variables,
+            variables_metadata=self.variables_metadata,
+            shape=self.shape,
+            dtype=str(self.dtype),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            name=self.name,
+        )
 
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
@@ -295,3 +364,39 @@ class Subset(Forwards):
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"indices": self.indices, "reason": self.reason}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        action = self.__class__.__name__.lower()
+        step_freq = self.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(step_freq) if step_freq is not None else None,
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            forward=self.forward.metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
+            **kwargs,
+        )
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        return dict(
+            specific=self.metadata_specific(),
+            base_frequency=self.base_frequency,
+            step_frequency=self.step_frequency,
+            variables=self.variables,
+            variables_metadata=self.variables_metadata,
+            shape=self.shape,
+            dtype=str(self.dtype),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            name=self.name,
+        )
