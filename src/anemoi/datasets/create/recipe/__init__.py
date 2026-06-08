@@ -149,7 +149,7 @@ class Recipe(BaseModel):
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
         defaults = Recipe(input={"empty": {}}, dates={"values": []}).model_dump()
-        result = {key: data[key] for key in defaults.keys()}
+        result = {key: data[key] for key in defaults.keys() if key in data}
         # Trajectory-only keys are omitted when unused, so gridded/tabular
         # recipes keep the same metadata shape they had before these fields
         # existed.
