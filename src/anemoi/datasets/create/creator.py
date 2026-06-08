@@ -33,7 +33,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.15"
+VERSION = "0.16"
 
 LOG = logging.getLogger(__name__)
 
