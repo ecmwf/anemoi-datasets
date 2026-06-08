@@ -299,6 +299,37 @@ class TestTrajectoriesZarr:
         item = self.ds[0:2]
         assert item.shape == (2, 3, 1, 5, 10)
 
+    # ------------------------------------------------------------------
+    # metadata / metadata_specific — regression for AttributeError on
+    # .frequency (trajectories have two frequencies, not one).
+    # ------------------------------------------------------------------
+
+    def test_frequency_raises(self):
+        """Accessing .frequency must raise AttributeError (by design)."""
+        with pytest.raises(AttributeError, match="two frequencies"):
+            _ = self.ds.frequency
+
+    def test_metadata_specific_does_not_call_frequency(self):
+        """metadata_specific() must succeed and not touch .frequency."""
+        md = self.ds.metadata_specific()
+        assert "base_frequency" in md
+        assert "step_frequency" in md
+        assert "frequency" not in md  # the broken single-frequency key must be absent
+        assert md["action"] == "trajectorieszarr"
+
+    def test_dataset_metadata_does_not_call_frequency(self):
+        """dataset_metadata() must succeed without raising AttributeError."""
+        md = self.ds.dataset_metadata()
+        assert "base_frequency" in md
+        assert "step_frequency" in md
+        assert "specific" in md
+
+    def test_metadata_does_not_call_frequency(self):
+        """The top-level metadata() call must succeed end-to-end."""
+        md = self.ds.metadata()
+        assert "base_frequency" in md
+        assert "step_frequency" in md
+
 
 # ---------------------------------------------------------------------------
 # StepSubset
