@@ -406,7 +406,7 @@ class Version:
         try:
             self.dataset.statistics
             return True
-        except AttributeError:
+        except KeyError:
             return False
 
     @property
@@ -462,9 +462,9 @@ class Version:
             )
             return
 
-        build_flags = self.build_flags or np.array([], dtype=bool)
+        build_flags = np.array([], dtype=bool) if self.build_flags is None else self.build_flags
 
-        build_lengths = self.build_lengths or np.array([], dtype=bool)
+        build_lengths = np.array([], dtype=bool) if self.build_lengths is None else self.build_lengths
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
