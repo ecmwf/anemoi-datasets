@@ -41,13 +41,13 @@ class TrajectoriesZarr(ZarrStore):
 
     Parameters
     ----------
-    group : zarr.hierarchy.Group
+    group : zarr.Group
         The opened zarr group.
     path : str, optional
         Human-readable path label for repr and error messages.
     """
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
     def mutate(self) -> Dataset:
@@ -400,7 +400,7 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     :class:`TrajectoriesZarr`.
     """
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
         missing = self.store.attrs.get("missing_dates", [])
