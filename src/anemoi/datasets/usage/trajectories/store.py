@@ -310,23 +310,33 @@ class TrajectoriesZarr(ZarrStore):
         """Return per-variable metadata dict."""
         return self.store.attrs.get("variables_metadata", {})
 
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+        """Return the statistical tendencies of the dataset.
+
+        For trajectories, tendencies are computed along the step axis at
+        creation time, so the default ``delta`` is the step frequency (the
+        base-class default, ``self.frequency``, raises for trajectories).
+        """
+        if delta is None:
+            delta = self.step_frequency
+            if delta is None:
+                raise ValueError(
+                    "Cannot use a default tendencies delta: the steps of this dataset "
+                    "are not uniformly spaced. Pass 'delta' explicitly."
+                )
+        return super().statistics_tendencies(delta)
+
     # ------------------------------------------------------------------
     # Date filtering
     # ------------------------------------------------------------------
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
-        """Convert a frequency string to base-date indices."""
-        from anemoi.utils.dates import frequency_to_seconds
-
-        requested = frequency_to_seconds(frequency)
-        dataset = frequency_to_seconds(self.base_frequency)
-
-        if requested % dataset != 0:
-            raise ValueError(
-                f"Requested frequency {frequency} is not a multiple of the base-date frequency {self.base_frequency}."
-            )
-        step = requested // dataset
-        return range(0, len(self), step)
+        """The ``frequency`` option is not supported for trajectories."""
+        raise ValueError(
+            "'frequency' is not supported for trajectories datasets. "
+            "Use 'base_frequency' for the base-date interval or "
+            "'step_frequency' for the step interval."
+        )
 
     def _dates_to_indices(
         self,
