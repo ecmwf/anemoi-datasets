@@ -34,6 +34,26 @@ from . import Command
 LOG = logging.getLogger(__name__)
 
 
+def _recipe_drift_keys(a: Any, b: Any, prefix: str = "") -> list[str]:
+    """Return dotted paths where ``a`` and ``b`` differ.
+
+    Used to compare a recipe rebuilt with the current schema defaults against the
+    stored full recipe, to detect fields whose default has changed.
+    """
+    if isinstance(a, dict) and isinstance(b, dict):
+        keys: list[str] = []
+        for k in set(a) | set(b):
+            sub = f"{prefix}.{k}" if prefix else str(k)
+            if k not in a or k not in b:
+                keys.append(sub)
+            else:
+                keys.extend(_recipe_drift_keys(a[k], b[k], sub))
+        return keys
+    if a != b:
+        return [prefix or "<root>"]
+    return []
+
+
 def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
     """Compute the total size and number of files in a directory.
 
@@ -553,12 +573,42 @@ class Version:
         import yaml
 
         z = open_zarr_store(path)
+
+        self._warn_recipe_default_drift(z)
+
         for name in ("_create_yaml_config", "_recipe", "recipe"):
             if name in z.attrs:
                 print(yaml.safe_dump(z.attrs[name], sort_keys=False))
                 return
 
         print("No recipe found in the dataset.")
+
+    def _warn_recipe_default_drift(self, z: Any) -> None:
+        """Warn if the schema defaults changed since the dataset was built.
+
+        The slimmed ``recipe`` attribute omits every field equal to its schema
+        default at build time, while ``recipe_expanded`` keeps them. If a default has
+        changed since, reconstructing the recipe from the slim ``recipe`` would
+        now yield different values than ``recipe_expanded``.
+        """
+        if "recipe" not in z.attrs or "recipe_expanded" not in z.attrs:
+            return
+
+        try:
+            from anemoi.datasets.create.recipe import Recipe
+
+            rebuilt = Recipe(**z.attrs["recipe"]).model_dump(mode="json")
+        except Exception as e:
+            LOG.warning("Could not expand 'recipe' to check it against 'recipe_expanded': %s", e)
+            return
+
+        drift = sorted(_recipe_drift_keys(rebuilt, z.attrs["recipe_expanded"]))
+        if drift:
+            LOG.warning(
+                "Schema defaults changed since this dataset was built; the slimmed "
+                "'recipe' now differs from 'recipe_expanded' at: %s",
+                ", ".join(drift),
+            )
 
 
 class NoVersion(Version):
