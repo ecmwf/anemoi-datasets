@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -149,7 +149,7 @@ class Recipe(BaseModel):
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
         defaults = Recipe(input={"empty": {}}, dates={"values": []}).model_dump()
-        result = {key: data[key] for key in defaults.keys()}
+        result = {key: data[key] for key in defaults.keys() if key in data}
         # Trajectory-only keys are omitted when unused, so gridded/tabular
         # recipes keep the same metadata shape they had before these fields
         # existed.
