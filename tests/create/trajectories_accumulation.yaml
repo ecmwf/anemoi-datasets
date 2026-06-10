@@ -68,38 +68,38 @@ input:
         - rename:
             param:
               tp: tp_accum_6h
-    #- pipe:
-    #    - accumulate:
-    #        period: 24h
-    #        accumulation: from-zero
-    #        source:
-    #          mars:
-    #            type: fc
-    #            expver: "0001"
-    #            class: od
-    #            grid: 20./20.
-    #            param: [ tp ]
-    #            levtype: sfc
-    #            stream: oper
-    #    - rename:
-    #        param:
-    #          tp: tp_accum_24h
-    #- pipe:
-    #    - accumulate:
-    #        period: 48h
-    #        accumulation: from-zero
-    #        source:
-    #          mars:
-    #            type: fc
-    #            expver: "0001"
-    #            class: od
-    #            grid: 20./20.
-    #            param: [ tp ]
-    #            levtype: sfc
-    #            stream: oper
-    #    - rename:
-    #        param:
-    #          tp: tp_accum_48h
+    # - pipe:
+    #     - accumulate:
+    #         period: 24h
+    #         accumulation: from-zero
+    #         source:
+    #           mars:
+    #             type: fc
+    #             expver: "0001"
+    #             class: od
+    #             grid: 20./20.
+    #             param: [ tp ]
+    #             levtype: sfc
+    #             stream: oper
+    #     - rename:
+    #         param:
+    #           tp: tp_accum_24h
+    # - pipe:
+    #     - accumulate:
+    #         period: 48h
+    #         accumulation: from-zero
+    #         source:
+    #           mars:
+    #             type: fc
+    #             expver: "0001"
+    #             class: od
+    #             grid: 20./20.
+    #             param: [ tp ]
+    #             levtype: sfc
+    #             stream: oper
+    #     - rename:
+    #         param:
+    #           tp: tp_accum_48h
 
 output:
   layout: trajectories
