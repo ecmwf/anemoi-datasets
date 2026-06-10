@@ -90,10 +90,8 @@ class TrajectoryGriddedCreator(GriddedCreator):
         super().collect_metadata(metadata)
         metadata["layout"] = "trajectories"
         metadata["steps"] = self.recipe.steps.model_dump(mode="json")
-        # ``ensemble_dimension`` keeps the gridded semantics (member count,
-        # set by ``super().collect_metadata``).  The step axis position is
-        # trajectory-specific metadata.
-        metadata["step_dimension"] = -2
+
+        metadata["dimensions"] = ["base_dates", "variables", "ensembles", "steps", "values"]
 
         # Base dates are trajectory-specific metadata.
         base_dates = self._metadata_dates()

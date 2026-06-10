@@ -71,7 +71,7 @@ class GriddedCreator(Creator):
         # ``order_by`` without exposing it in the recipe schema.
         metadata["order_by"] = self.context().order_by
 
-        metadata["ensemble_dimension"] = len(self.minimal_input.ensembles)
+        metadata["dimensions"] = ["dates", "variables", "ensembles", "values"]
 
         metadata["resolution"] = self.minimal_input.resolution
 
