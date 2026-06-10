@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -12,7 +12,6 @@
 Build side:
 - ``weekday`` / ``date`` recipe aliases on ``base_dates``.
 - Explicit ``missing:`` list filtering through ``TrajectoryGroups``.
-- ``TrajectoryFilter`` unit behaviour.
 
 Read side:
 - ``TrajectoriesZarrWithMissingDates`` raises on missing indices.
@@ -26,35 +25,6 @@ import numpy as np
 import pytest
 from test_trajectories import make_trajectories_zarr
 from test_trajectories import open_trajectories_zarr
-
-# ---------------------------------------------------------------------------
-# Build side: TrajectoryFilter
-# ---------------------------------------------------------------------------
-
-
-class TestTrajectoryFilter:
-
-    def test_filters_pairs_by_basetime(self):
-        from anemoi.datasets.dates.groups import TrajectoryFilter
-
-        bt1 = datetime.datetime(2024, 1, 1)
-        bt2 = datetime.datetime(2024, 1, 2)
-        st = datetime.timedelta(hours=6)
-
-        f = TrajectoryFilter([bt2])
-        kept = f([(bt1, st), (bt2, st), (bt1, st * 2)])
-        assert kept == [(bt1, st), (bt1, st * 2)]
-
-    def test_empty_missing_keeps_all(self):
-        from anemoi.datasets.dates.groups import TrajectoryFilter
-
-        bt = datetime.datetime(2024, 1, 1)
-        st = datetime.timedelta(hours=6)
-
-        f = TrajectoryFilter([])
-        pairs = [(bt, st)]
-        assert f(pairs) == pairs
-
 
 # ---------------------------------------------------------------------------
 # Build side: recipe aliases
@@ -156,7 +126,7 @@ class TestDatesAliases:
 
 class TestTrajectoryGroupsMissing:
 
-    def _make(self, missing=None, **base_dates_kwargs):
+    def _make(self, missing=None, group_by=None, **base_dates_kwargs):
         from anemoi.datasets.dates.groups import TrajectoryGroups
 
         base_dates = {
@@ -170,7 +140,7 @@ class TestTrajectoryGroupsMissing:
 
         return TrajectoryGroups(
             steps={"start": "6h", "end": "12h", "frequency": "6h"},
-            group_by=None,
+            group_by=group_by,
             base_dates=base_dates,
         )
 
@@ -200,6 +170,26 @@ class TestTrajectoryGroupsMissing:
         basetimes, _ = groups.provider.factorise()
         assert datetime.datetime(2024, 1, 2) in basetimes
         assert len(basetimes) == 4
+
+    def test_group_by_counts_base_dates(self):
+        """``group_by`` counts base dates (whole trajectories), not pairs."""
+        groups = self._make(group_by=1)
+        all_groups = list(groups)
+        assert len(all_groups) == 4  # one group per base date
+        assert len(groups) == 4
+        for group in all_groups:
+            # Each group carries every step of a single trajectory.
+            assert len(group.items) == 2
+            assert len({bt for _, bt in group.items}) == 1
+
+    def test_group_by_with_missing_skips_empty_groups(self):
+        groups = self._make(missing=["2024-01-02"], group_by=1)
+        all_groups = list(groups)
+        assert len(all_groups) == 3
+        assert len(groups) == 3
+        for group in all_groups:
+            for _, basetime in group.items:
+                assert basetime != datetime.datetime(2024, 1, 2)
 
 
 # ---------------------------------------------------------------------------

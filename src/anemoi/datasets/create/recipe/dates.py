@@ -170,7 +170,7 @@ class BaseDates(StartEndDates):
 
     Unlike :class:`StartEndDates`, ``values`` retains the slots for ``missing``
     base dates: the on-disk trajectory array must keep an entry for every base
-    date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryFilter`
+    date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryGroups`
     removes the missing ones only from the iteration that drives data loading.
     """
 
