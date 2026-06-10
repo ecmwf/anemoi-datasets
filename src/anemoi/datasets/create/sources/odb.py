@@ -18,6 +18,7 @@ import codc as odc
 import numpy as np
 import pandas
 
+from anemoi.utils.window import Window
 from ..source import Source
 from . import source_registry
 
@@ -39,6 +40,7 @@ class OdbSource(Source):
         flavour: dict = {},
         pivot_columns: list = [],
         pivot_values: list = [],
+        window: str | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise the ODB input.
@@ -69,6 +71,12 @@ class OdbSource(Source):
             List of column names - values in these columns will
             be spread across different values of the columns. For instance,
             "observed_value" and "quality_control_value". Defaults to [].
+        window : str, optional
+            The observations window to use around the input dates.
+            For instance "[-3h,3h)" to use observations from 3 hours before
+            to 3 hours after the input dates (excluding the final time).
+            Defaults to None, which means that the window will be determined
+            by the start and end datetimes of the full input dates.
         kwargs : dict, optional
             Additional keyword arguments.
 
@@ -104,6 +112,7 @@ class OdbSource(Source):
         self.flavour.update(flavour)
         self.pivot_columns = pivot_columns
         self.pivot_values = pivot_values
+        self.window = Window(window or f"[-3h,3h)")
 
     def execute(self, dates: Any) -> pandas.DataFrame:
         """Execute the ODB source.
