@@ -18,16 +18,27 @@ from typing import Any
 from typing import Union
 
 from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from pydantic import BaseModel
 from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Discriminator
 from pydantic import Field
+from pydantic import PlainSerializer
 from pydantic import Tag
 from pydantic import model_validator
 
 LOG = logging.getLogger(__name__)
+
+# A datetime.timedelta that accepts frequency strings (e.g. "6h") on input
+# and serialises back to the same short form (e.g. "6h") rather than pydantic's
+# default ISO 8601 duration (e.g. "PT6H").
+Frequency = Annotated[
+    datetime.timedelta,
+    BeforeValidator(frequency_to_timedelta),
+    PlainSerializer(frequency_to_string, return_type=str, when_used="json"),
+]
 
 
 def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
@@ -102,11 +113,11 @@ class StartEndDates(DatesProvider):
     class MissingRange(BaseModel):
         start: datetime.datetime
         end: datetime.datetime
-        frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] | None = None
+        frequency: Frequency | None = None
 
     start: datetime.datetime
     end: datetime.datetime
-    frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
+    frequency: Frequency = frequency_to_timedelta("1h")
     missing: list[datetime.datetime | str | MissingRange] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -128,10 +139,11 @@ class StartEndDates(DatesProvider):
 
     @cached_property
     def values(self) -> list[datetime.datetime]:
+        missing_set = set(self.missing)
         dates = []
         date = self.start
         while date <= self.end:
-            if date not in self.missing:
+            if date not in missing_set:
                 dates.append(date)
             date += self.frequency
         return dates
@@ -259,7 +271,7 @@ class HindcastsDates(DatesProvider):
     hindcasts: bool = True
     start: datetime.datetime
     end: datetime.datetime
-    frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
+    frequency: Frequency = frequency_to_timedelta("1h")
     steps: list[int] = Field(default_factory=lambda: [0])
     years: int = 20
 
