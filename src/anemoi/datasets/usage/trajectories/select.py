@@ -8,86 +8,58 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
 import logging
 from typing import Any
 
 from anemoi.utils.dates import frequency_to_string
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.debug import debug_indexing
-
-from ..common.select import SelectBase
+from ..gridded.select import Select as GriddedSelect
 
 LOG = logging.getLogger(__name__)
 
 
-class Select(SelectBase):
+class Select(GriddedSelect):
     """Select a subset of variables from a trajectories dataset.
 
     The variable axis is at position 1 in the 5-D layout
-    ``(dates, variables, ensembles, steps, cells)``.
+    ``(dates, variables, ensembles, steps, cells)`` — the same position as
+    in the gridded 4-D layout, and the gridded indexing machinery
+    (``index_to_slices`` etc.) is dimension-agnostic, so the whole data
+    path is inherited from the gridded ``Select``.  Only the metadata
+    methods are overridden, because trajectory datasets have two
+    frequencies and no single ``frequency`` property.
     """
 
-    @debug_indexing
-    def __getitem__(self, n: FullIndex) -> NDArray[Any]:
-        """Get data with variable subsetting applied.
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+        """Return the statistical tendencies, subsetted to the selected variables.
 
         Parameters
         ----------
-        n : FullIndex
-            Index into the date axis (int, slice, or tuple).
+        delta : datetime.timedelta, optional
+            The time delta for the tendencies.  Defaults to the step
+            frequency (the axis along which trajectory tendencies are
+            computed at creation time).
 
         Returns
         -------
-        NDArray[Any]
-            The data with only the selected variables.
+        dict of str to NDArray
+            The statistical tendencies for the selected variables.
         """
-        if isinstance(n, tuple):
-            return self._get_tuple(n)
-
-        row = self.dataset[n]
-        if isinstance(n, slice):
-            # (dates, variables, ensembles, steps, cells)
-            return row[:, self.indices]
-
-        # scalar n → (variables, ensembles, steps, cells)
-        return row[self.indices]
-
-    def _get_tuple(self, index: tuple) -> NDArray[Any]:
-        """Handle tuple indexing with variable subsetting."""
-        # Replace variable axis (position 1) with slice(None), fetch all
-        # variables, then subset.
-        index = list(index)
-        if len(index) > 1:
-            previous = index[1]
-            index[1] = slice(None)
-        else:
-            previous = slice(None)
-
-        result = self.dataset[tuple(index)]
-
-        # Apply variable selection on axis 1
-        # After dataset[tuple(index)], the variable axis may or may not
-        # still be at position 1 depending on whether index[0] was scalar.
-        if isinstance(index[0], (int,)):
-            # scalar date → result is (variables, ensembles, steps, cells)
-            result = result[self.indices]
-        else:
-            # slice/array date → result is (dates, variables, ensembles, steps, cells)
-            result = result[:, self.indices]
-
-        # Re-apply the original variable sub-index if it wasn't slice(None)
-        if previous != slice(None) and not (isinstance(previous, slice) and previous == slice(None)):
-            if isinstance(index[0], (int,)):
-                result = result[previous]
-            else:
-                result = result[:, previous]
-
-        return result
+        if delta is None:
+            delta = self.step_frequency
+            if delta is None:
+                raise ValueError("statistics_tendencies: steps are not uniformly spaced, pass `delta` explicitly.")
+        return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
-        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        """Return this wrapper's node of the recursive construction tree.
+
+        Override of the shared implementation only to avoid resolving
+        ``self.frequency`` (trajectory datasets have two frequencies:
+        ``base_frequency`` and ``step_frequency``).
+        """
         action = self.__class__.__name__.lower()
         step_freq = self.step_frequency
         return dict(
@@ -106,7 +78,12 @@ class Select(SelectBase):
         )
 
     def dataset_metadata(self) -> dict[str, Any]:
-        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        """Return the flat summary of the resulting dataset.
+
+        Override of the shared implementation only to avoid resolving
+        ``self.frequency`` (trajectory datasets have two frequencies:
+        ``base_frequency`` and ``step_frequency``).
+        """
         return dict(
             specific=self.metadata_specific(),
             base_frequency=self.base_frequency,
