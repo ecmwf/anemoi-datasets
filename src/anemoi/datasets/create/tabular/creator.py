@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -37,9 +37,23 @@ class TabularCreator(Creator):
         path : str
             The path to the dataset to be checked.
         """
-        pass
+        from pathlib import Path
+
+        from ..naming import check_dataset_name
+
+        name = Path(path).stem
+
+        for message in check_dataset_name(
+            name,
+            resolution=getattr(self.minimal_input, "resolution", None),  # optional for tabular
+            start_date=self.groups.first_date(),
+            end_date=self.groups.last_date(),
+            layout="tabular",
+        ):
+            LOG.warning("Dataset name warning: %s", message)
 
     def collect_metadata(self, metadata: dict) -> None:
+        super().collect_metadata(metadata)
         # See if that can be combined with `gridded`
 
         variables = self.minimal_input.variables

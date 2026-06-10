@@ -23,7 +23,10 @@ licence: CC-BY-4.0
 
 attribution: ECMWF
 
-# The range of dates covered by the dataset (compulsory).
+# The range of dates covered by the dataset (compulsory for the
+# gridded and tabular layouts; mutually exclusive with `base_dates:`
+# and `steps:` used by the trajectories layout — see
+# docs/layouts/trajectories.rst).
 # The various source are called with a list of dates build from start, end and frequency.
 # How the dates are used by the sources depends on the source (gridded or tabular).
 # The frequency can be given in human friendly format (e.g. 6h, 1d) or in ISO 8601 format (e.g. PT6H, P1D).
@@ -33,6 +36,20 @@ dates:
   start: 2000-01-01 00:00:00
   end: 2000-01-10 18:00:00
   frequency: 6h
+
+# For the trajectories layout only, `dates:` is replaced by `base_dates:`
+# (forecast initialisation times) and `steps:` (forecast lead times).
+# The resulting samples are the Cartesian product base_dates x steps.
+#
+# base_dates:
+#   start: 2000-01-01 00:00:00
+#   end:   2000-01-10 00:00:00
+#   frequency: 12h
+#
+# steps:
+#   start: 6
+#   end: 30
+#   frequency: 6h
 
 # This part is compulsory and describes how to build the dataset using sources and filters
 
@@ -56,8 +73,14 @@ data_sources:
 # List of options to control the output of the dataset (optional)
 
 output:
-  layout: gridded # The layout of the dataset (e.g. gridded, tabular, etc.)
+  layout: gridded # The layout of the dataset: `gridded`, `tabular` or `trajectories`.
   dtype: float32 # The data type of the output variables (e.g. float32, int16, etc.)
+  # chunking: {dates: 1, ensembles: 1}         # for layout: gridded
+  # chunking: {base_dates: 1, steps: 1, ensembles: 1}  # for layout: trajectories
+  #
+  # Note: `output.order_by` is deprecated. The cube ordering is
+  # hard-coded per layout and no longer read from the recipe.
+  # Note: `output.flatten_grid` has been removed; flattening is always on.
 
 # List of options to control the building process (optional)
 
