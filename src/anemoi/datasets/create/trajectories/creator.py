@@ -320,10 +320,6 @@ class TrajectoryGriddedCreator(GriddedCreator):
         multiples of the step spacing are skipped with a warning, mirroring
         the gridded behaviour.
         """
-        additions = self.recipe.build.additions
-        if not additions:
-            return {}
-
         tendencies_config = self.recipe.statistics.tendencies
         if tendencies_config is True:
             tendencies_list = [1, 3, 6, 12, 24]

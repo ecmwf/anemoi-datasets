@@ -103,3 +103,6 @@ input:
 
 output:
   layout: trajectories
+
+statistics:
+  tendencies: true
