@@ -307,6 +307,7 @@ class Creator(ABC):
         self._cleanup_temporary_directories()
         dataset.delete_metadata("_recipe")
         dataset.touch()
+        dataset.remove_lock_file()
 
     def _cleanup_temporary_directories(self) -> None:
         """Clean up temporary directories used during dataset creation."""
