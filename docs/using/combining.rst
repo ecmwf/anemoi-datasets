@@ -235,9 +235,12 @@ The first call computes the masks and saves them to the given file.
 Subsequent calls with the same `cache` path will load the pre-computed
 masks instead of recomputing them. The cache file must end with `.npz`.
 On load, the cutout parameters (`axis`, `cropping_distance`,
-`neighbours`, `min_distance_km`, `max_distance_km`) and the dataset
-specifications are compared against the values stored in the file; a
-mismatch raises an error so stale caches cannot be used silently.
+`neighbours`, `min_distance_km`, `max_distance_km`) and a fingerprint of
+each dataset's coordinate (latitude/longitude) arrays are compared
+against the values stored in the file; a mismatch raises an error so
+stale caches cannot be used silently. Fingerprinting the coordinates
+rather than the dataset paths means a change to the grid — for example
+from thinning or masking — is detected even when the path is unchanged.
 
 `cache=False` (the default) recomputes the masks without writing
 anything to disk. `cache=True` is reserved for a future default cache

@@ -1608,14 +1608,23 @@ def test_trim_edge_zeros() -> None:
 
 def _make_cutout(n_lams=1, cropping_distance=2.0, neighbours=5, min_distance_km=None, max_distance_km=None):
     """Build a Cutout instance with known masks, bypassing __init__."""
+
+    def _ds(seed):
+        # Each dataset gets distinct coordinate arrays; the cache is keyed on
+        # these, not on any path.
+        m = MagicMock()
+        m.latitudes = np.array([seed + 0.0, seed + 1.0, seed + 2.0, seed + 3.0])
+        m.longitudes = np.array([seed + 10.0, seed + 11.0, seed + 12.0, seed + 13.0])
+        return m
+
     obj = object.__new__(Cutout)
     obj.axis = 3
     obj.cropping_distance = cropping_distance
     obj.neighbours = neighbours
     obj.min_distance_km = min_distance_km
     obj.max_distance_km = max_distance_km
-    obj.lams = [MagicMock(path=f"/path/to/lam_{i}.zarr") for i in range(n_lams)]
-    obj.globe = MagicMock(path="/path/to/global.zarr")
+    obj.lams = [_ds(i) for i in range(n_lams)]
+    obj.globe = _ds(100)
     obj.masks = [np.array([True, False, True, True]) for _ in range(n_lams)]
     obj.global_mask = np.array([False, True, True, False])
     return obj
@@ -1655,7 +1664,10 @@ def test_cutout_masks_dataset_mismatch_raises(tmp_path):
     Cutout._save_cutout_masks(original, masks_path)
 
     different = _make_cutout()
-    different.globe = MagicMock(path="/path/to/different_global.zarr")
+    # Same paths would not catch this: only the global dataset's grid changed
+    # (as a thinning or masking wrapper would do).
+    different.globe.latitudes = np.array([0.0, 0.0, 0.0, 0.0])
+    different.globe.longitudes = np.array([0.0, 0.0, 0.0, 0.0])
     with pytest.raises(ValueError, match="Mismatch between user-provided masks"):
         Cutout._load_cutout_masks(different, masks_path)
 
@@ -1674,7 +1686,11 @@ def test_cutout_masks_file_has_correct_keys(tmp_path):
     metadata = _json.loads(str(data["metadata"]))
     assert metadata["version"] == _anemoi_datasets_version
     assert metadata["type"] == "cutout_mask"
-    assert metadata["params"]["datasets"] == ["/path/to/lam_0.zarr", "/path/to/global.zarr"]
+    expected_datasets = [
+        Cutout._hash_coordinates(obj.lams[0].latitudes, obj.lams[0].longitudes),
+        Cutout._hash_coordinates(obj.globe.latitudes, obj.globe.longitudes),
+    ]
+    assert metadata["params"]["datasets"] == expected_datasets
     assert "params" in metadata
 
 
@@ -1707,6 +1723,22 @@ def test_cutout_masks_version_mismatch_warns(tmp_path, caplog):
     with caplog.at_level(logging.WARNING, logger="anemoi.datasets.usage.gridded.grids"):
         Cutout._load_cutout_masks(_make_cutout(n_lams=1), masks_path)
     assert any("0.0.0-bogus" in r.message for r in caplog.records)
+
+
+def test_cutout_masks_save_is_atomic_on_error(tmp_path, monkeypatch):
+    masks_path = tmp_path / "masks.npz"
+    obj = _make_cutout()
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(np, "savez", _boom)
+    with pytest.raises(RuntimeError, match="boom"):
+        Cutout._save_cutout_masks(obj, masks_path)
+
+    # A failed save leaves neither a corrupt cache file nor a leftover temp file.
+    assert not masks_path.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 if __name__ == "__main__":

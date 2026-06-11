@@ -8,8 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
+import hashlib
 import json
 import logging
+import os
+import tempfile
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -386,21 +389,34 @@ class Cutout(GridsBase):
             self._initialize_masks()
             self._save_cutout_masks(cache_path)
 
+    @staticmethod
+    def _hash_coordinates(latitudes: NDArray, longitudes: NDArray) -> str:
+        """Return a stable hash fingerprinting a dataset's coordinate arrays.
+
+        The cache is keyed on the actual latitude/longitude arrays the masks were
+        computed from, not on dataset paths. A path does not identify the grid: a
+        wrapper such as thinning or masking changes the coordinates while leaving
+        the path unchanged, combined datasets have no single path, and some
+        datasets (e.g. synthetic) have no path at all.
+        """
+        h = hashlib.sha256()
+        for array in (latitudes, longitudes):
+            array = np.ascontiguousarray(array)
+            h.update(str(array.dtype).encode())
+            h.update(str(array.shape).encode())
+            h.update(array.tobytes())
+        return h.hexdigest()
+
     def _cutout_masks_params(self) -> dict[str, Any]:
         """Return the cutout parameters that influence mask generation."""
         datasets = self.lams + [self.globe]
-        datasets_paths = []
-        for ds in datasets:
-            while not hasattr(ds, "path"):
-                ds = getattr(ds, "forward", ds)
-            datasets_paths.append(ds.path)
         return {
             "axis": self.axis,
             "cropping_distance": self.cropping_distance,
             "neighbours": self.neighbours,
             "min_distance_km": self.min_distance_km,
             "max_distance_km": self.max_distance_km,
-            "datasets": datasets_paths,
+            "datasets": [self._hash_coordinates(ds.latitudes, ds.longitudes) for ds in datasets],
         }
 
     def _cutout_masks_metadata(self) -> dict[str, Any]:
@@ -412,11 +428,25 @@ class Cutout(GridsBase):
         }
 
     def _save_cutout_masks(self, path: str | Path) -> None:
-        """Save the masks to a .npz file."""
+        """Save the masks to a .npz file.
+
+        The file is written to a temporary file in the same directory and then
+        atomically moved into place, so an interrupted save never leaves a
+        corrupt cache file behind.
+        """
+        path = Path(path)
         masks = {f"lam_{i}": self.masks[i] for i in range(len(self.lams))}
         masks["global"] = self.global_mask
         # we can avoid pickling with json.dumps
-        np.savez(path, **masks, metadata=np.array(json.dumps(self._cutout_masks_metadata())))
+        metadata = np.array(json.dumps(self._cutout_masks_metadata()))
+        fd, tmp_name = tempfile.mkstemp(suffix=".npz", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                np.savez(f, **masks, metadata=metadata)
+            os.replace(tmp_name, path)
+        except BaseException:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
 
     def _load_cutout_masks(self, path: str | Path) -> None:
         """Load the masks from a .npz file."""
