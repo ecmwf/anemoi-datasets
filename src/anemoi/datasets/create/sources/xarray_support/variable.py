@@ -77,6 +77,11 @@ class Variable:
         self._metadata = metadata.copy()
         self._metadata.update({"variable": variable.name, "param": variable.name})
 
+        # Carry units from the xarray variable attributes if available
+        units = variable.attrs.get("units")
+        if units is not None:
+            self._metadata["units"] = units
+
         self.time = time
 
         self.shape = tuple(
