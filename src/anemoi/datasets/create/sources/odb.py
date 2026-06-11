@@ -11,7 +11,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+import datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +43,7 @@ class OdbSource(Source):
         pivot_columns: list = [],
         pivot_values: list = [],
         window: str | None = None,
+        cycle_date_column: str | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise the ODB input.
@@ -79,6 +80,10 @@ class OdbSource(Source):
             to 3 hours after the input dates (excluding the final time).
             Defaults to None, which means that the window will be determined
             by the start and end datetimes of the full input dates.
+        cycle_date_column : str, optional
+            The name of the cycle date column to use to store the date
+            information to be used by future filters. If None, then the cycle
+            date column will not be created. Defaults to None.
         kwargs : dict, optional
             Additional keyword arguments.
 
@@ -114,7 +119,8 @@ class OdbSource(Source):
         self.flavour.update(flavour)
         self.pivot_columns = pivot_columns
         self.pivot_values = pivot_values
-        self.window = Window(window or f"[-3h,3h)")
+        self.window = Window(window) if window else None
+        self.cycle_date_column = cycle_date_column
 
     def execute(self, dates: Any) -> pandas.DataFrame:
         """Execute the ODB source.
@@ -129,13 +135,25 @@ class OdbSource(Source):
         pandas.dataframe.DataFrame
             The output dataframe.
         """
+        start = dates.start_range
+        end = dates.end_range
 
-        start = np.datetime_as_string(dates.start_range)
-        end = np.datetime_as_string(dates.end_range)
+        def _add_dates(date: str, offset: datetime.timedelta, exclude: bool, sign: int) -> datetime.datetime:
+            small_time = np.timedelta64(100, 'ms')
+            dt = datetime.datetime.fromisoformat(date)
+            if exclude:
+                return dt + offset + sign * small_time
+            else:
+                return dt + offset
 
         df_list = []
-        for expanded_path, date in iterate_patterns(self.path, dates):
-            LOG.info(f"Working on {expanded_path} {date}")
+        iDate = 0
+        for expanded_path, date_list in iterate_patterns(self.path, dates):
+            LOG.info(f"Working on {expanded_path} {date_list[iDate]}")
+            if self.window is not None:
+                start = _add_dates(date_list[iDate], self.window.before, self.window.exclude_before, 1)
+                end = _add_dates(date_list[iDate], self.window.after, self.window.exclude_after, -1)
+                iDate += 1
             df = odb2df(
                 start=start,
                 end=end,
@@ -147,6 +165,8 @@ class OdbSource(Source):
                 pivot_values=self.pivot_values,
             )
             if df is not None:
+                if self.cycle_date_column is not None:
+                    df[self.cycle_date_column] = np.full(len(df), date_list[iDate - 1])
                 df_list.append(df)
                 LOG.info(f"ODB source read {len(df)} rows from {expanded_path}")
         if len(df_list) > 0:
@@ -156,8 +176,8 @@ class OdbSource(Source):
 
 
 def odb2df(
-    start: str,
-    end: str,
+    start: datetime.datetime,
+    end: datetime.datetime,
     path_str: str,
     select: str = "",
     where: str = "",
@@ -170,10 +190,10 @@ def odb2df(
 
     Parameters
     ----------
-    start : str
-        Start datetime in ISO8601 format.
-    end : str
-        End datetime in ISO8601 format.
+    start : datetime.datetime
+        Start datetime
+    end : datetime.datetime
+        End datetime
     path_str : str
         Path to the ODB file.
     select : str, optional
@@ -223,8 +243,8 @@ def odb2df(
     path = Path(path_str)
 
     # Convert ISO8601 datetimes to YYYYMMDDHHMMSS
-    start_datetime = iso8601_to_datetime(start)
-    end_datetime = iso8601_to_datetime(end)
+    start_datetime = start.strftime("%Y%m%d%H%M%S")
+    end_datetime = end.strftime("%Y%m%d%H%M%S")
     LOG.info(f"Querying ODB file at {path} from {start_datetime} to {end_datetime}")
 
     sql = odb_sql_str(
@@ -284,23 +304,6 @@ def odb2df(
 
     df_pivotted = pivot_obs_df(df, pivot_values, pivot_columns)
     return df_pivotted
-
-
-def iso8601_to_datetime(iso8601_str: str) -> str:
-    """Convert ISO8601 datetime string to YYYYMMDDHHMMSS string.
-
-    Parameters
-    ----------
-    iso8601_str : str
-        ISO8601 datetime string.
-
-    Returns
-    -------
-    str
-        Datetime string in YYYYMMDDHHMMSS format.
-    """
-    dt = datetime.fromisoformat(iso8601_str)
-    return dt.strftime("%Y%m%d%H%M%S")
 
 
 def odb_sql_str(
