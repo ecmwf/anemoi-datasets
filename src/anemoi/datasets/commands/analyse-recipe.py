@@ -51,10 +51,7 @@ class AnalyseRecipe(Command):
 
     The recipe is loaded and validated exactly as it would be when
     creating a dataset (through pydantic). This command is intended to
-    be called by external tools (e.g. prepml) so that the analysis is
-    performed by the same version of anemoi-datasets that will build
-    the dataset, instead of importing anemoi.datasets in the caller's
-    environment.
+    be called by external tools.
     """
 
     def add_arguments(self, command_parser: Any) -> None:
@@ -112,7 +109,7 @@ class AnalyseRecipe(Command):
 
         layout = getattr(recipe.output, "layout", None)
 
-        # Recipes coming from prepml carry an extra 'name' key; when present,
+        # Recipes may carry an extra 'name' key; when present,
         # check it against the dataset naming conventions of the recipe layout.
         name = raw.get("name")
         if name is not None:
