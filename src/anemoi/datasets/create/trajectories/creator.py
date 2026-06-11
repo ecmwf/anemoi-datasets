@@ -321,9 +321,12 @@ class TrajectoryGriddedCreator(GriddedCreator):
         the gridded behaviour.
         """
         tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is None:
+            # Tendencies are disabled by default.
+            tendencies_config = False
         if tendencies_config is True:
             tendencies_list = [1, 3, 6, 12, 24]
-        elif tendencies_config is False or tendencies_config is None:
+        elif tendencies_config is False:
             return {}
         else:
             tendencies_list = list(tendencies_config)
