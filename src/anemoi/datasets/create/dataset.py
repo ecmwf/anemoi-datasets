@@ -137,6 +137,12 @@ class Dataset:
         with self.synchronizer:
             self.store.attrs.pop(key, None)
 
+    def remove_lock_file(self) -> None:
+        """Remove the inter-process lock file, once no other process needs it."""
+        lock_file = self.path + ".lock"
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
+
     ##################################
     # Progress tracking methods
     ##################################

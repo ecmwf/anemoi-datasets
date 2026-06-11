@@ -882,13 +882,26 @@ class TrajectoryStatisticsCollector:
         )
 
     def statistics(self) -> dict[str, NDArray[np.float64]]:
-        if self._collector is None:
-            LOG.warning("No statistics collected")
-            return {k: np.array([np.nan]) for k in STATISTICS}
+        if self._collector is None or int(self._collector._count.sum()) == 0:
+            raise ValueError(
+                "Trajectory statistics: no trajectory falls entirely within the "
+                "statistics envelope — the statistics would be all-NaN. "
+                "The envelope may be shorter than one trajectory length "
+                "(step_end - step_start); adjust 'statistics.start'/'statistics.end' "
+                "or the dataset date range."
+            )
 
         result = self._collector.statistics()
 
         for name, collector in self._tendencies_collectors.items():
+            if int(collector._count.sum()) == 0:
+                # Not enough steps (or dates) for this delta: skip the
+                # tendency arrays rather than writing NaNs or failing.
+                LOG.warning(
+                    f"Trajectory statistics: no data collected for tendency '{name}' "
+                    "(not enough steps for this delta); skipping."
+                )
+                continue
             tendencies = collector.statistics()
             for key in STATISTICS:
                 result[f"statistics_tendencies_{name}_{key}"] = tendencies[key]
