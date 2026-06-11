@@ -28,6 +28,7 @@ The following `sources` are currently available:
    sources/cds
    sources/eccc-fstd
    sources/forcings
+   sources/from-trajectories
    sources/grib
    sources/grib-index
    sources/hindcasts

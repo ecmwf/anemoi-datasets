@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -63,6 +63,13 @@ class Check(Command):
             help="Specify the index file to check.",
         )
 
+        command_parser.add_argument(
+            "--layout",
+            choices=["gridded", "trajectories", "tabular"],
+            help="Dataset layout to validate the name against. "
+            "When omitted, the name is accepted if any layout matches.",
+        )
+
     def run(self, args: Any) -> None:
 
         if args.recipe:
@@ -72,7 +79,7 @@ class Check(Command):
             self._check_metadata(args.metadata)
 
         if args.name:
-            self._check_name(args.name)
+            self._check_name(args.name, layout=args.layout)
 
         if args.zarr:
             self._check_zarr(args.zarr)
@@ -87,17 +94,21 @@ class Check(Command):
 
         recipe_filename = os.path.basename(recipe)
         recipe_name = os.path.splitext(recipe_filename)[0]
-        in_recipe_name = yaml.safe_load(open(recipe, encoding="utf-8"))["name"]
+        data = yaml.safe_load(open(recipe, encoding="utf-8"))
+        in_recipe_name = data["name"]
         if recipe_name != in_recipe_name:
             print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
 
-        self._check_name(in_recipe_name)
+        # Layout is authoritative — read it from the recipe rather than guessing
+        # it from the name.  ``None`` falls back to the try-all behaviour.
+        layout = data.get("output", {}).get("layout")
+        self._check_name(in_recipe_name, layout=layout)
 
-    def _check_name(self, name: str) -> None:
+    def _check_name(self, name: str, layout: str | None = None) -> None:
 
         fail = False
-        for message in check_dataset_name(name):
-            print("Dataset name warning: %s", message)
+        for message in check_dataset_name(name, layout=layout):
+            print(f"Dataset name warning: {message}")
             fail = True
         if fail:
             raise ValueError("Dataset name does not follow naming conventions.")

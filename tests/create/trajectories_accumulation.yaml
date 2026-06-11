@@ -1,0 +1,108 @@
+base_dates:
+  start: 2021-01-01 00:00:00
+  end: 2021-01-03 00:00:00
+  frequency: 12h
+
+steps:
+  start: 6
+  end: 30
+  frequency: 3h
+
+input:
+  join:
+    - mars:
+        type: fc
+        expver: "0001"
+        class: od
+        grid: 20./20.
+        param: [ q, t ]
+        levtype: pl
+        level: [ 50 ]
+        stream: oper
+
+    - pipe:
+        - accumulate:
+            period: 1h
+            accumulation: from-zero
+            source:
+              mars:
+                type: fc
+                expver: "0001"
+                class: od
+                grid: 20./20.
+                param: [ tp ]
+                levtype: sfc
+                stream: oper
+        - rename:
+            param:
+              tp: tp_accum_1h
+    - pipe:
+        - accumulate:
+            period: 3h
+            accumulation: from-zero
+            source:
+              mars:
+                type: fc
+                expver: "0001"
+                class: od
+                grid: 20./20.
+                param: [ tp ]
+                levtype: sfc
+                stream: oper
+        - rename:
+            param:
+              tp: tp_accum_3h
+    - pipe:
+        - accumulate:
+            period: 6h
+            accumulation: from-zero
+            source:
+              mars:
+                type: fc
+                expver: "0001"
+                class: od
+                grid: 20./20.
+                param: [ tp ]
+                levtype: sfc
+                stream: oper
+        - rename:
+            param:
+              tp: tp_accum_6h
+    # - pipe:
+    #     - accumulate:
+    #         period: 24h
+    #         accumulation: from-zero
+    #         source:
+    #           mars:
+    #             type: fc
+    #             expver: "0001"
+    #             class: od
+    #             grid: 20./20.
+    #             param: [ tp ]
+    #             levtype: sfc
+    #             stream: oper
+    #     - rename:
+    #         param:
+    #           tp: tp_accum_24h
+    # - pipe:
+    #     - accumulate:
+    #         period: 48h
+    #         accumulation: from-zero
+    #         source:
+    #           mars:
+    #             type: fc
+    #             expver: "0001"
+    #             class: od
+    #             grid: 20./20.
+    #             param: [ tp ]
+    #             levtype: sfc
+    #             stream: oper
+    #     - rename:
+    #         param:
+    #           tp: tp_accum_48h
+
+output:
+  layout: trajectories
+
+statistics:
+  tendencies: true
