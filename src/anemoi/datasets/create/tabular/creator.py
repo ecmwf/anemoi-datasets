@@ -61,6 +61,8 @@ class TabularCreator(Creator):
         metadata["variables"] = [v for v in variables if not v.startswith("__")]
         metadata["meta_variables"] = [v for v in variables if v.startswith("__")]
 
+        metadata["dimensions"] = ["dates", "variables"]
+
         assert (
             variables == metadata["meta_variables"] + metadata["variables"]
         ), "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
