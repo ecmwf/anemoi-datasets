@@ -7,19 +7,19 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import logging
 import os
 import subprocess
 import tempfile
-import datetime
 from pathlib import Path
 from typing import Any
 
 import codc as odc
 import numpy as np
 import pandas
-
 from anemoi.utils.window import Window
+
 from ..source import Source
 from . import source_registry
 from .patterns import iterate_patterns
@@ -139,7 +139,7 @@ class OdbSource(Source):
         end = dates.end_range
 
         def _add_dates(date: str, offset: datetime.timedelta, exclude: bool, sign: int) -> datetime.datetime:
-            small_time = np.timedelta64(100, 'ms')
+            small_time = np.timedelta64(100, "ms")
             dt = datetime.datetime.fromisoformat(date)
             if exclude:
                 return dt + offset + sign * small_time
