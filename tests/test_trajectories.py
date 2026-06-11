@@ -40,6 +40,7 @@ def make_trajectories_zarr(
     step_hours: list[int] | None = None,
     frequency_h: int = 6,
     vars: list[str] | None = None,
+    analytic: bool = False,
 ) -> zarr.Group:
     """Build a minimal in-memory zarr group with trajectories layout.
 
@@ -59,6 +60,11 @@ def make_trajectories_zarr(
         Base-date frequency in hours.
     vars : list of str, optional
         Variable names.  Defaults to ``["a", "b", "c"]`` (first *n_vars*).
+    analytic : bool
+        When True, fill ``data`` with ``arange`` values instead of random
+        ones, so every element encodes its own (date, var, ensemble, step,
+        cell) position — any wrong-axis indexing bug surfaces as a precise
+        value mismatch.
 
     Returns
     -------
@@ -79,8 +85,14 @@ def make_trajectories_zarr(
     )
     steps = np.array([np.timedelta64(h, "h") for h in step_hours])
 
-    rng = np.random.default_rng(0)
-    data = rng.random((n_dates, n_vars, 1, n_steps, n_cells)).astype("float32")
+    shape = (n_dates, n_vars, 1, n_steps, n_cells)
+    if analytic:
+        # Every element is unique and exactly representable in float32.
+        data = np.arange(np.prod(shape), dtype="float32").reshape(shape)
+        assert np.prod(shape) < 2**24
+    else:
+        rng = np.random.default_rng(0)
+        data = rng.random(shape).astype("float32")
 
     root.create_dataset("data", data=data, chunks=data.shape, compressor=None)
     root.create_dataset("base_dates", data=dates, compressor=None)
@@ -484,7 +496,7 @@ class TestOpenDatasetStepSelection:
 
         # Patch zarr.open so open_dataset finds our in-memory group
         with patch("zarr.open", return_value=self.group):
-            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name: name):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, **kwargs: name):
                 return open_dataset("test", **kwargs)
 
     def test_single_step_view_shape(self):
@@ -639,3 +651,204 @@ class TestFromTrajectoriesSource:
         args, _ = src.inner.execute.call_args
         assert isinstance(args[0], ForecastDates)
         assert args[0].items == [(vt, datetime.datetime(2021, 1, 1, 6, 0, 0))]
+
+
+# ---------------------------------------------------------------------------
+# open_dataset(path, select=...) / drop=... / reorder=...
+# ---------------------------------------------------------------------------
+
+
+class TestTrajectoriesSelect:
+    """Variable selection (``select=``, ``drop=``, ``reorder=``) on trajectories."""
+
+    def setup_method(self):
+        # analytic=True: each value encodes its own position, so a wrong-axis
+        # bug shows up as a precise value mismatch, not a chance collision.
+        self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10, analytic=True)
+        self.data = self.group["data"][:]
+
+    def _open(self, **kwargs):
+        from anemoi.datasets import open_dataset
+
+        with patch("zarr.open", return_value=self.group):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, **kwargs: name):
+                return open_dataset("test", **kwargs)
+
+    # -- metadata ----------------------------------------------------------
+
+    def test_select_variables(self):
+        ds = self._open(select=["a", "c"])
+        assert ds.variables == ["a", "c"]
+        assert ds.name_to_index == {"a": 0, "c": 1}
+        assert ds.shape == (4, 2, 1, 5, 10)
+        np.testing.assert_array_equal(ds[0], self.data[0][[0, 2]])
+
+    def test_select_single_variable(self):
+        ds = self._open(select="b")
+        assert ds.variables == ["b"]
+        assert ds.shape == (4, 1, 1, 5, 10)
+        np.testing.assert_array_equal(ds[0], self.data[0][[1]])
+
+    def test_select_set_input(self):
+        # a set keeps the store order, not the (unordered) input order
+        ds = self._open(select={"c", "a"})
+        assert ds.variables == ["a", "c"]
+        np.testing.assert_array_equal(ds[0], self.data[0][[0, 2]])
+
+    def test_select_unknown_variable_raises(self):
+        with pytest.raises(ValueError, match="unknown variable"):
+            self._open(select=["a", "x"])
+
+    def test_drop(self):
+        ds = self._open(drop="b")
+        assert ds.variables == ["a", "c"]
+        assert ds.shape == (4, 2, 1, 5, 10)
+        np.testing.assert_array_equal(ds[0], self.data[0][[0, 2]])
+        np.testing.assert_array_equal(ds[1:3], self.data[1:3][:, [0, 2]])
+
+    def test_drop_unknown_variable_raises(self):
+        with pytest.raises(ValueError, match="unknown variables"):
+            self._open(drop=["x"])
+
+    def test_reorder(self):
+        ds = self._open(reorder=["c", "a", "b"])
+        assert ds.variables == ["c", "a", "b"]
+        np.testing.assert_array_equal(ds[0], self.data[0][[2, 0, 1]])
+
+    def test_metadata_does_not_use_frequency(self):
+        ds = self._open(select=["a", "c"])
+        specific = ds.metadata_specific()
+        assert specific["action"] == "select"
+        assert specific["variables"] == ["a", "c"]
+        assert "base_frequency" in specific
+        meta = ds.dataset_metadata()
+        assert meta["variables"] == ["a", "c"]
+
+    def test_variables_metadata_subset(self):
+        ds = self._open(select=["c"])
+        assert set(ds.variables_metadata) == {"c"}
+
+    def test_tree(self):
+        ds = self._open(select=["a"])
+        assert ds.tree() is not None
+
+    # -- data --------------------------------------------------------------
+
+    def test_scalar_index(self):
+        ds = self._open(select=["a", "c"])
+        np.testing.assert_array_equal(ds[1], self.data[1][[0, 2]])
+
+    def test_slice_index(self):
+        ds = self._open(select=["a", "c"])
+        np.testing.assert_array_equal(ds[1:3], self.data[1:3][:, [0, 2]])
+
+    def test_drop_scalar_index(self):
+        ds = self._open(drop=["a"])
+        np.testing.assert_array_equal(ds[2], self.data[2][[1, 2]])
+
+    def test_tuple_index_scalar_variable(self):
+        ds = self._open(select=["a", "c"])
+        # selected variable 1 is original variable 2 ("c")
+        np.testing.assert_array_equal(ds[1, 1], self.data[1, 2])
+
+    def test_tuple_index_step_axis(self):
+        ds = self._open(select=["a", "c"])
+        np.testing.assert_array_equal(ds[1, 0, 0, 2, :], self.data[1, 0, 0, 2, :])
+        np.testing.assert_array_equal(ds[1, 1, 0, 3], self.data[1, 2, 0, 3])
+
+    def test_tuple_index_slices_all_axes(self):
+        ds = self._open(select=["a", "c"])
+        np.testing.assert_array_equal(
+            ds[:, :, :, 1:3, 2:5],
+            self.data[:, [0, 2]][:, :, :, 1:3, 2:5],
+        )
+
+    def test_tuple_index_with_list(self):
+        ds = self._open(select=["a", "c"])
+        np.testing.assert_array_equal(ds[[0, 2], 1], self.data[[0, 2], 2])
+
+    def test_full_array_and_iteration(self):
+        ds = self._open(select=["a", "c"])
+        np.testing.assert_array_equal(ds[:], self.data[:, [0, 2]])
+        rows = list(ds)
+        assert len(rows) == len(ds) == 4
+        for i, row in enumerate(rows):
+            np.testing.assert_array_equal(row, self.data[i][[0, 2]])
+
+    def test_indexing_sweep(self):
+        """Same systematic indexing sweep as the gridded select tests."""
+        from anemoi.datasets.misc.testing import default_test_indexing
+
+        # default_test_indexing needs len(ds) >= 10 (slice step = len // 10)
+        self.group = make_trajectories_zarr(n_dates=20, n_steps=5, n_vars=3, n_cells=10, analytic=True)
+        default_test_indexing(self._open(select=["a", "c"]))
+        default_test_indexing(self._open(drop="b"))
+        default_test_indexing(self._open(reorder=["c", "a", "b"]))
+
+    # -- statistics ----------------------------------------------------------
+
+    def test_statistics_subset(self):
+        rng = np.random.default_rng(1)
+        stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
+        for k, v in stats.items():
+            self.group.create_dataset(k, data=v, compressor=None)
+
+        ds = self._open(select=["a", "c"])
+        for k, v in stats.items():
+            np.testing.assert_array_equal(ds.statistics[k], v[[0, 2]])
+
+    def test_statistics_tendencies_default_delta(self):
+        rng = np.random.default_rng(2)
+        stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
+        for k, v in stats.items():
+            self.group.create_dataset(f"statistics_tendencies_6h_{k}", data=v, compressor=None)
+
+        # step_frequency is 6h, so delta=None must resolve to 6h, not crash on .frequency
+        ds = self._open(select=["a", "c"])
+        tendencies = ds.statistics_tendencies()
+        for k, v in stats.items():
+            np.testing.assert_array_equal(tendencies[k], v[[0, 2]])
+
+    # -- nesting -------------------------------------------------------------
+
+    def test_select_then_steps(self):
+        ds = self._open(select=["a", "c"], steps=[6, 18])
+        assert ds.variables == ["a", "c"]
+        assert ds.shape == (4, 2, 1, 2, 10)
+        expected = self.data[2][[0, 2]][:, :, [0, 2], :]
+        np.testing.assert_array_equal(ds[2], expected)
+
+    def test_select_then_single_step(self):
+        ds = self._open(select=["b"], step=12)
+        assert ds.variables == ["b"]
+        assert ds.shape == (4, 1, 1, 10)
+        np.testing.assert_array_equal(ds[1], self.data[1][[1]][..., 1, :])
+
+    def test_select_then_base_dates(self):
+        ds = self._open(
+            select=["a"],
+            base_start=datetime.datetime(2021, 1, 1, 6),
+            base_end=datetime.datetime(2021, 1, 1, 12),
+        )
+        assert ds.variables == ["a"]
+        assert ds.shape[0] == 2
+        np.testing.assert_array_equal(ds[0], self.data[1][[0]])
+
+    def test_select_of_select_collapses(self):
+        from anemoi.datasets import open_dataset
+        from anemoi.datasets.usage.trajectories.store import TrajectoriesZarr
+
+        inner = self._open(select=["a", "b"])
+        outer = open_dataset(inner, select=["b"])
+        assert outer.variables == ["b"]
+        # nested selects collapse into a single wrapper over the leaf store
+        assert isinstance(outer.dataset, TrajectoriesZarr)
+        np.testing.assert_array_equal(outer[3], self.data[3][[1]])
+
+    def test_drop_after_select(self):
+        from anemoi.datasets import open_dataset
+
+        inner = self._open(select=["a", "c"])
+        outer = open_dataset(inner, drop="a")
+        assert outer.variables == ["c"]
+        np.testing.assert_array_equal(outer[0], self.data[0][[2]])
