@@ -24,6 +24,7 @@ from .dates import Dates
 from .dates import Steps
 from .output import GriddedOutput
 from .output import Output
+from .output import TabularOutput
 from .output import TrajectoriesOutput
 from .statistics import Statistics
 
@@ -122,13 +123,43 @@ class Recipe(BaseModel):
         """
 
         defaults = Recipe(dates={"values": []}).model_dump()
+        output_defaults = {
+            "gridded": GriddedOutput().model_dump(),
+            "tabular": TabularOutput().model_dump(),
+            "trajectories": TrajectoriesOutput().model_dump(),
+        }
 
-        def _only_non_defaults(d, default_d):
+        def _dates_variant(config: dict) -> str:
+            if config.get("hindcasts", False):
+                return "hindcasts"
+            if "values" in config:
+                return "values"
+            return "start_end"
+
+        def _output_variant(config: dict) -> str:
+            return config.get("layout", config.get("format", "gridded"))
+
+        def _only_non_defaults(d, default_d, path: tuple[str, ...] = ()):
 
             if type(d) is not type(default_d):
                 return d
 
             if isinstance(d, dict):
+                # Output is a discriminated union. Compare against defaults of
+                # the active variant so we keep its discriminator naturally,
+                # without dropping then re-injecting it later.
+                if path == ("output",):
+                    variant = _output_variant(d)
+                    if variant not in output_defaults:
+                        return d
+                    default_d = output_defaults[variant]
+
+                # Dates is a discriminated union. If the recipe uses a
+                # different variant than the synthetic default (values), keep
+                # the whole section so variant-specific keys are preserved.
+                if path == ("dates",) and _dates_variant(d) != _dates_variant(default_d):
+                    return d
+
                 res = d.copy()
                 for k, v in list(d.items()):
                     if k not in default_d:
@@ -139,7 +170,7 @@ class Recipe(BaseModel):
                         del res[k]
                         continue
 
-                    res[k] = _only_non_defaults(v, default_d[k])
+                    res[k] = _only_non_defaults(v, default_d[k], path + (k,))
                 return res
 
             return d

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.39](https://github.com/ecmwf/anemoi-datasets/compare/0.5.38...0.5.39) (2026-06-11)
+
+
+### Features
+
+* Analyse-recipe command for workflow automation ([#659](https://github.com/ecmwf/anemoi-datasets/issues/659)) ([836b6ba](https://github.com/ecmwf/anemoi-datasets/commit/836b6bafac5e0ad970a4a7599542982615b62e77))
+* Trajectories missing features 3 ([#655](https://github.com/ecmwf/anemoi-datasets/issues/655)) ([ecd9d85](https://github.com/ecmwf/anemoi-datasets/commit/ecd9d85e16e2be8e4a1e46afdb0f89aa2ba0840e))
+* Trajectory select file ([#656](https://github.com/ecmwf/anemoi-datasets/issues/656)) ([5d507a1](https://github.com/ecmwf/anemoi-datasets/commit/5d507a119c7ce746a4513a254b775fe8fc81a304))
+
 ## [0.5.38](https://github.com/ecmwf/anemoi-datasets/compare/0.5.37...0.5.38) (2026-06-09)
 
 
