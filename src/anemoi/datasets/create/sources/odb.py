@@ -133,6 +133,7 @@ class OdbSource(Source):
         pandas.dataframe.DataFrame
             The output dataframe.
         """
+
         def _add_dates(date: str, offset: datetime.timedelta, exclude: bool) -> datetime.datetime:
             small_time = np.timedelta64(100, "ms")
             dt = datetime.datetime.fromisoformat(date)
