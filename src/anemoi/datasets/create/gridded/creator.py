@@ -163,7 +163,7 @@ class GriddedCreator(Creator):
                 if missing:
                     LOG.error(f"Missing dates: {[_.isoformat() for _ in missing]}")
                 if extra:
-                    LOG.error(f"Extra dates: {[str(_) for _ in extra]}")
+                    LOG.error(f"Extra dates: {[_.isoformat() for _ in extra]}")
 
                 raise ValueError("Dates in data are not the requested ones")
 

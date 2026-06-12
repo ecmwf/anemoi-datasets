@@ -36,14 +36,14 @@ class OdbSource(Source):
     def __init__(
         self,
         context,
+        window: str,
         path: str,
         select: str | None = None,
         where: str | None = None,
         flavour: dict = {},
         pivot_columns: list = [],
         pivot_values: list = [],
-        window: str | None = None,
-        cycle_date_column: str | None = None,
+        window_date_column: str | None = None,
         **kwargs: dict[str, Any],
     ) -> None:
         """Initialise the ODB input.
@@ -54,6 +54,10 @@ class OdbSource(Source):
             The context.
         path : str
             The path to the ODB file.
+        window : str
+            The observations window to use around the input dates.
+            For instance "[-3h,3h)" to use observations from 3 hours before
+            to 3 hours after the input dates (excluding the final time).
         select : str, optional
             The select clause. Defaults to all columns ("*").
         where : str, optional
@@ -74,13 +78,7 @@ class OdbSource(Source):
             List of column names - values in these columns will
             be spread across different values of the columns. For instance,
             "observed_value" and "quality_control_value". Defaults to [].
-        window : str, optional
-            The observations window to use around the input dates.
-            For instance "[-3h,3h)" to use observations from 3 hours before
-            to 3 hours after the input dates (excluding the final time).
-            Defaults to None, which means that the window will be determined
-            by the start and end datetimes of the full input dates.
-        cycle_date_column : str, optional
+        window_date_column : str, optional
             The name of the cycle date column to use to store the date
             information to be used by future filters. If None, then the cycle
             date column will not be created. Defaults to None.
@@ -102,6 +100,7 @@ class OdbSource(Source):
         super().__init__(context)
 
         self.path = path
+        self.window = Window(window)
         if not select:
             select = "*"
             LOG.warning("No SELECT clause provided; defaulting to all columns.")
@@ -119,8 +118,7 @@ class OdbSource(Source):
         self.flavour.update(flavour)
         self.pivot_columns = pivot_columns
         self.pivot_values = pivot_values
-        self.window = Window(window) if window else None
-        self.cycle_date_column = cycle_date_column
+        self.window_date_column = window_date_column
 
     def execute(self, dates: Any) -> pandas.DataFrame:
         """Execute the ODB source.
@@ -135,25 +133,21 @@ class OdbSource(Source):
         pandas.dataframe.DataFrame
             The output dataframe.
         """
-        start = dates.start_range
-        end = dates.end_range
-
-        def _add_dates(date: str, offset: datetime.timedelta, exclude: bool, sign: int) -> datetime.datetime:
+        def _add_dates(date: str, offset: datetime.timedelta, exclude: bool) -> datetime.datetime:
             small_time = np.timedelta64(100, "ms")
             dt = datetime.datetime.fromisoformat(date)
+            print(offset, type(offset))
             if exclude:
-                return dt + offset + sign * small_time
+                return dt + offset + (1 if offset < datetime.timedelta(0) else -1) * small_time
             else:
                 return dt + offset
 
         df_list = []
-        iDate = 0
-        for expanded_path, date_list in iterate_patterns(self.path, dates):
-            LOG.info(f"Working on {expanded_path} {date_list[iDate]}")
+        for idate, (expanded_path, date_list) in enumerate(iterate_patterns(self.path, dates)):
+            LOG.info(f"Working on {expanded_path} {date_list[idate]}")
             if self.window is not None:
-                start = _add_dates(date_list[iDate], self.window.before, self.window.exclude_before, 1)
-                end = _add_dates(date_list[iDate], self.window.after, self.window.exclude_after, -1)
-                iDate += 1
+                start = _add_dates(date_list[idate], self.window.before, self.window.exclude_before)
+                end = _add_dates(date_list[idate], self.window.after, self.window.exclude_after)
             df = odb2df(
                 start=start,
                 end=end,
@@ -165,8 +159,8 @@ class OdbSource(Source):
                 pivot_values=self.pivot_values,
             )
             if df is not None:
-                if self.cycle_date_column is not None:
-                    df[self.cycle_date_column] = np.full(len(df), date_list[iDate - 1])
+                if self.window_date_column is not None:
+                    df[self.window_date_column] = np.full(len(df), date_list[idate])
                 df_list.append(df)
                 LOG.info(f"ODB source read {len(df)} rows from {expanded_path}")
         if len(df_list) > 0:
@@ -242,7 +236,7 @@ def odb2df(
     """
     path = Path(path_str)
 
-    # Convert ISO8601 datetimes to YYYYMMDDHHMMSS
+    # Convert datetimes to YYYYMMDDHHMMSS
     start_datetime = start.strftime("%Y%m%d%H%M%S")
     end_datetime = end.strftime("%Y%m%d%H%M%S")
     LOG.info(f"Querying ODB file at {path} from {start_datetime} to {end_datetime}")
