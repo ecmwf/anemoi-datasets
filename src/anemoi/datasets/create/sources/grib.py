@@ -20,8 +20,10 @@ from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
+from anemoi.datasets.create.arguments import ValidDates
+
+from ..source import Source
 from . import source_registry
-from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -83,26 +85,23 @@ def _expand(paths: list[str]) -> Any:
 
 
 @source_registry.register("grib")
-class GribSource(LegacySource):
+class GribSource(Source):
 
-    @staticmethod
-    def _execute(
+    def __init__(
+        self,
         context: Any,
-        dates: list[Any],
         path: str | list[str],
         flavour: str | dict[str, Any] | None = None,
         grid_definition: dict[str, Any] | None = None,
         *args: Any,
         **kwargs: Any,
-    ) -> ekd.FieldList:
-        """Executes the function to load data from GRIB files.
+    ) -> None:
+        """Initialise the GRIB source.
 
         Parameters
         ----------
         context : Any
-            The context in which the function is executed.
-        dates : list of Any
-            List of dates.
+            The context in which the source is created.
         path : str or list of str
             Path or list of paths to the GRIB files.
         flavour : str or dict of str to Any, optional
@@ -112,22 +111,34 @@ class GribSource(LegacySource):
         *args : Any
             Additional positional arguments.
         **kwargs : Any
-            Additional keyword arguments.
+            Additional keyword arguments forwarded to ``.sel()``.
+        """
+        super().__init__(context)
+        self.path = path
+        self.flavour = RuleBasedFlavour(flavour) if flavour is not None else None
+        self.grid = grid_registry.from_config(grid_definition) if grid_definition is not None else None
+        self.args = args
+        self.kwargs = kwargs
+
+    def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
+        """Load data from the GRIB files for the given dates.
+
+        Parameters
+        ----------
+        dates : ValidDates
+            The validity-time argument from the pipeline.
 
         Returns
         -------
-        Any
+        ekd.FieldList
             The loaded dataset.
         """
-        given_paths = path if isinstance(path, list) else [path]
-
-        if flavour is not None:
-            flavour = RuleBasedFlavour(flavour)
-
-        if grid_definition is not None:
-            grid = grid_registry.from_config(grid_definition)
-        else:
-            grid = None
+        given_paths = self.path if isinstance(self.path, list) else [self.path]
+        flavour = self.flavour
+        grid = self.grid
+        args = self.args
+        kwargs = self.kwargs
+        context = self.context
 
         ds = from_source("empty")
         dates = [d.isoformat() for d in dates]
