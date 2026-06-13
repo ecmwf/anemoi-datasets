@@ -14,6 +14,7 @@ from collections.abc import Callable
 from functools import cache
 from functools import wraps
 from typing import Any
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import numpy as np
@@ -23,12 +24,14 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets import __version__ as _anemoi_datasets_version
 from anemoi.datasets import open_dataset
 from anemoi.datasets.misc.testing import FastGroup
 from anemoi.datasets.misc.testing import default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.ensemble import Ensemble
+from anemoi.datasets.usage.gridded.grids import Cutout
 from anemoi.datasets.usage.gridded.grids import GridsBase
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.masked import Masking
@@ -1601,6 +1604,141 @@ def test_trim_edge_zeros() -> None:
         expected_field_shape = (15, 13)
         assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
         assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
+
+
+def _make_cutout(n_lams=1, cropping_distance=2.0, neighbours=5, min_distance_km=None, max_distance_km=None):
+    """Build a Cutout instance with known masks, bypassing __init__."""
+
+    def _ds(seed):
+        # Each dataset gets distinct coordinate arrays; the cache is keyed on
+        # these, not on any path.
+        m = MagicMock()
+        m.latitudes = np.array([seed + 0.0, seed + 1.0, seed + 2.0, seed + 3.0])
+        m.longitudes = np.array([seed + 10.0, seed + 11.0, seed + 12.0, seed + 13.0])
+        return m
+
+    obj = object.__new__(Cutout)
+    obj.axis = 3
+    obj.cropping_distance = cropping_distance
+    obj.neighbours = neighbours
+    obj.min_distance_km = min_distance_km
+    obj.max_distance_km = max_distance_km
+    obj.lams = [_ds(i) for i in range(n_lams)]
+    obj.globe = _ds(100)
+    obj.masks = [np.array([True, False, True, True]) for _ in range(n_lams)]
+    obj.global_mask = np.array([False, True, True, False])
+    return obj
+
+
+def test_cutout_masks_save_load_roundtrip(tmp_path):
+    masks_path = tmp_path / "masks.npz"
+    original = _make_cutout(n_lams=2)
+    Cutout._save_cutout_masks(original, masks_path)
+
+    assert masks_path.exists()
+
+    loaded = _make_cutout(n_lams=2)
+    loaded.masks = []
+    loaded.global_mask = None
+    Cutout._load_cutout_masks(loaded, masks_path)
+
+    assert len(loaded.masks) == 2
+    for i in range(2):
+        np.testing.assert_array_equal(loaded.masks[i], original.masks[i])
+    np.testing.assert_array_equal(loaded.global_mask, original.global_mask)
+
+
+def test_cutout_masks_parameter_mismatch_raises(tmp_path):
+    masks_path = tmp_path / "masks.npz"
+    original = _make_cutout(cropping_distance=2.0)
+    Cutout._save_cutout_masks(original, masks_path)
+
+    different = _make_cutout(cropping_distance=99.0)
+    with pytest.raises(ValueError, match="Mismatch between user-provided masks"):
+        Cutout._load_cutout_masks(different, masks_path)
+
+
+def test_cutout_masks_dataset_mismatch_raises(tmp_path):
+    masks_path = tmp_path / "masks.npz"
+    original = _make_cutout()
+    Cutout._save_cutout_masks(original, masks_path)
+
+    different = _make_cutout()
+    # Same paths would not catch this: only the global dataset's grid changed
+    # (as a thinning or masking wrapper would do).
+    different.globe.latitudes = np.array([0.0, 0.0, 0.0, 0.0])
+    different.globe.longitudes = np.array([0.0, 0.0, 0.0, 0.0])
+    with pytest.raises(ValueError, match="Mismatch between user-provided masks"):
+        Cutout._load_cutout_masks(different, masks_path)
+
+
+def test_cutout_masks_file_has_correct_keys(tmp_path):
+    import json as _json
+
+    masks_path = tmp_path / "masks.npz"
+    obj = _make_cutout(n_lams=1)
+    Cutout._save_cutout_masks(obj, masks_path)
+
+    data = np.load(masks_path)
+    assert "lam_0" in data
+    assert "global" in data
+    assert "metadata" in data
+    metadata = _json.loads(str(data["metadata"]))
+    assert metadata["version"] == _anemoi_datasets_version
+    assert metadata["type"] == "cutout_mask"
+    expected_datasets = [
+        Cutout._hash_coordinates(obj.lams[0].latitudes, obj.lams[0].longitudes),
+        Cutout._hash_coordinates(obj.globe.latitudes, obj.globe.longitudes),
+    ]
+    assert metadata["params"]["datasets"] == expected_datasets
+    assert "params" in metadata
+
+
+def test_cutout_masks_bad_extension_raises(tmp_path):
+    obj = _make_cutout()
+    with pytest.raises(ValueError, match=r"\.npz"):
+        Cutout._setup_masks(obj, tmp_path / "masks.txt")
+
+
+def test_cutout_masks_cache_true_not_implemented():
+    obj = _make_cutout()
+    with pytest.raises(NotImplementedError):
+        Cutout._setup_masks(obj, True)
+
+
+def test_cutout_masks_version_mismatch_warns(tmp_path, caplog):
+    import json as _json
+    import logging
+
+    masks_path = tmp_path / "masks.npz"
+    obj = _make_cutout(n_lams=1)
+    Cutout._save_cutout_masks(obj, masks_path)
+
+    data = dict(np.load(masks_path))
+    meta = _json.loads(str(data["metadata"]))
+    meta["version"] = "0.0.0-bogus"
+    data["metadata"] = np.array(_json.dumps(meta))
+    np.savez(masks_path, **data)
+
+    with caplog.at_level(logging.WARNING, logger="anemoi.datasets.usage.gridded.grids"):
+        Cutout._load_cutout_masks(_make_cutout(n_lams=1), masks_path)
+    assert any("0.0.0-bogus" in r.message for r in caplog.records)
+
+
+def test_cutout_masks_save_is_atomic_on_error(tmp_path, monkeypatch):
+    masks_path = tmp_path / "masks.npz"
+    obj = _make_cutout()
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(np, "savez", _boom)
+    with pytest.raises(RuntimeError, match="boom"):
+        Cutout._save_cutout_masks(obj, masks_path)
+
+    # A failed save leaves neither a corrupt cache file nor a leftover temp file.
+    assert not masks_path.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 if __name__ == "__main__":
