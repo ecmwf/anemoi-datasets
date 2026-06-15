@@ -24,7 +24,9 @@ LOG = logging.getLogger(__name__)
 class Statistics(BaseModel):
     start: str | int | datetime.datetime | None = None
     end: str | int | datetime.datetime | None = None
-    tendencies: list[str, int] | bool | None = Field(default=True)
+    tendencies: list[str | int] | bool | None = Field(default=None)
+    """Tendency statistics to compute. ``None`` (default) and ``False`` disable them,
+    ``True`` uses the default deltas, a list gives explicit deltas."""
 
     allow_nans: bool | list[str] | None = Field(
         default=None,
@@ -105,6 +107,39 @@ class Statistics(BaseModel):
 
         return StatisticsFilter(start, end)
 
+    def trajectory_statistics_filter(self, base_dates, steps) -> "TrajectoryStatisticsFilter":
+        """Build an envelope filter for a trajectory dataset.
+
+        Defaults for ``start``/``end`` (when unset on the recipe) are picked
+        from the sorted-unique valid-time list — i.e. every ``base_date +
+        step`` pair — so the cut-off reflects the actual time coverage of
+        the dataset rather than just its forecast-initialisation times.
+
+        Parameters
+        ----------
+        base_dates : array-like of np.datetime64
+            The base dates of the trajectory dataset.
+        steps : array-like of np.timedelta64
+            The forecast steps of the trajectory dataset.
+
+        Returns
+        -------
+        TrajectoryStatisticsFilter
+            Filter restricting trajectory pairs to the configured envelope.
+        """
+        base_dates = np.asarray(base_dates)
+        steps = np.asarray(steps)
+        assert np.all(np.diff(steps) >= 0), f"steps must be sorted ascending, got {steps}"
+        valid_times = np.unique((base_dates[:, None] + steps[None, :]).ravel())
+
+        start, end = self.statistics_dates(list(valid_times))
+        np_start = np.datetime64(start).astype(base_dates.dtype)
+        np_end = np.datetime64(end).astype(base_dates.dtype)
+
+        LOG.info(f"Using trajectory statistics envelope: start={np_start}, end={np_end}")
+
+        return TrajectoryStatisticsFilter(np_start, np_end, steps[0], steps[-1])
+
 
 class StatisticsFilter:
     def __init__(self, start, end):
@@ -124,4 +159,52 @@ class StatisticsFilter:
         return (
             self.statistics_start_date == other.statistics_start_date
             and self.statistics_end_date == other.statistics_end_date
+        )
+
+
+class TrajectoryStatisticsFilter:
+    """Envelope filter for trajectory datasets.
+
+    A trajectory (one ``base_date`` row of the 5-D array) is included only
+    when its full valid-time envelope ``[base_date + step_start,
+    base_date + step_end]`` lies within ``[statistics_start_date,
+    statistics_end_date]``.  Otherwise the whole trajectory is dropped, matching
+    the behaviour of ``open_dataset(start=, end=)`` for trajectories.
+
+    Parameters
+    ----------
+    statistics_start_date : np.datetime64
+        Inclusive lower bound of the statistics interval (valid-time).
+    statistics_end_date : np.datetime64
+        Inclusive upper bound of the statistics interval (valid-time).
+    step_start : np.timedelta64
+        First step of the dataset.
+    step_end : np.timedelta64
+        Last step of the dataset.
+    """
+
+    def __init__(self, statistics_start_date, statistics_end_date, step_start, step_end):
+        assert step_start <= step_end, f"step_start must be <= step_end, got {step_start} > {step_end}"
+        self.statistics_start_date = statistics_start_date
+        self.statistics_end_date = statistics_end_date
+        self.step_start = step_start
+        self.step_end = step_end
+        # Trajectories whose base_date falls in [_base_min, _base_max] have their
+        # entire envelope within [statistics_start_date, statistics_end_date].
+        self._base_min = statistics_start_date - step_start
+        self._base_max = statistics_end_date - step_end
+
+    def mask(self, base_dates):
+        """Return a boolean mask over ``base_dates`` selecting kept trajectories."""
+        base_dates = np.asarray(base_dates)
+        return (base_dates >= self._base_min) & (base_dates <= self._base_max)
+
+    def __eq__(self, other):
+        if not isinstance(other, TrajectoryStatisticsFilter):
+            return False
+        return (
+            self.statistics_start_date == other.statistics_start_date
+            and self.statistics_end_date == other.statistics_end_date
+            and self.step_start == other.step_start
+            and self.step_end == other.step_end
         )

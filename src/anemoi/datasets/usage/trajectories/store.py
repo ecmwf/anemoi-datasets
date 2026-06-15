@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 import zarr
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -41,13 +42,13 @@ class TrajectoriesZarr(ZarrStore):
 
     Parameters
     ----------
-    group : zarr.hierarchy.Group
+    group : zarr.Group
         The opened zarr group.
     path : str, optional
         Human-readable path label for repr and error messages.
     """
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
     def mutate(self) -> Dataset:
@@ -265,6 +266,28 @@ class TrajectoriesZarr(ZarrStore):
         """Return the grid resolution string."""
         return self.store.attrs.get("resolution")
 
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Return trajectory-specific metadata.
+
+        Overrides :meth:`Dataset.metadata_specific` to avoid calling
+        ``self.frequency``, which raises for trajectory datasets because
+        they have two frequencies (``base_frequency`` and ``step_frequency``).
+        """
+        action = self.__class__.__name__.lower()
+        step_freq = self.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(step_freq),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            **kwargs,
+        )
+
     def dataset_metadata(self) -> dict[str, Any]:
         """Return dataset metadata using trajectory-compatible properties."""
         return dict(
@@ -287,23 +310,33 @@ class TrajectoriesZarr(ZarrStore):
         """Return per-variable metadata dict."""
         return self.store.attrs.get("variables_metadata", {})
 
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+        """Return the statistical tendencies of the dataset.
+
+        For trajectories, tendencies are computed along the step axis at
+        creation time, so the default ``delta`` is the step frequency (the
+        base-class default, ``self.frequency``, raises for trajectories).
+        """
+        if delta is None:
+            delta = self.step_frequency
+            if delta is None:
+                raise ValueError(
+                    "Cannot use a default tendencies delta: the steps of this dataset "
+                    "are not uniformly spaced. Pass 'delta' explicitly."
+                )
+        return super().statistics_tendencies(delta)
+
     # ------------------------------------------------------------------
     # Date filtering
     # ------------------------------------------------------------------
 
     def _frequency_to_indices(self, frequency: str) -> list[int]:
-        """Convert a frequency string to base-date indices."""
-        from anemoi.utils.dates import frequency_to_seconds
-
-        requested = frequency_to_seconds(frequency)
-        dataset = frequency_to_seconds(self.base_frequency)
-
-        if requested % dataset != 0:
-            raise ValueError(
-                f"Requested frequency {frequency} is not a multiple of the base-date frequency {self.base_frequency}."
-            )
-        step = requested // dataset
-        return range(0, len(self), step)
+        """The ``frequency`` option is not supported for trajectories."""
+        raise ValueError(
+            "'frequency' is not supported for trajectories datasets. "
+            "Use 'base_frequency' for the base-date interval or "
+            "'step_frequency' for the step interval."
+        )
 
     def _dates_to_indices(
         self,
@@ -400,7 +433,7 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     :class:`TrajectoriesZarr`.
     """
 
-    def __init__(self, group: zarr.hierarchy.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None) -> None:
         super().__init__(group, path=path)
 
         missing = self.store.attrs.get("missing_dates", [])
@@ -422,12 +455,12 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Same as :meth:`TrajectoriesZarr.__getitem__` but raises on missing dates."""
         first = n[0] if isinstance(n, tuple) else n
-        if isinstance(first, int):
-            hit = first if first in self._missing else None
+        if isinstance(first, (int, np.integer)):
+            hit = int(first) if int(first) in self._missing else None
         elif isinstance(first, slice):
             hit = next(iter(set(range(*first.indices(len(self)))) & self._missing), None)
-        elif isinstance(first, (list, tuple)):
-            hit = next(iter(set(first) & self._missing), None)
+        elif isinstance(first, (list, tuple, np.ndarray)):
+            hit = next(iter({int(i) for i in first} & self._missing), None)
         else:
             raise TypeError(f"Unsupported index {n!r} ({type(first).__name__})")
 

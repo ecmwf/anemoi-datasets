@@ -17,6 +17,7 @@ from typing import Any
 from typing import Union
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -39,9 +40,11 @@ LOG = logging.getLogger(__name__)
 class StepSubset(Forwards):
     """A view of a trajectories dataset restricted to a subset of steps.
 
-    Slices axis 1 (the step axis) of the underlying 5-D array.  The date
-    axis (axis 0) is unchanged, so ``__getitem__(n)`` returns an array of
-    shape ``(len_steps, variables, ensembles, cells)`` for a scalar date index.
+    Slices the step axis (position ``-2``, just before cells) of the
+    underlying 5-D ``(dates, variables, ensembles, steps, cells)`` array.
+    The date axis (axis 0) is unchanged, so ``__getitem__(n)`` returns an
+    array of shape ``(variables, ensembles, len_steps, cells)`` for a scalar
+    date index.
 
     Parameters
     ----------
@@ -90,16 +93,74 @@ class StepSubset(Forwards):
             return diffs[0].astype("timedelta64[s]").astype(datetime.timedelta)
         return None
 
+    @debug_indexing
+    @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Return data for the given date index, sliced to the selected steps."""
         # Step axis is at position -2 (just before cells).
         # Scalar n: forward returns (vars, ensembles, steps, cells) — 4-D.
         # Slice/array n: forward returns (dates, vars, ensembles, steps, cells) — 5-D.
         # ``[..., step_indices, :]`` targets the step axis in both cases.
+        #
+        # Tuple indices cannot be passed through to the underlying dataset:
+        # any element beyond axis 0 could consume the step axis before the
+        # step selection is applied, or index the un-subsetted step axis
+        # directly.  Select along axis 0 first (which applies the step
+        # subsetting), then apply the remaining indices with numpy semantics.
+        if isinstance(n, tuple):
+            result = self[n[0]]
+            rest = n[1:]
+            if not rest:
+                return result
+            if isinstance(n[0], (int, np.integer)):
+                return result[rest]
+            return result[(slice(None),) + rest]
         return self.forward[n][..., self.step_indices, :]
+
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+        """Delegate to the underlying dataset, which resolves a default delta
+        from the step frequency for trajectories.
+        """
+        return self.forward.statistics_tendencies(delta)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"step_indices": self.step_indices}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        action = self.__class__.__name__.lower()
+        step_freq = self.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(step_freq),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            forward=self.forward.metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
+            **kwargs,
+        )
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        return dict(
+            specific=self.metadata_specific(),
+            base_frequency=self.base_frequency,
+            step_frequency=self.step_frequency,
+            variables=self.variables,
+            variables_metadata=self.variables_metadata,
+            shape=self.shape,
+            dtype=str(self.dtype),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            name=self.name,
+        )
 
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
@@ -110,7 +171,10 @@ class SingleStepView(Forwards):
 
     Selects one step from the step axis (position ``-2``) and drops it,
     producing an array of shape ``(dates, variables, ensembles, cells)`` —
-    identical to what a gridded dataset returns.
+    identical to what a gridded dataset returns.  ``dates`` and ``frequency``
+    are defined (valid times ``base_dates + step`` and ``base_frequency``)
+    so that gridded wrappers needing a single time axis can be stacked on
+    top of this view.
 
     Parameters
     ----------
@@ -133,14 +197,87 @@ class SingleStepView(Forwards):
         s = self.forward.shape
         return s[:-2] + (s[-1],)
 
+    @cached_property
+    def dates(self) -> NDArray[np.datetime64]:
+        """Return the valid times of the view: ``base_dates + step``."""
+        return self.forward.base_dates + self.forward.steps[self.step_index]
+
+    @property
+    def frequency(self) -> datetime.timedelta:
+        """Return the interval between consecutive valid times (the base-date frequency)."""
+        return self.forward.base_frequency
+
+    @property
+    def start_date(self) -> np.datetime64:
+        """Return the first valid time of the view."""
+        return self.dates[0]
+
+    @property
+    def end_date(self) -> np.datetime64:
+        """Return the last valid time of the view."""
+        return self.dates[-1]
+
+    @debug_indexing
+    @expand_list_indexing
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Return data for the given date index with the step axis removed."""
         # Scalar n: (vars, ensembles, steps, cells) → (vars, ensembles, cells).
         # Slice/array n: (dates, vars, ensembles, steps, cells) → (dates, vars, ensembles, cells).
+        #
+        # Tuple indices cannot be passed through: the underlying array is
+        # 5-D while this view is 4-D, so any element beyond axis 0 would be
+        # applied to the wrong axis.  Select along axis 0 first (which drops
+        # the step axis), then apply the remaining indices.
+        if isinstance(n, tuple):
+            result = self[n[0]]
+            rest = n[1:]
+            if not rest:
+                return result
+            if isinstance(n[0], (int, np.integer)):
+                return result[rest]
+            return result[(slice(None),) + rest]
         return self.forward[n][..., self.step_index, :]
+
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+        """Delegate to the underlying dataset, which resolves a default delta
+        from the step frequency for trajectories.
+        """
+        return self.forward.statistics_tendencies(delta)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"step_index": self.step_index}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        action = self.__class__.__name__.lower()
+        step_freq = self.forward.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.forward.base_frequency),
+            step_frequency=frequency_to_string(step_freq),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            forward=self.forward.metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
+            **kwargs,
+        )
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        return dict(
+            specific=self.metadata_specific(),
+            base_frequency=self.forward.base_frequency,
+            step_frequency=self.forward.step_frequency,
+            variables=self.variables,
+            variables_metadata=self.variables_metadata,
+            shape=self.shape,
+            dtype=str(self.dtype),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            name=self.name,
+        )
 
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
@@ -293,5 +430,47 @@ class Subset(Forwards):
 
         return [i for i, d in enumerate(base_dates) if base_min <= d <= base_max]
 
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+        """Delegate to the underlying dataset, which resolves a default delta
+        from the step frequency for trajectories.
+        """
+        return self.forward.statistics_tendencies(delta)
+
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"indices": self.indices, "reason": self.reason}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        action = self.__class__.__name__.lower()
+        step_freq = self.step_frequency
+        return dict(
+            action=action,
+            variables=self.variables,
+            shape=self.shape,
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(step_freq),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            forward=self.forward.metadata_specific(),
+            **self.forwards_subclass_metadata_specific(),
+            **kwargs,
+        )
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
+        return dict(
+            specific=self.metadata_specific(),
+            base_frequency=self.base_frequency,
+            step_frequency=self.step_frequency,
+            variables=self.variables,
+            variables_metadata=self.variables_metadata,
+            shape=self.shape,
+            dtype=str(self.dtype),
+            start_date=str(self.start_date),
+            end_date=str(self.end_date),
+            base_start_date=str(self.base_start_date),
+            base_end_date=str(self.base_end_date),
+            name=self.name,
+        )

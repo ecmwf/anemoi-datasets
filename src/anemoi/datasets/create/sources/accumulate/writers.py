@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -102,29 +102,35 @@ def write_accumulated_forecast_field(
     date = int(basetime.strftime("%Y%m%d"))
     time = int(basetime.strftime("%H%M"))
 
-    if template.metadata("edition") == 1:
-        # GRIB1 only supports integer-hour single steps up to 254.
-        hours = end_step - start_step
-        assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
-        output.write(
-            values,
-            template=template,
-            date=date,
-            time=time,
-            stepType="instant",
-            step=end_step,
-            check_nans=True,
-            missing_value=MISSING_VALUE,
+    # Encode as an accumulation over [startStep, endStep] in the template's own
+    # edition. GRIB1 stores this as timeRangeIndicator=4 with P1=startStep,
+    # P2=endStep; GRIB2 as stepType=accum with startStep/endStep. Both keep the
+    # lead time (``step`` == endStep) so the trajectory loader can recover
+    # (basetime, step), while the accumulation period stays recoverable
+    # downstream. Writing an *instant* field instead would collapse the window
+    # and make the period unrecoverable.
+    #
+    # GRIB1 stores P1/P2 as single octets (<=255) counted in the hour time unit.
+    # (Coarser units would extend the range but only for steps divisible by them;
+    # we keep it simple and require hour-resolution offsets within the octet.)
+    # Steps are integer hours here, so the binding limit is endStep <= 255 h
+    # (~10.6 days). Fail early with a clear message rather than letting
+    # output.write raise an opaque WrongStepError.
+    if template.metadata("edition") == 1 and end_step > 255:
+        raise ValueError(
+            f"GRIB1 cannot encode an accumulation endStep of {end_step}h: P1/P2 are "
+            "single octets limited to 255 h. We would need to use a GRIB2 template for these lead times."
+            f"But we have the following template metadata: {template.metadata()}"
         )
-    else:
-        output.write(
-            values,
-            template=template,
-            date=date,
-            time=time,
-            stepType="accum",
-            startStep=start_step,
-            endStep=end_step,
-            check_nans=True,
-            missing_value=MISSING_VALUE,
-        )
+
+    output.write(
+        values,
+        template=template,
+        date=date,
+        time=time,
+        stepType="accum",
+        startStep=start_step,
+        endStep=end_step,
+        check_nans=True,
+        missing_value=MISSING_VALUE,
+    )
