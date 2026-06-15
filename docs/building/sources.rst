@@ -28,12 +28,14 @@ The following `sources` are currently available:
    sources/cds
    sources/eccc-fstd
    sources/forcings
+   sources/from-trajectories
    sources/grib
    sources/grib-index
    sources/hindcasts
    sources/mars
    sources/netcdf
    sources/opendap
+   sources/planetary-computer
    sources/recentre
    sources/repeated-dates
    sources/xarray-based

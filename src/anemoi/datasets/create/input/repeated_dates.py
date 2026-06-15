@@ -77,11 +77,13 @@ class DateMapperClosest(DateMapper):
         self.tried: set[Any] = set()
         self.found: set[Any] = set()
 
-    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the closest available dates.
 
         Parameters
         ----------
+        context:
+            The context of the RepeatedSource using the DateMapper
         group_of_dates : Any
             The group of dates to transform.
 
@@ -116,16 +118,17 @@ class DateMapperClosest(DateMapper):
             # return []
 
         if to_try:
-            result = self.source.select(
+            result = self.source(
+                context,
                 GroupOfDates(
                     sorted(to_try),
                     group_of_dates.provider,
                     partial_ok=True,
-                )
+                ),
             )
 
             cnt = 0
-            for f in result.datasource:
+            for f in result:
                 cnt += 1
                 # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
                 date = as_datetime(f.metadata("valid_datetime"))
@@ -190,11 +193,13 @@ class DateMapperClimatology(DateMapper):
         self.day: int = day
         self.hour: int | None = hour
 
-    def transform(self, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
         Parameters
         ----------
+        context:
+            The context of the RepeatedSource using the DateMapper (not used here)
         group_of_dates : Any
             The group of dates to transform.
 
@@ -234,16 +239,32 @@ class DateMapperConstant(DateMapper):
         source : Any
             The data source.
         date : Optional[Any]
-            The constant date to map to.
+            The constant date to map to.  If ``None``, the inner source is
+            invoked with an empty ``GroupOfDates`` (the source is expected
+            to produce dateless fields that can be broadcast).  If provided,
+            the value must be parseable as a datetime; a ``ValueError`` is
+            raised eagerly otherwise so the problem surfaces at config-parse
+            time rather than at fetch time.
         """
         self.source: Any = source
-        self.date: Any | None = date
+        if date is None:
+            self.date: Any | None = None
+        else:
+            try:
+                self.date = as_datetime(date)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"repeated_dates mode=constant: 'date' must be a valid "
+                    f"datetime, got {date!r} ({type(date).__name__})"
+                ) from exc
 
-    def transform(self, group_of_dates: Any) -> tuple[Any, Any]:
+    def transform(self, context, group_of_dates: Any) -> tuple[Any, Any]:
         """Transform the group of dates to a constant date.
 
         Parameters
         ----------
+        context:
+            The context of the RepeatedSource using the DateMapper (not used here)
         group_of_dates : Any
             The group of dates to transform.
 

@@ -9,34 +9,76 @@
 
 from typing import Any
 
+from anemoi.transform.fields import new_field_with_metadata
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data import from_source
 
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.source import Source
+
 from . import source_registry
-from .legacy import LegacySource
+
+# This table is not complete and needs updating
+
+UNITS = dict(
+    cos_julian_day="dimensionless",
+    cos_latitude="dimensionless",
+    cos_local_time="dimensionless",
+    cos_longitude="dimensionless",
+    sin_julian_day="dimensionless",
+    sin_latitude="dimensionless",
+    sin_local_time="dimensionless",
+    sin_longitude="dimensionless",
+    cos_solar_zenith_angle="dimensionless",
+    insolation="dimensionless",  # An alias for the one above
+)
+
+
+def _units_for(field: Any) -> str:
+    """Return the units of a forcing field, falling back to the ``UNITS`` table."""
+    units = field.metadata("units", default=None)
+    if units is None:
+        units = UNITS[field.metadata("param")]
+    return units
 
 
 @source_registry.register("forcings")
-class ForcingsSource(LegacySource):
+class ForcingsSource(Source):
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], template: str, param: str) -> Any:
-        """Loads forcing data from a specified source.
+    def __init__(self, context: Any, template: Any, param: list[str]) -> None:
+        super().__init__(context)
+        self.template = template
+        self.param = param
 
-        Parameters
-        ----------
-        context : object
-            The context in which the function is executed.
-        dates : list
-            List of dates for which data is to be loaded.
-        template : FieldList
-            Template for the data source.
-        param : str
-            Parameter for the data source.
+    def execute_valid_dates(self, dates: ValidDates) -> Any:
+        self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
+        fields = from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
+        result = [new_field_with_metadata(f, units=_units_for(f)) for f in fields]
+        return new_fieldlist_from_list(result)
 
-        Returns
-        -------
-        object
-            Loaded forcing data.
-        """
-        context.trace("✅", f"from_source(forcings, {template}, {param}")
-        return from_source("forcings", source_or_dataset=template, date=list(dates), param=param)
+    def execute_forecast_dates(self, dates: ForecastDates) -> Any:
+        self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
+
+        valid_times = [vt for vt, _bt in dates]
+        fields = from_source("forcings", source_or_dataset=self.template, date=valid_times, param=self.param)
+
+        # Index forcing fields by valid_datetime for quick lookup
+        fields_by_vdt = {}
+        for f in fields:
+            fields_by_vdt.setdefault(f.metadata("valid_datetime"), []).append(f)
+
+        # For each (valid_time, basetime) pair, clone the forcing fields
+        # with the correct date/time/step metadata
+        result = []
+        for vt, bt in dates:
+            step_hours = int((vt - bt).total_seconds() // 3600)
+            meta = dict(
+                date=int(bt.strftime("%Y%m%d")),
+                time=int(bt.strftime("%H%M")),
+                step=step_hours,
+            )
+            for f in fields_by_vdt.get(vt.isoformat(), []):
+                result.append(new_field_with_metadata(f, units=_units_for(f), **meta))
+
+        return new_fieldlist_from_list(result)

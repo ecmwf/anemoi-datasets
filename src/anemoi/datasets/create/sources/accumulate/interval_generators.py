@@ -13,10 +13,12 @@ import logging
 from abc import abstractmethod
 from collections.abc import Iterable
 
+from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
+from anemoi.datasets.create.intervals import SignedInterval
+
+from .covering_intervals import covering_intervals
 
 LOG = logging.getLogger(__name__)
 
@@ -149,6 +151,85 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return intervals
 
 
+class CycleIntervalProvider(SearchableIntervalGenerator):
+    def __init__(self, **config: dict):
+        print(f"CycleIntervalProvider config: {config}")
+        self.reference = config.pop("start", datetime.datetime(1970, 1, 1, 0, 0))
+        self.reference = as_datetime(self.reference)
+
+        def split(s):
+            i, j = s.split("-")
+            return int(i), int(j)
+
+        def normalise_steps(base_time, steps):
+            steps = steps.split("/")
+            return base_time, [split(s) for s in steps]
+
+        self.config = {split(k): normalise_steps(*v) for k, v in config.items()}
+
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        cycle_length_in_hours = max([k[1] for k in self.config.keys()])
+
+        assert end > start, "CycleIntervalProvider only supports positive intervals (end must be after start)"
+
+        i_start = (int((start - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
+        i_end = (int((end - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
+        if i_end == 0:
+            i_end = cycle_length_in_hours
+
+        if not (0 <= i_start < cycle_length_in_hours):
+            raise ValueError(
+                f"CycleIntervalProvider: i_start={i_start} out of range [0, {cycle_length_in_hours}) (start={start})"
+            )
+        if not (0 < i_end <= cycle_length_in_hours):
+            raise ValueError(
+                f"CycleIntervalProvider: i_end={i_end} out of range (0, {cycle_length_in_hours}] (end={end})"
+            )
+        if i_start >= i_end:
+            raise ValueError(f"CycleIntervalProvider: i_start={i_start} >= i_end={i_end} (start={start}, end={end})")
+
+        if (i_start, i_end) not in self.config:
+            raise ValueError(
+                f"CycleIntervalProvider: no config to find ({i_start}, {i_end}) (start={start}, end={end}, {cycle_length_in_hours=})"
+            )
+
+        base_time, steps = self.config[(i_start, i_end)]
+
+        base_datetime = datetime.datetime(end.year, end.month, end.day, base_time)
+        # The base must be strictly before end so step 0-N lands on or before end.
+        while base_datetime >= end:
+            base_datetime -= datetime.timedelta(days=1)
+
+        if base_datetime.hour != base_time:
+            raise ValueError(f"base_datetime hour {base_datetime.hour} does not match expected base_time {base_time}")
+        if base_datetime >= end:
+            raise ValueError(f"base_datetime {base_datetime} must be strictly before end {end}")
+
+        intervals = []
+        for start_step, end_step in steps:
+            if start_step < 0:
+                raise ValueError(f"start_step {start_step} must be non-negative")
+            if end_step <= start_step:
+                raise ValueError(f"end_step {end_step} must be greater than start_step {start_step}")
+            interval = SignedInterval(
+                base=base_datetime,
+                start=base_datetime + datetime.timedelta(hours=start_step),
+                end=base_datetime + datetime.timedelta(hours=end_step),
+            )
+            intervals.append(interval)
+
+        if not (any(i.start == start for i in intervals) or any((-i).start == start for i in intervals)):
+            raise ValueError(
+                f"CycleIntervalProvider: no interval starting at {start} (start={start}, end={end}, {cycle_length_in_hours=})"
+            )
+        if not (any(i.end == end for i in intervals) or any((-i).end == end for i in intervals)):
+            raise ValueError(
+                f"CycleIntervalProvider: no interval ending at {end} (start={start}, end={end}, {cycle_length_in_hours=})"
+            )
+
+        return intervals
+
+
 def normalise_steps(steps_list: str | list[str]) -> list[list[int]]:
     """Convert the input step_list to a list of [start,end] pairs"""
     res = []
@@ -221,7 +302,16 @@ def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | N
                 (6, "0-3/3-6/6-9/9-12/12-15/15-18"),
                 (18, "0-3/3-6/6-9/9-12/12-15/15-18"),
             ]
-
+        case ("e6", "oper", _):
+            return [
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+            ]
+        case ("e6", "enda", _):
+            return [
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+            ]
         case ("od", "oper", _):
             # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
             steps = [f"{0}-{i}" for i in range(1, 91)]
@@ -262,6 +352,11 @@ def _interval_generator_factory(
             return AccumulatedFromStartIntervalGenerator(**params)
         case {"accumulated-from-start": params}:
             return AccumulatedFromStartIntervalGenerator(**params)
+
+        case {"type": "cycle", **params}:
+            return CycleIntervalProvider(**params)
+        case {"cycle": params}:
+            return CycleIntervalProvider(**params)
 
         case {"accumulated-from-previous-step": params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)

@@ -45,10 +45,11 @@ class AnemoiDatasetSource(LegacySource):
         ensemble = ds.shape[2] > 1
         latitudes = ds.latitudes
         longitudes = ds.longitudes
+        resolution = ds.resolution
 
         for idx, date in indices:
 
-            metadata = dict(valid_datetime=date, latitudes=latitudes, longitudes=longitudes)
+            metadata = dict(valid_datetime=date, latitudes=latitudes, longitudes=longitudes, resolution=resolution)
 
             for j, y in enumerate(ds[idx]):
 

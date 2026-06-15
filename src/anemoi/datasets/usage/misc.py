@@ -347,16 +347,15 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
     """
     from anemoi.datasets.usage.dataset import Dataset
     from anemoi.datasets.usage.store import ZarrStore
-    from anemoi.datasets.usage.store import dataset_lookup
 
     if isinstance(a, Dataset):
         return a.mutate()
 
-    if isinstance(a, zarr.hierarchy.Group):
+    if isinstance(a, zarr.Group):
         return ZarrStore.from_group(a).mutate()
 
     if isinstance(a, str):
-        return ZarrStore.from_path(dataset_lookup(a)).mutate()
+        return ZarrStore.from_name_or_path(a).mutate()
 
     if isinstance(a, PurePath):
         return _open(str(a)).mutate()
@@ -675,9 +674,7 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
         root.attrs["last_date"] = big_dataset.metadata()["end_date"]
         root.attrs["resolution"] = big_dataset.resolution
         root.attrs["name_to_index"] = {k: i for i, k in enumerate(big_dataset.variables)}
-        root.attrs["ensemble_dimension"] = 2
         root.attrs["field_shape"] = big_dataset.field_shape
-        root.attrs["flatten_grid"] = True
         root.attrs["recipe"] = {}
 
 

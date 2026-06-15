@@ -218,23 +218,17 @@ class Variable:
                 LOG.warning(f"Could not find {k}={v} in {c}")
             return None
 
-        if c.scalar and i == 0:
-            variable = self
-        else:
-            coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]
-
-            metadata = self._metadata.copy()
-            metadata.update({k: v})
-
-            variable = Variable(
-                ds=self.ds,
-                variable=self.variable.isel({k: i}),
-                coordinates=coordinates,
-                grid=self.grid,
-                time=self.time,
-                metadata=metadata,
-            )
-
+        coordinates = [x.reduced(i) if c is x else x for x in self.coordinates]
+        metadata = self._metadata.copy()
+        metadata.update({k: v})
+        variable = Variable(
+            ds=self.ds,
+            variable=self.variable if c.scalar else self.variable.isel({k: i}),
+            coordinates=coordinates,
+            grid=self.grid,
+            time=self.time,
+            metadata=metadata,
+        )
         return variable.sel(missing, **kwargs)
 
     def match(self, **kwargs: Any) -> tuple[bool, dict[str, Any] | None]:

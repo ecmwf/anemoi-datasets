@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -11,10 +11,12 @@ import glob
 import logging
 import os
 import time
+from abc import abstractmethod
 from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.transform.variables import Variable
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -27,17 +29,36 @@ from anemoi.datasets.buffering import WriteBehindBuffer
 from ..creator import Creator
 from ..dataset import Dataset
 from ..statistics import StatisticsCollector
-from .context import GriddedContext
+from .context import SimpleGriddedContext
 
 LOG = logging.getLogger(__name__)
 
 
 class GriddedCreator(Creator):
 
+    def _metadata_dates(self):
+        """Return the datetime values used for statistics metadata.
+
+        Trajectories override this to return the base dates (factorised from
+        ``(basetime, step)`` tuples).
+        """
+        return self.groups.provider.values
+
+    def _metadata_date_range(self):
+        """Return ``(start_date, end_date)`` for the dataset metadata.
+
+        The default implementation uses the first/last of
+        :meth:`_metadata_dates`.  Trajectories override this to return the
+        envelope (basetime + step).
+        """
+        dates = self._metadata_dates()
+        return dates[0], dates[-1]
+
     def collect_metadata(self, metadata: dict):
         """Run the initialisation process for the dataset."""
+        super().collect_metadata(metadata)
 
-        dates = self.groups.provider.values
+        dates = self._metadata_dates()
         frequency = self.groups.provider.frequency
         missing = self.groups.provider.missing
 
@@ -45,10 +66,12 @@ class GriddedCreator(Creator):
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
 
         metadata["remapping"] = self.recipe.build.remapping
-        metadata["order_by"] = self.recipe.output.order_by
-        metadata["flatten_grid"] = self.recipe.output.flatten_grid
+        # Read from the context rather than the recipe so that layouts whose
+        # cube ordering is internal (e.g. trajectories) can provide their own
+        # ``order_by`` without exposing it in the recipe schema.
+        metadata["order_by"] = self.context().order_by
 
-        metadata["ensemble_dimension"] = len(self.minimal_input.ensembles)
+        metadata["dimensions"] = ["dates", "variables", "ensembles", "values"]
 
         metadata["resolution"] = self.minimal_input.resolution
 
@@ -61,11 +84,25 @@ class GriddedCreator(Creator):
         # TODO: below may be common with tabular
         metadata["variables"] = variables
 
-        metadata["start_date"] = dates[0].isoformat()
-        metadata["end_date"] = dates[-1].isoformat()
+        start_date, end_date = self._metadata_date_range()
+        metadata["start_date"] = start_date.isoformat()
+        metadata["end_date"] = end_date.isoformat()
         metadata["frequency"] = frequency
         metadata["missing_dates"] = [_.isoformat() for _ in missing]
 
+        # TODO:
+        # ``dates`` are the values along the dataset's time axis: valid dates
+        # for gridded, base dates for trajectories.  ``statistics_dates``
+        # must receive the same kind so that the resulting filter boundaries
+        # are consistent with ``dataset.dates`` used in
+        # ``_compute_partial_statistics``.
+        # This is for simplicity, for now, but they should arguably be valid dates
+        # in both cases, statistics should be computed with data selection based
+        # on valid dates, for instance setting the default statistics period to
+        # the 20 most recent years of valid data should remove any data
+        # that is not valid in this date range.
+        # but this is not implemented yet.
+        # related to the start and end being the "envelope" of the dates in the dataset.
         start, end = self.recipe.statistics.statistics_dates(dates)
 
         metadata["statistics_start_date"] = start
@@ -74,34 +111,9 @@ class GriddedCreator(Creator):
         # metadata["variables_with_nans"] = variables_with_nans
         metadata["allow_nans"] = self.recipe.build.allow_nans
 
-    def initialise_dataset(self, dataset: Dataset) -> None:
-        super().initialise_dataset(dataset)
-
-        dates = self.groups.provider.values
-        shape = (len(dates),) + self.minimal_input.shape[1:]
-
-        assert len(shape) == 4, f"Expected 4D shape, got {shape}"
-
-        coords = self.minimal_input.coords
-        coords["dates"] = dates
-        chunks = self.recipe.output.get_chunking(coords)
-
-        grid_points = self.minimal_input.grid_points
-
-        # Create arrays
-
-        dataset.add_array(
-            name="data",
-            chunks=chunks,
-            dtype=self.recipe.output.dtype,
-            shape=shape,
-            dimensions=("time", "variable", "ensemble", "cell"),
-            fill_value=np.nan,
-        )
-
-        dataset.add_array(name="dates", data=np.array(dates, "<M8[s]"), dimensions=("time",))
-        dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
-        dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))
+    @abstractmethod
+    def initialise_dataset(self, dataset) -> None:
+        pass
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
         """Load the result into the dataset."""
@@ -169,25 +181,31 @@ class GriddedCreator(Creator):
             LOG.info(f"Loading array shape={shape}, indexes={len(indexes)}")
             self._load_cube(cube, array, indexes)
 
+        # The units have been set during the first load, so we can check for consistency here
+        old = dataset.typed_variables
+        new = result.typed_variables
+
+        Variable.check_compatibility(old, new)
+
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
 
-        from ..naming import DatasetName
+        from ..naming import check_dataset_name
 
         name = Path(path).stem
 
         dates = self.groups.provider.values
         frequency = self.groups.provider.frequency
 
-        try:
-            DatasetName(
-                name,
-                start_date=dates[0],
-                end_date=dates[-1],
-                frequency=frequency_to_timedelta(frequency),
-            ).raise_if_not_valid()
-        except ValueError as e:
-            LOG.warning("Dataset name error: %s", e)
+        for message in check_dataset_name(
+            name,
+            resolution=self.minimal_input.resolution,
+            start_date=dates[0],
+            end_date=dates[-1],
+            frequency=frequency,
+            layout="gridded",
+        ):
+            LOG.warning("Dataset name warning: %s", message)
 
     def load_done(self, dataset, group):
         """Compure statistics after loading is done."""
@@ -213,8 +231,9 @@ class GriddedCreator(Creator):
 
     ######################################################
 
+    @abstractmethod
     def context(self):
-        return GriddedContext(self.recipe)
+        pass
 
     def _load_cube(self, cube: Any, array: Any, indexes: Any) -> None:
         """Load the cube into the array."""
@@ -269,17 +288,16 @@ class GriddedCreator(Creator):
         """Return the tendencies to compute for the dataset, based on the recipe configuration."""
         frequency = dataset.frequency
 
-        additions = self.recipe.build.additions
-        tendencies_list = []
-
-        if additions:
-            tendencies_config = self.recipe.statistics.tendencies
-            if tendencies_config is True:
-                tendencies_list = [1, 3, 6, 12, 24]
-            elif tendencies_config is False or tendencies_config is None:
-                tendencies_list = []
-            else:
-                tendencies_list = list(tendencies_config)
+        tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is None:
+            # Tendencies are disabled by default.
+            tendencies_config = False
+        if tendencies_config is True:
+            tendencies_list = [1, 3, 6, 12, 24]
+        elif tendencies_config is False:
+            tendencies_list = []
+        else:
+            tendencies_list = list(tendencies_config)
 
         tendencies = {}
         for delta in tendencies_list:
@@ -326,3 +344,35 @@ class GriddedCreator(Creator):
         LOG.info("Computing statistics for the full dataset")
         collector = self._compute_partial_statistics(dataset, 0, len(dataset.dates))
         collector.add_to_dataset(dataset)
+
+
+class SimpleGriddedCreator(GriddedCreator):
+    def context(self):
+        return SimpleGriddedContext(self.recipe)
+
+    def initialise_dataset(self, dataset: Dataset) -> None:
+        dates = self.groups.provider.values
+        shape = (len(dates),) + self.minimal_input.shape[1:]
+
+        assert len(shape) == 4, f"Expected 4D shape, got {shape}"
+
+        coords = self.minimal_input.coords
+        coords["dates"] = dates
+        chunks = self.recipe.output.get_chunking(coords)
+
+        grid_points = self.minimal_input.grid_points
+
+        # Create arrays
+
+        dataset.add_array(
+            name="data",
+            chunks=chunks,
+            dtype=self.recipe.output.dtype,
+            shape=shape,
+            dimensions=("time", "variable", "ensemble", "cell"),
+            fill_value=np.nan,
+        )
+
+        dataset.add_array(name="dates", data=np.array(dates, "<M8[s]"), dimensions=("time",))
+        dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
+        dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))

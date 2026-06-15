@@ -9,7 +9,7 @@
 
 import os
 import shutil
-import sys
+from typing import Any
 
 import numpy as np
 import pytest
@@ -19,6 +19,22 @@ from anemoi.utils.testing import skip_missing_packages
 from anemoi.datasets import open_dataset
 
 from .utils.create import create_dataset
+
+
+def _run_one_group(recipe):
+    from anemoi.datasets.create.input.builder import InputBuilder
+    from anemoi.datasets.create.input.context import Context
+    from anemoi.datasets.create.recipe import Recipe
+    from anemoi.datasets.dates.groups import Groups
+
+    class TestContext(Context):
+        def create_result(self, argument: Any, data: Any) -> Any:
+            return data
+
+    recipe = Recipe(**recipe)
+    builder = InputBuilder(recipe.input, recipe.data_sources)
+    group = Groups(recipe.dates, recipe.build.group_by)
+    return builder.select(TestContext(recipe), next(iter(group)))
 
 
 @skip_if_offline
@@ -183,9 +199,6 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
         created = create_dataset(recipe=config_grib_index, output=None)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 10), reason="Type hints from anemoi-transform are not compatible with Python < 3.10"
-)
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
@@ -260,7 +273,10 @@ def test_grib_gridfile_with_refinement_level(
     assert len(param) * len(level) + len(forcings) == shape[1]
 
     grib = {
-        "path": os.path.join(path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"),
+        "path": os.path.join(
+            path,
+            "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}",
+        ),
         "grid_definition": {
             "icon": {
                 "path": gridfile,
@@ -288,7 +304,12 @@ def test_grib_gridfile_with_refinement_level(
                 {
                     "join": [
                         {"grib": grib},
-                        {"forcings": {"param": forcings, "template": "${input.pipe.0.join.0.grib}"}},
+                        {
+                            "forcings": {
+                                "param": forcings,
+                                "template": "${input.pipe.0.join.0.grib}",
+                            }
+                        },
                     ]
                 },
                 refinement_filter,
@@ -331,7 +352,8 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
         "input": {
             "grib": {
                 "path": os.path.join(
-                    path, "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}"
+                    path,
+                    "{date:strftimedelta(+3h;%Y%m%d%H)}+fc_R03B07_rea_ml.{date:strftime(%Y%m%d%H)}",
                 ),
                 "grid_definition": {"icon": {"path": gridfile}},
                 "param": ["u"],
@@ -470,16 +492,103 @@ def test_planetary_computer_conus404() -> None:
 
 
 @skip_if_offline
+@skip_missing_packages("planetary_computer", "adlfs")
+@pytest.mark.parametrize(
+    ("collection_id", "year", "param", "search_params", "shape"),
+    [
+        (
+            "era5-pds",
+            2020,
+            ["surface_air_pressure"],
+            {
+                "filter": {"op": "=", "args": [{"property": "era5:kind"}, "an"]},
+            },
+            (2, 1, 1, 1038240),
+        ),
+        (
+            "met-office-global-deterministic-near-surface",
+            2026,
+            ["rainfall_rate", "lwe_snowfall_rate"],
+            {
+                "variable_key_map": {
+                    "lwe_snowfall_rate": "snowfall_rate",
+                },
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {
+                            "op": "=",
+                            "args": [{"property": "forecast:horizon"}, "PT0000H00M"],
+                        },
+                        {
+                            "op": "=",
+                            "args": [
+                                {"property": "met_office_deterministic:model"},
+                                "global",
+                            ],
+                        },
+                    ],
+                },
+            },
+            (2, 2, 1, 4915200),
+        ),
+    ],
+)
+def test_planetary_computer_multipart(
+    collection_id: str,
+    year: int | str,
+    param: list[str],
+    search_params: dict,
+    shape: tuple[int, int, int, int],
+) -> None:
+    """Test loading and validating Planetary Computer collection data.
+
+    Parameterised to test two multipart collections:
+    - era5-pds: multiple timesteps per ABFS URI Zarr store
+    - met-office-global-deterministic-near-surface: one timestep per HTTPS URL NetCDF
+    file with data variable name:STAC key inequality
+    """
+    import pystac_client
+
+    search_params = {
+        **search_params,
+        "datetime": f"{year}-01-01T00:00:00Z/{year}-01-01T06:00:00Z",
+    }
+
+    recipe = {
+        "dates": {
+            "start": f"{year}-01-01T00:00:00",
+            "end": f"{year}-01-01T06:00:00",
+            "frequency": "6h",
+        },
+        "input": {
+            "planetary_computer": {
+                "data_catalog_id": collection_id,
+                "azure_log_level": "WARNING",
+                "param": param,
+                "search_params": search_params,
+            },
+        },
+    }
+    try:
+        created = create_dataset(recipe=recipe, output=None)
+    except pystac_client.exceptions.APIError:
+        pytest.skip("Planetary Computer data catalog is not available")
+    ds = open_dataset(created)
+    assert ds.shape == shape, ds.shape
+
+
+@skip_if_offline
 def test_csv(get_test_data: callable) -> None:
     """Test for CSV source registration."""
-    from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.csv")
-
-    source = create_source(
-        context=None,
-        config={
+    recipe = {
+        "dates": {
+            "start": "2025-01-01T00:00:00",
+            "end": "2025-12-21T23:59:59",
+        },
+        "input": {
             "csv": {
                 "path": data,
                 "flavour": {
@@ -490,15 +599,9 @@ def test_csv(get_test_data: callable) -> None:
                 },
             }
         },
-    )
-    dates = GroupOfDates.from_config(
-        {
-            "start": "2025-01-01T00:00:00",
-            "end": "2025-12-21T23:59:59",
-        },
-    )
+    }
+    frame = _run_one_group(recipe)
 
-    frame = source.execute(dates)
     assert len(frame) == 2526
 
     assert "latitude" in frame.columns, frame.columns
@@ -512,23 +615,19 @@ def test_csv(get_test_data: callable) -> None:
 
 # @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
-@skip_if_offline
 @pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
 def test_odb(get_test_data: callable) -> None:
-    from anemoi.datasets.create.sources import create_source
-    from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.odb")
-
-    source = create_source(context=None, config={"odb": {"path": data}})
-    dates = GroupOfDates.from_config(
-        {
+    recipe = {
+        "dates": {
             "start": "2025-01-01T00:00:00",
             "end": "2025-12-21T23:59:59",
         },
-    )
+        "input": {"odb": {"path": data}},
+    }
+    frame = _run_one_group(recipe)
 
-    frame = source.execute(dates)
     assert len(frame) == 6838
 
     assert "latitude" in frame.columns, frame.columns
@@ -544,15 +643,17 @@ def test_odb(get_test_data: callable) -> None:
 @skip_if_offline
 def test_bufr(get_test_data: callable) -> None:
 
+    from anemoi.datasets.create.recipe.dates import StartEndDates
     from anemoi.datasets.create.sources import create_source
     from anemoi.datasets.dates.groups import GroupOfDates
 
     data = get_test_data("anemoi-datasets/obs/dribu.bufr")
 
     source = create_source(context=None, config={"bufr": {"path": data}})
-    dates = GroupOfDates.from_config(
+    provider = StartEndDates(
         start="2020-01-01T00:00:00",
-        end="2020-01-02:23:59:59",
+        end="2020-01-02T23:59:59",
     )
+    dates = GroupOfDates(provider.values, provider)
 
     source.execute(dates)

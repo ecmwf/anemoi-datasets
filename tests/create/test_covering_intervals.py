@@ -11,9 +11,9 @@ from datetime import datetime
 
 import pytest
 
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
-from anemoi.datasets.create.sources.accumulate_utils.interval_generators import interval_generator_factory
+from anemoi.datasets.create.intervals import SignedInterval
+from anemoi.datasets.create.sources.accumulate.covering_intervals import covering_intervals
+from anemoi.datasets.create.sources.accumulate.interval_generators import interval_generator_factory
 
 
 def build_signed_interval(x: str) -> SignedInterval:

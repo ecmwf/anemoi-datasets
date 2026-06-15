@@ -6,7 +6,6 @@
 # In applying this licence, ECMWF does not waive the privileges and immunities
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
-
 [build-system]
 requires = [
   "setuptools>=60",
@@ -42,23 +41,22 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.1.27",
-  "anemoi-transform>=0.1.27",
-  "anemoi-utils>=0.5",
-  "anemoi-utils>=0.5",
+  "anemoi-transform>=0.4",
+  "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",           # Until we move to zarr3
+  "numcodecs<0.16",        # Until we move to zarr3
   "numpy",
+  "pint",
   "pydantic",
+  "pyodc>=1.6",
   "pyyaml",
-  "ruamel-yaml>=0.16",
+  "rich",
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.7",
   "zarr<=2.18.7",
 ]
 optional-dependencies.all = [
@@ -89,10 +87,7 @@ optional-dependencies.docs = [
   "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
-optional-dependencies.remote = [
-  "boto3",
-  "requests",
-]
+optional-dependencies.remote = [ "anemoi-utils[s3]", "requests" ]
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
   "pyodc>=1.6",
@@ -103,6 +98,8 @@ optional-dependencies.tests = [
 optional-dependencies.xarray = [
   "adlfs",
   "gcsfs",
+  "h5netcdf>=1.8.1",
+  "h5py>=3.16",
   "kerchunk",
   "pandas",
   "planetary-computer",
@@ -127,18 +124,18 @@ version_file = "src/anemoi/datasets/_version.py"
 [tool.isort]
 profile = "black"
 
+[tool.mypy]
+strict = false
+exclude = [
+  "docs/.*",
+]
+
 [tool.pytest]
 ini_options.testpaths = "tests"
 ini_options.addopts = [
   "--numprocesses=auto",
   "--maxprocesses=16",
   "--strict-config",
-]
-
-[tool.mypy]
-strict = false
-exclude = [
-  "docs/.*",
 ]
 
 [tool.pydocstringformatter]

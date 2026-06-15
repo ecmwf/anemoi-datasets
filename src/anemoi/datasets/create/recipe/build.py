@@ -16,6 +16,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from pydantic import BeforeValidator
+from pydantic import ConfigDict
 from pydantic import Field
 from pydantic_core import PydanticCustomError
 
@@ -35,37 +36,49 @@ def validate_variable_naming(value):
     return NAMINGS.get(value, value)
 
 
+def _tendencies_enabled(value: Any) -> bool:
+    """Return whether a ``statistics.tendencies`` value enables tendency statistics.
+
+    Parameters
+    ----------
+    value : Any
+        The ``statistics.tendencies`` value (``bool``, ``None`` or a list of deltas).
+
+    Returns
+    -------
+    bool
+        ``True`` if tendency statistics are requested, ``False`` otherwise.
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (list, tuple)):
+        return len(value) > 0
+    return bool(value)
+
+
 def validate_mapping(value):
     assert False, validate_mapping
 
 
 class Build(BaseModel):
 
-    class Config:
-        # arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     use_grib_paramid: bool = False
     allow_nans: bool | list[str] = False
     """Allow NaN values in the dataset. Can be True, False, or a list of variable names."""
     variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = validate_variable_naming("default")
     group_by: str | int = "monthly"
-    additions: bool = False
-
+    additions: bool | None = None
     env: dict[str, str] = {}
+    max_fragment_size: int = 268435456  # 256 MiB
+    validate_date_ranges: bool = True
+    max_workers: int | None = None
     """Environment variables to set when creating the dataset."""
-
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     """Remapping configuration for the dataset."""
-
-    max_fragment_size: int = 128 * 1024 * 1024
-    """Maximum size of each fragment file in bytes. Default is 128 MB. Used when creating tabular datasets to split large arrays into smaller files."""
-
-    max_workers: int | None = None
-    """Maximum number of parallel workers to use when creating tabular datasets. If None, uses heuristic based on available CPUs, available memory, and max_fragment_size."""
-
-    validate_date_ranges: bool = True
-    """Whether to validate date ranges after building a tabular dataset. This can be very time-consuming as it scans through the entire dataset."""
 
     def _post_init(self, recipe: Recipe) -> None:
         """Post-initialisation hook to handle legacy config options.
@@ -106,7 +119,56 @@ class Build(BaseModel):
             self.remapping = dict(recipe.output.remapping)
             recipe.output.remapping = None
 
+        # Reconcile the deprecated 'build.additions' flag with the canonical
+        # 'statistics.tendencies' option. The rest of the codebase relies
+        # solely on 'statistics.tendencies'.
+        self._resolve_tendencies(recipe)
+
         # Apply variable_naming to remapping
         # This is for backward compatibility
         if "param_level" in self.remapping:
             self.remapping["param_level"] = self.variable_naming
+
+    def _resolve_tendencies(self, recipe: Recipe) -> None:
+        """Reconcile the deprecated ``build.additions`` flag with ``statistics.tendencies``.
+
+        ``statistics.tendencies`` is the canonical option used throughout the
+        codebase. ``build.additions`` is retained for backward compatibility and
+        is resolved here:
+
+        * If ``statistics.tendencies`` is provided, it is honoured.
+        * If only ``build.additions`` is provided, its value is copied onto
+          ``statistics.tendencies`` and a deprecation warning is issued.
+        * If both are provided, any value that is ``None`` is ignored. If the
+          remaining values agree, that value is used. If they disagree, an
+          error is raised.
+
+        Parameters
+        ----------
+        recipe : Recipe
+            The parent recipe object.
+        """
+        statistics = recipe.statistics
+
+        # ``None`` means "not provided" for both options (the round-trip through
+        # ``model_dump_json`` re-injects defaults, so we rely on the value rather
+        # than ``model_fields_set``).
+        if self.additions is None:
+            # Nothing to reconcile: 'statistics.tendencies' (set or default) wins.
+            return
+
+        if statistics.tendencies is not None:
+            if _tendencies_enabled(statistics.tendencies) != bool(self.additions):
+                raise PydanticCustomError(
+                    "conflicting_tendencies",
+                    "Conflicting configuration: 'build.additions' ({additions}) and "
+                    "'statistics.tendencies' ({tendencies}) disagree. "
+                    "Please use 'statistics.tendencies' only.",
+                    {"additions": self.additions, "tendencies": statistics.tendencies},
+                )
+            # They agree: keep the (richer) 'statistics.tendencies' value.
+            return
+
+        # Only the deprecated 'build.additions' was provided.
+        LOG.warning("'build.additions' is deprecated; please use 'statistics.tendencies' instead.")
+        statistics.tendencies = self.additions

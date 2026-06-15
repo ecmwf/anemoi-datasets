@@ -1,0 +1,24 @@
+dates:
+  start: 2020-01-01T00:00:00+00:00
+  end: 2020-01-02T00:00:00+00:00
+  frequency: 6h
+
+input:
+  planetary-computer:
+    data_catalog_id: met-office-global-deterministic-near-surface
+    param: [rainfall_rate, lwe_snowfall_rate]
+    search_params:
+      datetime: 2020-01-01T00:00:00+00:00/2020-01-02T00:00:00+00:00
+      variable_key_map:
+        lwe_snowfall_rate: snowfall_rate
+      filter:
+        op: and
+        args:
+          - op: "="
+            args:
+              - property: forecast:horizon
+              - PT0000H00M
+          - op: "="
+            args:
+              - property: met_office_deterministic:model
+              - global

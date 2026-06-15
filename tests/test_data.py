@@ -24,6 +24,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.misc.testing import FastGroup
 from anemoi.datasets.misc.testing import default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.gridded.concat import Concat
@@ -39,6 +40,8 @@ from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
+
+true_zarr_open = zarr.open
 
 
 def mockup_open_zarr(func: Callable) -> Callable:
@@ -58,7 +61,7 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name: name + ".zarr"):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, fail: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
@@ -157,24 +160,23 @@ def create_zarr(
             for e in range(ensembles):
                 data[i, j, e] = _(date.astype(object), var, k, e, values)
 
-    root.create_dataset(
+    root.create_array(
         "data",
         data=data,
-        dtype=data.dtype,
         chunks=data.shape,
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "dates",
         data=dates,
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "latitudes",
         data=np.array([x + values for x in range(values)]),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "longitudes",
         data=np.array([x + values for x in range(values)]),
         compressor=None,
@@ -199,30 +201,75 @@ def create_zarr(
 
         root.attrs["missing_dates"] = [d.isoformat() for d in missing_dates]
 
-    root.create_dataset(
+    root.create_array(
         "mean",
         data=np.mean(data, axis=0),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "stdev",
         data=np.std(data, axis=0),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "maximum",
         data=np.max(data, axis=0),
         compressor=None,
     )
-    root.create_dataset(
+    root.create_array(
         "minimum",
         data=np.min(data, axis=0),
+        compressor=None,
+    )
+
+    # Statistics tendencies: simple finite differences along the time axis for the
+    # configured frequency, stored under the `statistics_tendencies_<delta>_<k>` keys
+    # expected by the store. Real anemoi zarr stores per-variable scalars (shape
+    # `(V,)`), so we reduce over the (time, ensemble, grid) axes to match.
+    delta = frequency_to_string(frequency)
+    if data.shape[0] >= 2:
+        tendencies = np.diff(data, axis=0)
+    else:
+        tendencies = data
+    root.create_array(
+        f"statistics_tendencies_{delta}_mean",
+        data=np.mean(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+    root.create_array(
+        f"statistics_tendencies_{delta}_stdev",
+        data=np.std(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+    root.create_array(
+        f"statistics_tendencies_{delta}_maximum",
+        data=np.max(tendencies, axis=(0, 2, 3)),
+        compressor=None,
+    )
+    root.create_array(
+        f"statistics_tendencies_{delta}_minimum",
+        data=np.min(tendencies, axis=(0, 2, 3)),
         compressor=None,
     )
 
     root.attrs["field_shape"] = field_shape
     assert len(field_shape) == 2
     assert data.shape[-1] == field_shape[0] * field_shape[1]
+
+    # This wrapping significantly speeds up tests.
+    # It can be removed when https://github.com/zarr-developers/zarr-python/issues/3524 is resolved.
+    #
+    # Duration of tests in test_data.py (with 16 workers):
+    #   with zarr 2                : ~1 minute
+    #   with zarr 3.1.5            : ~6 minutes
+    #   with zarr 3 + this wrapper : ~13 seconds
+    #
+    # This is not ideal, as we don't test with the real zarr, but is fine since we are testing
+    # anemoi-datasets functionality, not zarr functionality.
+    # It can still break things if zarr3 changes the API we are relying on, which is unlikely.
+    #
+    if zarr.__version__.startswith("3."):
+        root = FastGroup(root)
 
     return root
 
@@ -243,6 +290,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         Zarr dataset.
     """
     # Format: test-2021-2021-6h-o96-abcd-0
+    if "/" in name:
+        return true_zarr_open(name)
 
     name, _ = os.path.splitext(name)
 
@@ -1341,9 +1390,11 @@ def test_grids() -> None:
 @mockup_open_zarr
 def test_statistics() -> None:
     """Test datasets with statistics."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    ref_name = "test-2000-2010-6h-o96-abcd"
     test = DatasetTester(
-        "test-2021-2021-6h-o96-abcd",
-        statistics="test-2000-2010-6h-o96-abcd",
+        base_name,
+        statistics=ref_name,
     )
     test.run(
         expected_class=Statistics,
@@ -1354,9 +1405,66 @@ def test_statistics() -> None:
         expected_shape=(365 * 4, 4, 1, VALUES),
         expected_variables="abcd",
         expected_name_to_index="abcd",
-        statistics_reference_dataset="test-2000-2010-6h-o96-abcd",
+        statistics_reference_dataset=ref_name,
         statistics_reference_variables="abcd",
     )
+
+    # The `statistics` kwarg should override both statistics and tendencies
+    # from the reference dataset.
+    ref = open_dataset(ref_name)
+    ref_tend = ref.statistics_tendencies()
+    ds_tend = test.ds.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (test.ds.statistics[k] == ref.statistics[k]).all()
+        assert (ds_tend[k] == ref_tend[k]).all()
+
+
+@mockup_open_zarr
+def test_only_tendencies() -> None:
+    """Test overriding only ``statistics_tendencies`` via the ``statistics_tendencies`` kwarg."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    ref_name = "test-2000-2010-6h-o96-abcd"
+
+    base = open_dataset(base_name)
+    ref = open_dataset(ref_name)
+
+    ds = open_dataset(base_name, statistics_tendencies=ref_name)
+
+    # Goes through the Statistics wrapper.
+    assert isinstance(ds, Statistics)
+
+    # `statistics` must come from the base (forward) dataset, not from the override.
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds.statistics[k] == base.statistics[k]).all()
+
+    # `statistics_tendencies` must come from the override dataset.
+    ref_tend = ref.statistics_tendencies()
+    ds_tend = ds.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds_tend[k] == ref_tend[k]).all()
+
+
+@mockup_open_zarr
+def test_statistics_and_tendencies_from_two_datasets() -> None:
+    """Test overriding ``statistics`` and ``statistics_tendencies`` from two different datasets in a single call."""
+    base_name = "test-2021-2021-6h-o96-abcd"
+    stats_name = "test-2000-2010-6h-o96-abcd"
+    tend_name = "test-2010-2020-6h-o96-abcd"
+
+    stats_ref = open_dataset(stats_name)
+    tend_ref = open_dataset(tend_name)
+
+    ds = open_dataset(base_name, statistics=stats_name, statistics_tendencies=tend_name)
+
+    assert isinstance(ds, Statistics)
+
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds.statistics[k] == stats_ref.statistics[k]).all()
+
+    ds_tend = ds.statistics_tendencies()
+    tend = tend_ref.statistics_tendencies()
+    for k in ("mean", "stdev", "maximum", "minimum"):
+        assert (ds_tend[k] == tend[k]).all()
 
 
 @mockup_open_zarr
@@ -1369,7 +1477,6 @@ def test_cropping() -> None:
     assert test.ds.shape == (365 * 4, 4, 1, 8)
 
 
-@pytest.mark.skip("Rolling average not yet supported in that branch")
 @mockup_open_zarr
 def test_rolling_average() -> None:
     initial = DatasetTester("test-2021-2021-6h-o96-abcd")

@@ -18,12 +18,17 @@ from typing import Any
 
 import earthkit.data as ekd
 import tqdm
+from anemoi.transform.fields import new_field_from_grid
 from anemoi.transform.flavour import RuleBasedFlavour
+from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
+
+from ..source import Source
 from . import source_registry
-from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -102,6 +107,10 @@ class GribIndex:
         self.warnings = {}
         self.cache = {}
 
+    def _quote_column(self, column: str) -> str:
+        """Quote a column name for use in SQL queries."""
+        return f'"{column}"'
+
     def _create_tables(self) -> None:
         """Create the necessary tables in the database."""
         assert self.update
@@ -123,7 +132,7 @@ class GribIndex:
             _path_id INTEGER not null,
             _offset INTEGER not null,
             _length INTEGER not null,
-            {', '.join(f"{key} TEXT not null default ''" for key in columns)},
+            {', '.join(f"{self._quote_column(key)} TEXT not null default ''" for key in columns)},
             FOREIGN KEY(_path_id) REFERENCES paths(id))
         """)  # ,
 
@@ -134,13 +143,13 @@ class GribIndex:
 
         self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({', '.join(columns)})
+        ON grib_index ({', '.join(self._quote_column(col) for col in columns)})
         """)
 
         for key in columns:
             self.cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
-            ON grib_index ({key})
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(':', '_')}
+            ON grib_index ({self._quote_column(key)})
             """)
 
         self._commit()
@@ -195,7 +204,7 @@ class GribIndex:
 
             self.cursor.execute(
                 f"""
-            INSERT INTO grib_index ({', '.join(kwargs.keys())})
+            INSERT INTO grib_index ({', '.join(self._quote_column(k) for k in kwargs.keys())})
             VALUES ({', '.join('?' for _ in kwargs)})
             """,
                 tuple(kwargs.values()),
@@ -208,7 +217,8 @@ class GribIndex:
             for n in ("_path_id", "_offset", "_length"):
                 kwargs.pop(n)
             self.cursor.execute(
-                "SELECT * FROM grib_index WHERE " + " AND ".join(f"{key} = ?" for key in kwargs.keys()),
+                "SELECT * FROM grib_index WHERE "
+                + " AND ".join(f"{self._quote_column(key)} = ?" for key in kwargs.keys()),
                 tuple(kwargs.values()),
             )
             existing_record = self.cursor.fetchone()
@@ -252,20 +262,22 @@ class GribIndex:
         self._columns = None
 
         for column in new_columns:
-            self.cursor.execute(f"ALTER TABLE grib_index ADD COLUMN {column} TEXT not null default ''")
+            self.cursor.execute(
+                f"ALTER TABLE grib_index ADD COLUMN {self._quote_column(column)} TEXT not null default ''"
+            )
 
         self.cursor.execute("""DROP INDEX IF EXISTS idx_grib_index_all_keys""")
         all_columns = self._all_columns()
 
         self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({', '.join(all_columns)})
+        ON grib_index ({', '.join(self._quote_column(col) for col in all_columns)})
         """)
 
         for key in all_columns:
             self.cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key}
-            ON grib_index ({key})
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(':', '_')}
+            ON grib_index ({self._quote_column(key)})
             """)
 
     def add_grib_file(self, path: str) -> None:
@@ -300,6 +312,8 @@ class GribIndex:
                 if param not in self.warnings:
                     self._unknown(path, field, i, param)
                     self.warnings[param] = True
+
+                continue
 
             self._ensure_columns(list(keys.keys()))
 
@@ -536,15 +550,14 @@ class GribIndex:
                 LOG.warning(f"Warning : {k} not in database columns, key discarded")
                 continue
             if isinstance(v, list):
-                query += f" AND {k} IN ({', '.join('?' for _ in v)})"
+                query += f" AND {self._quote_column(k)} IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
             else:
-                query += f" AND {k} = ?"
+                query += f" AND {self._quote_column(k)} = ?"
                 params.append(str(v))
 
         print("SELECT (query)", query)
         print("SELECT (params)", params)
-
         self.cursor.execute(query, params)
 
         fetch = self.cursor.fetchall()
@@ -564,64 +577,87 @@ class GribIndex:
 
 
 @source_registry.register("grib-index")
-class GribIndexSource(LegacySource):
-    @staticmethod
-    def _execute(
+class GribIndexSource(Source):
+    """GRIB-index data source."""
+
+    emoji = "🌧️"
+
+    def __init__(
+        self,
         context: Any,
-        dates: list[Any],
         indexdb: str,
         flavour: str | None = None,
+        grid_definition: dict | None = None,
         **kwargs: Any,
-    ) -> FieldArray:
-        """Execute the GRIB data retrieval process.
+    ) -> None:
+        """Initialise the GRIB-index source.
 
         Parameters
         ----------
         context : Any
             The execution context.
-        dates : List[Any]
-            List of dates to retrieve data for.
         indexdb : str
             Path to the GRIB index database.
-        flavour : Optional[str], optional
-            Flavour configuration for mapping fields, by default None.
+        flavour : str, optional
+            Flavour configuration for mapping fields.
+        grid_definition : dict, optional
+            Grid definition to reproject retrieved fields onto.
         **kwargs : Any
-            Additional filtering criteria.
-
-        Returns
-        -------
-        FieldArray
-            An array of retrieved GRIB fields.
+            Additional filtering criteria forwarded to ``GribIndex.retrieve``.
         """
-        index = GribIndex(indexdb)
+        super().__init__(context)
+        self.indexdb = indexdb
+        self.flavour = RuleBasedFlavour(flavour) if flavour is not None else None
+        self.grid = grid_registry.from_config(grid_definition) if grid_definition else None
+        self.request = kwargs
 
-        if flavour is not None:
-            flavour = RuleBasedFlavour(flavour)
+    def execute_valid_dates(self, dates: ValidDates) -> FieldArray:
+        """Retrieve grib-indexed fields for a list of validity times."""
+        full_requests = [(list(dates), self.request)]
+        return self._run_requests(full_requests)
 
-        if hasattr(dates, "date_to_intervals"):
-            # When using accumulate source
-            full_requests = []
-            for d, interval in dates.intervals:
-                context.trace("🌧️", "interval:", interval)
-                valid_date, request, _ = dates._adjust_request_to_interval(interval, kwargs)
-                context.trace("🌧️", "  request =", request)
-                full_requests.append(([valid_date], request))
-        else:
-            # Normal case, without accumulate source
-            full_requests = [(dates, kwargs)]
+    def execute_intervals(self, dates: Intervals) -> FieldArray:
+        """Retrieve grib-indexed fields covering accumulation windows.
+
+        grib-index is valid-time indexed: each interval is resolved to its
+        validity time (``interval.max``) plus a ``step`` equal to the
+        accumulation period length. No basetime is involved — the
+        ``SignedInterval.base`` attribute is ignored here, which is why this
+        path does not go through ``Intervals.adjust_request``.
+        """
+        full_requests = []
+        for interval in dates.intervals:
+            # grib-index is valid-time indexed; intervals must not carry a basetime.
+            assert interval.base is None, (
+                f"GribIndexSource received an interval with a basetime: {interval!r}. "
+                "grib-index resolves intervals by valid time only."
+            )
+            self.context.trace(self.emoji, "interval:", interval)
+            request = self.request.copy()
+            request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
+            self.context.trace(self.emoji, "  request =", request)
+            full_requests.append(([interval.max], request))
+        return self._run_requests(full_requests)
+
+    def _run_requests(self, full_requests: list[tuple[list, dict]]) -> FieldArray:
+        """Factorise, trace, and run a list of ``(valid_dates, request)`` pairs."""
+        index = GribIndex(self.indexdb)
 
         full_requests = factorise(full_requests)
-        context.trace("🌧️", f"number of (factorised) requests: {len(full_requests)}")
+        self.context.trace(self.emoji, f"number of (factorised) requests: {len(full_requests)}")
         for valid_dates, request in full_requests:
-            context.trace("🌧️", f"  dates: {valid_dates}, request: {request}")
+            self.context.trace(self.emoji, f"  dates: {valid_dates}, request: {request}")
 
         result = []
         for valid_dates, request in full_requests:
             for grib in index.retrieve(valid_dates, **request):
                 field = ekd.from_source("memory", grib)[0]
-                if flavour:
-                    field = flavour.apply(field)
+                if self.flavour:
+                    field = self.flavour.apply(field)
                 result.append(field)
+
+        if self.grid is not None:
+            result = [new_field_from_grid(field, self.grid) for field in result]
 
         return FieldArray(result)
 

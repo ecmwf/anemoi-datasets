@@ -21,6 +21,7 @@ import numpy as np
 import tqdm
 import zarr
 from anemoi.utils.humanize import bytes_to_human
+from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
@@ -32,7 +33,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.14"
+VERSION = "0.18"
 
 LOG = logging.getLogger(__name__)
 
@@ -100,20 +101,24 @@ class Creator(ABC):
         for k, v in recipe.build.env.items():
             os.environ[k] = str(v)
 
-        format_type = recipe.output.format
+        format_type = recipe.output.layout
 
         LOG.info(f"Creating dataset with format: {format_type}")
 
         match format_type:
 
             case "gridded":
-                from .gridded.creator import GriddedCreator
+                from .gridded.creator import SimpleGriddedCreator
 
-                return GriddedCreator(recipe=recipe, **kwargs)
+                return SimpleGriddedCreator(recipe=recipe, **kwargs)
             case "tabular":
                 from .tabular.creator import TabularCreator
 
                 return TabularCreator(recipe=recipe, **kwargs)
+            case "trajectories":
+                from .trajectories.creator import TrajectoryGriddedCreator
+
+                return TrajectoryGriddedCreator(recipe=recipe, **kwargs)
             case _:
                 raise ValueError(f"Unknown format type: {format_type}")
 
@@ -134,7 +139,7 @@ class Creator(ABC):
         self.check_dataset_name(self.path)
 
         metadata = {}
-        self.fill_metadata(metadata)
+        self.collect_metadata(metadata)
         dataset.update_metadata(metadata)
 
         assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
@@ -143,10 +148,19 @@ class Creator(ABC):
         self.initialise_dataset(dataset)
 
         # Initialize progress tracking
-        dataset.initalise_done_flags(len(self.groups))
-        dataset.initalise_groups_lengths([len(g) for g in self.groups])
+        dataset.initialise_done_flags(len(self.groups))
+        dataset.initialise_group_shapes(self.group_shapes())
 
         dataset.touch()
+
+    def group_shapes(self) -> list[tuple[int, ...]]:
+        """Return the shape of each group's footprint in the data array.
+
+        Each entry is a tuple whose first element is the number of
+        entries along axis 0 of the data array.  Subclasses may add
+        extra dimensions (e.g. steps for trajectory datasets).
+        """
+        return [(len(g),) for g in self.groups]
 
     @abstractmethod
     def check_dataset_name(self, path: str) -> None:
@@ -156,7 +170,7 @@ class Creator(ABC):
     def initialise_dataset(self, dataset: Dataset) -> None:
         pass
 
-    def fill_metadata(self, metadata: dict) -> None:
+    def collect_metadata(self, metadata: dict) -> None:
         metadata["version"] = VERSION
         metadata["uuid"] = str(uuid.uuid4())
 
@@ -175,11 +189,12 @@ class Creator(ABC):
         # This one will be kept in the finalised dataset metadata
 
         model_dump = json.loads(model_dump)
+        # model_dump = self.recipe.only_non_defaults(model_dump)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
-
-        # TODO: make it an option
-        # recipe = sanitise(model_dump)
-        recipe = model_dump
+        if self.recipe.output.sanitise:
+            recipe = sanitise(model_dump)
+        else:
+            recipe = model_dump
 
         # Remove stuff added by prepml
         allow_keys = set(model_dump.keys())
@@ -195,14 +210,6 @@ class Creator(ABC):
         metadata["start_date"] = str(self.groups.first_date())
         metadata["last_date"] = str(self.groups.last_date())
 
-        #####
-        # Call subclass
-        self.collect_metadata(metadata)
-
-    @abstractmethod
-    def collect_metadata(self, metadata: dict) -> None:
-        pass
-
     ######################################################
     # Main loading loop
     ######################################################
@@ -215,7 +222,6 @@ class Creator(ABC):
         filter = PartFilter(parts=self.parts, total=total)
 
         for i, group in enumerate(self.groups):
-
             if not filter(i):
                 continue
 
@@ -301,6 +307,7 @@ class Creator(ABC):
         self._cleanup_temporary_directories()
         dataset.delete_metadata("_recipe")
         dataset.touch()
+        dataset.remove_lock_file()
 
     def _cleanup_temporary_directories(self) -> None:
         """Clean up temporary directories used during dataset creation."""
@@ -348,13 +355,12 @@ class Creator(ABC):
     @cached_property
     def groups(self) -> Groups:
         """Return the date groups for the dataset."""
-        return Groups(**self.recipe.dates, group_by=self.recipe.build.group_by)
+        return self.recipe.make_groups()
 
     @cached_property
     def minimal_input(self) -> Any:
         """Return a minimal input selection for a single date."""
-        one_date = self.groups.one_date()
-        return self.input.select(self.context(), one_date)
+        return self.input.select(self.context(), self.groups.one_date())
 
     @cached_property
     def input(self) -> InputBuilder:
@@ -362,7 +368,7 @@ class Creator(ABC):
 
         return InputBuilder(
             self.recipe.input,
-            data_sources=self.recipe.data_sources or {},
+            data_sources=self.recipe.data_sources,
         )
 
     @cached_property

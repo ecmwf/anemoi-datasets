@@ -17,10 +17,10 @@ from typing import Any
 import numpy as np
 import tqdm
 import zarr
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.statistics import STATISTICS
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -255,12 +255,20 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         "metadata.total_size",
         "metadata.latest_write_timestamp",
         "metadata.version",
+        # 'order_by' is now hard-coded and no longer read from the recipe;
+        # ignore both the top-level metadata key and the recipe copy so that
+        # references created before this change keep matching.
+        "metadata.order_by",
+        "metadata.recipe.output.order_by",
     ]
 
     IGNORE_MISSINGS = [
         "metadata.history",
         "metadata.recipe.dates.group_by",
         "metadata.recipe.output.statistics",
+        "metadata.recipe.output.flatten_grid",
+        "metadata.recipe.output.order_by",
+        "metadata.flatten_grid",
     ]
 
     if type(reference) is not type(actual):
@@ -310,6 +318,17 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
             return
 
     if reference != actual:
+        # Frequencies in older fixtures are stored as ISO-8601 durations
+        # ("PT6H") while newer recipes serialise them as the short form
+        # ("6h"). Treat both forms as equal when they parse to the same
+        # timedelta so the references stay valid.
+        if isinstance(reference, str) and isinstance(actual, str):
+            try:
+                if frequency_to_timedelta(reference) == frequency_to_timedelta(actual):
+                    return
+            except (ValueError, TypeError):
+                pass
+
         msg = f"🏷️ {'.'.join(path)} {reference=} ({type(reference)}) != {actual=} ({type(actual)})"
         errors.error(msg)
 
@@ -317,8 +336,8 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 def compare_anemoi_datasets(reference, actual, data) -> None:
     """Compare the actual dataset with the reference dataset."""
 
-    actual = open_zarr(dataset_lookup(actual))
-    reference = open_zarr(dataset_lookup(reference))
+    actual = open_zarr_store(actual)
+    reference = open_zarr_store(reference)
 
     errors = ErrorCollector()
 

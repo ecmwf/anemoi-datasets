@@ -170,6 +170,12 @@ class Unchecked(Combined):
         raise NotImplementedError()
 
     @property
+    @check("check_variables_compatibility")
+    def check_variables_compatibility(self) -> list[str]:
+        """Check the compatibility of variables across datasets."""
+        raise NotImplementedError()
+
+    @property
     @check("check_same_variables")
     def variables_metadata(self) -> dict:
         """Get the metadata for the variables."""

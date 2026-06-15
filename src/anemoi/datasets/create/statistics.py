@@ -249,7 +249,7 @@ class _TendencyCollector(_CollectorBase):
             diffs = np.diff(dates)
             assert np.all(diffs == diffs[0]), f"Dates must be regularly spaced, got diffs: {np.unique(diffs)}"
         if self._last_window_date is not None and len(dates) > 0:
-            assert dates[0] > self._last_window_date, (
+            assert dates[0] >= self._last_window_date, (
                 f"New dates must follow window dates chronologically: "
                 f"window ends at {self._last_window_date}, new data starts at {dates[0]}"
             )
@@ -709,12 +709,262 @@ class StatisticsCollector:
 
             offset = state.end
 
-        if offset != len(dataset.data):
-            raise ValueError(f"Statistics end {offset} does not match dataset length {len(dataset.data)}")
+        if offset != dataset.data.shape[0]:
+            raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
 
         # Adjust partial statistics
         for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
             state.collector.adjust_partial_statistics(dataset, state)
 
         # Merge all collectors
+        return reduce(lambda a, b: a.merge(b), [s.collector for s in states])
+
+
+class TrajectoryStatisticsCollector:
+    """Statistics collector for trajectory datasets (5-D ``(base_dates,
+    variables, ensembles, steps, cells)`` layout).
+
+    Mirrors :class:`StatisticsCollector` but with two differences:
+
+    * Base statistics aggregate over every axis except the variable axis,
+      keeping only the trajectories whose envelope lies within
+      ``[statistics_start_date, statistics_end_date]``.
+    * Tendency statistics are computed **along the step axis within a single
+      trajectory** — for each delta ``k`` (in step indices), the difference
+      ``data[:, :, :, k:, :] − data[:, :, :, :-k, :]`` is fed into a plain
+      :class:`_Collector`.  No sliding window is needed since every trajectory
+      is self-contained, so cross-chunk adjustment is a no-op.
+
+    Tendency results are exposed under the same Zarr key naming
+    (``statistics_tendencies_{name}_{stat}``) as the gridded collector, so
+    downstream readers don't need to be aware of the layout.
+
+    Parameters
+    ----------
+    variables_names : list of str, optional
+        Names of the variables (columns on axis 1).
+    allow_nans : bool, optional
+        Whether to allow NaN values in the data.
+    filter : TrajectoryStatisticsFilter, optional
+        Envelope filter; if omitted, all trajectories are kept.
+    tendencies : dict[str, int], optional
+        Mapping ``name -> step_delta`` for tendency statistics; the delta is
+        an integer offset along the step axis.
+    """
+
+    def __init__(
+        self,
+        variables_names: list[str] | None = None,
+        allow_nans: bool = False,
+        filter: Any = None,
+        tendencies: dict[str, int] | None = None,
+        _collector: _Collector | None = None,
+        _tendencies_collectors: dict[str, _Collector] | None = None,
+        _constants_collectors: dict[str, _ConstantsCollector] | None = None,
+    ) -> None:
+        self._filter = filter
+        self._collector = _collector
+        self._variables_names = variables_names
+        self._allow_nans = allow_nans
+        self._tendencies = tendencies or {}
+        self._tendencies_collectors = _tendencies_collectors or {}
+        self._constants_collectors = _constants_collectors or {}
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(variables_names={self._variables_names}, "
+            f"allow_nans={self._allow_nans}, tendencies={self._tendencies}, "
+            f"collector={self._collector}, tendencies_collectors={self._tendencies_collectors}, "
+            f"constants_collectors={self._constants_collectors})"
+        )
+
+    def missing_tendencies_count(self) -> dict[str, int]:
+        """Always zero for trajectories — each trajectory is self-contained
+        along the step axis, so there is no cross-chunk warm-up.
+        """
+        return {name: 0 for name in self._tendencies_collectors}
+
+    def collect(self, array: NDArray[np.float64], base_dates: Any) -> None:
+        """Collect statistics from a chunk of trajectories.
+
+        Parameters
+        ----------
+        array : NDArray[np.float64]
+            5-D data of shape ``(n_base_dates, n_variables, n_ensembles,
+            n_steps, n_cells)``.
+        base_dates : array-like
+            The base dates for axis 0 of ``array``.
+        """
+        assert array.ndim == 5, f"Expected 5-D array, got shape {array.shape}"
+        assert array.shape[1] == len(self._variables_names), (
+            f"Array variables count {array.shape[1]} does not match variables names count "
+            f"{len(self._variables_names)}"
+        )
+
+        if self._filter is not None:
+            mask = self._filter.mask(base_dates)
+            kept = array[mask]
+        else:
+            kept = array
+
+        if self._collector is None:  # lazily initialise collectors
+            names = self._variables_names
+            column_names = [str(i) if names is None else names[i] for i in range(array.shape[1])]
+
+            self._collector = _Collector(column_names)
+            for i, name in enumerate(column_names):
+                self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
+            for name in self._tendencies:
+                self._tendencies_collectors[name] = _Collector(column_names)
+
+        if len(kept) == 0:
+            return
+
+        self._collector.update(kept)
+
+        for c in self._constants_collectors.values():
+            c.update(kept)
+
+        # Tendencies along the step axis (-2) within each trajectory.
+        for name, step_delta in self._tendencies.items():
+            if kept.shape[-2] <= step_delta:
+                # Not enough steps in the kept trajectories for this delta.
+                continue
+            diff = kept[:, :, :, step_delta:, :] - kept[:, :, :, :-step_delta, :]
+            self._tendencies_collectors[name].update(diff)
+
+    def merge(self, other: "TrajectoryStatisticsCollector") -> "TrajectoryStatisticsCollector":
+        if not isinstance(other, TrajectoryStatisticsCollector):
+            raise ValueError("Can only merge with another TrajectoryStatisticsCollector")
+        if self._variables_names != other._variables_names:
+            raise ValueError("Cannot merge TrajectoryStatisticsCollectors with different variable names")
+        if self._allow_nans != other._allow_nans:
+            raise ValueError("Cannot merge TrajectoryStatisticsCollectors with different allow_nans settings")
+
+        if self._collector is None:
+            return other
+        if other._collector is None:
+            return self
+
+        if set(self._tendencies.keys()) != set(other._tendencies.keys()):
+            raise ValueError(
+                f"Cannot merge TrajectoryStatisticsCollectors with different tendencies settings "
+                f"{self._tendencies.keys()} vs {other._tendencies.keys()}"
+            )
+        if set(self._tendencies_collectors.keys()) != set(other._tendencies_collectors.keys()):
+            raise ValueError(
+                f"Cannot merge TrajectoryStatisticsCollectors with different tendencies collectors keys "
+                f"{self._tendencies_collectors.keys()} vs {other._tendencies_collectors.keys()}"
+            )
+
+        collector = self._collector.merge(other._collector)
+
+        tendencies_collectors = {
+            name: self._tendencies_collectors[name].merge(other._tendencies_collectors[name])
+            for name in self._tendencies_collectors
+        }
+
+        constants_collectors = {}
+        for name in self._constants_collectors.keys() | other._constants_collectors.keys():
+            if name not in self._constants_collectors or name not in other._constants_collectors:
+                raise ValueError(
+                    f"Cannot merge TrajectoryStatisticsCollectors with different constants settings, {name=}"
+                )
+            constants_collectors[name] = self._constants_collectors[name].merge(other._constants_collectors[name])
+
+        return TrajectoryStatisticsCollector(
+            variables_names=self._variables_names,
+            allow_nans=self._allow_nans,
+            tendencies=self._tendencies,
+            _collector=collector,
+            _tendencies_collectors=tendencies_collectors,
+            _constants_collectors=constants_collectors,
+        )
+
+    def statistics(self) -> dict[str, NDArray[np.float64]]:
+        if self._collector is None or int(self._collector._count.sum()) == 0:
+            raise ValueError(
+                "Trajectory statistics: no trajectory falls entirely within the "
+                "statistics envelope — the statistics would be all-NaN. "
+                "The envelope may be shorter than one trajectory length "
+                "(step_end - step_start); adjust 'statistics.start'/'statistics.end' "
+                "or the dataset date range."
+            )
+
+        result = self._collector.statistics()
+
+        for name, collector in self._tendencies_collectors.items():
+            if int(collector._count.sum()) == 0:
+                # Not enough steps (or dates) for this delta: skip the
+                # tendency arrays rather than writing NaNs or failing.
+                LOG.warning(
+                    f"Trajectory statistics: no data collected for tendency '{name}' "
+                    "(not enough steps for this delta); skipping."
+                )
+                continue
+            tendencies = collector.statistics()
+            for key in STATISTICS:
+                result[f"statistics_tendencies_{name}_{key}"] = tendencies[key]
+
+        return result
+
+    def constant_variables(self) -> list[str]:
+        return [name for name, c in self._constants_collectors.items() if c.is_constant]
+
+    def add_to_dataset(self, dataset: Any) -> None:
+        stats = self.statistics()
+        for name, data in stats.items():
+            assert data.dtype == np.float64, f"Expected float64 {name}, got {data.dtype}"
+            dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)
+
+        constants = self.constant_variables()
+
+        variables_metadata = dataset.get_metadata("variables_metadata", {}).copy()
+        for k in constants:
+            if k in variables_metadata:
+                variables_metadata[k]["constant_in_time"] = True
+
+        dataset.update_metadata(
+            constant_fields=sorted(constants),
+            variables_metadata=variables_metadata,
+        )
+
+        if hasattr(self._filter, "statistics_start_date"):
+            dataset.update_metadata(statistics_start_date=self._filter.statistics_start_date)
+
+        if hasattr(self._filter, "statistics_end_date"):
+            dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
+
+    def adjust_partial_statistics(self, dataset, state) -> None:
+        """No-op: each trajectory is self-contained along the step axis."""
+        return
+
+    def serialise(self, path, group, start, end) -> None:
+        state = _State(group=group, start=start, end=end, collector=self)
+        with open(path, "wb") as f:
+            pickle.dump(state, f)
+
+    @classmethod
+    def load_precomputed(cls, dataset, precomputed):
+        states = []
+        for item in tqdm.tqdm(precomputed, desc="Loading precomputed statistics"):
+            with open(item, "rb") as f:
+                state = pickle.load(f)
+                state.path = item
+                states.append(state)
+
+        states = sorted(states, key=lambda x: x.group)
+
+        offset = 0
+        for i, state in enumerate(states):
+            if state.group != i:
+                raise ValueError(f"Missing statistics for group {i}")
+            if state.start != offset:
+                raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
+            offset = state.end
+
+        if offset != dataset.data.shape[0]:
+            raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
+
+        # No cross-chunk adjustment needed for trajectories.
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

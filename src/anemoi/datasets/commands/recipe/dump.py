@@ -36,12 +36,15 @@ class Dumper:
     def start_end_dates(self, start, end, frequency):
         return repr((str(start), str(end), frequency_to_string(frequency)))
 
+    def steps(self, start, end, frequency):
+        return repr((frequency_to_string(start), frequency_to_string(end), frequency_to_string(frequency)))
+
 
 def dump_recipe(config: dict, dumper=None) -> str:
     recipe = Recipe(**config)
     input = InputBuilder(
         recipe.input,
-        data_sources=recipe.data_sources or {},
+        data_sources=recipe.data_sources,
     )
     if dumper is None:
         dumper = Dumper()

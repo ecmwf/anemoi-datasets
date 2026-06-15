@@ -20,6 +20,10 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+
+from .locking import Locking
+
 LOG = logging.getLogger(__name__)
 
 
@@ -38,19 +42,6 @@ def _tidy_json(obj: Any) -> Any:
 
         case _:
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
-
-
-class Synchronizer:
-    """A placeholder for now"""
-
-    def __init__(self, path):
-        pass
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
 
 
 class Dataset:
@@ -90,7 +81,7 @@ class Dataset:
             mode = "a"
 
         self.store = zarr.open(self.path, mode=mode)
-        self.synchronizer = Synchronizer(self.path)
+        self.synchronizer = Locking(self.path + ".lock")
 
     def add_array(
         self,
@@ -123,7 +114,7 @@ class Dataset:
 
         LOG.info(f"Creating array {name} with kwargs={_(kwargs)} (dimensions={dimensions})")
 
-        a = zarr_root.create_dataset(name, **kwargs)
+        a = zarr_root.create_array(name, **kwargs)
         a.attrs["_ARRAY_DIMENSIONS"] = dimensions
         return a
 
@@ -146,12 +137,18 @@ class Dataset:
         with self.synchronizer:
             self.store.attrs.pop(key, None)
 
+    def remove_lock_file(self) -> None:
+        """Remove the inter-process lock file, once no other process needs it."""
+        lock_file = self.path + ".lock"
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
+
     ##################################
     # Progress tracking methods
     ##################################
 
     def total_todo(self) -> int:
-        return len(self.store["_build"]["flags"])
+        return self.store["_build"]["flags"].shape[0]
 
     def todo_remaining(self) -> int:
         with self.synchronizer:
@@ -175,10 +172,11 @@ class Dataset:
     ##################################
 
     def group_to_range(self, group: int) -> tuple[int, int]:
-        """Convert group indices to slice in the data array."""
+        """Convert group indices to slice in the data array's first axis."""
 
         with self.synchronizer:
-            lengths = self.store["_build"]["lengths"][:]
+            shapes = self.store["_build"]["shapes"][:]
+            lengths = shapes[:, 0]
             start = sum(lengths[:group])
             end = start + lengths[group]
             return (start, end)
@@ -193,16 +191,16 @@ class Dataset:
             self.store.attrs[name] = gather_provenance_info()
 
     # For statistics about
-    def initalise_groups_lengths(self, lengths: list[int]) -> None:
-        """Initialize the progress tracking datasets."""
+    def initialise_group_shapes(self, shapes: list[tuple[int, ...]]) -> None:
+        """Initialise the per-group shape tracking array."""
 
         self.add_array(
-            name="_build/lengths",
-            data=np.array(lengths, dtype=np.int64),
-            dimensions=("group",),
+            name="_build/shapes",
+            data=np.array(shapes, dtype=np.int64),
+            dimensions=("group", "dim"),
         )
 
-    def initalise_done_flags(self, groups: int) -> None:
+    def initialise_done_flags(self, groups: int) -> None:
         """Initialize the progress tracking datasets."""
 
         self.add_array(
@@ -226,7 +224,25 @@ class Dataset:
 
     @cached_property
     def dates(self):
-        return self.store["dates"][:]
+        # For gridded/tabular the array is called ``dates``.  Trajectories
+        # datasets store the forecast initialisation times under
+        # ``base_dates`` — fall back to that so shared statistics / loading
+        # code keeps working without a special-case.
+        if "dates" in self.store:
+            return self.store["dates"][:]
+        return self.store["base_dates"][:]
+
+    @cached_property
+    def base_dates(self):
+        """Return the base-date (forecast initialisation time) array for
+        trajectories datasets.
+        """
+        return self.store["base_dates"][:]
+
+    @cached_property
+    def steps(self):
+        """Return the forecast steps array for trajectories datasets."""
+        return self.store["steps"][:]
 
     @property
     def data(self):
@@ -240,3 +256,15 @@ class Dataset:
 
     def touch(self) -> None:
         self.update_metadata(latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None))
+
+    @property
+    def variables_metadata(self) -> dict[str, Any]:
+        """Get the metadata for each variable in the dataset."""
+        return self.store.attrs["variables_metadata"]
+
+    @cached_property
+    def typed_variables(self) -> dict[str, Any]:
+        from anemoi.transform.variables import Variable
+
+        """Get the metadata for each variable in the dataset."""
+        return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}

@@ -81,7 +81,7 @@ class DOPZarrSource(Source):
                 self.dates = dates
 
             def __len__(self):
-                return len(self.dates)
+                return self.dates.shape[0]
 
             def __getitem__(self, value):
                 return self.dates[value][0]

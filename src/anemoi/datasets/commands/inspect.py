@@ -27,8 +27,7 @@ from anemoi.utils.text import table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.usage.store import dataset_lookup
-from anemoi.datasets.usage.store import open_zarr
+from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
 
@@ -154,8 +153,7 @@ class Version:
         self.zarr = zarr
         self.metadata = metadata
         self.version = version
-        self.dataset = None
-        self.dataset = open_dataset(self.path)
+        self.dataset = open_dataset(zarr)
 
     def describe(self) -> None:
         """Print a description of the dataset."""
@@ -257,20 +255,56 @@ class Version:
         size : bool
             Whether to print the size of the dataset.
         """
+        from rich.console import Console
+        from rich.table import Table
+
+        console = Console()
+
+        is_trajectories = getattr(self.dataset, "steps", None) is not None
         print()
-        print(f'📅 Start      : {self.first_date.strftime("%Y-%m-%d %H:%M")}')
-        print(f'📅 End        : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
-        print(f"⏰ Frequency  : {self.frequency}")
+        if is_trajectories:
+            from anemoi.utils.dates import frequency_to_string
+
+            def _fmt(dt64: np.datetime64) -> str:
+                return dt64.astype("datetime64[s]").astype(datetime.datetime).strftime("%Y-%m-%d %H:%M")
+
+            print(f"📅 Date start : {_fmt(self.dataset.start_date)}")
+            print(f"📅 Date end   : {_fmt(self.dataset.end_date)}")
+        else:
+            print(f'📅 Date      start: {self.first_date.strftime("%Y-%m-%d %H:%M")}')
+            print(f'📅 Date      end  : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
+            print(f"⏰ Frequency  : {self.frequency}")
         if self.n_missing_dates is not None:
             print(f"🚫 Missing    : {self.n_missing_dates:,}")
         print(f"🌎 Resolution : {self.resolution}")
         print(f"🌎 Field shape: {self.field_shape}")
 
-        print()
-        print(f"📅 Data start : {self.index_start_date}")
-        print(f"📅 Data end   : {self.index_end_date}")
-        if self.index_length is not None:
-            print(f"📇 Index size : {self.index_length:,}")
+        # Trajectories-specific base-date and step-axis summary
+        if is_trajectories:
+            try:
+                base_start = _fmt(self.dataset.base_start_date)
+                base_end = _fmt(self.dataset.base_end_date)
+                base_freq = frequency_to_string(self.dataset.base_frequency)
+                n_bases = len(self.dataset.base_dates)
+                print(f"⏱️  Base dates : {base_start} → {base_end} every {base_freq} ({n_bases})")
+
+                start_step = self.dataset.step_start
+                end_step = self.dataset.step_end
+                freq = self.dataset.step_frequency
+                freq_str = frequency_to_string(freq) if freq is not None else "irregular"
+                start_str = frequency_to_string(start_step)
+                end_str = frequency_to_string(end_step)
+                n_steps = len(self.dataset.steps)
+                print(f"⏱️  Steps      : {start_str} → {end_str}, every {freq_str} ({n_steps})")
+            except AttributeError:
+                pass
+
+        if not is_trajectories:
+            print()
+            print(f"📅 Data start : {self.index_start_date}")
+            print(f"📅 Data end   : {self.index_end_date}")
+            if self.index_length is not None:
+                print(f"📇 Index size : {self.index_length:,}")
 
         print()
         shape_str = "📐 Shape      : "
@@ -281,24 +315,33 @@ class Version:
         print(shape_str)
         self.print_sizes(size)
         print()
-        rows = []
 
         if self.statistics_ready:
             stats = self.statistics
         else:
-            stats = [["-"] * len(self.variables)] * 4
+            stats = [["-"] * len(self.variables)] * 5
+
+        table = Table(title="Statistics")
+        table.add_column("Index", justify="right")
+        table.add_column("Variable", justify="left")
+        table.add_column("Min", justify="right")
+        table.add_column("Max", justify="right")
+        table.add_column("Mean", justify="right")
+        table.add_column("Stdev", justify="right")
+        table.add_column("Units", justify="left")
+
+        def _(x):
+            if isinstance(x, float):
+                return f"{x:.3g}"
+            return str(x)
 
         for i, v in enumerate(self.variables):
-            rows.append([i, v] + [x[i] for x in stats])
+            row = [i, v] + [x[i] for x in stats] + [self.variables_metadata.get(v, {}).get("units", "-")]
+            table.add_row(*map(_, row))
 
-        print(
-            table(
-                rows,
-                header=["Index", "Variable", "Min", "Max", "Mean", "Stdev"],
-                align=[">", "<", ">", ">", ">", ">"],
-                margin=3,
-            )
-        )
+        console.print()
+        console.print(table)
+        console.print()
 
         if detailed:
             self.details()
@@ -363,7 +406,7 @@ class Version:
         try:
             self.dataset.statistics
             return True
-        except AttributeError:
+        except KeyError:
             return False
 
     @property
@@ -419,9 +462,9 @@ class Version:
             )
             return
 
-        build_flags = self.build_flags or np.array([], dtype=bool)
+        build_flags = np.array([], dtype=bool) if self.build_flags is None else self.build_flags
 
-        build_lengths = self.build_lengths or np.array([], dtype=bool)
+        build_lengths = np.array([], dtype=bool) if self.build_lengths is None else self.build_lengths
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
@@ -505,6 +548,17 @@ class Version:
                 margin=3,
             )
         )
+
+    def recipe(self, path: str) -> None:
+        import yaml
+
+        z = open_zarr_store(path)
+        for name in ("_create_yaml_config", "_recipe", "recipe"):
+            if name in z.attrs:
+                print(yaml.safe_dump(z.attrs[name], sort_keys=False))
+                return
+
+        print("No recipe found in the dataset.")
 
 
 class NoVersion(Version):
@@ -671,7 +725,7 @@ class Version0_6(Version):
         if "_build_flags" not in self.zarr:
             return False
 
-        build_flags = self.zarr["_build_flags"]
+        build_flags = self.zarr["_build_flags"][:]
         return all(build_flags)
 
     @property
@@ -727,7 +781,7 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("flags")
+        return build.get("flags")[:]
 
     @property
     def build_lengths(self) -> NDArray | None:
@@ -735,10 +789,24 @@ class Version0_13(Version0_12):
         if "_build" not in self.zarr:
             return None
         build = self.zarr["_build"]
-        return build.get("lengths")
+        # New format: 2D "shapes" array (n_groups, n_dims)
+        if "shapes" in build:
+            return build["shapes"][:, 0]
+        # Old format: 1D "lengths" array
+        if "lengths" in build:
+            return build["lengths"][:]
+        return None
 
 
 class Version0_14(Version0_13):
+    pass
+
+
+class Version0_15(Version0_14):
+    pass
+
+
+class Version0_16(Version0_15):
     pass
 
 
@@ -749,6 +817,8 @@ VERSIONS = {
     "0.12.0": Version0_12,
     "0.13.0": Version0_13,
     "0.14.0": Version0_14,
+    "0.15.0": Version0_15,
+    "0.16.0": Version0_16,
 }
 
 
@@ -769,6 +839,7 @@ class InspectZarr(Command):
         command_parser.add_argument("--progress", action="store_true")
         command_parser.add_argument("--statistics", action="store_true")
         command_parser.add_argument("--size", action="store_true", help="Print size")
+        command_parser.add_argument("--recipe", action="store_true", help="Print recipe")
 
     def run(self, args: Any) -> None:
         """Run the command.
@@ -787,6 +858,7 @@ class InspectZarr(Command):
         statistics: bool = False,
         detailed: bool = False,
         size: bool = False,
+        recipe: bool = False,
         **kwargs: Any,
     ) -> None:
         """Inspect a zarr dataset.
@@ -803,6 +875,8 @@ class InspectZarr(Command):
             Whether to print detailed information, by default False.
         size : bool, optional
             Whether to print the size of the dataset, by default False.
+        recipe : bool, optional
+            Whether to print the recipe used to create the dataset, by default False.
         **kwargs : Any
             Additional keyword arguments.
         """
@@ -817,6 +891,10 @@ class InspectZarr(Command):
 
             if statistics:
                 version.brute_force_statistics()
+
+            if recipe:
+                version.recipe(path)
+                return
 
             version.info(detailed, size)
 
@@ -839,7 +917,7 @@ class InspectZarr(Command):
         Version
             The version object of the dataset.
         """
-        z = open_zarr(dataset_lookup(path))
+        z, real_path = open_zarr_store(path, return_path=True)
 
         metadata = dict(z.attrs)
         version = metadata.get("version", "0.0.0")
@@ -855,7 +933,7 @@ class InspectZarr(Command):
             if version >= v:
                 candidate = klass
 
-        return candidate(path, z, metadata, version)
+        return candidate(real_path, z, metadata, version)
 
 
 command = InspectZarr

@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 from datetime import datetime
+from datetime import timedelta
 from typing import Any
 
 import earthkit.data as ekd
@@ -16,12 +17,12 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
-from anemoi.datasets.create.sources.accumulate import IntervalsDatesProvider
-from anemoi.datasets.create.types import DateList
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
 
 from ..source import Source
 from . import source_registry
-from .mars import factorise_requests
+from .mars import compress_prebuilt_requests
 
 
 # TODO: there is some code duplication between here and MARS source, might be reduced
@@ -78,37 +79,47 @@ class FdbSource(Source):
         # temporary workarounds for FDB use at MeteoSwiss (adoption is ongoing)
         # thus not documented
         self.offset_from_date = kwargs.pop("offset_from_date", None)
+        self.step_zero_from_previous_date = kwargs.pop("step_zero_from_previous_date", False)
 
-    def execute(self, dates: DateList | IntervalsDatesProvider) -> ekd.FieldList:
-        """Execute the FDB source.
+    def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
+        """Handle instant requests."""
+        requests = []
+        for date in dates:
+            time_request = _time_request_keys(date, self.offset_from_date, self.step_zero_from_previous_date)
+            requests.append(self.request | time_request)
+        return self._execute_requests(requests)
+
+    def execute_intervals(self, dates: Intervals) -> ekd.FieldList:
+        """Handle archive-resolved interval requests from AccumulateSource."""
+        requests = []
+        for interval in dates.intervals:
+            # FDB always has a model-run time; only grib_index is allowed to
+            # produce base-less intervals.
+            assert interval.base is not None, (
+                f"FDB source received an interval without a basetime: {interval!r}. "
+                "Only grib_index is expected to produce base=None intervals."
+            )
+            _, r, _ = dates.adjust_request(interval, self.request)
+            requests.append(r)
+        return self._execute_requests(requests)
+
+    def _execute_requests(self, requests: list) -> ekd.FieldList:
+        """Run factorised FDB requests and apply grid/flavour post-processing.
 
         Parameters
         ----------
-        dates : DateList
-            The input dates.
+        requests : list
+            Raw request dicts built by an execute overload.
 
         Returns
         -------
         ekd.FieldList
-            The output data.
+            The retrieved, post-processed fields.
         """
-        if isinstance(dates, IntervalsDatesProvider):
-            requests = []
-            for date, interval in dates.intervals:
-                _, r, _ = dates._adjust_request_to_interval(interval, self.request)
-                requests.append(r)
-        else:
-            requests = []
-            for date in dates:
-                time_request = _time_request_keys(date, self.offset_from_date)
-                requests.append(self.request | time_request)
-
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
         # defined request already and an empty dates list
         requests = requests or [self.request]
-        requests = factorise_requests(
-            ["no_date_here"], *requests, request_already_using_valid_datetime=True, date_key="date", no_date_here=True
-        )
+        requests = compress_prebuilt_requests(requests)
 
         fl = ekd.from_source("empty")
         for request in requests:
@@ -123,13 +134,18 @@ class FdbSource(Source):
         return fl
 
 
-def _time_request_keys(dt: datetime, offset_from_date: bool | None = None) -> str:
+def _time_request_keys(
+    dt: datetime, offset_from_date: bool | None = None, step_zero_from_previous_date: bool = False
+) -> str:
     """Defines the time-related keys for the FDB request."""
     out = {}
     out["date"] = dt.strftime("%Y%m%d")
     if offset_from_date:
         out["time"] = "0000"
         out["step"] = int((dt - dt.replace(hour=0, minute=0)).total_seconds() // 3600)
+        if out["step"] == 0 and step_zero_from_previous_date:
+            out["date"] = (dt - timedelta(days=1)).strftime("%Y%m%d")
+            out["step"] = 24
     else:
         out["time"] = dt.strftime("%H%M")
     return out
