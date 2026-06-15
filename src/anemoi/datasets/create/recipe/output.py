@@ -66,9 +66,6 @@ class GriddedOutput(OutputBase):
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
     """The chunking configuration for the output."""
 
-    ensemble_dimension: int = 2
-    """The ensemble dimension size."""
-
     # Fixed value that the deprecated ``order_by`` field must match, if set.
     # Kept in sync with ``SimpleGriddedContext.order_by``.
     _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
