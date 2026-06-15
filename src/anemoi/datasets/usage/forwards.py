@@ -350,9 +350,9 @@ class Combined(Forwards):
         ValueError
             If the resolutions are not the same.
         """
-        # if d1.resolution is None or d2.resolution is None:
-        #     LOG.warning("One of the datasets has no resolution, cannot check compatibility")
-        #     return
+        if d1.resolution is None or d2.resolution is None:
+            LOG.warning("One of the datasets has no resolution, cannot check compatibility")
+            return
 
         if d1.resolution != d2.resolution:
             raise ValueError(
@@ -486,7 +486,14 @@ class Combined(Forwards):
         """
         from anemoi.transform.variables import Variable
 
-        Variable.check_compatibility(d1.typed_variables, d2.typed_variables)
+        tv1 = d1.typed_variables
+        tv2 = d2.typed_variables
+
+        if not tv1 or not tv2:
+            LOG.warning("One of the datasets has no variable metadata, cannot check compatibility")
+            return
+
+        Variable.check_compatibility(tv1, tv2)
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.

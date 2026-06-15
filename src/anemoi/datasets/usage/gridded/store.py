@@ -150,9 +150,9 @@ class GriddedZarr(ZarrStore):
         )
 
     @property
-    def resolution(self) -> str:
+    def resolution(self) -> str | None:
         """Return the resolution of the dataset."""
-        return self.store.attrs["resolution"]
+        return self.store.attrs.get("resolution")
 
     @property
     def field_shape(self) -> tuple:
