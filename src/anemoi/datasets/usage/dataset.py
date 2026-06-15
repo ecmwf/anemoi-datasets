@@ -279,6 +279,13 @@ class Dataset(ABC, Sized):
             set_missing_dates = kwargs.pop("set_missing_dates")
             return MissingDates(self, set_missing_dates)._subset(**kwargs).mutate()
 
+        # Trajectory-specific: force base dates to be missing
+        if "set_missing_base_dates" in kwargs:
+            MissingBaseDates = self.usage_factory_load("MissingBaseDates")
+
+            set_missing_base_dates = kwargs.pop("set_missing_base_dates")
+            return MissingBaseDates(self, set_missing_base_dates)._subset(**kwargs).mutate()
+
         if "skip_missing_dates" in kwargs:
             SkipMissingDates = self.usage_factory_load("SkipMissingDates")
 

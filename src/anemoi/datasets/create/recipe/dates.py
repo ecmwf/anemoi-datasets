@@ -156,6 +156,9 @@ class StartEndDates(DatesProvider):
         """Used for tabular datasets grouping."""
         return dates[-1] + self.frequency
 
+    def dump(self, dumper):
+        return dumper.start_end_dates(self.start, self.end, self.frequency)
+
 
 class BaseDates(StartEndDates):
     """Basetimes (forecast initialisation times) for the ``trajectories`` layout.
@@ -167,7 +170,7 @@ class BaseDates(StartEndDates):
 
     Unlike :class:`StartEndDates`, ``values`` retains the slots for ``missing``
     base dates: the on-disk trajectory array must keep an entry for every base
-    date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryFilter`
+    date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryGroups`
     removes the missing ones only from the iteration that drives data loading.
     """
 
@@ -191,15 +194,41 @@ class Steps(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    start: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)]
-    end: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)]
-    frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)]
+    start: Frequency
+    end: Frequency
+    frequency: Frequency
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "Steps":
+        if self.frequency <= datetime.timedelta(0):
+            raise ValueError(f"'steps.frequency' must be positive, got {self.frequency}")
+        if self.end < self.start:
+            raise ValueError(f"'steps.end' ({self.end}) must be >= 'steps.start' ({self.start})")
+        if (self.end - self.start) % self.frequency != datetime.timedelta(0):
+            raise ValueError(
+                f"'steps.frequency' ({frequency_to_string(self.frequency)}) must divide "
+                f"'steps.end' - 'steps.start' "
+                f"({frequency_to_string(self.start)} to {frequency_to_string(self.end)})"
+            )
+        # The pipeline (MARS step requests, per-field placement) assumes
+        # whole-hour steps throughout.
+        for name in ("start", "end", "frequency"):
+            value = getattr(self, name)
+            if value.total_seconds() % 3600:
+                raise ValueError(
+                    f"'steps.{name}' must be a whole number of hours for the "
+                    f"'trajectories' layout, got {frequency_to_string(value)}"
+                )
+        return self
 
     @cached_property
     def values(self):
         import numpy as np
 
         return np.arange(self.start, self.end + self.frequency, self.frequency)
+
+    def dump(self, dumper):
+        return dumper.steps(self.start, self.end, self.frequency)
 
     def __len__(self) -> int:
         return len(self.values)

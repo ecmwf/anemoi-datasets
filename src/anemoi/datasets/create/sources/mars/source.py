@@ -66,7 +66,13 @@ class MarsSource(Source):
         _reject_filters(base_requests, "forecast-date")
         per_item_requests: list[dict[str, Any]] = []
         for valid_time, basetime in dates.items:
-            step_hours = int((valid_time - basetime).total_seconds() // 3600)
+            step_seconds = (valid_time - basetime).total_seconds()
+            if step_seconds % 3600:
+                raise ValueError(
+                    f"MARS forecast requests only support whole-hour steps, got "
+                    f"step={valid_time - basetime} (valid_time={valid_time}, basetime={basetime})."
+                )
+            step_hours = int(step_seconds // 3600)
             for request in base_requests:
                 r = request.copy()
                 r["date"] = basetime.strftime("%Y%m%d")

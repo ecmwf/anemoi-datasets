@@ -90,14 +90,27 @@ class TrajectoryGriddedCreator(GriddedCreator):
         super().collect_metadata(metadata)
         metadata["layout"] = "trajectories"
         metadata["steps"] = self.recipe.steps.model_dump(mode="json")
-        # Variables live on axis 1 (same as gridded); ensembles on axis 2; steps on axis -2.
-        metadata["ensemble_dimension"] = 2
-        metadata["step_dimension"] = -2
+
+        metadata["dimensions"] = ["base_dates", "variables", "ensembles", "steps", "values"]
 
         # Base dates are trajectory-specific metadata.
         base_dates = self._metadata_dates()
         metadata["start_base_date"] = base_dates[0].isoformat()
         metadata["end_base_date"] = base_dates[-1].isoformat()
+
+        # The statistics envelope is defined on valid times (base date + step),
+        # matching ``TrajectoryStatisticsFilter`` and the behaviour of
+        # ``open_dataset(start=, end=)``: a trajectory is kept only when its
+        # whole envelope lies within the statistics interval.  Overwrite the
+        # base-date-derived values written by ``super().collect_metadata``.
+        provider = self.groups.provider
+        assert isinstance(provider, TrajectoryDates), type(provider)
+        _, steps = provider.factorise()
+        stats_filter = self.recipe.statistics.trajectory_statistics_filter(
+            np.array(base_dates, dtype="datetime64[s]"), steps
+        )
+        metadata["statistics_start_date"] = stats_filter.statistics_start_date
+        metadata["statistics_end_date"] = stats_filter.statistics_end_date
 
     def _metadata_dates(self):
         """Return the sorted-unique base dates (not ``(basetime, step)`` tuples)."""
@@ -203,6 +216,12 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # ``param``/``param_levelist``.
         remapping = result.context.remapping
 
+        # Map GRIB member numbers to positions on the ensemble axis.  Member
+        # numbering schemes vary (0-based with control, 1-based perturbed
+        # members, ...), so the number cannot be used as an index directly.
+        numbers = cube.user_coords.get("number")
+        number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
+
         LOG.info(
             "Loading trajectory cube: cube shape=%s, variables=%d, steps=%d",
             cube.extended_user_shape,
@@ -247,7 +266,15 @@ class TrajectoryGriddedCreator(GriddedCreator):
                     var_name = str(field.metadata("param"))
 
                 number = field.metadata("number", default=0) or 0
-                ens_idx = int(number) if int(number) > 0 else 0
+                if number_to_index is None:
+                    ens_idx = 0
+                else:
+                    ens_idx = number_to_index.get(int(number))
+                    if ens_idx is None:
+                        raise ValueError(
+                            f"Trajectories: member number {number} not in the cube's "
+                            f"'number' coordinate {list(numbers)}"
+                        )
 
                 date_idx = basetime_index_of(basetime)
                 step_idx = step_index_of(step_td)
@@ -293,14 +320,13 @@ class TrajectoryGriddedCreator(GriddedCreator):
         multiples of the step spacing are skipped with a warning, mirroring
         the gridded behaviour.
         """
-        additions = self.recipe.build.additions
-        if not additions:
-            return {}
-
         tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is None:
+            # Tendencies are disabled by default.
+            tendencies_config = False
         if tendencies_config is True:
             tendencies_list = [1, 3, 6, 12, 24]
-        elif tendencies_config is False or tendencies_config is None:
+        elif tendencies_config is False:
             return {}
         else:
             tendencies_list = list(tendencies_config)
