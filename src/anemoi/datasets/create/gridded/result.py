@@ -241,6 +241,10 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         other[current_variable]["units"] = units
 
+        grib = {k: f.metadata(k, default=None) for k in ("paramId", "shortName")}
+        if any(grib.values()):
+            other[current_variable]["grib"] = grib
+
         for k in md.copy().keys():
             if k.startswith("_"):
                 md.pop(k)
