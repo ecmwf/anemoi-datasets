@@ -78,8 +78,12 @@ Please note that you can pass more than two datasets to the function.
    returned to the user. You can change this using the
    :ref:`selecting-statistics` option.
 
-When concatenating datasets, the package will check that they are compatible, i.e., that they have the same resolution, the same
-variables, etc. You can turn some of the check off:
+When concatenating datasets, the package will check that variables are compatible, i.e.,
+that they have the same units, the same time processing (e.g. whether the data is instantaneous or accumulated),
+the same time processing period (e.g. whether the data are 3-hourly or 6-hourly accumulations),
+the same type of level (e.g. whether the data are on pressure levels or model levels), etc.
+
+You can turn some of the check off:
 
 .. code:: python
 
